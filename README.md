@@ -244,7 +244,7 @@ For web it uses [`yew`](https://docs.rs/yew/0.19.3/yew/).
    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../shared/target/x86_64-apple-ios/release";
    ```
 
-1. Create a script to build the rust library (e.g. this script [`./iOs/bin/compile-library.sh`](./iOs/bin/compile-library.sh))
+1. Create a script to build the rust library (e.g. this script [`./iOS/bin/compile-library.sh`](./iOS/bin/compile-library.sh))
 1. Test the build (which will still fail, but should create the `generated` directory)
 1. In "Build phases", create or modify the following phases (you can drag them so that they match the order below) ...
 
