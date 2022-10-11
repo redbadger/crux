@@ -222,15 +222,26 @@ For web it uses [`yew`](https://docs.rs/yew/0.19.3/yew/).
 
 1. In "Build Settings" ...
 
-   1. add a "User-defined setting" called "`build_variant`", with a value of `debug` for Debug and `release` for Release.
+   1. add a "User-defined setting" called "`build_variant`", with a value of `debug` for Debug and `release` for Release
    1. search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, in both Debug and Release
+   1. search for "library search paths" and add some dummy values for debug and release. This will update the project file so you can search in it for `LIBRARY_SEARCH_PATHS` in the next step.
 
-1. Open `./iOS/iOs.xcodeproj/project.pbxproj` in a code editor and search for "LIBRARY_SEARCH_PATHS" and add the following (adapting for debug and release accordingly)...
+1. Open `./iOS/iOs.xcodeproj/project.pbxproj` in a code editor and search for "LIBRARY_SEARCH_PATHS" (you should find 2 occurrences), and add the following ...
+
+   1. in the "debug" section
 
    ```txt
    "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios/debug";
    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios-sim/debug";
    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../shared/target/x86_64-apple-ios/debug";
+   ```
+
+   1. in the "release"" section
+
+   ```txt
+   "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios/release";
+   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios-sim/release";
+   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../shared/target/x86_64-apple-ios/release";
    ```
 
 1. Create a script to build the rust library (e.g. this script [`./iOs/bin/compile-library.sh`](./iOs/bin/compile-library.sh))
