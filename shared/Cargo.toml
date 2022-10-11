@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["lib", "cdylib"]
+crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
 [dependencies]
