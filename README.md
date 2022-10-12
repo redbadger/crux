@@ -121,7 +121,7 @@ For web it uses [`yew`](https://yew.rs/).
     (cd shared && uniffi-bindgen generate ./shared.udl --language kotlin)
    ```
 
-1. SymLink this into the share `aar` library
+1. SymLink this into the shared `aar` library. (TODO: find a better solution than this!) ...
 
    ```bash
    ( \
