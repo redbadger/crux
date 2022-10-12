@@ -28,9 +28,9 @@ For web it uses [`yew`](https://yew.rs/).
 1. Edit [`./shared/Cargo.toml`](./shared/Cargo.toml).
    Note that the crate type:
 
-   1. `"lib"` is a rust library (`libshared.rlib`) for use when compiling to wasm for the web
-   1. `"staticlib"` is a static library (`libshared.a`) for including in the swift iOS app
-   1. `"cdylib"` is a c-abi dynamic library (`libshared.so`) for use with JNA when included in the kotlin Android app
+   1. `"lib"` is the default rust library for use when linking into a rust binary, e.g. for WebAssembly in the web variant
+   1. `"staticlib"` is a static library (`libshared.a`) for including in the Swift iOS app variant
+   1. `"cdylib"` is a c-abi dynamic library (`libshared.so`) for use with JNA when included in the Kotlin Android app variant
 
    ```toml
    [lib]
