@@ -4,9 +4,20 @@ This repo is a "hello world" example of using a single shared library, written i
 
 For mobile, it uses [`uniffi`](https://github.com/mozilla/uniffi-rs) from Mozilla, which generates all the necessary bindings and marshalls FFI calls between kotlin/swift and rust.
 
-For web it uses [`yew`](https://docs.rs/yew/0.19.3/yew/).
+For web it uses [`yew`](https://yew.rs/).
 
 ## Shared rust library
+
+1. Make sure you have the following rust targets installed (e.g. `rustup target add aarch64-apple-ios`)
+
+   ```txt
+   aarch64-apple-darwin
+   aarch64-apple-ios
+   aarch64-apple-ios-sim
+   aarch64-linux-android
+   wasm32-unknown-unknown
+   x86_64-apple-ios
+   ```
 
 1. Create a new rust library ...
 
@@ -281,4 +292,58 @@ For web it uses [`yew`](https://docs.rs/yew/0.19.3/yew/).
          ContentView()
       }
    }
+   ```
+
+## Web
+
+1. Install [`trunk`](https://github.com/thedodd/trunk)
+1. Create a new rust binary ...
+
+   ```sh
+   cargo new web
+   ```
+
+1. Add [`yew`](https://yew.rs/), and the shared library, as dependencies in [`./web/Cargo.toml`](./web/Cargo.toml) ...
+
+   ```toml
+   [dependencies]
+   yew = "0.19.3"
+   shared = { path = "../shared" }
+   ```
+
+1. Add [`./web/index.html`](./web/index.html) ...
+
+   ```html
+   <!DOCTYPE html>
+   <html>
+     <head>
+       <meta charset="utf-8" />
+       <title>Yew App</title>
+     </head>
+   </html>
+   ```
+
+1. Edit [`./web/src/main.rs`](./web/src/main.rs), for example ...
+
+   ```rust
+   use shared::add;
+   use yew::prelude::*;
+
+   #[function_component(HelloWorld)]
+   fn hello_world() -> Html {
+      html! {
+         <p>{"1 + 2 = "}{add(1, 2)}</p>
+      }
+   }
+
+   fn main() {
+      yew::start_app::<HelloWorld>();
+   }
+   ```
+
+1. Build and serve the web page ...
+
+   ```sh
+   cd ./web
+   trunk serve
    ```
