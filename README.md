@@ -1,4 +1,4 @@
-# Rust Multi-platform Mobile (RMM)
+# Rust Multi-platform Mobile (RMM) ;-)
 
 This repo is a "hello world" example of using a single shared library, written in rust, in an Android app, an iOS app, and a web application.
 
