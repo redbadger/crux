@@ -3,6 +3,15 @@
 version = 3
 
 [[package]]
+name = "aho-corasick"
+version = "0.7.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4f55bd91a0978cbfd91c457a164bab8b4001c833b7f323132c0a4e1922dd44e"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -487,6 +496,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c4eb3267174b8c6c2f654116623910a0fef09c4753f8dd83db29c48a0df988b"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.6.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
+
+[[package]]
 name = "ryu"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -562,6 +588,7 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "thiserror",
  "uniffi",
  "uniffi_build",
  "uniffi_macros",
@@ -661,8 +688,7 @@ checksum = "6ceab39d59e4c9499d4e5a8ee0e2735b891bb7308ac83dfb4e80cad195c9f6f3"
 [[package]]
 name = "uniffi"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ff9d73a665e4e94d566f069fc0c6b92d13fc7de25ae128dd20402023884b551"
+source = "git+https://github.com/mozilla/uniffi-rs?rev=c00230a1#c00230a1c570c1d0439d0e42b479368118800112"
 dependencies = [
  "anyhow",
  "bytes",
@@ -678,8 +704,7 @@ dependencies = [
 [[package]]
 name = "uniffi_bindgen"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "195251b1b0dbb221759ea4d79e3090e5c08a60fc4040c9e945b255def155ea90"
+source = "git+https://github.com/mozilla/uniffi-rs?rev=c00230a1#c00230a1c570c1d0439d0e42b479368118800112"
 dependencies = [
  "anyhow",
  "askama",
@@ -701,8 +726,7 @@ dependencies = [
 [[package]]
 name = "uniffi_build"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74b65ae1c0bac70369bb0d9df6fae578b1ca130bf4cb6203e2636e2d6969dba5"
+source = "git+https://github.com/mozilla/uniffi-rs?rev=c00230a1#c00230a1c570c1d0439d0e42b479368118800112"
 dependencies = [
  "anyhow",
  "camino",
@@ -712,8 +736,7 @@ dependencies = [
 [[package]]
 name = "uniffi_macros"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5efddfb993c5b394a75042c0d144665388af2ad3db628401ab8f4fb6f6d07e54"
+source = "git+https://github.com/mozilla/uniffi-rs?rev=c00230a1#c00230a1c570c1d0439d0e42b479368118800112"
 dependencies = [
  "bincode",
  "camino",
@@ -731,8 +754,7 @@ dependencies = [
 [[package]]
 name = "uniffi_meta"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe1767e693cbd11fc22c37a4033d82eb9d891c3862e45329b4a891c1d8395df5"
+source = "git+https://github.com/mozilla/uniffi-rs?rev=c00230a1#c00230a1c570c1d0439d0e42b479368118800112"
 dependencies = [
  "serde",
 ]
@@ -814,6 +836,8 @@ name = "web"
 version = "0.1.0"
 dependencies = [
  "shared",
+ "web-sys",
+ "woothee",
  "yew",
 ]
 
@@ -830,8 +854,7 @@ dependencies = [
 [[package]]
 name = "weedle2"
 version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e79c5206e1f43a2306fd64bdb95025ee4228960f2e6c5a8b173f3caaf807741"
+source = "git+https://github.com/mozilla/uniffi-rs?rev=c00230a1#c00230a1c570c1d0439d0e42b479368118800112"
 dependencies = [
  "nom",
 ]
@@ -866,6 +889,16 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "woothee"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "896174c6a4779d4d7d4523dd27aef7d46609eda2497e370f6c998325c6bf6971"
+dependencies = [
+ "lazy_static",
+ "regex",
+]
 
 [[package]]
 name = "yew"

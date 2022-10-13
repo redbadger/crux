@@ -1,3 +1,14 @@
 namespace shared {
-  u32 add(u32 left, u32 right);
+  [Throws=PlatformError]
+  string add_for_platform(u32 left, u32 right, Platform platform);
+};
+
+[Error]
+enum PlatformError {
+  "InternalPlatformError",
+};
+
+callback interface Platform {
+  [Throws=PlatformError]
+  string get();
 };

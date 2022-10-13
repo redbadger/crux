@@ -11,8 +11,15 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
 import com.example.android.databinding.ActivityMainBinding
-import redbadger.rmm.shared.add
+import redbadger.rmm.shared.Platform
+import redbadger.rmm.shared.addForPlatform
+import android.os.Build;
 
+class GetPlatform : Platform {
+    override fun get(): String {
+        return Build.BRAND + " " + Build.VERSION.RELEASE;
+    }
+}
 
 class MainActivity : AppCompatActivity() {
 
@@ -33,7 +40,9 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "1 + 2 = " + add(1u, 2u), Snackbar.LENGTH_LONG)
+            Snackbar.make(
+                view, addForPlatform(1u, 2u, GetPlatform()), Snackbar.LENGTH_LONG
+            )
                 .setAnchorView(R.id.fab)
                 .setAction("Action", null).show()
         }

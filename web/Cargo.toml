@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-yew = "0.19.3"
 shared = { path = "../shared" }
+web-sys = { version = "0.3.60", features = ["Navigator"] }
+woothee = "0.13.0"
+yew = "0.19.3"

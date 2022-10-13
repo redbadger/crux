@@ -7,13 +7,20 @@
 
 import SwiftUI
 
+class GetPlatform: Platform {
+    func get() -> String {
+        return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
+    }
+}
+
+
 struct ContentView: View {
     var body: some View {
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
-            Text("Hello, world! 1 + 2 = \(add(1, 2))")
+            Text(try! addForPlatform(1, 2, GetPlatform()))
         }
         .padding()
     }

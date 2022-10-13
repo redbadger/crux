@@ -24,6 +24,9 @@ import com.sun.jna.Structure
 import com.sun.jna.ptr.ByReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -42,7 +45,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_6f60_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_eea_rustbuffer_alloc(size, status).also {
                 if (it.data == null) {
                     throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
                 }
@@ -50,7 +53,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_6f60_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_eea_rustbuffer_free(buf, status)
         }
     }
 
@@ -259,31 +262,40 @@ internal interface _UniFFILib : Library {
     companion object {
         internal val INSTANCE: _UniFFILib by lazy {
             loadIndirect<_UniFFILib>(componentName = "shared")
+                .also { lib: _UniFFILib ->
+                    FfiConverterTypePlatform.register(lib)
+                }
         }
     }
 
-    fun shared_6f60_add(
+    fun ffi_shared_eea_Platform_init_callback(
+        `callbackStub`: ForeignCallback,
+        _uniffi_out_err: RustCallStatus
+    ): Unit
+
+    fun shared_eea_add_for_platform(
         `left`: Int,
         `right`: Int,
+        `platform`: Long,
         _uniffi_out_err: RustCallStatus
-    ): Int
+    ): RustBuffer.ByValue
 
-    fun ffi_shared_6f60_rustbuffer_alloc(
+    fun ffi_shared_eea_rustbuffer_alloc(
         `size`: Int,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_6f60_rustbuffer_from_bytes(
+    fun ffi_shared_eea_rustbuffer_from_bytes(
         `bytes`: ForeignBytes.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_6f60_rustbuffer_free(
+    fun ffi_shared_eea_rustbuffer_free(
         `buf`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun ffi_shared_6f60_rustbuffer_reserve(
+    fun ffi_shared_eea_rustbuffer_reserve(
         `buf`: RustBuffer.ByValue,
         `additional`: Int,
         _uniffi_out_err: RustCallStatus
@@ -358,10 +370,200 @@ public object FfiConverterString : FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
-fun `add`(`left`: UInt, `right`: UInt): UInt {
-    return FfiConverterUInt.lift(
-        rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_6f60_add(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), _status)
+sealed class PlatformException(message: String) : Exception(message) {
+    // Each variant is a nested class
+    // Flat enums carries a string error message, so no special implementation is necessary.
+    class InternalPlatformException(message: String) : PlatformException(message)
+
+    companion object ErrorHandler : CallStatusErrorHandler<PlatformException> {
+        override fun lift(error_buf: RustBuffer.ByValue): PlatformException = FfiConverterTypePlatformError.lift(error_buf)
+    }
+}
+
+public object FfiConverterTypePlatformError : FfiConverterRustBuffer<PlatformException> {
+    override fun read(buf: ByteBuffer): PlatformException {
+        return when (buf.getInt()) {
+            1 -> PlatformException.InternalPlatformException(FfiConverterString.read(buf))
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PlatformException): Int {
+        return 4
+    }
+
+    override fun write(value: PlatformException, buf: ByteBuffer) {
+        when (value) {
+            is PlatformException.InternalPlatformException -> {
+                buf.putInt(1)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+internal typealias Handle = Long
+internal class ConcurrentHandleMap<T>(
+    private val leftMap: MutableMap<Handle, T> = mutableMapOf(),
+    private val rightMap: MutableMap<T, Handle> = mutableMapOf()
+) {
+    private val lock = java.util.concurrent.locks.ReentrantLock()
+    private val currentHandle = AtomicLong(0L)
+    private val stride = 1L
+
+    fun insert(obj: T): Handle =
+        lock.withLock {
+            rightMap[obj]
+                ?: currentHandle.getAndAdd(stride)
+                .also { handle ->
+                    leftMap[handle] = obj
+                    rightMap[obj] = handle
+                }
+        }
+
+    fun get(handle: Handle) = lock.withLock {
+        leftMap[handle]
+    }
+
+    fun delete(handle: Handle) {
+        this.remove(handle)
+    }
+
+    fun remove(handle: Handle): T? =
+        lock.withLock {
+            leftMap.remove(handle)?.let { obj ->
+                rightMap.remove(obj)
+                obj
+            }
+        }
+}
+
+interface ForeignCallback : com.sun.jna.Callback {
+    public fun invoke(handle: Handle, method: Int, args: RustBuffer.ByValue, outBuf: RustBufferByReference): Int
+}
+
+// Magic number for the Rust proxy to call using the same mechanism as every other method,
+// to free the callback once it's dropped by Rust.
+internal const val IDX_CALLBACK_FREE = 0
+
+public abstract class FfiConverterCallbackInterface<CallbackInterface>(
+    protected val foreignCallback: ForeignCallback
+) : FfiConverter<CallbackInterface, Handle> {
+    private val handleMap = ConcurrentHandleMap<CallbackInterface>()
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal abstract fun register(lib: _UniFFILib)
+
+    fun drop(handle: Handle): RustBuffer.ByValue {
+        return handleMap.remove(handle).let { RustBuffer.ByValue() }
+    }
+
+    override fun lift(value: Handle): CallbackInterface {
+        return handleMap.get(value) ?: throw InternalException("No callback in handlemap; this is a Uniffi bug")
+    }
+
+    override fun read(buf: ByteBuffer) = lift(buf.getLong())
+
+    override fun lower(value: CallbackInterface) =
+        handleMap.insert(value).also {
+            assert(handleMap.get(it) === value) { "Handle map is not returning the object we just placed there. This is a bug in the HandleMap." }
+        }
+
+    override fun allocationSize(value: CallbackInterface) = 8
+
+    override fun write(value: CallbackInterface, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+// Declaration and FfiConverters for Platform Callback Interface
+
+public interface Platform {
+    fun `get`(): String
+}
+
+// The ForeignCallback that is passed to Rust.
+internal class ForeignCallbackTypePlatform : ForeignCallback {
+    @Suppress("TooGenericExceptionCaught")
+    override fun invoke(handle: Handle, method: Int, args: RustBuffer.ByValue, outBuf: RustBufferByReference): Int {
+        val cb = FfiConverterTypePlatform.lift(handle)
+        return when (method) {
+            IDX_CALLBACK_FREE -> {
+                FfiConverterTypePlatform.drop(handle)
+                // No return value.
+                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
+                0
+            }
+            1 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    try {
+                        val buffer = this.`invokeGet`(cb, args)
+                        // Success
+                        outBuf.setValue(buffer)
+                        1
+                    } catch (e: PlatformException) {
+                        // Expected error
+                        val buffer = FfiConverterTypePlatformError.lowerIntoRustBuffer(e)
+                        outBuf.setValue(buffer)
+                        -2
+                    }
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    -1
+                }
+            }
+
+            else -> {
+                // An unexpected error happened.
+                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
+                try {
+                    // Try to serialize the error into a string
+                    outBuf.setValue(FfiConverterString.lower("Invalid Callaback index"))
+                } catch (e: Throwable) {
+                    // If that fails, then it's time to give up and just return
+                }
+                -1
+            }
+        }
+    }
+
+    private fun `invokeGet`(kotlinCallbackInterface: Platform, args: RustBuffer.ByValue): RustBuffer.ByValue =
+        try {
+            kotlinCallbackInterface.`get`()
+                .let {
+                    FfiConverterString.lowerIntoRustBuffer(it)
+                } // TODO catch errors and report them back to Rust.
+            // https://github.com/mozilla/uniffi-rs/issues/351
+        } finally {
+            RustBuffer.free(args)
+        }
+}
+
+// The ffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+public object FfiConverterTypePlatform : FfiConverterCallbackInterface<Platform>(
+    foreignCallback = ForeignCallbackTypePlatform()
+) {
+    override fun register(lib: _UniFFILib) {
+        rustCall() { status ->
+            lib.ffi_shared_eea_Platform_init_callback(this.foreignCallback, status)
+        }
+    }
+}
+
+@Throws(PlatformException::class)
+fun `addForPlatform`(`left`: UInt, `right`: UInt, `platform`: Platform): String {
+    return FfiConverterString.lift(
+        rustCallWithError(PlatformException) { _status ->
+            _UniFFILib.INSTANCE.shared_eea_add_for_platform(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), FfiConverterTypePlatform.lower(`platform`), _status)
         }
     )
 }
