@@ -19,6 +19,12 @@ For web it uses [`yew`](https://yew.rs/).
    x86_64-apple-ios
    ```
 
+1. Install the `uniffi-bindgen` binary ...
+
+   ```sh
+   cargo install uniffi_bindgen
+   ```
+
 1. Create a new rust library ...
 
    ```sh
@@ -118,7 +124,7 @@ For web it uses [`yew`](https://yew.rs/).
 1. Generate the Kotlin source code:
 
    ```bash
-    (cd shared && uniffi-bindgen generate ./shared.udl --language kotlin)
+    (cd shared && "$HOME"/.cargo/bin/uniffi-bindgen generate src/shared.udl --language kotlin --out-dir .)
    ```
 
 1. SymLink this into the shared `aar` library. (TODO: find a better solution than this!) ...
