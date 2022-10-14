@@ -9,7 +9,6 @@ android {
     compileSdk 32
     ndkVersion '25.1.8937393'
 
-
     defaultConfig {
         minSdk 21
         targetSdk 32
@@ -46,7 +45,7 @@ dependencies {
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 cargo {
-    module = "../../shared"
+    module  = "../../shared"
     libname = "shared"
     targets = ["arm64"]
 }

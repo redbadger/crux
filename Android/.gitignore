@@ -1,4 +1,3 @@
-.vscode
 *.iml
 .gradle
 /local.properties

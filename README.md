@@ -101,7 +101,7 @@ For web it uses [`yew`](https://yew.rs/).
 
 ## Android App
 
-1. Create a Kotlin App in Android Studio (e.g. "Basic Activity (Material3)" at `/Android`)
+1. Create a Kotlin App in Android Studio (e.g. "Empty Activity" at `/Android`)
 
 1. Add a Kotlin Android Library (`aar`) — you can find more details on how to do this [here](https://developer.android.com/studio/projects/android-library), but in a nutshell ...
 
@@ -192,17 +192,34 @@ For web it uses [`yew`](https://yew.rs/).
    ```
 
 1. Try calling into the rust library from the Android app, for example ...
+
+   1. open `Android/app/src/main/res/layout/activity_main.xml`
+   1. give the TextView an id e.g. `txt1`
+
+      ```xml
+      <TextView
+         android:id="@+id/txt1"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         app:layout_constraintBottom_toBottomOf="parent"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintStart_toStartOf="parent"
+         app:layout_constraintTop_toTopOf="parent" />
+      ```
+
    1. open `Android/app/src/main/java/com/example/android/MainActivity.kt`
    1. add `import redbadger.rmm.shared.add`
-   1. call the `add` function somewhere, e.g. on line 35...
+   1. call the `add` function somewhere, e.g. on line 13...
+
       ```kotlin
-      binding.fab.setOnClickListener { view ->
-         Snackbar.make(view, "1 + 2 = " + add(1u, 2u), Snackbar.LENGTH_LONG)
-               .setAnchorView(R.id.fab)
-               .setAction("Action", null).show()
+      val tv = findViewById<TextView>(R.id.txt1)
+      tv.text = buildString {
+         append("1 + 2 = ")
+         append(add(1u, 2u))
       }
       ```
-   1. run the app in a simulator and check that the shared function is called (e.g. click on the snackbar button)
+
+   1. run the app in a simulator to show that the shared function is called
 
 ## iOS App
 
