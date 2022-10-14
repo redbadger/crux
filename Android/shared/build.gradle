@@ -9,7 +9,6 @@ android {
     compileSdk 32
     ndkVersion '25.1.8937393'
 
-
     defaultConfig {
         minSdk 21
         targetSdk 32
@@ -59,6 +58,20 @@ afterEvaluate {
             productFlavor += "${it.name.capitalize()}"
         }
         def buildType = "${variant.buildType.name.capitalize()}"
+        tasks["cargoBuild"].dependsOn(tasks["bindGen"])
         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
     }
+}
+
+task bindGen(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    workingDir "../../shared"
+    commandLine(
+            "sh", "-c",
+            """\
+            \$HOME/.cargo/bin/uniffi-bindgen generate src/shared.udl \
+            --language kotlin \
+            --out-dir $outDir
+            """
+    )
 }
