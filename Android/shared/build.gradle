@@ -46,7 +46,7 @@ dependencies {
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 cargo {
-    module  = "../../shared"
+    module = "../../shared"
     libname = "shared"
     targets = ["arm64"]
 }
@@ -59,6 +59,20 @@ afterEvaluate {
             productFlavor += "${it.name.capitalize()}"
         }
         def buildType = "${variant.buildType.name.capitalize()}"
+        tasks["cargoBuild"].dependsOn(tasks["bindGen"])
         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
     }
+}
+
+task bindGen(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    workingDir "../../shared"
+    commandLine(
+            "sh", "-c",
+            """\
+            \$HOME/.cargo/bin/uniffi-bindgen generate src/shared.udl \
+            --language kotlin \
+            --out-dir $outDir
+            """
+    )
 }

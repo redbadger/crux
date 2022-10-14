@@ -111,6 +111,7 @@ For web it uses [`yew`](https://yew.rs/).
    1. Package name must match that in [`./shared/uniffi.toml`](./shared/uniffi.toml), e.g. `redbadger.rmm.shared`
 
 1. Add the `shared` library as a dependency of `app`
+
    1. either...
       1. go to File -> Project Structure...
       1. choose "Dependencies"
@@ -121,21 +122,6 @@ For web it uses [`yew`](https://yew.rs/).
          ```groovy
          implementation project(path: ':shared')
          ```
-1. Generate the Kotlin source code:
-
-   ```bash
-    (cd shared && "$HOME"/.cargo/bin/uniffi-bindgen generate src/shared.udl --language kotlin --out-dir .)
-   ```
-
-1. SymLink this into the shared `aar` library. (TODO: find a better solution than this!) ...
-
-   ```bash
-   ( \
-      cd Android/shared/src/main/java && \
-      rm -rf redbadger && \
-      ln -s ../../../../../shared/redbadger redbadger \
-   )
-   ```
 
 1. Mozilla has a rust gradle plugin for android [here](https://github.com/mozilla/rust-android-gradle). Add the plugin to `./Android/build.gradle`, and sync ...
 
@@ -179,8 +165,22 @@ For web it uses [`yew`](https://yew.rs/).
                productFlavor += "${it.name.capitalize()}"
          }
          def buildType = "${variant.buildType.name.capitalize()}"
+         tasks["cargoBuild"].dependsOn(tasks["bindGen"])
          tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
       }
+   }
+
+   task bindGen(type: Exec) {
+      def outDir = "${projectDir}/src/main/java"
+      workingDir "../../shared"
+      commandLine(
+               "sh", "-c",
+               """\
+               \$HOME/.cargo/bin/uniffi-bindgen generate src/shared.udl \
+               --language kotlin \
+               --out-dir $outDir
+               """
+      )
    }
    ```
 
