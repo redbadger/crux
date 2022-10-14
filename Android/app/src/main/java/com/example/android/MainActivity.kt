@@ -19,9 +19,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val tv = findViewById<TextView>(R.id.txt1)
-        tv.text = buildString {
-            append("1 + 2 = ")
-            append(addForPlatform(1u, 2u, GetPlatform()))
-        }
+        tv.text = addForPlatform(1u, 2u, GetPlatform())
     }
 }
