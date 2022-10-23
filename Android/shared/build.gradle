@@ -48,6 +48,8 @@ cargo {
     module  = "../../shared"
     libname = "shared"
     targets = ["arm64"]
+    prebuiltToolchains = true
+    verbose = true
 }
 
 afterEvaluate {

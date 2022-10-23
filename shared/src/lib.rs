@@ -1,5 +1,10 @@
+use anyhow::Result;
+use futures::executor::block_on;
+use serde::Deserialize;
 use thiserror::Error;
 use uniffi::UnexpectedUniFFICallbackError;
+
+const API_URL: &str = "https://catfact.ninja/fact";
 
 #[derive(Error, Debug)]
 pub enum PlatformError {
@@ -7,8 +12,6 @@ pub enum PlatformError {
     InternalPlatformError,
 }
 
-// Need to implement this From<> impl in order to handle unexpected callback errors.  See the
-// Callback Interfaces section of the handbook for more info.
 impl From<UnexpectedUniFFICallbackError> for PlatformError {
     fn from(_: UnexpectedUniFFICallbackError) -> Self {
         Self::InternalPlatformError
@@ -29,6 +32,36 @@ pub fn add_for_platform(
         platform.get()?,
         left + right
     ))
+}
+
+#[derive(Deserialize, Default)]
+struct Cat {
+    fact: String,
+}
+
+#[cfg(target_family = "wasm")]
+pub async fn cat_fact_async() -> String {
+    let cat = cat_fact_impl().await.unwrap();
+    cat.fact
+}
+
+#[cfg(target_family = "wasm")]
+async fn cat_fact_impl() -> Result<Cat> {
+    Ok(gloo_net::http::Request::get(API_URL)
+        .send()
+        .await?
+        .json::<Cat>()
+        .await?)
+}
+
+pub fn cat_fact() -> String {
+    let cat = block_on(async { cat_fact_impl().await }).unwrap();
+    cat.fact
+}
+
+#[cfg(not(target_family = "wasm"))]
+async fn cat_fact_impl() -> Result<Cat> {
+    Ok(ureq::get(API_URL).call()?.into_json::<Cat>()?)
 }
 
 #[cfg(test)]

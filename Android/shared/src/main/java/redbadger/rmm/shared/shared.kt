@@ -45,7 +45,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_eea_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_1a35_rustbuffer_alloc(size, status).also {
                 if (it.data == null) {
                     throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
                 }
@@ -53,7 +53,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_eea_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_1a35_rustbuffer_free(buf, status)
         }
     }
 
@@ -268,34 +268,38 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun ffi_shared_eea_Platform_init_callback(
+    fun ffi_shared_1a35_Platform_init_callback(
         `callbackStub`: ForeignCallback,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun shared_eea_add_for_platform(
+    fun shared_1a35_add_for_platform(
         `left`: Int,
         `right`: Int,
         `platform`: Long,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_eea_rustbuffer_alloc(
+    fun shared_1a35_cat_fact(
+        _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun ffi_shared_1a35_rustbuffer_alloc(
         `size`: Int,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_eea_rustbuffer_from_bytes(
+    fun ffi_shared_1a35_rustbuffer_from_bytes(
         `bytes`: ForeignBytes.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_eea_rustbuffer_free(
+    fun ffi_shared_1a35_rustbuffer_free(
         `buf`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun ffi_shared_eea_rustbuffer_reserve(
+    fun ffi_shared_1a35_rustbuffer_reserve(
         `buf`: RustBuffer.ByValue,
         `additional`: Int,
         _uniffi_out_err: RustCallStatus
@@ -554,7 +558,7 @@ public object FfiConverterTypePlatform : FfiConverterCallbackInterface<Platform>
 ) {
     override fun register(lib: _UniFFILib) {
         rustCall() { status ->
-            lib.ffi_shared_eea_Platform_init_callback(this.foreignCallback, status)
+            lib.ffi_shared_1a35_Platform_init_callback(this.foreignCallback, status)
         }
     }
 }
@@ -563,7 +567,15 @@ public object FfiConverterTypePlatform : FfiConverterCallbackInterface<Platform>
 fun `addForPlatform`(`left`: UInt, `right`: UInt, `platform`: Platform): String {
     return FfiConverterString.lift(
         rustCallWithError(PlatformException) { _status ->
-            _UniFFILib.INSTANCE.shared_eea_add_for_platform(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), FfiConverterTypePlatform.lower(`platform`), _status)
+            _UniFFILib.INSTANCE.shared_1a35_add_for_platform(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), FfiConverterTypePlatform.lower(`platform`), _status)
+        }
+    )
+}
+
+fun `catFact`(): String {
+    return FfiConverterString.lift(
+        rustCall() { _status ->
+            _UniFFILib.INSTANCE.shared_1a35_cat_fact(_status)
         }
     )
 }

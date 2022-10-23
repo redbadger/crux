@@ -4,8 +4,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import redbadger.rmm.shared.Platform
-import redbadger.rmm.shared.addForPlatform
+import redbadger.rmm.shared.*
 
 class GetPlatform : Platform {
     override fun get(): String {
@@ -18,7 +17,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val tv = findViewById<TextView>(R.id.txt1)
-        tv.text = addForPlatform(1u, 2u, GetPlatform())
+        val tv1 = findViewById<TextView>(R.id.txt1)
+        tv1.text = addForPlatform(1u, 2u, GetPlatform())
+
+        val tv2 = findViewById<TextView>(R.id.txt2)
+        tv2.text = catFact()
     }
 }

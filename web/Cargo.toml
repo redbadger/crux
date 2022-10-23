@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 shared = { path = "../shared" }
+wasm-bindgen-futures = "0.4.33"
 web-sys = { version = "0.3.60", features = ["Navigator"] }
 woothee = "0.13.0"
 yew = "0.19.3"
+gloo-net = { version = "0.2.4", features = ["http"] }
