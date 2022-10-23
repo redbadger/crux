@@ -21,6 +21,7 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
             Text(try! addForPlatform(1, 2, GetPlatform()))
+            Text(catFact())
         }
         .padding()
     }

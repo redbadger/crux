@@ -31,7 +31,14 @@ For web it uses [`yew`](https://yew.rs/).
    cargo new --lib shared
    ```
 
-1. Edit [`./shared/Cargo.toml`](./shared/Cargo.toml).
+1. Edit [`./Cargo.toml`](./Cargo.toml) to add the new library to the Cargo workspace ...
+
+   ```toml
+   [workspace]
+   members = ["shared"]
+   ```
+
+1. Edit [`./shared/Cargo.toml`](./shared/Cargo.toml) ...
    Note that the crate type:
 
    1. `"lib"` is the default rust library for use when linking into a rust binary, e.g. for WebAssembly in the web variant
@@ -96,7 +103,7 @@ For web it uses [`yew`](https://yew.rs/).
 
 1. Make sure everything builds OK ...
    ```sh
-   (cd shared && cargo build)
+   cargo build
    ```
 
 ## Android App
@@ -152,9 +159,10 @@ For web it uses [`yew`](https://yew.rs/).
    apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
    cargo {
-      module  = "../../shared"
+      module  = "../.."
       libname = "shared"
       targets = ["arm64"]
+      extraCargoBuildArguments = ['--package', 'shared']
    }
 
    afterEvaluate {
@@ -172,16 +180,17 @@ For web it uses [`yew`](https://yew.rs/).
 
    task bindGen(type: Exec) {
       def outDir = "${projectDir}/src/main/java"
-      workingDir "../../shared"
+      workingDir "../../"
       commandLine(
                "sh", "-c",
                """\
-               \$HOME/.cargo/bin/uniffi-bindgen generate src/shared.udl \
+               \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
                --language kotlin \
                --out-dir $outDir
                """
       )
    }
+
    ```
 
 1. Run "Build -> Make project" to make sure that everything compiles (including the shared rust library) — you should be able to see the library object file ...
@@ -265,17 +274,17 @@ For web it uses [`yew`](https://yew.rs/).
    1. in the "debug" section
 
    ```txt
-   "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios/debug";
-   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios-sim/debug";
-   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../shared/target/x86_64-apple-ios/debug";
+   "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios/debug";
+   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios-sim/debug";
+   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../target/x86_64-apple-ios/debug";
    ```
 
    1. in the "release"" section
 
    ```txt
-   "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios/release";
-   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../shared/target/aarch64-apple-ios-sim/release";
-   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../shared/target/x86_64-apple-ios/release";
+   "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios/release";
+   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios-sim/release";
+   "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../target/x86_64-apple-ios/release";
    ```
 
 1. Create a script to build the rust library (e.g. this script [`./iOS/bin/compile-library.sh`](./iOS/bin/compile-library.sh))
@@ -291,7 +300,7 @@ For web it uses [`yew`](https://yew.rs/).
 
    1. add `./shared/src/shared.udl` to "Compile Sources" (using the "add other" button). Select"Copy items if needed" and "Create folder references"
    1. add a "Headers" section that includes `./iOS/generated/sharedFFI.h` as a "Public" header
-   1. add `./shared/target/debug/libshared.a` to the "Link Binary with Libraries" section (this is the wrong target, but the library search paths, which we set above, should resolve this, for more info see the blog post linked above ([this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/)))
+   1. add `./target/debug/libshared.a` to the "Link Binary with Libraries" section (this is the wrong target, but the library search paths, which we set above, should resolve this, for more info see the blog post linked above ([this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/)))
 
 1. Test it out, by calling the `add` function, e.g. by changing `./iOS/iOS/ContentView.swift` to look like this:
 
@@ -324,6 +333,13 @@ For web it uses [`yew`](https://yew.rs/).
 
    ```sh
    cargo new web
+   ```
+
+1. Edit [`./Cargo.toml`](./Cargo.toml) to add the new app to the Cargo workspace ...
+
+   ```toml
+   [workspace]
+   members = ["shared", "web"]
    ```
 
 1. Add [`yew`](https://yew.rs/), and the shared library, as dependencies in [`./web/Cargo.toml`](./web/Cargo.toml) ...

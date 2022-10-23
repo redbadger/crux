@@ -36,7 +36,7 @@ dependencies {
     implementation "net.java.dev.jna:jna:5.12.1@aar"
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.5.1'
-    implementation 'com.google.android.material:material:1.6.1'
+    implementation 'com.google.android.material:material:1.7.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
@@ -45,11 +45,10 @@ dependencies {
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 cargo {
-    module  = "../../shared"
+    module  = "../.."
     libname = "shared"
     targets = ["arm64"]
-    prebuiltToolchains = true
-    verbose = true
+    extraCargoBuildArguments = ['--package', 'shared']
 }
 
 afterEvaluate {
@@ -67,11 +66,11 @@ afterEvaluate {
 
 task bindGen(type: Exec) {
     def outDir = "${projectDir}/src/main/java"
-    workingDir "../../shared"
+    workingDir "../../"
     commandLine(
             "sh", "-c",
             """\
-            \$HOME/.cargo/bin/uniffi-bindgen generate src/shared.udl \
+            \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
             --language kotlin \
             --out-dir $outDir
             """

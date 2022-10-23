@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_1a35_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_e986_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_1a35_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_e986_rustbuffer_free(self, $0) }
     }
 }
 
@@ -507,7 +507,7 @@ fileprivate struct FfiConverterCallbackInterfacePlatform {
     private static var callbackInitialized = false
     private static func initCallback() {
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-                ffi_shared_1a35_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
+                ffi_shared_e986_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
         }
     }
     private static func ensureCallbackinitialized() {
@@ -560,7 +560,7 @@ public func `addForPlatform`(_ `left`: UInt32, _ `right`: UInt32, _ `platform`: 
     
     rustCallWithError(FfiConverterTypePlatformError.self) {
     
-    shared_1a35_add_for_platform(
+    shared_e986_add_for_platform(
         FfiConverterUInt32.lower(`left`), 
         FfiConverterUInt32.lower(`right`), 
         FfiConverterCallbackInterfacePlatform.lower(`platform`), $0)
@@ -576,7 +576,7 @@ public func `catFact`()  -> String {
     
     rustCall() {
     
-    shared_1a35_cat_fact($0)
+    shared_e986_cat_fact($0)
 }
     )
 }

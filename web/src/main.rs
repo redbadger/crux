@@ -25,7 +25,7 @@ fn hello_world() -> Html {
         use_effect_with_deps(
             move |_| {
                 wasm_bindgen_futures::spawn_local(async move {
-                    gloo_net::http::Request::get(API_URL).send().unwrap();
+                    gloo_net::http::Request::get(API_URL).send().await.unwrap();
                     fact.set(cat_fact_async().await);
                 });
                 || ()
