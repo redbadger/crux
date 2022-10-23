@@ -45,7 +45,7 @@ dependencies {
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 cargo {
-    module  = "../../shared"
+    module  = "../.."
     libname = "shared"
     targets = ["arm64"]
 }
@@ -65,11 +65,11 @@ afterEvaluate {
 
 task bindGen(type: Exec) {
     def outDir = "${projectDir}/src/main/java"
-    workingDir "../../shared"
+    workingDir "../../"
     commandLine(
             "sh", "-c",
             """\
-            \$HOME/.cargo/bin/uniffi-bindgen generate src/shared.udl \
+            \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
             --language kotlin \
             --out-dir $outDir
             """
