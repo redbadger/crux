@@ -42,7 +42,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_6f60_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_b5b0_rustbuffer_alloc(size, status).also {
                 if (it.data == null) {
                     throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
                 }
@@ -50,7 +50,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_6f60_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_b5b0_rustbuffer_free(buf, status)
         }
     }
 
@@ -262,28 +262,28 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun shared_6f60_add(
+    fun shared_b5b0_add(
         `left`: Int,
         `right`: Int,
         _uniffi_out_err: RustCallStatus
     ): Int
 
-    fun ffi_shared_6f60_rustbuffer_alloc(
+    fun ffi_shared_b5b0_rustbuffer_alloc(
         `size`: Int,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_6f60_rustbuffer_from_bytes(
+    fun ffi_shared_b5b0_rustbuffer_from_bytes(
         `bytes`: ForeignBytes.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_6f60_rustbuffer_free(
+    fun ffi_shared_b5b0_rustbuffer_free(
         `buf`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun ffi_shared_6f60_rustbuffer_reserve(
+    fun ffi_shared_b5b0_rustbuffer_reserve(
         `buf`: RustBuffer.ByValue,
         `additional`: Int,
         _uniffi_out_err: RustCallStatus
@@ -361,7 +361,7 @@ public object FfiConverterString : FfiConverter<String, RustBuffer.ByValue> {
 fun `add`(`left`: UInt, `right`: UInt): UInt {
     return FfiConverterUInt.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_6f60_add(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), _status)
+            _UniFFILib.INSTANCE.shared_b5b0_add(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), _status)
         }
     )
 }

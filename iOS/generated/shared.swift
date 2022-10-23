@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_6f60_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_b5b0_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_6f60_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_b5b0_rustbuffer_free(self, $0) }
     }
 }
 
@@ -332,15 +332,15 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
-public func add(_ left: UInt32, _ right: UInt32)  -> UInt32 {
+public func `add`(_ `left`: UInt32, _ `right`: UInt32)  -> UInt32 {
     return try! FfiConverterUInt32.lift(
         try!
     
     rustCall() {
     
-    shared_6f60_add(
-        FfiConverterUInt32.lower(left), 
-        FfiConverterUInt32.lower(right), $0)
+    shared_b5b0_add(
+        FfiConverterUInt32.lower(`left`), 
+        FfiConverterUInt32.lower(`right`), $0)
 }
     )
 }
