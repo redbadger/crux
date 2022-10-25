@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_e986_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_9e24_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_e986_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_9e24_rustbuffer_free(self, $0) }
     }
 }
 
@@ -294,6 +294,19 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 }
 
+fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
+
+    static func read(from buf: Reader) throws -> Int32 {
+        return try lift(buf.readInt())
+    }
+
+    static func write(_ value: Int32, into buf: Writer) {
+        buf.writeInt(lower(value))
+    }
+}
+
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -329,6 +342,128 @@ fileprivate struct FfiConverterString: FfiConverter {
         let len = Int32(value.utf8.count)
         buf.writeInt(len)
         buf.writeBytes(value.utf8)
+    }
+}
+
+
+public protocol CatFactProtocol {
+    func `format`()  -> String
+    
+}
+
+public class CatFact: CatFactProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+    public convenience init(_ `fact`: CatFactData)  {
+        self.init(unsafeFromRawPointer: try!
+    
+    rustCall() {
+    
+    shared_9e24_CatFact_new(
+        FfiConverterTypeCatFactData.lower(`fact`), $0)
+})
+    }
+
+    deinit {
+        try! rustCall { ffi_shared_9e24_CatFact_object_free(pointer, $0) }
+    }
+
+    
+
+    
+    public func `format`()  -> String {
+        return try! FfiConverterString.lift(
+            try!
+    rustCall() {
+    
+    shared_9e24_CatFact_format(self.pointer, $0
+    )
+}
+        )
+    }
+    
+}
+
+
+fileprivate struct FfiConverterTypeCatFact: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = CatFact
+
+    static func read(from buf: Reader) throws -> CatFact {
+        let v: UInt64 = try buf.readInt()
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    static func write(_ value: CatFact, into buf: Writer) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        buf.writeInt(UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CatFact {
+        return CatFact(unsafeFromRawPointer: pointer)
+    }
+
+    static func lower(_ value: CatFact) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+
+public struct CatFactData {
+    public var `fact`: String
+    public var `length`: Int32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`fact`: String, `length`: Int32) {
+        self.`fact` = `fact`
+        self.`length` = `length`
+    }
+}
+
+
+extension CatFactData: Equatable, Hashable {
+    public static func ==(lhs: CatFactData, rhs: CatFactData) -> Bool {
+        if lhs.`fact` != rhs.`fact` {
+            return false
+        }
+        if lhs.`length` != rhs.`length` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`fact`)
+        hasher.combine(`length`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeCatFactData: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> CatFactData {
+        return try CatFactData(
+            `fact`: FfiConverterString.read(from: buf), 
+            `length`: FfiConverterInt32.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: CatFactData, into buf: Writer) {
+        FfiConverterString.write(value.`fact`, into: buf)
+        FfiConverterInt32.write(value.`length`, into: buf)
     }
 }
 
@@ -507,7 +642,7 @@ fileprivate struct FfiConverterCallbackInterfacePlatform {
     private static var callbackInitialized = false
     private static func initCallback() {
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-                ffi_shared_e986_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
+                ffi_shared_9e24_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
         }
     }
     private static func ensureCallbackinitialized() {
@@ -560,23 +695,10 @@ public func `addForPlatform`(_ `left`: UInt32, _ `right`: UInt32, _ `platform`: 
     
     rustCallWithError(FfiConverterTypePlatformError.self) {
     
-    shared_e986_add_for_platform(
+    shared_9e24_add_for_platform(
         FfiConverterUInt32.lower(`left`), 
         FfiConverterUInt32.lower(`right`), 
         FfiConverterCallbackInterfacePlatform.lower(`platform`), $0)
-}
-    )
-}
-
-
-
-public func `catFact`()  -> String {
-    return try! FfiConverterString.lift(
-        try!
-    
-    rustCall() {
-    
-    shared_e986_cat_fact($0)
 }
     )
 }

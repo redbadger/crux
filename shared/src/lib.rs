@@ -1,10 +1,7 @@
 use anyhow::Result;
-use futures::executor::block_on;
 use serde::Deserialize;
 use thiserror::Error;
 use uniffi::UnexpectedUniFFICallbackError;
-
-const API_URL: &str = "https://catfact.ninja/fact";
 
 #[derive(Error, Debug)]
 pub enum PlatformError {
@@ -35,33 +32,21 @@ pub fn add_for_platform(
 }
 
 #[derive(Deserialize, Default)]
-struct Cat {
-    fact: String,
+pub struct CatFactData {
+    pub fact: String,
+    pub length: i32,
 }
 
-#[cfg(target_family = "wasm")]
-pub async fn cat_fact_async() -> String {
-    let cat = cat_fact_impl().await.unwrap();
-    cat.fact
-}
+pub struct CatFact(pub CatFactData);
 
-#[cfg(target_family = "wasm")]
-async fn cat_fact_impl() -> Result<Cat> {
-    Ok(gloo_net::http::Request::get(API_URL)
-        .send()
-        .await?
-        .json::<Cat>()
-        .await?)
-}
+impl CatFact {
+    fn new(fact: CatFactData) -> Self {
+        CatFact(fact)
+    }
 
-pub fn cat_fact() -> String {
-    let cat = block_on(async { cat_fact_impl().await }).unwrap();
-    cat.fact
-}
-
-#[cfg(not(target_family = "wasm"))]
-async fn cat_fact_impl() -> Result<Cat> {
-    Ok(ureq::get(API_URL).call()?.into_json::<Cat>()?)
+    pub fn format(&self) -> String {
+        format!("{} ({} bytes)", self.0.fact, self.0.length)
+    }
 }
 
 #[cfg(test)]

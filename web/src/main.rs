@@ -1,4 +1,4 @@
-use shared::{add_for_platform, cat_fact_async, Platform, PlatformError};
+use shared::{add_for_platform, CatFact, Platform, PlatformError};
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
@@ -25,8 +25,9 @@ fn hello_world() -> Html {
         use_effect_with_deps(
             move |_| {
                 wasm_bindgen_futures::spawn_local(async move {
-                    gloo_net::http::Request::get(API_URL).send().await.unwrap();
-                    fact.set(cat_fact_async().await);
+                    let response = gloo_net::http::Request::get(API_URL).send().await.unwrap();
+                    let cat_fact = CatFact(response.json().await.unwrap());
+                    fact.set(cat_fact.format());
                 });
                 || ()
             },

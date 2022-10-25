@@ -1,7 +1,16 @@
 namespace shared {
   [Throws=PlatformError]
   string add_for_platform(u32 left, u32 right, Platform platform);
-  string cat_fact();
+};
+
+dictionary CatFactData {
+  string fact;
+  i32 length;
+};
+
+interface CatFact {
+  constructor(CatFactData fact);
+  string format();
 };
 
 [Error]
