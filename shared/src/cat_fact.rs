@@ -3,7 +3,7 @@ use std::sync::RwLock;
 
 const API_URL: &str = "https://catfact.ninja/fact";
 
-#[derive(Deserialize, Default, Clone)]
+#[derive(Deserialize, Default, Clone, PartialEq)]
 struct CatFact {
     fact: String,
     length: i32,
@@ -16,18 +16,26 @@ impl CatFact {
 }
 
 pub enum Msg {
-    GetNewFact,
+    GetFact,
     ReceiveFact { bytes: Vec<u8> },
 }
 
-pub enum Effect {
+pub enum Cmd {
     Render { cat_fact: String },
     Get { url: String },
 }
 
 #[derive(Default)]
 pub struct Core {
-    cat_fact: RwLock<CatFact>,
+    cat_fact: RwLock<Option<CatFact>>,
+}
+
+impl PartialEq for Core {
+    fn eq(&self, other: &Self) -> bool {
+        let a = self.cat_fact.read().unwrap();
+        let b = other.cat_fact.read().unwrap();
+        *a == *b
+    }
 }
 
 impl Core {
@@ -35,16 +43,24 @@ impl Core {
         Self::default()
     }
 
-    pub fn update(&self, msg: Msg) -> Effect {
+    pub fn update(&self, msg: Msg) -> Cmd {
         match msg {
-            Msg::GetNewFact => Effect::Get {
-                url: API_URL.to_owned(),
-            },
+            Msg::GetFact => {
+                if let Some(fact) = &*self.cat_fact.read().unwrap() {
+                    Cmd::Render {
+                        cat_fact: format!("old: {}", fact.format()),
+                    }
+                } else {
+                    Cmd::Get {
+                        url: API_URL.to_owned(),
+                    }
+                }
+            }
             Msg::ReceiveFact { bytes } => {
-                let cat_fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
-                *self.cat_fact.write().unwrap() = cat_fact.clone();
-                Effect::Render {
-                    cat_fact: cat_fact.format(),
+                let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
+                *self.cat_fact.write().unwrap() = Some(fact.clone());
+                Cmd::Render {
+                    cat_fact: format!("new: {}", fact.format()),
                 }
             }
         }

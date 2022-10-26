@@ -5,19 +5,19 @@ namespace shared {
 
 [Enum]
 interface Msg {
-  GetNewFact();
+  GetFact();
   ReceiveFact(sequence<u8> bytes);
 };
 
 [Enum]
-interface Effect {
+interface Cmd {
   Render(string cat_fact);
   Get(string url);
 };
 
 interface Core {
   constructor();
-  Effect update(Msg msg);
+  Cmd update(Msg msg);
 };
 
 [Error]
