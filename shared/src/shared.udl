@@ -5,7 +5,9 @@ namespace shared {
 
 [Enum]
 interface Msg {
+  ClearFact();
   GetFact();
+  FetchFact();
   ReceiveFact(sequence<u8> bytes);
 };
 

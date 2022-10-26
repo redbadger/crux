@@ -16,7 +16,9 @@ impl CatFact {
 }
 
 pub enum Msg {
+    ClearFact,
     GetFact,
+    FetchFact,
     ReceiveFact { bytes: Vec<u8> },
 }
 
@@ -45,6 +47,12 @@ impl Core {
 
     pub fn update(&self, msg: Msg) -> Cmd {
         match msg {
+            Msg::ClearFact => {
+                *self.cat_fact.write().unwrap() = None;
+                Cmd::Render {
+                    cat_fact: "Cleared".to_string(),
+                }
+            }
             Msg::GetFact => {
                 if let Some(fact) = &*self.cat_fact.read().unwrap() {
                     Cmd::Render {
@@ -56,6 +64,9 @@ impl Core {
                     }
                 }
             }
+            Msg::FetchFact => Cmd::Get {
+                url: API_URL.to_owned(),
+            },
             Msg::ReceiveFact { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
                 *self.cat_fact.write().unwrap() = Some(fact.clone());
