@@ -8,9 +8,9 @@ crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
 [dependencies]
-anyhow = "1.0.65"
-serde = { version = "1.0.145", features = ["derive"] }
-serde_json = "1.0.86"
+anyhow = "1.0.66"
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.87"
 thiserror = "1.0.37"
 uniffi = "0.21.0"
 uniffi_macros = "0.21.0"

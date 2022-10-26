@@ -1,5 +1,7 @@
+mod cat_fact;
+
 use anyhow::Result;
-use serde::Deserialize;
+pub use cat_fact::*;
 use thiserror::Error;
 use uniffi::UnexpectedUniFFICallbackError;
 
@@ -29,24 +31,6 @@ pub fn add_for_platform(
         platform.get()?,
         left + right
     ))
-}
-
-#[derive(Deserialize, Default)]
-pub struct CatFactData {
-    pub fact: String,
-    pub length: i32,
-}
-
-pub struct CatFact(pub CatFactData);
-
-impl CatFact {
-    fn new(fact: CatFactData) -> Self {
-        CatFact(fact)
-    }
-
-    pub fn format(&self) -> String {
-        format!("{} ({} bytes)", self.0.fact, self.0.length)
-    }
 }
 
 #[cfg(test)]

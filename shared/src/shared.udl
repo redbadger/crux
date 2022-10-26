@@ -1,16 +1,23 @@
 namespace shared {
   [Throws=PlatformError]
   string add_for_platform(u32 left, u32 right, Platform platform);
+  Effect update(State state, Msg msg);
 };
 
-dictionary CatFactData {
-  string fact;
-  i32 length;
+dictionary State {
+  string cat_fact;
 };
 
-interface CatFact {
-  constructor(CatFactData fact);
-  string format();
+[Enum]
+interface Msg {
+  GetNewFact();
+  ReceiveFact(sequence<u8> bytes);
+};
+
+[Enum]
+interface Effect {
+  Render(State state);
+  Get(State state, string url);
 };
 
 [Error]

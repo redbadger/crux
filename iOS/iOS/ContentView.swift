@@ -29,25 +29,23 @@ extension CatFactData: Decodable {
 @MainActor
 class Model: ObservableObject {
     @Published var fact = CatFact(CatFactData(fact: "", length: 0))
-    
+
     init() {
         getFact()
     }
-    
+
     private func getFact() {
         Task {
-            let (data, _) = try! await URLSession.shared.data(from: URL(string:"https://catfact.ninja/fact")!)
+            let (data, _) = try! await URLSession.shared.data(from: URL(string: "https://catfact.ninja/fact")!)
             let decodedResponse = try? JSONDecoder().decode(CatFactData.self, from: data)
             fact = CatFact(decodedResponse!)
         }
     }
 }
 
-
-
 struct ContentView: View {
     @ObservedObject var model: Model
-    
+
     var body: some View {
         VStack {
             Image(systemName: "globe")

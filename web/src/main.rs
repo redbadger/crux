@@ -1,10 +1,23 @@
-use shared::{add_for_platform, CatFact, Platform, PlatformError};
+use anyhow::Result;
+use shared::*;
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
 use yew::use_effect_with_deps;
 
-const API_URL: &str = "https://catfact.ninja/fact";
+async fn get_fact() -> Result<String> {
+    if let Effect::Get { state, url } = update(State::default(), Msg::GetNewFact) {
+        let bytes = gloo_net::http::Request::get(&url)
+            .send()
+            .await?
+            .binary()
+            .await?;
+        if let Effect::Render { state } = update(state, Msg::ReceiveFact { bytes }) {
+            return Ok(state.cat_fact);
+        }
+    }
+    Ok(String::default())
+}
 
 #[function_component(HelloWorld)]
 fn hello_world() -> Html {
@@ -25,9 +38,7 @@ fn hello_world() -> Html {
         use_effect_with_deps(
             move |_| {
                 wasm_bindgen_futures::spawn_local(async move {
-                    let response = gloo_net::http::Request::get(API_URL).send().await.unwrap();
-                    let cat_fact = CatFact(response.json().await.unwrap());
-                    fact.set(cat_fact.format());
+                    fact.set(get_fact().await.unwrap_or_else(|e| e.to_string()));
                 });
                 || ()
             },
