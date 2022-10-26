@@ -51,11 +51,11 @@ For web it uses [`yew`](https://yew.rs/).
    name = "shared"
 
    [dependencies]
-   uniffi = "0.20.0"
-   uniffi_macros = "0.20.0"
+   uniffi = "0.21.0"
+   uniffi_macros = "0.21.0"
 
    [build-dependencies]
-   uniffi_build = { version = "0.20.0", features = ["builtin-bindgen"] }
+   uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }
 
    ```
 
@@ -85,7 +85,7 @@ For web it uses [`yew`](https://yew.rs/).
 
    ```rust
    fn main() {
-        uniffi_build::generate_scaffolding("./shared.udl").unwrap();
+        uniffi_build::generate_scaffolding("./src/shared.udl").unwrap();
    }
 
    ```
@@ -265,7 +265,7 @@ For web it uses [`yew`](https://yew.rs/).
 1. In "Build Settings" ...
 
    1. add a "User-defined setting" called "`build_variant`", with a value of `debug` for Debug and `release` for Release
-   1. search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, in both Debug and Release
+   1. search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, in both Debug and Release. If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
    1. search for "library search paths" and add some dummy values for debug and release. This will update the project file so you can search in it for `LIBRARY_SEARCH_PATHS` in the next step.
 
 1. Open `./iOS/iOs.xcodeproj/project.pbxproj` in a code editor and search for "LIBRARY_SEARCH_PATHS" (you should find 2 occurrences), and add the following ...
