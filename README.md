@@ -59,7 +59,7 @@ For web it uses [`yew`](https://yew.rs/).
 
    ```
 
-1. Create [`./shared/shared.udl`](./shared/shared.udl) ...
+1. Create [`./shared/src/shared.udl`](./shared/src/shared.udl) ...
 
    ```txt
    namespace shared {
