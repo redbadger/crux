@@ -28,7 +28,10 @@ impl Component for HelloWorld {
     type Message = Msg;
     type Properties = HelloWorldProps;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
+        let link = ctx.link();
+        link.send_message(Msg::GetFact);
+
         Self::default()
     }
 
@@ -46,8 +49,7 @@ impl Component for HelloWorld {
         }
         self.result = add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default();
 
-        let cmd = ctx.props().core.update(msg);
-        match cmd {
+        match ctx.props().core.update(msg) {
             Cmd::Render { cat_fact } => {
                 self.fact = cat_fact;
                 true
@@ -65,13 +67,8 @@ impl Component for HelloWorld {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        if self.fact.is_empty() {
-            ctx.link().send_message(Msg::GetFact);
-        }
         let link = ctx.link();
-        let clear = link.callback(|_| Msg::ClearFact);
-        let get = link.callback(|_| Msg::GetFact);
-        let fetch = link.callback(|_| Msg::FetchFact);
+
         html! {
             <>
                 <section class="section title has-text-centered">
@@ -81,9 +78,18 @@ impl Component for HelloWorld {
                     <p>{&self.fact}</p>
                 </section>
                 <div class="buttons container is-centered">
-                    <button class="button is-primary is-danger" onclick={clear}>{"Clear"}</button>
-                    <button class="button is-primary is-success" onclick={get}>{"Get"}</button>
-                    <button class="button is-primary is-warning" onclick={fetch}>{"Fetch"}</button>
+                    <button class="button is-primary is-danger"
+                        onclick={link.callback(|_| Msg::ClearFact)}>
+                        {"Clear"}
+                    </button>
+                    <button class="button is-primary is-success"
+                        onclick={link.callback(|_| Msg::GetFact)}>
+                        {"Get"}
+                    </button>
+                    <button class="button is-primary is-warning"
+                        onclick={link.callback(|_| Msg::FetchFact)}>
+                        {"Fetch"}
+                    </button>
                 </div>
             </>
         }
