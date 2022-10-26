@@ -1,76 +1,75 @@
 package com.example.android
 
-import android.os.Build
 import android.os.Bundle
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
-import okhttp3.ResponseBody
-import redbadger.rmm.shared.*
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.http.GET
-import retrofit2.http.Url
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.example.android.ui.theme.AndroidTheme
 
-class GetPlatform : Platform {
-    override fun get(): String {
-        return Build.BRAND + " " + Build.VERSION.RELEASE
-    }
-}
-
-interface CatFactService {
-    @GET
-    fun getFact(@Url url: String?): Call<ResponseBody?>?
-
-    companion object {
-
-        fun create(): CatFactService {
-            return Retrofit.Builder()
-                .baseUrl("http://dummy.com/")
-                .build()
-                .create(CatFactService::class.java)
-        }
-    }
-}
-
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        val tv1 = findViewById<TextView>(R.id.txt1)
-        tv1.text = addForPlatform(1u, 2u, GetPlatform())
-
-        var core = Core();
-        core.update(Msg.GetNewFact)?.let { effect ->
-            when (effect) {
-                is Effect.Get -> {
-                    val catFactApi = CatFactService.create().getFact(effect.url);
-                    catFactApi?.enqueue(object : Callback<ResponseBody?> {
-                        override fun onResponse(
-                            call: Call<ResponseBody?>?,
-                            response: Response<ResponseBody?>?
-                        ) {
-                            response?.body()?.bytes()?.toUByteArray()?.toList()?.let { bytes ->
-                                core.update(Msg.ReceiveFact(bytes))?.let { effect1 ->
-                                    when (effect1) {
-                                        is Effect.Render -> {
-                                            val tv2 = findViewById<TextView>(R.id.txt2)
-                                            tv2.text = effect1.catFact
-                                        }
-                                        else -> {}
-                                    }
-                                }
-                            };
-                        }
-
-                        override fun onFailure(call: Call<ResponseBody?>?, t: Throwable?) {}
-                    })
+        setContent {
+            AndroidTheme {
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background
+                ) {
+                    Greeting("Android")
                 }
-                else -> {}
             }
-
         }
+    }
+}
+
+@Composable
+fun Greeting(name: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center, modifier = Modifier.fillMaxSize(),
+    ) {
+        Icon(Icons.Filled.Public, "Platform")
+        Text(text = "Android")
+        Text(text = "CatFact")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = {
+                    //your onclick code here
+                }, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)
+            ) {
+                Text(text = "Clear", color = Color.White)
+            }
+            Button(
+                onClick = {
+                    //your onclick code here
+                }, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
+            ) {
+                Text(text = "Get", color = Color.White)
+            }
+            Button(
+                onClick = {
+                    //your onclick code here
+                }, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Yellow)
+            ) {
+                Text(text = "Fetch", color = Color.White)
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    AndroidTheme {
+        Greeting("Android")
     }
 }
