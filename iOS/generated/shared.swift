@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_9e24_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_9554_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_9e24_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_9554_rustbuffer_free(self, $0) }
     }
 }
 
@@ -281,6 +281,19 @@ private func makeRustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) 
 // Public interface members begin here.
 
 
+fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    static func read(from buf: Reader) throws -> UInt8 {
+        return try lift(buf.readInt())
+    }
+
+    static func write(_ value: UInt8, into buf: Writer) {
+        buf.writeInt(lower(value))
+    }
+}
+
 fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
@@ -290,19 +303,6 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 
     static func write(_ value: SwiftType, into buf: Writer) {
-        buf.writeInt(lower(value))
-    }
-}
-
-fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
-    typealias FfiType = Int32
-    typealias SwiftType = Int32
-
-    static func read(from buf: Reader) throws -> Int32 {
-        return try lift(buf.readInt())
-    }
-
-    static func write(_ value: Int32, into buf: Writer) {
         buf.writeInt(lower(value))
     }
 }
@@ -346,12 +346,12 @@ fileprivate struct FfiConverterString: FfiConverter {
 }
 
 
-public protocol CatFactProtocol {
-    func `format`()  -> String
+public protocol CoreProtocol {
+    func `update`(_ `msg`: Msg)  -> Cmd
     
 }
 
-public class CatFact: CatFactProtocol {
+public class Core: CoreProtocol {
     fileprivate let pointer: UnsafeMutableRawPointer
 
     // TODO: We'd like this to be `private` but for Swifty reasons,
@@ -360,29 +360,29 @@ public class CatFact: CatFactProtocol {
     required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
-    public convenience init(_ `fact`: CatFactData)  {
+    public convenience init()  {
         self.init(unsafeFromRawPointer: try!
     
     rustCall() {
     
-    shared_9e24_CatFact_new(
-        FfiConverterTypeCatFactData.lower(`fact`), $0)
+    shared_9554_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_9e24_CatFact_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_9554_Core_object_free(pointer, $0) }
     }
 
     
 
     
-    public func `format`()  -> String {
-        return try! FfiConverterString.lift(
+    public func `update`(_ `msg`: Msg)  -> Cmd {
+        return try! FfiConverterTypeCmd.lift(
             try!
     rustCall() {
     
-    shared_9e24_CatFact_format(self.pointer, $0
+    shared_9554_Core_update(self.pointer, 
+        FfiConverterTypeMsg.lower(`msg`), $0
     )
 }
         )
@@ -391,11 +391,11 @@ public class CatFact: CatFactProtocol {
 }
 
 
-fileprivate struct FfiConverterTypeCatFact: FfiConverter {
+fileprivate struct FfiConverterTypeCore: FfiConverter {
     typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = CatFact
+    typealias SwiftType = Core
 
-    static func read(from buf: Reader) throws -> CatFact {
+    static func read(from buf: Reader) throws -> Core {
         let v: UInt64 = try buf.readInt()
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
@@ -406,66 +406,127 @@ fileprivate struct FfiConverterTypeCatFact: FfiConverter {
         return try lift(ptr!)
     }
 
-    static func write(_ value: CatFact, into buf: Writer) {
+    static func write(_ value: Core, into buf: Writer) {
         // This fiddling is because `Int` is the thing that's the same size as a pointer.
         // The Rust code won't compile if a pointer won't fit in a `UInt64`.
         buf.writeInt(UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
     }
 
-    static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CatFact {
-        return CatFact(unsafeFromRawPointer: pointer)
+    static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Core {
+        return Core(unsafeFromRawPointer: pointer)
     }
 
-    static func lower(_ value: CatFact) -> UnsafeMutableRawPointer {
+    static func lower(_ value: Core) -> UnsafeMutableRawPointer {
         return value.pointer
     }
 }
 
-
-public struct CatFactData {
-    public var `fact`: String
-    public var `length`: Int32
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(`fact`: String, `length`: Int32) {
-        self.`fact` = `fact`
-        self.`length` = `length`
-    }
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum Cmd {
+    
+    case `render`(`catFact`: String)
+    case `get`(`url`: String)
 }
 
+fileprivate struct FfiConverterTypeCmd: FfiConverterRustBuffer {
+    typealias SwiftType = Cmd
 
-extension CatFactData: Equatable, Hashable {
-    public static func ==(lhs: CatFactData, rhs: CatFactData) -> Bool {
-        if lhs.`fact` != rhs.`fact` {
-            return false
-        }
-        if lhs.`length` != rhs.`length` {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(`fact`)
-        hasher.combine(`length`)
-    }
-}
-
-
-fileprivate struct FfiConverterTypeCatFactData: FfiConverterRustBuffer {
-    fileprivate static func read(from buf: Reader) throws -> CatFactData {
-        return try CatFactData(
-            `fact`: FfiConverterString.read(from: buf), 
-            `length`: FfiConverterInt32.read(from: buf)
+    static func read(from buf: Reader) throws -> Cmd {
+        let variant: Int32 = try buf.readInt()
+        switch variant {
+        
+        case 1: return .`render`(
+            `catFact`: try FfiConverterString.read(from: buf)
         )
+        
+        case 2: return .`get`(
+            `url`: try FfiConverterString.read(from: buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
     }
 
-    fileprivate static func write(_ value: CatFactData, into buf: Writer) {
-        FfiConverterString.write(value.`fact`, into: buf)
-        FfiConverterInt32.write(value.`length`, into: buf)
+    static func write(_ value: Cmd, into buf: Writer) {
+        switch value {
+        
+        
+        case let .`render`(`catFact`):
+            buf.writeInt(Int32(1))
+            FfiConverterString.write(`catFact`, into: buf)
+            
+        
+        case let .`get`(`url`):
+            buf.writeInt(Int32(2))
+            FfiConverterString.write(`url`, into: buf)
+            
+        }
     }
 }
+
+
+extension Cmd: Equatable, Hashable {}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum Msg {
+    
+    case `clearFact`
+    case `getFact`
+    case `fetchFact`
+    case `receiveFact`(`bytes`: [UInt8])
+}
+
+fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
+    typealias SwiftType = Msg
+
+    static func read(from buf: Reader) throws -> Msg {
+        let variant: Int32 = try buf.readInt()
+        switch variant {
+        
+        case 1: return .`clearFact`
+        
+        case 2: return .`getFact`
+        
+        case 3: return .`fetchFact`
+        
+        case 4: return .`receiveFact`(
+            `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    static func write(_ value: Msg, into buf: Writer) {
+        switch value {
+        
+        
+        case .`clearFact`:
+            buf.writeInt(Int32(1))
+        
+        
+        case .`getFact`:
+            buf.writeInt(Int32(2))
+        
+        
+        case .`fetchFact`:
+            buf.writeInt(Int32(3))
+        
+        
+        case let .`receiveFact`(`bytes`):
+            buf.writeInt(Int32(4))
+            FfiConverterSequenceUInt8.write(`bytes`, into: buf)
+            
+        }
+    }
+}
+
+
+extension Msg: Equatable, Hashable {}
+
 
 
 public enum PlatformError {
@@ -642,7 +703,7 @@ fileprivate struct FfiConverterCallbackInterfacePlatform {
     private static var callbackInitialized = false
     private static func initCallback() {
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-                ffi_shared_9e24_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
+                ffi_shared_9554_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
         }
     }
     private static func ensureCallbackinitialized() {
@@ -689,13 +750,35 @@ extension FfiConverterCallbackInterfacePlatform : FfiConverter {
     }
 }
 
+fileprivate struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
+    typealias SwiftType = [UInt8]
+
+    static func write(_ value: [UInt8], into buf: Writer) {
+        let len = Int32(value.count)
+        buf.writeInt(len)
+        for item in value {
+            FfiConverterUInt8.write(item, into: buf)
+        }
+    }
+
+    static func read(from buf: Reader) throws -> [UInt8] {
+        let len: Int32 = try buf.readInt()
+        var seq = [UInt8]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterUInt8.read(from: buf))
+        }
+        return seq
+    }
+}
+
 public func `addForPlatform`(_ `left`: UInt32, _ `right`: UInt32, _ `platform`: Platform) throws -> String {
     return try FfiConverterString.lift(
         try
     
     rustCallWithError(FfiConverterTypePlatformError.self) {
     
-    shared_9e24_add_for_platform(
+    shared_9554_add_for_platform(
         FfiConverterUInt32.lower(`left`), 
         FfiConverterUInt32.lower(`right`), 
         FfiConverterCallbackInterfacePlatform.lower(`platform`), $0)

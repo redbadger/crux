@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  iOS
-//
-//  Created by Stuart Harris on 08/10/2022.
-//
-
 import SwiftUI
 
 class GetPlatform: Platform {
@@ -13,48 +6,78 @@ class GetPlatform: Platform {
     }
 }
 
-extension CatFactData: Decodable {
-    enum CodingKeys: String, CodingKey {
-        case fact
-        case length
+@MainActor
+class Model: ObservableObject {
+    @Published var fact = ""
+    var core = Core()
+    
+    init() {
+        self.update(msg: Msg.getFact)
     }
-
-    public init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        fact = try values.decode(String.self, forKey: .fact)
-        length = try values.decode(Int32.self, forKey: .length)
+    
+    private func getFact(url: String) {
+        Task {
+            let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
+            self.update(msg: .receiveFact(bytes: [UInt8](data)))
+        }
+    }
+    
+    func update(msg: Msg) {
+        let cmd = core.update(msg)
+        switch cmd {
+        case .render(catFact: let catFact): self.fact = catFact
+        case .get(url: let url): getFact(url: url)
+        }
     }
 }
 
-@MainActor
-class Model: ObservableObject {
-    @Published var fact = CatFact(CatFactData(fact: "", length: 0))
-
-    init() {
-        getFact()
+struct ActionButton: View {
+    var label: String
+    var color: Color
+    var action: () -> Void
+    
+    init(label: String, color: Color, action: @escaping () -> Void) {
+        self.label = label
+        self.color = color
+        self.action = action
     }
-
-    private func getFact() {
-        Task {
-            let (data, _) = try! await URLSession.shared.data(from: URL(string: "https://catfact.ninja/fact")!)
-            let decodedResponse = try? JSONDecoder().decode(CatFactData.self, from: data)
-            fact = CatFact(decodedResponse!)
+    
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .fontWeight(.bold)
+                .font(.body)
+                .padding(EdgeInsets(top: 10, leading: 15, bottom: 10, trailing: 15))
+                .background(color)
+                .cornerRadius(10)
+                .foregroundColor(.white)
+                .padding()
         }
     }
 }
 
 struct ContentView: View {
     @ObservedObject var model: Model
-
+    
     var body: some View {
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
             Text(try! addForPlatform(1, 2, GetPlatform()))
-            Text(model.fact.format())
+            Text(model.fact).padding()
+            HStack {
+                ActionButton(label: "Clear", color: .red) {
+                    model.update(msg: .clearFact)
+                }
+                ActionButton(label: "Get", color: .green) {
+                    model.update(msg: .getFact)
+                }
+                ActionButton(label: "Fetch", color: .yellow) {
+                    model.update(msg: .fetchFact)
+                }
+            }
         }
-        .padding()
     }
 }
 
