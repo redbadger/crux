@@ -13,9 +13,6 @@ import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Url
 
-
-
-
 class GetPlatform : Platform {
     override fun get(): String {
         return Build.BRAND + " " + Build.VERSION.RELEASE
@@ -45,8 +42,8 @@ class MainActivity : AppCompatActivity() {
         val tv1 = findViewById<TextView>(R.id.txt1)
         tv1.text = addForPlatform(1u, 2u, GetPlatform())
 
-        var state = State("");
-        update(state, Msg.GetNewFact)?.let { effect ->
+        var core = Core();
+        core.update(Msg.GetNewFact)?.let { effect ->
             when (effect) {
                 is Effect.Get -> {
                     val catFactApi = CatFactService.create().getFact(effect.url);
@@ -56,11 +53,11 @@ class MainActivity : AppCompatActivity() {
                             response: Response<ResponseBody?>?
                         ) {
                             response?.body()?.bytes()?.toUByteArray()?.toList()?.let { bytes ->
-                                update(state, Msg.ReceiveFact(bytes))?.let { effect1 ->
+                                core.update(Msg.ReceiveFact(bytes))?.let { effect1 ->
                                     when (effect1) {
                                         is Effect.Render -> {
                                             val tv2 = findViewById<TextView>(R.id.txt2)
-                                            tv2.text = effect1.state.catFact
+                                            tv2.text = effect1.catFact
                                         }
                                         else -> {}
                                     }

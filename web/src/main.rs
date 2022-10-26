@@ -6,14 +6,15 @@ use yew::prelude::*;
 use yew::use_effect_with_deps;
 
 async fn get_fact() -> Result<String> {
-    if let Effect::Get { state, url } = update(State::default(), Msg::GetNewFact) {
+    let core = Core::new();
+    if let Effect::Get { url } = core.update(Msg::GetNewFact) {
         let bytes = gloo_net::http::Request::get(&url)
             .send()
             .await?
             .binary()
             .await?;
-        if let Effect::Render { state } = update(state, Msg::ReceiveFact { bytes }) {
-            return Ok(state.cat_fact);
+        if let Effect::Render { cat_fact } = core.update(Msg::ReceiveFact { bytes }) {
+            return Ok(cat_fact);
         }
     }
     Ok(String::default())

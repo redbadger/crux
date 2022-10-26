@@ -1,11 +1,6 @@
 namespace shared {
   [Throws=PlatformError]
   string add_for_platform(u32 left, u32 right, Platform platform);
-  Effect update(State state, Msg msg);
-};
-
-dictionary State {
-  string cat_fact;
 };
 
 [Enum]
@@ -16,8 +11,13 @@ interface Msg {
 
 [Enum]
 interface Effect {
-  Render(State state);
-  Get(State state, string url);
+  Render(string cat_fact);
+  Get(string url);
+};
+
+interface Core {
+  constructor();
+  Effect update(Msg msg);
 };
 
 [Error]
