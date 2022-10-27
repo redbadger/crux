@@ -25,6 +25,9 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Url
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,7 +78,7 @@ class Model : ViewModel() {
                 call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
             ) {
                 response?.body()?.bytes()?.toUByteArray()?.toList()?.let { bytes ->
-                    update(Msg.ReceiveFact(bytes))
+                    update(Msg.HttpResponse(bytes))
                 }
             }
 
@@ -86,10 +89,16 @@ class Model : ViewModel() {
     fun update(msg: Msg) {
         when (val cmd = core.update(msg)) {
             is Cmd.Render -> {
-                this.catFact = cmd.catFact
+                this.catFact = core.fact()
             }
-            is Cmd.Get -> {
+            is Cmd.HttpGet -> {
                 getFact(cmd.url)
+            }
+            is Cmd.TimeGet -> {
+                val isoTime =
+                    ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+
+                update(Msg.CurrentTime(isoTime))
             }
         }
     }

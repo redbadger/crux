@@ -1,4 +1,5 @@
 use anyhow::Result;
+use js_sys::Date;
 use shared::*;
 use web_sys::window;
 use woothee::parser::Parser;
@@ -11,6 +12,12 @@ async fn http_get(url: &str) -> Result<Vec<u8>> {
         .binary()
         .await?;
     Ok(bytes)
+}
+
+fn time_get() -> Result<String> {
+    let date = Date::new_0();
+
+    Ok(format!("{}", date.to_iso_string()))
 }
 
 #[derive(Properties, Default, PartialEq)]
@@ -50,17 +57,26 @@ impl Component for HelloWorld {
         self.result = add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default();
 
         match ctx.props().core.update(msg) {
-            Cmd::Render { cat_fact } => {
-                self.fact = cat_fact;
+            Cmd::Render => {
+                self.fact = ctx.props().core.fact();
+
                 true
             }
-            Cmd::Get { url } => {
+            Cmd::HttpGet { url } => {
                 let link = link.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    link.send_message(Msg::ReceiveFact {
+                    link.send_message(Msg::HttpResponse {
                         bytes: http_get(&url).await.unwrap_or_default(),
                     });
                 });
+
+                false
+            }
+            Cmd::TimeGet => {
+                link.send_message(Msg::CurrentTime {
+                    iso_time: time_get().unwrap(),
+                });
+
                 false
             }
         }

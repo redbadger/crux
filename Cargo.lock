@@ -908,6 +908,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "gloo-net",
+ "js-sys",
  "shared",
  "wasm-bindgen-futures",
  "web-sys",

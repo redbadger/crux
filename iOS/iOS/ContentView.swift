@@ -18,15 +18,17 @@ class Model: ObservableObject {
     private func getFact(url: String) {
         Task {
             let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .receiveFact(bytes: [UInt8](data)))
+            self.update(msg: .httpResponse(bytes: [UInt8](data)))
         }
     }
     
     func update(msg: Msg) {
         let cmd = core.update(msg)
         switch cmd {
-        case .render(catFact: let catFact): self.fact = catFact
-        case .get(url: let url): getFact(url: url)
+        case .render: self.fact = core.fact()
+        case .httpGet(url: let url): getFact(url: url)
+        case .timeGet:
+            update(msg: .currentTime(isoTime:  Date().ISO8601Format()))
         }
     }
 }

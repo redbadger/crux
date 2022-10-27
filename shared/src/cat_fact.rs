@@ -19,17 +19,20 @@ pub enum Msg {
     ClearFact,
     GetFact,
     FetchFact,
-    ReceiveFact { bytes: Vec<u8> },
+    HttpResponse { bytes: Vec<u8> },
+    CurrentTime { iso_time: String },
 }
 
 pub enum Cmd {
-    Render { cat_fact: String },
-    Get { url: String },
+    HttpGet { url: String },
+    TimeGet,
+    Render,
 }
 
 #[derive(Default)]
 pub struct Core {
     cat_fact: RwLock<Option<CatFact>>,
+    time: RwLock<Option<String>>,
 }
 
 impl PartialEq for Core {
@@ -45,34 +48,42 @@ impl Core {
         Self::default()
     }
 
+    pub fn fact(&self) -> String {
+        match (&*self.cat_fact.read().unwrap(), &*self.time.read().unwrap()) {
+            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+            _ => "No fact".to_string(),
+        }
+    }
+
     pub fn update(&self, msg: Msg) -> Cmd {
         match msg {
             Msg::ClearFact => {
                 *self.cat_fact.write().unwrap() = None;
-                Cmd::Render {
-                    cat_fact: "Cleared".to_string(),
-                }
+                Cmd::Render
             }
             Msg::GetFact => {
-                if let Some(fact) = &*self.cat_fact.read().unwrap() {
-                    Cmd::Render {
-                        cat_fact: format!("old: {}", fact.format()),
-                    }
+                if let Some(_fact) = &*self.cat_fact.read().unwrap() {
+                    Cmd::Render
                 } else {
-                    Cmd::Get {
+                    Cmd::HttpGet {
                         url: API_URL.to_owned(),
                     }
                 }
             }
-            Msg::FetchFact => Cmd::Get {
+            Msg::FetchFact => Cmd::HttpGet {
                 url: API_URL.to_owned(),
             },
-            Msg::ReceiveFact { bytes } => {
+            Msg::HttpResponse { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
                 *self.cat_fact.write().unwrap() = Some(fact.clone());
-                Cmd::Render {
-                    cat_fact: format!("new: {}", fact.format()),
-                }
+
+                // remember when we got the fact
+                Cmd::TimeGet
+            }
+            Msg::CurrentTime { iso_time } => {
+                *self.time.write().unwrap() = Some(iso_time);
+
+                Cmd::Render
             }
         }
     }

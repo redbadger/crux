@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_9554_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_72a3_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_9554_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_72a3_rustbuffer_free(self, $0) }
     }
 }
 
@@ -348,6 +348,7 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 public protocol CoreProtocol {
     func `update`(_ `msg`: Msg)  -> Cmd
+    func `fact`()  -> String
     
 }
 
@@ -365,12 +366,12 @@ public class Core: CoreProtocol {
     
     rustCall() {
     
-    shared_9554_Core_new($0)
+    shared_72a3_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_9554_Core_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_72a3_Core_object_free(pointer, $0) }
     }
 
     
@@ -381,8 +382,18 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_9554_Core_update(self.pointer, 
+    shared_72a3_Core_update(self.pointer, 
         FfiConverterTypeMsg.lower(`msg`), $0
+    )
+}
+        )
+    }
+    public func `fact`()  -> String {
+        return try! FfiConverterString.lift(
+            try!
+    rustCall() {
+    
+    shared_72a3_Core_fact(self.pointer, $0
     )
 }
         )
@@ -425,8 +436,9 @@ fileprivate struct FfiConverterTypeCore: FfiConverter {
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 public enum Cmd {
     
-    case `render`(`catFact`: String)
-    case `get`(`url`: String)
+    case `httpGet`(`url`: String)
+    case `timeGet`
+    case `render`
 }
 
 fileprivate struct FfiConverterTypeCmd: FfiConverterRustBuffer {
@@ -436,13 +448,13 @@ fileprivate struct FfiConverterTypeCmd: FfiConverterRustBuffer {
         let variant: Int32 = try buf.readInt()
         switch variant {
         
-        case 1: return .`render`(
-            `catFact`: try FfiConverterString.read(from: buf)
-        )
-        
-        case 2: return .`get`(
+        case 1: return .`httpGet`(
             `url`: try FfiConverterString.read(from: buf)
         )
+        
+        case 2: return .`timeGet`
+        
+        case 3: return .`render`
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -452,15 +464,18 @@ fileprivate struct FfiConverterTypeCmd: FfiConverterRustBuffer {
         switch value {
         
         
-        case let .`render`(`catFact`):
+        case let .`httpGet`(`url`):
             buf.writeInt(Int32(1))
-            FfiConverterString.write(`catFact`, into: buf)
-            
-        
-        case let .`get`(`url`):
-            buf.writeInt(Int32(2))
             FfiConverterString.write(`url`, into: buf)
             
+        
+        case .`timeGet`:
+            buf.writeInt(Int32(2))
+        
+        
+        case .`render`:
+            buf.writeInt(Int32(3))
+        
         }
     }
 }
@@ -476,7 +491,8 @@ public enum Msg {
     case `clearFact`
     case `getFact`
     case `fetchFact`
-    case `receiveFact`(`bytes`: [UInt8])
+    case `httpResponse`(`bytes`: [UInt8])
+    case `currentTime`(`isoTime`: String)
 }
 
 fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
@@ -492,8 +508,12 @@ fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
         
         case 3: return .`fetchFact`
         
-        case 4: return .`receiveFact`(
+        case 4: return .`httpResponse`(
             `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
+        )
+        
+        case 5: return .`currentTime`(
+            `isoTime`: try FfiConverterString.read(from: buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -516,9 +536,14 @@ fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
             buf.writeInt(Int32(3))
         
         
-        case let .`receiveFact`(`bytes`):
+        case let .`httpResponse`(`bytes`):
             buf.writeInt(Int32(4))
             FfiConverterSequenceUInt8.write(`bytes`, into: buf)
+            
+        
+        case let .`currentTime`(`isoTime`):
+            buf.writeInt(Int32(5))
+            FfiConverterString.write(`isoTime`, into: buf)
             
         }
     }
@@ -703,7 +728,7 @@ fileprivate struct FfiConverterCallbackInterfacePlatform {
     private static var callbackInitialized = false
     private static func initCallback() {
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-                ffi_shared_9554_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
+                ffi_shared_72a3_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
         }
     }
     private static func ensureCallbackinitialized() {
@@ -778,7 +803,7 @@ public func `addForPlatform`(_ `left`: UInt32, _ `right`: UInt32, _ `platform`: 
     
     rustCallWithError(FfiConverterTypePlatformError.self) {
     
-    shared_9554_add_for_platform(
+    shared_72a3_add_for_platform(
         FfiConverterUInt32.lower(`left`), 
         FfiConverterUInt32.lower(`right`), 
         FfiConverterCallbackInterfacePlatform.lower(`platform`), $0)

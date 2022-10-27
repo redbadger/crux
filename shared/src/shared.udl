@@ -8,18 +8,21 @@ interface Msg {
   ClearFact();
   GetFact();
   FetchFact();
-  ReceiveFact(sequence<u8> bytes);
+  HttpResponse(sequence<u8> bytes);
+  CurrentTime(string iso_time);
 };
 
 [Enum]
 interface Cmd {
-  Render(string cat_fact);
-  Get(string url);
+  HttpGet(string url);
+  TimeGet();
+  Render();
 };
 
 interface Core {
   constructor();
   Cmd update(Msg msg);
+  string fact();
 };
 
 [Error]
