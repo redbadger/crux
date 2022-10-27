@@ -25,7 +25,7 @@ class Model: ObservableObject {
     func update(msg: Msg) {
         let cmd = core.update(msg)
         switch cmd {
-        case .render: self.fact = core.fact()
+        case .render: self.fact = core.view().fact
         case .httpGet(url: let url): getFact(url: url)
         case .timeGet:
             update(msg: .currentTime(isoTime:  Date().ISO8601Format()))

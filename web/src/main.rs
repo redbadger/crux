@@ -58,7 +58,7 @@ impl Component for HelloWorld {
 
         match ctx.props().core.update(msg) {
             Cmd::Render => {
-                self.fact = ctx.props().core.fact();
+                self.fact = ctx.props().core.view().fact;
 
                 true
             }

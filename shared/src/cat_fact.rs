@@ -4,7 +4,7 @@ use std::sync::RwLock;
 const API_URL: &str = "https://catfact.ninja/fact";
 
 #[derive(Deserialize, Default, Clone, PartialEq)]
-struct CatFact {
+pub struct CatFact {
     fact: String,
     length: i32,
 }
@@ -29,16 +29,26 @@ pub enum Cmd {
     Render,
 }
 
+#[derive(PartialEq, Default)]
+struct Model {
+    cat_fact: Option<CatFact>,
+    time: Option<String>,
+}
+
+#[derive(Default)]
+pub struct ViewModel {
+    pub fact: String,
+}
+
 #[derive(Default)]
 pub struct Core {
-    cat_fact: RwLock<Option<CatFact>>,
-    time: RwLock<Option<String>>,
+    model: RwLock<Model>,
 }
 
 impl PartialEq for Core {
     fn eq(&self, other: &Self) -> bool {
-        let a = self.cat_fact.read().unwrap();
-        let b = other.cat_fact.read().unwrap();
+        let a = self.model.read().unwrap();
+        let b = other.model.read().unwrap();
         *a == *b
     }
 }
@@ -48,21 +58,27 @@ impl Core {
         Self::default()
     }
 
-    pub fn fact(&self) -> String {
-        match (&*self.cat_fact.read().unwrap(), &*self.time.read().unwrap()) {
-            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+    pub fn view(&self) -> ViewModel {
+        let fact = match &*self.model.read().unwrap() {
+            Model {
+                cat_fact: Some(fact),
+                time: Some(time),
+            } => format!("Fact from {}: {}", time, fact.format()),
             _ => "No fact".to_string(),
-        }
+        };
+
+        ViewModel { fact: fact }
     }
 
     pub fn update(&self, msg: Msg) -> Cmd {
         match msg {
             Msg::ClearFact => {
-                *self.cat_fact.write().unwrap() = None;
+                self.model.write().unwrap().cat_fact = None;
+
                 Cmd::Render
             }
             Msg::GetFact => {
-                if let Some(_fact) = &*self.cat_fact.read().unwrap() {
+                if let Some(_fact) = &self.model.read().unwrap().cat_fact {
                     Cmd::Render
                 } else {
                     Cmd::HttpGet {
@@ -75,13 +91,13 @@ impl Core {
             },
             Msg::HttpResponse { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
-                *self.cat_fact.write().unwrap() = Some(fact.clone());
+                self.model.write().unwrap().cat_fact = Some(fact.clone());
 
                 // remember when we got the fact
                 Cmd::TimeGet
             }
             Msg::CurrentTime { iso_time } => {
-                *self.time.write().unwrap() = Some(iso_time);
+                self.model.write().unwrap().time = Some(iso_time);
 
                 Cmd::Render
             }

@@ -89,7 +89,7 @@ class Model : ViewModel() {
     fun update(msg: Msg) {
         when (val cmd = core.update(msg)) {
             is Cmd.Render -> {
-                this.catFact = core.fact()
+                this.catFact = core.view().fact
             }
             is Cmd.HttpGet -> {
                 getFact(cmd.url)

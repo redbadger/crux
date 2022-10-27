@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_72a3_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_6291_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_72a3_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_6291_rustbuffer_free(self, $0) }
     }
 }
 
@@ -348,7 +348,7 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 public protocol CoreProtocol {
     func `update`(_ `msg`: Msg)  -> Cmd
-    func `fact`()  -> String
+    func `view`()  -> ViewModel
     
 }
 
@@ -366,12 +366,12 @@ public class Core: CoreProtocol {
     
     rustCall() {
     
-    shared_72a3_Core_new($0)
+    shared_6291_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_72a3_Core_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_6291_Core_object_free(pointer, $0) }
     }
 
     
@@ -382,18 +382,18 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_72a3_Core_update(self.pointer, 
+    shared_6291_Core_update(self.pointer, 
         FfiConverterTypeMsg.lower(`msg`), $0
     )
 }
         )
     }
-    public func `fact`()  -> String {
-        return try! FfiConverterString.lift(
+    public func `view`()  -> ViewModel {
+        return try! FfiConverterTypeViewModel.lift(
             try!
     rustCall() {
     
-    shared_72a3_Core_fact(self.pointer, $0
+    shared_6291_Core_view(self.pointer, $0
     )
 }
         )
@@ -429,6 +429,44 @@ fileprivate struct FfiConverterTypeCore: FfiConverter {
 
     static func lower(_ value: Core) -> UnsafeMutableRawPointer {
         return value.pointer
+    }
+}
+
+
+public struct ViewModel {
+    public var `fact`: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`fact`: String) {
+        self.`fact` = `fact`
+    }
+}
+
+
+extension ViewModel: Equatable, Hashable {
+    public static func ==(lhs: ViewModel, rhs: ViewModel) -> Bool {
+        if lhs.`fact` != rhs.`fact` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`fact`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeViewModel: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> ViewModel {
+        return try ViewModel(
+            `fact`: FfiConverterString.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: ViewModel, into buf: Writer) {
+        FfiConverterString.write(value.`fact`, into: buf)
     }
 }
 
@@ -728,7 +766,7 @@ fileprivate struct FfiConverterCallbackInterfacePlatform {
     private static var callbackInitialized = false
     private static func initCallback() {
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-                ffi_shared_72a3_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
+                ffi_shared_6291_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
         }
     }
     private static func ensureCallbackinitialized() {
@@ -803,7 +841,7 @@ public func `addForPlatform`(_ `left`: UInt32, _ `right`: UInt32, _ `platform`: 
     
     rustCallWithError(FfiConverterTypePlatformError.self) {
     
-    shared_72a3_add_for_platform(
+    shared_6291_add_for_platform(
         FfiConverterUInt32.lower(`left`), 
         FfiConverterUInt32.lower(`right`), 
         FfiConverterCallbackInterfacePlatform.lower(`platform`), $0)

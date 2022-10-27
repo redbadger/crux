@@ -19,10 +19,14 @@ interface Cmd {
   Render();
 };
 
+dictionary ViewModel {
+  string fact;
+};
+
 interface Core {
   constructor();
   Cmd update(Msg msg);
-  string fact();
+  ViewModel view();
 };
 
 [Error]

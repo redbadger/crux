@@ -44,7 +44,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_72a3_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_6291_rustbuffer_alloc(size, status).also {
                 if(it.data == null) {
                    throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=${size})")
                }
@@ -52,7 +52,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_72a3_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_6291_rustbuffer_free(buf, status)
         }
     }
 
@@ -264,43 +264,43 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun ffi_shared_72a3_Core_object_free(`ptr`: Pointer,
+    fun ffi_shared_6291_Core_object_free(`ptr`: Pointer,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun shared_72a3_Core_new(
+    fun shared_6291_Core_new(
     _uniffi_out_err: RustCallStatus
     ): Pointer
 
-    fun shared_72a3_Core_update(`ptr`: Pointer,`msg`: RustBuffer.ByValue,
+    fun shared_6291_Core_update(`ptr`: Pointer,`msg`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun shared_72a3_Core_fact(`ptr`: Pointer,
+    fun shared_6291_Core_view(`ptr`: Pointer,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_72a3_Platform_init_callback(`callbackStub`: ForeignCallback,
+    fun ffi_shared_6291_Platform_init_callback(`callbackStub`: ForeignCallback,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun shared_72a3_add_for_platform(`left`: Int,`right`: Int,`platform`: Long,
+    fun shared_6291_add_for_platform(`left`: Int,`right`: Int,`platform`: Long,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_72a3_rustbuffer_alloc(`size`: Int,
+    fun ffi_shared_6291_rustbuffer_alloc(`size`: Int,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_72a3_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,
+    fun ffi_shared_6291_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_72a3_rustbuffer_free(`buf`: RustBuffer.ByValue,
+    fun ffi_shared_6291_rustbuffer_free(`buf`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun ffi_shared_72a3_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,
+    fun ffi_shared_6291_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
@@ -563,7 +563,7 @@ public interface CoreInterface {
     
     fun `update`(`msg`: Msg): Cmd
     
-    fun `fact`(): String
+    fun `view`(): ViewModel
     
 }
 
@@ -573,7 +573,7 @@ class Core(
     constructor() :
         this(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_72a3_Core_new( _status)
+    _UniFFILib.INSTANCE.shared_6291_Core_new( _status)
 })
 
     /**
@@ -586,25 +586,25 @@ class Core(
      */
     override protected fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_72a3_Core_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.ffi_shared_6291_Core_object_free(this.pointer, status)
         }
     }
 
     override fun `update`(`msg`: Msg): Cmd =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_72a3_Core_update(it, FfiConverterTypeMsg.lower(`msg`),  _status)
+    _UniFFILib.INSTANCE.shared_6291_Core_update(it, FfiConverterTypeMsg.lower(`msg`),  _status)
 }
         }.let {
             FfiConverterTypeCmd.lift(it)
         }
-    override fun `fact`(): String =
+    override fun `view`(): ViewModel =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_72a3_Core_fact(it,  _status)
+    _UniFFILib.INSTANCE.shared_6291_Core_view(it,  _status)
 }
         }.let {
-            FfiConverterString.lift(it)
+            FfiConverterTypeViewModel.lift(it)
         }
     
 
@@ -630,6 +630,31 @@ public object FfiConverterTypeCore: FfiConverter<Core, Pointer> {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+
+
+data class ViewModel (
+    var `fact`: String
+) {
+    
+}
+
+public object FfiConverterTypeViewModel: FfiConverterRustBuffer<ViewModel> {
+    override fun read(buf: ByteBuffer): ViewModel {
+        return ViewModel(
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ViewModel) = (
+            FfiConverterString.allocationSize(value.`fact`)
+    )
+
+    override fun write(value: ViewModel, buf: ByteBuffer) {
+            FfiConverterString.write(value.`fact`, buf)
     }
 }
 
@@ -1005,7 +1030,7 @@ public object FfiConverterTypePlatform: FfiConverterCallbackInterface<Platform>(
 ) {
     override fun register(lib: _UniFFILib) {
         rustCall() { status ->
-            lib.ffi_shared_72a3_Platform_init_callback(this.foreignCallback, status)
+            lib.ffi_shared_6291_Platform_init_callback(this.foreignCallback, status)
         }
     }
 }
@@ -1039,7 +1064,7 @@ public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<UByte>> {
 fun `addForPlatform`(`left`: UInt, `right`: UInt, `platform`: Platform): String {
     return FfiConverterString.lift(
     rustCallWithError(PlatformException) { _status ->
-    _UniFFILib.INSTANCE.shared_72a3_add_for_platform(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), FfiConverterTypePlatform.lower(`platform`), _status)
+    _UniFFILib.INSTANCE.shared_6291_add_for_platform(FfiConverterUInt.lower(`left`), FfiConverterUInt.lower(`right`), FfiConverterTypePlatform.lower(`platform`), _status)
 })
 }
 
