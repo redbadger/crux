@@ -3,10 +3,13 @@ package com.example.android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,10 +25,9 @@ class MainActivity : ComponentActivity() {
             AndroidTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background
-                ) {
-                    Greeting("Android")
-                }
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) { Greeting("Android") }
             }
         }
     }
@@ -35,7 +37,8 @@ class MainActivity : ComponentActivity() {
 fun Greeting(name: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center, modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize(),
     ) {
         Icon(Icons.Filled.Public, "Platform")
         Text(text = "Android")
@@ -43,25 +46,22 @@ fun Greeting(name: String) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = {
-                    //your onclick code here
-                }, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)
-            ) {
-                Text(text = "Clear", color = Color.White)
-            }
+                    // your onclick code here
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) { Text(text = "Clear", color = Color.White) }
             Button(
                 onClick = {
-                    //your onclick code here
-                }, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Green)
-            ) {
-                Text(text = "Get", color = Color.White)
-            }
+                    // your onclick code here
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) { Text(text = "Get", color = Color.White) }
             Button(
                 onClick = {
-                    //your onclick code here
-                }, colors = ButtonDefaults.buttonColors(backgroundColor = Color.Yellow)
-            ) {
-                Text(text = "Fetch", color = Color.White)
-            }
+                    // your onclick code here
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) { Text(text = "Fetch", color = Color.White) }
         }
     }
 }
@@ -69,7 +69,5 @@ fun Greeting(name: String) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    AndroidTheme {
-        Greeting("Android")
-    }
+    AndroidTheme { Greeting("Android") }
 }
