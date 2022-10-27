@@ -67,8 +67,9 @@ class Model : ViewModel() {
         update(Msg.GetFact)
     }
 
+    @OptIn(ExperimentalUnsignedTypes::class)
     private fun getFact(url: String) {
-        val catFactApi = HttpGetService.create().get(url);
+        val catFactApi = HttpGetService.create().get(url)
         catFactApi?.enqueue(object : Callback<ResponseBody?> {
             override fun onResponse(
                 call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
