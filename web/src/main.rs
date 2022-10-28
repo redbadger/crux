@@ -37,7 +37,7 @@ impl Component for HelloWorld {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(Msg::GetFact);
+        link.send_message(Msg::Get);
 
         Self::default()
     }
@@ -95,15 +95,15 @@ impl Component for HelloWorld {
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| Msg::ClearFact)}>
+                        onclick={link.callback(|_| Msg::Clear)}>
                         {"Clear"}
                     </button>
                     <button class="button is-primary is-success"
-                        onclick={link.callback(|_| Msg::GetFact)}>
+                        onclick={link.callback(|_| Msg::Get)}>
                         {"Get"}
                     </button>
                     <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| Msg::FetchFact)}>
+                        onclick={link.callback(|_| Msg::Fetch)}>
                         {"Fetch"}
                     </button>
                 </div>

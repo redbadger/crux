@@ -3,18 +3,24 @@ namespace shared {
   string add_for_platform(u32 left, u32 right, Platform platform);
 };
 
+callback interface Message {
+  Msg set_fact(sequence<u8> bytes);
+  Msg set_image(sequence<u8> bytes);
+};
+
 [Enum]
 interface Msg {
-  ClearFact();
-  GetFact();
-  FetchFact();
-  HttpResponse(sequence<u8> bytes);
+  Clear();
+  Get();
+  Fetch();
+  SetFact(sequence<u8> bytes);
+  SetImage(sequence<u8> bytes);
   CurrentTime(string iso_time);
 };
 
 [Enum]
 interface Cmd {
-  HttpGet(string url);
+  HttpGet(string url, Message msg);
   TimeGet();
   Render();
 };

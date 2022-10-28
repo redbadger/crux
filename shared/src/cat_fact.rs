@@ -1,9 +1,10 @@
 use serde::Deserialize;
-use std::sync::RwLock;
+use std::{collections::HashMap, sync::RwLock};
+use uuid::Uuid;
 
 const API_URL: &str = "https://catfact.ninja/fact";
 
-#[derive(Deserialize, Default, Clone, PartialEq)]
+#[derive(Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
     fact: String,
     length: i32,
@@ -16,15 +17,16 @@ impl CatFact {
 }
 
 pub enum Msg {
-    ClearFact,
-    GetFact,
-    FetchFact,
-    HttpResponse { bytes: Vec<u8> },
+    Clear,
+    Get,
+    Fetch,
+    SetFact { bytes: Vec<u8> },
+    SetImage { bytes: Vec<u8> },
     CurrentTime { iso_time: String },
 }
 
 pub enum Cmd {
-    HttpGet { url: String },
+    HttpGet { url: String, cid: u128 },
     TimeGet,
     Render,
 }
@@ -43,6 +45,7 @@ pub struct ViewModel {
 #[derive(Default)]
 pub struct Core {
     model: RwLock<Model>,
+    http_continuations: Continuations<Vec<u8>>,
 }
 
 impl PartialEq for Core {
@@ -67,31 +70,37 @@ impl Core {
             _ => "No fact".to_string(),
         };
 
-        ViewModel { fact: fact }
+        ViewModel { fact }
     }
 
     pub fn update(&self, msg: Msg) -> Cmd {
         match msg {
-            Msg::ClearFact => {
+            Msg::Clear => {
                 self.model.write().unwrap().cat_fact = None;
 
                 Cmd::Render
             }
-            Msg::GetFact => {
+            Msg::Get => {
                 if let Some(_fact) = &self.model.read().unwrap().cat_fact {
                     Cmd::Render
                 } else {
                     Cmd::HttpGet {
                         url: API_URL.to_owned(),
+                        cid: self
+                            .http_continuations
+                            .create(|bytes| Msg::SetFact { bytes }),
                     }
                 }
             }
-            Msg::FetchFact => Cmd::HttpGet {
+            Msg::Fetch => Cmd::HttpGet {
                 url: API_URL.to_owned(),
+                cid: self
+                    .http_continuations
+                    .create(|bytes| Msg::SetFact { bytes }),
             },
-            Msg::HttpResponse { bytes } => {
+            Msg::SetFact { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
-                self.model.write().unwrap().cat_fact = Some(fact.clone());
+                self.model.write().unwrap().cat_fact = Some(fact);
 
                 // remember when we got the fact
                 Cmd::TimeGet
@@ -101,6 +110,24 @@ impl Core {
 
                 Cmd::Render
             }
+            Msg::SetImage { bytes } => Cmd::Render,
         }
+    }
+}
+
+struct Continuations<T> {
+    table: HashMap<Uuid, Box<dyn FnOnce(T) -> Msg>>,
+}
+
+impl<T> Continuations<T> {
+    fn create<F: FnOnce(T) -> Msg>(&mut self, continuation: F) -> Uuid {
+        let uuid = Uuid::new_v4();
+        self.table.insert(uuid, continuation);
+        uuid
+    }
+
+    fn call(&self, uuid: &Uuid, data: T) -> Msg {
+        let f = self.table.get(uuid).unwrap();
+        f(data)
     }
 }
