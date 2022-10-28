@@ -46,23 +46,43 @@ typedef struct RustCallStatus {
 // ⚠️ increment the version suffix in all instances of UNIFFI_SHARED_HEADER_V4 in this file.           ⚠️
 #endif // def UNIFFI_SHARED_H
 
-uint32_t shared_b5b0_add(
-      uint32_t left,uint32_t right,
+void ffi_shared_6291_Core_object_free(
+      void*_Nonnull ptr,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_b5b0_rustbuffer_alloc(
+void*_Nonnull shared_6291_Core_new(
+      
+    RustCallStatus *_Nonnull out_status
+    );
+RustBuffer shared_6291_Core_update(
+      void*_Nonnull ptr,RustBuffer msg,
+    RustCallStatus *_Nonnull out_status
+    );
+RustBuffer shared_6291_Core_view(
+      void*_Nonnull ptr,
+    RustCallStatus *_Nonnull out_status
+    );
+void ffi_shared_6291_Platform_init_callback(
+      ForeignCallback  _Nonnull callback_stub,
+    RustCallStatus *_Nonnull out_status
+    );
+RustBuffer shared_6291_add_for_platform(
+      uint32_t left,uint32_t right,uint64_t platform,
+    RustCallStatus *_Nonnull out_status
+    );
+RustBuffer ffi_shared_6291_rustbuffer_alloc(
       int32_t size,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_b5b0_rustbuffer_from_bytes(
+RustBuffer ffi_shared_6291_rustbuffer_from_bytes(
       ForeignBytes bytes,
     RustCallStatus *_Nonnull out_status
     );
-void ffi_shared_b5b0_rustbuffer_free(
+void ffi_shared_6291_rustbuffer_free(
       RustBuffer buf,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_b5b0_rustbuffer_reserve(
+RustBuffer ffi_shared_6291_rustbuffer_reserve(
       RustBuffer buf,int32_t additional,
     RustCallStatus *_Nonnull out_status
     );

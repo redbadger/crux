@@ -1,3 +1,40 @@
 namespace shared {
-  u32 add(u32 left, u32 right);
+  [Throws=PlatformError]
+  string add_for_platform(u32 left, u32 right, Platform platform);
+};
+
+[Enum]
+interface Msg {
+  ClearFact();
+  GetFact();
+  FetchFact();
+  HttpResponse(sequence<u8> bytes);
+  CurrentTime(string iso_time);
+};
+
+[Enum]
+interface Cmd {
+  HttpGet(string url);
+  TimeGet();
+  Render();
+};
+
+dictionary ViewModel {
+  string fact;
+};
+
+interface Core {
+  constructor();
+  Cmd update(Msg msg);
+  ViewModel view();
+};
+
+[Error]
+enum PlatformError {
+  "InternalPlatformError",
+};
+
+callback interface Platform {
+  [Throws=PlatformError]
+  string get();
 };

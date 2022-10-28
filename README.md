@@ -6,7 +6,91 @@ For mobile, it uses [`uniffi`](https://github.com/mozilla/uniffi-rs) from Mozill
 
 For web it uses [`yew`](https://yew.rs/).
 
-## Shared rust library
+## Architecture
+
+To enable state management and orchestration of I/O and effects, the shared library is built following the
+[Elm architecture](https://guide.elm-lang.org/architecture/), with the platform specific shell acting as the 'platform' which facilitates side-effects. The subtle difference is that rendering the user interface is one of the side effects.
+
+![Architecture](./architecture.png)
+
+The shared library defines two types of messages - `Msg` and `Cmd`. The `Msg` messages flow from the
+app to the library, in response to user interactions or to relay results of asynchronous work (like I/O). `Cmd`
+are messages the library returns to the application to request a side-effect, for example a HTTP call.
+
+A typical cycle through the loop begins with a user interaction which passes a message to the library through its `update` function. The function updates the library's inner state, and responds with a `Cmd`. In a simple case
+this might be a `Cmd::Render` requesting a user interface refresh. In more complex cases, the command may
+request a network API call, current time, biometric authentication, image from a camera, or any other side-effect. Once the app facilitates the side-effect, it passes the result to the core as another `Msg`, and the exchange
+continues in this fashion until a `Cmd::Render` is returned and no more side-effects are in flight.
+
+The library also exposes a view model through a `view` function, which returns information instructing the
+application what to present on screen using the native UI toolkit.
+
+This architecture is also similar to Erlang's actors, and Haskell's IO monad. The key benefits of building the
+shared library in this way are:
+
+- The library is side-effect free and doesn't require any system APIs, which means it can be compiled to WebAssembly
+- The library, which contains the bulk of the application logic, is testable with no mocking or stubbing by
+  setting up desired state, and then passing messages to the `update` function and checking the right commands are returned and the right view is presented
+- Thanks to UniFFI, the types are shared across the FFI boundary, and when the code is updated
+  (e.g. with new variants on the `Msg` type), the type checking in Swift and Kotlin will prevent the apps from
+  building until the new messages are handled by them, keeping everything in sync.
+
+## Get the example running
+
+### Rust
+
+1. Make sure you have the following rust targets installed (e.g. `rustup target add aarch64-apple-ios`)
+
+   ```txt
+   aarch64-apple-darwin
+   aarch64-apple-ios
+   aarch64-apple-ios-sim
+   aarch64-linux-android
+   wasm32-unknown-unknown
+   x86_64-apple-ios
+   ```
+
+1. Install the `uniffi-bindgen` binary ...
+
+   ```sh
+   cargo install uniffi_bindgen
+   ```
+
+1. Make sure the core builds
+
+   ```sh
+   cd shared
+   cargo build
+   # => Finished dev [unoptimized + debuginfo] target(s) in 1.40s
+   ```
+
+### Yew web app
+
+The web application should now build and run
+
+```
+cd web
+trunk serve
+```
+
+### iOS
+
+You will need XCode, which you can get in the mac AppStore. When XCode starts, open the `iOS` directory
+and run a build, the app should start in the simulator.
+
+### Android
+
+You will need [Android Studio](https://developer.android.com/studio/). You may or may not face a few problems:
+
+- Build failing due to a `linker-wrapper.sh` script failure. Make sure you have Python installed and in PATH
+- Android studio failing to install git. You can set the path to your git binary (e.g. the homebrew one)
+  in the preferences under Version Control > Git
+
+You should be able to build and run the project in the simulator.
+
+## How to start a fresh project of your own
+
+### Rust core
 
 1. Make sure you have the following rust targets installed (e.g. `rustup target add aarch64-apple-ios`)
 
@@ -106,9 +190,9 @@ For web it uses [`yew`](https://yew.rs/).
    cargo build
    ```
 
-## Android App
+### Android App
 
-1. Create a Kotlin App in Android Studio (e.g. "Empty Activity" at `/Android`)
+1. Create a Kotlin App in Android Studio (e.g. "Empty Compose Activity (Material UI)" at `/Android`)
 
 1. Add a Kotlin Android Library (`aar`) — you can find more details on how to do this [here](https://developer.android.com/studio/projects/android-library), but in a nutshell ...
 
@@ -162,6 +246,7 @@ For web it uses [`yew`](https://yew.rs/).
       module  = "../.."
       libname = "shared"
       targets = ["arm64"]
+      extraCargoBuildArguments = ['--package', 'shared']
    }
 
    afterEvaluate {
@@ -201,35 +286,25 @@ For web it uses [`yew`](https://yew.rs/).
 
 1. Try calling into the rust library from the Android app, for example ...
 
-   1. open `Android/app/src/main/res/layout/activity_main.xml`
-   1. give the TextView an id e.g. `txt1`
-
-      ```xml
-      <TextView
-         android:id="@+id/txt1"
-         android:layout_width="wrap_content"
-         android:layout_height="wrap_content"
-         app:layout_constraintBottom_toBottomOf="parent"
-         app:layout_constraintEnd_toEndOf="parent"
-         app:layout_constraintStart_toStartOf="parent"
-         app:layout_constraintTop_toTopOf="parent" />
-      ```
-
    1. open `Android/app/src/main/java/com/example/android/MainActivity.kt`
    1. add `import redbadger.rmm.shared.add`
-   1. call the `add` function somewhere, e.g. on line 13...
-
+   1. add a `class` for the callback to get Platform details ...
       ```kotlin
-      val tv = findViewById<TextView>(R.id.txt1)
-      tv.text = buildString {
-         append("1 + 2 = ")
-         append(add(1u, 2u))
+      class GetPlatform : Platform {
+         override fun get(): String {
+            return Build.BRAND + " " + Build.VERSION.RELEASE
+         }
       }
       ```
+   1. call the `addForPlatform` function, e.g. in a Text UI component ...
 
-   1. run the app in a simulator to show that the shared function is called
+      ```kotlin
+      Text(text = addForPlatform(1u, 2u, GetPlatform()))
+      ```
 
-## iOS App
+   1. run the app in a simulator to show that the function in the shared library is called
+
+### iOS App
 
 (adapted, for UniFFI, from [this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/) by Jan-Erik Rediger, with thanks.)
 
@@ -301,31 +376,24 @@ For web it uses [`yew`](https://yew.rs/).
    1. add a "Headers" section that includes `./iOS/generated/sharedFFI.h` as a "Public" header
    1. add `./target/debug/libshared.a` to the "Link Binary with Libraries" section (this is the wrong target, but the library search paths, which we set above, should resolve this, for more info see the blog post linked above ([this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/)))
 
-1. Test it out, by calling the `add` function, e.g. by changing `./iOS/iOS/ContentView.swift` to look like this:
+1. add a `class` for the callback to get Platform details ...
 
    ```swift
-   import SwiftUI
-
-   struct ContentView: View {
-      var body: some View {
-         VStack {
-               Image(systemName: "globe")
-                  .imageScale(.large)
-                  .foregroundColor(.accentColor)
-               Text("1 + 2 = \(add(1, 2))")
-         }
-         .padding()
+   class GetPlatform: Platform {
+      func get() -> String {
+         return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
       }
    }
 
-   struct ContentView_Previews: PreviewProvider {
-      static var previews: some View {
-         ContentView()
-      }
-   }
    ```
 
-## Web
+1. call the `addForPlatform` function, e.g. in a Text UI component ...
+
+   ```swift
+   Text(try! addForPlatform(1, 2, GetPlatform()))
+   ```
+
+### Yew web app
 
 1. Install [`trunk`](https://github.com/thedodd/trunk)
 1. Create a new rust binary ...
@@ -367,10 +435,20 @@ For web it uses [`yew`](https://yew.rs/).
    use shared::add;
    use yew::prelude::*;
 
+   struct WebPlatform;
+   impl Platform for WebPlatform {
+      fn get(&self) -> Result<String, PlatformError> {
+            let navigator = window().unwrap().navigator();
+            let agent = navigator.user_agent().unwrap_or_default();
+            let parser = Parser::new();
+            Ok(parser.parse(&agent).unwrap_or_default().name.to_string())
+      }
+   }
+
    #[function_component(HelloWorld)]
    fn hello_world() -> Html {
       html! {
-         <p>{"1 + 2 = "}{add(1, 2)}</p>
+         <p>{"1 + 2 = "}{add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default()}</p>
       }
    }
 
