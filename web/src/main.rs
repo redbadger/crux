@@ -62,12 +62,14 @@ impl Component for HelloWorld {
 
                 true
             }
-            Cmd::HttpGet { url } => {
+            Cmd::HttpGet { url, uuid } => {
                 let link = link.clone();
+                let core = &ctx.props().core;
+
                 wasm_bindgen_futures::spawn_local(async move {
-                    link.send_message(Msg::HttpResponse {
-                        bytes: http_get(&url).await.unwrap_or_default(),
-                    });
+                    let bytes = http_get(&url).await.unwrap_or_default();
+
+                    link.send_message(core.http_response(uuid, bytes));
                 });
 
                 false

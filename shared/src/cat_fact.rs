@@ -26,7 +26,7 @@ pub enum Msg {
 }
 
 pub enum Cmd {
-    HttpGet { url: String, cid: u128 },
+    HttpGet { url: String, uuid: Vec<u8> },
     TimeGet,
     Render,
 }
@@ -45,7 +45,7 @@ pub struct ViewModel {
 #[derive(Default)]
 pub struct Core {
     model: RwLock<Model>,
-    http_continuations: Continuations<Vec<u8>>,
+    http_continuations: RwLock<Continuations<Vec<u8>>>,
 }
 
 impl PartialEq for Core {
@@ -86,16 +86,20 @@ impl Core {
                 } else {
                     Cmd::HttpGet {
                         url: API_URL.to_owned(),
-                        cid: self
+                        uuid: self
                             .http_continuations
+                            .write()
+                            .unwrap()
                             .create(|bytes| Msg::SetFact { bytes }),
                     }
                 }
             }
             Msg::Fetch => Cmd::HttpGet {
                 url: API_URL.to_owned(),
-                cid: self
+                uuid: self
                     .http_continuations
+                    .write()
+                    .unwrap()
                     .create(|bytes| Msg::SetFact { bytes }),
             },
             Msg::SetFact { bytes } => {
@@ -110,24 +114,39 @@ impl Core {
 
                 Cmd::Render
             }
-            Msg::SetImage { bytes } => Cmd::Render,
+            Msg::SetImage { bytes: _bytes } => Cmd::Render,
         }
+    }
+
+    pub fn http_response(&self, uuid: Vec<u8>, bytes: Vec<u8>) -> Msg {
+        self.http_continuations.write().unwrap().call(&uuid, bytes)
     }
 }
 
+#[derive(Default)]
 struct Continuations<T> {
-    table: HashMap<Uuid, Box<dyn FnOnce(T) -> Msg>>,
+    table: RwLock<HashMap<[u8; 16], Box<dyn FnOnce(T) -> Msg + Sync + Send>>>,
 }
 
 impl<T> Continuations<T> {
-    fn create<F: FnOnce(T) -> Msg>(&mut self, continuation: F) -> Uuid {
-        let uuid = Uuid::new_v4();
-        self.table.insert(uuid, continuation);
-        uuid
+    fn create<F>(&mut self, continuation: F) -> Vec<u8>
+    where
+        F: Sync + Send + FnOnce(T) -> Msg + 'static,
+    {
+        let uuid = *Uuid::new_v4().as_bytes();
+
+        self.table
+            .write()
+            .unwrap()
+            .insert(uuid.clone(), Box::new(continuation));
+
+        uuid.to_vec()
     }
 
-    fn call(&self, uuid: &Uuid, data: T) -> Msg {
-        let f = self.table.get(uuid).unwrap();
+    pub fn call(&mut self, uuid: &[u8], data: T) -> Msg {
+        let mut continuations = self.table.write().unwrap();
+        let f = continuations.remove(uuid).unwrap();
+
         f(data)
     }
 }

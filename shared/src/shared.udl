@@ -3,11 +3,6 @@ namespace shared {
   string add_for_platform(u32 left, u32 right, Platform platform);
 };
 
-callback interface Message {
-  Msg set_fact(sequence<u8> bytes);
-  Msg set_image(sequence<u8> bytes);
-};
-
 [Enum]
 interface Msg {
   Clear();
@@ -20,7 +15,7 @@ interface Msg {
 
 [Enum]
 interface Cmd {
-  HttpGet(string url, Message msg);
+  HttpGet(string url, sequence<u8> uuid);
   TimeGet();
   Render();
 };
@@ -33,6 +28,8 @@ interface Core {
   constructor();
   Cmd update(Msg msg);
   ViewModel view();
+  // HTTP capability
+  Msg http_response(sequence<u8> uuid, sequence<u8> bytes);
 };
 
 [Error]
