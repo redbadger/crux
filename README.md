@@ -6,7 +6,91 @@ For mobile, it uses [`uniffi`](https://github.com/mozilla/uniffi-rs) from Mozill
 
 For web it uses [`yew`](https://yew.rs/).
 
-## Shared rust library
+## Architecture
+
+To enable state management and orchestration of I/O and effects, the shared library is built following the 
+[Elm architecture](https://guide.elm-lang.org/architecture/), with the platform specific shell acting as the 'platform' which facilitates side-effects. The subtle difference is that rendering the user interface is one of the side effects.
+
+![Architecture](./architecture.png)
+
+The shared library defines two types of messages - `Msg` and `Cmd`. The `Msg` messages flow from the
+app to the library, in response to user interactions or to relay results of asynchronous work (like I/O). `Cmd`
+are messages the library returns to the application to request a side-effect, for example a HTTP call.
+
+A typical cycle through the loop begins with a user interaction which passes a message to the library through its `update` function. The function updates the library's inner state, and responds with a `Cmd`. In a simple case
+this might be a `Cmd::Render` requesting a user interface refresh. In more complex cases, the command may
+request a network API call, current time, biometric authentication, image from a camera, or any other side-effect. Once the app facilitates the side-effect, it passes the result to the core as another `Msg`, and the exchange
+continues in this fashion until a `Cmd::Render` is returned and no more side-effects are in flight.
+
+The library also exposes a view model through a `view` function, which returns information instructing the
+application what to present on screen using the native UI toolkit.
+
+This architecture is also similar to Erlang's actors, and Haskell's IO monad. The key benefits of building the
+shared library in this way are:
+
+* The library is side-effect free and doesn't require any system APIs, which means it can be compiled to webassembly
+* The library, which contains the bulk of the application logic, is testable with no mocking or stubbing by
+  setting up desired state, and then passing messages to the `update` function and checking the right commands are returned and the right view is presented
+* Thanks the UniFFI, the types are shared across the FFI boundary, and when the code is updated
+  (e.g. with new variants on the `Msg` type), the type checking in Swift and Kotlin will prevent the apps from
+  building until the new messages are handled by them, keeping everything in sync.
+
+## Get the example running
+
+### Rust
+
+1. Make sure you have the following rust targets installed (e.g. `rustup target add aarch64-apple-ios`)
+
+   ```txt
+   aarch64-apple-darwin
+   aarch64-apple-ios
+   aarch64-apple-ios-sim
+   aarch64-linux-android
+   wasm32-unknown-unknown
+   x86_64-apple-ios
+   ```
+
+1. Install the `uniffi-bindgen` binary ...
+
+   ```sh
+   cargo install uniffi_bindgen
+   ```
+
+1. Make sure the core builds
+
+   ```sh
+   cd shared
+   cargo build
+   # => Finished dev [unoptimized + debuginfo] target(s) in 1.40s
+   ```
+
+### Yew web app
+
+The web application should now build and run
+
+   ```
+   cd web
+   trunk serve
+   ```
+
+### iOS
+
+You will need XCode, which you can get in the mac AppStore. When XCode starts, open the `iOS` directory
+and run a build, the app should start in the simulator.
+
+### Android
+
+You will need [Android Studio](https://developer.android.com/studio/). You may or may not face a few problems:
+
+* Build failing due to a `linker-wrapper.sh` script failure. Make sure you have Python installed and in PATH
+* Android studio failing to install git. You can set the path to your git binary (e.g. the homebrew one) 
+  in the preferences under Version Control > Git
+
+You should be able to build and run the project in the simulator.
+
+## How to start a fresh project of your own
+
+### Rust core
 
 1. Make sure you have the following rust targets installed (e.g. `rustup target add aarch64-apple-ios`)
 
@@ -106,7 +190,7 @@ For web it uses [`yew`](https://yew.rs/).
    cargo build
    ```
 
-## Android App
+### Android App
 
 1. Create a Kotlin App in Android Studio (e.g. "Empty Activity" at `/Android`)
 
@@ -230,7 +314,7 @@ For web it uses [`yew`](https://yew.rs/).
 
    1. run the app in a simulator to show that the shared function is called
 
-## iOS App
+### iOS App
 
 (adapted, for UniFFI, from [this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/) by Jan-Erik Rediger, with thanks.)
 
@@ -326,7 +410,7 @@ For web it uses [`yew`](https://yew.rs/).
    }
    ```
 
-## Web
+### Yew web app
 
 1. Install [`trunk`](https://github.com/thedodd/trunk)
 1. Create a new rust binary ...
