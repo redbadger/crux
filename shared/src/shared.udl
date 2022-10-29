@@ -3,6 +3,22 @@ namespace shared {
   string add_for_platform(u32 left, u32 right, Platform platform);
 };
 
+[Error]
+enum PlatformError {
+  "InternalPlatformError",
+};
+
+callback interface Platform {
+  [Throws=PlatformError]
+  string get();
+};
+
+interface Core {
+  Request message(Msg msg);
+  Request response(Response res);
+  ViewModel view();
+};
+
 [Enum]
 interface Msg {
   Clear();
@@ -14,30 +30,18 @@ interface Msg {
 };
 
 [Enum]
-interface Cmd {
-  HttpGet(string url, sequence<u8> uuid);
-  TimeGet();
+interface Request {
+  Http(string url, sequence<u8> uuid);
+  Time(sequence<u8> uuid);
   Render();
+};
+
+[Enum]
+interface Response {
+  Http(sequence<u8> uuid, sequence<u8> bytes);
+  Time(sequence<u8> uuid, string iso_time);
 };
 
 dictionary ViewModel {
   string fact;
-};
-
-interface Core {
-  constructor();
-  Cmd update(Msg msg);
-  ViewModel view();
-  // HTTP capability
-  Msg http_response(sequence<u8> uuid, sequence<u8> bytes);
-};
-
-[Error]
-enum PlatformError {
-  "InternalPlatformError",
-};
-
-callback interface Platform {
-  [Throws=PlatformError]
-  string get();
 };

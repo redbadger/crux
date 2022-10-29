@@ -177,6 +177,12 @@ impl<A: App> Core<A> {
             }
         }
     }
+
+    pub fn view(&self) -> <A as App>::ViewModel {
+        let mut model = self.model.read().unwrap();
+
+        self.app.view(&model)
+    }
 }
 
 // Application
@@ -209,7 +215,7 @@ pub struct ViewModel {
     pub fact: String,
 }
 
-enum Msg {
+pub enum Msg {
     Clear,
     Get,
     Fetch,
