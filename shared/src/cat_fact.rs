@@ -3,7 +3,7 @@ use std::sync::RwLock;
 
 const API_URL: &str = "https://catfact.ninja/fact";
 
-#[derive(Deserialize, Default, Clone, PartialEq)]
+#[derive(Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
     fact: String,
     length: i32,
@@ -67,7 +67,7 @@ impl Core {
             _ => "No fact".to_string(),
         };
 
-        ViewModel { fact: fact }
+        ViewModel { fact }
     }
 
     pub fn update(&self, msg: Msg) -> Cmd {
@@ -91,7 +91,7 @@ impl Core {
             },
             Msg::HttpResponse { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
-                self.model.write().unwrap().cat_fact = Some(fact.clone());
+                self.model.write().unwrap().cat_fact = Some(fact);
 
                 // remember when we got the fact
                 Cmd::TimeGet
