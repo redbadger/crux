@@ -94,14 +94,14 @@ impl<Msg> Default for Cmd<Msg> {
 impl<Msg> Cmd<Msg> {
     pub fn http_get<F>(&self, url: String, msg: F) -> Request
     where
-        F: Send + Sync + FnOnce(Vec<u8>) -> Msg,
+        F: Send + Sync + 'static + FnOnce(Vec<u8>) -> Msg,
     {
         self.http.get(url, msg)
     }
 
     pub fn time<F>(&self, msg: F) -> Request
     where
-        F: Send + Sync + FnOnce(String) -> Msg,
+        F: Send + Sync + 'static + FnOnce(String) -> Msg,
     {
         self.time.get(msg)
     }
@@ -122,23 +122,13 @@ pub enum Response {
     Time { uuid: Vec<u8>, iso_time: String },
 }
 
-trait App: Default {
-    type Model: Default;
-    type Msg;
-    type ViewModel;
-
-    fn update(&self, msg: Self::Msg, model: &mut Self::Model, cmd: &Cmd<Self::Msg>) -> Request;
-
-    fn view(&self, model: &Self::Model) -> Self::ViewModel;
+pub struct Core {
+    model: RwLock<Model>,
+    cmd: Cmd<Msg>,
+    app: CatFacts,
 }
 
-pub struct Core<A: App> {
-    model: RwLock<<A as App>::Model>,
-    cmd: Cmd<<A as App>::Msg>,
-    app: A,
-}
-
-impl<A: App> Default for Core<A> {
+impl Default for Core {
     fn default() -> Self {
         Self {
             model: Default::default(),
@@ -148,13 +138,13 @@ impl<A: App> Default for Core<A> {
     }
 }
 
-impl<A: App> Core<A> {
+impl Core {
     pub fn new() -> Self {
         Self::default()
     }
 
     // Direct message
-    pub fn message(&self, msg: A::Msg) -> Request {
+    pub fn message(&self, msg: Msg) -> Request {
         let mut model = self.model.write().unwrap();
         let cmd = self.app.update(msg, &mut model, &self.cmd);
 
@@ -178,8 +168,8 @@ impl<A: App> Core<A> {
         }
     }
 
-    pub fn view(&self) -> <A as App>::ViewModel {
-        let mut model = self.model.read().unwrap();
+    pub fn view(&self) -> ViewModel {
+        let model = self.model.read().unwrap();
 
         self.app.view(&model)
     }
@@ -224,11 +214,7 @@ pub enum Msg {
     CurrentTime { iso_time: String },
 }
 
-impl App for CatFacts {
-    type Model = Model;
-    type Msg = Msg;
-    type ViewModel = ViewModel;
-
+impl CatFacts {
     fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Request {
         match msg {
             Msg::Clear => {
@@ -237,7 +223,7 @@ impl App for CatFacts {
                 cmd.render()
             }
             Msg::Get => {
-                if let Some(_fact) = model.cat_fact {
+                if let Some(_fact) = &model.cat_fact {
                     cmd.render()
                 } else {
                     cmd.http_get(API_URL.to_owned(), |bytes| Msg::SetFact { bytes })
