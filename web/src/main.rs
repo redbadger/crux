@@ -68,14 +68,7 @@ impl Component for HelloWorld {
         };
 
         match req {
-            Request::Render => {
-                let view = ctx.props().core.view();
-
-                self.fact = view.fact;
-                self.image = view.image;
-
-                true
-            }
+            Request::Render => true,
             Request::Http { url, uuid } => {
                 let link = link.clone();
 
@@ -93,13 +86,15 @@ impl Component for HelloWorld {
                     iso_time: time_get().unwrap(),
                 }));
 
-                false
+                // TODO remove when we have concurrent requests
+                true
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
+        let view = ctx.props().core.view();
 
         html! {
             <>
@@ -107,12 +102,12 @@ impl Component for HelloWorld {
                     <p>{&self.result}</p>
                 </section>
                 <section class="section container has-text-centered">
-                    if let Some(image) = &self.image {
+                    if let Some(image) = &view.image {
                         <img src={image.file.clone()} />
                     }
                 </section>
                 <section class="section container has-text-centered">
-                    <p>{&self.fact}</p>
+                    <p>{&view.fact}</p>
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
