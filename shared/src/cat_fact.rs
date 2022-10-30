@@ -24,7 +24,7 @@ impl<Msg> Http<Msg> {
         self.continuations
             .write()
             .unwrap()
-            .insert(uuid.clone(), Box::new(msg));
+            .insert(uuid, Box::new(msg));
 
         Request::Http {
             uuid: uuid.to_vec(),
@@ -62,7 +62,7 @@ impl<Msg> Time<Msg> {
         self.continuations
             .write()
             .unwrap()
-            .insert(uuid.clone(), Box::new(msg));
+            .insert(uuid, Box::new(msg));
 
         Request::Time {
             uuid: uuid.to_vec(),
@@ -122,20 +122,11 @@ pub enum Response {
     Time { uuid: Vec<u8>, iso_time: String },
 }
 
+#[derive(Default)]
 pub struct Core {
     model: RwLock<Model>,
     cmd: Cmd<Msg>,
     app: CatFacts,
-}
-
-impl Default for Core {
-    fn default() -> Self {
-        Self {
-            model: Default::default(),
-            cmd: Default::default(),
-            app: Default::default(),
-        }
-    }
 }
 
 impl Core {
@@ -146,9 +137,8 @@ impl Core {
     // Direct message
     pub fn message(&self, msg: Msg) -> Request {
         let mut model = self.model.write().unwrap();
-        let cmd = self.app.update(msg, &mut model, &self.cmd);
 
-        cmd
+        self.app.update(msg, &mut model, &self.cmd)
     }
 
     // Return from capability
