@@ -31,13 +31,18 @@ struct HelloWorld {
     fact: String,
 }
 
+enum CoreMessage {
+    Message(Msg),
+    Response(Response),
+}
+
 impl Component for HelloWorld {
-    type Message = Msg;
+    type Message = CoreMessage;
     type Properties = HelloWorldProps;
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(Msg::Get);
+        link.send_message(CoreMessage::Message(Msg::Get));
 
         Self::default()
     }
@@ -56,28 +61,33 @@ impl Component for HelloWorld {
         }
         self.result = add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default();
 
-        match ctx.props().core.update(msg) {
-            Cmd::Render => {
+        let req = match msg {
+            CoreMessage::Message(msg) => ctx.props().core.message(msg),
+            CoreMessage::Response(resp) => ctx.props().core.response(resp),
+        };
+
+        match req {
+            Request::Render => {
                 self.fact = ctx.props().core.view().fact;
 
                 true
             }
-            Cmd::HttpGet { url, uuid } => {
+            Request::Http { url, uuid } => {
                 let link = link.clone();
-                let core = &ctx.props().core;
 
                 wasm_bindgen_futures::spawn_local(async move {
                     let bytes = http_get(&url).await.unwrap_or_default();
 
-                    link.send_message(core.http_response(uuid, bytes));
+                    link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
                 });
 
                 false
             }
-            Cmd::TimeGet => {
-                link.send_message(Msg::CurrentTime {
+            Request::Time { uuid } => {
+                link.send_message(CoreMessage::Response(Response::Time {
+                    uuid,
                     iso_time: time_get().unwrap(),
-                });
+                }));
 
                 false
             }
@@ -97,15 +107,15 @@ impl Component for HelloWorld {
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| Msg::Clear)}>
+                        onclick={link.callback(|_| CoreMessage::Message(Msg::Clear))}>
                         {"Clear"}
                     </button>
                     <button class="button is-primary is-success"
-                        onclick={link.callback(|_| Msg::Get)}>
+                        onclick={link.callback(|_| CoreMessage::Message(Msg::Get))}>
                         {"Get"}
                     </button>
                     <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| Msg::Fetch)}>
+                        onclick={link.callback(|_| CoreMessage::Message(Msg::Fetch))}>
                         {"Fetch"}
                     </button>
                 </div>

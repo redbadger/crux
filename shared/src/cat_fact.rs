@@ -129,6 +129,12 @@ pub struct Core {
     app: CatFacts,
 }
 
+impl PartialEq for Core {
+    fn eq(&self, _other: &Self) -> bool {
+        false // Core has all kinds of interior mutability
+    }
+}
+
 impl Core {
     pub fn new() -> Self {
         Self::default()
