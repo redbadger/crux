@@ -6,29 +6,44 @@ class GetPlatform: Platform {
     }
 }
 
+enum Message {
+    case message(Msg);
+    case response(Response);
+}
+
 @MainActor
 class Model: ObservableObject {
-    @Published var fact = ""
+    @Published var view = ViewModel(fact: "", image: .none)
     var core = Core()
     
     init() {
-        self.update(msg: Msg.getFact)
+        self.update(msg: .message(.get))
     }
     
-    private func getFact(url: String) {
+    private func getFact(uuid: [UInt8], url: String) {
         Task {
             let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .httpResponse(bytes: [UInt8](data)))
+            self.update(msg: .response(.http(uuid: uuid, bytes: [UInt8](data))))
         }
     }
     
-    func update(msg: Msg) {
-        let cmd = core.update(msg)
-        switch cmd {
-        case .render: self.fact = core.view().fact
-        case .httpGet(url: let url): getFact(url: url)
-        case .timeGet:
-            update(msg: .currentTime(isoTime:  Date().ISO8601Format()))
+    func update(msg: Message) {
+        let reqs: [Request];
+        
+        switch msg {
+        case .message(let m):
+            reqs = core.message(m)
+        case .response(let r):
+            reqs = core.response(r)
+        };
+        
+        for req in reqs {
+            switch req {
+            case .render: self.view = core.view()
+            case .http(url: let url, uuid: let uuid): getFact(uuid: uuid, url: url)
+            case .time(let uuid):
+                update(msg: .response(.time(uuid: uuid, isoTime:  Date().ISO8601Format())))
+            }
         }
     }
 }
@@ -60,27 +75,42 @@ struct ActionButton: View {
 
 struct ContentView: View {
     @ObservedObject var model: Model
-    
+        
     var body: some View {
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
             Text(try! addForPlatform(1, 2, GetPlatform()))
-            Text(model.fact).padding()
+            model.view.image.map { image in
+                AnyView(
+                    // For the loading image to work properly, we'd need to add
+                    // caching here
+                    AsyncImage(url: URL(string: image.file)) { image in
+                        image
+                            .resizable()
+                            .scaledToFit()
+                    } placeholder: {
+                        EmptyView()
+                    }
+                        .frame(maxHeight: 250)
+                        .padding())
+            } ?? AnyView(EmptyView())
+            Text(model.view.fact).padding()
             HStack {
                 ActionButton(label: "Clear", color: .red) {
-                    model.update(msg: .clearFact)
+                    model.update(msg: .message(.clear))
                 }
                 ActionButton(label: "Get", color: .green) {
-                    model.update(msg: .getFact)
+                    model.update(msg: .message(.get))
                 }
                 ActionButton(label: "Fetch", color: .yellow) {
-                    model.update(msg: .fetchFact)
+                    model.update(msg: .message(.fetch))
                 }
             }
         }
     }
+
 }
 
 struct ContentView_Previews: PreviewProvider {
