@@ -141,14 +141,14 @@ impl Core {
     }
 
     // Direct message
-    pub fn message(&self, msg: Msg) -> Request {
+    pub fn message(&self, msg: Msg) -> Vec<Request> {
         let mut model = self.model.write().unwrap();
 
         self.app.update(msg, &mut model, &self.cmd)
     }
 
     // Return from capability
-    pub fn response(&self, res: Response) -> Request {
+    pub fn response(&self, res: Response) -> Vec<Request> {
         let mut model = self.model.write().unwrap();
         match res {
             Response::Http { uuid, bytes } => {
@@ -228,45 +228,55 @@ pub enum Msg {
 }
 
 impl CatFacts {
-    fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Request {
+    fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Vec<Request> {
         match msg {
             Msg::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
 
-                cmd.render()
+                vec![cmd.render()]
             }
             Msg::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    cmd.render()
+                    vec![cmd.render()]
                 } else {
-                    cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes })
+                    model.cat_image = Some(CatImage::default());
+
+                    vec![
+                        cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
+                        cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
+                        cmd.render(),
+                    ]
                 }
             }
-            Msg::Fetch => cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
+            Msg::Fetch => {
+                model.cat_image = Some(CatImage::default());
 
+                vec![
+                    cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
+                    cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
+                    cmd.render(),
+                ]
+            }
             Msg::SetFact { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
                 model.cat_fact = Some(fact);
-                model.cat_image = Some(CatImage::default());
-
-                // TODO convert to parallel fetching so we can render here
 
                 // remember when we got the fact
-                cmd.time(|iso_time| Msg::CurrentTime { iso_time })
+                vec![cmd.time(|iso_time| Msg::CurrentTime { iso_time })]
             }
             Msg::CurrentTime { iso_time } => {
                 model.time = Some(iso_time);
 
                 // TODO convert to parallel fetching
-                cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes })
+                vec![cmd.render()]
             }
             Msg::SetImage { bytes } => {
                 let image = serde_json::from_slice::<CatImage>(&bytes).unwrap();
 
                 model.cat_image = Some(image);
 
-                cmd.render()
+                vec![cmd.render()]
             }
         }
     }

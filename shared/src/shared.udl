@@ -14,8 +14,8 @@ callback interface Platform {
 };
 
 interface Core {
-  Request message(Msg msg);
-  Request response(Response res);
+  sequence<Request> message(Msg msg);
+  sequence<Request> response(Response res);
   ViewModel view();
 };
 

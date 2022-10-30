@@ -28,8 +28,6 @@ pub struct HelloWorldProps {
 #[derive(Default)]
 struct HelloWorld {
     result: String,
-    fact: String,
-    image: Option<CatImage>,
 }
 
 enum CoreMessage {
@@ -62,34 +60,36 @@ impl Component for HelloWorld {
         }
         self.result = add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default();
 
-        let req = match msg {
+        let reqs = match msg {
             CoreMessage::Message(msg) => ctx.props().core.message(msg),
             CoreMessage::Response(resp) => ctx.props().core.response(resp),
         };
 
-        match req {
-            Request::Render => true,
-            Request::Http { url, uuid } => {
-                let link = link.clone();
+        reqs.into_iter().any(|req| {
+            match req {
+                Request::Render => true,
+                Request::Http { url, uuid } => {
+                    let link = link.clone();
 
-                wasm_bindgen_futures::spawn_local(async move {
-                    let bytes = http_get(&url).await.unwrap_or_default();
+                    wasm_bindgen_futures::spawn_local(async move {
+                        let bytes = http_get(&url).await.unwrap_or_default();
 
-                    link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
-                });
+                        link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
+                    });
 
-                false
+                    false
+                }
+                Request::Time { uuid } => {
+                    link.send_message(CoreMessage::Response(Response::Time {
+                        uuid,
+                        iso_time: time_get().unwrap(),
+                    }));
+
+                    // TODO remove when we have concurrent requests
+                    false
+                }
             }
-            Request::Time { uuid } => {
-                link.send_message(CoreMessage::Response(Response::Time {
-                    uuid,
-                    iso_time: time_get().unwrap(),
-                }));
-
-                // TODO remove when we have concurrent requests
-                true
-            }
-        }
+        })
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -103,7 +103,7 @@ impl Component for HelloWorld {
                 </section>
                 <section class="section container has-text-centered">
                     if let Some(image) = &view.image {
-                        <img src={image.file.clone()} />
+                        <img src={image.file.clone()} style="height: 400px" />
                     }
                 </section>
                 <section class="section container has-text-centered">
