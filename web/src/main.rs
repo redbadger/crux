@@ -29,6 +29,7 @@ pub struct HelloWorldProps {
 struct HelloWorld {
     result: String,
     fact: String,
+    image: Option<CatImage>,
 }
 
 enum CoreMessage {
@@ -68,7 +69,10 @@ impl Component for HelloWorld {
 
         match req {
             Request::Render => {
-                self.fact = ctx.props().core.view().fact;
+                let view = ctx.props().core.view();
+
+                self.fact = view.fact;
+                self.image = view.image;
 
                 true
             }
@@ -102,7 +106,12 @@ impl Component for HelloWorld {
                 <section class="section title has-text-centered">
                     <p>{&self.result}</p>
                 </section>
-                <section class="section has-text-centered">
+                <section class="section container has-text-centered">
+                    if let Some(image) = &self.image {
+                        <img src={image.file.clone()} />
+                    }
+                </section>
+                <section class="section container has-text-centered">
                     <p>{&self.fact}</p>
                 </section>
                 <div class="buttons container is-centered">

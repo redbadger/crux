@@ -42,6 +42,11 @@ interface Response {
   Time(sequence<u8> uuid, string iso_time);
 };
 
+dictionary CatImage {
+  string file;
+};
+
 dictionary ViewModel {
   string fact;
+  CatImage? image;
 };

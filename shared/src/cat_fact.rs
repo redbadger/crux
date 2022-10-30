@@ -173,7 +173,9 @@ impl Core {
 
 // Application
 
-const API_URL: &str = "https://catfact.ninja/fact";
+const FACT_API_URL: &str = "https://catfact.ninja/fact";
+const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
+const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 
 #[derive(Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
@@ -187,18 +189,33 @@ impl CatFact {
     }
 }
 
+#[derive(Deserialize, PartialEq, Eq, Clone)]
+pub struct CatImage {
+    pub file: String,
+}
+
+impl Default for CatImage {
+    fn default() -> Self {
+        Self {
+            file: CAT_LOADING_URL.to_string(),
+        }
+    }
+}
+
 #[derive(Default)]
 struct CatFacts {}
 
 #[derive(PartialEq, Default)]
 struct Model {
     cat_fact: Option<CatFact>,
+    cat_image: Option<CatImage>,
     time: Option<String>,
 }
 
 #[derive(Default)]
 pub struct ViewModel {
     pub fact: String,
+    pub image: Option<CatImage>,
 }
 
 pub enum Msg {
@@ -215,6 +232,7 @@ impl CatFacts {
         match msg {
             Msg::Clear => {
                 model.cat_fact = None;
+                model.cat_image = None;
 
                 cmd.render()
             }
@@ -222,14 +240,17 @@ impl CatFacts {
                 if let Some(_fact) = &model.cat_fact {
                     cmd.render()
                 } else {
-                    cmd.http_get(API_URL.to_owned(), |bytes| Msg::SetFact { bytes })
+                    cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes })
                 }
             }
-            Msg::Fetch => cmd.http_get(API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
+            Msg::Fetch => cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
 
             Msg::SetFact { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
                 model.cat_fact = Some(fact);
+                model.cat_image = Some(CatImage::default());
+
+                // TODO convert to parallel fetching so we can render here
 
                 // remember when we got the fact
                 cmd.time(|iso_time| Msg::CurrentTime { iso_time })
@@ -237,21 +258,28 @@ impl CatFacts {
             Msg::CurrentTime { iso_time } => {
                 model.time = Some(iso_time);
 
+                // TODO convert to parallel fetching
+                cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes })
+            }
+            Msg::SetImage { bytes } => {
+                let image = serde_json::from_slice::<CatImage>(&bytes).unwrap();
+
+                model.cat_image = Some(image);
+
                 cmd.render()
             }
-            Msg::SetImage { bytes: _bytes } => cmd.render(),
         }
     }
 
     fn view(&self, model: &Model) -> ViewModel {
-        let fact = match model {
-            Model {
-                cat_fact: Some(fact),
-                time: Some(time),
-            } => format!("Fact from {}: {}", time, fact.format()),
+        let fact = match (&model.cat_fact, &model.time) {
+            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
             _ => "No fact".to_string(),
         };
 
-        ViewModel { fact }
+        ViewModel {
+            fact,
+            image: model.cat_image.clone(),
+        }
     }
 }
