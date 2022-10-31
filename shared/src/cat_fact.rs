@@ -323,7 +323,6 @@ struct Model {
     cat_fact: Option<CatFact>,
     cat_image: Option<CatImage>,
     time: Option<String>,
-    restoring_state: bool,
 }
 
 #[derive(Default)]
@@ -350,8 +349,12 @@ impl CatFacts {
             Msg::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
+                let bytes = serde_json::to_vec(&model).unwrap();
 
-                vec![cmd.render()]
+                vec![
+                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
+                    cmd.render(),
+                ]
             }
             Msg::Get => {
                 if let Some(_fact) = &model.cat_fact {
@@ -359,25 +362,6 @@ impl CatFacts {
                 } else {
                     model.cat_image = Some(CatImage::default());
 
-                    if model.restoring_state {
-                        vec![cmd.render()]
-                    } else {
-                        vec![
-                            cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
-                            cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage {
-                                bytes,
-                            }),
-                            cmd.render(),
-                        ]
-                    }
-                }
-            }
-            Msg::Fetch => {
-                model.cat_image = Some(CatImage::default());
-
-                if model.restoring_state {
-                    vec![cmd.render()]
-                } else {
                     vec![
                         cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
                         cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
@@ -385,13 +369,21 @@ impl CatFacts {
                     ]
                 }
             }
+            Msg::Fetch => {
+                model.cat_image = Some(CatImage::default());
+
+                vec![
+                    cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
+                    cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
+                    cmd.render(),
+                ]
+            }
             Msg::SetFact { bytes } => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
                 model.cat_fact = Some(fact);
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                // remember when we got the fact
                 vec![
                     cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
                     cmd.time(|iso_time| Msg::CurrentTime { iso_time }),
@@ -401,7 +393,6 @@ impl CatFacts {
                 model.time = Some(iso_time);
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                // TODO convert to parallel fetching
                 vec![
                     cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
                     cmd.render(),
@@ -419,17 +410,12 @@ impl CatFacts {
                 ]
             }
             Msg::Restore => {
-                // TODO solve persistent vs. ephemeral state
-                model.restoring_state = true;
-
                 vec![cmd.kv_read("state".to_string(), |bytes| Msg::SetState { bytes })]
             }
             Msg::SetState { bytes } => {
                 if let Some(bytes) = bytes {
                     *model = serde_json::from_slice::<Model>(&bytes).unwrap();
                 }
-
-                model.restoring_state = false;
 
                 vec![cmd.render()]
             }

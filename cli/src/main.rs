@@ -90,6 +90,7 @@ async fn write_state(_key: &str, bytes: &[u8]) -> Result<()> {
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(".cat_facts")
         .await?;
 
