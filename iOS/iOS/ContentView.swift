@@ -43,6 +43,10 @@ class Model: ObservableObject {
             case .http(url: let url, uuid: let uuid): httpGet(uuid: uuid, url: url)
             case .time(let uuid):
                 update(msg: .response(.time(uuid: uuid, isoTime: Date().ISO8601Format())))
+            case .kvRead(uuid: let uuid, key: _):
+                update(msg: .response(.kvRead(uuid: uuid, bytes: .none)))
+            case .kvWrite(uuid: let uuid, key: _, bytes: _):
+                update(msg: .response(.kvWrite(uuid: uuid, success: false)))
             }
         }
     }

@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_4935_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_18f3_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_4935_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_18f3_rustbuffer_free(self, $0) }
     }
 }
 
@@ -307,6 +307,27 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 }
 
+fileprivate struct FfiConverterBool : FfiConverter {
+    typealias FfiType = Int8
+    typealias SwiftType = Bool
+
+    static func lift(_ value: Int8) throws -> Bool {
+        return value != 0
+    }
+
+    static func lower(_ value: Bool) -> Int8 {
+        return value ? 1 : 0
+    }
+
+    static func read(from buf: Reader) throws -> Bool {
+        return try lift(buf.readInt())
+    }
+
+    static func write(_ value: Bool, into buf: Writer) {
+        buf.writeInt(lower(value))
+    }
+}
+
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -367,12 +388,12 @@ public class Core: CoreProtocol {
     
     rustCall() {
     
-    shared_4935_Core_new($0)
+    shared_18f3_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_4935_Core_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_18f3_Core_object_free(pointer, $0) }
     }
 
     
@@ -383,7 +404,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_4935_Core_message(self.pointer, 
+    shared_18f3_Core_message(self.pointer, 
         FfiConverterTypeMsg.lower(`msg`), $0
     )
 }
@@ -394,7 +415,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_4935_Core_response(self.pointer, 
+    shared_18f3_Core_response(self.pointer, 
         FfiConverterTypeResponse.lower(`res`), $0
     )
 }
@@ -405,7 +426,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_4935_Core_view(self.pointer, $0
+    shared_18f3_Core_view(self.pointer, $0
     )
 }
         )
@@ -532,9 +553,12 @@ fileprivate struct FfiConverterTypeViewModel: FfiConverterRustBuffer {
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 public enum Msg {
     
+    case `none`
     case `clear`
     case `get`
     case `fetch`
+    case `restore`
+    case `setState`(`bytes`: [UInt8]?)
     case `setFact`(`bytes`: [UInt8])
     case `setImage`(`bytes`: [UInt8])
     case `currentTime`(`isoTime`: String)
@@ -547,21 +571,29 @@ fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
         let variant: Int32 = try buf.readInt()
         switch variant {
         
-        case 1: return .`clear`
+        case 1: return .`none`
         
-        case 2: return .`get`
+        case 2: return .`clear`
         
-        case 3: return .`fetch`
+        case 3: return .`get`
         
-        case 4: return .`setFact`(
+        case 4: return .`fetch`
+        
+        case 5: return .`restore`
+        
+        case 6: return .`setState`(
+            `bytes`: try FfiConverterOptionSequenceUInt8.read(from: buf)
+        )
+        
+        case 7: return .`setFact`(
             `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
         )
         
-        case 5: return .`setImage`(
+        case 8: return .`setImage`(
             `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
         )
         
-        case 6: return .`currentTime`(
+        case 9: return .`currentTime`(
             `isoTime`: try FfiConverterString.read(from: buf)
         )
         
@@ -573,30 +605,43 @@ fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
         switch value {
         
         
-        case .`clear`:
+        case .`none`:
             buf.writeInt(Int32(1))
         
         
-        case .`get`:
+        case .`clear`:
             buf.writeInt(Int32(2))
         
         
-        case .`fetch`:
+        case .`get`:
             buf.writeInt(Int32(3))
         
         
-        case let .`setFact`(`bytes`):
+        case .`fetch`:
             buf.writeInt(Int32(4))
+        
+        
+        case .`restore`:
+            buf.writeInt(Int32(5))
+        
+        
+        case let .`setState`(`bytes`):
+            buf.writeInt(Int32(6))
+            FfiConverterOptionSequenceUInt8.write(`bytes`, into: buf)
+            
+        
+        case let .`setFact`(`bytes`):
+            buf.writeInt(Int32(7))
             FfiConverterSequenceUInt8.write(`bytes`, into: buf)
             
         
         case let .`setImage`(`bytes`):
-            buf.writeInt(Int32(5))
+            buf.writeInt(Int32(8))
             FfiConverterSequenceUInt8.write(`bytes`, into: buf)
             
         
         case let .`currentTime`(`isoTime`):
-            buf.writeInt(Int32(6))
+            buf.writeInt(Int32(9))
             FfiConverterString.write(`isoTime`, into: buf)
             
         }
@@ -613,6 +658,8 @@ public enum Request {
     
     case `http`(`url`: String, `uuid`: [UInt8])
     case `time`(`uuid`: [UInt8])
+    case `kvRead`(`uuid`: [UInt8], `key`: String)
+    case `kvWrite`(`uuid`: [UInt8], `key`: String, `bytes`: [UInt8])
     case `render`
 }
 
@@ -632,7 +679,18 @@ fileprivate struct FfiConverterTypeRequest: FfiConverterRustBuffer {
             `uuid`: try FfiConverterSequenceUInt8.read(from: buf)
         )
         
-        case 3: return .`render`
+        case 3: return .`kvRead`(
+            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
+            `key`: try FfiConverterString.read(from: buf)
+        )
+        
+        case 4: return .`kvWrite`(
+            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
+            `key`: try FfiConverterString.read(from: buf), 
+            `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
+        )
+        
+        case 5: return .`render`
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -653,8 +711,21 @@ fileprivate struct FfiConverterTypeRequest: FfiConverterRustBuffer {
             FfiConverterSequenceUInt8.write(`uuid`, into: buf)
             
         
-        case .`render`:
+        case let .`kvRead`(`uuid`,`key`):
             buf.writeInt(Int32(3))
+            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterString.write(`key`, into: buf)
+            
+        
+        case let .`kvWrite`(`uuid`,`key`,`bytes`):
+            buf.writeInt(Int32(4))
+            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterString.write(`key`, into: buf)
+            FfiConverterSequenceUInt8.write(`bytes`, into: buf)
+            
+        
+        case .`render`:
+            buf.writeInt(Int32(5))
         
         }
     }
@@ -670,6 +741,8 @@ public enum Response {
     
     case `http`(`uuid`: [UInt8], `bytes`: [UInt8])
     case `time`(`uuid`: [UInt8], `isoTime`: String)
+    case `kvRead`(`uuid`: [UInt8], `bytes`: [UInt8]?)
+    case `kvWrite`(`uuid`: [UInt8], `success`: Bool)
 }
 
 fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
@@ -687,6 +760,16 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
         case 2: return .`time`(
             `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
             `isoTime`: try FfiConverterString.read(from: buf)
+        )
+        
+        case 3: return .`kvRead`(
+            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
+            `bytes`: try FfiConverterOptionSequenceUInt8.read(from: buf)
+        )
+        
+        case 4: return .`kvWrite`(
+            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
+            `success`: try FfiConverterBool.read(from: buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -707,6 +790,18 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
             buf.writeInt(Int32(2))
             FfiConverterSequenceUInt8.write(`uuid`, into: buf)
             FfiConverterString.write(`isoTime`, into: buf)
+            
+        
+        case let .`kvRead`(`uuid`,`bytes`):
+            buf.writeInt(Int32(3))
+            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterOptionSequenceUInt8.write(`bytes`, into: buf)
+            
+        
+        case let .`kvWrite`(`uuid`,`success`):
+            buf.writeInt(Int32(4))
+            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterBool.write(`success`, into: buf)
             
         }
     }
@@ -891,7 +986,7 @@ fileprivate struct FfiConverterCallbackInterfacePlatform {
     private static var callbackInitialized = false
     private static func initCallback() {
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-                ffi_shared_4935_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
+                ffi_shared_18f3_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
         }
     }
     private static func ensureCallbackinitialized() {
@@ -959,6 +1054,27 @@ fileprivate struct FfiConverterOptionTypeCatImage: FfiConverterRustBuffer {
     }
 }
 
+fileprivate struct FfiConverterOptionSequenceUInt8: FfiConverterRustBuffer {
+    typealias SwiftType = [UInt8]?
+
+    static func write(_ value: SwiftType, into buf: Writer) {
+        guard let value = value else {
+            buf.writeInt(Int8(0))
+            return
+        }
+        buf.writeInt(Int8(1))
+        FfiConverterSequenceUInt8.write(value, into: buf)
+    }
+
+    static func read(from buf: Reader) throws -> SwiftType {
+        switch try buf.readInt() as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceUInt8.read(from: buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
 fileprivate struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
     typealias SwiftType = [UInt8]
 
@@ -1009,7 +1125,7 @@ public func `addForPlatform`(_ `left`: UInt32, _ `right`: UInt32, _ `platform`: 
     
     rustCallWithError(FfiConverterTypePlatformError.self) {
     
-    shared_4935_add_for_platform(
+    shared_18f3_add_for_platform(
         FfiConverterUInt32.lower(`left`), 
         FfiConverterUInt32.lower(`right`), 
         FfiConverterCallbackInterfacePlatform.lower(`platform`), $0)
