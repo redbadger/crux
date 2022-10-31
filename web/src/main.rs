@@ -28,16 +28,20 @@ pub struct HelloWorldProps {
 #[derive(Default)]
 struct HelloWorld {
     result: String,
-    fact: String,
+}
+
+enum CoreMessage {
+    Message(Msg),
+    Response(Response),
 }
 
 impl Component for HelloWorld {
-    type Message = Msg;
+    type Message = CoreMessage;
     type Properties = HelloWorldProps;
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(Msg::GetFact);
+        link.send_message(CoreMessage::Message(Msg::Get));
 
         Self::default()
     }
@@ -56,54 +60,66 @@ impl Component for HelloWorld {
         }
         self.result = add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default();
 
-        match ctx.props().core.update(msg) {
-            Cmd::Render => {
-                self.fact = ctx.props().core.view().fact;
+        let reqs = match msg {
+            CoreMessage::Message(msg) => ctx.props().core.message(msg),
+            CoreMessage::Response(resp) => ctx.props().core.response(resp),
+        };
 
-                true
-            }
-            Cmd::HttpGet { url } => {
-                let link = link.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    link.send_message(Msg::HttpResponse {
-                        bytes: http_get(&url).await.unwrap_or_default(),
+        reqs.into_iter().any(|req| {
+            match req {
+                Request::Render => true,
+                Request::Http { url, uuid } => {
+                    let link = link.clone();
+
+                    wasm_bindgen_futures::spawn_local(async move {
+                        let bytes = http_get(&url).await.unwrap_or_default();
+
+                        link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
                     });
-                });
 
-                false
-            }
-            Cmd::TimeGet => {
-                link.send_message(Msg::CurrentTime {
-                    iso_time: time_get().unwrap(),
-                });
+                    false
+                }
+                Request::Time { uuid } => {
+                    link.send_message(CoreMessage::Response(Response::Time {
+                        uuid,
+                        iso_time: time_get().unwrap(),
+                    }));
 
-                false
+                    // TODO remove when we have concurrent requests
+                    false
+                }
             }
-        }
+        })
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
+        let view = ctx.props().core.view();
 
         html! {
             <>
                 <section class="section title has-text-centered">
                     <p>{&self.result}</p>
                 </section>
-                <section class="section has-text-centered">
-                    <p>{&self.fact}</p>
+                <section class="section container has-text-centered">
+                    if let Some(image) = &view.image {
+                        <img src={image.file.clone()} style="height: 400px" />
+                    }
+                </section>
+                <section class="section container has-text-centered">
+                    <p>{&view.fact}</p>
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| Msg::ClearFact)}>
+                        onclick={link.callback(|_| CoreMessage::Message(Msg::Clear))}>
                         {"Clear"}
                     </button>
                     <button class="button is-primary is-success"
-                        onclick={link.callback(|_| Msg::GetFact)}>
+                        onclick={link.callback(|_| CoreMessage::Message(Msg::Get))}>
                         {"Get"}
                     </button>
                     <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| Msg::FetchFact)}>
+                        onclick={link.callback(|_| CoreMessage::Message(Msg::Fetch))}>
                         {"Fetch"}
                     </button>
                 </div>

@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Public
@@ -16,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
 import okhttp3.ResponseBody
 import redbadger.rmm.shared.*
@@ -60,25 +62,35 @@ interface HttpGetService {
     }
 }
 
+sealed class CoreMessage {
+    data class Message(
+        val msg: Msg
+    ) : CoreMessage()
+
+    data class Response(
+        val res: redbadger.rmm.shared.Response
+    ) : CoreMessage()
+}
+
 class Model : ViewModel() {
-    var catFact: String by mutableStateOf("Initial")
+    var view: redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null))
         private set
 
     private val core = Core()
 
     init {
-        update(Msg.GetFact)
+        update(CoreMessage.Message(Msg.Get))
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
-    private fun getFact(url: String) {
-        val catFactApi = HttpGetService.create().get(url)
-        catFactApi?.enqueue(object : Callback<ResponseBody?> {
+    private fun httpGet(url: String, uuid: List<UByte>) {
+        val call = HttpGetService.create().get(url)
+        call?.enqueue(object : Callback<ResponseBody?> {
             override fun onResponse(
                 call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
             ) {
                 response?.body()?.bytes()?.toUByteArray()?.toList()?.let { bytes ->
-                    update(Msg.HttpResponse(bytes))
+                    update(CoreMessage.Response(redbadger.rmm.shared.Response.Http(uuid, bytes)))
                 }
             }
 
@@ -86,19 +98,37 @@ class Model : ViewModel() {
         })
     }
 
-    fun update(msg: Msg) {
-        when (val cmd = core.update(msg)) {
-            is Cmd.Render -> {
-                this.catFact = core.view().fact
+    fun update(msg: CoreMessage) {
+        val requests: List<Request> = when (msg) {
+            is CoreMessage.Message -> {
+                core.message(msg.msg)
             }
-            is Cmd.HttpGet -> {
-                getFact(cmd.url)
+            is CoreMessage.Response -> {
+                core.response(msg.res)
             }
-            is Cmd.TimeGet -> {
-                val isoTime =
-                    ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+        }
 
-                update(Msg.CurrentTime(isoTime))
+        for (req in requests) {
+            when (req) {
+                is Request.Render -> {
+                    this.view = core.view()
+                }
+                is Request.Http -> {
+                    httpGet(req.url, req.uuid)
+                }
+                is Request.Time -> {
+                    val isoTime =
+                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+
+                    update(
+                        CoreMessage.Response(
+                            redbadger.rmm.shared.Response.Time(
+                                req.uuid,
+                                isoTime
+                            )
+                        )
+                    )
+                }
             }
         }
     }
@@ -115,23 +145,40 @@ fun CatFacts(model: Model = viewModel()) {
     ) {
         Icon(Icons.Filled.Public, "Platform")
         Text(text = addForPlatform(1u, 2u, GetPlatform()), modifier = Modifier.padding(10.dp))
-        Text(text = model.catFact, modifier = Modifier.padding(10.dp))
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .height(250.dp)
+                .padding(10.dp)
+        ) {
+            model.view.image?.let {
+                Image(
+                    painter = rememberAsyncImagePainter(it.file),
+                    contentDescription = "cat image",
+                    modifier = Modifier
+                        .height(250.dp)
+                        .fillMaxWidth()
+                )
+            }
+        }
+        Text(text = model.view.fact, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = {
-                    model.update(Msg.ClearFact)
+                    model.update(CoreMessage.Message(Msg.Clear))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) { Text(text = "Clear", color = Color.White) }
             Button(
                 onClick = {
-                    model.update(Msg.GetFact)
+                    model.update(CoreMessage.Message(Msg.Get))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) { Text(text = "Get", color = Color.White) }
             Button(
                 onClick = {
-                    model.update(Msg.FetchFact)
+                    model.update(CoreMessage.Message(Msg.Fetch))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
             ) { Text(text = "Fetch", color = Color.White) }
