@@ -30,6 +30,7 @@ import retrofit2.http.Url
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import redbadger.rmm.shared.Response as Rsp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,7 +69,7 @@ sealed class CoreMessage {
     ) : CoreMessage()
 
     data class Response(
-        val res: redbadger.rmm.shared.Response
+        val res: Rsp
     ) : CoreMessage()
 }
 
@@ -90,7 +91,7 @@ class Model : ViewModel() {
                 call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
             ) {
                 response?.body()?.bytes()?.toUByteArray()?.toList()?.let { bytes ->
-                    update(CoreMessage.Response(redbadger.rmm.shared.Response.Http(uuid, bytes)))
+                    update(CoreMessage.Response(Rsp.Http(uuid, bytes)))
                 }
             }
 
@@ -120,34 +121,13 @@ class Model : ViewModel() {
                     val isoTime =
                         ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
-                    update(
-                        CoreMessage.Response(
-                            redbadger.rmm.shared.Response.Time(
-                                req.uuid,
-                                isoTime
-                            )
-                        )
-                    )
+                    update(CoreMessage.Response(Rsp.Time(req.uuid, isoTime)))
                 }
                 is Request.KvRead -> {
-                    update(
-                        CoreMessage.Response(
-                            redbadger.rmm.shared.Response.KvRead(
-                                req.uuid,
-                                null
-                            )
-                        )
-                    )
+                    update(CoreMessage.Response(Rsp.KvRead(req.uuid, null)))
                 }
                 is Request.KvWrite -> {
-                    update(
-                        CoreMessage.Response(
-                            redbadger.rmm.shared.Response.KvWrite(
-                                req.uuid,
-                                false
-                            )
-                        )
-                    )
+                    update(CoreMessage.Response(Rsp.KvWrite(req.uuid, false)))
                 }
             }
         }
