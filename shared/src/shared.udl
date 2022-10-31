@@ -22,9 +22,12 @@ interface Core {
 
 [Enum]
 interface Msg {
+  None();
   Clear();
   Get();
   Fetch();
+  Restore();
+  SetState(sequence<u8>? bytes);
   SetFact(sequence<u8> bytes);
   SetImage(sequence<u8> bytes);
   CurrentTime(string iso_time);
@@ -34,6 +37,8 @@ interface Msg {
 interface Request {
   Http(string url, sequence<u8> uuid);
   Time(sequence<u8> uuid);
+  KVRead(sequence<u8> uuid, string key);
+  KVWrite(sequence<u8> uuid, string key, sequence<u8> bytes);
   Render();
 };
 
@@ -41,6 +46,8 @@ interface Request {
 interface Response {
   Http(sequence<u8> uuid, sequence<u8> bytes);
   Time(sequence<u8> uuid, string iso_time);
+  KVRead(sequence<u8> uuid, sequence<u8>? bytes);
+  KVWrite(sequence<u8> uuid, boolean success);
 };
 
 dictionary CatImage {

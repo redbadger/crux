@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
@@ -77,9 +77,69 @@ impl<Msg> Time<Msg> {
     }
 }
 
+struct KeyValue<Msg> {
+    reads: RwLock<HashMap<[u8; 16], Box<dyn FnOnce(Option<Vec<u8>>) -> Msg + Sync + Send>>>,
+    writes: RwLock<HashMap<[u8; 16], Box<dyn FnOnce(bool) -> Msg + Sync + Send>>>,
+}
+
+impl<Msg> Default for KeyValue<Msg> {
+    fn default() -> Self {
+        Self {
+            reads: RwLock::new(HashMap::new()),
+            writes: RwLock::new(HashMap::new()),
+        }
+    }
+}
+
+impl<Msg> KeyValue<Msg> {
+    pub fn write<F>(&self, key: String, bytes: Vec<u8>, msg: F) -> Request
+    where
+        F: Sync + Send + FnOnce(bool) -> Msg + 'static,
+    {
+        let uuid = *Uuid::new_v4().as_bytes();
+
+        self.writes.write().unwrap().insert(uuid, Box::new(msg));
+
+        Request::KVWrite {
+            uuid: uuid.to_vec(),
+            key,
+            bytes,
+        }
+    }
+
+    pub fn written(&self, uuid: &[u8], result: bool) -> Msg {
+        let mut writes = self.writes.write().unwrap();
+        let f = writes.remove(uuid).unwrap();
+
+        f(result)
+    }
+
+    pub fn read<F>(&self, key: String, msg: F) -> Request
+    where
+        F: Sync + Send + FnOnce(Option<Vec<u8>>) -> Msg + 'static,
+    {
+        let uuid = *Uuid::new_v4().as_bytes();
+
+        self.reads.write().unwrap().insert(uuid, Box::new(msg));
+
+        Request::KVRead {
+            uuid: uuid.to_vec(),
+            key,
+        }
+    }
+
+    pub fn receive_read(&self, uuid: &[u8], bytes: Option<Vec<u8>>) -> Msg {
+        let mut reads = self.reads.write().unwrap();
+        let f = reads.remove(uuid).unwrap();
+
+        f(bytes)
+    }
+}
+
 struct Cmd<Msg> {
     http: Http<Msg>,
     time: Time<Msg>,
+    key_value: KeyValue<Msg>,
 }
 
 impl<Msg> Default for Cmd<Msg> {
@@ -87,6 +147,7 @@ impl<Msg> Default for Cmd<Msg> {
         Self {
             http: Http::default(),
             time: Time::default(),
+            key_value: KeyValue::default(),
         }
     }
 }
@@ -106,20 +167,62 @@ impl<Msg> Cmd<Msg> {
         self.time.get(msg)
     }
 
+    pub fn kv_write<F>(&self, key: String, bytes: Vec<u8>, msg: F) -> Request
+    where
+        F: Send + Sync + 'static + FnOnce(bool) -> Msg,
+    {
+        self.key_value.write(key, bytes, msg)
+    }
+
+    pub fn kv_read<F>(&self, key: String, msg: F) -> Request
+    where
+        F: Send + Sync + 'static + FnOnce(Option<Vec<u8>>) -> Msg,
+    {
+        self.key_value.read(key, msg)
+    }
+
     pub fn render(&self) -> Request {
         Request::Render
     }
 }
 
 pub enum Request {
-    Http { uuid: Vec<u8>, url: String },
-    Time { uuid: Vec<u8> },
+    Http {
+        uuid: Vec<u8>,
+        url: String,
+    },
+    Time {
+        uuid: Vec<u8>,
+    },
+    KVRead {
+        uuid: Vec<u8>,
+        key: String,
+    },
+    KVWrite {
+        uuid: Vec<u8>,
+        key: String,
+        bytes: Vec<u8>,
+    },
     Render,
 }
 
 pub enum Response {
-    Http { uuid: Vec<u8>, bytes: Vec<u8> },
-    Time { uuid: Vec<u8>, iso_time: String },
+    Http {
+        uuid: Vec<u8>,
+        bytes: Vec<u8>,
+    },
+    Time {
+        uuid: Vec<u8>,
+        iso_time: String,
+    },
+    KVRead {
+        uuid: Vec<u8>,
+        bytes: Option<Vec<u8>>,
+    },
+    KVWrite {
+        uuid: Vec<u8>,
+        success: bool,
+    },
 }
 
 #[derive(Default)]
@@ -161,6 +264,16 @@ impl Core {
 
                 self.app.update(msg, &mut model, &self.cmd)
             }
+            Response::KVRead { uuid, bytes } => {
+                let msg = self.cmd.key_value.receive_read(&uuid, bytes);
+
+                self.app.update(msg, &mut model, &self.cmd)
+            }
+            Response::KVWrite { uuid, success } => {
+                let msg = self.cmd.key_value.written(&uuid, success);
+
+                self.app.update(msg, &mut model, &self.cmd)
+            }
         }
     }
 
@@ -177,7 +290,7 @@ const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 
-#[derive(Deserialize, Default, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
     fact: String,
     length: i32,
@@ -189,7 +302,7 @@ impl CatFact {
     }
 }
 
-#[derive(Deserialize, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct CatImage {
     pub file: String,
 }
@@ -205,7 +318,7 @@ impl Default for CatImage {
 #[derive(Default)]
 struct CatFacts {}
 
-#[derive(PartialEq, Default)]
+#[derive(Serialize, Deserialize, PartialEq, Default)]
 struct Model {
     cat_fact: Option<CatFact>,
     cat_image: Option<CatImage>,
@@ -219,9 +332,12 @@ pub struct ViewModel {
 }
 
 pub enum Msg {
+    None,
     Clear,
     Get,
     Fetch,
+    Restore,                             // restore state
+    SetState { bytes: Option<Vec<u8>> }, // receive the data to restore state with
     SetFact { bytes: Vec<u8> },
     SetImage { bytes: Vec<u8> },
     CurrentTime { iso_time: String },
@@ -233,8 +349,12 @@ impl CatFacts {
             Msg::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
+                let bytes = serde_json::to_vec(&model).unwrap();
 
-                vec![cmd.render()]
+                vec![
+                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
+                    cmd.render(),
+                ]
             }
             Msg::Get => {
                 if let Some(_fact) = &model.cat_fact {
@@ -262,22 +382,44 @@ impl CatFacts {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
                 model.cat_fact = Some(fact);
 
-                // remember when we got the fact
-                vec![cmd.time(|iso_time| Msg::CurrentTime { iso_time })]
+                let bytes = serde_json::to_vec(&model).unwrap();
+
+                vec![
+                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
+                    cmd.time(|iso_time| Msg::CurrentTime { iso_time }),
+                ]
             }
             Msg::CurrentTime { iso_time } => {
                 model.time = Some(iso_time);
+                let bytes = serde_json::to_vec(&model).unwrap();
 
-                // TODO convert to parallel fetching
-                vec![cmd.render()]
+                vec![
+                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
+                    cmd.render(),
+                ]
             }
             Msg::SetImage { bytes } => {
                 let image = serde_json::from_slice::<CatImage>(&bytes).unwrap();
-
                 model.cat_image = Some(image);
+
+                let bytes = serde_json::to_vec(&model).unwrap();
+
+                vec![
+                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
+                    cmd.render(),
+                ]
+            }
+            Msg::Restore => {
+                vec![cmd.kv_read("state".to_string(), |bytes| Msg::SetState { bytes })]
+            }
+            Msg::SetState { bytes } => {
+                if let Some(bytes) = bytes {
+                    *model = serde_json::from_slice::<Model>(&bytes).unwrap();
+                }
 
                 vec![cmd.render()]
             }
+            Msg::None => vec![],
         }
     }
 

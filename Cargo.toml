@@ -1,2 +1,2 @@
 [workspace]
-members = ["shared", "web"]
+members = ["shared", "web", "cli"]

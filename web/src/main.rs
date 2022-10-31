@@ -65,29 +65,47 @@ impl Component for HelloWorld {
             CoreMessage::Response(resp) => ctx.props().core.response(resp),
         };
 
-        reqs.into_iter().any(|req| {
-            match req {
-                Request::Render => true,
-                Request::Http { url, uuid } => {
-                    let link = link.clone();
+        reqs.into_iter().any(|req| match req {
+            Request::Render => true,
+            Request::Http { url, uuid } => {
+                let link = link.clone();
 
-                    wasm_bindgen_futures::spawn_local(async move {
-                        let bytes = http_get(&url).await.unwrap_or_default();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let bytes = http_get(&url).await.unwrap_or_default();
 
-                        link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
-                    });
+                    link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
+                });
 
-                    false
-                }
-                Request::Time { uuid } => {
-                    link.send_message(CoreMessage::Response(Response::Time {
-                        uuid,
-                        iso_time: time_get().unwrap(),
-                    }));
+                false
+            }
+            Request::Time { uuid } => {
+                link.send_message(CoreMessage::Response(Response::Time {
+                    uuid,
+                    iso_time: time_get().unwrap(),
+                }));
 
-                    // TODO remove when we have concurrent requests
-                    false
-                }
+                false
+            }
+            Request::KVRead { uuid, key: _key } => {
+                // TODO implement state restoration
+                link.send_message(CoreMessage::Response(Response::KVRead {
+                    uuid,
+                    bytes: None,
+                }));
+
+                false
+            }
+            Request::KVWrite {
+                uuid,
+                key: _key,
+                bytes: _bytes,
+            } => {
+                link.send_message(CoreMessage::Response(Response::KVWrite {
+                    uuid,
+                    success: false,
+                }));
+
+                false
             }
         })
     }
