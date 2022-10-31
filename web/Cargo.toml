@@ -3,6 +3,9 @@ name = "web"
 version = "0.1.0"
 edition = "2021"
 
+[build]
+target = "wasm32-unknown-unknown"
+
 [dependencies]
 anyhow = "1.0.66"
 gloo-net = { version = "0.2.4", features = ["http"] }
