@@ -129,6 +129,26 @@ class Model : ViewModel() {
                         )
                     )
                 }
+                is Request.KvRead -> {
+                    update(
+                        CoreMessage.Response(
+                            redbadger.rmm.shared.Response.KvRead(
+                                req.uuid,
+                                null
+                            )
+                        )
+                    )
+                }
+                is Request.KvWrite -> {
+                    update(
+                        CoreMessage.Response(
+                            redbadger.rmm.shared.Response.KvWrite(
+                                req.uuid,
+                                false
+                            )
+                        )
+                    )
+                }
             }
         }
     }
