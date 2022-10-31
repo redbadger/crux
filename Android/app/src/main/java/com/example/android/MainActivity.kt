@@ -83,9 +83,9 @@ class Model : ViewModel() {
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
-    private fun getFact(url: String, uuid: List<UByte>) {
-        val catFactApi = HttpGetService.create().get(url)
-        catFactApi?.enqueue(object : Callback<ResponseBody?> {
+    private fun httpGet(url: String, uuid: List<UByte>) {
+        val call = HttpGetService.create().get(url)
+        call?.enqueue(object : Callback<ResponseBody?> {
             override fun onResponse(
                 call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
             ) {
@@ -114,7 +114,7 @@ class Model : ViewModel() {
                     this.view = core.view()
                 }
                 is Request.Http -> {
-                    getFact(req.url, req.uuid)
+                    httpGet(req.url, req.uuid)
                 }
                 is Request.Time -> {
                     val isoTime =
@@ -156,7 +156,9 @@ fun CatFacts(model: Model = viewModel()) {
                 Image(
                     painter = rememberAsyncImagePainter(it.file),
                     contentDescription = "cat image",
-                    modifier = Modifier.height(250.dp).fillMaxWidth()
+                    modifier = Modifier
+                        .height(250.dp)
+                        .fillMaxWidth()
                 )
             }
         }
