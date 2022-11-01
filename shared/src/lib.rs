@@ -74,10 +74,10 @@ impl App for CatFacts {
 
     fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Vec<Request> {
         match msg {
-            Msg::GetPlatform => vec![cmd.platform(|platform| Msg::SetPlatform { platform })],
+            Msg::GetPlatform => vec![cmd.platform.get(|platform| Msg::SetPlatform { platform })],
             Msg::SetPlatform { platform } => {
                 model.platform = platform;
-                vec![cmd.render()]
+                vec![Request::Render]
             }
             Msg::Clear => {
                 model.cat_fact = None;
@@ -85,20 +85,23 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
-                    cmd.render(),
+                    cmd.key_value
+                        .write("state".to_string(), bytes, |_| Msg::None),
+                    Request::Render,
                 ]
             }
             Msg::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![cmd.render()]
+                    vec![Request::Render]
                 } else {
                     model.cat_image = Some(CatImage::default());
 
                     vec![
-                        cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
-                        cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
-                        cmd.render(),
+                        cmd.http
+                            .get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
+                        cmd.http
+                            .get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
+                        Request::Render,
                     ]
                 }
             }
@@ -106,9 +109,11 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 vec![
-                    cmd.http_get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
-                    cmd.http_get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
-                    cmd.render(),
+                    cmd.http
+                        .get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
+                    cmd.http
+                        .get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
+                    Request::Render,
                 ]
             }
             Msg::SetFact { bytes } => {
@@ -118,8 +123,9 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
-                    cmd.time(|iso_time| Msg::CurrentTime { iso_time }),
+                    cmd.key_value
+                        .write("state".to_string(), bytes, |_| Msg::None),
+                    cmd.time.get(|iso_time| Msg::CurrentTime { iso_time }),
                 ]
             }
             Msg::CurrentTime { iso_time } => {
@@ -127,8 +133,9 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
-                    cmd.render(),
+                    cmd.key_value
+                        .write("state".to_string(), bytes, |_| Msg::None),
+                    Request::Render,
                 ]
             }
             Msg::SetImage { bytes } => {
@@ -138,19 +145,22 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.kv_write("state".to_string(), bytes, |_| Msg::None),
-                    cmd.render(),
+                    cmd.key_value
+                        .write("state".to_string(), bytes, |_| Msg::None),
+                    Request::Render,
                 ]
             }
             Msg::Restore => {
-                vec![cmd.kv_read("state".to_string(), |bytes| Msg::SetState { bytes })]
+                vec![cmd
+                    .key_value
+                    .read("state".to_string(), |bytes| Msg::SetState { bytes })]
             }
             Msg::SetState { bytes } => {
                 if let Some(bytes) = bytes {
                     *model = serde_json::from_slice::<Model>(&bytes).unwrap();
                 }
 
-                vec![cmd.render()]
+                vec![Request::Render]
             }
             Msg::None => vec![],
         }
