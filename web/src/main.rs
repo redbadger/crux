@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use js_sys::Date;
 use shared::*;
 use web_sys::window;
@@ -20,13 +20,18 @@ fn time_get() -> Result<String> {
     Ok(format!("{}", date.to_iso_string()))
 }
 
-fn platform_get() -> String {
-    let navigator = window().unwrap().navigator();
-    let agent = navigator.user_agent().unwrap_or_default();
-    let parser = Parser::new();
-    let platform = parser.parse(&agent).unwrap_or_default().name.to_string();
-    println!("{platform}");
-    platform
+fn platform_get() -> Result<String> {
+    let agent = window()
+        .ok_or_else(|| anyhow!("no DOM"))?
+        .navigator()
+        .user_agent()
+        .map_err(|e| anyhow!("no user agent {:?}", e))?;
+
+    Ok(Parser::new()
+        .parse(&agent)
+        .ok_or_else(|| anyhow!("failed to parse user agent"))?
+        .name
+        .to_string())
 }
 
 #[derive(Properties, Default, PartialEq)]
@@ -78,7 +83,7 @@ impl Component for HelloWorld {
             Request::Platform { uuid } => {
                 link.send_message(CoreMessage::Response(Response::Platform {
                     uuid,
-                    platform: platform_get(),
+                    platform: platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
                 }));
 
                 false
