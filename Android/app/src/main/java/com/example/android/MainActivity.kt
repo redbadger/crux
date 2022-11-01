@@ -45,10 +45,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-class GetPlatform : Platform {
-    override fun get(): String {
-        return Build.BRAND + " " + Build.VERSION.RELEASE
-    }
+fun getPlatform(): String {
+    return Build.BRAND + " " + Build.VERSION.RELEASE
 }
 
 interface HttpGetService {
@@ -74,13 +72,14 @@ sealed class CoreMessage {
 }
 
 class Model : ViewModel() {
-    var view: redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null))
+    var view: redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null,""))
         private set
 
     private val core = Core()
 
     init {
         update(CoreMessage.Message(Msg.Get))
+        update(CoreMessage.Message(Msg.GetPlatform))
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
@@ -123,6 +122,11 @@ class Model : ViewModel() {
 
                     update(CoreMessage.Response(Rsp.Time(req.uuid, isoTime)))
                 }
+                is Request.Platform -> {
+                    val platform = getPlatform()
+
+                    update(CoreMessage.Response(Rsp.Platform(req.uuid, platform)))
+                }
                 is Request.KvRead -> {
                     update(CoreMessage.Response(Rsp.KvRead(req.uuid, null)))
                 }
@@ -144,7 +148,7 @@ fun CatFacts(model: Model = viewModel()) {
             .padding(10.dp),
     ) {
         Icon(Icons.Filled.Public, "Platform")
-        Text(text = addForPlatform(1u, 2u, GetPlatform()), modifier = Modifier.padding(10.dp))
+        Text(text = model.view.platform, modifier = Modifier.padding(10.dp))
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,

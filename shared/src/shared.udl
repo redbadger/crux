@@ -1,16 +1,4 @@
 namespace shared {
-  [Throws=PlatformError]
-  string add_for_platform(u32 left, u32 right, Platform platform);
-};
-
-[Error]
-enum PlatformError {
-  "InternalPlatformError",
-};
-
-callback interface Platform {
-  [Throws=PlatformError]
-  string get();
 };
 
 interface Core {
@@ -23,6 +11,8 @@ interface Core {
 [Enum]
 interface Msg {
   None();
+  GetPlatform();
+  SetPlatform(string platform);
   Clear();
   Get();
   Fetch();
@@ -37,6 +27,7 @@ interface Msg {
 interface Request {
   Http(string url, sequence<u8> uuid);
   Time(sequence<u8> uuid);
+  Platform(sequence<u8> uuid);
   KVRead(sequence<u8> uuid, string key);
   KVWrite(sequence<u8> uuid, string key, sequence<u8> bytes);
   Render();
@@ -46,6 +37,7 @@ interface Request {
 interface Response {
   Http(sequence<u8> uuid, sequence<u8> bytes);
   Time(sequence<u8> uuid, string iso_time);
+  Platform(sequence<u8> uuid, string platform);
   KVRead(sequence<u8> uuid, sequence<u8>? bytes);
   KVWrite(sequence<u8> uuid, boolean success);
 };
@@ -57,4 +49,5 @@ dictionary CatImage {
 dictionary ViewModel {
   string fact;
   CatImage? image;
+  string platform;
 };

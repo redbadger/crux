@@ -1,6 +1,7 @@
 mod cmd;
 mod http;
 mod key_value;
+mod platform;
 mod time;
 
 pub use cmd::{Cmd, Request, Response};
@@ -66,6 +67,11 @@ impl<A: App> AppCore<A> {
             }
             Response::Time { uuid, iso_time } => {
                 let msg = self.cmd.time.receive(&uuid, iso_time);
+
+                self.app.update(msg, &mut model, &self.cmd)
+            }
+            Response::Platform { uuid, platform } => {
+                let msg = self.cmd.platform.receive(&uuid, platform);
 
                 self.app.update(msg, &mut model, &self.cmd)
             }

@@ -20,15 +20,22 @@ fn time_get() -> Result<String> {
     Ok(format!("{}", date.to_iso_string()))
 }
 
+fn platform_get() -> String {
+    let navigator = window().unwrap().navigator();
+    let agent = navigator.user_agent().unwrap_or_default();
+    let parser = Parser::new();
+    let platform = parser.parse(&agent).unwrap_or_default().name.to_string();
+    println!("{platform}");
+    platform
+}
+
 #[derive(Properties, Default, PartialEq)]
 pub struct HelloWorldProps {
     pub core: Core,
 }
 
 #[derive(Default)]
-struct HelloWorld {
-    result: String,
-}
+struct HelloWorld;
 
 enum CoreMessage {
     Message(Msg),
@@ -42,23 +49,13 @@ impl Component for HelloWorld {
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
         link.send_message(CoreMessage::Message(Msg::Get));
+        link.send_message(CoreMessage::Message(Msg::GetPlatform));
 
         Self::default()
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let link = ctx.link();
-
-        struct WebPlatform;
-        impl Platform for WebPlatform {
-            fn get(&self) -> Result<String, PlatformError> {
-                let navigator = window().unwrap().navigator();
-                let agent = navigator.user_agent().unwrap_or_default();
-                let parser = Parser::new();
-                Ok(parser.parse(&agent).unwrap_or_default().name.to_string())
-            }
-        }
-        self.result = add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default();
 
         let reqs = match msg {
             CoreMessage::Message(msg) => ctx.props().core.message(msg),
@@ -75,6 +72,14 @@ impl Component for HelloWorld {
 
                     link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
                 });
+
+                false
+            }
+            Request::Platform { uuid } => {
+                link.send_message(CoreMessage::Response(Response::Platform {
+                    uuid,
+                    platform: platform_get(),
+                }));
 
                 false
             }
@@ -117,7 +122,7 @@ impl Component for HelloWorld {
         html! {
             <>
                 <section class="section title has-text-centered">
-                    <p>{&self.result}</p>
+                    <p>{&view.platform}</p>
                 </section>
                 <section class="section container has-text-centered">
                     if let Some(image) = &view.image {

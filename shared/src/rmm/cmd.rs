@@ -1,4 +1,4 @@
-use super::{http::Http, key_value::KeyValue, time::Time};
+use super::{http::Http, key_value::KeyValue, platform::Platform, time::Time};
 use std::collections::HashMap;
 
 pub(crate) type Store<V, M> = HashMap<[u8; 16], Box<dyn FnOnce(V) -> M + Sync + Send>>;
@@ -8,6 +8,7 @@ pub struct Cmd<Msg> {
     pub http: Http<Msg>,
     pub time: Time<Msg>,
     pub key_value: KeyValue<Msg>,
+    pub platform: Platform<Msg>,
 }
 
 impl<Msg> Default for Cmd<Msg> {
@@ -16,6 +17,7 @@ impl<Msg> Default for Cmd<Msg> {
             http: Http::default(),
             time: Time::default(),
             key_value: KeyValue::default(),
+            platform: Platform::default(),
         }
     }
 }
@@ -33,6 +35,13 @@ impl<Msg> Cmd<Msg> {
         F: Send + Sync + 'static + FnOnce(String) -> Msg,
     {
         self.time.get(msg)
+    }
+
+    pub fn platform<F>(&self, msg: F) -> Request
+    where
+        F: Send + Sync + 'static + FnOnce(String) -> Msg,
+    {
+        self.platform.get(msg)
     }
 
     pub fn kv_write<F>(&self, key: String, bytes: Vec<u8>, msg: F) -> Request
@@ -62,6 +71,9 @@ pub enum Request {
     Time {
         uuid: Vec<u8>,
     },
+    Platform {
+        uuid: Vec<u8>,
+    },
     KVRead {
         uuid: Vec<u8>,
         key: String,
@@ -82,6 +94,10 @@ pub enum Response {
     Time {
         uuid: Vec<u8>,
         iso_time: String,
+    },
+    Platform {
+        uuid: Vec<u8>,
+        platform: String,
     },
     KVRead {
         uuid: Vec<u8>,

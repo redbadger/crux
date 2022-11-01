@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_18f3_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_b872_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_18f3_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_b872_rustbuffer_free(self, $0) }
     }
 }
 
@@ -294,19 +294,6 @@ fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
     }
 }
 
-fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
-    typealias FfiType = UInt32
-    typealias SwiftType = UInt32
-
-    static func read(from buf: Reader) throws -> UInt32 {
-        return try lift(buf.readInt())
-    }
-
-    static func write(_ value: SwiftType, into buf: Writer) {
-        buf.writeInt(lower(value))
-    }
-}
-
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -388,12 +375,12 @@ public class Core: CoreProtocol {
     
     rustCall() {
     
-    shared_18f3_Core_new($0)
+    shared_b872_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_18f3_Core_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_b872_Core_object_free(pointer, $0) }
     }
 
     
@@ -404,7 +391,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_18f3_Core_message(self.pointer, 
+    shared_b872_Core_message(self.pointer, 
         FfiConverterTypeMsg.lower(`msg`), $0
     )
 }
@@ -415,7 +402,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_18f3_Core_response(self.pointer, 
+    shared_b872_Core_response(self.pointer, 
         FfiConverterTypeResponse.lower(`res`), $0
     )
 }
@@ -426,7 +413,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_18f3_Core_view(self.pointer, $0
+    shared_b872_Core_view(self.pointer, $0
     )
 }
         )
@@ -507,12 +494,14 @@ fileprivate struct FfiConverterTypeCatImage: FfiConverterRustBuffer {
 public struct ViewModel {
     public var `fact`: String
     public var `image`: CatImage?
+    public var `platform`: String
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(`fact`: String, `image`: CatImage?) {
+    public init(`fact`: String, `image`: CatImage?, `platform`: String) {
         self.`fact` = `fact`
         self.`image` = `image`
+        self.`platform` = `platform`
     }
 }
 
@@ -525,12 +514,16 @@ extension ViewModel: Equatable, Hashable {
         if lhs.`image` != rhs.`image` {
             return false
         }
+        if lhs.`platform` != rhs.`platform` {
+            return false
+        }
         return true
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(`fact`)
         hasher.combine(`image`)
+        hasher.combine(`platform`)
     }
 }
 
@@ -539,13 +532,15 @@ fileprivate struct FfiConverterTypeViewModel: FfiConverterRustBuffer {
     fileprivate static func read(from buf: Reader) throws -> ViewModel {
         return try ViewModel(
             `fact`: FfiConverterString.read(from: buf), 
-            `image`: FfiConverterOptionTypeCatImage.read(from: buf)
+            `image`: FfiConverterOptionTypeCatImage.read(from: buf), 
+            `platform`: FfiConverterString.read(from: buf)
         )
     }
 
     fileprivate static func write(_ value: ViewModel, into buf: Writer) {
         FfiConverterString.write(value.`fact`, into: buf)
         FfiConverterOptionTypeCatImage.write(value.`image`, into: buf)
+        FfiConverterString.write(value.`platform`, into: buf)
     }
 }
 
@@ -554,6 +549,8 @@ fileprivate struct FfiConverterTypeViewModel: FfiConverterRustBuffer {
 public enum Msg {
     
     case `none`
+    case `getPlatform`
+    case `setPlatform`(`platform`: String)
     case `clear`
     case `get`
     case `fetch`
@@ -573,27 +570,33 @@ fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
         
         case 1: return .`none`
         
-        case 2: return .`clear`
+        case 2: return .`getPlatform`
         
-        case 3: return .`get`
+        case 3: return .`setPlatform`(
+            `platform`: try FfiConverterString.read(from: buf)
+        )
         
-        case 4: return .`fetch`
+        case 4: return .`clear`
         
-        case 5: return .`restore`
+        case 5: return .`get`
         
-        case 6: return .`setState`(
+        case 6: return .`fetch`
+        
+        case 7: return .`restore`
+        
+        case 8: return .`setState`(
             `bytes`: try FfiConverterOptionSequenceUInt8.read(from: buf)
         )
         
-        case 7: return .`setFact`(
+        case 9: return .`setFact`(
             `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
         )
         
-        case 8: return .`setImage`(
+        case 10: return .`setImage`(
             `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
         )
         
-        case 9: return .`currentTime`(
+        case 11: return .`currentTime`(
             `isoTime`: try FfiConverterString.read(from: buf)
         )
         
@@ -609,39 +612,48 @@ fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
             buf.writeInt(Int32(1))
         
         
-        case .`clear`:
+        case .`getPlatform`:
             buf.writeInt(Int32(2))
         
         
-        case .`get`:
+        case let .`setPlatform`(`platform`):
             buf.writeInt(Int32(3))
+            FfiConverterString.write(`platform`, into: buf)
+            
         
-        
-        case .`fetch`:
+        case .`clear`:
             buf.writeInt(Int32(4))
         
         
-        case .`restore`:
+        case .`get`:
             buf.writeInt(Int32(5))
         
         
-        case let .`setState`(`bytes`):
+        case .`fetch`:
             buf.writeInt(Int32(6))
+        
+        
+        case .`restore`:
+            buf.writeInt(Int32(7))
+        
+        
+        case let .`setState`(`bytes`):
+            buf.writeInt(Int32(8))
             FfiConverterOptionSequenceUInt8.write(`bytes`, into: buf)
             
         
         case let .`setFact`(`bytes`):
-            buf.writeInt(Int32(7))
+            buf.writeInt(Int32(9))
             FfiConverterSequenceUInt8.write(`bytes`, into: buf)
             
         
         case let .`setImage`(`bytes`):
-            buf.writeInt(Int32(8))
+            buf.writeInt(Int32(10))
             FfiConverterSequenceUInt8.write(`bytes`, into: buf)
             
         
         case let .`currentTime`(`isoTime`):
-            buf.writeInt(Int32(9))
+            buf.writeInt(Int32(11))
             FfiConverterString.write(`isoTime`, into: buf)
             
         }
@@ -658,6 +670,7 @@ public enum Request {
     
     case `http`(`url`: String, `uuid`: [UInt8])
     case `time`(`uuid`: [UInt8])
+    case `platform`(`uuid`: [UInt8])
     case `kvRead`(`uuid`: [UInt8], `key`: String)
     case `kvWrite`(`uuid`: [UInt8], `key`: String, `bytes`: [UInt8])
     case `render`
@@ -679,18 +692,22 @@ fileprivate struct FfiConverterTypeRequest: FfiConverterRustBuffer {
             `uuid`: try FfiConverterSequenceUInt8.read(from: buf)
         )
         
-        case 3: return .`kvRead`(
+        case 3: return .`platform`(
+            `uuid`: try FfiConverterSequenceUInt8.read(from: buf)
+        )
+        
+        case 4: return .`kvRead`(
             `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
             `key`: try FfiConverterString.read(from: buf)
         )
         
-        case 4: return .`kvWrite`(
+        case 5: return .`kvWrite`(
             `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
             `key`: try FfiConverterString.read(from: buf), 
             `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
         )
         
-        case 5: return .`render`
+        case 6: return .`render`
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -711,21 +728,26 @@ fileprivate struct FfiConverterTypeRequest: FfiConverterRustBuffer {
             FfiConverterSequenceUInt8.write(`uuid`, into: buf)
             
         
-        case let .`kvRead`(`uuid`,`key`):
+        case let .`platform`(`uuid`):
             buf.writeInt(Int32(3))
+            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            
+        
+        case let .`kvRead`(`uuid`,`key`):
+            buf.writeInt(Int32(4))
             FfiConverterSequenceUInt8.write(`uuid`, into: buf)
             FfiConverterString.write(`key`, into: buf)
             
         
         case let .`kvWrite`(`uuid`,`key`,`bytes`):
-            buf.writeInt(Int32(4))
+            buf.writeInt(Int32(5))
             FfiConverterSequenceUInt8.write(`uuid`, into: buf)
             FfiConverterString.write(`key`, into: buf)
             FfiConverterSequenceUInt8.write(`bytes`, into: buf)
             
         
         case .`render`:
-            buf.writeInt(Int32(5))
+            buf.writeInt(Int32(6))
         
         }
     }
@@ -741,6 +763,7 @@ public enum Response {
     
     case `http`(`uuid`: [UInt8], `bytes`: [UInt8])
     case `time`(`uuid`: [UInt8], `isoTime`: String)
+    case `platform`(`uuid`: [UInt8], `platform`: String)
     case `kvRead`(`uuid`: [UInt8], `bytes`: [UInt8]?)
     case `kvWrite`(`uuid`: [UInt8], `success`: Bool)
 }
@@ -762,12 +785,17 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
             `isoTime`: try FfiConverterString.read(from: buf)
         )
         
-        case 3: return .`kvRead`(
+        case 3: return .`platform`(
+            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
+            `platform`: try FfiConverterString.read(from: buf)
+        )
+        
+        case 4: return .`kvRead`(
             `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
             `bytes`: try FfiConverterOptionSequenceUInt8.read(from: buf)
         )
         
-        case 4: return .`kvWrite`(
+        case 5: return .`kvWrite`(
             `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
             `success`: try FfiConverterBool.read(from: buf)
         )
@@ -792,14 +820,20 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
             FfiConverterString.write(`isoTime`, into: buf)
             
         
-        case let .`kvRead`(`uuid`,`bytes`):
+        case let .`platform`(`uuid`,`platform`):
             buf.writeInt(Int32(3))
+            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterString.write(`platform`, into: buf)
+            
+        
+        case let .`kvRead`(`uuid`,`bytes`):
+            buf.writeInt(Int32(4))
             FfiConverterSequenceUInt8.write(`uuid`, into: buf)
             FfiConverterOptionSequenceUInt8.write(`bytes`, into: buf)
             
         
         case let .`kvWrite`(`uuid`,`success`):
-            buf.writeInt(Int32(4))
+            buf.writeInt(Int32(5))
             FfiConverterSequenceUInt8.write(`uuid`, into: buf)
             FfiConverterBool.write(`success`, into: buf)
             
@@ -810,228 +844,6 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
 
 extension Response: Equatable, Hashable {}
 
-
-
-public enum PlatformError {
-
-    
-    
-    // Simple error enums only carry a message
-    case InternalPlatformError(message: String)
-    
-}
-
-fileprivate struct FfiConverterTypePlatformError: FfiConverterRustBuffer {
-    typealias SwiftType = PlatformError
-
-    static func read(from buf: Reader) throws -> PlatformError {
-        let variant: Int32 = try buf.readInt()
-        switch variant {
-
-        
-
-        
-        case 1: return .InternalPlatformError(
-            message: try FfiConverterString.read(from: buf)
-        )
-        
-
-        default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    static func write(_ value: PlatformError, into buf: Writer) {
-        switch value {
-
-        
-
-        
-        case let .InternalPlatformError(message):
-            buf.writeInt(Int32(1))
-            FfiConverterString.write(message, into: buf)
-
-        
-        }
-    }
-}
-
-
-extension PlatformError: Equatable, Hashable {}
-
-extension PlatformError: Error { }
-
-fileprivate extension NSLock {
-    func withLock<T>(f: () throws -> T) rethrows -> T {
-        self.lock()
-        defer { self.unlock() }
-        return try f()
-    }
-}
-
-fileprivate typealias Handle = UInt64
-fileprivate class ConcurrentHandleMap<T> {
-    private var leftMap: [Handle: T] = [:]
-    private var counter: [Handle: UInt64] = [:]
-    private var rightMap: [ObjectIdentifier: Handle] = [:]
-
-    private let lock = NSLock()
-    private var currentHandle: Handle = 0
-    private let stride: Handle = 1
-
-    func insert(obj: T) -> Handle {
-        lock.withLock {
-            let id = ObjectIdentifier(obj as AnyObject)
-            let handle = rightMap[id] ?? {
-                currentHandle += stride
-                let handle = currentHandle
-                leftMap[handle] = obj
-                rightMap[id] = handle
-                return handle
-            }()
-            counter[handle] = (counter[handle] ?? 0) + 1
-            return handle
-        }
-    }
-
-    func get(handle: Handle) -> T? {
-        lock.withLock {
-            leftMap[handle]
-        }
-    }
-
-    func delete(handle: Handle) {
-        remove(handle: handle)
-    }
-
-    @discardableResult
-    func remove(handle: Handle) -> T? {
-        lock.withLock {
-            defer { counter[handle] = (counter[handle] ?? 1) - 1 }
-            guard counter[handle] == 1 else { return leftMap[handle] }
-            let obj = leftMap.removeValue(forKey: handle)
-            if let obj = obj {
-                rightMap.removeValue(forKey: ObjectIdentifier(obj as AnyObject))
-            }
-            return obj
-        }
-    }
-}
-
-// Magic number for the Rust proxy to call using the same mechanism as every other method,
-// to free the callback once it's dropped by Rust.
-private let IDX_CALLBACK_FREE: Int32 = 0
-
-// Declaration and FfiConverters for Platform Callback Interface
-
-public protocol Platform : AnyObject {
-    func `get`() throws -> String
-    
-}
-
-// The ForeignCallback that is passed to Rust.
-fileprivate let foreignCallbackCallbackInterfacePlatform : ForeignCallback =
-    { (handle: Handle, method: Int32, args: RustBuffer, out_buf: UnsafeMutablePointer<RustBuffer>) -> Int32 in
-        func `invokeGet`(_ swiftCallbackInterface: Platform, _ args: RustBuffer) throws -> RustBuffer {
-        defer { args.deallocate() }
-            let result = try swiftCallbackInterface.`get`()
-            let writer = Writer()
-                FfiConverterString.write(result, into: writer)
-                return RustBuffer(bytes: writer.bytes)// TODO catch errors and report them back to Rust.
-                // https://github.com/mozilla/uniffi-rs/issues/351
-
-        }
-        
-
-        let cb: Platform
-        do {
-            cb = try FfiConverterCallbackInterfacePlatform.lift(handle)
-        } catch {
-            out_buf.pointee = FfiConverterString.lower("Platform: Invalid handle")
-            return -1
-        }
-
-        switch method {
-            case IDX_CALLBACK_FREE:
-                FfiConverterCallbackInterfacePlatform.drop(handle: handle)
-                // No return value.
-                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                return 0
-            case 1:
-                do {
-                    out_buf.pointee = try `invokeGet`(cb, args)
-                    // Value written to out buffer.
-                    // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                    return 1
-                } catch let error as PlatformError {
-                    out_buf.pointee = FfiConverterTypePlatformError.lower(error)
-                    return -2
-                } catch let error {
-                    out_buf.pointee = FfiConverterString.lower(String(describing: error))
-                    return -1
-                }
-            
-            // This should never happen, because an out of bounds method index won't
-            // ever be used. Once we can catch errors, we should return an InternalError.
-            // https://github.com/mozilla/uniffi-rs/issues/351
-            default:
-                // An unexpected error happened.
-                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                return -1
-        }
-    }
-
-// FFIConverter protocol for callback interfaces
-fileprivate struct FfiConverterCallbackInterfacePlatform {
-    // Initialize our callback method with the scaffolding code
-    private static var callbackInitialized = false
-    private static func initCallback() {
-        try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-                ffi_shared_18f3_Platform_init_callback(foreignCallbackCallbackInterfacePlatform, err)
-        }
-    }
-    private static func ensureCallbackinitialized() {
-        if !callbackInitialized {
-            initCallback()
-            callbackInitialized = true
-        }
-    }
-
-    static func drop(handle: Handle) {
-        handleMap.remove(handle: handle)
-    }
-
-    private static var handleMap = ConcurrentHandleMap<Platform>()
-}
-
-extension FfiConverterCallbackInterfacePlatform : FfiConverter {
-    typealias SwiftType = Platform
-    // We can use Handle as the FFIType because it's a typealias to UInt64
-    typealias FfiType = Handle
-
-    static func lift(_ handle: Handle) throws -> SwiftType {
-        ensureCallbackinitialized();
-        guard let callback = handleMap.get(handle: handle) else {
-            throw UniffiInternalError.unexpectedStaleHandle
-        }
-        return callback
-    }
-
-    static func read(from buf: Reader) throws -> SwiftType {
-        ensureCallbackinitialized();
-        let handle: Handle = try buf.readInt()
-        return try lift(handle)
-    }
-
-    static func lower(_ v: SwiftType) -> Handle {
-        ensureCallbackinitialized();
-        return handleMap.insert(obj: v)
-    }
-
-    static func write(_ v: SwiftType, into buf: Writer) {
-        ensureCallbackinitialized();
-        buf.writeInt(lower(v))
-    }
-}
 
 fileprivate struct FfiConverterOptionTypeCatImage: FfiConverterRustBuffer {
     typealias SwiftType = CatImage?
@@ -1118,22 +930,6 @@ fileprivate struct FfiConverterSequenceTypeRequest: FfiConverterRustBuffer {
         return seq
     }
 }
-
-public func `addForPlatform`(_ `left`: UInt32, _ `right`: UInt32, _ `platform`: Platform) throws -> String {
-    return try FfiConverterString.lift(
-        try
-    
-    rustCallWithError(FfiConverterTypePlatformError.self) {
-    
-    shared_18f3_add_for_platform(
-        FfiConverterUInt32.lower(`left`), 
-        FfiConverterUInt32.lower(`right`), 
-        FfiConverterCallbackInterfacePlatform.lower(`platform`), $0)
-}
-    )
-}
-
-
 
 /**
  * Top level initializers and tear down methods.

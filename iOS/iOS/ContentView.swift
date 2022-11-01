@@ -1,9 +1,7 @@
 import SwiftUI
 
-class GetPlatform: Platform {
-    func get() -> String {
-        return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
-    }
+func get_platform() -> String {
+    return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
 }
 
 enum Message {
@@ -13,11 +11,12 @@ enum Message {
 
 @MainActor
 class Model: ObservableObject {
-    @Published var view = ViewModel(fact: "", image: .none)
+    @Published var view = ViewModel(fact: "", image: .none, platform: "")
     var core = Core()
 
     init() {
         update(msg: .message(.get))
+        update(msg: .message(.getPlatform))
     }
 
     private func httpGet(uuid: [UInt8], url: String) {
@@ -43,6 +42,8 @@ class Model: ObservableObject {
             case .http(url: let url, uuid: let uuid): httpGet(uuid: uuid, url: url)
             case .time(let uuid):
                 update(msg: .response(.time(uuid: uuid, isoTime: Date().ISO8601Format())))
+            case .platform(let uuid):
+                update(msg: .response(.platform(uuid: uuid, platform: get_platform())))
             case .kvRead(uuid: let uuid, key: _):
                 update(msg: .response(.kvRead(uuid: uuid, bytes: .none)))
             case .kvWrite(uuid: let uuid, key: _, bytes: _):
@@ -85,7 +86,7 @@ struct ContentView: View {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
-            Text(try! addForPlatform(1, 2, GetPlatform()))
+            Text(model.view.platform)
             model.view.image.map { image in
                 AnyView(
                     // For the loading image to work properly, we'd need to add
