@@ -1,11 +1,10 @@
+use super::cmd::Store;
 use crate::Request;
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
-type Store<T> = HashMap<[u8; 16], Box<dyn FnOnce(String) -> T + Sync + Send>>;
-
 pub struct Time<Msg> {
-    continuations: RwLock<Store<Msg>>,
+    continuations: RwLock<Store<String, Msg>>,
 }
 
 impl<Msg> Default for Time<Msg> {

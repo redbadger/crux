@@ -1,4 +1,7 @@
 use super::{http::Http, key_value::KeyValue, time::Time};
+use std::collections::HashMap;
+
+pub(crate) type Store<V, M> = HashMap<[u8; 16], Box<dyn FnOnce(V) -> M + Sync + Send>>;
 
 // TODO consider whether these fields should be public
 pub struct Cmd<Msg> {

@@ -1,13 +1,11 @@
+use super::cmd::Store;
 use crate::Request;
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
-type ReadStore<T> = HashMap<[u8; 16], Box<dyn FnOnce(Option<Vec<u8>>) -> T + Sync + Send>>;
-type WriteStore<T> = HashMap<[u8; 16], Box<dyn FnOnce(bool) -> T + Sync + Send>>;
-
 pub struct KeyValue<Msg> {
-    reads: RwLock<ReadStore<Msg>>,
-    writes: RwLock<WriteStore<Msg>>,
+    reads: RwLock<Store<Option<Vec<u8>>, Msg>>,
+    writes: RwLock<Store<bool, Msg>>,
 }
 
 impl<Msg> Default for KeyValue<Msg> {
