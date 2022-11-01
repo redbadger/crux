@@ -1,6 +1,6 @@
 mod rmm;
 
-pub use rmm::{App, AppCore, Cmd, Request, Response};
+pub use rmm::*;
 use serde::{Deserialize, Serialize};
 
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
@@ -85,7 +85,7 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value
+                    cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
                     Request::Render,
                 ]
@@ -123,7 +123,7 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value
+                    cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
                     cmd.time.get(|iso_time| Msg::CurrentTime { iso_time }),
                 ]
@@ -133,7 +133,7 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value
+                    cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
                     Request::Render,
                 ]
@@ -145,14 +145,14 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value
+                    cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
                     Request::Render,
                 ]
             }
             Msg::Restore => {
                 vec![cmd
-                    .key_value
+                    .key_value_read
                     .read("state".to_string(), |bytes| Msg::SetState { bytes })]
             }
             Msg::SetState { bytes } => {

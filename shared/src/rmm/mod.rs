@@ -1,10 +1,12 @@
+mod capability;
 mod cmd;
 mod http;
 mod key_value;
 mod platform;
 mod time;
 
-pub use cmd::{Cmd, Request, Response};
+pub use cmd::*;
+pub use key_value::KeyValue;
 use std::sync::RwLock;
 
 pub trait App: Default {
@@ -60,28 +62,28 @@ impl<A: App> AppCore<A> {
     pub fn response(&self, res: Response) -> Vec<Request> {
         let mut model = self.model.write().unwrap();
         match res {
-            Response::Http { uuid, bytes } => {
-                let msg = self.cmd.http.receive(&uuid, bytes);
+            Response::Http { data } => {
+                let msg = self.cmd.http.response(data);
 
                 self.app.update(msg, &mut model, &self.cmd)
             }
-            Response::Time { uuid, iso_time } => {
-                let msg = self.cmd.time.receive(&uuid, iso_time);
+            Response::Time { data } => {
+                let msg = self.cmd.time.response(data);
 
                 self.app.update(msg, &mut model, &self.cmd)
             }
-            Response::Platform { uuid, platform } => {
-                let msg = self.cmd.platform.receive(&uuid, platform);
+            Response::Platform { data } => {
+                let msg = self.cmd.platform.response(data);
 
                 self.app.update(msg, &mut model, &self.cmd)
             }
-            Response::KVRead { uuid, bytes } => {
-                let msg = self.cmd.key_value.receive_read(&uuid, bytes);
+            Response::KVRead { data } => {
+                let msg = self.cmd.key_value_read.response(data);
 
                 self.app.update(msg, &mut model, &self.cmd)
             }
-            Response::KVWrite { uuid, success } => {
-                let msg = self.cmd.key_value.written(&uuid, success);
+            Response::KVWrite { data } => {
+                let msg = self.cmd.key_value_write.response(data);
 
                 self.app.update(msg, &mut model, &self.cmd)
             }

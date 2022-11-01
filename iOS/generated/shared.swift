@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_b872_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_1406_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_b872_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_1406_rustbuffer_free(self, $0) }
     }
 }
 
@@ -375,12 +375,12 @@ public class Core: CoreProtocol {
     
     rustCall() {
     
-    shared_b872_Core_new($0)
+    shared_1406_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_b872_Core_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_1406_Core_object_free(pointer, $0) }
     }
 
     
@@ -391,7 +391,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_b872_Core_message(self.pointer, 
+    shared_1406_Core_message(self.pointer, 
         FfiConverterTypeMsg.lower(`msg`), $0
     )
 }
@@ -402,7 +402,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_b872_Core_response(self.pointer, 
+    shared_1406_Core_response(self.pointer, 
         FfiConverterTypeResponse.lower(`res`), $0
     )
 }
@@ -413,7 +413,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_b872_Core_view(self.pointer, $0
+    shared_1406_Core_view(self.pointer, $0
     )
 }
         )
@@ -453,6 +453,98 @@ fileprivate struct FfiConverterTypeCore: FfiConverter {
 }
 
 
+public struct BoolEnvelope {
+    public var `body`: Bool
+    public var `uuid`: [UInt8]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`body`: Bool, `uuid`: [UInt8]) {
+        self.`body` = `body`
+        self.`uuid` = `uuid`
+    }
+}
+
+
+extension BoolEnvelope: Equatable, Hashable {
+    public static func ==(lhs: BoolEnvelope, rhs: BoolEnvelope) -> Bool {
+        if lhs.`body` != rhs.`body` {
+            return false
+        }
+        if lhs.`uuid` != rhs.`uuid` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`body`)
+        hasher.combine(`uuid`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeBoolEnvelope: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> BoolEnvelope {
+        return try BoolEnvelope(
+            `body`: FfiConverterBool.read(from: buf), 
+            `uuid`: FfiConverterSequenceUInt8.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: BoolEnvelope, into buf: Writer) {
+        FfiConverterBool.write(value.`body`, into: buf)
+        FfiConverterSequenceUInt8.write(value.`uuid`, into: buf)
+    }
+}
+
+
+public struct BytesEnvelope {
+    public var `body`: [UInt8]
+    public var `uuid`: [UInt8]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`body`: [UInt8], `uuid`: [UInt8]) {
+        self.`body` = `body`
+        self.`uuid` = `uuid`
+    }
+}
+
+
+extension BytesEnvelope: Equatable, Hashable {
+    public static func ==(lhs: BytesEnvelope, rhs: BytesEnvelope) -> Bool {
+        if lhs.`body` != rhs.`body` {
+            return false
+        }
+        if lhs.`uuid` != rhs.`uuid` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`body`)
+        hasher.combine(`uuid`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeBytesEnvelope: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> BytesEnvelope {
+        return try BytesEnvelope(
+            `body`: FfiConverterSequenceUInt8.read(from: buf), 
+            `uuid`: FfiConverterSequenceUInt8.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: BytesEnvelope, into buf: Writer) {
+        FfiConverterSequenceUInt8.write(value.`body`, into: buf)
+        FfiConverterSequenceUInt8.write(value.`uuid`, into: buf)
+    }
+}
+
+
 public struct CatImage {
     public var `file`: String
 
@@ -487,6 +579,236 @@ fileprivate struct FfiConverterTypeCatImage: FfiConverterRustBuffer {
 
     fileprivate static func write(_ value: CatImage, into buf: Writer) {
         FfiConverterString.write(value.`file`, into: buf)
+    }
+}
+
+
+public struct KeyValue {
+    public var `key`: String
+    public var `value`: [UInt8]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`key`: String, `value`: [UInt8]) {
+        self.`key` = `key`
+        self.`value` = `value`
+    }
+}
+
+
+extension KeyValue: Equatable, Hashable {
+    public static func ==(lhs: KeyValue, rhs: KeyValue) -> Bool {
+        if lhs.`key` != rhs.`key` {
+            return false
+        }
+        if lhs.`value` != rhs.`value` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`key`)
+        hasher.combine(`value`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeKeyValue: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> KeyValue {
+        return try KeyValue(
+            `key`: FfiConverterString.read(from: buf), 
+            `value`: FfiConverterSequenceUInt8.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: KeyValue, into buf: Writer) {
+        FfiConverterString.write(value.`key`, into: buf)
+        FfiConverterSequenceUInt8.write(value.`value`, into: buf)
+    }
+}
+
+
+public struct KeyValueEnvelope {
+    public var `body`: KeyValue
+    public var `uuid`: [UInt8]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`body`: KeyValue, `uuid`: [UInt8]) {
+        self.`body` = `body`
+        self.`uuid` = `uuid`
+    }
+}
+
+
+extension KeyValueEnvelope: Equatable, Hashable {
+    public static func ==(lhs: KeyValueEnvelope, rhs: KeyValueEnvelope) -> Bool {
+        if lhs.`body` != rhs.`body` {
+            return false
+        }
+        if lhs.`uuid` != rhs.`uuid` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`body`)
+        hasher.combine(`uuid`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeKeyValueEnvelope: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> KeyValueEnvelope {
+        return try KeyValueEnvelope(
+            `body`: FfiConverterTypeKeyValue.read(from: buf), 
+            `uuid`: FfiConverterSequenceUInt8.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: KeyValueEnvelope, into buf: Writer) {
+        FfiConverterTypeKeyValue.write(value.`body`, into: buf)
+        FfiConverterSequenceUInt8.write(value.`uuid`, into: buf)
+    }
+}
+
+
+public struct OptionalBoolEnvelope {
+    public var `body`: Bool?
+    public var `uuid`: [UInt8]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`body`: Bool?, `uuid`: [UInt8]) {
+        self.`body` = `body`
+        self.`uuid` = `uuid`
+    }
+}
+
+
+extension OptionalBoolEnvelope: Equatable, Hashable {
+    public static func ==(lhs: OptionalBoolEnvelope, rhs: OptionalBoolEnvelope) -> Bool {
+        if lhs.`body` != rhs.`body` {
+            return false
+        }
+        if lhs.`uuid` != rhs.`uuid` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`body`)
+        hasher.combine(`uuid`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeOptionalBoolEnvelope: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> OptionalBoolEnvelope {
+        return try OptionalBoolEnvelope(
+            `body`: FfiConverterOptionBool.read(from: buf), 
+            `uuid`: FfiConverterSequenceUInt8.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: OptionalBoolEnvelope, into buf: Writer) {
+        FfiConverterOptionBool.write(value.`body`, into: buf)
+        FfiConverterSequenceUInt8.write(value.`uuid`, into: buf)
+    }
+}
+
+
+public struct OptionalBytesEnvelope {
+    public var `body`: [UInt8]?
+    public var `uuid`: [UInt8]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`body`: [UInt8]?, `uuid`: [UInt8]) {
+        self.`body` = `body`
+        self.`uuid` = `uuid`
+    }
+}
+
+
+extension OptionalBytesEnvelope: Equatable, Hashable {
+    public static func ==(lhs: OptionalBytesEnvelope, rhs: OptionalBytesEnvelope) -> Bool {
+        if lhs.`body` != rhs.`body` {
+            return false
+        }
+        if lhs.`uuid` != rhs.`uuid` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`body`)
+        hasher.combine(`uuid`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeOptionalBytesEnvelope: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> OptionalBytesEnvelope {
+        return try OptionalBytesEnvelope(
+            `body`: FfiConverterOptionSequenceUInt8.read(from: buf), 
+            `uuid`: FfiConverterSequenceUInt8.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: OptionalBytesEnvelope, into buf: Writer) {
+        FfiConverterOptionSequenceUInt8.write(value.`body`, into: buf)
+        FfiConverterSequenceUInt8.write(value.`uuid`, into: buf)
+    }
+}
+
+
+public struct StringEnvelope {
+    public var `body`: String
+    public var `uuid`: [UInt8]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(`body`: String, `uuid`: [UInt8]) {
+        self.`body` = `body`
+        self.`uuid` = `uuid`
+    }
+}
+
+
+extension StringEnvelope: Equatable, Hashable {
+    public static func ==(lhs: StringEnvelope, rhs: StringEnvelope) -> Bool {
+        if lhs.`body` != rhs.`body` {
+            return false
+        }
+        if lhs.`uuid` != rhs.`uuid` {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`body`)
+        hasher.combine(`uuid`)
+    }
+}
+
+
+fileprivate struct FfiConverterTypeStringEnvelope: FfiConverterRustBuffer {
+    fileprivate static func read(from buf: Reader) throws -> StringEnvelope {
+        return try StringEnvelope(
+            `body`: FfiConverterString.read(from: buf), 
+            `uuid`: FfiConverterSequenceUInt8.read(from: buf)
+        )
+    }
+
+    fileprivate static func write(_ value: StringEnvelope, into buf: Writer) {
+        FfiConverterString.write(value.`body`, into: buf)
+        FfiConverterSequenceUInt8.write(value.`uuid`, into: buf)
     }
 }
 
@@ -668,11 +990,11 @@ extension Msg: Equatable, Hashable {}
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 public enum Request {
     
-    case `http`(`url`: String, `uuid`: [UInt8])
-    case `time`(`uuid`: [UInt8])
-    case `platform`(`uuid`: [UInt8])
-    case `kvRead`(`uuid`: [UInt8], `key`: String)
-    case `kvWrite`(`uuid`: [UInt8], `key`: String, `bytes`: [UInt8])
+    case `http`(`data`: StringEnvelope)
+    case `time`(`data`: OptionalBoolEnvelope)
+    case `platform`(`data`: OptionalBoolEnvelope)
+    case `kvRead`(`data`: StringEnvelope)
+    case `kvWrite`(`data`: KeyValueEnvelope)
     case `render`
 }
 
@@ -684,27 +1006,23 @@ fileprivate struct FfiConverterTypeRequest: FfiConverterRustBuffer {
         switch variant {
         
         case 1: return .`http`(
-            `url`: try FfiConverterString.read(from: buf), 
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf)
+            `data`: try FfiConverterTypeStringEnvelope.read(from: buf)
         )
         
         case 2: return .`time`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf)
+            `data`: try FfiConverterTypeOptionalBoolEnvelope.read(from: buf)
         )
         
         case 3: return .`platform`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf)
+            `data`: try FfiConverterTypeOptionalBoolEnvelope.read(from: buf)
         )
         
         case 4: return .`kvRead`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
-            `key`: try FfiConverterString.read(from: buf)
+            `data`: try FfiConverterTypeStringEnvelope.read(from: buf)
         )
         
         case 5: return .`kvWrite`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
-            `key`: try FfiConverterString.read(from: buf), 
-            `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
+            `data`: try FfiConverterTypeKeyValueEnvelope.read(from: buf)
         )
         
         case 6: return .`render`
@@ -717,33 +1035,29 @@ fileprivate struct FfiConverterTypeRequest: FfiConverterRustBuffer {
         switch value {
         
         
-        case let .`http`(`url`,`uuid`):
+        case let .`http`(`data`):
             buf.writeInt(Int32(1))
-            FfiConverterString.write(`url`, into: buf)
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterTypeStringEnvelope.write(`data`, into: buf)
             
         
-        case let .`time`(`uuid`):
+        case let .`time`(`data`):
             buf.writeInt(Int32(2))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterTypeOptionalBoolEnvelope.write(`data`, into: buf)
             
         
-        case let .`platform`(`uuid`):
+        case let .`platform`(`data`):
             buf.writeInt(Int32(3))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
+            FfiConverterTypeOptionalBoolEnvelope.write(`data`, into: buf)
             
         
-        case let .`kvRead`(`uuid`,`key`):
+        case let .`kvRead`(`data`):
             buf.writeInt(Int32(4))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
-            FfiConverterString.write(`key`, into: buf)
+            FfiConverterTypeStringEnvelope.write(`data`, into: buf)
             
         
-        case let .`kvWrite`(`uuid`,`key`,`bytes`):
+        case let .`kvWrite`(`data`):
             buf.writeInt(Int32(5))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
-            FfiConverterString.write(`key`, into: buf)
-            FfiConverterSequenceUInt8.write(`bytes`, into: buf)
+            FfiConverterTypeKeyValueEnvelope.write(`data`, into: buf)
             
         
         case .`render`:
@@ -761,11 +1075,11 @@ extension Request: Equatable, Hashable {}
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 public enum Response {
     
-    case `http`(`uuid`: [UInt8], `bytes`: [UInt8])
-    case `time`(`uuid`: [UInt8], `isoTime`: String)
-    case `platform`(`uuid`: [UInt8], `platform`: String)
-    case `kvRead`(`uuid`: [UInt8], `bytes`: [UInt8]?)
-    case `kvWrite`(`uuid`: [UInt8], `success`: Bool)
+    case `http`(`data`: BytesEnvelope)
+    case `time`(`data`: StringEnvelope)
+    case `platform`(`data`: StringEnvelope)
+    case `kvRead`(`data`: OptionalBytesEnvelope)
+    case `kvWrite`(`data`: BoolEnvelope)
 }
 
 fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
@@ -776,28 +1090,23 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
         switch variant {
         
         case 1: return .`http`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
-            `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
+            `data`: try FfiConverterTypeBytesEnvelope.read(from: buf)
         )
         
         case 2: return .`time`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
-            `isoTime`: try FfiConverterString.read(from: buf)
+            `data`: try FfiConverterTypeStringEnvelope.read(from: buf)
         )
         
         case 3: return .`platform`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
-            `platform`: try FfiConverterString.read(from: buf)
+            `data`: try FfiConverterTypeStringEnvelope.read(from: buf)
         )
         
         case 4: return .`kvRead`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
-            `bytes`: try FfiConverterOptionSequenceUInt8.read(from: buf)
+            `data`: try FfiConverterTypeOptionalBytesEnvelope.read(from: buf)
         )
         
         case 5: return .`kvWrite`(
-            `uuid`: try FfiConverterSequenceUInt8.read(from: buf), 
-            `success`: try FfiConverterBool.read(from: buf)
+            `data`: try FfiConverterTypeBoolEnvelope.read(from: buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -808,34 +1117,29 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
         switch value {
         
         
-        case let .`http`(`uuid`,`bytes`):
+        case let .`http`(`data`):
             buf.writeInt(Int32(1))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
-            FfiConverterSequenceUInt8.write(`bytes`, into: buf)
+            FfiConverterTypeBytesEnvelope.write(`data`, into: buf)
             
         
-        case let .`time`(`uuid`,`isoTime`):
+        case let .`time`(`data`):
             buf.writeInt(Int32(2))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
-            FfiConverterString.write(`isoTime`, into: buf)
+            FfiConverterTypeStringEnvelope.write(`data`, into: buf)
             
         
-        case let .`platform`(`uuid`,`platform`):
+        case let .`platform`(`data`):
             buf.writeInt(Int32(3))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
-            FfiConverterString.write(`platform`, into: buf)
+            FfiConverterTypeStringEnvelope.write(`data`, into: buf)
             
         
-        case let .`kvRead`(`uuid`,`bytes`):
+        case let .`kvRead`(`data`):
             buf.writeInt(Int32(4))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
-            FfiConverterOptionSequenceUInt8.write(`bytes`, into: buf)
+            FfiConverterTypeOptionalBytesEnvelope.write(`data`, into: buf)
             
         
-        case let .`kvWrite`(`uuid`,`success`):
+        case let .`kvWrite`(`data`):
             buf.writeInt(Int32(5))
-            FfiConverterSequenceUInt8.write(`uuid`, into: buf)
-            FfiConverterBool.write(`success`, into: buf)
+            FfiConverterTypeBoolEnvelope.write(`data`, into: buf)
             
         }
     }
@@ -844,6 +1148,27 @@ fileprivate struct FfiConverterTypeResponse: FfiConverterRustBuffer {
 
 extension Response: Equatable, Hashable {}
 
+
+fileprivate struct FfiConverterOptionBool: FfiConverterRustBuffer {
+    typealias SwiftType = Bool?
+
+    static func write(_ value: SwiftType, into buf: Writer) {
+        guard let value = value else {
+            buf.writeInt(Int8(0))
+            return
+        }
+        buf.writeInt(Int8(1))
+        FfiConverterBool.write(value, into: buf)
+    }
+
+    static func read(from buf: Reader) throws -> SwiftType {
+        switch try buf.readInt() as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterBool.read(from: buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
 
 fileprivate struct FfiConverterOptionTypeCatImage: FfiConverterRustBuffer {
     typealias SwiftType = CatImage?

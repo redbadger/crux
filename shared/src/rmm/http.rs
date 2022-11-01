@@ -1,42 +1,23 @@
-use super::cmd::Store;
+use super::capability::Capability;
 use crate::Request;
-use std::{collections::HashMap, sync::RwLock};
-use uuid::Uuid;
+use derive_more::Deref;
 
-pub struct Http<Msg> {
-    continuations: RwLock<Store<Vec<u8>, Msg>>,
-}
+#[derive(Deref)]
+pub struct Http<Msg>(Capability<Msg, String, Vec<u8>>);
 
 impl<Msg> Default for Http<Msg> {
     fn default() -> Self {
-        Self {
-            continuations: RwLock::new(HashMap::new()),
-        }
+        Self(Default::default())
     }
 }
 
 impl<Msg> Http<Msg> {
     pub fn get<F>(&self, url: String, msg: F) -> Request
     where
-        F: Sync + Send + FnOnce(Vec<u8>) -> Msg + 'static,
+        F: FnOnce(Vec<u8>) -> Msg + Sync + Send + 'static,
     {
-        let uuid = *Uuid::new_v4().as_bytes();
-
-        self.continuations
-            .write()
-            .unwrap()
-            .insert(uuid, Box::new(msg));
-
         Request::Http {
-            uuid: uuid.to_vec(),
-            url,
+            data: self.0.request(url, msg),
         }
-    }
-
-    pub fn receive(&self, uuid: &[u8], data: Vec<u8>) -> Msg {
-        let mut continuations = self.continuations.write().unwrap();
-        let f = continuations.remove(uuid).unwrap();
-
-        f(data)
     }
 }

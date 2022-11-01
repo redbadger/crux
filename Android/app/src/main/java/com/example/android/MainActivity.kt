@@ -72,7 +72,7 @@ sealed class CoreMessage {
 }
 
 class Model : ViewModel() {
-    var view: redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null,""))
+    var view: redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null, ""))
         private set
 
     private val core = Core()
@@ -90,7 +90,7 @@ class Model : ViewModel() {
                 call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
             ) {
                 response?.body()?.bytes()?.toUByteArray()?.toList()?.let { bytes ->
-                    update(CoreMessage.Response(Rsp.Http(uuid, bytes)))
+                    update(CoreMessage.Response(Rsp.Http(BytesEnvelope(bytes, uuid))))
                 }
             }
 
@@ -114,24 +114,42 @@ class Model : ViewModel() {
                     this.view = core.view()
                 }
                 is Request.Http -> {
-                    httpGet(req.url, req.uuid)
+                    httpGet(req.data.body, req.data.uuid)
                 }
                 is Request.Time -> {
                     val isoTime =
                         ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
-                    update(CoreMessage.Response(Rsp.Time(req.uuid, isoTime)))
+                    update(CoreMessage.Response(Rsp.Time(StringEnvelope(isoTime, req.data.uuid))))
                 }
                 is Request.Platform -> {
                     val platform = getPlatform()
 
-                    update(CoreMessage.Response(Rsp.Platform(req.uuid, platform)))
+                    update(
+                        CoreMessage.Response(
+                            Rsp.Platform(
+                                StringEnvelope(
+                                    platform,
+                                    req.data.uuid
+                                )
+                            )
+                        )
+                    )
                 }
                 is Request.KvRead -> {
-                    update(CoreMessage.Response(Rsp.KvRead(req.uuid, null)))
+                    update(
+                        CoreMessage.Response(
+                            Rsp.KvRead(
+                                OptionalBytesEnvelope(
+                                    null,
+                                    req.data.uuid
+                                )
+                            )
+                        )
+                    )
                 }
                 is Request.KvWrite -> {
-                    update(CoreMessage.Response(Rsp.KvWrite(req.uuid, false)))
+                    update(CoreMessage.Response(Rsp.KvWrite(BoolEnvelope(false, req.data.uuid))))
                 }
             }
         }

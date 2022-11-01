@@ -23,23 +23,32 @@ interface Msg {
   CurrentTime(string iso_time);
 };
 
+dictionary StringEnvelope {string body; sequence<u8> uuid;};
+dictionary OptionalBoolEnvelope {boolean? body; sequence<u8> uuid;};
+dictionary BoolEnvelope {boolean body; sequence<u8> uuid;};
+dictionary BytesEnvelope {sequence<u8> body; sequence<u8> uuid;};
+dictionary OptionalBytesEnvelope {sequence<u8>? body; sequence<u8> uuid;};
+dictionary KeyValueEnvelope {KeyValue body; sequence<u8> uuid;};
+
+dictionary KeyValue {string key; sequence<u8> value;};
+
 [Enum]
 interface Request {
-  Http(string url, sequence<u8> uuid);
-  Time(sequence<u8> uuid);
-  Platform(sequence<u8> uuid);
-  KVRead(sequence<u8> uuid, string key);
-  KVWrite(sequence<u8> uuid, string key, sequence<u8> bytes);
+  Http(StringEnvelope data);
+  Time(OptionalBoolEnvelope data);
+  Platform(OptionalBoolEnvelope data);
+  KVRead(StringEnvelope data);
+  KVWrite(KeyValueEnvelope data);
   Render();
 };
 
 [Enum]
 interface Response {
-  Http(sequence<u8> uuid, sequence<u8> bytes);
-  Time(sequence<u8> uuid, string iso_time);
-  Platform(sequence<u8> uuid, string platform);
-  KVRead(sequence<u8> uuid, sequence<u8>? bytes);
-  KVWrite(sequence<u8> uuid, boolean success);
+  Http(BytesEnvelope data);
+  Time(StringEnvelope data);
+  Platform(StringEnvelope data);
+  KVRead(OptionalBytesEnvelope data);
+  KVWrite(BoolEnvelope data);
 };
 
 dictionary CatImage {

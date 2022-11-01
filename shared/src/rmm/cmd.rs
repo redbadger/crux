@@ -1,13 +1,18 @@
-use super::{http::Http, key_value::KeyValue, platform::Platform, time::Time};
-use std::collections::HashMap;
-
-pub(crate) type Store<V, M> = HashMap<[u8; 16], Box<dyn FnOnce(V) -> M + Sync + Send>>;
+use super::{
+    capability::Envelope,
+    http::Http,
+    key_value::KeyValueRead,
+    key_value::{KeyValue, KeyValueWrite},
+    platform::Platform,
+    time::Time,
+};
 
 // TODO consider whether these fields should be public
 pub struct Cmd<Msg> {
     pub http: Http<Msg>,
     pub time: Time<Msg>,
-    pub key_value: KeyValue<Msg>,
+    pub key_value_read: KeyValueRead<Msg>,
+    pub key_value_write: KeyValueWrite<Msg>,
     pub platform: Platform<Msg>,
 }
 
@@ -16,54 +21,33 @@ impl<Msg> Default for Cmd<Msg> {
         Self {
             http: Http::default(),
             time: Time::default(),
-            key_value: KeyValue::default(),
+            key_value_read: KeyValueRead::default(),
+            key_value_write: KeyValueWrite::default(),
             platform: Platform::default(),
         }
     }
 }
 
+pub type StringEnvelope = Envelope<String>;
+pub type BytesEnvelope = Envelope<Vec<u8>>;
+pub type BoolEnvelope = Envelope<bool>;
+pub type OptionalBoolEnvelope = Envelope<Option<bool>>;
+pub type OptionalBytesEnvelope = Envelope<Option<Vec<u8>>>;
+pub type KeyValueEnvelope = Envelope<KeyValue>;
+
 pub enum Request {
-    Http {
-        uuid: Vec<u8>,
-        url: String,
-    },
-    Time {
-        uuid: Vec<u8>,
-    },
-    Platform {
-        uuid: Vec<u8>,
-    },
-    KVRead {
-        uuid: Vec<u8>,
-        key: String,
-    },
-    KVWrite {
-        uuid: Vec<u8>,
-        key: String,
-        bytes: Vec<u8>,
-    },
+    Http { data: StringEnvelope },
+    Time { data: OptionalBoolEnvelope },
+    Platform { data: OptionalBoolEnvelope },
+    KVRead { data: StringEnvelope },
+    KVWrite { data: KeyValueEnvelope },
     Render,
 }
 
 pub enum Response {
-    Http {
-        uuid: Vec<u8>,
-        bytes: Vec<u8>,
-    },
-    Time {
-        uuid: Vec<u8>,
-        iso_time: String,
-    },
-    Platform {
-        uuid: Vec<u8>,
-        platform: String,
-    },
-    KVRead {
-        uuid: Vec<u8>,
-        bytes: Option<Vec<u8>>,
-    },
-    KVWrite {
-        uuid: Vec<u8>,
-        success: bool,
-    },
+    Http { data: BytesEnvelope },
+    Time { data: StringEnvelope },
+    Platform { data: StringEnvelope },
+    KVRead { data: OptionalBytesEnvelope },
+    KVWrite { data: BoolEnvelope },
 }

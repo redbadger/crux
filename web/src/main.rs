@@ -69,50 +69,68 @@ impl Component for HelloWorld {
 
         reqs.into_iter().any(|req| match req {
             Request::Render => true,
-            Request::Http { url, uuid } => {
+            Request::Http {
+                data: StringEnvelope { uuid, body: url },
+            } => {
                 let link = link.clone();
 
                 wasm_bindgen_futures::spawn_local(async move {
                     let bytes = http_get(&url).await.unwrap_or_default();
 
-                    link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
+                    link.send_message(CoreMessage::Response(Response::Http {
+                        data: BytesEnvelope { body: bytes, uuid },
+                    }));
                 });
 
                 false
             }
-            Request::Platform { uuid } => {
+            Request::Platform {
+                data: OptionalBoolEnvelope { body: _, uuid },
+            } => {
                 link.send_message(CoreMessage::Response(Response::Platform {
-                    uuid,
-                    platform: platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
+                    data: StringEnvelope {
+                        uuid,
+                        body: platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
+                    },
                 }));
 
                 false
             }
-            Request::Time { uuid } => {
+            Request::Time {
+                data: OptionalBoolEnvelope { body: _, uuid },
+            } => {
                 link.send_message(CoreMessage::Response(Response::Time {
-                    uuid,
-                    iso_time: time_get().unwrap(),
+                    data: StringEnvelope {
+                        uuid,
+                        body: time_get().unwrap(),
+                    },
                 }));
 
                 false
             }
-            Request::KVRead { uuid, key: _key } => {
+            Request::KVRead {
+                data: StringEnvelope { uuid, body: _key },
+            } => {
                 // TODO implement state restoration
                 link.send_message(CoreMessage::Response(Response::KVRead {
-                    uuid,
-                    bytes: None,
+                    data: OptionalBytesEnvelope { uuid, body: None },
                 }));
 
                 false
             }
             Request::KVWrite {
-                uuid,
-                key: _key,
-                bytes: _bytes,
+                data:
+                    KeyValueEnvelope {
+                        uuid,
+                        body:
+                            KeyValue {
+                                key: _key,
+                                value: _bytes,
+                            },
+                    },
             } => {
                 link.send_message(CoreMessage::Response(Response::KVWrite {
-                    uuid,
-                    success: false,
+                    data: BoolEnvelope { uuid, body: false },
                 }));
 
                 false

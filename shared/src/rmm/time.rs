@@ -1,41 +1,23 @@
-use super::cmd::Store;
+use super::capability::Capability;
 use crate::Request;
-use std::{collections::HashMap, sync::RwLock};
-use uuid::Uuid;
+use derive_more::Deref;
 
-pub struct Time<Msg> {
-    continuations: RwLock<Store<String, Msg>>,
-}
+#[derive(Deref)]
+pub struct Time<Msg>(Capability<Msg, Option<bool>, String>);
 
 impl<Msg> Default for Time<Msg> {
     fn default() -> Self {
-        Self {
-            continuations: RwLock::new(HashMap::new()),
-        }
+        Self(Default::default())
     }
 }
 
 impl<Msg> Time<Msg> {
     pub fn get<F>(&self, msg: F) -> Request
     where
-        F: Sync + Send + FnOnce(String) -> Msg + 'static,
+        F: FnOnce(String) -> Msg + Sync + Send + 'static,
     {
-        let uuid = *Uuid::new_v4().as_bytes();
-
-        self.continuations
-            .write()
-            .unwrap()
-            .insert(uuid, Box::new(msg));
-
         Request::Time {
-            uuid: uuid.to_vec(),
+            data: self.0.request(None, msg),
         }
-    }
-
-    pub fn receive(&self, uuid: &[u8], data: String) -> Msg {
-        let mut continuations = self.continuations.write().unwrap();
-        let f = continuations.remove(uuid).unwrap();
-
-        f(data)
     }
 }
