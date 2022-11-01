@@ -54,10 +54,7 @@ async fn main() {
 
                     queue.push_back(CoreMessage::Response(Response::Http { uuid, bytes }));
                 }
-                Request::Platform { uuid } => {
-                    let platform = "cli".to_string();
-                    queue.push_back(CoreMessage::Response(Response::Platform { uuid, platform }));
-                }
+                Request::Platform { uuid: _uuid } => {}
                 Request::Time { uuid } => {
                     let now: DateTime<Utc> = SystemTime::now().into();
                     let iso_time = now.to_rfc3339();

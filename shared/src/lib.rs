@@ -157,7 +157,9 @@ impl App for CatFacts {
             }
             Msg::SetState { bytes } => {
                 if let Some(bytes) = bytes {
-                    *model = serde_json::from_slice::<Model>(&bytes).unwrap();
+                    if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
+                        *model = m
+                    };
                 }
 
                 vec![Request::Render]
