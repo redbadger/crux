@@ -1,7 +1,9 @@
 mod cat_fact;
+mod rmm;
 
 use anyhow::Result;
 pub use cat_fact::*;
+pub use rmm::{Request, Response};
 use thiserror::Error;
 use uniffi::UnexpectedUniFFICallbackError;
 
