@@ -32,7 +32,7 @@ The key benefits of building the core in this way are these:
 - The core is side-effect free and does not make use of any system APIs.
 This means it can be compiled to WebAssembly.
 - The core can be tested without the need for mocking or stubbing.
-All that is needed is to check that for a given inbound message, the core responds with the correct set of commands and the correct view model.
+All that is needed is to check that for a given inbound message, the core responds with the correct set of outbound messages and the correct view model.
 - Thanks to UniFFI, all data types used in message passing are shared across the FFI boundary.
 Then, when the code is updated (E.G. with new variants on the `Msg` type), type checking in the application layer (Swift and Kotlin) will cause the build to fail until the new messages are correctly handled.
 This keeps everything in sync!
@@ -60,17 +60,21 @@ These commands then instruct the application what to do next.
 
 ## Typical Message Exchange Cycle
 
-A typical message exchange cycle begins with a user interaction which raises an event in the application layer.
-The application then generates the appropriate message and passes it to the core by calling its `update` function.
-The core then updates its inner state, and responds with one or more `Cmd` messages.
+A typical message exchange cycle is as follows:
 
-In the simplest case, the command will simply be `Cmd::Render`.
+1. Some user interaction occurs in the application layer that raises an event
+1. The application handles this event by constructing a message
+1. Messages are passed to the core by calling the core's `update` function
+1. The core whatever processing required, updateing both its inner state and the view model
+1. The core returns one or more `Cmd` messages to the application
+
+In the simplest case, the core will respond to a `Msg` by returning the single command `Cmd::Render`.
 This informs the application of two things:
 
-1. The user interface needs to be rerendered
+1. The user interface needs to be re-rendered
 1. This particular message exchange has come to an end
 
-In more complex cases however, the command may instruct the application to perform a wide variety of side-effect-inducing tasks such as:
+In more complex cases however, the core could return multiple commands that instruct the application to perform a wide variety of side-effect-inducing tasks such as:
 
 * Make a network call, or
 * Fetch the current time stamp, or
@@ -78,7 +82,8 @@ In more complex cases however, the command may instruct the application to perfo
 * Obtain an image from the camera, or
 * Whatever else you can think of...
 
-Once the response from the side-effect-generating command has been received, the application generates another `Msg` and passes it to the core for processing.
+Once the response from a side-effect-generating command has been received, the application generates another `Msg` and passes it to the core for processing.
+
 This exchange continues until the core returns a `Cmd::Render` signalling that no more side-effects are in flight.
 
 ## Run the Example Locally
