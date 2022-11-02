@@ -1,11 +1,9 @@
-mod rmm;
-
 pub use rmm::*;
 use serde::{Deserialize, Serialize};
+use shared_types::{CatImage, Msg, ViewModel};
 
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
-const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
@@ -19,21 +17,8 @@ impl CatFact {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct CatImage {
-    pub file: String,
-}
-
-impl Default for CatImage {
-    fn default() -> Self {
-        Self {
-            file: CAT_LOADING_URL.to_string(),
-        }
-    }
-}
-
 // Expose the Core for other platforms;
-pub type Core = AppCore<CatFacts>;
+pub type Core<'de> = AppCore<CatFacts>;
 
 #[derive(Default)]
 pub struct CatFacts {}
@@ -44,13 +29,6 @@ pub struct Model {
     cat_image: Option<CatImage>,
     platform: String,
     time: Option<String>,
-}
-
-#[derive(Default)]
-pub struct ViewModel {
-    pub fact: String,
-    pub image: Option<CatImage>,
-    pub platform: String,
 }
 
 impl From<&Model> for ViewModel {
@@ -66,20 +44,6 @@ impl From<&Model> for ViewModel {
             image: model.cat_image.clone(),
         }
     }
-}
-
-pub enum Msg {
-    None,
-    GetPlatform,
-    SetPlatform { platform: String },
-    Clear,
-    Get,
-    Fetch,
-    Restore,                             // restore state
-    SetState { bytes: Option<Vec<u8>> }, // receive the data to restore state with
-    SetFact { bytes: Vec<u8> },
-    SetImage { bytes: Vec<u8> },
-    CurrentTime { iso_time: String },
 }
 
 impl App for CatFacts {

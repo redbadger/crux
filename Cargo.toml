@@ -1,2 +1,2 @@
 [workspace]
-members = ["shared", "web", "cli"]
+members = ["rmm", "shared", "shared_types", "web", "cli"]

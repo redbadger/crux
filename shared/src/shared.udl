@@ -3,7 +3,7 @@ namespace shared {
 
 interface Core {
   constructor();
-  sequence<Request> message(Msg msg);
+  sequence<Request> message([ByRef] sequence<u8> msg);
   sequence<Request> response(Response res);
   ViewModel view();
 };

@@ -7,6 +7,7 @@ mod time;
 
 pub use cmd::*;
 pub use key_value::KeyValue;
+use serde::Deserialize;
 use std::sync::RwLock;
 
 pub trait App: Default {
@@ -52,14 +53,22 @@ impl<A: App> AppCore<A> {
     }
 
     // Direct message
-    pub fn message(&self, msg: A::Msg) -> Vec<Request> {
+    pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<Request>
+    where
+        <A as App>::Msg: Deserialize<'de>,
+    {
+        let msg: <A as App>::Msg = bincode::deserialize(msg).unwrap();
+
         let mut model = self.model.write().unwrap();
 
         self.app.update(msg, &mut model, &self.cmd)
     }
 
     // Return from capability
-    pub fn response(&self, res: Response) -> Vec<Request> {
+    pub fn response<'de>(&self, res: Response) -> Vec<Request>
+    where
+        <A as App>::Msg: Deserialize<'de>,
+    {
         let mut model = self.model.write().unwrap();
         match res {
             Response::Http { data } => {
