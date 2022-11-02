@@ -18,7 +18,7 @@ impl CatFact {
 }
 
 // Expose the Core for other platforms;
-pub type Core<'de> = AppCore<CatFacts>;
+pub type Core = AppCore<CatFacts>;
 
 #[derive(Default)]
 pub struct CatFacts {}

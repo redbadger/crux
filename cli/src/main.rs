@@ -5,6 +5,7 @@ use async_std::{
 };
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use shared_types::Msg;
 use std::{collections::VecDeque, time::SystemTime};
 
 use shared::*;
@@ -42,7 +43,7 @@ async fn main() {
         let msg = queue.pop_front();
 
         let reqs = match msg {
-            Some(CoreMessage::Message(m)) => core.message(m),
+            Some(CoreMessage::Message(m)) => core.message(&bincode::serialize(&m).unwrap()),
             Some(CoreMessage::Response(r)) => core.response(r),
             _ => vec![],
         };

@@ -535,9 +535,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-std",
+ "bincode",
  "chrono",
  "clap 4.0.18",
+ "serde",
  "shared",
+ "shared_types",
  "surf",
 ]
 
@@ -2670,9 +2673,12 @@ name = "web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "gloo-net",
  "js-sys",
+ "serde",
  "shared",
+ "shared_types",
  "wasm-bindgen-futures",
  "web-sys",
  "woothee",

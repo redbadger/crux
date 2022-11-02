@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
+use serde::{Deserialize, Serialize};
 use shared::*;
+use shared_types::Msg;
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
@@ -42,6 +44,7 @@ pub struct HelloWorldProps {
 #[derive(Default)]
 struct HelloWorld;
 
+#[derive(Serialize, Deserialize)]
 enum CoreMessage {
     Message(Msg),
     Response(Response),
@@ -63,7 +66,9 @@ impl Component for HelloWorld {
         let link = ctx.link();
 
         let reqs = match msg {
-            CoreMessage::Message(msg) => ctx.props().core.message(msg),
+            CoreMessage::Message(msg) => {
+                ctx.props().core.message(&bincode::serialize(&msg).unwrap())
+            }
             CoreMessage::Response(resp) => ctx.props().core.response(resp),
         };
 

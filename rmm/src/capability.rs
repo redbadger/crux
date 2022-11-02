@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 use uuid::Uuid;
 
+#[derive(Serialize, Deserialize)]
 pub struct Envelope<T> {
     pub uuid: Vec<u8>,
     pub body: T,

@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use super::{
     capability::Envelope,
     http::Http,
@@ -46,6 +48,7 @@ pub enum Request {
     Render,
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum Response {
     Http { data: BytesEnvelope },
     Time { data: StringEnvelope },
