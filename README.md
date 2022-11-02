@@ -34,11 +34,12 @@ This means it can be compiled to WebAssembly.
 - The core can be tested without the need for mocking or stubbing.
 All that is needed is to check that for a given inbound message, the core responds with the correct set of commands and the correct view model.
 - Thanks to UniFFI, all data types used in message passing are shared across the FFI boundary.
-Then, when the code is updated (E.G. with new variants on the `Msg` type), the type checking in application layer (Swift and Kotlin) will cause the build to fail until the new messages are correctly handled.
+Then, when the code is updated (E.G. with new variants on the `Msg` type), type checking in the application layer (Swift and Kotlin) will cause the build to fail until the new messages are correctly handled.
 This keeps everything in sync!
 
 Message exchange is always initiated by the application &mdash; typically in response to some event in the user interface.
-When such an event goes off, the application sends a message to the core, and the core responds by returning one or more messages.
+When such an event goes off, the application sends a message to the core that then performs the relevant (pure) business logic.
+The core then responds by returning one or more messages.
 
 It is important to understand that in order for the results of the core's computation to be visible in the "outside world", the core must send at least one message back to the application.
 
@@ -46,39 +47,39 @@ It is important to understand that in order for the results of the core's comput
 
 Two types of message are exchanged between the application and the core.
 
-* From the Application to the Core: ***`Msg`***
+* Messages of type `Msg` are sent from the Application to the Core in response to either:
 
-   This message type is sent in response to either:
-
-   1. An event in the user interface
-   1. Processing a list of commands received from the core
+   1. An event happening in the user interface
+   1. The result of processing a list of commands received from the core
    1. The response to an earlier asynchronous request (E.G. an HTTP request) has been received and must be sent to the core for processing
 
-* From the Core to the Application: ***`Cmd`***
+* Messages of type `Cmd` are sent from the Core to the Application
 
-   Upon receipt of a `Msg`, the core performs the necessary pure computation and returns a list of one or more messages of type `Cmd`.
+   Upon receipt of a `Msg`, the core performs the necessary pure computation and returns a list of one or more `Cmd` messages.
 These commands then instruct the application what to do next.
 
 ## Typical Message Exchange Cycle
 
-A typical message exchange cycle begins with a user interaction which passes a message to the core by calling its `update` function.
-The core then updates its inner state, and responds with one or more messages of type `Cmd`.
+A typical message exchange cycle begins with a user interaction which raises an event in the application layer.
+The application then generates the appropriate message and passes it to the core by calling its `update` function.
+The core then updates its inner state, and responds with one or more `Cmd` messages.
 
 In the simplest case, the command will simply be `Cmd::Render`.
-This informs the client of two things:
+This informs the application of two things:
 
-1. The user interface needs to be refreshed
+1. The user interface needs to be rerendered
 1. This particular message exchange has come to an end
 
-In more complex cases however, the command may instruct the application to perform a wide manner of side effect inducing tasks such as:
+In more complex cases however, the command may instruct the application to perform a wide variety of side-effect-inducing tasks such as:
 
 * Make a network call, or
 * Fetch the current time stamp, or
 * Perform biometric authentication, or
 * Obtain an image from the camera, or
-* A wide range of other tasks...
+* Whatever else you can think of...
 
-Once the task generating the side-effect has been executed, the application passes the result to the core as another `Msg`, and the exchange continues in this fashion until a `Cmd::Render` is returned and no more side-effects are in flight.
+Once the response from the side-effect-generating command has been received, the application generates another `Msg` and passes it to the core for processing.
+This exchange continues until the core returns a `Cmd::Render` signalling that no more side-effects are in flight.
 
 ## Run the Example Locally
 
