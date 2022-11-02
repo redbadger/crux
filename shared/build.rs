@@ -1,6 +1,6 @@
 use serde_reflection::{Tracer, TracerConfig};
 use shared_types::Msg;
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, path::PathBuf};
 
 fn main() {
     uniffi_build::generate_scaffolding("./src/shared.udl").unwrap();
@@ -19,4 +19,10 @@ fn main() {
     let path = "./generated/shared_types.swift";
     let mut output = File::create(path).unwrap();
     write!(output, "{}", out).unwrap();
+
+    // Create Java definitions.
+    let generator = serde_generate::java::CodeGenerator::new(&config);
+    generator
+        .write_source_files(PathBuf::from("./generated"), &registry)
+        .unwrap();
 }
