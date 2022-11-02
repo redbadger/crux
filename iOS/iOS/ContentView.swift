@@ -1,9 +1,7 @@
 import SwiftUI
 
-class GetPlatform: Platform {
-    func get() -> String {
-        return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
-    }
+func get_platform() -> String {
+    return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
 }
 
 enum Message {
@@ -13,17 +11,18 @@ enum Message {
 
 @MainActor
 class Model: ObservableObject {
-    @Published var view = ViewModel(fact: "", image: .none)
+    @Published var view = ViewModel(fact: "", image: .none, platform: "")
     var core = Core()
 
     init() {
         update(msg: .message(.get))
+        update(msg: .message(.getPlatform))
     }
 
     private func httpGet(uuid: [UInt8], url: String) {
         Task {
             let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .response(.http(uuid: uuid, bytes: [UInt8](data))))
+            self.update(msg: .response(.http(data: BytesEnvelope(body: [UInt8](data), uuid: uuid))))
         }
     }
 
@@ -40,13 +39,15 @@ class Model: ObservableObject {
         for req in reqs {
             switch req {
             case .render: view = core.view()
-            case .http(url: let url, uuid: let uuid): httpGet(uuid: uuid, url: url)
+            case .http(data: let data): httpGet(uuid: data.uuid, url: data.body)
             case .time(let uuid):
-                update(msg: .response(.time(uuid: uuid, isoTime: Date().ISO8601Format())))
-            case .kvRead(uuid: let uuid, key: _):
-                update(msg: .response(.kvRead(uuid: uuid, bytes: .none)))
-            case .kvWrite(uuid: let uuid, key: _, bytes: _):
-                update(msg: .response(.kvWrite(uuid: uuid, success: false)))
+                update(msg: .response(.time(data: StringEnvelope(body: Date().ISO8601Format(), uuid: uuid.uuid))))
+            case .platform(let data):
+                update(msg: .response(.platform(data: StringEnvelope(body: get_platform(), uuid: data.uuid))))
+            case .kvRead(let data):
+                update(msg: .response(.kvRead(data:OptionalBytesEnvelope(body: .none, uuid: data.uuid ))))
+            case .kvWrite(let data):
+                update(msg: .response(.kvWrite(data:BoolEnvelope(body: false, uuid: data.uuid))))
             }
         }
     }
@@ -85,7 +86,7 @@ struct ContentView: View {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
-            Text(try! addForPlatform(1, 2, GetPlatform()))
+            Text(model.view.platform)
             model.view.image.map { image in
                 AnyView(
                     // For the loading image to work properly, we'd need to add

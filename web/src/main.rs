@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use js_sys::Date;
 use shared::*;
 use web_sys::window;
@@ -20,15 +20,27 @@ fn time_get() -> Result<String> {
     Ok(format!("{}", date.to_iso_string()))
 }
 
+fn platform_get() -> Result<String> {
+    let agent = window()
+        .ok_or_else(|| anyhow!("no DOM"))?
+        .navigator()
+        .user_agent()
+        .map_err(|e| anyhow!("no user agent {:?}", e))?;
+
+    Ok(Parser::new()
+        .parse(&agent)
+        .ok_or_else(|| anyhow!("failed to parse user agent"))?
+        .name
+        .to_string())
+}
+
 #[derive(Properties, Default, PartialEq)]
 pub struct HelloWorldProps {
     pub core: Core,
 }
 
 #[derive(Default)]
-struct HelloWorld {
-    result: String,
-}
+struct HelloWorld;
 
 enum CoreMessage {
     Message(Msg),
@@ -42,23 +54,13 @@ impl Component for HelloWorld {
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
         link.send_message(CoreMessage::Message(Msg::Get));
+        link.send_message(CoreMessage::Message(Msg::GetPlatform));
 
         Self::default()
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let link = ctx.link();
-
-        struct WebPlatform;
-        impl Platform for WebPlatform {
-            fn get(&self) -> Result<String, PlatformError> {
-                let navigator = window().unwrap().navigator();
-                let agent = navigator.user_agent().unwrap_or_default();
-                let parser = Parser::new();
-                Ok(parser.parse(&agent).unwrap_or_default().name.to_string())
-            }
-        }
-        self.result = add_for_platform(1, 2, Box::new(WebPlatform {})).unwrap_or_default();
 
         let reqs = match msg {
             CoreMessage::Message(msg) => ctx.props().core.message(msg),
@@ -67,42 +69,68 @@ impl Component for HelloWorld {
 
         reqs.into_iter().any(|req| match req {
             Request::Render => true,
-            Request::Http { url, uuid } => {
+            Request::Http {
+                data: StringEnvelope { uuid, body: url },
+            } => {
                 let link = link.clone();
 
                 wasm_bindgen_futures::spawn_local(async move {
                     let bytes = http_get(&url).await.unwrap_or_default();
 
-                    link.send_message(CoreMessage::Response(Response::Http { uuid, bytes }));
+                    link.send_message(CoreMessage::Response(Response::Http {
+                        data: BytesEnvelope { body: bytes, uuid },
+                    }));
                 });
 
                 false
             }
-            Request::Time { uuid } => {
-                link.send_message(CoreMessage::Response(Response::Time {
-                    uuid,
-                    iso_time: time_get().unwrap(),
+            Request::Platform {
+                data: OptionalBoolEnvelope { body: _, uuid },
+            } => {
+                link.send_message(CoreMessage::Response(Response::Platform {
+                    data: StringEnvelope {
+                        uuid,
+                        body: platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
+                    },
                 }));
 
                 false
             }
-            Request::KVRead { uuid, key: _key } => {
+            Request::Time {
+                data: OptionalBoolEnvelope { body: _, uuid },
+            } => {
+                link.send_message(CoreMessage::Response(Response::Time {
+                    data: StringEnvelope {
+                        uuid,
+                        body: time_get().unwrap(),
+                    },
+                }));
+
+                false
+            }
+            Request::KVRead {
+                data: StringEnvelope { uuid, body: _key },
+            } => {
                 // TODO implement state restoration
                 link.send_message(CoreMessage::Response(Response::KVRead {
-                    uuid,
-                    bytes: None,
+                    data: OptionalBytesEnvelope { uuid, body: None },
                 }));
 
                 false
             }
             Request::KVWrite {
-                uuid,
-                key: _key,
-                bytes: _bytes,
+                data:
+                    KeyValueEnvelope {
+                        uuid,
+                        body:
+                            KeyValue {
+                                key: _key,
+                                value: _bytes,
+                            },
+                    },
             } => {
                 link.send_message(CoreMessage::Response(Response::KVWrite {
-                    uuid,
-                    success: false,
+                    data: BoolEnvelope { uuid, body: false },
                 }));
 
                 false
@@ -117,7 +145,7 @@ impl Component for HelloWorld {
         html! {
             <>
                 <section class="section title has-text-centered">
-                    <p>{&self.result}</p>
+                    <p>{&view.platform}</p>
                 </section>
                 <section class="section container has-text-centered">
                     if let Some(image) = &view.image {

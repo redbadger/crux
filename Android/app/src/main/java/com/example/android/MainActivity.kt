@@ -45,10 +45,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-class GetPlatform : Platform {
-    override fun get(): String {
-        return Build.BRAND + " " + Build.VERSION.RELEASE
-    }
+fun getPlatform(): String {
+    return Build.BRAND + " " + Build.VERSION.RELEASE
 }
 
 interface HttpGetService {
@@ -74,13 +72,14 @@ sealed class CoreMessage {
 }
 
 class Model : ViewModel() {
-    var view: redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null))
+    var view: redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null, ""))
         private set
 
     private val core = Core()
 
     init {
         update(CoreMessage.Message(Msg.Get))
+        update(CoreMessage.Message(Msg.GetPlatform))
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
@@ -91,7 +90,7 @@ class Model : ViewModel() {
                 call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
             ) {
                 response?.body()?.bytes()?.toUByteArray()?.toList()?.let { bytes ->
-                    update(CoreMessage.Response(Rsp.Http(uuid, bytes)))
+                    update(CoreMessage.Response(Rsp.Http(BytesEnvelope(bytes, uuid))))
                 }
             }
 
@@ -115,19 +114,42 @@ class Model : ViewModel() {
                     this.view = core.view()
                 }
                 is Request.Http -> {
-                    httpGet(req.url, req.uuid)
+                    httpGet(req.data.body, req.data.uuid)
                 }
                 is Request.Time -> {
                     val isoTime =
                         ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
-                    update(CoreMessage.Response(Rsp.Time(req.uuid, isoTime)))
+                    update(CoreMessage.Response(Rsp.Time(StringEnvelope(isoTime, req.data.uuid))))
+                }
+                is Request.Platform -> {
+                    val platform = getPlatform()
+
+                    update(
+                        CoreMessage.Response(
+                            Rsp.Platform(
+                                StringEnvelope(
+                                    platform,
+                                    req.data.uuid
+                                )
+                            )
+                        )
+                    )
                 }
                 is Request.KvRead -> {
-                    update(CoreMessage.Response(Rsp.KvRead(req.uuid, null)))
+                    update(
+                        CoreMessage.Response(
+                            Rsp.KvRead(
+                                OptionalBytesEnvelope(
+                                    null,
+                                    req.data.uuid
+                                )
+                            )
+                        )
+                    )
                 }
                 is Request.KvWrite -> {
-                    update(CoreMessage.Response(Rsp.KvWrite(req.uuid, false)))
+                    update(CoreMessage.Response(Rsp.KvWrite(BoolEnvelope(false, req.data.uuid))))
                 }
             }
         }
@@ -144,7 +166,7 @@ fun CatFacts(model: Model = viewModel()) {
             .padding(10.dp),
     ) {
         Icon(Icons.Filled.Public, "Platform")
-        Text(text = addForPlatform(1u, 2u, GetPlatform()), modifier = Modifier.padding(10.dp))
+        Text(text = model.view.platform, modifier = Modifier.padding(10.dp))
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,

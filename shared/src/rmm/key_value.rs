@@ -1,65 +1,47 @@
+use super::capability::Capability;
 use crate::Request;
-use std::{collections::HashMap, sync::RwLock};
-use uuid::Uuid;
+use derive_more::Deref;
 
-type ReadStore<T> = HashMap<[u8; 16], Box<dyn FnOnce(Option<Vec<u8>>) -> T + Sync + Send>>;
-type WriteStore<T> = HashMap<[u8; 16], Box<dyn FnOnce(bool) -> T + Sync + Send>>;
-
-pub struct KeyValue<Msg> {
-    reads: RwLock<ReadStore<Msg>>,
-    writes: RwLock<WriteStore<Msg>>,
+pub struct KeyValue {
+    pub key: String,
+    pub value: Vec<u8>,
 }
+#[derive(Deref)]
+pub struct KeyValueRead<Msg>(Capability<Msg, String, Option<Vec<u8>>>);
 
-impl<Msg> Default for KeyValue<Msg> {
+impl<Msg> Default for KeyValueRead<Msg> {
     fn default() -> Self {
-        Self {
-            reads: RwLock::new(HashMap::new()),
-            writes: RwLock::new(HashMap::new()),
-        }
+        Self(Default::default())
     }
 }
 
-impl<Msg> KeyValue<Msg> {
-    pub fn write<F>(&self, key: String, bytes: Vec<u8>, msg: F) -> Request
-    where
-        F: Sync + Send + FnOnce(bool) -> Msg + 'static,
-    {
-        let uuid = *Uuid::new_v4().as_bytes();
-
-        self.writes.write().unwrap().insert(uuid, Box::new(msg));
-
-        Request::KVWrite {
-            uuid: uuid.to_vec(),
-            key,
-            bytes,
-        }
-    }
-
-    pub fn written(&self, uuid: &[u8], result: bool) -> Msg {
-        let mut writes = self.writes.write().unwrap();
-        let f = writes.remove(uuid).unwrap();
-
-        f(result)
-    }
-
+impl<Msg> KeyValueRead<Msg> {
     pub fn read<F>(&self, key: String, msg: F) -> Request
     where
-        F: Sync + Send + FnOnce(Option<Vec<u8>>) -> Msg + 'static,
+        F: FnOnce(Option<Vec<u8>>) -> Msg + Sync + Send + 'static,
     {
-        let uuid = *Uuid::new_v4().as_bytes();
-
-        self.reads.write().unwrap().insert(uuid, Box::new(msg));
-
         Request::KVRead {
-            uuid: uuid.to_vec(),
-            key,
+            data: self.0.request(key, msg),
         }
     }
+}
 
-    pub fn receive_read(&self, uuid: &[u8], bytes: Option<Vec<u8>>) -> Msg {
-        let mut reads = self.reads.write().unwrap();
-        let f = reads.remove(uuid).unwrap();
+#[derive(Deref)]
+pub struct KeyValueWrite<Msg>(Capability<Msg, KeyValue, bool>);
 
-        f(bytes)
+impl<Msg> Default for KeyValueWrite<Msg> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<Msg> KeyValueWrite<Msg> {
+    pub fn write<F>(&self, key: String, value: Vec<u8>, msg: F) -> Request
+    where
+        F: FnOnce(bool) -> Msg + Sync + Send + 'static,
+    {
+        Request::KVWrite {
+            data: self.0.request(KeyValue { key, value }, msg),
+        }
     }
 }
