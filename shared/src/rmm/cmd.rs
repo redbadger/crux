@@ -28,6 +28,8 @@ impl<Msg> Default for Cmd<Msg> {
     }
 }
 
+// These type aliases are not ideal but needed for FFI,
+// due to current lack of generics support in uniffi
 pub type StringEnvelope = Envelope<String>;
 pub type BytesEnvelope = Envelope<Vec<u8>>;
 pub type BoolEnvelope = Envelope<bool>;

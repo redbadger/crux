@@ -53,6 +53,21 @@ pub struct ViewModel {
     pub platform: String,
 }
 
+impl From<&Model> for ViewModel {
+    fn from(model: &Model) -> Self {
+        let fact = match (&model.cat_fact, &model.time) {
+            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+            _ => "No fact".to_string(),
+        };
+
+        ViewModel {
+            platform: format!("Hello {}", model.platform),
+            fact,
+            image: model.cat_image.clone(),
+        }
+    }
+}
+
 pub enum Msg {
     None,
     GetPlatform,
@@ -169,16 +184,7 @@ impl App for CatFacts {
     }
 
     fn view(&self, model: &Model) -> ViewModel {
-        let fact = match (&model.cat_fact, &model.time) {
-            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
-            _ => "No fact".to_string(),
-        };
-
-        ViewModel {
-            platform: format!("Hello {}", model.platform),
-            fact,
-            image: model.cat_image.clone(),
-        }
+        model.into()
     }
 }
 
