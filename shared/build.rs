@@ -16,7 +16,7 @@ fn main() {
     generator.output(&mut source, &registry).unwrap();
     let out = String::from_utf8_lossy(&source);
 
-    let path = "./generated/shared.swift";
+    let path = "./generated/shared_types.swift";
     let mut output = File::create(path).unwrap();
     write!(output, "{}", out).unwrap();
 }

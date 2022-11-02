@@ -16,6 +16,8 @@
 		CCB21E2B28F199710074368C /* iOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E2A28F199710074368C /* iOSTests.swift */; };
 		CCB21E3528F199710074368C /* iOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E3428F199710074368C /* iOSUITests.swift */; };
 		CCB21E3728F199710074368C /* iOSUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E3628F199710074368C /* iOSUITestsLaunchTests.swift */; };
+		CCB436402912CCAC0059B3A3 /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB4363F2912CCAC0059B3A3 /* shared_types.swift */; };
+		CCB436432912CD7E0059B3A3 /* Serde in Frameworks */ = {isa = PBXBuildFile; productRef = CCB436422912CD7E0059B3A3 /* Serde */; };
 		CCFA7BDE28F5ACC500AEA3EA /* libshared.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CCFA7BDD28F5ACC500AEA3EA /* libshared.a */; };
 /* End PBXBuildFile section */
 
@@ -67,6 +69,7 @@
 		CCB21E3028F199710074368C /* iOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCB21E3428F199710074368C /* iOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITests.swift; sourceTree = "<group>"; };
 		CCB21E3628F199710074368C /* iOSUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		CCB4363F2912CCAC0059B3A3 /* shared_types.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared/generated/shared_types.swift; sourceTree = "<group>"; };
 		CCFA7BDD28F5ACC500AEA3EA /* libshared.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libshared.a; path = ../target/debug/libshared.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -75,6 +78,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CCB436432912CD7E0059B3A3 /* Serde in Frameworks */,
 				CCFA7BDE28F5ACC500AEA3EA /* libshared.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -99,6 +103,7 @@
 		CCB21E0D28F199700074368C = {
 			isa = PBXGroup;
 			children = (
+				CCB4363F2912CCAC0059B3A3 /* shared_types.swift */,
 				CC02FE1F28F2EA83003DA87D /* sharedFFI.h */,
 				CC02FE1C28F2E867003DA87D /* shared.udl */,
 				CCB21E1828F199700074368C /* iOS */,
@@ -193,6 +198,9 @@
 			dependencies = (
 			);
 			name = iOS;
+			packageProductDependencies = (
+				CCB436422912CD7E0059B3A3 /* Serde */,
+			);
 			productName = iOS;
 			productReference = CCB21E1628F199700074368C /* iOS.app */;
 			productType = "com.apple.product-type.application";
@@ -265,6 +273,9 @@
 				Base,
 			);
 			mainGroup = CCB21E0D28F199700074368C;
+			packageReferences = (
+				CCB436412912CD7E0059B3A3 /* XCRemoteSwiftPackageReference "Serde" */,
+			);
 			productRefGroup = CCB21E1728F199700074368C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -329,6 +340,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CCB436402912CCAC0059B3A3 /* shared_types.swift in Sources */,
 				CC02FE1D28F2E867003DA87D /* shared.udl in Sources */,
 				CCB21E1C28F199700074368C /* ContentView.swift in Sources */,
 				CCB21E1A28F199700074368C /* iOSApp.swift in Sources */,
@@ -662,6 +674,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		CCB436412912CD7E0059B3A3 /* XCRemoteSwiftPackageReference "Serde" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/starcoin-sdk/Serde.swift";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		CCB436422912CD7E0059B3A3 /* Serde */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CCB436412912CD7E0059B3A3 /* XCRemoteSwiftPackageReference "Serde" */;
+			productName = Serde;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CCB21E0E28F199700074368C /* Project object */;
 }

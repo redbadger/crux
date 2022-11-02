@@ -31,7 +31,7 @@ class Model: ObservableObject {
 
         switch msg {
         case .message(let m):
-            reqs = core.message(m)
+            reqs = core.message(try! m.bincodeSerialize())
         case .response(let r):
             reqs = core.response(r)
         }

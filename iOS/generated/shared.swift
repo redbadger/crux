@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_1406_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_fd26_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_1406_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_fd26_rustbuffer_free(self, $0) }
     }
 }
 
@@ -355,7 +355,7 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 
 public protocol CoreProtocol {
-    func `message`(_ `msg`: Msg)  -> [Request]
+    func `message`(_ `msg`: [UInt8])  -> [Request]
     func `response`(_ `res`: Response)  -> [Request]
     func `view`()  -> ViewModel
     
@@ -375,24 +375,24 @@ public class Core: CoreProtocol {
     
     rustCall() {
     
-    shared_1406_Core_new($0)
+    shared_fd26_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_1406_Core_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_fd26_Core_object_free(pointer, $0) }
     }
 
     
 
     
-    public func `message`(_ `msg`: Msg)  -> [Request] {
+    public func `message`(_ `msg`: [UInt8])  -> [Request] {
         return try! FfiConverterSequenceTypeRequest.lift(
             try!
     rustCall() {
     
-    shared_1406_Core_message(self.pointer, 
-        FfiConverterTypeMsg.lower(`msg`), $0
+    shared_fd26_Core_message(self.pointer, 
+        FfiConverterSequenceUInt8.lower(`msg`), $0
     )
 }
         )
@@ -402,7 +402,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_1406_Core_response(self.pointer, 
+    shared_fd26_Core_response(self.pointer, 
         FfiConverterTypeResponse.lower(`res`), $0
     )
 }
@@ -413,7 +413,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_1406_Core_view(self.pointer, $0
+    shared_fd26_Core_view(self.pointer, $0
     )
 }
         )
@@ -865,126 +865,6 @@ fileprivate struct FfiConverterTypeViewModel: FfiConverterRustBuffer {
         FfiConverterString.write(value.`platform`, into: buf)
     }
 }
-
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
-public enum Msg {
-    
-    case `none`
-    case `getPlatform`
-    case `setPlatform`(`platform`: String)
-    case `clear`
-    case `get`
-    case `fetch`
-    case `restore`
-    case `setState`(`bytes`: [UInt8]?)
-    case `setFact`(`bytes`: [UInt8])
-    case `setImage`(`bytes`: [UInt8])
-    case `currentTime`(`isoTime`: String)
-}
-
-fileprivate struct FfiConverterTypeMsg: FfiConverterRustBuffer {
-    typealias SwiftType = Msg
-
-    static func read(from buf: Reader) throws -> Msg {
-        let variant: Int32 = try buf.readInt()
-        switch variant {
-        
-        case 1: return .`none`
-        
-        case 2: return .`getPlatform`
-        
-        case 3: return .`setPlatform`(
-            `platform`: try FfiConverterString.read(from: buf)
-        )
-        
-        case 4: return .`clear`
-        
-        case 5: return .`get`
-        
-        case 6: return .`fetch`
-        
-        case 7: return .`restore`
-        
-        case 8: return .`setState`(
-            `bytes`: try FfiConverterOptionSequenceUInt8.read(from: buf)
-        )
-        
-        case 9: return .`setFact`(
-            `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
-        )
-        
-        case 10: return .`setImage`(
-            `bytes`: try FfiConverterSequenceUInt8.read(from: buf)
-        )
-        
-        case 11: return .`currentTime`(
-            `isoTime`: try FfiConverterString.read(from: buf)
-        )
-        
-        default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    static func write(_ value: Msg, into buf: Writer) {
-        switch value {
-        
-        
-        case .`none`:
-            buf.writeInt(Int32(1))
-        
-        
-        case .`getPlatform`:
-            buf.writeInt(Int32(2))
-        
-        
-        case let .`setPlatform`(`platform`):
-            buf.writeInt(Int32(3))
-            FfiConverterString.write(`platform`, into: buf)
-            
-        
-        case .`clear`:
-            buf.writeInt(Int32(4))
-        
-        
-        case .`get`:
-            buf.writeInt(Int32(5))
-        
-        
-        case .`fetch`:
-            buf.writeInt(Int32(6))
-        
-        
-        case .`restore`:
-            buf.writeInt(Int32(7))
-        
-        
-        case let .`setState`(`bytes`):
-            buf.writeInt(Int32(8))
-            FfiConverterOptionSequenceUInt8.write(`bytes`, into: buf)
-            
-        
-        case let .`setFact`(`bytes`):
-            buf.writeInt(Int32(9))
-            FfiConverterSequenceUInt8.write(`bytes`, into: buf)
-            
-        
-        case let .`setImage`(`bytes`):
-            buf.writeInt(Int32(10))
-            FfiConverterSequenceUInt8.write(`bytes`, into: buf)
-            
-        
-        case let .`currentTime`(`isoTime`):
-            buf.writeInt(Int32(11))
-            FfiConverterString.write(`isoTime`, into: buf)
-            
-        }
-    }
-}
-
-
-extension Msg: Equatable, Hashable {}
-
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.

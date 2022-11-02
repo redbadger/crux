@@ -8,21 +8,6 @@ interface Core {
   ViewModel view();
 };
 
-[Enum]
-interface Msg {
-  None();
-  GetPlatform();
-  SetPlatform(string platform);
-  Clear();
-  Get();
-  Fetch();
-  Restore();
-  SetState(sequence<u8>? bytes);
-  SetFact(sequence<u8> bytes);
-  SetImage(sequence<u8> bytes);
-  CurrentTime(string iso_time);
-};
-
 dictionary StringEnvelope {string body; sequence<u8> uuid;};
 dictionary OptionalBoolEnvelope {boolean? body; sequence<u8> uuid;};
 dictionary BoolEnvelope {boolean body; sequence<u8> uuid;};
