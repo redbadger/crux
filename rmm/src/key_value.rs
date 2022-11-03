@@ -1,45 +1,45 @@
-use crate::{Continuations, Request, RequestBody};
+use crate::{continuations::ContinuationStore, Request, RequestBody};
 
-pub struct KeyValueRead<'c, Msg> {
-    continuations: &'c Continuations<Msg>,
+pub struct KeyValueRead<Msg> {
+    pub continuations: ContinuationStore<Option<Vec<u8>>, Msg>,
 }
 
-impl<'c, Msg> KeyValueRead<'c, Msg> {
-    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
-        Self { continuations }
+impl<Msg> Default for KeyValueRead<Msg> {
+    fn default() -> Self {
+        Self {
+            continuations: Default::default(),
+        }
     }
+}
 
-    pub fn read<F>(&self, key: String, msg: F) -> Request
+impl<Msg> KeyValueRead<Msg> {
+    pub fn read<F>(&mut self, key: String, msg: F) -> Request
     where
         F: FnOnce(Option<Vec<u8>>) -> Msg + Sync + Send + 'static,
     {
         let body = RequestBody::KVRead(key);
-        self.continuations
-            .key_value_read
-            .write()
-            .unwrap()
-            .pause(body, msg)
+        self.continuations.pause(body, msg)
     }
 }
 
-pub struct KeyValueWrite<'c, Msg> {
-    continuations: &'c Continuations<Msg>,
+pub struct KeyValueWrite<Msg> {
+    pub continuations: ContinuationStore<bool, Msg>,
 }
 
-impl<'c, Msg> KeyValueWrite<'c, Msg> {
-    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
-        Self { continuations }
+impl<Msg> Default for KeyValueWrite<Msg> {
+    fn default() -> Self {
+        Self {
+            continuations: Default::default(),
+        }
     }
+}
 
-    pub fn write<F>(&self, key: String, value: Vec<u8>, msg: F) -> Request
+impl<Msg> KeyValueWrite<Msg> {
+    pub fn write<F>(&mut self, key: String, value: Vec<u8>, msg: F) -> Request
     where
         F: FnOnce(bool) -> Msg + Sync + Send + 'static,
     {
         let body = RequestBody::KVWrite(key, value);
-        self.continuations
-            .key_value_write
-            .write()
-            .unwrap()
-            .pause(body, msg)
+        self.continuations.pause(body, msg)
     }
 }

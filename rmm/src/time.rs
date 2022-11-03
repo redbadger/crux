@@ -1,19 +1,23 @@
-use crate::{Continuations, Request, RequestBody};
+use crate::{continuations::ContinuationStore, Request, RequestBody};
 
-pub struct Time<'c, Msg> {
-    continuations: &'c Continuations<Msg>,
+pub struct Time<Msg> {
+    pub continuations: ContinuationStore<String, Msg>,
 }
 
-impl<'c, Msg> Time<'c, Msg> {
-    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
-        Self { continuations }
+impl<Msg> Default for Time<Msg> {
+    fn default() -> Self {
+        Self {
+            continuations: Default::default(),
+        }
     }
+}
 
-    pub fn get<F>(&self, msg: F) -> Request
+impl<Msg> Time<Msg> {
+    pub fn get<F>(&mut self, msg: F) -> Request
     where
         F: FnOnce(String) -> Msg + Sync + Send + 'static,
     {
         let body = RequestBody::Time;
-        self.continuations.time.write().unwrap().pause(body, msg)
+        self.continuations.pause(body, msg)
     }
 }

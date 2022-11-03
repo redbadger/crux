@@ -1,19 +1,23 @@
-use crate::{Continuations, Request, RequestBody};
+use crate::{continuations::ContinuationStore, Request, RequestBody};
 
-pub struct Http<'c, Msg> {
-    continuations: &'c Continuations<Msg>,
+pub struct Http<Msg> {
+    pub continuations: ContinuationStore<Vec<u8>, Msg>,
 }
 
-impl<'c, Msg> Http<'c, Msg> {
-    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
-        Self { continuations }
+impl<Msg> Default for Http<Msg> {
+    fn default() -> Self {
+        Self {
+            continuations: Default::default(),
+        }
     }
+}
 
-    pub fn get<F>(&self, url: String, msg: F) -> Request
+impl<Msg> Http<Msg> {
+    pub fn get<F>(&mut self, url: String, msg: F) -> Request
     where
         F: FnOnce(Vec<u8>) -> Msg + Sync + Send + 'static,
     {
         let body = RequestBody::Http(url);
-        self.continuations.http.write().unwrap().pause(body, msg)
+        self.continuations.pause(body, msg)
     }
 }

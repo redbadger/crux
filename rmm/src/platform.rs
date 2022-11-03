@@ -1,23 +1,23 @@
-use crate::{Continuations, Request, RequestBody};
+use crate::{continuations::ContinuationStore, Request, RequestBody};
 
-pub struct Platform<'c, Msg> {
-    continuations: &'c Continuations<Msg>,
+pub struct Platform<Msg> {
+    pub continuations: ContinuationStore<String, Msg>,
 }
 
-impl<'c, Msg> Platform<'c, Msg> {
-    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
-        Self { continuations }
+impl<Msg> Default for Platform<Msg> {
+    fn default() -> Self {
+        Self {
+            continuations: Default::default(),
+        }
     }
+}
 
-    pub fn get<F>(&self, msg: F) -> Request
+impl<Msg> Platform<Msg> {
+    pub fn get<F>(&mut self, msg: F) -> Request
     where
         F: FnOnce(String) -> Msg + Sync + Send + 'static,
     {
         let body = RequestBody::Platform;
-        self.continuations
-            .platform
-            .write()
-            .unwrap()
-            .pause(body, msg)
+        self.continuations.pause(body, msg)
     }
 }

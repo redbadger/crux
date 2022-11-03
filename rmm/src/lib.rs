@@ -1,4 +1,5 @@
 mod cmd;
+mod continuations;
 mod http;
 mod key_value;
 mod platform;
@@ -23,19 +24,19 @@ pub trait App: Default {
     fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
 }
 
-pub struct AppCore<'c, A: App> {
+pub struct AppCore<A: App> {
     model: RwLock<A::Model>,
-    cmd: Cmd<'c, A::Msg>,
+    cmd: Cmd<A::Msg>,
     app: A,
 }
 
-impl<A: App> PartialEq for AppCore<'_, A> {
+impl<A: App> PartialEq for AppCore<A> {
     fn eq(&self, _other: &Self) -> bool {
         false // Core has all kinds of interior mutability
     }
 }
 
-impl<A: App> Default for AppCore<'_, A> {
+impl<A: App> Default for AppCore<A> {
     fn default() -> Self {
         Self {
             model: Default::default(),
@@ -45,7 +46,7 @@ impl<A: App> Default for AppCore<'_, A> {
     }
 }
 
-impl<A: App> AppCore<'_, A> {
+impl<A: App> AppCore<A> {
     pub fn new() -> Self {
         Self::default()
     }
