@@ -44,38 +44,34 @@ async fn main() {
 
         let reqs = match msg {
             Some(CoreMessage::Message(m)) => core.message(&bincode::serialize(&m).unwrap()),
-            Some(CoreMessage::Response(r)) => core.response(r),
+            Some(CoreMessage::Response(r)) => core.response(&bincode::serialize(&r).unwrap()),
             _ => vec![],
         };
+        let reqs: Vec<Request> = bincode::deserialize(&reqs).unwrap();
 
         for req in reqs {
-            match req {
-                Request::Http {
-                    data: StringEnvelope { uuid, body: url },
-                } => {
-                    let bytes: Vec<u8> = surf::get(url).recv_bytes().await.unwrap();
-
-                    queue.push_back(CoreMessage::Response(Response::Http {
-                        data: BytesEnvelope { uuid, body: bytes },
-                    }));
-                }
-                Request::Platform { .. } => {}
-                Request::Time {
-                    data: OptionalBoolEnvelope { uuid, body: _ },
-                } => {
+            let Request { uuid, body } = req;
+            match body {
+                RequestBody::Render => (),
+                RequestBody::Time => {
                     let now: DateTime<Utc> = SystemTime::now().into();
                     let iso_time = now.to_rfc3339();
 
-                    queue.push_back(CoreMessage::Response(Response::Time {
-                        data: StringEnvelope {
-                            uuid,
-                            body: iso_time,
-                        },
+                    queue.push_back(CoreMessage::Response(Response {
+                        body: ResponseBody::Time(iso_time),
+                        uuid,
                     }));
                 }
-                Request::KVRead {
-                    data: StringEnvelope { uuid, body: key },
-                } => {
+                RequestBody::Http(url) => {
+                    let bytes: Vec<u8> = surf::get(url).recv_bytes().await.unwrap();
+
+                    queue.push_back(CoreMessage::Response(Response {
+                        body: ResponseBody::Http(bytes),
+                        uuid,
+                    }));
+                }
+                RequestBody::Platform => {}
+                RequestBody::KVRead(key) => {
                     let bytes = read_state(&key).await.ok();
 
                     let initial_msg = match &args.cmd {
@@ -84,28 +80,20 @@ async fn main() {
                         Command::Fetch => CoreMessage::Message(Msg::Fetch),
                     };
 
-                    queue.push_back(CoreMessage::Response(Response::KVRead {
-                        data: OptionalBytesEnvelope { uuid, body: bytes },
+                    queue.push_back(CoreMessage::Response(Response {
+                        body: ResponseBody::KVRead(bytes),
+                        uuid,
                     }));
                     queue.push_back(initial_msg);
                 }
-                Request::KVWrite {
-                    data:
-                        KeyValueEnvelope {
-                            uuid,
-                            body: KeyValue { key, value: bytes },
-                        },
-                } => {
-                    let success = write_state(&key, &bytes).await.is_ok();
+                RequestBody::KVWrite(key, val) => {
+                    let success = write_state(&key, &val).await.is_ok();
 
-                    queue.push_back(CoreMessage::Response(Response::KVWrite {
-                        data: BoolEnvelope {
-                            uuid,
-                            body: success,
-                        },
+                    queue.push_back(CoreMessage::Response(Response {
+                        body: ResponseBody::KVWrite(success),
+                        uuid,
                     }));
                 }
-                Request::Render => (),
             }
         }
     }
