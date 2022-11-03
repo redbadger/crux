@@ -62,27 +62,28 @@ These commands then instruct the application what to do next.
 
 A typical message exchange cycle is as follows:
 
-1. Some user interaction occurs in the application layer that raises an event
+1. User interaction occurs in the application layer that raises an event
 1. The application handles this event by constructing a message
-1. Messages are passed to the core by calling the core's `update` function
-1. The core whatever processing required, updateing both its inner state and the view model
+1. The application calls the core's `update` function passing the `Msg` as an argument
+1. The core performs the required processing, updating both its inner state and the view model
 1. The core returns one or more `Cmd` messages to the application
 
 In the simplest case, the core will respond to a `Msg` by returning the single command `Cmd::Render`.
 This informs the application of two things:
 
 1. The user interface needs to be re-rendered
-1. This particular message exchange has come to an end
+1. This particular message exchange cycle has come to an end
 
-In more complex cases however, the core could return multiple commands that instruct the application to perform a wide variety of side-effect-inducing tasks such as:
+In more complex cases however, the core may well return multiple commands; each of which instructs the application to perform a side-effect-inducing task such as:
 
 * Make a network call, or
-* Fetch the current time stamp, or
+* Fetch the current date/time stamp, or
 * Perform biometric authentication, or
 * Obtain an image from the camera, or
 * Whatever else you can think of...
 
-Once the response from a side-effect-generating command has been received, the application generates another `Msg` and passes it to the core for processing.
+Many of these side-effecting-generating tasks are asynchronous.
+The application then packages these responses into further `Msg`s that are then passed to the core for processing.
 
 This exchange continues until the core returns a `Cmd::Render` signalling that no more side-effects are in flight.
 
