@@ -66,8 +66,8 @@ pub enum RequestBody {
 
 #[derive(Serialize, Deserialize)]
 pub struct Response {
-    uuid: Vec<u8>,
-    body: ResponseBody,
+    pub uuid: Vec<u8>,
+    pub body: ResponseBody,
 }
 
 #[derive(Serialize, Deserialize)]
