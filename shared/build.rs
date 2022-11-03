@@ -1,4 +1,4 @@
-use rmm::{Request, Response};
+use rmm::{Request, RequestBody, Response, ResponseBody};
 use serde_reflection::{Tracer, TracerConfig};
 use shared_types::Msg;
 use std::{fs::File, io::Write, path::PathBuf};
@@ -9,7 +9,9 @@ fn main() {
     let mut tracer = Tracer::new(TracerConfig::default());
     tracer.trace_simple_type::<Msg>().unwrap();
     tracer.trace_simple_type::<Request>().unwrap();
+    tracer.trace_simple_type::<RequestBody>().unwrap();
     tracer.trace_simple_type::<Response>().unwrap();
+    tracer.trace_simple_type::<ResponseBody>().unwrap();
     let registry = tracer.registry().unwrap();
 
     // Create Swift definitions.
