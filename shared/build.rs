@@ -1,11 +1,15 @@
+use rmm::{Request, Response};
 use serde_reflection::{Tracer, TracerConfig};
 use shared_types::Msg;
 use std::{fs::File, io::Write, path::PathBuf};
 
 fn main() {
     uniffi_build::generate_scaffolding("./src/shared.udl").unwrap();
+
     let mut tracer = Tracer::new(TracerConfig::default());
     tracer.trace_simple_type::<Msg>().unwrap();
+    tracer.trace_simple_type::<Request>().unwrap();
+    tracer.trace_simple_type::<Response>().unwrap();
     let registry = tracer.registry().unwrap();
 
     // Create Swift definitions.

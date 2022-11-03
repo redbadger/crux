@@ -21,6 +21,7 @@ uniffi_macros = "0.21.0"
 uuid = { version = "1.2.1", features = ["v4", "wasm-bindgen", "js"] }
 
 [build-dependencies]
+rmm = { path = "../rmm" }
 shared_types = { path = "../shared_types" }
 serde-generate = "0.24.0"
 serde-reflection = "0.3.6"

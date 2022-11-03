@@ -1,47 +1,45 @@
-use super::capability::Capability;
-use crate::Request;
-use derive_more::Deref;
+use crate::{Continuations, Request, RequestBody};
 
-pub struct KeyValue {
-    pub key: String,
-    pub value: Vec<u8>,
+pub struct KeyValueRead<'c, Msg> {
+    continuations: &'c Continuations<Msg>,
 }
-#[derive(Deref)]
-pub struct KeyValueRead<Msg>(Capability<Msg, String, Option<Vec<u8>>>);
 
-impl<Msg> Default for KeyValueRead<Msg> {
-    fn default() -> Self {
-        Self(Default::default())
+impl<'c, Msg> KeyValueRead<'c, Msg> {
+    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
+        Self { continuations }
     }
-}
 
-impl<Msg> KeyValueRead<Msg> {
     pub fn read<F>(&self, key: String, msg: F) -> Request
     where
         F: FnOnce(Option<Vec<u8>>) -> Msg + Sync + Send + 'static,
     {
-        Request::KVRead {
-            data: self.0.request(key, msg),
-        }
+        let body = RequestBody::KVRead(key);
+        self.continuations
+            .key_value_read
+            .write()
+            .unwrap()
+            .pause(body, msg)
     }
 }
 
-#[derive(Deref)]
-pub struct KeyValueWrite<Msg>(Capability<Msg, KeyValue, bool>);
-
-impl<Msg> Default for KeyValueWrite<Msg> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
+pub struct KeyValueWrite<'c, Msg> {
+    continuations: &'c Continuations<Msg>,
 }
 
-impl<Msg> KeyValueWrite<Msg> {
+impl<'c, Msg> KeyValueWrite<'c, Msg> {
+    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
+        Self { continuations }
+    }
+
     pub fn write<F>(&self, key: String, value: Vec<u8>, msg: F) -> Request
     where
         F: FnOnce(bool) -> Msg + Sync + Send + 'static,
     {
-        Request::KVWrite {
-            data: self.0.request(KeyValue { key, value }, msg),
-        }
+        let body = RequestBody::KVWrite(key, value);
+        self.continuations
+            .key_value_write
+            .write()
+            .unwrap()
+            .pause(body, msg)
     }
 }

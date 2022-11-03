@@ -1,23 +1,23 @@
-use super::capability::Capability;
-use crate::Request;
-use derive_more::Deref;
+use crate::{Continuations, Request, RequestBody};
 
-#[derive(Deref)]
-pub struct Platform<Msg>(Capability<Msg, Option<bool>, String>);
-
-impl<Msg> Default for Platform<Msg> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
+pub struct Platform<'c, Msg> {
+    continuations: &'c Continuations<Msg>,
 }
 
-impl<Msg> Platform<Msg> {
+impl<'c, Msg> Platform<'c, Msg> {
+    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
+        Self { continuations }
+    }
+
     pub fn get<F>(&self, msg: F) -> Request
     where
         F: FnOnce(String) -> Msg + Sync + Send + 'static,
     {
-        Request::Platform {
-            data: self.0.request(None, msg),
-        }
+        let body = RequestBody::Platform;
+        self.continuations
+            .platform
+            .write()
+            .unwrap()
+            .pause(body, msg)
     }
 }

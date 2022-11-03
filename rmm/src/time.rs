@@ -1,23 +1,19 @@
-use super::capability::Capability;
-use crate::Request;
-use derive_more::Deref;
+use crate::{Continuations, Request, RequestBody};
 
-#[derive(Deref)]
-pub struct Time<Msg>(Capability<Msg, Option<bool>, String>);
-
-impl<Msg> Default for Time<Msg> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
+pub struct Time<'c, Msg> {
+    continuations: &'c Continuations<Msg>,
 }
 
-impl<Msg> Time<Msg> {
+impl<'c, Msg> Time<'c, Msg> {
+    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
+        Self { continuations }
+    }
+
     pub fn get<F>(&self, msg: F) -> Request
     where
         F: FnOnce(String) -> Msg + Sync + Send + 'static,
     {
-        Request::Time {
-            data: self.0.request(None, msg),
-        }
+        let body = RequestBody::Time;
+        self.continuations.time.write().unwrap().pause(body, msg)
     }
 }

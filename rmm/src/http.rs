@@ -1,23 +1,19 @@
-use super::capability::Capability;
-use crate::Request;
-use derive_more::Deref;
+use crate::{Continuations, Request, RequestBody};
 
-#[derive(Deref)]
-pub struct Http<Msg>(Capability<Msg, String, Vec<u8>>);
-
-impl<Msg> Default for Http<Msg> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
+pub struct Http<'c, Msg> {
+    continuations: &'c Continuations<Msg>,
 }
 
-impl<Msg> Http<Msg> {
+impl<'c, Msg> Http<'c, Msg> {
+    pub fn new(continuations: &'c Continuations<Msg>) -> Self {
+        Self { continuations }
+    }
+
     pub fn get<F>(&self, url: String, msg: F) -> Request
     where
         F: FnOnce(Vec<u8>) -> Msg + Sync + Send + 'static,
     {
-        Request::Http {
-            data: self.0.request(url, msg),
-        }
+        let body = RequestBody::Http(url);
+        self.continuations.http.write().unwrap().pause(body, msg)
     }
 }

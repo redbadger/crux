@@ -1,4 +1,3 @@
-mod capability;
 mod cmd;
 mod http;
 mod key_value;
@@ -6,7 +5,6 @@ mod platform;
 mod time;
 
 pub use cmd::*;
-pub use key_value::KeyValue;
 use serde::Deserialize;
 use std::sync::RwLock;
 
@@ -25,19 +23,19 @@ pub trait App: Default {
     fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
 }
 
-pub struct AppCore<A: App> {
+pub struct AppCore<'c, A: App> {
     model: RwLock<A::Model>,
-    cmd: Cmd<A::Msg>,
+    cmd: Cmd<'c, A::Msg>,
     app: A,
 }
 
-impl<A: App> PartialEq for AppCore<A> {
+impl<A: App> PartialEq for AppCore<'_, A> {
     fn eq(&self, _other: &Self) -> bool {
         false // Core has all kinds of interior mutability
     }
 }
 
-impl<A: App> Default for AppCore<A> {
+impl<A: App> Default for AppCore<'_, A> {
     fn default() -> Self {
         Self {
             model: Default::default(),
@@ -47,13 +45,13 @@ impl<A: App> Default for AppCore<A> {
     }
 }
 
-impl<A: App> AppCore<A> {
+impl<A: App> AppCore<'_, A> {
     pub fn new() -> Self {
         Self::default()
     }
 
     // Direct message
-    pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<Request>
+    pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Msg: Deserialize<'de>,
     {
@@ -61,42 +59,22 @@ impl<A: App> AppCore<A> {
 
         let mut model = self.model.write().unwrap();
 
-        self.app.update(msg, &mut model, &self.cmd)
+        let requests = self.app.update(msg, &mut model, &self.cmd);
+
+        bincode::serialize(&requests).unwrap()
     }
 
     // Return from capability
-    pub fn response<'de>(&self, res: Response) -> Vec<Request>
+    pub fn response<'de>(&mut self, res: Response) -> Vec<u8>
     where
         <A as App>::Msg: Deserialize<'de>,
     {
+        let msg = self.cmd.resume(res);
         let mut model = self.model.write().unwrap();
-        match res {
-            Response::Http { data } => {
-                let msg = self.cmd.http.response(data);
 
-                self.app.update(msg, &mut model, &self.cmd)
-            }
-            Response::Time { data } => {
-                let msg = self.cmd.time.response(data);
+        let requests = self.app.update(msg, &mut model, &self.cmd);
 
-                self.app.update(msg, &mut model, &self.cmd)
-            }
-            Response::Platform { data } => {
-                let msg = self.cmd.platform.response(data);
-
-                self.app.update(msg, &mut model, &self.cmd)
-            }
-            Response::KVRead { data } => {
-                let msg = self.cmd.key_value_read.response(data);
-
-                self.app.update(msg, &mut model, &self.cmd)
-            }
-            Response::KVWrite { data } => {
-                let msg = self.cmd.key_value_write.response(data);
-
-                self.app.update(msg, &mut model, &self.cmd)
-            }
-        }
+        bincode::serialize(&requests).unwrap()
     }
 
     pub fn view(&self) -> A::ViewModel {
