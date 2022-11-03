@@ -46,39 +46,39 @@ typedef struct RustCallStatus {
 // ⚠️ increment the version suffix in all instances of UNIFFI_SHARED_HEADER_V4 in this file.           ⚠️
 #endif // def UNIFFI_SHARED_H
 
-void ffi_shared_fd26_Core_object_free(
+void ffi_shared_cbdd_Core_object_free(
       void*_Nonnull ptr,
     RustCallStatus *_Nonnull out_status
     );
-void*_Nonnull shared_fd26_Core_new(
+void*_Nonnull shared_cbdd_Core_new(
       
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer shared_fd26_Core_message(
+RustBuffer shared_cbdd_Core_message(
       void*_Nonnull ptr,RustBuffer msg,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer shared_fd26_Core_response(
+RustBuffer shared_cbdd_Core_response(
       void*_Nonnull ptr,RustBuffer res,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer shared_fd26_Core_view(
+RustBuffer shared_cbdd_Core_view(
       void*_Nonnull ptr,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_fd26_rustbuffer_alloc(
+RustBuffer ffi_shared_cbdd_rustbuffer_alloc(
       int32_t size,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_fd26_rustbuffer_from_bytes(
+RustBuffer ffi_shared_cbdd_rustbuffer_from_bytes(
       ForeignBytes bytes,
     RustCallStatus *_Nonnull out_status
     );
-void ffi_shared_fd26_rustbuffer_free(
+void ffi_shared_cbdd_rustbuffer_free(
       RustBuffer buf,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_fd26_rustbuffer_reserve(
+RustBuffer ffi_shared_cbdd_rustbuffer_reserve(
       RustBuffer buf,int32_t additional,
     RustCallStatus *_Nonnull out_status
     );

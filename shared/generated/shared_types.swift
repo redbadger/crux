@@ -112,9 +112,9 @@ indirect public enum Msg: Hashable {
 
 public struct Request: Hashable {
     @Indirect public var uuid: [UInt8]
-    @Indirect public var body: shared.RequestBody
+    @Indirect public var body: RequestBody
 
-    public init(uuid: [UInt8], body: shared.RequestBody) {
+    public init(uuid: [UInt8], body: RequestBody) {
         self.uuid = uuid
         self.body = body
     }
@@ -135,7 +135,7 @@ public struct Request: Hashable {
     public static func deserialize<D: Deserializer>(deserializer: D) throws -> Request {
         try deserializer.increase_container_depth()
         let uuid = try deserialize_vector_u8(deserializer: deserializer)
-        let body = try shared.RequestBody.deserialize(deserializer: deserializer)
+        let body = try RequestBody.deserialize(deserializer: deserializer)
         try deserializer.decrease_container_depth()
         return Request.init(uuid: uuid, body: body)
     }
@@ -229,9 +229,9 @@ indirect public enum RequestBody: Hashable {
 
 public struct Response: Hashable {
     @Indirect public var uuid: [UInt8]
-    @Indirect public var body: shared.ResponseBody
+    @Indirect public var body: ResponseBody
 
-    public init(uuid: [UInt8], body: shared.ResponseBody) {
+    public init(uuid: [UInt8], body: ResponseBody) {
         self.uuid = uuid
         self.body = body
     }
@@ -252,7 +252,7 @@ public struct Response: Hashable {
     public static func deserialize<D: Deserializer>(deserializer: D) throws -> Response {
         try deserializer.increase_container_depth()
         let uuid = try deserialize_vector_u8(deserializer: deserializer)
-        let body = try shared.ResponseBody.deserialize(deserializer: deserializer)
+        let body = try ResponseBody.deserialize(deserializer: deserializer)
         try deserializer.decrease_container_depth()
         return Response.init(uuid: uuid, body: body)
     }

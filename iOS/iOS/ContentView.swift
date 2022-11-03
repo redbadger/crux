@@ -1,4 +1,5 @@
 import SwiftUI
+import Serde
 
 func get_platform() -> String {
     return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
@@ -7,6 +8,15 @@ func get_platform() -> String {
 enum Message {
     case message(Msg)
     case response(Response)
+}
+
+func bincodeDeserialize(input: [UInt8]) throws -> Msg {
+    let deserializer = BincodeDeserializer.init(input: input);
+    let obj = try deserialize(deserializer: deserializer)
+    if deserializer.get_buffer_offset() < input.count {
+        throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+    }
+    return obj
 }
 
 @MainActor
@@ -22,7 +32,7 @@ class Model: ObservableObject {
     private func httpGet(uuid: [UInt8], url: String) {
         Task {
             let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .response(.http(data: BytesEnvelope(body: [UInt8](data), uuid: uuid))))
+            self.update(msg: .response(Response(uuid: uuid, body: .http([UInt8](data)))))
         }
     }
 
@@ -31,9 +41,9 @@ class Model: ObservableObject {
 
         switch msg {
         case .message(let m):
-            reqs = core.message(try! m.bincodeSerialize())
+            reqs = reqs.bincodeDeserialize(core.message(try! m.bincodeSerialize()))
         case .response(let r):
-            reqs = core.response(r)
+            reqs = Request.bincodeDeserialize(core.response(try! r.bincodeSerialize()))
         }
 
         for req in reqs {
