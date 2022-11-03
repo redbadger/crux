@@ -13,7 +13,7 @@ impl<Msg> Default for Http<Msg> {
 }
 
 impl<Msg> Http<Msg> {
-    pub fn get<F>(&mut self, url: String, msg: F) -> Request
+    pub fn get<F>(&self, url: String, msg: F) -> Request
     where
         F: FnOnce(Vec<u8>) -> Msg + Sync + Send + 'static,
     {

@@ -14,7 +14,7 @@ impl<ResponseData, Message> Default for ContinuationStore<ResponseData, Message>
 }
 
 impl<ResponseData, Message> ContinuationStore<ResponseData, Message> {
-    pub fn pause<F>(&mut self, body: RequestBody, msg: F) -> Request
+    pub fn pause<F>(&self, body: RequestBody, msg: F) -> Request
     where
         F: FnOnce(ResponseData) -> Message + Sync + Send + 'static,
     {
@@ -28,7 +28,7 @@ impl<ResponseData, Message> ContinuationStore<ResponseData, Message> {
         }
     }
 
-    pub fn resume(&mut self, uuid: Vec<u8>, data: ResponseData) -> Message {
+    pub fn resume(&self, uuid: Vec<u8>, data: ResponseData) -> Message {
         let cont = self.0.write().unwrap().remove(&uuid[..]).unwrap();
 
         cont(data)

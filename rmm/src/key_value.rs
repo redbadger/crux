@@ -13,7 +13,7 @@ impl<Msg> Default for KeyValueRead<Msg> {
 }
 
 impl<Msg> KeyValueRead<Msg> {
-    pub fn read<F>(&mut self, key: String, msg: F) -> Request
+    pub fn read<F>(&self, key: String, msg: F) -> Request
     where
         F: FnOnce(Option<Vec<u8>>) -> Msg + Sync + Send + 'static,
     {
@@ -35,7 +35,7 @@ impl<Msg> Default for KeyValueWrite<Msg> {
 }
 
 impl<Msg> KeyValueWrite<Msg> {
-    pub fn write<F>(&mut self, key: String, value: Vec<u8>, msg: F) -> Request
+    pub fn write<F>(&self, key: String, value: Vec<u8>, msg: F) -> Request
     where
         F: FnOnce(bool) -> Msg + Sync + Send + 'static,
     {

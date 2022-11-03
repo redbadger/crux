@@ -26,7 +26,7 @@ impl<Msg> Default for Cmd<Msg> {
 }
 
 impl<Msg> Cmd<Msg> {
-    pub fn resume(&mut self, response: Response) -> Msg {
+    pub fn resume(&self, response: Response) -> Msg {
         let Response { uuid, body } = response;
 
         match body {
@@ -43,6 +43,15 @@ impl<Msg> Cmd<Msg> {
 pub struct Request {
     pub uuid: Vec<u8>,
     pub body: RequestBody,
+}
+
+impl Request {
+    pub fn render() -> Self {
+        Self {
+            uuid: Default::default(),
+            body: RequestBody::Render,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]

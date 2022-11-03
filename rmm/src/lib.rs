@@ -66,11 +66,14 @@ impl<A: App> AppCore<A> {
     }
 
     // Return from capability
-    pub fn response<'de>(&mut self, res: Response) -> Vec<u8>
+    pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Msg: Deserialize<'de>,
     {
+        let res: Response = bincode::deserialize(res).unwrap();
+
         let msg = self.cmd.resume(res);
+
         let mut model = self.model.write().unwrap();
 
         let requests = self.app.update(msg, &mut model, &self.cmd);

@@ -13,7 +13,7 @@ impl<Msg> Default for Time<Msg> {
 }
 
 impl<Msg> Time<Msg> {
-    pub fn get<F>(&mut self, msg: F) -> Request
+    pub fn get<F>(&self, msg: F) -> Request
     where
         F: FnOnce(String) -> Msg + Sync + Send + 'static,
     {
