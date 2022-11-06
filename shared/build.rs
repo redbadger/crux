@@ -18,6 +18,7 @@ fn main() {
     let mut source = Vec::new();
     let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
         .with_encodings(vec![serde_generate::Encoding::Bincode]);
+
     let generator = serde_generate::swift::CodeGenerator::new(&config);
     generator.output(&mut source, &registry).unwrap();
     let out = String::from_utf8_lossy(&source);

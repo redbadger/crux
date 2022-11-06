@@ -56,9 +56,9 @@ impl Request {
 
 #[derive(Serialize, Deserialize)]
 pub enum RequestBody {
-    Time, // FIXME should be Envelope<()>, but serde struggles
+    Time,
     Http(String),
-    Platform, // FIXME should be Envelope<()>, but serde struggles
+    Platform,
     KVRead(String),
     KVWrite(String, Vec<u8>),
     Render,
