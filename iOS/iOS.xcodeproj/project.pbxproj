@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CC02FE1D28F2E867003DA87D /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CC02FE1C28F2E867003DA87D /* shared.udl */; };
 		CC02FE2028F2EA83003DA87D /* sharedFFI.h in Headers */ = {isa = PBXBuildFile; fileRef = CC02FE1F28F2EA83003DA87D /* sharedFFI.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CC49E0212919260600F5D4C0 /* libshared.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CC49E0202919260600F5D4C0 /* libshared.a */; };
+		CCA5CCE329191A5900325531 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CCA5CCE229191A5900325531 /* shared.udl */; };
 		CCB21E1A28F199700074368C /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E1928F199700074368C /* iOSApp.swift */; };
 		CCB21E1C28F199700074368C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E1B28F199700074368C /* ContentView.swift */; };
 		CCB21E1E28F199710074368C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCB21E1D28F199710074368C /* Assets.xcassets */; };
@@ -18,7 +19,6 @@
 		CCB21E3728F199710074368C /* iOSUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E3628F199710074368C /* iOSUITestsLaunchTests.swift */; };
 		CCB436402912CCAC0059B3A3 /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB4363F2912CCAC0059B3A3 /* shared_types.swift */; };
 		CCB436432912CD7E0059B3A3 /* Serde in Frameworks */ = {isa = PBXBuildFile; productRef = CCB436422912CD7E0059B3A3 /* Serde */; };
-		CCFA7BDE28F5ACC500AEA3EA /* libshared.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CCFA7BDD28F5ACC500AEA3EA /* libshared.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -57,8 +57,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CC02FE1C28F2E867003DA87D /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
 		CC02FE1F28F2EA83003DA87D /* sharedFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = sharedFFI.h; path = generated/sharedFFI.h; sourceTree = "<group>"; };
+		CC49E0202919260600F5D4C0 /* libshared.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libshared.a; path = ../target/debug/libshared.a; sourceTree = "<group>"; };
+		CCA5CCE229191A5900325531 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
 		CCB21E1628F199700074368C /* iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCB21E1928F199700074368C /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		CCB21E1B28F199700074368C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -70,7 +71,6 @@
 		CCB21E3428F199710074368C /* iOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITests.swift; sourceTree = "<group>"; };
 		CCB21E3628F199710074368C /* iOSUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		CCB4363F2912CCAC0059B3A3 /* shared_types.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared/generated/shared_types.swift; sourceTree = "<group>"; };
-		CCFA7BDD28F5ACC500AEA3EA /* libshared.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libshared.a; path = ../target/debug/libshared.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,8 +78,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CC49E0212919260600F5D4C0 /* libshared.a in Frameworks */,
 				CCB436432912CD7E0059B3A3 /* Serde in Frameworks */,
-				CCFA7BDE28F5ACC500AEA3EA /* libshared.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,9 +103,9 @@
 		CCB21E0D28F199700074368C = {
 			isa = PBXGroup;
 			children = (
+				CCA5CCE229191A5900325531 /* shared.udl */,
 				CCB4363F2912CCAC0059B3A3 /* shared_types.swift */,
 				CC02FE1F28F2EA83003DA87D /* sharedFFI.h */,
-				CC02FE1C28F2E867003DA87D /* shared.udl */,
 				CCB21E1828F199700074368C /* iOS */,
 				CCB21E2928F199710074368C /* iOSTests */,
 				CCB21E3328F199710074368C /* iOSUITests */,
@@ -163,7 +163,7 @@
 		CCFA7BDC28F5ACC500AEA3EA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				CCFA7BDD28F5ACC500AEA3EA /* libshared.a */,
+				CC49E0202919260600F5D4C0 /* libshared.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -186,8 +186,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = CCB21E3A28F199710074368C /* Build configuration list for PBXNativeTarget "iOS" */;
 			buildPhases = (
-				CCB21E1228F199700074368C /* Sources */,
 				CCFA7BDF28F5AEB500AEA3EA /* Build Rust library */,
+				CCB21E1228F199700074368C /* Sources */,
 				CC02FE1E28F2EA5C003DA87D /* Headers */,
 				CCB21E1328F199700074368C /* Frameworks */,
 				CCB21E1428F199700074368C /* Resources */,
@@ -331,7 +331,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"${PROJECT_DIR}\"/../shared\nbash \"${PROJECT_DIR}/bin/compile-library.sh\" shared \"$build_variant\"\n";
+			shellScript = "cd \"${PROJECT_DIR}\"/../shared\nbash \"${PROJECT_DIR}/bin/compile-library.sh\" shared \"$build_variant\"\nsed -i '' 's:shared\\.::g' generated/shared_types.swift\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -340,8 +340,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CCA5CCE329191A5900325531 /* shared.udl in Sources */,
 				CCB436402912CCAC0059B3A3 /* shared_types.swift in Sources */,
-				CC02FE1D28F2E867003DA87D /* shared.udl in Sources */,
 				CCB21E1C28F199700074368C /* ContentView.swift in Sources */,
 				CCB21E1A28F199700074368C /* iOSApp.swift in Sources */,
 			);

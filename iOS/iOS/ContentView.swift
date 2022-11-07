@@ -11,15 +11,20 @@ enum Message {
 }
 
 func bincodeDeserializeRequests(input: [UInt8]) throws -> [Request] {
-    let desrializer = BincodeDeserializer.init(input: input)
-    try desrializer.increase_container_depth()
-    
+    let deserializer = BincodeDeserializer.init(input: input)
+    try deserializer.increase_container_depth()
+    let length = try deserializer.deserialize_len()
+
     var requests: [Request] = []
-    while desrializer.get_buffer_offset() < input.count {
-        let req = try Request.deserialize(deserializer: desrializer)
-        requests.append(req)
+    for _ in 0..<length {
+        while deserializer.get_buffer_offset() < input.count {
+            if let req = try? Request.deserialize(deserializer: deserializer) {
+                print(String(format: "uuid: %X", req.uuid))
+                requests.append(req)
+            }
+        }
     }
-    desrializer.decrease_container_depth()
+    deserializer.decrease_container_depth()
     
     return requests
 }

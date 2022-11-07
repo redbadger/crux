@@ -64,13 +64,13 @@ pub enum RequestBody {
     Render,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Response {
     pub uuid: Vec<u8>,
     pub body: ResponseBody,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum ResponseBody {
     Http(Vec<u8>),
     Time(String),
