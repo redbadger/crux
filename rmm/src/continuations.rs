@@ -19,7 +19,6 @@ impl<ResponseData, Message> ContinuationStore<ResponseData, Message> {
         F: FnOnce(ResponseData) -> Message + Sync + Send + 'static,
     {
         let uuid = *Uuid::new_v4().as_bytes();
-        println!("pause uuid {:x?}, length {}", uuid, uuid.len());
 
         self.0.write().unwrap().insert(uuid, Box::new(msg));
 
@@ -30,7 +29,6 @@ impl<ResponseData, Message> ContinuationStore<ResponseData, Message> {
     }
 
     pub fn resume(&self, uuid: Vec<u8>, data: ResponseData) -> Message {
-        println!("resume uuid {:x?}, length {}", uuid, uuid.len());
         let cont = self.0.write().unwrap().remove(&uuid[..]).unwrap();
 
         cont(data)

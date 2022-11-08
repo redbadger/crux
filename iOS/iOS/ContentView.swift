@@ -18,10 +18,8 @@ func bincodeDeserializeRequests(input: [UInt8]) throws -> [Request] {
     var requests: [Request] = []
     for _ in 0..<length {
         while deserializer.get_buffer_offset() < input.count {
-            if let req = try? Request.deserialize(deserializer: deserializer) {
-                print(String(format: "uuid: %X", req.uuid))
-                requests.append(req)
-            }
+            let req = try Request.deserialize(deserializer: deserializer)
+            requests.append(req)
         }
     }
     deserializer.decrease_container_depth()
