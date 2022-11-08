@@ -331,7 +331,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"${PROJECT_DIR}\"/../shared\nbash \"${PROJECT_DIR}/bin/compile-library.sh\" shared \"$build_variant\"\nsed -i '' 's:shared\\.::g' generated/shared_types.swift\n";
+			shellScript = "cd \"${PROJECT_DIR}\"/../shared\nbash \"${PROJECT_DIR}/bin/compile-library.sh\" shared \"$build_variant\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

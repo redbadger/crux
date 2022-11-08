@@ -21,7 +21,9 @@ fn main() {
 
     let generator = serde_generate::swift::CodeGenerator::new(&config);
     generator.output(&mut source, &registry).unwrap();
-    let out = String::from_utf8_lossy(&source);
+    // FIXME workaround for odd namespacing behaviour in Swift output
+    // which as far as I can tell does not support nespaces in this way
+    let out = String::from_utf8_lossy(&source).replace("shared.", "");
 
     let path = "./generated/shared_types.swift";
     let mut output = File::create(path).unwrap();
