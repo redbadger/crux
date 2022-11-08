@@ -22,7 +22,7 @@ fn main() {
     let generator = serde_generate::swift::CodeGenerator::new(&config);
     generator.output(&mut source, &registry).unwrap();
     // FIXME workaround for odd namespacing behaviour in Swift output
-    // which as far as I can tell does not support nespaces in this way
+    // which as far as I can tell does not support namespaces in this way
     let out = String::from_utf8_lossy(&source).replace("shared.", "");
 
     let path = "./generated/shared_types.swift";

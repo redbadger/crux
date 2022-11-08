@@ -65,13 +65,11 @@
 1. In "Build phases", create or modify the following phases (you can drag them so that they match the order below) ...
 
    1. Add a "New Run Script Phase" with the following script, and uncheck "Based on dependency analysis".
-      You can rename it to something like "Build Rust library" by double clicking on the heading. Note that the last line here
-      removes the library prefixes that are inserted in the shared types (we think this is a bug in `serde_generate`).
+      You can rename it to something like "Build Rust library" by double clicking on the heading.
 
       ```sh
       cd "${PROJECT_DIR}"/../shared
       bash "${PROJECT_DIR}/bin/compile-library.sh" shared "$build_variant"
-      sed -i '' 's:shared\.::g' shared_types.swift
       ```
 
    1. Add `./shared/src/shared.udl` to "Compile Sources" (using the "add other" button).
