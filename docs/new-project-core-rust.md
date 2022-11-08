@@ -65,7 +65,7 @@
 
    ```toml
    [bindings.kotlin]
-   package_name = "redbadger.rmm.shared"
+   package_name = "com.redbadger.rmm.shared"
    cdylib_name = "shared"
 
    [bindings.swift]

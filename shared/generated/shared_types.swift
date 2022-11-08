@@ -48,8 +48,8 @@ indirect public enum Msg: Hashable {
         try serializer.decrease_container_depth()
     }
 
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
         try self.serialize(serializer: serializer)
         return serializer.get_bytes()
     }
@@ -100,8 +100,8 @@ indirect public enum Msg: Hashable {
         }
     }
 
-    public static func bincodeDeserialize(input: [UInt8]) throws -> Msg {
-        let deserializer = BincodeDeserializer.init(input: input);
+    public static func bcsDeserialize(input: [UInt8]) throws -> Msg {
+        let deserializer = BcsDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
             throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
@@ -126,8 +126,8 @@ public struct Request: Hashable {
         try serializer.decrease_container_depth()
     }
 
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
         try self.serialize(serializer: serializer)
         return serializer.get_bytes()
     }
@@ -140,8 +140,8 @@ public struct Request: Hashable {
         return Request.init(uuid: uuid, body: body)
     }
 
-    public static func bincodeDeserialize(input: [UInt8]) throws -> Request {
-        let deserializer = BincodeDeserializer.init(input: input);
+    public static func bcsDeserialize(input: [UInt8]) throws -> Request {
+        let deserializer = BcsDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
             throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
@@ -181,8 +181,8 @@ indirect public enum RequestBody: Hashable {
         try serializer.decrease_container_depth()
     }
 
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
         try self.serialize(serializer: serializer)
         return serializer.get_bytes()
     }
@@ -217,8 +217,8 @@ indirect public enum RequestBody: Hashable {
         }
     }
 
-    public static func bincodeDeserialize(input: [UInt8]) throws -> RequestBody {
-        let deserializer = BincodeDeserializer.init(input: input);
+    public static func bcsDeserialize(input: [UInt8]) throws -> RequestBody {
+        let deserializer = BcsDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
             throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
@@ -243,8 +243,8 @@ public struct Response: Hashable {
         try serializer.decrease_container_depth()
     }
 
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
         try self.serialize(serializer: serializer)
         return serializer.get_bytes()
     }
@@ -257,8 +257,8 @@ public struct Response: Hashable {
         return Response.init(uuid: uuid, body: body)
     }
 
-    public static func bincodeDeserialize(input: [UInt8]) throws -> Response {
-        let deserializer = BincodeDeserializer.init(input: input);
+    public static func bcsDeserialize(input: [UInt8]) throws -> Response {
+        let deserializer = BcsDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
             throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
@@ -296,8 +296,8 @@ indirect public enum ResponseBody: Hashable {
         try serializer.decrease_container_depth()
     }
 
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
         try self.serialize(serializer: serializer)
         return serializer.get_bytes()
     }
@@ -330,8 +330,8 @@ indirect public enum ResponseBody: Hashable {
         }
     }
 
-    public static func bincodeDeserialize(input: [UInt8]) throws -> ResponseBody {
-        let deserializer = BincodeDeserializer.init(input: input);
+    public static func bcsDeserialize(input: [UInt8]) throws -> ResponseBody {
+        let deserializer = BcsDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
             throw DeserializationError.invalidInput(issue: "Some input bytes were not read")

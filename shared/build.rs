@@ -17,7 +17,7 @@ fn main() {
     // Create Swift definitions.
     let mut source = Vec::new();
     let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
-        .with_encodings(vec![serde_generate::Encoding::Bincode]);
+        .with_encodings(vec![serde_generate::Encoding::Bcs]);
 
     let generator = serde_generate::swift::CodeGenerator::new(&config);
     generator.output(&mut source, &registry).unwrap();
@@ -30,6 +30,10 @@ fn main() {
     write!(output, "{}", out).unwrap();
 
     // Create Java definitions.
+    let config =
+        serde_generate::CodeGeneratorConfig::new("com.redbadger.rmm.shared_types".to_string())
+            .with_encodings(vec![serde_generate::Encoding::Bcs]);
+
     let generator = serde_generate::java::CodeGenerator::new(&config);
     generator
         .write_source_files(PathBuf::from("./generated"), &registry)

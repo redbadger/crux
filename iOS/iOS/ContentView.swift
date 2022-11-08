@@ -11,8 +11,8 @@ enum Message {
 }
 
 extension [Request] {
-    public static func bincodeDeserialize(input: [UInt8]) throws -> [Request] {
-        let deserializer = BincodeDeserializer.init(input: input)
+    public static func bcsDeserialize(input: [UInt8]) throws -> [Request] {
+        let deserializer = BcsDeserializer.init(input: input)
         try deserializer.increase_container_depth()
         let length = try deserializer.deserialize_len()
 
@@ -51,9 +51,9 @@ class Model: ObservableObject {
         
         switch msg {
         case .message(let m):
-            reqs = try! [Request].bincodeDeserialize(input: core.message(try! m.bincodeSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: core.message(try! m.bcsSerialize()))
         case .response(let r):
-            reqs = try! [Request].bincodeDeserialize(input: core.response(try! r.bincodeSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: core.response(try! r.bcsSerialize()))
         }
 
         for req in reqs {

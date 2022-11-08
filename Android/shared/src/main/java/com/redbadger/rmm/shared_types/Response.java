@@ -1,11 +1,11 @@
-package shared;
+package com.redbadger.rmm.shared_types;
 
 
-public final class Request {
+public final class Response {
     public final java.util.List<@com.novi.serde.Unsigned Byte> uuid;
-    public final RequestBody body;
+    public final ResponseBody body;
 
-    public Request(java.util.List<@com.novi.serde.Unsigned Byte> uuid, RequestBody body) {
+    public Response(java.util.List<@com.novi.serde.Unsigned Byte> uuid, ResponseBody body) {
         java.util.Objects.requireNonNull(uuid, "uuid must not be null");
         java.util.Objects.requireNonNull(body, "body must not be null");
         this.uuid = uuid;
@@ -19,27 +19,27 @@ public final class Request {
         serializer.decrease_container_depth();
     }
 
-    public byte[] bincodeSerialize() throws com.novi.serde.SerializationError {
-        com.novi.serde.Serializer serializer = new com.novi.bincode.BincodeSerializer();
+    public byte[] bcsSerialize() throws com.novi.serde.SerializationError {
+        com.novi.serde.Serializer serializer = new com.novi.bcs.BcsSerializer();
         serialize(serializer);
         return serializer.get_bytes();
     }
 
-    public static Request deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+    public static Response deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
         deserializer.increase_container_depth();
         Builder builder = new Builder();
         builder.uuid = TraitHelpers.deserialize_vector_u8(deserializer);
-        builder.body = RequestBody.deserialize(deserializer);
+        builder.body = ResponseBody.deserialize(deserializer);
         deserializer.decrease_container_depth();
         return builder.build();
     }
 
-    public static Request bincodeDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
+    public static Response bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
         if (input == null) {
              throw new com.novi.serde.DeserializationError("Cannot deserialize null array");
         }
-        com.novi.serde.Deserializer deserializer = new com.novi.bincode.BincodeDeserializer(input);
-        Request value = deserialize(deserializer);
+        com.novi.serde.Deserializer deserializer = new com.novi.bcs.BcsDeserializer(input);
+        Response value = deserialize(deserializer);
         if (deserializer.get_buffer_offset() < input.length) {
              throw new com.novi.serde.DeserializationError("Some input bytes were not read");
         }
@@ -50,7 +50,7 @@ public final class Request {
         if (this == obj) return true;
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
-        Request other = (Request) obj;
+        Response other = (Response) obj;
         if (!java.util.Objects.equals(this.uuid, other.uuid)) { return false; }
         if (!java.util.Objects.equals(this.body, other.body)) { return false; }
         return true;
@@ -65,10 +65,10 @@ public final class Request {
 
     public static final class Builder {
         public java.util.List<@com.novi.serde.Unsigned Byte> uuid;
-        public RequestBody body;
+        public ResponseBody body;
 
-        public Request build() {
-            return new Request(
+        public Response build() {
+            return new Response(
                 uuid,
                 body
             );

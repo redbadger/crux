@@ -3,7 +3,7 @@
 
 @file:Suppress("NAME_SHADOWING")
 
-package redbadger.rmm.shared
+package com.redbadger.rmm.shared
 
 // Common helper code.
 //
@@ -44,7 +44,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_1406_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_cbdd_rustbuffer_alloc(size, status).also {
                 if (it.data == null) {
                     throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
                 }
@@ -52,7 +52,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_1406_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_cbdd_rustbuffer_free(buf, status)
         }
     }
 
@@ -264,48 +264,48 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun ffi_shared_1406_Core_object_free(
+    fun ffi_shared_cbdd_Core_object_free(
         `ptr`: Pointer,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun shared_1406_Core_new(
+    fun shared_cbdd_Core_new(
         _uniffi_out_err: RustCallStatus
     ): Pointer
 
-    fun shared_1406_Core_message(
+    fun shared_cbdd_Core_message(
         `ptr`: Pointer,
         `msg`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun shared_1406_Core_response(
+    fun shared_cbdd_Core_response(
         `ptr`: Pointer,
         `res`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun shared_1406_Core_view(
+    fun shared_cbdd_Core_view(
         `ptr`: Pointer,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_1406_rustbuffer_alloc(
+    fun ffi_shared_cbdd_rustbuffer_alloc(
         `size`: Int,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_1406_rustbuffer_from_bytes(
+    fun ffi_shared_cbdd_rustbuffer_from_bytes(
         `bytes`: ForeignBytes.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_1406_rustbuffer_free(
+    fun ffi_shared_cbdd_rustbuffer_free(
         `buf`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun ffi_shared_1406_rustbuffer_reserve(
+    fun ffi_shared_cbdd_rustbuffer_reserve(
         `buf`: RustBuffer.ByValue,
         `additional`: Int,
         _uniffi_out_err: RustCallStatus
@@ -331,26 +331,6 @@ public object FfiConverterUByte : FfiConverter<UByte, Byte> {
 
     override fun write(value: UByte, buf: ByteBuffer) {
         buf.put(value.toByte())
-    }
-}
-
-public object FfiConverterBoolean : FfiConverter<Boolean, Byte> {
-    override fun lift(value: Byte): Boolean {
-        return value.toInt() != 0
-    }
-
-    override fun read(buf: ByteBuffer): Boolean {
-        return lift(buf.get())
-    }
-
-    override fun lower(value: Boolean): Byte {
-        return if (value) 1.toByte() else 0.toByte()
-    }
-
-    override fun allocationSize(value: Boolean) = 1
-
-    override fun write(value: Boolean, buf: ByteBuffer) {
-        buf.put(lower(value))
     }
 }
 
@@ -564,9 +544,9 @@ abstract class FFIObject(
 
 public interface CoreInterface {
 
-    fun `message`(`msg`: Msg): List<Request>
+    fun `message`(`msg`: List<UByte>): List<UByte>
 
-    fun `response`(`res`: Response): List<Request>
+    fun `response`(`res`: List<UByte>): List<UByte>
 
     fun `view`(): ViewModel
 }
@@ -577,7 +557,7 @@ class Core(
     constructor() :
         this(
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_1406_Core_new(_status)
+                _UniFFILib.INSTANCE.shared_cbdd_Core_new(_status)
             }
         )
 
@@ -591,30 +571,30 @@ class Core(
      */
     protected override fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_1406_Core_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.ffi_shared_cbdd_Core_object_free(this.pointer, status)
         }
     }
 
-    override fun `message`(`msg`: Msg): List<Request> =
+    override fun `message`(`msg`: List<UByte>): List<UByte> =
         callWithPointer {
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_1406_Core_message(it, FfiConverterTypeMsg.lower(`msg`), _status)
+                _UniFFILib.INSTANCE.shared_cbdd_Core_message(it, FfiConverterSequenceUByte.lower(`msg`), _status)
             }
         }.let {
-            FfiConverterSequenceTypeRequest.lift(it)
+            FfiConverterSequenceUByte.lift(it)
         }
-    override fun `response`(`res`: Response): List<Request> =
+    override fun `response`(`res`: List<UByte>): List<UByte> =
         callWithPointer {
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_1406_Core_response(it, FfiConverterTypeResponse.lower(`res`), _status)
+                _UniFFILib.INSTANCE.shared_cbdd_Core_response(it, FfiConverterSequenceUByte.lower(`res`), _status)
             }
         }.let {
-            FfiConverterSequenceTypeRequest.lift(it)
+            FfiConverterSequenceUByte.lift(it)
         }
     override fun `view`(): ViewModel =
         callWithPointer {
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_1406_Core_view(it, _status)
+                _UniFFILib.INSTANCE.shared_cbdd_Core_view(it, _status)
             }
         }.let {
             FfiConverterTypeViewModel.lift(it)
@@ -643,54 +623,6 @@ public object FfiConverterTypeCore : FfiConverter<Core, Pointer> {
     }
 }
 
-data class BoolEnvelope(
-    var `body`: Boolean,
-    var `uuid`: List<UByte>
-)
-
-public object FfiConverterTypeBoolEnvelope : FfiConverterRustBuffer<BoolEnvelope> {
-    override fun read(buf: ByteBuffer): BoolEnvelope {
-        return BoolEnvelope(
-            FfiConverterBoolean.read(buf),
-            FfiConverterSequenceUByte.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: BoolEnvelope) = (
-        FfiConverterBoolean.allocationSize(value.`body`) +
-            FfiConverterSequenceUByte.allocationSize(value.`uuid`)
-        )
-
-    override fun write(value: BoolEnvelope, buf: ByteBuffer) {
-        FfiConverterBoolean.write(value.`body`, buf)
-        FfiConverterSequenceUByte.write(value.`uuid`, buf)
-    }
-}
-
-data class BytesEnvelope(
-    var `body`: List<UByte>,
-    var `uuid`: List<UByte>
-)
-
-public object FfiConverterTypeBytesEnvelope : FfiConverterRustBuffer<BytesEnvelope> {
-    override fun read(buf: ByteBuffer): BytesEnvelope {
-        return BytesEnvelope(
-            FfiConverterSequenceUByte.read(buf),
-            FfiConverterSequenceUByte.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: BytesEnvelope) = (
-        FfiConverterSequenceUByte.allocationSize(value.`body`) +
-            FfiConverterSequenceUByte.allocationSize(value.`uuid`)
-        )
-
-    override fun write(value: BytesEnvelope, buf: ByteBuffer) {
-        FfiConverterSequenceUByte.write(value.`body`, buf)
-        FfiConverterSequenceUByte.write(value.`uuid`, buf)
-    }
-}
-
 data class CatImage(
     var `file`: String
 )
@@ -708,126 +640,6 @@ public object FfiConverterTypeCatImage : FfiConverterRustBuffer<CatImage> {
 
     override fun write(value: CatImage, buf: ByteBuffer) {
         FfiConverterString.write(value.`file`, buf)
-    }
-}
-
-data class KeyValue(
-    var `key`: String,
-    var `value`: List<UByte>
-)
-
-public object FfiConverterTypeKeyValue : FfiConverterRustBuffer<KeyValue> {
-    override fun read(buf: ByteBuffer): KeyValue {
-        return KeyValue(
-            FfiConverterString.read(buf),
-            FfiConverterSequenceUByte.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: KeyValue) = (
-        FfiConverterString.allocationSize(value.`key`) +
-            FfiConverterSequenceUByte.allocationSize(value.`value`)
-        )
-
-    override fun write(value: KeyValue, buf: ByteBuffer) {
-        FfiConverterString.write(value.`key`, buf)
-        FfiConverterSequenceUByte.write(value.`value`, buf)
-    }
-}
-
-data class KeyValueEnvelope(
-    var `body`: KeyValue,
-    var `uuid`: List<UByte>
-)
-
-public object FfiConverterTypeKeyValueEnvelope : FfiConverterRustBuffer<KeyValueEnvelope> {
-    override fun read(buf: ByteBuffer): KeyValueEnvelope {
-        return KeyValueEnvelope(
-            FfiConverterTypeKeyValue.read(buf),
-            FfiConverterSequenceUByte.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: KeyValueEnvelope) = (
-        FfiConverterTypeKeyValue.allocationSize(value.`body`) +
-            FfiConverterSequenceUByte.allocationSize(value.`uuid`)
-        )
-
-    override fun write(value: KeyValueEnvelope, buf: ByteBuffer) {
-        FfiConverterTypeKeyValue.write(value.`body`, buf)
-        FfiConverterSequenceUByte.write(value.`uuid`, buf)
-    }
-}
-
-data class OptionalBoolEnvelope(
-    var `body`: Boolean?,
-    var `uuid`: List<UByte>
-)
-
-public object FfiConverterTypeOptionalBoolEnvelope : FfiConverterRustBuffer<OptionalBoolEnvelope> {
-    override fun read(buf: ByteBuffer): OptionalBoolEnvelope {
-        return OptionalBoolEnvelope(
-            FfiConverterOptionalBoolean.read(buf),
-            FfiConverterSequenceUByte.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: OptionalBoolEnvelope) = (
-        FfiConverterOptionalBoolean.allocationSize(value.`body`) +
-            FfiConverterSequenceUByte.allocationSize(value.`uuid`)
-        )
-
-    override fun write(value: OptionalBoolEnvelope, buf: ByteBuffer) {
-        FfiConverterOptionalBoolean.write(value.`body`, buf)
-        FfiConverterSequenceUByte.write(value.`uuid`, buf)
-    }
-}
-
-data class OptionalBytesEnvelope(
-    var `body`: List<UByte>?,
-    var `uuid`: List<UByte>
-)
-
-public object FfiConverterTypeOptionalBytesEnvelope : FfiConverterRustBuffer<OptionalBytesEnvelope> {
-    override fun read(buf: ByteBuffer): OptionalBytesEnvelope {
-        return OptionalBytesEnvelope(
-            FfiConverterOptionalSequenceUByte.read(buf),
-            FfiConverterSequenceUByte.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: OptionalBytesEnvelope) = (
-        FfiConverterOptionalSequenceUByte.allocationSize(value.`body`) +
-            FfiConverterSequenceUByte.allocationSize(value.`uuid`)
-        )
-
-    override fun write(value: OptionalBytesEnvelope, buf: ByteBuffer) {
-        FfiConverterOptionalSequenceUByte.write(value.`body`, buf)
-        FfiConverterSequenceUByte.write(value.`uuid`, buf)
-    }
-}
-
-data class StringEnvelope(
-    var `body`: String,
-    var `uuid`: List<UByte>
-)
-
-public object FfiConverterTypeStringEnvelope : FfiConverterRustBuffer<StringEnvelope> {
-    override fun read(buf: ByteBuffer): StringEnvelope {
-        return StringEnvelope(
-            FfiConverterString.read(buf),
-            FfiConverterSequenceUByte.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: StringEnvelope) = (
-        FfiConverterString.allocationSize(value.`body`) +
-            FfiConverterSequenceUByte.allocationSize(value.`uuid`)
-        )
-
-    override fun write(value: StringEnvelope, buf: ByteBuffer) {
-        FfiConverterString.write(value.`body`, buf)
-        FfiConverterSequenceUByte.write(value.`uuid`, buf)
     }
 }
 
@@ -859,449 +671,6 @@ public object FfiConverterTypeViewModel : FfiConverterRustBuffer<ViewModel> {
     }
 }
 
-sealed class Msg {
-    object None : Msg()
-
-    object GetPlatform : Msg()
-
-    data class SetPlatform(
-        val `platform`: String
-    ) : Msg()
-    object Clear : Msg()
-
-    object Get : Msg()
-
-    object Fetch : Msg()
-
-    object Restore : Msg()
-
-    data class SetState(
-        val `bytes`: List<UByte>?
-    ) : Msg()
-    data class SetFact(
-        val `bytes`: List<UByte>
-    ) : Msg()
-    data class SetImage(
-        val `bytes`: List<UByte>
-    ) : Msg()
-    data class CurrentTime(
-        val `isoTime`: String
-    ) : Msg()
-}
-
-public object FfiConverterTypeMsg : FfiConverterRustBuffer<Msg> {
-    override fun read(buf: ByteBuffer): Msg {
-        return when (buf.getInt()) {
-            1 -> Msg.None
-            2 -> Msg.GetPlatform
-            3 -> Msg.SetPlatform(
-                FfiConverterString.read(buf)
-            )
-            4 -> Msg.Clear
-            5 -> Msg.Get
-            6 -> Msg.Fetch
-            7 -> Msg.Restore
-            8 -> Msg.SetState(
-                FfiConverterOptionalSequenceUByte.read(buf)
-            )
-            9 -> Msg.SetFact(
-                FfiConverterSequenceUByte.read(buf)
-            )
-            10 -> Msg.SetImage(
-                FfiConverterSequenceUByte.read(buf)
-            )
-            11 -> Msg.CurrentTime(
-                FfiConverterString.read(buf)
-            )
-            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
-        }
-    }
-
-    override fun allocationSize(value: Msg) = when (value) {
-        is Msg.None -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4
-                )
-        }
-        is Msg.GetPlatform -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4
-                )
-        }
-        is Msg.SetPlatform -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterString.allocationSize(value.`platform`)
-                )
-        }
-        is Msg.Clear -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4
-                )
-        }
-        is Msg.Get -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4
-                )
-        }
-        is Msg.Fetch -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4
-                )
-        }
-        is Msg.Restore -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4
-                )
-        }
-        is Msg.SetState -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterOptionalSequenceUByte.allocationSize(value.`bytes`)
-                )
-        }
-        is Msg.SetFact -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterSequenceUByte.allocationSize(value.`bytes`)
-                )
-        }
-        is Msg.SetImage -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterSequenceUByte.allocationSize(value.`bytes`)
-                )
-        }
-        is Msg.CurrentTime -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterString.allocationSize(value.`isoTime`)
-                )
-        }
-    }
-
-    override fun write(value: Msg, buf: ByteBuffer) {
-        when (value) {
-            is Msg.None -> {
-                buf.putInt(1)
-                Unit
-            }
-            is Msg.GetPlatform -> {
-                buf.putInt(2)
-                Unit
-            }
-            is Msg.SetPlatform -> {
-                buf.putInt(3)
-                FfiConverterString.write(value.`platform`, buf)
-                Unit
-            }
-            is Msg.Clear -> {
-                buf.putInt(4)
-                Unit
-            }
-            is Msg.Get -> {
-                buf.putInt(5)
-                Unit
-            }
-            is Msg.Fetch -> {
-                buf.putInt(6)
-                Unit
-            }
-            is Msg.Restore -> {
-                buf.putInt(7)
-                Unit
-            }
-            is Msg.SetState -> {
-                buf.putInt(8)
-                FfiConverterOptionalSequenceUByte.write(value.`bytes`, buf)
-                Unit
-            }
-            is Msg.SetFact -> {
-                buf.putInt(9)
-                FfiConverterSequenceUByte.write(value.`bytes`, buf)
-                Unit
-            }
-            is Msg.SetImage -> {
-                buf.putInt(10)
-                FfiConverterSequenceUByte.write(value.`bytes`, buf)
-                Unit
-            }
-            is Msg.CurrentTime -> {
-                buf.putInt(11)
-                FfiConverterString.write(value.`isoTime`, buf)
-                Unit
-            }
-        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
-    }
-}
-
-sealed class Request {
-    data class Http(
-        val `data`: StringEnvelope
-    ) : Request()
-    data class Time(
-        val `data`: OptionalBoolEnvelope
-    ) : Request()
-    data class Platform(
-        val `data`: OptionalBoolEnvelope
-    ) : Request()
-    data class KvRead(
-        val `data`: StringEnvelope
-    ) : Request()
-    data class KvWrite(
-        val `data`: KeyValueEnvelope
-    ) : Request()
-    object Render : Request()
-}
-
-public object FfiConverterTypeRequest : FfiConverterRustBuffer<Request> {
-    override fun read(buf: ByteBuffer): Request {
-        return when (buf.getInt()) {
-            1 -> Request.Http(
-                FfiConverterTypeStringEnvelope.read(buf)
-            )
-            2 -> Request.Time(
-                FfiConverterTypeOptionalBoolEnvelope.read(buf)
-            )
-            3 -> Request.Platform(
-                FfiConverterTypeOptionalBoolEnvelope.read(buf)
-            )
-            4 -> Request.KvRead(
-                FfiConverterTypeStringEnvelope.read(buf)
-            )
-            5 -> Request.KvWrite(
-                FfiConverterTypeKeyValueEnvelope.read(buf)
-            )
-            6 -> Request.Render
-            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
-        }
-    }
-
-    override fun allocationSize(value: Request) = when (value) {
-        is Request.Http -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeStringEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Request.Time -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeOptionalBoolEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Request.Platform -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeOptionalBoolEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Request.KvRead -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeStringEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Request.KvWrite -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeKeyValueEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Request.Render -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4
-                )
-        }
-    }
-
-    override fun write(value: Request, buf: ByteBuffer) {
-        when (value) {
-            is Request.Http -> {
-                buf.putInt(1)
-                FfiConverterTypeStringEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Request.Time -> {
-                buf.putInt(2)
-                FfiConverterTypeOptionalBoolEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Request.Platform -> {
-                buf.putInt(3)
-                FfiConverterTypeOptionalBoolEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Request.KvRead -> {
-                buf.putInt(4)
-                FfiConverterTypeStringEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Request.KvWrite -> {
-                buf.putInt(5)
-                FfiConverterTypeKeyValueEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Request.Render -> {
-                buf.putInt(6)
-                Unit
-            }
-        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
-    }
-}
-
-sealed class Response {
-    data class Http(
-        val `data`: BytesEnvelope
-    ) : Response()
-    data class Time(
-        val `data`: StringEnvelope
-    ) : Response()
-    data class Platform(
-        val `data`: StringEnvelope
-    ) : Response()
-    data class KvRead(
-        val `data`: OptionalBytesEnvelope
-    ) : Response()
-    data class KvWrite(
-        val `data`: BoolEnvelope
-    ) : Response()
-}
-
-public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response> {
-    override fun read(buf: ByteBuffer): Response {
-        return when (buf.getInt()) {
-            1 -> Response.Http(
-                FfiConverterTypeBytesEnvelope.read(buf)
-            )
-            2 -> Response.Time(
-                FfiConverterTypeStringEnvelope.read(buf)
-            )
-            3 -> Response.Platform(
-                FfiConverterTypeStringEnvelope.read(buf)
-            )
-            4 -> Response.KvRead(
-                FfiConverterTypeOptionalBytesEnvelope.read(buf)
-            )
-            5 -> Response.KvWrite(
-                FfiConverterTypeBoolEnvelope.read(buf)
-            )
-            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
-        }
-    }
-
-    override fun allocationSize(value: Response) = when (value) {
-        is Response.Http -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeBytesEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Response.Time -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeStringEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Response.Platform -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeStringEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Response.KvRead -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeOptionalBytesEnvelope.allocationSize(value.`data`)
-                )
-        }
-        is Response.KvWrite -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4 +
-                    FfiConverterTypeBoolEnvelope.allocationSize(value.`data`)
-                )
-        }
-    }
-
-    override fun write(value: Response, buf: ByteBuffer) {
-        when (value) {
-            is Response.Http -> {
-                buf.putInt(1)
-                FfiConverterTypeBytesEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Response.Time -> {
-                buf.putInt(2)
-                FfiConverterTypeStringEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Response.Platform -> {
-                buf.putInt(3)
-                FfiConverterTypeStringEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Response.KvRead -> {
-                buf.putInt(4)
-                FfiConverterTypeOptionalBytesEnvelope.write(value.`data`, buf)
-                Unit
-            }
-            is Response.KvWrite -> {
-                buf.putInt(5)
-                FfiConverterTypeBoolEnvelope.write(value.`data`, buf)
-                Unit
-            }
-        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
-    }
-}
-
-public object FfiConverterOptionalBoolean : FfiConverterRustBuffer<Boolean?> {
-    override fun read(buf: ByteBuffer): Boolean? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterBoolean.read(buf)
-    }
-
-    override fun allocationSize(value: Boolean?): Int {
-        if (value == null) {
-            return 1
-        } else {
-            return 1 + FfiConverterBoolean.allocationSize(value)
-        }
-    }
-
-    override fun write(value: Boolean?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterBoolean.write(value, buf)
-        }
-    }
-}
-
 public object FfiConverterOptionalTypeCatImage : FfiConverterRustBuffer<CatImage?> {
     override fun read(buf: ByteBuffer): CatImage? {
         if (buf.get().toInt() == 0) {
@@ -1328,32 +697,6 @@ public object FfiConverterOptionalTypeCatImage : FfiConverterRustBuffer<CatImage
     }
 }
 
-public object FfiConverterOptionalSequenceUByte : FfiConverterRustBuffer<List<UByte>?> {
-    override fun read(buf: ByteBuffer): List<UByte>? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterSequenceUByte.read(buf)
-    }
-
-    override fun allocationSize(value: List<UByte>?): Int {
-        if (value == null) {
-            return 1
-        } else {
-            return 1 + FfiConverterSequenceUByte.allocationSize(value)
-        }
-    }
-
-    override fun write(value: List<UByte>?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterSequenceUByte.write(value, buf)
-        }
-    }
-}
-
 public object FfiConverterSequenceUByte : FfiConverterRustBuffer<List<UByte>> {
     override fun read(buf: ByteBuffer): List<UByte> {
         val len = buf.getInt()
@@ -1372,28 +715,6 @@ public object FfiConverterSequenceUByte : FfiConverterRustBuffer<List<UByte>> {
         buf.putInt(value.size)
         value.forEach {
             FfiConverterUByte.write(it, buf)
-        }
-    }
-}
-
-public object FfiConverterSequenceTypeRequest : FfiConverterRustBuffer<List<Request>> {
-    override fun read(buf: ByteBuffer): List<Request> {
-        val len = buf.getInt()
-        return List<Request>(len) {
-            FfiConverterTypeRequest.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<Request>): Int {
-        val sizeForLength = 4
-        val sizeForItems = value.map { FfiConverterTypeRequest.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<Request>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.forEach {
-            FfiConverterTypeRequest.write(it, buf)
         }
     }
 }

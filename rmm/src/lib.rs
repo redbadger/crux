@@ -5,6 +5,7 @@ mod key_value;
 mod platform;
 mod time;
 
+use bcs::{from_bytes, to_bytes};
 pub use cmd::*;
 use serde::Deserialize;
 use std::sync::RwLock;
@@ -56,13 +57,13 @@ impl<A: App> AppCore<A> {
     where
         <A as App>::Msg: Deserialize<'de>,
     {
-        let msg: <A as App>::Msg = bincode::deserialize(msg).unwrap();
+        let msg: <A as App>::Msg = from_bytes(msg).unwrap();
 
         let mut model = self.model.write().unwrap();
 
         let requests = self.app.update(msg, &mut model, &self.cmd);
 
-        bincode::serialize(&requests).unwrap()
+        to_bytes(&requests).unwrap()
     }
 
     // Return from capability
@@ -70,7 +71,7 @@ impl<A: App> AppCore<A> {
     where
         <A as App>::Msg: Deserialize<'de>,
     {
-        let res: Response = bincode::deserialize(res).unwrap();
+        let res: Response = from_bytes(res).unwrap();
 
         let msg = self.cmd.resume(res);
 
@@ -78,7 +79,7 @@ impl<A: App> AppCore<A> {
 
         let requests = self.app.update(msg, &mut model, &self.cmd);
 
-        bincode::serialize(&requests).unwrap()
+        to_bytes(&requests).unwrap()
     }
 
     pub fn view(&self) -> A::ViewModel {

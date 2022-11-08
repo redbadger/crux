@@ -1,4 +1,4 @@
-package shared;
+package com.redbadger.rmm.shared_types;
 
 final class TraitHelpers {
     static void serialize_option_vector_u8(java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value, com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
