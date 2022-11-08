@@ -19,13 +19,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import okhttp3.ResponseBody
 import com.redbadger.rmm.shared.*
 import com.redbadger.rmm.shared_types.Msg
-import com.redbadger.rmm.shared_types.Request as Req
-import com.redbadger.rmm.shared_types.RequestBody as ReqBody
-import com.redbadger.rmm.shared_types.Response as Res
-import com.redbadger.rmm.shared_types.ResponseBody as ResBody
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -35,6 +31,10 @@ import retrofit2.http.Url
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import com.redbadger.rmm.shared_types.Request as Req
+import com.redbadger.rmm.shared_types.RequestBody as ReqBody
+import com.redbadger.rmm.shared_types.Response as Res
+import com.redbadger.rmm.shared_types.ResponseBody as ResBody
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,6 +75,27 @@ sealed class CoreMessage {
     ) : CoreMessage()
 }
 
+fun bcsDeserializeReqs(input: List<UByte>): List<Req> {
+    val deserializer = com.novi.bcs.BcsDeserializer(input.toUByteArray().toByteArray())
+
+    deserializer.increase_container_depth()
+    val length = deserializer.deserialize_len()
+
+    val requests: ArrayList<Req> = ArrayList()
+
+    for (i in 1 until length) {
+        val req = Req.deserialize(deserializer)
+        requests.add(req)
+    }
+
+    deserializer.decrease_container_depth()
+
+    if (deserializer._buffer_offset < input.size) {
+        throw com.novi.serde.DeserializationError("Some input bytes were not read")
+    }
+    return requests
+}
+
 class Model : ViewModel() {
     var view: com.redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null, ""))
         private set
@@ -105,10 +126,10 @@ class Model : ViewModel() {
     fun update(msg: CoreMessage) {
         val requests: List<Req> = when (msg) {
             is CoreMessage.Message -> {
-                bcsDeserialize(core.message(msg.msg.bcsSerialize().toUByteArray().toList()))
+                bcsDeserializeReqs(core.message(msg.msg.bcsSerialize().toUByteArray().toList()))
             }
             is CoreMessage.Response -> {
-                bcsDeserialize(core.response(msg.res.bcsSerialize().toUByteArray().toList()))
+                bcsDeserializeReqs(core.response(msg.res.bcsSerialize().toUByteArray().toList()))
             }
         }
 
