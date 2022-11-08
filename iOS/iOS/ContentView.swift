@@ -10,21 +10,23 @@ enum Message {
     case response(Response)
 }
 
-func bincodeDeserializeRequests(input: [UInt8]) throws -> [Request] {
-    let deserializer = BincodeDeserializer.init(input: input)
-    try deserializer.increase_container_depth()
-    let length = try deserializer.deserialize_len()
+extension [Request] {
+    public static func bincodeDeserialize(input: [UInt8]) throws -> [Request] {
+        let deserializer = BincodeDeserializer.init(input: input)
+        try deserializer.increase_container_depth()
+        let length = try deserializer.deserialize_len()
 
-    var requests: [Request] = []
-    for _ in 0..<length {
-        while deserializer.get_buffer_offset() < input.count {
-            let req = try Request.deserialize(deserializer: deserializer)
-            requests.append(req)
+        var requests: [Request] = []
+        for _ in 0..<length {
+            while deserializer.get_buffer_offset() < input.count {
+                let req = try Request.deserialize(deserializer: deserializer)
+                requests.append(req)
+            }
         }
+        deserializer.decrease_container_depth()
+
+        return requests
     }
-    deserializer.decrease_container_depth()
-    
-    return requests
 }
 
 @MainActor
@@ -49,9 +51,9 @@ class Model: ObservableObject {
         
         switch msg {
         case .message(let m):
-            reqs = try! bincodeDeserializeRequests(input: core.message(try! m.bincodeSerialize()))
+            reqs = try! [Request].bincodeDeserialize(input: core.message(try! m.bincodeSerialize()))
         case .response(let r):
-            reqs = try! bincodeDeserializeRequests(input: core.response(try! r.bincodeSerialize()))
+            reqs = try! [Request].bincodeDeserialize(input: core.response(try! r.bincodeSerialize()))
         }
 
         for req in reqs {
