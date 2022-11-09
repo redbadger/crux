@@ -540,7 +540,6 @@ dependencies = [
  "clap 4.0.18",
  "serde",
  "shared",
- "shared_types",
  "surf",
 ]
 
@@ -2010,10 +2009,7 @@ dependencies = [
  "derive_more",
  "rmm",
  "serde",
- "serde-generate",
- "serde-reflection",
  "serde_json",
- "shared_types",
  "thiserror",
  "uniffi",
  "uniffi_build",
@@ -2025,7 +2021,10 @@ dependencies = [
 name = "shared_types"
 version = "0.1.0"
 dependencies = [
- "serde",
+ "rmm",
+ "serde-generate",
+ "serde-reflection",
+ "shared",
 ]
 
 [[package]]
@@ -2678,7 +2677,6 @@ dependencies = [
  "js-sys",
  "serde",
  "shared",
- "shared_types",
  "wasm-bindgen-futures",
  "web-sys",
  "woothee",

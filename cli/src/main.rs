@@ -6,7 +6,6 @@ use async_std::{
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use shared::*;
-use shared_types::Msg;
 use std::{collections::VecDeque, time::SystemTime};
 
 enum CoreMessage {

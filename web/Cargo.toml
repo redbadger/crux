@@ -10,7 +10,6 @@ gloo-net = { version = "0.2.4", features = ["http"] }
 js-sys = "0.3.60"
 serde = { version = "1.0.147", features = ["derive"] }
 shared = { path = "../shared" }
-shared_types = { path = "../shared_types" }
 wasm-bindgen-futures = "0.4.33"
 web-sys = { version = "0.3.60", features = ["Navigator"] }
 woothee = "0.13.0"

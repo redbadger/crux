@@ -85,7 +85,7 @@ task bindGen(type: Exec) {
 
 task typesGen(type: Exec) {
     def outDir = "${projectDir}/src/main/java"
-    def srcDir = "shared/generated/com"
+    def srcDir = "shared_types/generated/com"
     workingDir "../../"
     commandLine(
             "sh", "-c",

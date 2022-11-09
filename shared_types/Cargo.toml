@@ -3,6 +3,10 @@ name = "shared_types"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-serde = { version = "1.0.147", features = ["derive"] }
+
+[build-dependencies]
+rmm = { path = "../rmm" }
+shared = { path = "../shared" }
+serde-generate = "0.24.0"
+serde-reflection = "0.3.6"

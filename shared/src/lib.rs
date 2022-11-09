@@ -1,7 +1,7 @@
 pub use rmm::*;
 use serde::{Deserialize, Serialize};
-use shared_types::{CatImage, Msg, ViewModel};
 
+const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
 
@@ -44,6 +44,41 @@ impl From<&Model> for ViewModel {
             image: model.cat_image.clone(),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct CatImage {
+    pub file: String,
+}
+
+impl Default for CatImage {
+    fn default() -> Self {
+        Self {
+            file: CAT_LOADING_URL.to_string(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ViewModel {
+    pub fact: String,
+    pub image: Option<CatImage>,
+    pub platform: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum Msg {
+    None,
+    GetPlatform,
+    SetPlatform { platform: String },
+    Clear,
+    Get,
+    Fetch,
+    Restore,                             // restore state
+    SetState { bytes: Option<Vec<u8>> }, // receive the data to restore state with
+    SetFact { bytes: Vec<u8> },
+    SetImage { bytes: Vec<u8> },
+    CurrentTime { iso_time: String },
 }
 
 impl App for CatFacts {

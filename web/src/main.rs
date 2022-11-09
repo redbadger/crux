@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use js_sys::Date;
 use serde::{Deserialize, Serialize};
 use shared::*;
-use shared_types::Msg;
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
