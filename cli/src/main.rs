@@ -5,10 +5,9 @@ use async_std::{
 };
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use shared::*;
 use shared_types::Msg;
 use std::{collections::VecDeque, time::SystemTime};
-
-use shared::*;
 
 enum CoreMessage {
     Message(Msg),
@@ -43,11 +42,11 @@ async fn main() {
         let msg = queue.pop_front();
 
         let reqs = match msg {
-            Some(CoreMessage::Message(m)) => core.message(&bincode::serialize(&m).unwrap()),
-            Some(CoreMessage::Response(r)) => core.response(&bincode::serialize(&r).unwrap()),
+            Some(CoreMessage::Message(m)) => core.message(&bcs::to_bytes(&m).unwrap()),
+            Some(CoreMessage::Response(r)) => core.response(&bcs::to_bytes(&r).unwrap()),
             _ => vec![],
         };
-        let reqs: Vec<Request> = bincode::deserialize(&reqs).unwrap();
+        let reqs: Vec<Request> = bcs::from_bytes(&reqs).unwrap();
 
         for req in reqs {
             let Request { uuid, body } = req;

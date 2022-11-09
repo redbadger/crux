@@ -535,7 +535,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-std",
- "bincode",
+ "bcs",
  "chrono",
  "clap 4.0.18",
  "serde",
