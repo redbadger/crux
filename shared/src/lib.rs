@@ -21,13 +21,15 @@ impl CatFact {
 pub type Core = AppCore<CatFacts>;
 
 #[derive(Default)]
-pub struct CatFacts {}
+pub struct CatFacts {
+    platform: Platform,
+}
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Model {
     cat_fact: Option<CatFact>,
     cat_image: Option<CatImage>,
-    platform: String,
+    platform: PlatformModel,
     time: Option<String>,
 }
 
@@ -39,7 +41,7 @@ impl From<&Model> for ViewModel {
         };
 
         ViewModel {
-            platform: format!("Hello {}", model.platform),
+            platform: format!("Hello {}", model.platform.platform),
             fact,
             image: model.cat_image.clone(),
         }
@@ -70,7 +72,7 @@ pub struct ViewModel {
 pub enum Msg {
     None,
     GetPlatform,
-    SetPlatform(String),
+    Platform(PlatformMsg),
     Clear,
     Get,
     Fetch,
@@ -81,6 +83,47 @@ pub enum Msg {
     CurrentTime(String),
 }
 
+#[derive(Default)]
+struct Platform;
+
+#[derive(Default, Serialize, Deserialize)]
+struct PlatformModel {
+    platform: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum PlatformMsg {
+    Get,
+    Set(String),
+}
+
+impl App for Platform {
+    type Msg = PlatformMsg;
+    type Model = PlatformModel;
+    type ViewModel = PlatformModel;
+
+    fn update(
+        &self,
+        msg: <Self as App>::Msg,
+        model: &mut <Self as App>::Model,
+        cmd: &Cmd<<Self as App>::Msg>,
+    ) -> Vec<Request> {
+        match msg {
+            PlatformMsg::Get => vec![cmd.platform.get(|p| Msg::Platform(PlatformMsg::Set(p)))],
+            PlatformMsg::Set(platform) => {
+                model.platform = platform;
+                vec![Request::render()]
+            }
+        }
+    }
+
+    fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel {
+        PlatformModel {
+            platform: model.platform.clone(),
+        }
+    }
+}
+
 impl App for CatFacts {
     type Msg = Msg;
     type Model = Model;
@@ -88,11 +131,12 @@ impl App for CatFacts {
 
     fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Vec<Request> {
         match msg {
-            Msg::GetPlatform => vec![cmd.platform.get(Msg::SetPlatform)],
-            Msg::SetPlatform(platform) => {
-                model.platform = platform;
-                vec![Request::render()]
-            }
+            Msg::GetPlatform => self.update(Msg::Platform(PlatformMsg::Get), &mut model, cmd),
+            Msg::Platform(msg) => self.platform.update(
+                msg,
+                &mut model.platform,
+                cmd.lower(|m: PlatformMsg| Msg::Platform(m)),
+            ),
             Msg::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;

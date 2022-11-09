@@ -13,7 +13,7 @@ impl<Msg> Default for Platform<Msg> {
 }
 
 impl<Msg> Platform<Msg> {
-    pub fn get<F>(&self, msg: F) -> Request
+    pub fn get<F>(&self, msg: F) -> (RequestBody, Msg)
     where
         F: FnOnce(String) -> Msg + Sync + Send + 'static,
     {

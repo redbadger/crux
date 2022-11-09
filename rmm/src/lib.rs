@@ -9,6 +9,21 @@ pub use cmd::*;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
+pub struct Command<F, Payload, Message>
+where
+    F: FnOnce(Payload) -> Message,
+{
+    body: RequestBody,
+    continuation: F,
+}
+
+impl<F, Payload, Message> Command<F, Payload, Message>
+where
+    F: FnOnce(Payload) -> Message,
+{
+    // pub fn map() -> {}
+}
+
 pub trait App: Default {
     type Msg;
     type Model: Default;
@@ -19,7 +34,7 @@ pub trait App: Default {
         msg: <Self as App>::Msg,
         model: &mut <Self as App>::Model,
         cmd: &Cmd<<Self as App>::Msg>,
-    ) -> Vec<Request>;
+    ) -> Vec<Command>;
 
     fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
 }
