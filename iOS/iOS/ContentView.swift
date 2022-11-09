@@ -60,7 +60,7 @@ class Model: ObservableObject {
             let uuid = req.uuid
             
             switch req.body {
-            case .render: view = core.view()
+            case .render: view = try! ViewModel.bcsDeserialize(input: core.view())
             case .http(data: let data): httpGet(uuid: uuid, url: data)
             case .time:
                 update(msg: .response(Response(uuid: uuid, body: ResponseBody.time(Date().ISO8601Format()))))

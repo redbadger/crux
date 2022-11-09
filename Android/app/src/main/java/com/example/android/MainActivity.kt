@@ -21,8 +21,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import com.redbadger.rmm.shared.*
-import com.redbadger.rmm.shared_types.Msg
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -33,10 +31,17 @@ import retrofit2.http.Url
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.*
+import kotlin.collections.ArrayList
+
+import com.redbadger.rmm.shared.Core
+
 import com.redbadger.rmm.shared_types.Request as Req
 import com.redbadger.rmm.shared_types.RequestBody as ReqBody
 import com.redbadger.rmm.shared_types.Response as Res
 import com.redbadger.rmm.shared_types.ResponseBody as ResBody
+import com.redbadger.rmm.shared_types.Msg
+import com.redbadger.rmm.shared_types.ViewModel as MyViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,7 +105,7 @@ fun bcsDeserializeReqs(input: List<UByte>): List<Req> {
 }
 
 class Model : ViewModel() {
-    var view: com.redbadger.rmm.shared.ViewModel by mutableStateOf(ViewModel("", null, ""))
+    var view: MyViewModel by mutableStateOf(MyViewModel("", Optional.empty(), ""))
         private set
 
     private val core = Core()
@@ -138,7 +143,8 @@ class Model : ViewModel() {
         for (req in requests) {
             when (val body = req.body) {
                 is ReqBody.Render -> {
-                    this.view = core.view()
+                    this.view =
+                        MyViewModel.bcsDeserialize(core.view().toUByteArray().toByteArray())
                 }
                 is ReqBody.Http -> {
                     httpGet(body.value, req.uuid)
@@ -183,9 +189,9 @@ fun CatFacts(model: Model = viewModel()) {
                 .height(250.dp)
                 .padding(10.dp)
         ) {
-            model.view.image?.let {
+            model.view.image?.get().let {
                 Image(
-                    painter = rememberAsyncImagePainter(it.file),
+                    painter = rememberAsyncImagePainter(it?.file),
                     contentDescription = "cat image",
                     modifier = Modifier
                         .height(250.dp)

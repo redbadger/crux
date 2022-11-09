@@ -1,6 +1,24 @@
 package com.redbadger.rmm.shared_types;
 
 final class TraitHelpers {
+    static void serialize_option_CatImage(java.util.Optional<CatImage> value, com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
+        if (value.isPresent()) {
+            serializer.serialize_option_tag(true);
+            value.get().serialize(serializer);
+        } else {
+            serializer.serialize_option_tag(false);
+        }
+    }
+
+    static java.util.Optional<CatImage> deserialize_option_CatImage(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+        boolean tag = deserializer.deserialize_option_tag();
+        if (!tag) {
+            return java.util.Optional.empty();
+        } else {
+            return java.util.Optional.of(CatImage.deserialize(deserializer));
+        }
+    }
+
     static void serialize_option_vector_u8(java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value, com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
         if (value.isPresent()) {
             serializer.serialize_option_tag(true);

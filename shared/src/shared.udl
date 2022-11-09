@@ -5,15 +5,5 @@ interface Core {
   constructor();
   sequence<u8> message([ByRef] sequence<u8> msg);
   sequence<u8> response([ByRef] sequence<u8> res);
-  ViewModel view();
-};
-
-dictionary CatImage {
-  string file;
-};
-
-dictionary ViewModel {
-  string fact;
-  CatImage? image;
-  string platform;
+  sequence<u8> view();
 };

@@ -59,7 +59,7 @@ impl Default for CatImage {
     }
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct ViewModel {
     pub fact: String,
     pub image: Option<CatImage>,
