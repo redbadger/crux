@@ -1,11 +1,16 @@
 use rmm::{Request, RequestBody, Response, ResponseBody};
 use serde_reflection::{Tracer, TracerConfig};
-use shared::Msg;
-use std::{fs::File, io::Write, path::PathBuf};
+use shared::{Msg, ViewModel};
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
+};
 
 fn main() {
     let mut tracer = Tracer::new(TracerConfig::default());
     tracer.trace_simple_type::<Msg>().unwrap();
+    tracer.trace_simple_type::<ViewModel>().unwrap();
     tracer.trace_simple_type::<Request>().unwrap();
     tracer.trace_simple_type::<RequestBody>().unwrap();
     tracer.trace_simple_type::<Response>().unwrap();
@@ -23,6 +28,8 @@ fn main() {
     // which as far as I can tell does not support namespaces in this way
     let out = String::from_utf8_lossy(&source).replace("shared.", "");
 
+    let out = format!("{out}\n\n{}", include_str!("./extensions/requests.swift"));
+
     let path = "./generated/shared_types.swift";
     let mut output = File::create(path).unwrap();
     write!(output, "{}", out).unwrap();
@@ -36,4 +43,9 @@ fn main() {
     generator
         .write_source_files(PathBuf::from("./generated"), &registry)
         .unwrap();
+    fs::copy(
+        "./extensions/com/redbadger/rmm/shared_types/Requests.java",
+        "./generated/com/redbadger/rmm/shared_types/Requests.java",
+    )
+    .unwrap();
 }

@@ -137,6 +137,7 @@ impl Component for HelloWorld {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
         let view = ctx.props().core.view();
+        let view: ViewModel = bcs::from_bytes(&view).unwrap();
 
         html! {
             <>

@@ -1,6 +1,42 @@
 import Serde
 
 
+public struct CatImage: Hashable {
+    @Indirect public var file: String
+
+    public init(file: String) {
+        self.file = file
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_str(value: self.file)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> CatImage {
+        try deserializer.increase_container_depth()
+        let file = try deserializer.deserialize_str()
+        try deserializer.decrease_container_depth()
+        return CatImage.init(file: file)
+    }
+
+    public static func bcsDeserialize(input: [UInt8]) throws -> CatImage {
+        let deserializer = BcsDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
 indirect public enum Msg: Hashable {
     case none
     case getPlatform
@@ -340,6 +376,68 @@ indirect public enum ResponseBody: Hashable {
     }
 }
 
+public struct ViewModel: Hashable {
+    @Indirect public var fact: String
+    @Indirect public var image: CatImage?
+    @Indirect public var platform: String
+
+    public init(fact: String, image: CatImage?, platform: String) {
+        self.fact = fact
+        self.image = image
+        self.platform = platform
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_str(value: self.fact)
+        try serialize_option_CatImage(value: self.image, serializer: serializer)
+        try serializer.serialize_str(value: self.platform)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> ViewModel {
+        try deserializer.increase_container_depth()
+        let fact = try deserializer.deserialize_str()
+        let image = try deserialize_option_CatImage(deserializer: deserializer)
+        let platform = try deserializer.deserialize_str()
+        try deserializer.decrease_container_depth()
+        return ViewModel.init(fact: fact, image: image, platform: platform)
+    }
+
+    public static func bcsDeserialize(input: [UInt8]) throws -> ViewModel {
+        let deserializer = BcsDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+func serialize_option_CatImage<S: Serializer>(value: CatImage?, serializer: S) throws {
+    if let value = value {
+        try serializer.serialize_option_tag(value: true)
+        try value.serialize(serializer: serializer)
+    } else {
+        try serializer.serialize_option_tag(value: false)
+    }
+}
+
+func deserialize_option_CatImage<D: Deserializer>(deserializer: D) throws -> CatImage? {
+    let tag = try deserializer.deserialize_option_tag()
+    if tag {
+        return try CatImage.deserialize(deserializer: deserializer)
+    } else {
+        return nil
+    }
+}
+
 func serialize_option_vector_u8<S: Serializer>(value: [UInt8]?, serializer: S) throws {
     if let value = value {
         try serializer.serialize_option_tag(value: true)
@@ -374,3 +472,23 @@ func deserialize_vector_u8<D: Deserializer>(deserializer: D) throws -> [UInt8] {
     return obj
 }
 
+
+
+public extension [Request] {
+  static func bcsDeserialize(input: [UInt8]) throws -> [Request] {
+    let deserializer = BcsDeserializer(input: input)
+    try deserializer.increase_container_depth()
+    let length = try deserializer.deserialize_len()
+
+    var requests: [Request] = []
+    for _ in 0 ..< length {
+      while deserializer.get_buffer_offset() < input.count {
+        let req = try Request.deserialize(deserializer: deserializer)
+        requests.append(req)
+      }
+    }
+    deserializer.decrease_container_depth()
+
+    return requests
+  }
+}

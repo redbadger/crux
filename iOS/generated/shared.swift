@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_cbdd_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_e27b_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_cbdd_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_e27b_rustbuffer_free(self, $0) }
     }
 }
 
@@ -336,7 +336,7 @@ fileprivate struct FfiConverterString: FfiConverter {
 public protocol CoreProtocol {
     func `message`(_ `msg`: [UInt8])  -> [UInt8]
     func `response`(_ `res`: [UInt8])  -> [UInt8]
-    func `view`()  -> ViewModel
+    func `view`()  -> [UInt8]
     
 }
 
@@ -354,12 +354,12 @@ public class Core: CoreProtocol {
     
     rustCall() {
     
-    shared_cbdd_Core_new($0)
+    shared_e27b_Core_new($0)
 })
     }
 
     deinit {
-        try! rustCall { ffi_shared_cbdd_Core_object_free(pointer, $0) }
+        try! rustCall { ffi_shared_e27b_Core_object_free(pointer, $0) }
     }
 
     
@@ -370,7 +370,7 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_cbdd_Core_message(self.pointer, 
+    shared_e27b_Core_message(self.pointer, 
         FfiConverterSequenceUInt8.lower(`msg`), $0
     )
 }
@@ -381,18 +381,18 @@ public class Core: CoreProtocol {
             try!
     rustCall() {
     
-    shared_cbdd_Core_response(self.pointer, 
+    shared_e27b_Core_response(self.pointer, 
         FfiConverterSequenceUInt8.lower(`res`), $0
     )
 }
         )
     }
-    public func `view`()  -> ViewModel {
-        return try! FfiConverterTypeViewModel.lift(
+    public func `view`()  -> [UInt8] {
+        return try! FfiConverterSequenceUInt8.lift(
             try!
     rustCall() {
     
-    shared_cbdd_Core_view(self.pointer, $0
+    shared_e27b_Core_view(self.pointer, $0
     )
 }
         )
@@ -428,119 +428,6 @@ fileprivate struct FfiConverterTypeCore: FfiConverter {
 
     static func lower(_ value: Core) -> UnsafeMutableRawPointer {
         return value.pointer
-    }
-}
-
-
-public struct CatImage {
-    public var `file`: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(`file`: String) {
-        self.`file` = `file`
-    }
-}
-
-
-extension CatImage: Equatable, Hashable {
-    public static func ==(lhs: CatImage, rhs: CatImage) -> Bool {
-        if lhs.`file` != rhs.`file` {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(`file`)
-    }
-}
-
-
-fileprivate struct FfiConverterTypeCatImage: FfiConverterRustBuffer {
-    fileprivate static func read(from buf: Reader) throws -> CatImage {
-        return try CatImage(
-            `file`: FfiConverterString.read(from: buf)
-        )
-    }
-
-    fileprivate static func write(_ value: CatImage, into buf: Writer) {
-        FfiConverterString.write(value.`file`, into: buf)
-    }
-}
-
-
-public struct ViewModel {
-    public var `fact`: String
-    public var `image`: CatImage?
-    public var `platform`: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(`fact`: String, `image`: CatImage?, `platform`: String) {
-        self.`fact` = `fact`
-        self.`image` = `image`
-        self.`platform` = `platform`
-    }
-}
-
-
-extension ViewModel: Equatable, Hashable {
-    public static func ==(lhs: ViewModel, rhs: ViewModel) -> Bool {
-        if lhs.`fact` != rhs.`fact` {
-            return false
-        }
-        if lhs.`image` != rhs.`image` {
-            return false
-        }
-        if lhs.`platform` != rhs.`platform` {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(`fact`)
-        hasher.combine(`image`)
-        hasher.combine(`platform`)
-    }
-}
-
-
-fileprivate struct FfiConverterTypeViewModel: FfiConverterRustBuffer {
-    fileprivate static func read(from buf: Reader) throws -> ViewModel {
-        return try ViewModel(
-            `fact`: FfiConverterString.read(from: buf), 
-            `image`: FfiConverterOptionTypeCatImage.read(from: buf), 
-            `platform`: FfiConverterString.read(from: buf)
-        )
-    }
-
-    fileprivate static func write(_ value: ViewModel, into buf: Writer) {
-        FfiConverterString.write(value.`fact`, into: buf)
-        FfiConverterOptionTypeCatImage.write(value.`image`, into: buf)
-        FfiConverterString.write(value.`platform`, into: buf)
-    }
-}
-
-fileprivate struct FfiConverterOptionTypeCatImage: FfiConverterRustBuffer {
-    typealias SwiftType = CatImage?
-
-    static func write(_ value: SwiftType, into buf: Writer) {
-        guard let value = value else {
-            buf.writeInt(Int8(0))
-            return
-        }
-        buf.writeInt(Int8(1))
-        FfiConverterTypeCatImage.write(value, into: buf)
-    }
-
-    static func read(from buf: Reader) throws -> SwiftType {
-        switch try buf.readInt() as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterTypeCatImage.read(from: buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
     }
 }
 

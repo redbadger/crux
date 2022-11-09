@@ -44,7 +44,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_cbdd_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_e27b_rustbuffer_alloc(size, status).also {
                 if (it.data == null) {
                     throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
                 }
@@ -52,7 +52,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_cbdd_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_e27b_rustbuffer_free(buf, status)
         }
     }
 
@@ -264,48 +264,48 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun ffi_shared_cbdd_Core_object_free(
+    fun ffi_shared_e27b_Core_object_free(
         `ptr`: Pointer,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun shared_cbdd_Core_new(
+    fun shared_e27b_Core_new(
         _uniffi_out_err: RustCallStatus
     ): Pointer
 
-    fun shared_cbdd_Core_message(
+    fun shared_e27b_Core_message(
         `ptr`: Pointer,
         `msg`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun shared_cbdd_Core_response(
+    fun shared_e27b_Core_response(
         `ptr`: Pointer,
         `res`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun shared_cbdd_Core_view(
+    fun shared_e27b_Core_view(
         `ptr`: Pointer,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_cbdd_rustbuffer_alloc(
+    fun ffi_shared_e27b_rustbuffer_alloc(
         `size`: Int,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_cbdd_rustbuffer_from_bytes(
+    fun ffi_shared_e27b_rustbuffer_from_bytes(
         `bytes`: ForeignBytes.ByValue,
         _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_shared_cbdd_rustbuffer_free(
+    fun ffi_shared_e27b_rustbuffer_free(
         `buf`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun ffi_shared_cbdd_rustbuffer_reserve(
+    fun ffi_shared_e27b_rustbuffer_reserve(
         `buf`: RustBuffer.ByValue,
         `additional`: Int,
         _uniffi_out_err: RustCallStatus
@@ -548,7 +548,7 @@ public interface CoreInterface {
 
     fun `response`(`res`: List<UByte>): List<UByte>
 
-    fun `view`(): ViewModel
+    fun `view`(): List<UByte>
 }
 
 class Core(
@@ -557,7 +557,7 @@ class Core(
     constructor() :
         this(
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_cbdd_Core_new(_status)
+                _UniFFILib.INSTANCE.shared_e27b_Core_new(_status)
             }
         )
 
@@ -571,14 +571,14 @@ class Core(
      */
     protected override fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_cbdd_Core_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.ffi_shared_e27b_Core_object_free(this.pointer, status)
         }
     }
 
     override fun `message`(`msg`: List<UByte>): List<UByte> =
         callWithPointer {
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_cbdd_Core_message(it, FfiConverterSequenceUByte.lower(`msg`), _status)
+                _UniFFILib.INSTANCE.shared_e27b_Core_message(it, FfiConverterSequenceUByte.lower(`msg`), _status)
             }
         }.let {
             FfiConverterSequenceUByte.lift(it)
@@ -586,18 +586,18 @@ class Core(
     override fun `response`(`res`: List<UByte>): List<UByte> =
         callWithPointer {
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_cbdd_Core_response(it, FfiConverterSequenceUByte.lower(`res`), _status)
+                _UniFFILib.INSTANCE.shared_e27b_Core_response(it, FfiConverterSequenceUByte.lower(`res`), _status)
             }
         }.let {
             FfiConverterSequenceUByte.lift(it)
         }
-    override fun `view`(): ViewModel =
+    override fun `view`(): List<UByte> =
         callWithPointer {
             rustCall() { _status ->
-                _UniFFILib.INSTANCE.shared_cbdd_Core_view(it, _status)
+                _UniFFILib.INSTANCE.shared_e27b_Core_view(it, _status)
             }
         }.let {
-            FfiConverterTypeViewModel.lift(it)
+            FfiConverterSequenceUByte.lift(it)
         }
 }
 
@@ -620,80 +620,6 @@ public object FfiConverterTypeCore : FfiConverter<Core, Pointer> {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
-    }
-}
-
-data class CatImage(
-    var `file`: String
-)
-
-public object FfiConverterTypeCatImage : FfiConverterRustBuffer<CatImage> {
-    override fun read(buf: ByteBuffer): CatImage {
-        return CatImage(
-            FfiConverterString.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: CatImage) = (
-        FfiConverterString.allocationSize(value.`file`)
-        )
-
-    override fun write(value: CatImage, buf: ByteBuffer) {
-        FfiConverterString.write(value.`file`, buf)
-    }
-}
-
-data class ViewModel(
-    var `fact`: String,
-    var `image`: CatImage?,
-    var `platform`: String
-)
-
-public object FfiConverterTypeViewModel : FfiConverterRustBuffer<ViewModel> {
-    override fun read(buf: ByteBuffer): ViewModel {
-        return ViewModel(
-            FfiConverterString.read(buf),
-            FfiConverterOptionalTypeCatImage.read(buf),
-            FfiConverterString.read(buf)
-        )
-    }
-
-    override fun allocationSize(value: ViewModel) = (
-        FfiConverterString.allocationSize(value.`fact`) +
-            FfiConverterOptionalTypeCatImage.allocationSize(value.`image`) +
-            FfiConverterString.allocationSize(value.`platform`)
-        )
-
-    override fun write(value: ViewModel, buf: ByteBuffer) {
-        FfiConverterString.write(value.`fact`, buf)
-        FfiConverterOptionalTypeCatImage.write(value.`image`, buf)
-        FfiConverterString.write(value.`platform`, buf)
-    }
-}
-
-public object FfiConverterOptionalTypeCatImage : FfiConverterRustBuffer<CatImage?> {
-    override fun read(buf: ByteBuffer): CatImage? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeCatImage.read(buf)
-    }
-
-    override fun allocationSize(value: CatImage?): Int {
-        if (value == null) {
-            return 1
-        } else {
-            return 1 + FfiConverterTypeCatImage.allocationSize(value)
-        }
-    }
-
-    override fun write(value: CatImage?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeCatImage.write(value, buf)
-        }
     }
 }
 

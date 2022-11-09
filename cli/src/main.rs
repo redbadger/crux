@@ -97,7 +97,7 @@ async fn main() {
     }
 
     let view = core.view();
-    println!("{}", view.fact);
+    println!("{}", bcs::from_bytes::<ViewModel>(&view).unwrap().fact);
 }
 
 async fn write_state(_key: &str, bytes: &[u8]) -> Result<()> {
