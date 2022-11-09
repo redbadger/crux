@@ -3,52 +3,9 @@ namespace shared {
 
 interface Core {
   constructor();
-  sequence<Request> message(Msg msg);
-  sequence<Request> response(Response res);
+  sequence<u8> message([ByRef] sequence<u8> msg);
+  sequence<u8> response([ByRef] sequence<u8> res);
   ViewModel view();
-};
-
-[Enum]
-interface Msg {
-  None();
-  GetPlatform();
-  SetPlatform(string platform);
-  Clear();
-  Get();
-  Fetch();
-  Restore();
-  SetState(sequence<u8>? bytes);
-  SetFact(sequence<u8> bytes);
-  SetImage(sequence<u8> bytes);
-  CurrentTime(string iso_time);
-};
-
-dictionary StringEnvelope {string body; sequence<u8> uuid;};
-dictionary OptionalBoolEnvelope {boolean? body; sequence<u8> uuid;};
-dictionary BoolEnvelope {boolean body; sequence<u8> uuid;};
-dictionary BytesEnvelope {sequence<u8> body; sequence<u8> uuid;};
-dictionary OptionalBytesEnvelope {sequence<u8>? body; sequence<u8> uuid;};
-dictionary KeyValueEnvelope {KeyValue body; sequence<u8> uuid;};
-
-dictionary KeyValue {string key; sequence<u8> value;};
-
-[Enum]
-interface Request {
-  Http(StringEnvelope data);
-  Time(OptionalBoolEnvelope data);
-  Platform(OptionalBoolEnvelope data);
-  KVRead(StringEnvelope data);
-  KVWrite(KeyValueEnvelope data);
-  Render();
-};
-
-[Enum]
-interface Response {
-  Http(BytesEnvelope data);
-  Time(StringEnvelope data);
-  Platform(StringEnvelope data);
-  KVRead(OptionalBytesEnvelope data);
-  KVWrite(BoolEnvelope data);
 };
 
 dictionary CatImage {

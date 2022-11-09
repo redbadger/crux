@@ -41,7 +41,7 @@ android {
     }
     packagingOptions {
         resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            excludes += '/META-INF/{AL2.0,LGPL2.1,DEPENDENCIES}'
         }
     }
 }
@@ -77,4 +77,8 @@ dependencies {
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+
+    implementation('com.diem:client-sdk-java:1.0.5') {
+        exclude group: 'org.bouncycastle', module: 'bcprov-jdk15to18'
+    }
 }

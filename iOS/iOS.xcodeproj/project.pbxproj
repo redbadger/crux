@@ -7,8 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CC02FE1D28F2E867003DA87D /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CC02FE1C28F2E867003DA87D /* shared.udl */; };
 		CC02FE2028F2EA83003DA87D /* sharedFFI.h in Headers */ = {isa = PBXBuildFile; fileRef = CC02FE1F28F2EA83003DA87D /* sharedFFI.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CC49E0212919260600F5D4C0 /* libshared.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CC49E0202919260600F5D4C0 /* libshared.a */; };
+		CC49E023291BB35A00F5D4C0 /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC49E022291BB35A00F5D4C0 /* shared_types.swift */; };
+		CCA5CCE329191A5900325531 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CCA5CCE229191A5900325531 /* shared.udl */; };
 		CCB21E1A28F199700074368C /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E1928F199700074368C /* iOSApp.swift */; };
 		CCB21E1C28F199700074368C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E1B28F199700074368C /* ContentView.swift */; };
 		CCB21E1E28F199710074368C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCB21E1D28F199710074368C /* Assets.xcassets */; };
@@ -16,7 +18,7 @@
 		CCB21E2B28F199710074368C /* iOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E2A28F199710074368C /* iOSTests.swift */; };
 		CCB21E3528F199710074368C /* iOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E3428F199710074368C /* iOSUITests.swift */; };
 		CCB21E3728F199710074368C /* iOSUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E3628F199710074368C /* iOSUITestsLaunchTests.swift */; };
-		CCFA7BDE28F5ACC500AEA3EA /* libshared.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CCFA7BDD28F5ACC500AEA3EA /* libshared.a */; };
+		CCB436432912CD7E0059B3A3 /* Serde in Frameworks */ = {isa = PBXBuildFile; productRef = CCB436422912CD7E0059B3A3 /* Serde */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -55,8 +57,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CC02FE1C28F2E867003DA87D /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
 		CC02FE1F28F2EA83003DA87D /* sharedFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = sharedFFI.h; path = generated/sharedFFI.h; sourceTree = "<group>"; };
+		CC49E0202919260600F5D4C0 /* libshared.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libshared.a; path = ../target/debug/libshared.a; sourceTree = "<group>"; };
+		CC49E022291BB35A00F5D4C0 /* shared_types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared_types/generated/shared_types.swift; sourceTree = "<group>"; };
+		CCA5CCE229191A5900325531 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
 		CCB21E1628F199700074368C /* iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCB21E1928F199700074368C /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		CCB21E1B28F199700074368C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -67,7 +71,6 @@
 		CCB21E3028F199710074368C /* iOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCB21E3428F199710074368C /* iOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITests.swift; sourceTree = "<group>"; };
 		CCB21E3628F199710074368C /* iOSUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		CCFA7BDD28F5ACC500AEA3EA /* libshared.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libshared.a; path = ../target/debug/libshared.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,7 +78,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CCFA7BDE28F5ACC500AEA3EA /* libshared.a in Frameworks */,
+				CC49E0212919260600F5D4C0 /* libshared.a in Frameworks */,
+				CCB436432912CD7E0059B3A3 /* Serde in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,8 +103,9 @@
 		CCB21E0D28F199700074368C = {
 			isa = PBXGroup;
 			children = (
+				CC49E022291BB35A00F5D4C0 /* shared_types.swift */,
+				CCA5CCE229191A5900325531 /* shared.udl */,
 				CC02FE1F28F2EA83003DA87D /* sharedFFI.h */,
-				CC02FE1C28F2E867003DA87D /* shared.udl */,
 				CCB21E1828F199700074368C /* iOS */,
 				CCB21E2928F199710074368C /* iOSTests */,
 				CCB21E3328F199710074368C /* iOSUITests */,
@@ -158,7 +163,7 @@
 		CCFA7BDC28F5ACC500AEA3EA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				CCFA7BDD28F5ACC500AEA3EA /* libshared.a */,
+				CC49E0202919260600F5D4C0 /* libshared.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -193,6 +198,9 @@
 			dependencies = (
 			);
 			name = iOS;
+			packageProductDependencies = (
+				CCB436422912CD7E0059B3A3 /* Serde */,
+			);
 			productName = iOS;
 			productReference = CCB21E1628F199700074368C /* iOS.app */;
 			productType = "com.apple.product-type.application";
@@ -265,6 +273,9 @@
 				Base,
 			);
 			mainGroup = CCB21E0D28F199700074368C;
+			packageReferences = (
+				CCB436412912CD7E0059B3A3 /* XCRemoteSwiftPackageReference "Serde" */,
+			);
 			productRefGroup = CCB21E1728F199700074368C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -329,7 +340,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC02FE1D28F2E867003DA87D /* shared.udl in Sources */,
+				CC49E023291BB35A00F5D4C0 /* shared_types.swift in Sources */,
+				CCA5CCE329191A5900325531 /* shared.udl in Sources */,
 				CCB21E1C28F199700074368C /* ContentView.swift in Sources */,
 				CCB21E1A28F199700074368C /* iOSApp.swift in Sources */,
 			);
@@ -662,6 +674,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		CCB436412912CD7E0059B3A3 /* XCRemoteSwiftPackageReference "Serde" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/starcoin-sdk/Serde.swift";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		CCB436422912CD7E0059B3A3 /* Serde */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CCB436412912CD7E0059B3A3 /* XCRemoteSwiftPackageReference "Serde" */;
+			productName = Serde;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CCB21E0E28F199700074368C /* Project object */;
 }

@@ -1,11 +1,9 @@
-mod rmm;
-
 pub use rmm::*;
 use serde::{Deserialize, Serialize};
 
+const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
-const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
@@ -16,19 +14,6 @@ pub struct CatFact {
 impl CatFact {
     fn format(&self) -> String {
         format!("{} ({} bytes)", self.fact, self.length)
-    }
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct CatImage {
-    pub file: String,
-}
-
-impl Default for CatImage {
-    fn default() -> Self {
-        Self {
-            file: CAT_LOADING_URL.to_string(),
-        }
     }
 }
 
@@ -46,13 +31,6 @@ pub struct Model {
     time: Option<String>,
 }
 
-#[derive(Default)]
-pub struct ViewModel {
-    pub fact: String,
-    pub image: Option<CatImage>,
-    pub platform: String,
-}
-
 impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
         let fact = match (&model.cat_fact, &model.time) {
@@ -68,6 +46,27 @@ impl From<&Model> for ViewModel {
     }
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct CatImage {
+    pub file: String,
+}
+
+impl Default for CatImage {
+    fn default() -> Self {
+        Self {
+            file: CAT_LOADING_URL.to_string(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ViewModel {
+    pub fact: String,
+    pub image: Option<CatImage>,
+    pub platform: String,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum Msg {
     None,
     GetPlatform,
@@ -92,7 +91,7 @@ impl App for CatFacts {
             Msg::GetPlatform => vec![cmd.platform.get(|platform| Msg::SetPlatform { platform })],
             Msg::SetPlatform { platform } => {
                 model.platform = platform;
-                vec![Request::Render]
+                vec![Request::render()]
             }
             Msg::Clear => {
                 model.cat_fact = None;
@@ -102,12 +101,12 @@ impl App for CatFacts {
                 vec![
                     cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
-                    Request::Render,
+                    Request::render(),
                 ]
             }
             Msg::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![Request::Render]
+                    vec![Request::render()]
                 } else {
                     model.cat_image = Some(CatImage::default());
 
@@ -116,7 +115,7 @@ impl App for CatFacts {
                             .get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
                         cmd.http
                             .get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
-                        Request::Render,
+                        Request::render(),
                     ]
                 }
             }
@@ -128,7 +127,7 @@ impl App for CatFacts {
                         .get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
                     cmd.http
                         .get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
-                    Request::Render,
+                    Request::render(),
                 ]
             }
             Msg::SetFact { bytes } => {
@@ -150,7 +149,7 @@ impl App for CatFacts {
                 vec![
                     cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
-                    Request::Render,
+                    Request::render(),
                 ]
             }
             Msg::SetImage { bytes } => {
@@ -162,7 +161,7 @@ impl App for CatFacts {
                 vec![
                     cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
-                    Request::Render,
+                    Request::render(),
                 ]
             }
             Msg::Restore => {
@@ -177,7 +176,7 @@ impl App for CatFacts {
                     };
                 }
 
-                vec![Request::Render]
+                vec![Request::render()]
             }
             Msg::None => vec![],
         }

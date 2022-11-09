@@ -1,0 +1,12 @@
+[package]
+name = "shared_types"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[build-dependencies]
+rmm = { path = "../rmm" }
+shared = { path = "../shared" }
+serde-generate = "0.24.0"
+serde-reflection = "0.3.6"

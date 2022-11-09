@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace 'redbadger.rmm.shared'
+    namespace 'com.redbadger.rmm.shared'
     compileSdk 32
     ndkVersion '25.1.8937393'
 
@@ -41,6 +41,10 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+
+    implementation('com.diem:client-sdk-java:1.0.5') {
+        exclude group: 'org.bouncycastle', module: 'bcprov-jdk15to18'
+    }
 }
 
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
@@ -61,7 +65,8 @@ afterEvaluate {
         }
         def buildType = "${variant.buildType.name.capitalize()}"
         tasks["cargoBuild"].dependsOn(tasks["bindGen"])
-        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
+        tasks["typesGen"].dependsOn(tasks["cargoBuild"])
+        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
     }
 }
 
@@ -74,6 +79,18 @@ task bindGen(type: Exec) {
             \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
             --language kotlin \
             --out-dir $outDir
+            """
+    )
+}
+
+task typesGen(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    def srcDir = "shared_types/generated/com"
+    workingDir "../../"
+    commandLine(
+            "sh", "-c",
+            """\
+            cp -r $srcDir $outDir
             """
     )
 }

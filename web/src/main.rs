@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
+use serde::{Deserialize, Serialize};
 use shared::*;
 use web_sys::window;
 use woothee::parser::Parser;
@@ -42,6 +43,7 @@ pub struct HelloWorldProps {
 #[derive(Default)]
 struct HelloWorld;
 
+#[derive(Serialize, Deserialize)]
 enum CoreMessage {
     Message(Msg),
     Response(Response),
@@ -63,77 +65,71 @@ impl Component for HelloWorld {
         let link = ctx.link();
 
         let reqs = match msg {
-            CoreMessage::Message(msg) => ctx.props().core.message(msg),
-            CoreMessage::Response(resp) => ctx.props().core.response(resp),
+            CoreMessage::Message(msg) => {
+                let msg = bcs::to_bytes(&msg).unwrap();
+                ctx.props().core.message(&msg)
+            }
+            CoreMessage::Response(resp) => {
+                let resp = bcs::to_bytes(&resp).unwrap();
+                ctx.props().core.response(&resp)
+            }
         };
 
-        reqs.into_iter().any(|req| match req {
-            Request::Render => true,
-            Request::Http {
-                data: StringEnvelope { uuid, body: url },
-            } => {
-                let link = link.clone();
+        let reqs: Vec<Request> = bcs::from_bytes(&reqs).unwrap();
 
-                wasm_bindgen_futures::spawn_local(async move {
-                    let bytes = http_get(&url).await.unwrap_or_default();
-
-                    link.send_message(CoreMessage::Response(Response::Http {
-                        data: BytesEnvelope { body: bytes, uuid },
+        reqs.into_iter().any(|req| {
+            let Request { uuid, body } = req;
+            match body {
+                RequestBody::Render => true,
+                RequestBody::Time => {
+                    link.send_message(CoreMessage::Response(Response {
+                        body: ResponseBody::Time(time_get().unwrap()),
+                        uuid,
                     }));
-                });
 
-                false
-            }
-            Request::Platform {
-                data: OptionalBoolEnvelope { body: _, uuid },
-            } => {
-                link.send_message(CoreMessage::Response(Response::Platform {
-                    data: StringEnvelope {
+                    false
+                }
+                RequestBody::Http(url) => {
+                    let link = link.clone();
+
+                    wasm_bindgen_futures::spawn_local(async move {
+                        let bytes = http_get(&url).await.unwrap_or_default();
+
+                        link.send_message(CoreMessage::Response(Response {
+                            body: ResponseBody::Http(bytes),
+                            uuid,
+                        }));
+                    });
+
+                    false
+                }
+                RequestBody::Platform => {
+                    link.send_message(CoreMessage::Response(Response {
+                        body: ResponseBody::Platform(
+                            platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
+                        ),
                         uuid,
-                        body: platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
-                    },
-                }));
+                    }));
 
-                false
-            }
-            Request::Time {
-                data: OptionalBoolEnvelope { body: _, uuid },
-            } => {
-                link.send_message(CoreMessage::Response(Response::Time {
-                    data: StringEnvelope {
+                    false
+                }
+                RequestBody::KVRead(_) => {
+                    // TODO implement state restoration
+                    link.send_message(CoreMessage::Response(Response {
+                        body: ResponseBody::KVRead(None),
                         uuid,
-                        body: time_get().unwrap(),
-                    },
-                }));
+                    }));
 
-                false
-            }
-            Request::KVRead {
-                data: StringEnvelope { uuid, body: _key },
-            } => {
-                // TODO implement state restoration
-                link.send_message(CoreMessage::Response(Response::KVRead {
-                    data: OptionalBytesEnvelope { uuid, body: None },
-                }));
-
-                false
-            }
-            Request::KVWrite {
-                data:
-                    KeyValueEnvelope {
+                    false
+                }
+                RequestBody::KVWrite(_, _) => {
+                    link.send_message(CoreMessage::Response(Response {
+                        body: ResponseBody::KVWrite(false),
                         uuid,
-                        body:
-                            KeyValue {
-                                key: _key,
-                                value: _bytes,
-                            },
-                    },
-            } => {
-                link.send_message(CoreMessage::Response(Response::KVWrite {
-                    data: BoolEnvelope { uuid, body: false },
-                }));
+                    }));
 
-                false
+                    false
+                }
             }
         })
     }

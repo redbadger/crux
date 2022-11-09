@@ -38,9 +38,9 @@
 
    1. Add a "User-defined setting" called "`build_variant`", with a value of `debug` for Debug and `release` for Release
    1. Search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, in both Debug and Release.
-   If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
+      If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
    1. Search for "library search paths" and add some dummy values for debug and release.
-   This will update the project file so you can search in it for `LIBRARY_SEARCH_PATHS` in the next step.
+      This will update the project file so you can search in it for `LIBRARY_SEARCH_PATHS` in the next step.
 
 1. Open `./iOS/iOs.xcodeproj/project.pbxproj` in a code editor and search for "LIBRARY_SEARCH_PATHS" (you should find 2 occurrences), and add the following ...
 
@@ -65,7 +65,7 @@
 1. In "Build phases", create or modify the following phases (you can drag them so that they match the order below) ...
 
    1. Add a "New Run Script Phase" with the following script, and uncheck "Based on dependency analysis".
-   You can rename it to something like "Build Rust library" by double clicking on the heading.
+      You can rename it to something like "Build Rust library" by double clicking on the heading.
 
       ```sh
       cd "${PROJECT_DIR}"/../shared
@@ -73,10 +73,10 @@
       ```
 
    1. Add `./shared/src/shared.udl` to "Compile Sources" (using the "add other" button).
-   Select "Copy items if needed" and "Create folder references"
+      Select "Copy items if needed" and "Create folder references"
    1. Add a "Headers" section that includes `./iOS/generated/sharedFFI.h` as a "Public" header
    1. Add `./target/debug/libshared.a` to the "Link Binary with Libraries" section (this is the wrong target, but the library search paths, which we set above, should resolve this.
-   For more info see the blog post linked above ([this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/)))
+      For more info see the blog post linked above ([this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/)))
 
 1. Add a `class` for the callback to get Platform details ...
 

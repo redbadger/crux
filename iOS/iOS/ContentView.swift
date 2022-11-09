@@ -1,4 +1,5 @@
 import SwiftUI
+import Serde
 
 func get_platform() -> String {
     return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
@@ -7,6 +8,25 @@ func get_platform() -> String {
 enum Message {
     case message(Msg)
     case response(Response)
+}
+
+extension [Request] {
+    public static func bcsDeserialize(input: [UInt8]) throws -> [Request] {
+        let deserializer = BcsDeserializer.init(input: input)
+        try deserializer.increase_container_depth()
+        let length = try deserializer.deserialize_len()
+
+        var requests: [Request] = []
+        for _ in 0..<length {
+            while deserializer.get_buffer_offset() < input.count {
+                let req = try Request.deserialize(deserializer: deserializer)
+                requests.append(req)
+            }
+        }
+        deserializer.decrease_container_depth()
+
+        return requests
+    }
 }
 
 @MainActor
@@ -22,32 +42,34 @@ class Model: ObservableObject {
     private func httpGet(uuid: [UInt8], url: String) {
         Task {
             let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .response(.http(data: BytesEnvelope(body: [UInt8](data), uuid: uuid))))
+            self.update(msg: .response(Response(uuid: uuid, body: ResponseBody.http([UInt8](data)))))
         }
     }
 
     func update(msg: Message) {
         let reqs: [Request]
-
+        
         switch msg {
         case .message(let m):
-            reqs = core.message(m)
+            reqs = try! [Request].bcsDeserialize(input: core.message(try! m.bcsSerialize()))
         case .response(let r):
-            reqs = core.response(r)
+            reqs = try! [Request].bcsDeserialize(input: core.response(try! r.bcsSerialize()))
         }
 
         for req in reqs {
-            switch req {
+            let uuid = req.uuid
+            
+            switch req.body {
             case .render: view = core.view()
-            case .http(data: let data): httpGet(uuid: data.uuid, url: data.body)
-            case .time(let uuid):
-                update(msg: .response(.time(data: StringEnvelope(body: Date().ISO8601Format(), uuid: uuid.uuid))))
-            case .platform(let data):
-                update(msg: .response(.platform(data: StringEnvelope(body: get_platform(), uuid: data.uuid))))
-            case .kvRead(let data):
-                update(msg: .response(.kvRead(data:OptionalBytesEnvelope(body: .none, uuid: data.uuid ))))
-            case .kvWrite(let data):
-                update(msg: .response(.kvWrite(data:BoolEnvelope(body: false, uuid: data.uuid))))
+            case .http(data: let data): httpGet(uuid: uuid, url: data)
+            case .time:
+                update(msg: .response(Response(uuid: uuid, body: ResponseBody.time(Date().ISO8601Format()))))
+            case .platform:
+                update(msg: .response(Response(uuid: uuid, body: ResponseBody.platform(get_platform()))))
+            case .kVRead:
+                update(msg: .response(Response(uuid: uuid, body: ResponseBody.kVRead(.none))))
+            case .kVWrite:
+                update(msg: .response(Response(uuid: uuid, body: ResponseBody.kVWrite(false))))
             }
         }
     }
