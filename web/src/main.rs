@@ -67,16 +67,16 @@ impl Component for HelloWorld {
 
         let reqs = match msg {
             CoreMessage::Message(msg) => {
-                let msg = bincode::serialize(&msg).unwrap();
+                let msg = bcs::to_bytes(&msg).unwrap();
                 ctx.props().core.message(&msg)
             }
             CoreMessage::Response(resp) => {
-                let resp = bincode::serialize(&resp).unwrap();
+                let resp = bcs::to_bytes(&resp).unwrap();
                 ctx.props().core.response(&resp)
             }
         };
 
-        let reqs: Vec<Request> = bincode::deserialize(&reqs).unwrap();
+        let reqs: Vec<Request> = bcs::from_bytes(&reqs).unwrap();
 
         reqs.into_iter().any(|req| {
             let Request { uuid, body } = req;
