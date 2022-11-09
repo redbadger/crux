@@ -70,15 +70,15 @@ pub struct ViewModel {
 pub enum Msg {
     None,
     GetPlatform,
-    SetPlatform { platform: String },
+    SetPlatform(String),
     Clear,
     Get,
     Fetch,
-    Restore,                             // restore state
-    SetState { bytes: Option<Vec<u8>> }, // receive the data to restore state with
-    SetFact { bytes: Vec<u8> },
-    SetImage { bytes: Vec<u8> },
-    CurrentTime { iso_time: String },
+    Restore,                   // restore state
+    SetState(Option<Vec<u8>>), // receive the data to restore state with
+    SetFact(Vec<u8>),
+    SetImage(Vec<u8>),
+    CurrentTime(String),
 }
 
 impl App for CatFacts {
@@ -88,8 +88,8 @@ impl App for CatFacts {
 
     fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Vec<Request> {
         match msg {
-            Msg::GetPlatform => vec![cmd.platform.get(|platform| Msg::SetPlatform { platform })],
-            Msg::SetPlatform { platform } => {
+            Msg::GetPlatform => vec![cmd.platform.get(Msg::SetPlatform)],
+            Msg::SetPlatform(platform) => {
                 model.platform = platform;
                 vec![Request::render()]
             }
@@ -111,10 +111,8 @@ impl App for CatFacts {
                     model.cat_image = Some(CatImage::default());
 
                     vec![
-                        cmd.http
-                            .get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
-                        cmd.http
-                            .get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
+                        cmd.http.get(FACT_API_URL.to_owned(), Msg::SetFact),
+                        cmd.http.get(IMAGE_API_URL.to_string(), Msg::SetImage),
                         Request::render(),
                     ]
                 }
@@ -123,14 +121,12 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 vec![
-                    cmd.http
-                        .get(FACT_API_URL.to_owned(), |bytes| Msg::SetFact { bytes }),
-                    cmd.http
-                        .get(IMAGE_API_URL.to_string(), |bytes| Msg::SetImage { bytes }),
+                    cmd.http.get(FACT_API_URL.to_owned(), Msg::SetFact),
+                    cmd.http.get(IMAGE_API_URL.to_string(), Msg::SetImage),
                     Request::render(),
                 ]
             }
-            Msg::SetFact { bytes } => {
+            Msg::SetFact(bytes) => {
                 let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
                 model.cat_fact = Some(fact);
 
@@ -139,10 +135,10 @@ impl App for CatFacts {
                 vec![
                     cmd.key_value_write
                         .write("state".to_string(), bytes, |_| Msg::None),
-                    cmd.time.get(|iso_time| Msg::CurrentTime { iso_time }),
+                    cmd.time.get(Msg::CurrentTime),
                 ]
             }
-            Msg::CurrentTime { iso_time } => {
+            Msg::CurrentTime(iso_time) => {
                 model.time = Some(iso_time);
                 let bytes = serde_json::to_vec(&model).unwrap();
 
@@ -152,7 +148,7 @@ impl App for CatFacts {
                     Request::render(),
                 ]
             }
-            Msg::SetImage { bytes } => {
+            Msg::SetImage(bytes) => {
                 let image = serde_json::from_slice::<CatImage>(&bytes).unwrap();
                 model.cat_image = Some(image);
 
@@ -165,11 +161,9 @@ impl App for CatFacts {
                 ]
             }
             Msg::Restore => {
-                vec![cmd
-                    .key_value_read
-                    .read("state".to_string(), |bytes| Msg::SetState { bytes })]
+                vec![cmd.key_value_read.read("state".to_string(), Msg::SetState)]
             }
-            Msg::SetState { bytes } => {
+            Msg::SetState(bytes) => {
                 if let Some(bytes) = bytes {
                     if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
                         *model = m

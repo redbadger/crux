@@ -40,15 +40,15 @@ public struct CatImage: Hashable {
 indirect public enum Msg: Hashable {
     case none
     case getPlatform
-    case setPlatform(platform: String)
+    case setPlatform(String)
     case clear
     case get
     case fetch
     case restore
-    case setState(bytes: [UInt8]?)
-    case setFact(bytes: [UInt8])
-    case setImage(bytes: [UInt8])
-    case currentTime(iso_time: String)
+    case setState([UInt8]?)
+    case setFact([UInt8])
+    case setImage([UInt8])
+    case currentTime(String)
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -57,9 +57,9 @@ indirect public enum Msg: Hashable {
             try serializer.serialize_variant_index(value: 0)
         case .getPlatform:
             try serializer.serialize_variant_index(value: 1)
-        case .setPlatform(let platform):
+        case .setPlatform(let x):
             try serializer.serialize_variant_index(value: 2)
-            try serializer.serialize_str(value: platform)
+            try serializer.serialize_str(value: x)
         case .clear:
             try serializer.serialize_variant_index(value: 3)
         case .get:
@@ -68,18 +68,18 @@ indirect public enum Msg: Hashable {
             try serializer.serialize_variant_index(value: 5)
         case .restore:
             try serializer.serialize_variant_index(value: 6)
-        case .setState(let bytes):
+        case .setState(let x):
             try serializer.serialize_variant_index(value: 7)
-            try serialize_option_vector_u8(value: bytes, serializer: serializer)
-        case .setFact(let bytes):
+            try serialize_option_vector_u8(value: x, serializer: serializer)
+        case .setFact(let x):
             try serializer.serialize_variant_index(value: 8)
-            try serialize_vector_u8(value: bytes, serializer: serializer)
-        case .setImage(let bytes):
+            try serialize_vector_u8(value: x, serializer: serializer)
+        case .setImage(let x):
             try serializer.serialize_variant_index(value: 9)
-            try serialize_vector_u8(value: bytes, serializer: serializer)
-        case .currentTime(let iso_time):
+            try serialize_vector_u8(value: x, serializer: serializer)
+        case .currentTime(let x):
             try serializer.serialize_variant_index(value: 10)
-            try serializer.serialize_str(value: iso_time)
+            try serializer.serialize_str(value: x)
         }
         try serializer.decrease_container_depth()
     }
@@ -101,9 +101,9 @@ indirect public enum Msg: Hashable {
             try deserializer.decrease_container_depth()
             return .getPlatform
         case 2:
-            let platform = try deserializer.deserialize_str()
+            let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .setPlatform(platform: platform)
+            return .setPlatform(x)
         case 3:
             try deserializer.decrease_container_depth()
             return .clear
@@ -117,21 +117,21 @@ indirect public enum Msg: Hashable {
             try deserializer.decrease_container_depth()
             return .restore
         case 7:
-            let bytes = try deserialize_option_vector_u8(deserializer: deserializer)
+            let x = try deserialize_option_vector_u8(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .setState(bytes: bytes)
+            return .setState(x)
         case 8:
-            let bytes = try deserialize_vector_u8(deserializer: deserializer)
+            let x = try deserialize_vector_u8(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .setFact(bytes: bytes)
+            return .setFact(x)
         case 9:
-            let bytes = try deserialize_vector_u8(deserializer: deserializer)
+            let x = try deserialize_vector_u8(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .setImage(bytes: bytes)
+            return .setImage(x)
         case 10:
-            let iso_time = try deserializer.deserialize_str()
+            let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .currentTime(iso_time: iso_time)
+            return .currentTime(x)
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for Msg: \(index)")
         }
     }
