@@ -472,3 +472,23 @@ func deserialize_vector_u8<D: Deserializer>(deserializer: D) throws -> [UInt8] {
     return obj
 }
 
+
+
+public extension [Request] {
+  static func bcsDeserialize(input: [UInt8]) throws -> [Request] {
+    let deserializer = BcsDeserializer(input: input)
+    try deserializer.increase_container_depth()
+    let length = try deserializer.deserialize_len()
+
+    var requests: [Request] = []
+    for _ in 0 ..< length {
+      while deserializer.get_buffer_offset() < input.count {
+        let req = try Request.deserialize(deserializer: deserializer)
+        requests.append(req)
+      }
+    }
+    deserializer.decrease_container_depth()
+
+    return requests
+  }
+}

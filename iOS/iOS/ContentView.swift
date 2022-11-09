@@ -1,5 +1,5 @@
-import SwiftUI
 import Serde
+import SwiftUI
 
 func get_platform() -> String {
     return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
@@ -8,25 +8,6 @@ func get_platform() -> String {
 enum Message {
     case message(Msg)
     case response(Response)
-}
-
-extension [Request] {
-    public static func bcsDeserialize(input: [UInt8]) throws -> [Request] {
-        let deserializer = BcsDeserializer.init(input: input)
-        try deserializer.increase_container_depth()
-        let length = try deserializer.deserialize_len()
-
-        var requests: [Request] = []
-        for _ in 0..<length {
-            while deserializer.get_buffer_offset() < input.count {
-                let req = try Request.deserialize(deserializer: deserializer)
-                requests.append(req)
-            }
-        }
-        deserializer.decrease_container_depth()
-
-        return requests
-    }
 }
 
 @MainActor
@@ -48,20 +29,20 @@ class Model: ObservableObject {
 
     func update(msg: Message) {
         let reqs: [Request]
-        
+
         switch msg {
-        case .message(let m):
+        case let .message(m):
             reqs = try! [Request].bcsDeserialize(input: core.message(try! m.bcsSerialize()))
-        case .response(let r):
+        case let .response(r):
             reqs = try! [Request].bcsDeserialize(input: core.response(try! r.bcsSerialize()))
         }
 
         for req in reqs {
             let uuid = req.uuid
-            
+
             switch req.body {
             case .render: view = try! ViewModel.bcsDeserialize(input: core.view())
-            case .http(data: let data): httpGet(uuid: uuid, url: data)
+            case let .http(data: data): httpGet(uuid: uuid, url: data)
             case .time:
                 update(msg: .response(Response(uuid: uuid, body: ResponseBody.time(Date().ISO8601Format()))))
             case .platform:
@@ -121,7 +102,8 @@ struct ContentView: View {
                         EmptyView()
                     }
                     .frame(maxHeight: 250)
-                    .padding())
+                    .padding()
+                )
             } ?? AnyView(EmptyView())
             Text(model.view.fact).padding()
             HStack {

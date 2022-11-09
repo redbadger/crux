@@ -21,6 +21,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
+import com.redbadger.rmm.shared.Core
+import com.redbadger.rmm.shared_types.Msg
+import com.redbadger.rmm.shared_types.Request as Req
+import com.redbadger.rmm.shared_types.Requests
+import com.redbadger.rmm.shared_types.RequestBody as ReqBody
+import com.redbadger.rmm.shared_types.Response as Res
+import com.redbadger.rmm.shared_types.ResponseBody as ResBody
+import com.redbadger.rmm.shared_types.ViewModel as MyViewModel
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -28,20 +40,6 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Url
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.*
-import kotlin.collections.ArrayList
-
-import com.redbadger.rmm.shared.Core
-
-import com.redbadger.rmm.shared_types.Request as Req
-import com.redbadger.rmm.shared_types.RequestBody as ReqBody
-import com.redbadger.rmm.shared_types.Response as Res
-import com.redbadger.rmm.shared_types.ResponseBody as ResBody
-import com.redbadger.rmm.shared_types.Msg
-import com.redbadger.rmm.shared_types.ViewModel as MyViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +47,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             AndroidTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) { CatFacts() }
             }
         }
@@ -66,42 +65,18 @@ interface HttpGetService {
 
     companion object {
         fun create(): HttpGetService {
-            return Retrofit.Builder().baseUrl("http://dummy.com/").build()
+            return Retrofit.Builder()
+                .baseUrl("http://dummy.com/")
+                .build()
                 .create(HttpGetService::class.java)
         }
     }
 }
 
 sealed class CoreMessage {
-    data class Message(
-        val msg: Msg
-    ) : CoreMessage()
+    data class Message(val msg: Msg) : CoreMessage()
 
-    data class Response(
-        val res: Res
-    ) : CoreMessage()
-}
-
-fun bcsDeserializeReqs(input: List<UByte>): List<Req> {
-    val deserializer = com.novi.bcs.BcsDeserializer(input.toUByteArray().toByteArray())
-
-    deserializer.increase_container_depth()
-    val length = deserializer.deserialize_len()
-
-    val requests: ArrayList<Req> = ArrayList()
-
-    for (i in 0 until length) {
-        val req = Req.deserialize(deserializer)
-        requests.add(req)
-    }
-
-    deserializer.decrease_container_depth()
-
-    if (deserializer._buffer_offset < input.size) {
-        throw com.novi.serde.DeserializationError("Some input bytes were not read")
-    }
-
-    return requests
+    data class Response(val res: Res) : CoreMessage()
 }
 
 class Model : ViewModel() {
@@ -117,34 +92,43 @@ class Model : ViewModel() {
 
     private fun httpGet(url: String, uuid: List<Byte>) {
         val call = HttpGetService.create().get(url)
-        call?.enqueue(object : Callback<ResponseBody?> {
-            override fun onResponse(
-                call: Call<ResponseBody?>?, response: Response<ResponseBody?>?
-            ) {
-                response?.body()?.bytes()?.toList()?.let { bytes ->
-                    update(CoreMessage.Response(Res(uuid, ResBody.Http(bytes))))
+        call?.enqueue(
+            object : Callback<ResponseBody?> {
+                override fun onResponse(
+                    call: Call<ResponseBody?>?,
+                    response: Response<ResponseBody?>?
+                ) {
+                    response?.body()?.bytes()?.toList()?.let { bytes ->
+                        update(CoreMessage.Response(Res(uuid, ResBody.Http(bytes))))
+                    }
                 }
-            }
 
-            override fun onFailure(call: Call<ResponseBody?>?, t: Throwable?) {}
-        })
+                override fun onFailure(call: Call<ResponseBody?>?, t: Throwable?) {}
+            }
+        )
     }
 
     fun update(msg: CoreMessage) {
-        val requests: List<Req> = when (msg) {
-            is CoreMessage.Message -> {
-                bcsDeserializeReqs(core.message(msg.msg.bcsSerialize().toUByteArray().toList()))
+        val requests: List<Req> =
+            when (msg) {
+                is CoreMessage.Message -> {
+                    Requests.bcsDeserialize(
+                        core.message(msg.msg.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                            .toByteArray()
+                    )
+                }
+                is CoreMessage.Response -> {
+                    Requests.bcsDeserialize(
+                        core.response(msg.res.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                            .toByteArray()
+                    )
+                }
             }
-            is CoreMessage.Response -> {
-                bcsDeserializeReqs(core.response(msg.res.bcsSerialize().toUByteArray().toList()))
-            }
-        }
 
         for (req in requests) {
             when (val body = req.body) {
                 is ReqBody.Render -> {
-                    this.view =
-                        MyViewModel.bcsDeserialize(core.view().toUByteArray().toByteArray())
+                    this.view = MyViewModel.bcsDeserialize(core.view().toUByteArray().toByteArray())
                 }
                 is ReqBody.Http -> {
                     httpGet(body.value, req.uuid)
@@ -202,22 +186,25 @@ fun CatFacts(model: Model = viewModel()) {
         Text(text = model.view.fact, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = {
-                    model.update(CoreMessage.Message(Msg.Clear()))
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                onClick = { model.update(CoreMessage.Message(Msg.Clear())) },
+                colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                onClick = {
-                    model.update(CoreMessage.Message(Msg.Get()))
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                onClick = { model.update(CoreMessage.Message(Msg.Get())) },
+                colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) { Text(text = "Get", color = Color.White) }
             Button(
-                onClick = {
-                    model.update(CoreMessage.Message(Msg.Fetch()))
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                onClick = { model.update(CoreMessage.Message(Msg.Fetch())) },
+                colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
             ) { Text(text = "Fetch", color = Color.White) }
         }
     }
