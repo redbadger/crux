@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalUnsignedTypes::class)
+
 package com.example.android
 
 import android.os.Build
@@ -83,7 +85,7 @@ fun bcsDeserializeReqs(input: List<UByte>): List<Req> {
 
     val requests: ArrayList<Req> = ArrayList()
 
-    for (i in 1 until length) {
+    for (i in 0 until length) {
         val req = Req.deserialize(deserializer)
         requests.add(req)
     }
@@ -93,6 +95,7 @@ fun bcsDeserializeReqs(input: List<UByte>): List<Req> {
     if (deserializer._buffer_offset < input.size) {
         throw com.novi.serde.DeserializationError("Some input bytes were not read")
     }
+
     return requests
 }
 
@@ -107,7 +110,6 @@ class Model : ViewModel() {
         update(CoreMessage.Message(Msg.GetPlatform()))
     }
 
-    @OptIn(ExperimentalUnsignedTypes::class)
     private fun httpGet(url: String, uuid: List<Byte>) {
         val call = HttpGetService.create().get(url)
         call?.enqueue(object : Callback<ResponseBody?> {
