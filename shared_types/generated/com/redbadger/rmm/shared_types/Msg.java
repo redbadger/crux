@@ -118,24 +118,24 @@ public abstract class Msg {
     }
 
     public static final class SetPlatform extends Msg {
-        public final String platform;
+        public final String value;
 
-        public SetPlatform(String platform) {
-            java.util.Objects.requireNonNull(platform, "platform must not be null");
-            this.platform = platform;
+        public SetPlatform(String value) {
+            java.util.Objects.requireNonNull(value, "value must not be null");
+            this.value = value;
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(2);
-            serializer.serialize_str(platform);
+            serializer.serialize_str(value);
             serializer.decrease_container_depth();
         }
 
         static SetPlatform load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.platform = deserializer.deserialize_str();
+            builder.value = deserializer.deserialize_str();
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -145,22 +145,22 @@ public abstract class Msg {
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
             SetPlatform other = (SetPlatform) obj;
-            if (!java.util.Objects.equals(this.platform, other.platform)) { return false; }
+            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
             return true;
         }
 
         public int hashCode() {
             int value = 7;
-            value = 31 * value + (this.platform != null ? this.platform.hashCode() : 0);
+            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
             return value;
         }
 
         public static final class Builder {
-            public String platform;
+            public String value;
 
             public SetPlatform build() {
                 return new SetPlatform(
-                    platform
+                    value
                 );
             }
         }
@@ -319,24 +319,24 @@ public abstract class Msg {
     }
 
     public static final class SetState extends Msg {
-        public final java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> bytes;
+        public final java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value;
 
-        public SetState(java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> bytes) {
-            java.util.Objects.requireNonNull(bytes, "bytes must not be null");
-            this.bytes = bytes;
+        public SetState(java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value) {
+            java.util.Objects.requireNonNull(value, "value must not be null");
+            this.value = value;
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(7);
-            TraitHelpers.serialize_option_vector_u8(bytes, serializer);
+            TraitHelpers.serialize_option_vector_u8(value, serializer);
             serializer.decrease_container_depth();
         }
 
         static SetState load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.bytes = TraitHelpers.deserialize_option_vector_u8(deserializer);
+            builder.value = TraitHelpers.deserialize_option_vector_u8(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -346,46 +346,46 @@ public abstract class Msg {
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
             SetState other = (SetState) obj;
-            if (!java.util.Objects.equals(this.bytes, other.bytes)) { return false; }
+            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
             return true;
         }
 
         public int hashCode() {
             int value = 7;
-            value = 31 * value + (this.bytes != null ? this.bytes.hashCode() : 0);
+            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
             return value;
         }
 
         public static final class Builder {
-            public java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> bytes;
+            public java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value;
 
             public SetState build() {
                 return new SetState(
-                    bytes
+                    value
                 );
             }
         }
     }
 
     public static final class SetFact extends Msg {
-        public final java.util.List<@com.novi.serde.Unsigned Byte> bytes;
+        public final java.util.List<@com.novi.serde.Unsigned Byte> value;
 
-        public SetFact(java.util.List<@com.novi.serde.Unsigned Byte> bytes) {
-            java.util.Objects.requireNonNull(bytes, "bytes must not be null");
-            this.bytes = bytes;
+        public SetFact(java.util.List<@com.novi.serde.Unsigned Byte> value) {
+            java.util.Objects.requireNonNull(value, "value must not be null");
+            this.value = value;
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(8);
-            TraitHelpers.serialize_vector_u8(bytes, serializer);
+            TraitHelpers.serialize_vector_u8(value, serializer);
             serializer.decrease_container_depth();
         }
 
         static SetFact load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.bytes = TraitHelpers.deserialize_vector_u8(deserializer);
+            builder.value = TraitHelpers.deserialize_vector_u8(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -395,46 +395,46 @@ public abstract class Msg {
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
             SetFact other = (SetFact) obj;
-            if (!java.util.Objects.equals(this.bytes, other.bytes)) { return false; }
+            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
             return true;
         }
 
         public int hashCode() {
             int value = 7;
-            value = 31 * value + (this.bytes != null ? this.bytes.hashCode() : 0);
+            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
             return value;
         }
 
         public static final class Builder {
-            public java.util.List<@com.novi.serde.Unsigned Byte> bytes;
+            public java.util.List<@com.novi.serde.Unsigned Byte> value;
 
             public SetFact build() {
                 return new SetFact(
-                    bytes
+                    value
                 );
             }
         }
     }
 
     public static final class SetImage extends Msg {
-        public final java.util.List<@com.novi.serde.Unsigned Byte> bytes;
+        public final java.util.List<@com.novi.serde.Unsigned Byte> value;
 
-        public SetImage(java.util.List<@com.novi.serde.Unsigned Byte> bytes) {
-            java.util.Objects.requireNonNull(bytes, "bytes must not be null");
-            this.bytes = bytes;
+        public SetImage(java.util.List<@com.novi.serde.Unsigned Byte> value) {
+            java.util.Objects.requireNonNull(value, "value must not be null");
+            this.value = value;
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(9);
-            TraitHelpers.serialize_vector_u8(bytes, serializer);
+            TraitHelpers.serialize_vector_u8(value, serializer);
             serializer.decrease_container_depth();
         }
 
         static SetImage load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.bytes = TraitHelpers.deserialize_vector_u8(deserializer);
+            builder.value = TraitHelpers.deserialize_vector_u8(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -444,46 +444,46 @@ public abstract class Msg {
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
             SetImage other = (SetImage) obj;
-            if (!java.util.Objects.equals(this.bytes, other.bytes)) { return false; }
+            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
             return true;
         }
 
         public int hashCode() {
             int value = 7;
-            value = 31 * value + (this.bytes != null ? this.bytes.hashCode() : 0);
+            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
             return value;
         }
 
         public static final class Builder {
-            public java.util.List<@com.novi.serde.Unsigned Byte> bytes;
+            public java.util.List<@com.novi.serde.Unsigned Byte> value;
 
             public SetImage build() {
                 return new SetImage(
-                    bytes
+                    value
                 );
             }
         }
     }
 
     public static final class CurrentTime extends Msg {
-        public final String iso_time;
+        public final String value;
 
-        public CurrentTime(String iso_time) {
-            java.util.Objects.requireNonNull(iso_time, "iso_time must not be null");
-            this.iso_time = iso_time;
+        public CurrentTime(String value) {
+            java.util.Objects.requireNonNull(value, "value must not be null");
+            this.value = value;
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(10);
-            serializer.serialize_str(iso_time);
+            serializer.serialize_str(value);
             serializer.decrease_container_depth();
         }
 
         static CurrentTime load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.iso_time = deserializer.deserialize_str();
+            builder.value = deserializer.deserialize_str();
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -493,22 +493,22 @@ public abstract class Msg {
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
             CurrentTime other = (CurrentTime) obj;
-            if (!java.util.Objects.equals(this.iso_time, other.iso_time)) { return false; }
+            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
             return true;
         }
 
         public int hashCode() {
             int value = 7;
-            value = 31 * value + (this.iso_time != null ? this.iso_time.hashCode() : 0);
+            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
             return value;
         }
 
         public static final class Builder {
-            public String iso_time;
+            public String value;
 
             public CurrentTime build() {
                 return new CurrentTime(
-                    iso_time
+                    value
                 );
             }
         }
