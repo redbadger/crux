@@ -4,7 +4,7 @@ pub fn get<F, Message>(msg: F) -> Command<Message>
 where
     F: FnOnce(String) -> Message + Sync + Send + 'static,
 {
-    let body = RequestBody::Platform;
+    let body = RequestBody::Time;
 
     Command {
         body: body.clone(),

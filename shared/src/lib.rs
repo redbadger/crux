@@ -37,6 +37,7 @@ impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
         let fact = match (&model.cat_fact, &model.time) {
             (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+            (Some(fact), _) => fact.format(),
             _ => "No fact".to_string(),
         };
 
