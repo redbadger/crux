@@ -1,17 +1,14 @@
 use crate::{Command, RequestBody, ResponseBody};
 
-pub fn get<F, Msg>(
-    url: String,
-    msg: F,
-) -> Command<impl FnOnce(ResponseBody) -> Msg + Sync + Send + 'static, Msg>
+pub fn get<F, Message>(url: String, msg: F) -> Command<Message>
 where
-    F: FnOnce(Vec<u8>) -> Msg + Sync + Send + 'static,
+    F: FnOnce(Vec<u8>) -> Message + Sync + Send + 'static,
 {
     let body = RequestBody::Http(url);
 
     Command {
         body: body.clone(),
-        msg_constructor: move |rb| {
+        msg_constructor: Some(Box::new(move |rb| {
             if let ResponseBody::Http(data) = rb {
                 return msg(data);
             }
@@ -20,6 +17,6 @@ where
                 "Attempt to continue HTTP request with different response {:?}",
                 body
             );
-        },
+        })),
     }
 }

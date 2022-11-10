@@ -1,8 +1,6 @@
 use crate::{Command, RequestBody, ResponseBody};
 
-pub fn get<F, Message>(
-    msg: F,
-) -> Command<impl FnOnce(ResponseBody) -> Message + Sync + Send + 'static, Message>
+pub fn get<F, Message>(msg: F) -> Command<Message>
 where
     F: FnOnce(String) -> Message + Sync + Send + 'static,
 {
@@ -10,7 +8,7 @@ where
 
     Command {
         body: body.clone(),
-        msg_constructor: move |rb| {
+        msg_constructor: Some(Box::new(move |rb| {
             if let ResponseBody::Time(data) = rb {
                 return msg(data);
             }
@@ -19,6 +17,6 @@ where
                 "Attempt to continue Time request with different response {:?}",
                 body
             );
-        },
+        })),
     }
 }

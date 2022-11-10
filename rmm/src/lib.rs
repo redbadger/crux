@@ -17,22 +17,23 @@ pub trait App: Default {
         &self,
         msg: <Self as App>::Message,
         model: &mut <Self as App>::Model,
-    ) -> Vec<
-        Command<
-            Box<dyn FnOnce(ResponseBody) -> <Self as App>::Message + Send + Sync + 'static>,
-            <Self as App>::Message,
-        >,
-    >;
+    ) -> Vec<Command<<Self as App>::Message>>;
 
     fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
 }
 
-pub struct Command<F, Message>
-where
-    F: FnOnce(ResponseBody) -> Message,
-{
+pub struct Command<Message> {
     body: RequestBody,
-    msg_constructor: F,
+    msg_constructor: Option<Box<dyn FnOnce(ResponseBody) -> Message + Send + Sync + 'static>>,
+}
+
+impl<Message> Command<Message> {
+    pub fn render() -> Command<Message> {
+        Command {
+            body: RequestBody::Render,
+            msg_constructor: None,
+        }
+    }
 }
 
 pub struct AppCore<A: App> {
@@ -65,22 +66,17 @@ impl<A: App> AppCore<A> {
     // Direct message
     pub fn message<'de, F>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Message: Deserialize<'de>,
+        <A as App>::Message: Deserialize<'de> + 'static,
     {
         let msg: <A as App>::Message = bcs::from_bytes(msg).unwrap();
 
         let mut model = self.model.write().unwrap();
 
-        let commands: Vec<
-            Command<
-                Box<dyn FnOnce(ResponseBody) -> <A as App>::Message + Send + Sync + 'static>,
-                <A as App>::Message,
-            >,
-        > = self.app.update(msg, &mut model);
-        let requests = commands
+        let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
+        let requests: Vec<Request> = commands
             .into_iter()
             .map(|c| self.continuations.pause(c))
-            .collect::<Vec<_>>();
+            .collect();
 
         bcs::to_bytes(&requests).unwrap()
     }
@@ -88,7 +84,7 @@ impl<A: App> AppCore<A> {
     // Return from capability
     pub fn response<'de, F>(&self, res: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Message: Deserialize<'de>,
+        <A as App>::Message: Deserialize<'de> + 'static,
         F: (FnOnce(ResponseBody) -> <A as App>::Message) + Send + Sync + 'static,
     {
         let response = bcs::from_bytes(res).unwrap();
@@ -96,16 +92,11 @@ impl<A: App> AppCore<A> {
 
         let mut model = self.model.write().unwrap();
 
-        let commands: Vec<
-            Command<
-                Box<dyn Send + Sync + 'static + (FnOnce(ResponseBody) -> <A as App>::Message)>,
-                <A as App>::Message,
-            >,
-        > = self.app.update(msg, &mut model);
-        let requests = commands
+        let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
+        let requests: Vec<Request> = commands
             .into_iter()
             .map(|c| self.continuations.pause(c))
-            .collect::<Vec<_>>();
+            .collect();
 
         bcs::to_bytes(&requests).unwrap()
     }

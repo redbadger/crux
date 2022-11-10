@@ -1,7 +1,6 @@
+use crate::{Command, Request, Response, ResponseBody};
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
-
-use crate::{Command, Request, RequestBody, Response, ResponseBody};
 
 type Store<Message> = HashMap<[u8; 16], Box<dyn FnOnce(ResponseBody) -> Message + Sync + Send>>;
 pub struct ContinuationStore<Message>(RwLock<Store<Message>>);
@@ -12,22 +11,16 @@ impl<Message> Default for ContinuationStore<Message> {
     }
 }
 
-impl<Message> ContinuationStore<Message> {
-    pub fn pause<F>(&self, cmd: Command<F, Message>) -> Request
-    where
-        F: FnOnce(ResponseBody) -> Message + Sync + Send + 'static,
-    {
+impl<Message: 'static> ContinuationStore<Message> {
+    pub fn pause(&self, cmd: Command<Message>) -> Request {
         let Command {
             body,
             msg_constructor,
         } = cmd;
         let uuid = *Uuid::new_v4().as_bytes();
-
-        self.0
-            .write()
-            .unwrap()
-            .insert(uuid, Box::new(msg_constructor));
-
+        if let Some(msg_constructor) = msg_constructor {
+            self.0.write().unwrap().insert(uuid, msg_constructor);
+        }
         Request {
             uuid: uuid.to_vec(),
             body,
