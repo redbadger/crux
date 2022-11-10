@@ -98,21 +98,20 @@ pub enum PlatformMsg {
 }
 
 impl App for Platform {
-    type Msg = PlatformMsg;
+    type Message = PlatformMsg;
     type Model = PlatformModel;
     type ViewModel = PlatformModel;
 
-    fn update(
+    fn update<F>(
         &self,
-        msg: <Self as App>::Msg,
+        msg: <Self as App>::Message,
         model: &mut <Self as App>::Model,
-        cmd: &Cmd<<Self as App>::Msg>,
-    ) -> Vec<Request> {
+    ) -> Vec<Command<F, PlatformMsg>> {
         match msg {
-            PlatformMsg::Get => vec![cmd.platform.get(|p| Msg::Platform(PlatformMsg::Set(p)))],
+            PlatformMsg::Get => vec![platform::get(|p| PlatformMsg::Set(p))],
             PlatformMsg::Set(platform) => {
                 model.platform = platform;
-                vec![Request::render()]
+                vec![Command::render()]
             }
         }
     }
@@ -125,17 +124,16 @@ impl App for Platform {
 }
 
 impl App for CatFacts {
-    type Msg = Msg;
+    type Message = Msg;
     type Model = Model;
     type ViewModel = ViewModel;
 
-    fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Vec<Request> {
+    fn update(&self, msg: Msg, model: &mut Model) -> Vec<Request> {
         match msg {
-            Msg::GetPlatform => self.update(Msg::Platform(PlatformMsg::Get), &mut model, cmd),
-            Msg::Platform(msg) => self.platform.update(
-                msg,
-                &mut model.platform,
-                cmd.lower(|m: PlatformMsg| Msg::Platform(m)),
+            Msg::GetPlatform => self.update(Msg::Platform(PlatformMsg::Get), &mut model),
+            Msg::Platform(msg) => Cmd::map(
+                self.platform.update(msg, &mut model.platform),
+                Msg::Platform,
             ),
             Msg::Clear => {
                 model.cat_fact = None;
