@@ -108,7 +108,7 @@ impl App for Platform {
         model: &mut <Self as App>::Model,
     ) -> Vec<Command<PlatformMsg>> {
         match msg {
-            PlatformMsg::Get => vec![platform::get(Box::new(|p| PlatformMsg::Set(p)))],
+            PlatformMsg::Get => vec![platform::get(Box::new(PlatformMsg::Set))],
             PlatformMsg::Set(platform) => {
                 model.platform = platform;
                 vec![Command::render()]
@@ -130,11 +130,13 @@ impl App for CatFacts {
 
     fn update(&self, msg: Msg, model: &mut Model) -> Vec<Command<Msg>> {
         match msg {
-            Msg::GetPlatform => self.update(Msg::Platform(PlatformMsg::Get), &mut model),
-            Msg::Platform(msg) => Cmd::map(
-                self.platform.update(msg, &mut model.platform),
-                Msg::Platform,
-            ),
+            Msg::GetPlatform => self.update(Msg::Platform(PlatformMsg::Get), model),
+            Msg::Platform(msg) => self
+                .platform
+                .update(msg, &mut model.platform)
+                .into_iter()
+                .map(|c| c.map(Msg::Platform))
+                .collect(),
             Msg::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;

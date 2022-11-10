@@ -24,14 +24,28 @@ pub trait App: Default {
 
 pub struct Command<Message> {
     body: RequestBody,
-    msg_constructor: Option<Box<dyn FnOnce(ResponseBody) -> Message + Send + Sync + 'static>>,
+    msg_constructor: Option<Box<dyn FnOnce(ResponseBody) -> Message + Send + Sync>>,
 }
 
-impl<Message> Command<Message> {
+impl<Message: 'static> Command<Message> {
     pub fn render() -> Command<Message> {
         Command {
             body: RequestBody::Render,
             msg_constructor: None,
+        }
+    }
+
+    pub fn map<ParentMsg, F>(self, f: F) -> Command<ParentMsg>
+    where
+        F: FnOnce(Message) -> ParentMsg + Sync + Send + 'static,
+    {
+        Command {
+            body: self.body,
+            msg_constructor: if let Some(g) = self.msg_constructor {
+                Some(Box::new(|b| f(g(b))))
+            } else {
+                None
+            },
         }
     }
 }
@@ -64,9 +78,9 @@ impl<A: App> AppCore<A> {
     }
 
     // Direct message
-    pub fn message<'de, F>(&self, msg: &'de [u8]) -> Vec<u8>
+    pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Message: Deserialize<'de> + 'static,
+        <A as App>::Message: Deserialize<'de>,
     {
         let msg: <A as App>::Message = bcs::from_bytes(msg).unwrap();
 
@@ -82,10 +96,9 @@ impl<A: App> AppCore<A> {
     }
 
     // Return from capability
-    pub fn response<'de, F>(&self, res: &'de [u8]) -> Vec<u8>
+    pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Message: Deserialize<'de> + 'static,
-        F: (FnOnce(ResponseBody) -> <A as App>::Message) + Send + Sync + 'static,
+        <A as App>::Message: Deserialize<'de>,
     {
         let response = bcs::from_bytes(res).unwrap();
         let msg = self.continuations.resume(response);

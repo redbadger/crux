@@ -21,7 +21,7 @@ where
     }
 }
 
-pub fn write<F, G, Message>(key: String, value: Vec<u8>, msg: F) -> Command<Message>
+pub fn write<F, Message>(key: String, value: Vec<u8>, msg: F) -> Command<Message>
 where
     F: FnOnce(bool) -> Message + Sync + Send + 'static,
 {

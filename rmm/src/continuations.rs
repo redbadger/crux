@@ -11,7 +11,7 @@ impl<Message> Default for ContinuationStore<Message> {
     }
 }
 
-impl<Message: 'static> ContinuationStore<Message> {
+impl<Message> ContinuationStore<Message> {
     pub fn pause(&self, cmd: Command<Message>) -> Request {
         let Command {
             body,
