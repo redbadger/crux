@@ -56,7 +56,7 @@ impl Component for HelloWorld {
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
         link.send_message(CoreMessage::Message(Msg::Get));
-        link.send_message(CoreMessage::Message(Msg::GetPlatform));
+        link.send_message(CoreMessage::Message(Msg::Platform(PlatformMsg::Get)));
 
         Self::default()
     }

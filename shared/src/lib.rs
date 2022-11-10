@@ -72,7 +72,6 @@ pub struct ViewModel {
 #[derive(Serialize, Deserialize)]
 pub enum Msg {
     None,
-    GetPlatform,
     Platform(PlatformMsg),
     Clear,
     Get,
@@ -131,7 +130,6 @@ impl App for CatFacts {
 
     fn update(&self, msg: Msg, model: &mut Model) -> Vec<Command<Msg>> {
         match msg {
-            Msg::GetPlatform => self.update(Msg::Platform(PlatformMsg::Get), model),
             Msg::Platform(msg) => self
                 .platform
                 .update(msg, &mut model.platform)

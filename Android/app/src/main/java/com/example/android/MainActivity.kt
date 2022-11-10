@@ -23,6 +23,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
 import com.redbadger.rmm.shared.Core
 import com.redbadger.rmm.shared_types.Msg
+import com.redbadger.rmm.shared_types.PlatformMsg
 import com.redbadger.rmm.shared_types.Request as Req
 import com.redbadger.rmm.shared_types.Requests
 import com.redbadger.rmm.shared_types.RequestBody as ReqBody
@@ -87,7 +88,7 @@ class Model : ViewModel() {
 
     init {
         update(CoreMessage.Message(Msg.Get()))
-        update(CoreMessage.Message(Msg.GetPlatform()))
+        update(CoreMessage.Message(Msg.Platform(PlatformMsg.Get())))
     }
 
     private fun httpGet(url: String, uuid: List<Byte>) {
