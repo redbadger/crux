@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:wasm": "wasm-pack build --out-dir ../web-nextjs/pkg ../shared --release --target web",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  }
+}

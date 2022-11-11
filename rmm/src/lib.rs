@@ -128,6 +128,19 @@ impl<A: App> AppCore<A> {
     }
 }
 
+// once_cell init of AppCore
+
+pub fn init() {}
+pub fn message(_data: Vec<u8>) -> Vec<u8> {
+    todo!()
+}
+pub fn response(_data: Vec<u8>) -> Vec<u8> {
+    todo!()
+}
+pub fn view() -> Vec<u8> {
+    todo!()
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     pub uuid: Vec<u8>,

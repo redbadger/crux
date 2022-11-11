@@ -6,14 +6,14 @@
 1. Create a new Rust binary project
 
    ```sh
-   cargo new web
+   cargo new web-yew
    ```
 
 1. Edit [`./web/Cargo.toml`](../web/Cargo.toml) to add the new app to the Cargo workspace ...
 
    ```toml
    [workspace]
-   members = ["shared", "web"]
+   members = ["shared", "web-yew"]
    ```
 
 1. Add [`yew`](https://yew.rs/) and the shared library as dependencies in [`./web/Cargo.toml`](./web/Cargo.toml)
@@ -67,6 +67,6 @@
 1. Build and serve the web page
 
    ```sh
-   cd ./web
+   cd ./web-yew
    trunk serve
    ```

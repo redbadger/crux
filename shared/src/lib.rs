@@ -19,9 +19,6 @@ impl CatFact {
     }
 }
 
-// Expose the Core for other platforms;
-pub type Core = AppCore<CatFacts>;
-
 #[derive(Default)]
 pub struct CatFacts {
     platform: platform::Platform,
