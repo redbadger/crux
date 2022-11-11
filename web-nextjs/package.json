@@ -1,21 +1,27 @@
 {
+  "name": "web-nextjs",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "build:wasm": "wasm-pack build --out-dir ../web-nextjs/pkg ../shared --release --target web",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "bcs": "^0.0.0",
-    "next": "latest",
+    "eslint": "8.27.0",
+    "eslint-config-next": "13.0.3",
+    "next": "13.0.3",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "typescript": "4.8.4",
+    "ua-parser-js": "^1.0.32"
   },
   "devDependencies": {
     "@types/node": "18.11.9",
-    "@types/react": "^18.0.25",
-    "@types/react-dom": "^18.0.8",
-    "typescript": "4.8.4"
+    "@types/react": "18.0.25",
+    "@types/react-dom": "18.0.8",
+    "@types/ua-parser-js": "^0.7.36"
   }
 }
