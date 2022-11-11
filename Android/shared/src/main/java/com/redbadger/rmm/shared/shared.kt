@@ -3,7 +3,7 @@
 
 @file:Suppress("NAME_SHADOWING")
 
-package com.redbadger.rmm.shared;
+package com.redbadger.rmm.shared
 
 // Common helper code.
 //
@@ -24,8 +24,6 @@ import com.sun.jna.Structure
 import com.sun.jna.ptr.ByReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -34,7 +32,9 @@ import java.util.concurrent.atomic.AtomicLong
 @Structure.FieldOrder("capacity", "len", "data")
 open class RustBuffer : Structure() {
     @JvmField var capacity: Int = 0
+
     @JvmField var len: Int = 0
+
     @JvmField var data: Pointer? = null
 
     class ByValue : RustBuffer(), Structure.ByValue
@@ -42,15 +42,15 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_e27b_rustbuffer_alloc(size, status).also {
-                if(it.data == null) {
-                   throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=${size})")
-               }
+            _UniFFILib.INSTANCE.ffi_shared_8c38_rustbuffer_alloc(size, status).also {
+                if (it.data == null) {
+                    throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
+                }
             }
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_e27b_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_8c38_rustbuffer_free(buf, status)
         }
     }
 
@@ -89,10 +89,12 @@ class RustBufferByReference : ByReference(16) {
 @Structure.FieldOrder("len", "data")
 open class ForeignBytes : Structure() {
     @JvmField var len: Int = 0
+
     @JvmField var data: Pointer? = null
 
     class ByValue : ForeignBytes(), Structure.ByValue
 }
+
 // The FfiConverter interface handles converter types to and from the FFI
 //
 // All implementing objects should be public to support external types.  When a
@@ -148,11 +150,11 @@ public interface FfiConverter<KotlinType, FfiType> {
     fun liftFromRustBuffer(rbuf: RustBuffer.ByValue): KotlinType {
         val byteBuf = rbuf.asByteBuffer()!!
         try {
-           val item = read(byteBuf)
-           if (byteBuf.hasRemaining()) {
-               throw RuntimeException("junk remaining in buffer after lifting, something is very wrong!!")
-           }
-           return item
+            val item = read(byteBuf)
+            if (byteBuf.hasRemaining()) {
+                throw RuntimeException("junk remaining in buffer after lifting, something is very wrong!!")
+            }
+            return item
         } finally {
             RustBuffer.free(rbuf)
         }
@@ -160,16 +162,18 @@ public interface FfiConverter<KotlinType, FfiType> {
 }
 
 // FfiConverter that uses `RustBuffer` as the FfiType
-public interface FfiConverterRustBuffer<KotlinType>: FfiConverter<KotlinType, RustBuffer.ByValue> {
+public interface FfiConverterRustBuffer<KotlinType> : FfiConverter<KotlinType, RustBuffer.ByValue> {
     override fun lift(value: RustBuffer.ByValue) = liftFromRustBuffer(value)
     override fun lower(value: KotlinType) = lowerIntoRustBuffer(value)
 }
+
 // A handful of classes and functions to support the generated data structures.
 // This would be a good candidate for isolating in its own ffi-support lib.
 // Error runtime.
 @Structure.FieldOrder("code", "error_buf")
 internal open class RustCallStatus : Structure() {
     @JvmField var code: Int = 0
+
     @JvmField var error_buf: RustBuffer.ByValue = RustBuffer.ByValue()
 
     fun isSuccess(): Boolean {
@@ -189,7 +193,7 @@ class InternalException(message: String) : Exception(message)
 
 // Each top-level error class has a companion object that can lift the error from the call status's rust buffer
 interface CallStatusErrorHandler<E> {
-    fun lift(error_buf: RustBuffer.ByValue): E;
+    fun lift(error_buf: RustBuffer.ByValue): E
 }
 
 // Helpers for calling Rust
@@ -197,8 +201,8 @@ interface CallStatusErrorHandler<E> {
 // synchronize itself
 
 // Call a rust function that returns a Result<>.  Pass in the Error class companion that corresponds to the Err
-private inline fun <U, E: Exception> rustCallWithError(errorHandler: CallStatusErrorHandler<E>, callback: (RustCallStatus) -> U): U {
-    var status = RustCallStatus();
+private inline fun <U, E : Exception> rustCallWithError(errorHandler: CallStatusErrorHandler<E>, callback: (RustCallStatus) -> U): U {
+    var status = RustCallStatus()
     val return_value = callback(status)
     if (status.isSuccess()) {
         return return_value
@@ -219,7 +223,7 @@ private inline fun <U, E: Exception> rustCallWithError(errorHandler: CallStatusE
 }
 
 // CallStatusErrorHandler implementation for times when we don't expect a CALL_ERROR
-object NullCallStatusErrorHandler: CallStatusErrorHandler<InternalException> {
+object NullCallStatusErrorHandler : CallStatusErrorHandler<InternalException> {
     override fun lift(error_buf: RustBuffer.ByValue): InternalException {
         RustBuffer.free(error_buf)
         return InternalException("Unexpected CALL_ERROR")
@@ -228,7 +232,7 @@ object NullCallStatusErrorHandler: CallStatusErrorHandler<InternalException> {
 
 // Call a rust function that returns a plain value
 private inline fun <U> rustCall(callback: (RustCallStatus) -> U): U {
-    return rustCallWithError(NullCallStatusErrorHandler, callback);
+    return rustCallWithError(NullCallStatusErrorHandler, callback)
 }
 
 // Contains loading, initialization code,
@@ -255,53 +259,48 @@ internal interface _UniFFILib : Library {
     companion object {
         internal val INSTANCE: _UniFFILib by lazy {
             loadIndirect<_UniFFILib>(componentName = "shared")
-            
         }
     }
 
-    fun ffi_shared_e27b_Core_object_free(`ptr`: Pointer,
-    _uniffi_out_err: RustCallStatus
+    fun shared_8c38_message(
+        `msg`: RustBuffer.ByValue,
+        _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun shared_8c38_response(
+        `res`: RustBuffer.ByValue,
+        _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun shared_8c38_view(
+        _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun ffi_shared_8c38_rustbuffer_alloc(
+        `size`: Int,
+        _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun ffi_shared_8c38_rustbuffer_from_bytes(
+        `bytes`: ForeignBytes.ByValue,
+        _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun ffi_shared_8c38_rustbuffer_free(
+        `buf`: RustBuffer.ByValue,
+        _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun shared_e27b_Core_new(
-    _uniffi_out_err: RustCallStatus
-    ): Pointer
-
-    fun shared_e27b_Core_message(`ptr`: Pointer,`msg`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun ffi_shared_8c38_rustbuffer_reserve(
+        `buf`: RustBuffer.ByValue,
+        `additional`: Int,
+        _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
-
-    fun shared_e27b_Core_response(`ptr`: Pointer,`res`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun shared_e27b_Core_view(`ptr`: Pointer,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun ffi_shared_e27b_rustbuffer_alloc(`size`: Int,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun ffi_shared_e27b_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun ffi_shared_e27b_rustbuffer_free(`buf`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): Unit
-
-    fun ffi_shared_e27b_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    
 }
 
 // Public interface members begin here.
 
-
-public object FfiConverterUByte: FfiConverter<UByte, Byte> {
+public object FfiConverterUByte : FfiConverter<UByte, Byte> {
     override fun lift(value: Byte): UByte {
         return value.toUByte()
     }
@@ -321,7 +320,7 @@ public object FfiConverterUByte: FfiConverter<UByte, Byte> {
     }
 }
 
-public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
+public object FfiConverterString : FfiConverter<String, RustBuffer.ByValue> {
     // Note: we don't inherit from FfiConverterRustBuffer, because we use a
     // special encoding when lowering/lifting.  We can use `RustBuffer.len` to
     // store our length and avoid writing it out to the buffer.
@@ -367,257 +366,7 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
-
-// Interface implemented by anything that can contain an object reference.
-//
-// Such types expose a `destroy()` method that must be called to cleanly
-// dispose of the contained objects. Failure to call this method may result
-// in memory leaks.
-//
-// The easiest way to ensure this method is called is to use the `.use`
-// helper method to execute a block and destroy the object at the end.
-interface Disposable {
-    fun destroy()
-    companion object {
-        fun destroy(vararg args: Any?) {
-            args.filterIsInstance<Disposable>()
-                .forEach(Disposable::destroy)
-        }
-    }
-}
-
-inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
-    try {
-        block(this)
-    } finally {
-        try {
-            // N.B. our implementation is on the nullable type `Disposable?`.
-            this?.destroy()
-        } catch (e: Throwable) {
-            // swallow
-        }
-    }
-
-// The base class for all UniFFI Object types.
-//
-// This class provides core operations for working with the Rust `Arc<T>` pointer to
-// the live Rust struct on the other side of the FFI.
-//
-// There's some subtlety here, because we have to be careful not to operate on a Rust
-// struct after it has been dropped, and because we must expose a public API for freeing
-// the Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
-//
-//   * Each `FFIObject` instance holds an opaque pointer to the underlying Rust struct.
-//     Method calls need to read this pointer from the object's state and pass it in to
-//     the Rust FFI.
-//
-//   * When an `FFIObject` is no longer needed, its pointer should be passed to a
-//     special destructor function provided by the Rust FFI, which will drop the
-//     underlying Rust struct.
-//
-//   * Given an `FFIObject` instance, calling code is expected to call the special
-//     `destroy` method in order to free it after use, either by calling it explicitly
-//     or by using a higher-level helper like the `use` method. Failing to do so will
-//     leak the underlying Rust struct.
-//
-//   * We can't assume that calling code will do the right thing, and must be prepared
-//     to handle Kotlin method calls executing concurrently with or even after a call to
-//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
-//
-//   * We must never allow Rust code to operate on the underlying Rust struct after
-//     the destructor has been called, and must never call the destructor more than once.
-//     Doing so may trigger memory unsafety.
-//
-// If we try to implement this with mutual exclusion on access to the pointer, there is the
-// possibility of a race between a method call and a concurrent call to `destroy`:
-//
-//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
-//      before it can pass the pointer over the FFI to Rust.
-//    * Thread B calls `destroy` and frees the underlying Rust struct.
-//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
-//      a use-after-free.
-//
-// One possible solution would be to use a `ReadWriteLock`, with each method call taking
-// a read lock (and thus allowed to run concurrently) and the special `destroy` method
-// taking a write lock (and thus blocking on live method calls). However, we aim not to
-// generate methods with any hidden blocking semantics, and a `destroy` method that might
-// block if called incorrectly seems to meet that bar.
-//
-// So, we achieve our goals by giving each `FFIObject` an associated `AtomicLong` counter to track
-// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
-// has been called. These are updated according to the following rules:
-//
-//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
-//      The initial value for the flag is false.
-//
-//    * At the start of each method call, we atomically check the counter.
-//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
-//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
-//
-//    * At the end of each method call, we atomically decrement and check the counter.
-//      If it has reached zero then we destroy the underlying Rust struct.
-//
-//    * When `destroy` is called, we atomically flip the flag from false to true.
-//      If the flag was already true we silently fail.
-//      Otherwise we atomically decrement and check the counter.
-//      If it has reached zero then we destroy the underlying Rust struct.
-//
-// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
-// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
-//
-// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
-// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
-// of the underlying Rust code.
-//
-// In the future we may be able to replace some of this with automatic finalization logic, such as using
-// the new "Cleaner" functionaility in Java 9. The above scheme has been designed to work even if `destroy` is
-// invoked by garbage-collection machinery rather than by calling code (which by the way, it's apparently also
-// possible for the JVM to finalize an object while there is an in-flight call to one of its methods [1],
-// so there would still be some complexity here).
-//
-// Sigh...all of this for want of a robust finalization mechanism.
-//
-// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
-//
-abstract class FFIObject(
-    protected val pointer: Pointer
-): Disposable, AutoCloseable {
-
-    private val wasDestroyed = AtomicBoolean(false)
-    private val callCounter = AtomicLong(1)
-
-    open protected fun freeRustArcPtr() {
-        // To be overridden in subclasses.
-    }
-
-    override fun destroy() {
-        // Only allow a single call to this method.
-        // TODO: maybe we should log a warning if called more than once?
-        if (this.wasDestroyed.compareAndSet(false, true)) {
-            // This decrement always matches the initial count of 1 given at creation time.
-            if (this.callCounter.decrementAndGet() == 0L) {
-                this.freeRustArcPtr()
-            }
-        }
-    }
-
-    @Synchronized
-    override fun close() {
-        this.destroy()
-    }
-
-    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
-        // Check and increment the call counter, to keep the object alive.
-        // This needs a compare-and-set retry loop in case of concurrent updates.
-        do {
-            val c = this.callCounter.get()
-            if (c == 0L) {
-                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
-            }
-            if (c == Long.MAX_VALUE) {
-                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
-            }
-        } while (! this.callCounter.compareAndSet(c, c + 1L))
-        // Now we can safely do the method call without the pointer being freed concurrently.
-        try {
-            return block(this.pointer)
-        } finally {
-            // This decrement aways matches the increment we performed above.
-            if (this.callCounter.decrementAndGet() == 0L) {
-                this.freeRustArcPtr()
-            }
-        }
-    }
-}
-
-public interface CoreInterface {
-    
-    fun `message`(`msg`: List<UByte>): List<UByte>
-    
-    fun `response`(`res`: List<UByte>): List<UByte>
-    
-    fun `view`(): List<UByte>
-    
-}
-
-class Core(
-    pointer: Pointer
-) : FFIObject(pointer), CoreInterface {
-    constructor() :
-        this(
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_e27b_Core_new( _status)
-})
-
-    /**
-     * Disconnect the object from the underlying Rust object.
-     *
-     * It can be called more than once, but once called, interacting with the object
-     * causes an `IllegalStateException`.
-     *
-     * Clients **must** call this method once done with the object, or cause a memory leak.
-     */
-    override protected fun freeRustArcPtr() {
-        rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_e27b_Core_object_free(this.pointer, status)
-        }
-    }
-
-    override fun `message`(`msg`: List<UByte>): List<UByte> =
-        callWithPointer {
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_e27b_Core_message(it, FfiConverterSequenceUByte.lower(`msg`),  _status)
-}
-        }.let {
-            FfiConverterSequenceUByte.lift(it)
-        }
-    override fun `response`(`res`: List<UByte>): List<UByte> =
-        callWithPointer {
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_e27b_Core_response(it, FfiConverterSequenceUByte.lower(`res`),  _status)
-}
-        }.let {
-            FfiConverterSequenceUByte.lift(it)
-        }
-    override fun `view`(): List<UByte> =
-        callWithPointer {
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_e27b_Core_view(it,  _status)
-}
-        }.let {
-            FfiConverterSequenceUByte.lift(it)
-        }
-    
-
-    
-}
-
-public object FfiConverterTypeCore: FfiConverter<Core, Pointer> {
-    override fun lower(value: Core): Pointer = value.callWithPointer { it }
-
-    override fun lift(value: Pointer): Core {
-        return Core(value)
-    }
-
-    override fun read(buf: ByteBuffer): Core {
-        // The Rust code always writes pointers as 8 bytes, and will
-        // fail to compile if they don't fit.
-        return lift(Pointer(buf.getLong()))
-    }
-
-    override fun allocationSize(value: Core) = 8
-
-    override fun write(value: Core, buf: ByteBuffer) {
-        // The Rust code always expects pointers written as 8 bytes,
-        // and will fail to compile if they don't fit.
-        buf.putLong(Pointer.nativeValue(lower(value)))
-    }
-}
-
-
-
-
-public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<UByte>> {
+public object FfiConverterSequenceUByte : FfiConverterRustBuffer<List<UByte>> {
     override fun read(buf: ByteBuffer): List<UByte> {
         val len = buf.getInt()
         return List<UByte>(len) {
@@ -639,4 +388,26 @@ public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<UByte>> {
     }
 }
 
+fun `message`(`msg`: List<UByte>): List<UByte> {
+    return FfiConverterSequenceUByte.lift(
+        rustCall() { _status ->
+            _UniFFILib.INSTANCE.shared_8c38_message(FfiConverterSequenceUByte.lower(`msg`), _status)
+        }
+    )
+}
 
+fun `response`(`res`: List<UByte>): List<UByte> {
+    return FfiConverterSequenceUByte.lift(
+        rustCall() { _status ->
+            _UniFFILib.INSTANCE.shared_8c38_response(FfiConverterSequenceUByte.lower(`res`), _status)
+        }
+    )
+}
+
+fun `view`(): List<UByte> {
+    return FfiConverterSequenceUByte.lift(
+        rustCall() { _status ->
+            _UniFFILib.INSTANCE.shared_8c38_view(_status)
+        }
+    )
+}

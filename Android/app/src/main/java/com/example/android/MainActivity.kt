@@ -21,7 +21,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import com.redbadger.rmm.shared.Core
+import com.redbadger.rmm.shared.*
 import com.redbadger.rmm.shared_types.Msg
 import com.redbadger.rmm.shared_types.PlatformMsg
 import com.redbadger.rmm.shared_types.Request as Req
@@ -84,8 +84,6 @@ class Model : ViewModel() {
     var view: MyViewModel by mutableStateOf(MyViewModel("", Optional.empty(), ""))
         private set
 
-    private val core = Core()
-
     init {
         update(CoreMessage.Message(Msg.Get()))
         update(CoreMessage.Message(Msg.Platform(PlatformMsg.Get())))
@@ -114,13 +112,13 @@ class Model : ViewModel() {
             when (msg) {
                 is CoreMessage.Message -> {
                     Requests.bcsDeserialize(
-                        core.message(msg.msg.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                        message(msg.msg.bcsSerialize().toUByteArray().toList()).toUByteArray()
                             .toByteArray()
                     )
                 }
                 is CoreMessage.Response -> {
                     Requests.bcsDeserialize(
-                        core.response(msg.res.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                        response(msg.res.bcsSerialize().toUByteArray().toList()).toUByteArray()
                             .toByteArray()
                     )
                 }
@@ -129,7 +127,7 @@ class Model : ViewModel() {
         for (req in requests) {
             when (val body = req.body) {
                 is ReqBody.Render -> {
-                    this.view = MyViewModel.bcsDeserialize(core.view().toUByteArray().toByteArray())
+                    this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
                 }
                 is ReqBody.Http -> {
                     httpGet(body.value, req.uuid)
