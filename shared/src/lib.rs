@@ -1,6 +1,8 @@
 pub use rmm::*;
 use serde::{Deserialize, Serialize};
 
+pub mod platform;
+
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
@@ -22,31 +24,15 @@ pub type Core = AppCore<CatFacts>;
 
 #[derive(Default)]
 pub struct CatFacts {
-    platform: Platform,
+    platform: platform::Platform,
 }
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Model {
     cat_fact: Option<CatFact>,
     cat_image: Option<CatImage>,
-    platform: PlatformModel,
+    platform: platform::Model,
     time: Option<String>,
-}
-
-impl From<&Model> for ViewModel {
-    fn from(model: &Model) -> Self {
-        let fact = match (&model.cat_fact, &model.time) {
-            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
-            (Some(fact), _) => fact.format(),
-            _ => "No fact".to_string(),
-        };
-
-        ViewModel {
-            platform: format!("Hello {}", model.platform.platform),
-            fact,
-            image: model.cat_image.clone(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -72,7 +58,8 @@ pub struct ViewModel {
 #[derive(Serialize, Deserialize)]
 pub enum Msg {
     None,
-    Platform(PlatformMsg),
+    GetPlatform,
+    Platform(platform::PlatformMsg),
     Clear,
     Get,
     Fetch,
@@ -83,46 +70,6 @@ pub enum Msg {
     CurrentTime(String),
 }
 
-#[derive(Default)]
-struct Platform;
-
-#[derive(Default, Serialize, Deserialize)]
-struct PlatformModel {
-    platform: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum PlatformMsg {
-    Get,
-    Set(String),
-}
-
-impl App for Platform {
-    type Message = PlatformMsg;
-    type Model = PlatformModel;
-    type ViewModel = PlatformModel;
-
-    fn update(
-        &self,
-        msg: <Self as App>::Message,
-        model: &mut <Self as App>::Model,
-    ) -> Vec<Command<PlatformMsg>> {
-        match msg {
-            PlatformMsg::Get => vec![platform::get(Box::new(PlatformMsg::Set))],
-            PlatformMsg::Set(platform) => {
-                model.platform = platform;
-                vec![Command::render()]
-            }
-        }
-    }
-
-    fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel {
-        PlatformModel {
-            platform: model.platform.clone(),
-        }
-    }
-}
-
 impl App for CatFacts {
     type Message = Msg;
     type Model = Model;
@@ -130,6 +77,11 @@ impl App for CatFacts {
 
     fn update(&self, msg: Msg, model: &mut Model) -> Vec<Command<Msg>> {
         match msg {
+            Msg::GetPlatform => Command::lift(
+                self.platform
+                    .update(platform::PlatformMsg::Get, &mut model.platform),
+                Msg::Platform,
+            ),
             Msg::Platform(msg) => Command::lift(
                 self.platform.update(msg, &mut model.platform),
                 Msg::Platform,
@@ -214,7 +166,19 @@ impl App for CatFacts {
     }
 
     fn view(&self, model: &Model) -> ViewModel {
-        model.into()
+        let fact = match (&model.cat_fact, &model.time) {
+            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+            (Some(fact), _) => fact.format(),
+            _ => "No fact".to_string(),
+        };
+
+        let platform = self.platform.view(&model.platform).platform;
+
+        ViewModel {
+            platform: format!("Hello {}", platform),
+            fact,
+            image: model.cat_image.clone(),
+        }
     }
 }
 

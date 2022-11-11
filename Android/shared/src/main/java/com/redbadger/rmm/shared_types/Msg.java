@@ -9,15 +9,16 @@ public abstract class Msg {
         int index = deserializer.deserialize_variant_index();
         switch (index) {
             case 0: return None.load(deserializer);
-            case 1: return Platform.load(deserializer);
-            case 2: return Clear.load(deserializer);
-            case 3: return Get.load(deserializer);
-            case 4: return Fetch.load(deserializer);
-            case 5: return Restore.load(deserializer);
-            case 6: return SetState.load(deserializer);
-            case 7: return SetFact.load(deserializer);
-            case 8: return SetImage.load(deserializer);
-            case 9: return CurrentTime.load(deserializer);
+            case 1: return GetPlatform.load(deserializer);
+            case 2: return Platform.load(deserializer);
+            case 3: return Clear.load(deserializer);
+            case 4: return Get.load(deserializer);
+            case 5: return Fetch.load(deserializer);
+            case 6: return Restore.load(deserializer);
+            case 7: return SetState.load(deserializer);
+            case 8: return SetFact.load(deserializer);
+            case 9: return SetImage.load(deserializer);
+            case 10: return CurrentTime.load(deserializer);
             default: throw new com.novi.serde.DeserializationError("Unknown variant index for Msg: " + index);
         }
     }
@@ -78,6 +79,44 @@ public abstract class Msg {
         }
     }
 
+    public static final class GetPlatform extends Msg {
+        public GetPlatform() {
+        }
+
+        public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
+            serializer.increase_container_depth();
+            serializer.serialize_variant_index(1);
+            serializer.decrease_container_depth();
+        }
+
+        static GetPlatform load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+            deserializer.increase_container_depth();
+            Builder builder = new Builder();
+            deserializer.decrease_container_depth();
+            return builder.build();
+        }
+
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null) return false;
+            if (getClass() != obj.getClass()) return false;
+            GetPlatform other = (GetPlatform) obj;
+            return true;
+        }
+
+        public int hashCode() {
+            int value = 7;
+            return value;
+        }
+
+        public static final class Builder {
+            public GetPlatform build() {
+                return new GetPlatform(
+                );
+            }
+        }
+    }
+
     public static final class Platform extends Msg {
         public final PlatformMsg value;
 
@@ -88,7 +127,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(1);
+            serializer.serialize_variant_index(2);
             value.serialize(serializer);
             serializer.decrease_container_depth();
         }
@@ -133,7 +172,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(2);
+            serializer.serialize_variant_index(3);
             serializer.decrease_container_depth();
         }
 
@@ -171,7 +210,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(3);
+            serializer.serialize_variant_index(4);
             serializer.decrease_container_depth();
         }
 
@@ -209,7 +248,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(4);
+            serializer.serialize_variant_index(5);
             serializer.decrease_container_depth();
         }
 
@@ -247,7 +286,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(5);
+            serializer.serialize_variant_index(6);
             serializer.decrease_container_depth();
         }
 
@@ -289,7 +328,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(6);
+            serializer.serialize_variant_index(7);
             TraitHelpers.serialize_option_vector_u8(value, serializer);
             serializer.decrease_container_depth();
         }
@@ -338,7 +377,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(7);
+            serializer.serialize_variant_index(8);
             TraitHelpers.serialize_vector_u8(value, serializer);
             serializer.decrease_container_depth();
         }
@@ -387,7 +426,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(8);
+            serializer.serialize_variant_index(9);
             TraitHelpers.serialize_vector_u8(value, serializer);
             serializer.decrease_container_depth();
         }
@@ -436,7 +475,7 @@ public abstract class Msg {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(9);
+            serializer.serialize_variant_index(10);
             serializer.serialize_str(value);
             serializer.decrease_container_depth();
         }

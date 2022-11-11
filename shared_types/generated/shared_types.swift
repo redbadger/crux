@@ -39,6 +39,7 @@ public struct CatImage: Hashable {
 
 indirect public enum Msg: Hashable {
     case none
+    case getPlatform
     case platform(PlatformMsg)
     case clear
     case get
@@ -54,28 +55,30 @@ indirect public enum Msg: Hashable {
         switch self {
         case .none:
             try serializer.serialize_variant_index(value: 0)
-        case .platform(let x):
+        case .getPlatform:
             try serializer.serialize_variant_index(value: 1)
+        case .platform(let x):
+            try serializer.serialize_variant_index(value: 2)
             try x.serialize(serializer: serializer)
         case .clear:
-            try serializer.serialize_variant_index(value: 2)
-        case .get:
             try serializer.serialize_variant_index(value: 3)
-        case .fetch:
+        case .get:
             try serializer.serialize_variant_index(value: 4)
-        case .restore:
+        case .fetch:
             try serializer.serialize_variant_index(value: 5)
-        case .setState(let x):
+        case .restore:
             try serializer.serialize_variant_index(value: 6)
+        case .setState(let x):
+            try serializer.serialize_variant_index(value: 7)
             try serialize_option_vector_u8(value: x, serializer: serializer)
         case .setFact(let x):
-            try serializer.serialize_variant_index(value: 7)
-            try serialize_vector_u8(value: x, serializer: serializer)
-        case .setImage(let x):
             try serializer.serialize_variant_index(value: 8)
             try serialize_vector_u8(value: x, serializer: serializer)
-        case .currentTime(let x):
+        case .setImage(let x):
             try serializer.serialize_variant_index(value: 9)
+            try serialize_vector_u8(value: x, serializer: serializer)
+        case .currentTime(let x):
+            try serializer.serialize_variant_index(value: 10)
             try serializer.serialize_str(value: x)
         }
         try serializer.decrease_container_depth()
@@ -95,34 +98,37 @@ indirect public enum Msg: Hashable {
             try deserializer.decrease_container_depth()
             return .none
         case 1:
+            try deserializer.decrease_container_depth()
+            return .getPlatform
+        case 2:
             let x = try PlatformMsg.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .platform(x)
-        case 2:
-            try deserializer.decrease_container_depth()
-            return .clear
         case 3:
             try deserializer.decrease_container_depth()
-            return .get
+            return .clear
         case 4:
             try deserializer.decrease_container_depth()
-            return .fetch
+            return .get
         case 5:
             try deserializer.decrease_container_depth()
-            return .restore
+            return .fetch
         case 6:
+            try deserializer.decrease_container_depth()
+            return .restore
+        case 7:
             let x = try deserialize_option_vector_u8(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .setState(x)
-        case 7:
-            let x = try deserialize_vector_u8(deserializer: deserializer)
-            try deserializer.decrease_container_depth()
-            return .setFact(x)
         case 8:
             let x = try deserialize_vector_u8(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .setImage(x)
+            return .setFact(x)
         case 9:
+            let x = try deserialize_vector_u8(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .setImage(x)
+        case 10:
             let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .currentTime(x)
