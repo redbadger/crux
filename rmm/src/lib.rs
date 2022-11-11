@@ -1,32 +1,64 @@
-mod cmd;
 mod continuations;
-mod http;
-mod key_value;
-mod platform;
-mod time;
+pub mod http;
+pub mod key_value;
+pub mod platform;
+pub mod time;
 
-pub use cmd::*;
+use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
 pub trait App: Default {
-    type Msg;
+    type Message;
     type Model: Default;
     type ViewModel: Serialize;
 
     fn update(
         &self,
-        msg: <Self as App>::Msg,
+        msg: <Self as App>::Message,
         model: &mut <Self as App>::Model,
-        cmd: &Cmd<<Self as App>::Msg>,
-    ) -> Vec<Request>;
+    ) -> Vec<Command<<Self as App>::Message>>;
 
     fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
 }
 
+pub struct Command<Message> {
+    body: RequestBody,
+    msg_constructor: Option<Box<dyn FnOnce(ResponseBody) -> Message + Send + Sync>>,
+}
+
+impl<Message: 'static> Command<Message> {
+    pub fn render() -> Command<Message> {
+        Command {
+            body: RequestBody::Render,
+            msg_constructor: None,
+        }
+    }
+
+    pub fn lift<ParentMsg, F>(commands: Vec<Command<Message>>, f: F) -> Vec<Command<ParentMsg>>
+    where
+        F: FnOnce(Message) -> ParentMsg + Sync + Send + Copy + 'static,
+    {
+        commands.into_iter().map(move |c| c.map(f)).collect()
+    }
+
+    pub fn map<ParentMsg, F>(self, f: F) -> Command<ParentMsg>
+    where
+        F: FnOnce(Message) -> ParentMsg + Sync + Send + 'static,
+    {
+        Command {
+            body: self.body,
+            msg_constructor: match self.msg_constructor {
+                Some(g) => Some(Box::new(|b| f(g(b)))),
+                None => None,
+            },
+        }
+    }
+}
+
 pub struct AppCore<A: App> {
     model: RwLock<A::Model>,
-    cmd: Cmd<A::Msg>,
+    continuations: ContinuationStore<A::Message>,
     app: A,
 }
 
@@ -40,7 +72,7 @@ impl<A: App> Default for AppCore<A> {
     fn default() -> Self {
         Self {
             model: Default::default(),
-            cmd: Default::default(),
+            continuations: Default::default(),
             app: Default::default(),
         }
     }
@@ -54,13 +86,17 @@ impl<A: App> AppCore<A> {
     // Direct message
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Msg: Deserialize<'de>,
+        <A as App>::Message: Deserialize<'de>,
     {
-        let msg: <A as App>::Msg = bcs::from_bytes(msg).unwrap();
+        let msg: <A as App>::Message = bcs::from_bytes(msg).unwrap();
 
         let mut model = self.model.write().unwrap();
 
-        let requests = self.app.update(msg, &mut model, &self.cmd);
+        let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
+        let requests: Vec<Request> = commands
+            .into_iter()
+            .map(|c| self.continuations.pause(c))
+            .collect();
 
         bcs::to_bytes(&requests).unwrap()
     }
@@ -68,15 +104,18 @@ impl<A: App> AppCore<A> {
     // Return from capability
     pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Msg: Deserialize<'de>,
+        <A as App>::Message: Deserialize<'de>,
     {
-        let res: Response = bcs::from_bytes(res).unwrap();
-
-        let msg = self.cmd.resume(res);
+        let response = bcs::from_bytes(res).unwrap();
+        let msg = self.continuations.resume(response);
 
         let mut model = self.model.write().unwrap();
 
-        let requests = self.app.update(msg, &mut model, &self.cmd);
+        let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
+        let requests: Vec<Request> = commands
+            .into_iter()
+            .map(|c| self.continuations.pause(c))
+            .collect();
 
         bcs::to_bytes(&requests).unwrap()
     }
@@ -87,4 +126,44 @@ impl<A: App> AppCore<A> {
         let value = self.app.view(&model);
         bcs::to_bytes(&value).unwrap()
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Request {
+    pub uuid: Vec<u8>,
+    pub body: RequestBody,
+}
+
+impl Request {
+    pub fn render() -> Self {
+        Self {
+            uuid: Default::default(),
+            body: RequestBody::Render,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum RequestBody {
+    Time,
+    Http(String),
+    Platform,
+    KVRead(String),
+    KVWrite(String, Vec<u8>),
+    Render,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub struct Response {
+    pub uuid: Vec<u8>,
+    pub body: ResponseBody,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub enum ResponseBody {
+    Http(Vec<u8>),
+    Time(String),
+    Platform(String),
+    KVRead(Option<Vec<u8>>),
+    KVWrite(bool),
 }

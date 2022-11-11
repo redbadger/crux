@@ -1,23 +1,22 @@
-use crate::{continuations::ContinuationStore, Request, RequestBody};
+use crate::{Command, RequestBody, ResponseBody};
 
-pub struct Http<Msg> {
-    pub continuations: ContinuationStore<Vec<u8>, Msg>,
-}
+pub fn get<F, Message>(url: String, msg: F) -> Command<Message>
+where
+    F: FnOnce(Vec<u8>) -> Message + Sync + Send + 'static,
+{
+    let body = RequestBody::Http(url);
 
-impl<Msg> Default for Http<Msg> {
-    fn default() -> Self {
-        Self {
-            continuations: Default::default(),
-        }
-    }
-}
+    Command {
+        body: body.clone(),
+        msg_constructor: Some(Box::new(move |rb| {
+            if let ResponseBody::Http(data) = rb {
+                return msg(data);
+            }
 
-impl<Msg> Http<Msg> {
-    pub fn get<F>(&self, url: String, msg: F) -> Request
-    where
-        F: FnOnce(Vec<u8>) -> Msg + Sync + Send + 'static,
-    {
-        let body = RequestBody::Http(url);
-        self.continuations.pause(body, msg)
+            panic!(
+                "Attempt to continue HTTP request with different response {:?}",
+                body
+            );
+        })),
     }
 }

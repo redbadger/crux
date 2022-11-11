@@ -1,23 +1,22 @@
-use crate::{continuations::ContinuationStore, Request, RequestBody};
+use crate::{Command, RequestBody, ResponseBody};
 
-pub struct Time<Msg> {
-    pub continuations: ContinuationStore<String, Msg>,
-}
+pub fn get<F, Message>(msg: F) -> Command<Message>
+where
+    F: FnOnce(String) -> Message + Sync + Send + 'static,
+{
+    let body = RequestBody::Time;
 
-impl<Msg> Default for Time<Msg> {
-    fn default() -> Self {
-        Self {
-            continuations: Default::default(),
-        }
-    }
-}
+    Command {
+        body: body.clone(),
+        msg_constructor: Some(Box::new(move |rb| {
+            if let ResponseBody::Time(data) = rb {
+                return msg(data);
+            }
 
-impl<Msg> Time<Msg> {
-    pub fn get<F>(&self, msg: F) -> Request
-    where
-        F: FnOnce(String) -> Msg + Sync + Send + 'static,
-    {
-        let body = RequestBody::Time;
-        self.continuations.pause(body, msg)
+            panic!(
+                "Attempt to continue Time request with different response {:?}",
+                body
+            );
+        })),
     }
 }

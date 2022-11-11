@@ -1,45 +1,43 @@
-use crate::{continuations::ContinuationStore, Request, RequestBody};
+use crate::{Command, RequestBody, ResponseBody};
 
-pub struct KeyValueRead<Msg> {
-    pub continuations: ContinuationStore<Option<Vec<u8>>, Msg>,
-}
+pub fn read<F, Message>(key: String, msg: F) -> Command<Message>
+where
+    F: FnOnce(Option<Vec<u8>>) -> Message + Sync + Send + 'static,
+{
+    let body = RequestBody::KVRead(key);
 
-impl<Msg> Default for KeyValueRead<Msg> {
-    fn default() -> Self {
-        Self {
-            continuations: Default::default(),
-        }
+    Command {
+        body: body.clone(),
+        msg_constructor: Some(Box::new(move |rb: ResponseBody| {
+            if let ResponseBody::KVRead(data) = rb {
+                return msg(data);
+            }
+
+            panic!(
+                "Attempt to continue KVRead request with different response {:?}",
+                body
+            );
+        })),
     }
 }
 
-impl<Msg> KeyValueRead<Msg> {
-    pub fn read<F>(&self, key: String, msg: F) -> Request
-    where
-        F: FnOnce(Option<Vec<u8>>) -> Msg + Sync + Send + 'static,
-    {
-        let body = RequestBody::KVRead(key);
-        self.continuations.pause(body, msg)
-    }
-}
+pub fn write<F, Message>(key: String, value: Vec<u8>, msg: F) -> Command<Message>
+where
+    F: FnOnce(bool) -> Message + Sync + Send + 'static,
+{
+    let body = RequestBody::KVWrite(key, value);
 
-pub struct KeyValueWrite<Msg> {
-    pub continuations: ContinuationStore<bool, Msg>,
-}
+    Command {
+        body: body.clone(),
+        msg_constructor: Some(Box::new(move |rb| {
+            if let ResponseBody::KVWrite(data) = rb {
+                return msg(data);
+            }
 
-impl<Msg> Default for KeyValueWrite<Msg> {
-    fn default() -> Self {
-        Self {
-            continuations: Default::default(),
-        }
-    }
-}
-
-impl<Msg> KeyValueWrite<Msg> {
-    pub fn write<F>(&self, key: String, value: Vec<u8>, msg: F) -> Request
-    where
-        F: FnOnce(bool) -> Msg + Sync + Send + 'static,
-    {
-        let body = RequestBody::KVWrite(key, value);
-        self.continuations.pause(body, msg)
+            panic!(
+                "Attempt to continue KVWrite request with different response {:?}",
+                body
+            );
+        })),
     }
 }

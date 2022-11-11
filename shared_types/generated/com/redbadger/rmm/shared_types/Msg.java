@@ -10,7 +10,7 @@ public abstract class Msg {
         switch (index) {
             case 0: return None.load(deserializer);
             case 1: return GetPlatform.load(deserializer);
-            case 2: return SetPlatform.load(deserializer);
+            case 2: return Platform.load(deserializer);
             case 3: return Clear.load(deserializer);
             case 4: return Get.load(deserializer);
             case 5: return Fetch.load(deserializer);
@@ -117,10 +117,10 @@ public abstract class Msg {
         }
     }
 
-    public static final class SetPlatform extends Msg {
-        public final String value;
+    public static final class Platform extends Msg {
+        public final PlatformMsg value;
 
-        public SetPlatform(String value) {
+        public Platform(PlatformMsg value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -128,14 +128,14 @@ public abstract class Msg {
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(2);
-            serializer.serialize_str(value);
+            value.serialize(serializer);
             serializer.decrease_container_depth();
         }
 
-        static SetPlatform load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+        static Platform load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = deserializer.deserialize_str();
+            builder.value = PlatformMsg.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -144,7 +144,7 @@ public abstract class Msg {
             if (this == obj) return true;
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
-            SetPlatform other = (SetPlatform) obj;
+            Platform other = (Platform) obj;
             if (!java.util.Objects.equals(this.value, other.value)) { return false; }
             return true;
         }
@@ -156,10 +156,10 @@ public abstract class Msg {
         }
 
         public static final class Builder {
-            public String value;
+            public PlatformMsg value;
 
-            public SetPlatform build() {
-                return new SetPlatform(
+            public Platform build() {
+                return new Platform(
                     value
                 );
             }

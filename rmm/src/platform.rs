@@ -1,23 +1,22 @@
-use crate::{continuations::ContinuationStore, Request, RequestBody};
+use crate::{Command, RequestBody, ResponseBody};
 
-pub struct Platform<Msg> {
-    pub continuations: ContinuationStore<String, Msg>,
-}
+pub fn get<F, Message>(msg: F) -> Command<Message>
+where
+    F: FnOnce(String) -> Message + Sync + Send + 'static,
+{
+    let body = RequestBody::Platform;
 
-impl<Msg> Default for Platform<Msg> {
-    fn default() -> Self {
-        Self {
-            continuations: Default::default(),
-        }
-    }
-}
+    Command {
+        body: body.clone(),
+        msg_constructor: Some(Box::new(move |rb| {
+            if let ResponseBody::Platform(data) = rb {
+                return msg(data);
+            }
 
-impl<Msg> Platform<Msg> {
-    pub fn get<F>(&self, msg: F) -> Request
-    where
-        F: FnOnce(String) -> Msg + Sync + Send + 'static,
-    {
-        let body = RequestBody::Platform;
-        self.continuations.pause(body, msg)
+            panic!(
+                "Attempt to continue Platform request with different response {:?}",
+                body
+            );
+        })),
     }
 }

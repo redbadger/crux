@@ -1,6 +1,6 @@
 use rmm::{Request, RequestBody, Response, ResponseBody};
 use serde_reflection::{Tracer, TracerConfig};
-use shared::{Msg, ViewModel};
+use shared::{platform, Msg, ViewModel};
 use std::{
     fs::{self, File},
     io::Write,
@@ -10,6 +10,7 @@ use std::{
 fn main() {
     let mut tracer = Tracer::new(TracerConfig::default());
     tracer.trace_simple_type::<Msg>().unwrap();
+    tracer.trace_simple_type::<platform::PlatformMsg>().unwrap();
     tracer.trace_simple_type::<ViewModel>().unwrap();
     tracer.trace_simple_type::<Request>().unwrap();
     tracer.trace_simple_type::<RequestBody>().unwrap();

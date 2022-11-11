@@ -1,6 +1,8 @@
 pub use rmm::*;
 use serde::{Deserialize, Serialize};
 
+pub mod platform;
+
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
@@ -21,29 +23,16 @@ impl CatFact {
 pub type Core = AppCore<CatFacts>;
 
 #[derive(Default)]
-pub struct CatFacts {}
+pub struct CatFacts {
+    platform: platform::Platform,
+}
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Model {
     cat_fact: Option<CatFact>,
     cat_image: Option<CatImage>,
-    platform: String,
+    platform: platform::Model,
     time: Option<String>,
-}
-
-impl From<&Model> for ViewModel {
-    fn from(model: &Model) -> Self {
-        let fact = match (&model.cat_fact, &model.time) {
-            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
-            _ => "No fact".to_string(),
-        };
-
-        ViewModel {
-            platform: format!("Hello {}", model.platform),
-            fact,
-            image: model.cat_image.clone(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -70,7 +59,7 @@ pub struct ViewModel {
 pub enum Msg {
     None,
     GetPlatform,
-    SetPlatform(String),
+    Platform(platform::PlatformMsg),
     Clear,
     Get,
     Fetch,
@@ -82,38 +71,41 @@ pub enum Msg {
 }
 
 impl App for CatFacts {
-    type Msg = Msg;
+    type Message = Msg;
     type Model = Model;
     type ViewModel = ViewModel;
 
-    fn update(&self, msg: Msg, model: &mut Model, cmd: &Cmd<Msg>) -> Vec<Request> {
+    fn update(&self, msg: Msg, model: &mut Model) -> Vec<Command<Msg>> {
         match msg {
-            Msg::GetPlatform => vec![cmd.platform.get(Msg::SetPlatform)],
-            Msg::SetPlatform(platform) => {
-                model.platform = platform;
-                vec![Request::render()]
-            }
+            Msg::GetPlatform => Command::lift(
+                self.platform
+                    .update(platform::PlatformMsg::Get, &mut model.platform),
+                Msg::Platform,
+            ),
+            Msg::Platform(msg) => Command::lift(
+                self.platform.update(msg, &mut model.platform),
+                Msg::Platform,
+            ),
             Msg::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value_write
-                        .write("state".to_string(), bytes, |_| Msg::None),
-                    Request::render(),
+                    key_value::write("state".to_string(), bytes, |_| Msg::None),
+                    Command::render(),
                 ]
             }
             Msg::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![Request::render()]
+                    vec![Command::render()]
                 } else {
                     model.cat_image = Some(CatImage::default());
 
                     vec![
-                        cmd.http.get(FACT_API_URL.to_owned(), Msg::SetFact),
-                        cmd.http.get(IMAGE_API_URL.to_string(), Msg::SetImage),
-                        Request::render(),
+                        http::get(FACT_API_URL.to_owned(), Msg::SetFact),
+                        http::get(IMAGE_API_URL.to_string(), Msg::SetImage),
+                        Command::render(),
                     ]
                 }
             }
@@ -121,9 +113,9 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 vec![
-                    cmd.http.get(FACT_API_URL.to_owned(), Msg::SetFact),
-                    cmd.http.get(IMAGE_API_URL.to_string(), Msg::SetImage),
-                    Request::render(),
+                    http::get(FACT_API_URL.to_owned(), Msg::SetFact),
+                    http::get(IMAGE_API_URL.to_string(), Msg::SetImage),
+                    Command::render(),
                 ]
             }
             Msg::SetFact(bytes) => {
@@ -133,9 +125,8 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value_write
-                        .write("state".to_string(), bytes, |_| Msg::None),
-                    cmd.time.get(Msg::CurrentTime),
+                    key_value::write("state".to_string(), bytes, |_| Msg::None),
+                    time::get(Msg::CurrentTime),
                 ]
             }
             Msg::CurrentTime(iso_time) => {
@@ -143,9 +134,8 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value_write
-                        .write("state".to_string(), bytes, |_| Msg::None),
-                    Request::render(),
+                    key_value::write("state".to_string(), bytes, |_| Msg::None),
+                    Command::render(),
                 ]
             }
             Msg::SetImage(bytes) => {
@@ -155,13 +145,12 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    cmd.key_value_write
-                        .write("state".to_string(), bytes, |_| Msg::None),
-                    Request::render(),
+                    key_value::write("state".to_string(), bytes, |_| Msg::None),
+                    Command::render(),
                 ]
             }
             Msg::Restore => {
-                vec![cmd.key_value_read.read("state".to_string(), Msg::SetState)]
+                vec![key_value::read("state".to_string(), Msg::SetState)]
             }
             Msg::SetState(bytes) => {
                 if let Some(bytes) = bytes {
@@ -170,14 +159,26 @@ impl App for CatFacts {
                     };
                 }
 
-                vec![Request::render()]
+                vec![Command::render()]
             }
             Msg::None => vec![],
         }
     }
 
     fn view(&self, model: &Model) -> ViewModel {
-        model.into()
+        let fact = match (&model.cat_fact, &model.time) {
+            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+            (Some(fact), _) => fact.format(),
+            _ => "No fact".to_string(),
+        };
+
+        let platform = self.platform.view(&model.platform).platform;
+
+        ViewModel {
+            platform: format!("Hello {}", platform),
+            fact,
+            image: model.cat_image.clone(),
+        }
     }
 }
 

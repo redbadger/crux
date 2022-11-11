@@ -17,7 +17,7 @@ class Model: ObservableObject {
 
     init() {
         update(msg: .message(.get))
-        update(msg: .message(.getPlatform))
+        update(msg: .message(.platform(.get)))
     }
 
     private func httpGet(uuid: [UInt8], url: String) {

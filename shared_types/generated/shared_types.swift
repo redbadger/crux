@@ -40,7 +40,7 @@ public struct CatImage: Hashable {
 indirect public enum Msg: Hashable {
     case none
     case getPlatform
-    case setPlatform(String)
+    case platform(PlatformMsg)
     case clear
     case get
     case fetch
@@ -57,9 +57,9 @@ indirect public enum Msg: Hashable {
             try serializer.serialize_variant_index(value: 0)
         case .getPlatform:
             try serializer.serialize_variant_index(value: 1)
-        case .setPlatform(let x):
+        case .platform(let x):
             try serializer.serialize_variant_index(value: 2)
-            try serializer.serialize_str(value: x)
+            try x.serialize(serializer: serializer)
         case .clear:
             try serializer.serialize_variant_index(value: 3)
         case .get:
@@ -101,9 +101,9 @@ indirect public enum Msg: Hashable {
             try deserializer.decrease_container_depth()
             return .getPlatform
         case 2:
-            let x = try deserializer.deserialize_str()
+            let x = try PlatformMsg.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .setPlatform(x)
+            return .platform(x)
         case 3:
             try deserializer.decrease_container_depth()
             return .clear
@@ -137,6 +137,53 @@ indirect public enum Msg: Hashable {
     }
 
     public static func bcsDeserialize(input: [UInt8]) throws -> Msg {
+        let deserializer = BcsDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+indirect public enum PlatformMsg: Hashable {
+    case get
+    case set(String)
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .get:
+            try serializer.serialize_variant_index(value: 0)
+        case .set(let x):
+            try serializer.serialize_variant_index(value: 1)
+            try serializer.serialize_str(value: x)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> PlatformMsg {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .get
+        case 1:
+            let x = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .set(x)
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for PlatformMsg: \(index)")
+        }
+    }
+
+    public static func bcsDeserialize(input: [UInt8]) throws -> PlatformMsg {
         let deserializer = BcsDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {

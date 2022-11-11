@@ -1,36 +1,36 @@
+use crate::{Command, Request, Response, ResponseBody};
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
-use crate::{Request, RequestBody};
+type Store<Message> = HashMap<[u8; 16], Box<dyn FnOnce(ResponseBody) -> Message + Sync + Send>>;
+pub struct ContinuationStore<Message>(RwLock<Store<Message>>);
 
-type Store<ResponseData, Message> =
-    HashMap<[u8; 16], Box<dyn FnOnce(ResponseData) -> Message + Sync + Send>>;
-pub struct ContinuationStore<ResponseData, Message>(RwLock<Store<ResponseData, Message>>);
-
-impl<ResponseData, Message> Default for ContinuationStore<ResponseData, Message> {
+impl<Message> Default for ContinuationStore<Message> {
     fn default() -> Self {
         Self(RwLock::new(HashMap::new()))
     }
 }
 
-impl<ResponseData, Message> ContinuationStore<ResponseData, Message> {
-    pub fn pause<F>(&self, body: RequestBody, msg: F) -> Request
-    where
-        F: FnOnce(ResponseData) -> Message + Sync + Send + 'static,
-    {
+impl<Message> ContinuationStore<Message> {
+    pub fn pause(&self, cmd: Command<Message>) -> Request {
+        let Command {
+            body,
+            msg_constructor,
+        } = cmd;
         let uuid = *Uuid::new_v4().as_bytes();
-
-        self.0.write().unwrap().insert(uuid, Box::new(msg));
-
+        if let Some(msg_constructor) = msg_constructor {
+            self.0.write().unwrap().insert(uuid, msg_constructor);
+        }
         Request {
             uuid: uuid.to_vec(),
             body,
         }
     }
 
-    pub fn resume(&self, uuid: Vec<u8>, data: ResponseData) -> Message {
+    pub fn resume(&self, response: Response) -> Message {
+        let Response { uuid, body } = response;
         let cont = self.0.write().unwrap().remove(&uuid[..]).unwrap();
 
-        cont(data)
+        cont(body)
     }
 }
