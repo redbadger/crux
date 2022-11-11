@@ -35,16 +35,22 @@ impl<Message: 'static> Command<Message> {
         }
     }
 
+    pub fn lift<ParentMsg, F>(commands: Vec<Command<Message>>, f: F) -> Vec<Command<ParentMsg>>
+    where
+        F: FnOnce(Message) -> ParentMsg + Sync + Send + Copy + 'static,
+    {
+        commands.into_iter().map(move |c| c.map(f)).collect()
+    }
+
     pub fn map<ParentMsg, F>(self, f: F) -> Command<ParentMsg>
     where
         F: FnOnce(Message) -> ParentMsg + Sync + Send + 'static,
     {
         Command {
             body: self.body,
-            msg_constructor: if let Some(g) = self.msg_constructor {
-                Some(Box::new(|b| f(g(b))))
-            } else {
-                None
+            msg_constructor: match self.msg_constructor {
+                Some(g) => Some(Box::new(|b| f(g(b)))),
+                None => None,
             },
         }
     }

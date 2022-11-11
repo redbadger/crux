@@ -130,12 +130,10 @@ impl App for CatFacts {
 
     fn update(&self, msg: Msg, model: &mut Model) -> Vec<Command<Msg>> {
         match msg {
-            Msg::Platform(msg) => self
-                .platform
-                .update(msg, &mut model.platform)
-                .into_iter()
-                .map(|c| c.map(Msg::Platform))
-                .collect(),
+            Msg::Platform(msg) => Command::lift(
+                self.platform.update(msg, &mut model.platform),
+                Msg::Platform,
+            ),
             Msg::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
