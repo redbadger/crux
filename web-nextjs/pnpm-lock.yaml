@@ -4,12 +4,14 @@ specifiers:
   '@types/node': 18.11.9
   '@types/react': ^18.0.25
   '@types/react-dom': ^18.0.8
+  bcs: ^0.0.0
   next: latest
   react: 18.2.0
   react-dom: 18.2.0
   typescript: 4.8.4
 
 dependencies:
+  bcs: 0.0.0
   next: 13.0.3_biqbaboplfbrettd7655fr4n2y
   react: 18.2.0
   react-dom: 18.2.0_react@18.2.0
@@ -174,6 +176,10 @@ packages:
   /@types/scheduler/0.16.2:
     resolution: {integrity: sha512-hppQEBDmlwhFAXKJX2KnWLYu5yMfi91yazPb2l+lbJiwW+wdo1gNeRA+3RgNSO39WYX2euey41KEwnqesU2Jew==}
     dev: true
+
+  /bcs/0.0.0:
+    resolution: {integrity: sha512-QgxgAemvJ7LujvMSIiDxfAIiYGYLc0mkRnU6EG/psaoQWyef7HBFqAmVomO9FmKrLyFirg+I++Pf47COizwaHw==}
+    dev: false
 
   /caniuse-lite/1.0.30001431:
     resolution: {integrity: sha512-zBUoFU0ZcxpvSt9IU66dXVT/3ctO1cy4y9cscs1szkPlcWb6pasYM144GqrUygUbT+k7cmUCW61cvskjcv0enQ==}

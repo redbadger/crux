@@ -1,8 +1,8 @@
-import { countReset } from "console";
 import type { NextPage } from "next";
-import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useEffect, useReducer } from "react";
+import * as types from "../../shared_types/generated/typescript/types/shared";
+import * as bcs from "../../shared_types/generated/typescript/bcs/mod";
 
 enum Action {
   Init,
@@ -13,7 +13,7 @@ enum Action {
 
 type Message = {
   action: Action;
-  core?: any;
+  core?: typeof import("../pkg/shared");
 };
 
 type State = {
@@ -32,8 +32,13 @@ const initialState = {
 };
 
 function reducer(state: State, message: Message) {
+  let serializer = new bcs.BcsSerializer();
   switch (message.action) {
     case Action.Init:
+      let core = message.core;
+      new types.MsgVariantGet().serialize(serializer);
+      let bytes = core?.message(serializer.getBytes());
+
       return { core: message.core, ...state };
     case Action.Get:
     case Action.Fetch:
