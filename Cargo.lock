@@ -2017,6 +2017,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "derive_more",
+ "lazy_static",
  "rmm",
  "serde",
  "serde_json",
