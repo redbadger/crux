@@ -1,7 +1,9 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import UAParser from "ua-parser-js";
+
+import useAsyncReducer from "../hooks/use_async_reducer";
 
 import init_core, { message, response, view } from "../shared/core";
 import * as types from "../shared_types/types/shared";
@@ -25,8 +27,8 @@ type State = {
   platform: string;
 };
 
-const initialState = {
-  image: { file: "" },
+const initialState: State = {
+  image: new types.CatImage(""),
   fact: "",
   platform: "",
 };
@@ -130,13 +132,6 @@ async function reducer(state: State, action: Action): Promise<State> {
   }
 
   return state;
-}
-
-function useAsyncReducer(reducer: any, initState: any) {
-  const [state, setState] = useState(initState),
-    dispatchState = async (action: any) =>
-      setState(await reducer(state, action));
-  return [state, dispatchState];
 }
 
 const Home: NextPage = () => {
