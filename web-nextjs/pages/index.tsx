@@ -3,7 +3,7 @@ import Head from "next/head";
 import { useEffect, useState } from "react";
 import UAParser from "ua-parser-js";
 
-import init_core, { message, response, view } from "../pkg/shared";
+import init_core, { message, response, view } from "../shared/core";
 import * as types from "../shared_types/types/shared";
 import * as bcs from "../shared_types/bcs/mod";
 
@@ -73,8 +73,8 @@ async function reducer(state: State, action: Action): Promise<State> {
     switch (request.body.constructor) {
       case types.RequestBodyVariantRender:
         let bytes = view();
-        let viewDeser = new bcs.BcsDeserializer(bytes);
-        let viewModel = types.ViewModel.deserialize(viewDeser);
+        let viewDeserializer = new bcs.BcsDeserializer(bytes);
+        let viewModel = types.ViewModel.deserialize(viewDeserializer);
 
         state = {
           platform: viewModel.platform,
