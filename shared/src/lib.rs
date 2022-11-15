@@ -2,7 +2,6 @@ use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub mod app;
-pub mod platform;
 
 pub use app::*;
 

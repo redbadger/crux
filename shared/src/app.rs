@@ -1,7 +1,7 @@
 pub use rmm::*;
 use serde::{Deserialize, Serialize};
 
-pub use super::platform;
+pub mod platform;
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
