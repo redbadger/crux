@@ -41,6 +41,7 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Url
+import kotlin.jvm.optionals.getOrNull
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -154,6 +155,7 @@ class Model : ViewModel() {
     }
 }
 
+@OptIn(ExperimentalStdlibApi::class)
 @Composable
 fun CatFacts(model: Model = viewModel()) {
     Column(
@@ -172,9 +174,9 @@ fun CatFacts(model: Model = viewModel()) {
                 .height(250.dp)
                 .padding(10.dp)
         ) {
-            model.view.image?.get().let {
+            model.view.image.getOrNull()?.let {
                 Image(
-                    painter = rememberAsyncImagePainter(it?.file),
+                    painter = rememberAsyncImagePainter(it.file),
                     contentDescription = "cat image",
                     modifier = Modifier
                         .height(250.dp)

@@ -1,5 +1,5 @@
 use rmm::{Request, RequestBody, Response, ResponseBody};
-use serde_generate::{java, swift, test_utils::Runtime, SourceInstaller};
+use serde_generate::test_utils::Runtime;
 use serde_reflection::{Tracer, TracerConfig};
 use shared::{platform, Msg, ViewModel};
 use std::{
@@ -28,10 +28,6 @@ fn main() {
     let output_dir = output_root.join("swift");
     fs::create_dir_all(output_dir.clone()).unwrap();
 
-    let installer = swift::Installer::new(output_dir.clone());
-    installer.install_serde_runtime().unwrap();
-    installer.install_bcs_runtime().unwrap();
-
     let mut source = Vec::new();
     let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
         .with_encodings(vec![serde_generate::Encoding::Bcs]);
@@ -54,9 +50,6 @@ fn main() {
     // Create Java definitions.
     let output_dir = output_root.join("java");
     fs::create_dir_all(output_dir.clone()).unwrap();
-
-    let installer = java::Installer::new(output_dir.clone());
-    installer.install_bcs_runtime().unwrap();
 
     let config =
         serde_generate::CodeGeneratorConfig::new("com.redbadger.rmm.shared_types".to_string())
