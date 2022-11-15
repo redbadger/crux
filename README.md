@@ -1,6 +1,8 @@
 # Rust Multi-platform Mobile (RMM) ;-)
 
-This repo is a "hello world"-style demonstration of how a single shared library (written in Rust) can act as the single, central core for both mobile apps deployed on either iOS or Android devices, or the Web.
+This repo is a "hello world"-style demonstration of how a single shared library (written in Rust) can act as the single, central core for cross-platform apps deployed on iOS, Android, or the Web. 
+
+Unlike React Native, the user interface layer is built natively, with modern declarative UI frameworks such as Swift UI, Jetpack Compose and React/Vue or a WASM based framework on the web. The UI layer is as thin as it can be, and all other work is done by the shared core.
 
 # Architectural Overview
 
@@ -9,70 +11,79 @@ This repo is a "hello world"-style demonstration of how a single shared library 
 The fundamental architectural concept used here is the strict separation of pure computational tasks from tasks that cause side effects.
 This concept has been borrowed from [Elm](https://guide.elm-lang.org/architecture/).
 
-### Pure WebAssembly Core
+### Side-effect-free core
 
-In the above diagram, the inner "Cross-platform Rust core" is compiled to WebAssembly and therefore, due to the sand-boxed nature of a `.wasm` module, is only capable of performing pure computation.
+In the above diagram, the inner "Cross-platform Rust core" is compiled and linked to the shell on each platform
+as a library (native on iOS, [Java Native Access](https://github.com/java-native-access/jna) and with WebAssembly in the web browsers).
 
-### Non-Pure Application
+As such, the core is completely isolated and secure against software supply-chain attacks, as it has
+no access to any external APIs. All it can do is perform calculations and keep state.
 
-The enclosing "Platform native shell" is written using whatever language is appropriate for the platform in question, and acts as the runtime environment within which all the non-pure tasks are performed.
+The core defines the key component types of the application:
 
-Rendering the user interface is treated as a side effect handled by the application layer
+- `Model` describing the internal state of the application
+- `Message` an `enum` describing the events which the core can handle
+- `ViewModel` representing information that should be displayed to the user
+
+The former two are tied together by the `update` function, familiar from Elm, Redux or other event sourcing architectures. It has this type signature:
+
+```rust
+fn update(message: Message, model: &mut Model) -> Vec<Command<Message>>
+```
+
+Its job is to process a message, update the model based on it and potentially request some side-effects using the `Command`s. (The `Command` type is generic over the `Message` because each command specifies the message to be dispatched when it's completed).
+
+### Application Shell
+
+The enclosing "Platform native shell" is written using the language appropriate for the platform, and acts as the runtime environment within which all the non-pure tasks are performed. From the perspective of the core, the shell is the platform on which the core runs.
 
 ## Communication Between the Application and Core
 
-In order to have the same Rust core beneath both a Kotlin and a Swift UI layer, the binding and foreign function interface (FFI) calls have been generated using [`UniFFI`](https://github.com/mozilla/uniffi-rs)
+Following the Elm architecture, the interface with the core is message based, and the core is unable to perform anything but calculation. To preform any side-effects, such as HTTP calls or random number generation, the core has to request them from the shell.
 
-For the Web, these bindings have been generated using [`yew`](https://yew.rs/).
+The core has a concept of Capabilities - reusable interfaces for common side-effects with request/response
+semantics.
 
-The core also exposes a view model through its `view` function, which the application uses to determine which values should be rendered on the screen using the native UI toolkit.
+This means the core interface is very simple:
 
-The key benefits of building the core in this way are these:
+- `message: Message -> Vec<Request>` - processes a user interaction event and potentially responds with capability requests
+- `response: Response -> Vec<Request>` - handles the response from the capability and potentially follows up with further requests
+- `view: () -> ViewModel` - provides the shell with the current data for displaying user interface
 
-- The core is side-effect free and does not make use of any system APIs.
-This means it can be compiled to WebAssembly.
-- The core can be tested without the need for mocking or stubbing.
-All that is needed is to check that for a given inbound message, the core responds with the correct set of outbound messages and the correct view model.
-- Thanks to UniFFI, all data types used in message passing are shared across the FFI boundary.
-Then, when the code is updated (E.G. with new variants on the `Msg` type), type checking in the application layer (Swift and Kotlin) will cause the build to fail until the new messages are correctly handled.
-This keeps everything in sync!
+Updating the user interface is is considered one of the capabilities.
 
-Message exchange is always initiated by the application &mdash; typically in response to some event in the user interface.
-When such an event goes off, the application sends a message to the core that then performs the relevant (pure) business logic.
-The core then responds by returning one or more messages.
+This design means the core is very easily testable without any mocking and stubbing by simply checking Input/Ouput behaviour of the three
+functions.
 
-It is important to understand that in order for the results of the core's computation to be visible in the "outside world", the core must send at least one message back to the application.
+ The Foreign Function Interface allowing the shell to call the above functions is provided by Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/) or [wasm-pack](https://rustwasm.github.io/wasm-pack/) in the browser.
+
+ In order to send more complex data than UniFFI currently supports, the messages are serialised, sent across the boundary and deserialised using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which provides type generation for the foreign (not Rust) languages.
 
 ### Message Types
 
 Two types of message are exchanged between the application and the core.
 
-* Messages of type `Msg` are sent from the Application to the Core in response to either:
+- Messages of type `Message` are sent from the Shell to the Core in response to an event happening in the user interface. They start a possible sequence of message exchanges between the shell and the core. It is passed on unchanged.
+- Messages of type `Request` are sent from the Core to the Shell in response to either a `Message` or a `Response`, to request side-effects be performed byt the Shell.
+- Messages of type `Response` are sent from the Shell to the Core as means of passing in results of an earlier request (synchronous or asynchronous).
 
-   1. An event happening in the user interface
-   1. The result of processing a list of commands received from the core
-   1. The response to an earlier asynchronous request (E.G. an HTTP request) has been received and must be sent to the core for processing
-
-* Messages of type `Cmd` are sent from the Core to the Application
-
-   Upon receipt of a `Msg`, the core performs the necessary pure computation and returns a list of one or more `Cmd` messages.
-These commands then instruct the application what to do next.
+`Request` and `Response` contain the useful payload for the capability, along with a `uuid` used by the 
+core to keep track of the continuations, i.e. what message should be dispatched when a `Response` has
+been received. The exact mechanics are not important, but it is important for the request's uuid to be passed on to the corresponding response.
 
 ## Typical Message Exchange Cycle
 
 A typical message exchange cycle is as follows:
 
-1. User interaction occurs in the application layer that raises an event
+1. User interaction occurs in the shell that raises an event
 1. The application handles this event by constructing a message
-1. The application calls the core's `update` function passing the `Msg` as an argument
+1. The application calls the core's `message` function passing the `Message` instance as an argument
 1. The core performs the required processing, updating both its inner state and the view model
-1. The core returns one or more `Cmd` messages to the application
+1. The core returns one or more `Request` messages to the application
 
-In the simplest case, the core will respond to a `Msg` by returning the single command `Cmd::Render`.
-This informs the application of two things:
+In the simplest case, the core will respond to a `Message` by returning the single request - render (produced by the `update` function returning a `Command::Render`).
 
-1. The user interface needs to be re-rendered
-1. This particular message exchange cycle has come to an end
+This requests that the shell re-renders the user interface. The absence of other requests also means this cycle has terminated (the core has "settled"). 
 
 In more complex cases however, the core may well return multiple commands; each of which instructs the application to perform a side-effect-inducing task such as:
 
@@ -83,7 +94,7 @@ In more complex cases however, the core may well return multiple commands; each 
 * Whatever else you can think of...
 
 Many of these side-effecting-generating tasks are asynchronous.
-The application then packages these responses into further `Msg`s that are then passed to the core for processing.
+The application then packages these responses into further `Response`s that are then passed to the core for processing.
 
 This exchange continues until the core returns a `Cmd::Render` signalling that no more side-effects are in flight.
 
