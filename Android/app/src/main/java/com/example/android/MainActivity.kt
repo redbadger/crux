@@ -21,7 +21,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import com.redbadger.rmm.shared.Core
+import com.redbadger.rmm.shared.*
 import com.redbadger.rmm.shared_types.Msg
 import com.redbadger.rmm.shared_types.PlatformMsg
 import com.redbadger.rmm.shared_types.Request as Req
@@ -41,6 +41,7 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Url
+import kotlin.jvm.optionals.getOrNull
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,8 +85,6 @@ class Model : ViewModel() {
     var view: MyViewModel by mutableStateOf(MyViewModel("", Optional.empty(), ""))
         private set
 
-    private val core = Core()
-
     init {
         update(CoreMessage.Message(Msg.Get()))
         update(CoreMessage.Message(Msg.Platform(PlatformMsg.Get())))
@@ -114,13 +113,13 @@ class Model : ViewModel() {
             when (msg) {
                 is CoreMessage.Message -> {
                     Requests.bcsDeserialize(
-                        core.message(msg.msg.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                        message(msg.msg.bcsSerialize().toUByteArray().toList()).toUByteArray()
                             .toByteArray()
                     )
                 }
                 is CoreMessage.Response -> {
                     Requests.bcsDeserialize(
-                        core.response(msg.res.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                        response(msg.res.bcsSerialize().toUByteArray().toList()).toUByteArray()
                             .toByteArray()
                     )
                 }
@@ -129,7 +128,7 @@ class Model : ViewModel() {
         for (req in requests) {
             when (val body = req.body) {
                 is ReqBody.Render -> {
-                    this.view = MyViewModel.bcsDeserialize(core.view().toUByteArray().toByteArray())
+                    this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
                 }
                 is ReqBody.Http -> {
                     httpGet(body.value, req.uuid)
@@ -156,6 +155,7 @@ class Model : ViewModel() {
     }
 }
 
+@OptIn(ExperimentalStdlibApi::class)
 @Composable
 fun CatFacts(model: Model = viewModel()) {
     Column(
@@ -174,9 +174,9 @@ fun CatFacts(model: Model = viewModel()) {
                 .height(250.dp)
                 .padding(10.dp)
         ) {
-            model.view.image?.get().let {
+            model.view.image.getOrNull()?.let {
                 Image(
-                    painter = rememberAsyncImagePainter(it?.file),
+                    painter = rememberAsyncImagePainter(it.file),
                     contentDescription = "cat image",
                     modifier = Modifier
                         .height(250.dp)

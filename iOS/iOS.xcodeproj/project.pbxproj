@@ -8,8 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		CC02FE2028F2EA83003DA87D /* sharedFFI.h in Headers */ = {isa = PBXBuildFile; fileRef = CC02FE1F28F2EA83003DA87D /* sharedFFI.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		CC2172C0291EA71100BCD13B /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2172BF291EA71100BCD13B /* shared_types.swift */; };
 		CC49E0212919260600F5D4C0 /* libshared.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CC49E0202919260600F5D4C0 /* libshared.a */; };
-		CC49E023291BB35A00F5D4C0 /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC49E022291BB35A00F5D4C0 /* shared_types.swift */; };
 		CCA5CCE329191A5900325531 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CCA5CCE229191A5900325531 /* shared.udl */; };
 		CCB21E1A28F199700074368C /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E1928F199700074368C /* iOSApp.swift */; };
 		CCB21E1C28F199700074368C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB21E1B28F199700074368C /* ContentView.swift */; };
@@ -58,8 +58,8 @@
 
 /* Begin PBXFileReference section */
 		CC02FE1F28F2EA83003DA87D /* sharedFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = sharedFFI.h; path = generated/sharedFFI.h; sourceTree = "<group>"; };
+		CC2172BF291EA71100BCD13B /* shared_types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared_types/generated/swift/shared_types.swift; sourceTree = "<group>"; };
 		CC49E0202919260600F5D4C0 /* libshared.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libshared.a; path = ../target/debug/libshared.a; sourceTree = "<group>"; };
-		CC49E022291BB35A00F5D4C0 /* shared_types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared_types/generated/shared_types.swift; sourceTree = "<group>"; };
 		CCA5CCE229191A5900325531 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
 		CCB21E1628F199700074368C /* iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCB21E1928F199700074368C /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
@@ -103,7 +103,7 @@
 		CCB21E0D28F199700074368C = {
 			isa = PBXGroup;
 			children = (
-				CC49E022291BB35A00F5D4C0 /* shared_types.swift */,
+				CC2172BF291EA71100BCD13B /* shared_types.swift */,
 				CCA5CCE229191A5900325531 /* shared.udl */,
 				CC02FE1F28F2EA83003DA87D /* sharedFFI.h */,
 				CCB21E1828F199700074368C /* iOS */,
@@ -340,7 +340,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC49E023291BB35A00F5D4C0 /* shared_types.swift in Sources */,
+				CC2172C0291EA71100BCD13B /* shared_types.swift in Sources */,
 				CCA5CCE329191A5900325531 /* shared.udl in Sources */,
 				CCB21E1C28F199700074368C /* ContentView.swift in Sources */,
 				CCB21E1A28F199700074368C /* iOSApp.swift in Sources */,

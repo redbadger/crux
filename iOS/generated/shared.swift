@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_e27b_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_8c38_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_e27b_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_8c38_rustbuffer_free(self, $0) }
     }
 }
 
@@ -332,105 +332,6 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
-
-public protocol CoreProtocol {
-    func `message`(_ `msg`: [UInt8])  -> [UInt8]
-    func `response`(_ `res`: [UInt8])  -> [UInt8]
-    func `view`()  -> [UInt8]
-    
-}
-
-public class Core: CoreProtocol {
-    fileprivate let pointer: UnsafeMutableRawPointer
-
-    // TODO: We'd like this to be `private` but for Swifty reasons,
-    // we can't implement `FfiConverter` without making this `required` and we can't
-    // make it `required` without making it `public`.
-    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
-    }
-    public convenience init()  {
-        self.init(unsafeFromRawPointer: try!
-    
-    rustCall() {
-    
-    shared_e27b_Core_new($0)
-})
-    }
-
-    deinit {
-        try! rustCall { ffi_shared_e27b_Core_object_free(pointer, $0) }
-    }
-
-    
-
-    
-    public func `message`(_ `msg`: [UInt8])  -> [UInt8] {
-        return try! FfiConverterSequenceUInt8.lift(
-            try!
-    rustCall() {
-    
-    shared_e27b_Core_message(self.pointer, 
-        FfiConverterSequenceUInt8.lower(`msg`), $0
-    )
-}
-        )
-    }
-    public func `response`(_ `res`: [UInt8])  -> [UInt8] {
-        return try! FfiConverterSequenceUInt8.lift(
-            try!
-    rustCall() {
-    
-    shared_e27b_Core_response(self.pointer, 
-        FfiConverterSequenceUInt8.lower(`res`), $0
-    )
-}
-        )
-    }
-    public func `view`()  -> [UInt8] {
-        return try! FfiConverterSequenceUInt8.lift(
-            try!
-    rustCall() {
-    
-    shared_e27b_Core_view(self.pointer, $0
-    )
-}
-        )
-    }
-    
-}
-
-
-fileprivate struct FfiConverterTypeCore: FfiConverter {
-    typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = Core
-
-    static func read(from buf: Reader) throws -> Core {
-        let v: UInt64 = try buf.readInt()
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
-    }
-
-    static func write(_ value: Core, into buf: Writer) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        buf.writeInt(UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
-    }
-
-    static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Core {
-        return Core(unsafeFromRawPointer: pointer)
-    }
-
-    static func lower(_ value: Core) -> UnsafeMutableRawPointer {
-        return value.pointer
-    }
-}
-
 fileprivate struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
     typealias SwiftType = [UInt8]
 
@@ -452,6 +353,47 @@ fileprivate struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
         return seq
     }
 }
+
+public func `message`(_ `msg`: [UInt8])  -> [UInt8] {
+    return try! FfiConverterSequenceUInt8.lift(
+        try!
+    
+    rustCall() {
+    
+    shared_8c38_message(
+        FfiConverterSequenceUInt8.lower(`msg`), $0)
+}
+    )
+}
+
+
+
+public func `response`(_ `res`: [UInt8])  -> [UInt8] {
+    return try! FfiConverterSequenceUInt8.lift(
+        try!
+    
+    rustCall() {
+    
+    shared_8c38_response(
+        FfiConverterSequenceUInt8.lower(`res`), $0)
+}
+    )
+}
+
+
+
+public func `view`()  -> [UInt8] {
+    return try! FfiConverterSequenceUInt8.lift(
+        try!
+    
+    rustCall() {
+    
+    shared_8c38_view($0)
+}
+    )
+}
+
+
 
 /**
  * Top level initializers and tear down methods.

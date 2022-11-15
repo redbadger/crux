@@ -13,7 +13,6 @@ enum Message {
 @MainActor
 class Model: ObservableObject {
     @Published var view = ViewModel(fact: "", image: .none, platform: "")
-    var core = Core()
 
     init() {
         update(msg: .message(.get))
@@ -32,16 +31,16 @@ class Model: ObservableObject {
 
         switch msg {
         case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: core.message(try! m.bcsSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: iOS.message(try! m.bcsSerialize()))
         case let .response(r):
-            reqs = try! [Request].bcsDeserialize(input: core.response(try! r.bcsSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: iOS.response(try! r.bcsSerialize()))
         }
 
         for req in reqs {
             let uuid = req.uuid
 
             switch req.body {
-            case .render: view = try! ViewModel.bcsDeserialize(input: core.view())
+            case .render: view = try! ViewModel.bcsDeserialize(input: iOS.view())
             case let .http(data: data): httpGet(uuid: uuid, url: data)
             case .time:
                 update(msg: .response(Response(uuid: uuid, body: ResponseBody.time(Date().ISO8601Format()))))

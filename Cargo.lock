@@ -1777,6 +1777,7 @@ dependencies = [
  "uniffi",
  "uniffi_macros",
  "uuid",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2016,6 +2017,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "derive_more",
+ "lazy_static",
  "rmm",
  "serde",
  "serde_json",
@@ -2024,6 +2026,7 @@ dependencies = [
  "uniffi_build",
  "uniffi_macros",
  "uuid",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2677,7 +2680,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c38c045535d93ec4f0b4defec448e4291638ee608530863b1e2ba115d4fff7f"
 
 [[package]]
-name = "web"
+name = "web-sys"
+version = "0.3.60"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcda906d8be16e728fd5adc5b729afad4e444e106ab28cd1c7256e54fa61510f"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-yew"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2690,16 +2703,6 @@ dependencies = [
  "web-sys",
  "woothee",
  "yew",
-]
-
-[[package]]
-name = "web-sys"
-version = "0.3.60"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcda906d8be16e728fd5adc5b729afad4e444e106ab28cd1c7256e54fa61510f"
-dependencies = [
- "js-sys",
- "wasm-bindgen",
 ]
 
 [[package]]

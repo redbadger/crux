@@ -32,7 +32,6 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let core = Core::new();
     let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
     queue.push_back(CoreMessage::Message(Msg::Restore));
@@ -41,8 +40,8 @@ async fn main() {
         let msg = queue.pop_front();
 
         let reqs = match msg {
-            Some(CoreMessage::Message(m)) => core.message(&bcs::to_bytes(&m).unwrap()),
-            Some(CoreMessage::Response(r)) => core.response(&bcs::to_bytes(&r).unwrap()),
+            Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m).unwrap()),
+            Some(CoreMessage::Response(r)) => shared::response(&bcs::to_bytes(&r).unwrap()),
             _ => vec![],
         };
         let reqs: Vec<Request> = bcs::from_bytes(&reqs).unwrap();
@@ -96,7 +95,7 @@ async fn main() {
         }
     }
 
-    let view = core.view();
+    let view = shared::view();
     println!("{}", bcs::from_bytes::<ViewModel>(&view).unwrap().fact);
 }
 

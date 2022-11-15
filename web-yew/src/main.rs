@@ -35,11 +35,6 @@ fn platform_get() -> Result<String> {
         .to_string())
 }
 
-#[derive(Properties, Default, PartialEq)]
-pub struct HelloWorldProps {
-    pub core: Core,
-}
-
 #[derive(Default)]
 struct HelloWorld;
 
@@ -51,7 +46,7 @@ enum CoreMessage {
 
 impl Component for HelloWorld {
     type Message = CoreMessage;
-    type Properties = HelloWorldProps;
+    type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
@@ -69,11 +64,11 @@ impl Component for HelloWorld {
         let reqs = match msg {
             CoreMessage::Message(msg) => {
                 let msg = bcs::to_bytes(&msg).unwrap();
-                ctx.props().core.message(&msg)
+                shared::message(&msg)
             }
             CoreMessage::Response(resp) => {
                 let resp = bcs::to_bytes(&resp).unwrap();
-                ctx.props().core.response(&resp)
+                shared::response(&resp)
             }
         };
 
@@ -138,7 +133,7 @@ impl Component for HelloWorld {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let view = ctx.props().core.view();
+        let view = shared::view();
         let view: ViewModel = bcs::from_bytes(&view).unwrap();
 
         html! {
@@ -174,7 +169,5 @@ impl Component for HelloWorld {
 }
 
 fn main() {
-    let core = Core::new();
-
-    yew::start_app_with_props::<HelloWorld>(HelloWorldProps { core });
+    yew::start_app::<HelloWorld>();
 }
