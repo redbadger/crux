@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_std::{
     fs::{File, OpenOptions},
     io::{ReadExt, WriteExt},
@@ -29,7 +29,7 @@ struct Args {
 }
 
 #[async_std::main]
-async fn main() {
+async fn main() -> Result<()> {
     let args = Args::parse();
 
     let mut queue: VecDeque<CoreMessage> = VecDeque::new();
@@ -40,11 +40,11 @@ async fn main() {
         let msg = queue.pop_front();
 
         let reqs = match msg {
-            Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m).unwrap()),
-            Some(CoreMessage::Response(r)) => shared::response(&bcs::to_bytes(&r).unwrap()),
+            Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m)?),
+            Some(CoreMessage::Response(r)) => shared::response(&bcs::to_bytes(&r)?),
             _ => vec![],
         };
-        let reqs: Vec<Request> = bcs::from_bytes(&reqs).unwrap();
+        let reqs: Vec<Request> = bcs::from_bytes(&reqs)?;
 
         for req in reqs {
             let Request { uuid, body } = req;
@@ -59,14 +59,15 @@ async fn main() {
                         uuid,
                     }));
                 }
-                RequestBody::Http(url) => {
-                    let bytes: Vec<u8> = surf::get(url).recv_bytes().await.unwrap();
-
-                    queue.push_back(CoreMessage::Response(Response {
-                        body: ResponseBody::Http(bytes),
-                        uuid,
-                    }));
-                }
+                RequestBody::Http(url) => match surf::get(&url).recv_bytes().await {
+                    Ok(bytes) => {
+                        queue.push_back(CoreMessage::Response(Response {
+                            body: ResponseBody::Http(bytes),
+                            uuid,
+                        }));
+                    }
+                    Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
+                },
                 RequestBody::Platform => {}
                 RequestBody::KVRead(key) => {
                     let bytes = read_state(&key).await.ok();
@@ -96,7 +97,9 @@ async fn main() {
     }
 
     let view = shared::view();
-    println!("{}", bcs::from_bytes::<ViewModel>(&view).unwrap().fact);
+    println!("{}", bcs::from_bytes::<ViewModel>(&view)?.fact);
+
+    Ok(())
 }
 
 async fn write_state(_key: &str, bytes: &[u8]) -> Result<()> {

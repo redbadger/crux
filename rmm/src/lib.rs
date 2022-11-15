@@ -88,9 +88,10 @@ impl<A: App> AppCore<A> {
     where
         <A as App>::Message: Deserialize<'de>,
     {
-        let msg: <A as App>::Message = bcs::from_bytes(msg).unwrap();
+        let msg: <A as App>::Message =
+            bcs::from_bytes(msg).expect("Message deserialization failed.");
 
-        let mut model = self.model.write().unwrap();
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
         let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
         let requests: Vec<Request> = commands
@@ -98,7 +99,7 @@ impl<A: App> AppCore<A> {
             .map(|c| self.continuations.pause(c))
             .collect();
 
-        bcs::to_bytes(&requests).unwrap()
+        bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
     // Return from capability
@@ -106,10 +107,10 @@ impl<A: App> AppCore<A> {
     where
         <A as App>::Message: Deserialize<'de>,
     {
-        let response = bcs::from_bytes(res).unwrap();
+        let response = bcs::from_bytes(res).expect("Response deserialization failed.");
         let msg = self.continuations.resume(response);
 
-        let mut model = self.model.write().unwrap();
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
         let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
         let requests: Vec<Request> = commands
@@ -117,14 +118,14 @@ impl<A: App> AppCore<A> {
             .map(|c| self.continuations.pause(c))
             .collect();
 
-        bcs::to_bytes(&requests).unwrap()
+        bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
     pub fn view(&self) -> Vec<u8> {
-        let model = self.model.read().unwrap();
+        let model = self.model.read().expect("Model RwLock was poisoned.");
 
         let value = self.app.view(&model);
-        bcs::to_bytes(&value).unwrap()
+        bcs::to_bytes(&value).expect("View model serialization failed.")
     }
 }
 
