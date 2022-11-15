@@ -15,7 +15,8 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "typescript": "4.8.4",
-    "ua-parser-js": "^1.0.32"
+    "ua-parser-js": "^1.0.32",
+    "shared_types": "../shared_types/generated/typescript"
   },
   "devDependencies": {
     "@types/node": "18.11.9",

@@ -6,8 +6,9 @@ import UAParser from "ua-parser-js";
 import useAsyncReducer from "../hooks/use_async_reducer";
 
 import init_core, { message, response, view } from "../shared/core";
-import * as types from "../shared_types/types/shared";
-import * as bcs from "../shared_types/bcs/mod";
+import * as types from "shared_types/types/shared";
+import * as bcs from "shared_types/bcs/mod";
+import { Optional } from "shared_types/serde/mod";
 
 type Action = Message | Response;
 
@@ -22,7 +23,7 @@ interface Response {
 }
 
 type State = {
-  image: types.CatImage;
+  image: Optional<types.CatImage>;
   fact: string;
   platform: string;
 };
@@ -101,7 +102,7 @@ async function reducer(state: State, action: Action): Promise<State> {
           response: new types.Response(
             request.uuid,
             new types.ResponseBodyVariantPlatform(
-              new UAParser(navigator.userAgent).getBrowser().name
+              new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
             )
           ),
         });
