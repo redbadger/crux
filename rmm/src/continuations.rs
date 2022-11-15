@@ -19,7 +19,10 @@ impl<Message> ContinuationStore<Message> {
         } = cmd;
         let uuid = *Uuid::new_v4().as_bytes();
         if let Some(msg_constructor) = msg_constructor {
-            self.0.write().unwrap().insert(uuid, msg_constructor);
+            self.0
+                .write()
+                .expect("Continuation RwLock poisoned.")
+                .insert(uuid, msg_constructor);
         }
         Request {
             uuid: uuid.to_vec(),
@@ -29,7 +32,12 @@ impl<Message> ContinuationStore<Message> {
 
     pub fn resume(&self, response: Response) -> Message {
         let Response { uuid, body } = response;
-        let cont = self.0.write().unwrap().remove(&uuid[..]).unwrap();
+        let cont = self
+            .0
+            .write()
+            .expect("Continuation RwLock poisoned.")
+            .remove(&uuid[..])
+            .unwrap_or_else(|| panic!("Continuation with UUID {:?} not found.", uuid));
 
         cont(body)
     }
