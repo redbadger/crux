@@ -9,10 +9,9 @@ use std::{
 };
 
 fn main() {
-    let extesions_root = Path::new("./extensions");
+    let extensions_root = Path::new("./extensions");
     let output_root = Path::new("./generated");
 
-    fs::remove_dir_all(output_root).ok();
     fs::create_dir_all(output_root).unwrap();
 
     let mut tracer = Tracer::new(TracerConfig::default());
@@ -73,7 +72,7 @@ fn main() {
     .unwrap();
 
     // Create TypeScript definitions.
-    let extensions_dir = extesions_root.join("typescript");
+    let extensions_dir = extensions_root.join("typescript");
     let output_dir = output_root.join("typescript");
     let mut source = Vec::new();
 
