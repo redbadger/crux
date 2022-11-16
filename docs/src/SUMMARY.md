@@ -1,6 +1,7 @@
 # Summary
 
 [Overview](./overview.md)
+[Motivation](./motivation.md)
 
 # Getting Started
 
