@@ -31,14 +31,14 @@ These are the steps to set up the two crates forming the shared core – the cor
    cargo new --lib shared
    ```
 
-2. Edit `./Cargo.toml` to add the new library to the Cargo workspace
+1. Edit `./Cargo.toml` to add the new library to the Cargo workspace
 
    ```toml
    [workspace]
    members = ["shared"]
    ```
 
-3. Edit `./shared/Cargo.toml`
+1. Edit `./shared/Cargo.toml`
 
    Note that the crate type:
 
@@ -61,7 +61,7 @@ These are the steps to set up the two crates forming the shared core – the cor
 
    *FIXME:* update the above to include the framework crate. For now, you will have to copy it into your codebase or fetch from GitHub.
 
-4. Create `./shared/src/shared.udl`
+1. Create `./shared/src/shared.udl`
 
    ```txt
    namespace shared {
@@ -71,7 +71,7 @@ These are the steps to set up the two crates forming the shared core – the cor
    };
    ```
 
-5. Create `./shared/uniffi.toml`
+1. Create `./shared/uniffi.toml`
 
    ```toml
    [bindings.kotlin]
@@ -83,7 +83,7 @@ These are the steps to set up the two crates forming the shared core – the cor
    omit_argument_labels = true
    ```
 
-6. Create `./shared/build.rs`]
+1. Create `./shared/build.rs`]
 
    ```rust
    fn main() {
@@ -91,7 +91,7 @@ These are the steps to set up the two crates forming the shared core – the cor
    }
    ```
 
-7. Include the scaffolding in `./shared/src/lib.rs`
+1. Include the scaffolding in `./shared/src/lib.rs`
 
    ```rust
     use lazy_static::lazy_static;
@@ -122,7 +122,7 @@ These are the steps to set up the two crates forming the shared core – the cor
     }
    ```
 
-9. Create a basic app implementation in `./shared/src/app.rs`
+1. Create a basic app implementation in `./shared/src/app.rs`
 
     ```rust
     pub use rmm::*;
@@ -171,7 +171,7 @@ These are the steps to set up the two crates forming the shared core – the cor
     }
     ```
 
-10. Make sure everything builds OK
+1. Make sure everything builds OK
 
    ```sh
    cargo build
