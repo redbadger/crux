@@ -1,10 +1,14 @@
 # Overview
 
-RMM (better name pending) is an **experimental** approach to building cross-platform applications with better testability, higher code and behaviour reuse, better safety and security, and more joy from better tools.
+RMM (better name pending) is an **experimental** approach to building cross-platform applications with better testability, higher code and behaviour reuse, better safety, security, and more joy from better tools.
 
 It splits the application into two distinct parts, a Core built in Rust, which drives as much of the business logic as possible, and a Shell, built in the platform native language (Swift, Kotlin, TypeScript), which provides all interfaces with the external world, including the human user, and acts as a platform on which the core runs.
 
+**TODO**: Image - onion architecture
+
 The interface between the two is a native FFI (Foreign Function Interface) with cross-language type checking and message passing semantics, where simple data structures are passed across the boundary.
+
+To get playing with it quickly, follow the [Getting Started](./getting_started/core.md) steps. If you prefer to read more about it first, read the [Development Guide](./guide/hello_world.md).
 
 ## Design
 
