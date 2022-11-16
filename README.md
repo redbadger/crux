@@ -59,6 +59,8 @@ The Foreign Function Interface allowing the shell to call the above functions is
 
 In order to send more complex data than UniFFI currently supports (and to enforce the message passing semantics), the messages are serialised, sent across the boundary and deserialised using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which provides type generation for the foreign (non-Rust) languages.
 
+This means that changes to types in the core, especially the `Message` type, propagate out into the shell implementations and cause errors where appropriate (such as an exhaustive match on an enum check).
+
 ### Message Types
 
 Two types of message are exchanged between the application and the core.
