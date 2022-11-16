@@ -76,16 +76,16 @@ been received. The exact mechanics are not important, but it is important for th
 A typical message exchange cycle is as follows:
 
 1. User interaction occurs in the Shell, which raises an event
-1. The Application handles this event by constructing a message
-1. The Application calls the Core's `message` function passing the `Message` instance as an argument
+1. The Shell handles this event by constructing a message
+1. The Shell calls the Core's `message` function passing the `Message` instance as an argument
 1. The Core performs the required processing, updating both its inner state and the view model
-1. The Core returns one or more `Request` messages to the application
+1. The Core returns one or more `Request` messages to the Shell
 
 In the simplest case, the Core will respond to a `Message` by returning the single request - render (produced by the `update` function returning a `Command::Render`).
 
 This requests that the Shell re-renders the user interface. The absence of other requests also means this cycle has terminated (the Core has "settled").
 
-In more complex cases however, the Core may well return multiple commands; each of which instructs the application to perform a side-effect-inducing task such as:
+In more complex cases however, the Core may well return multiple commands; each of which instructs the Shell to perform a side-effect-inducing task such as:
 
 - Make a network call, or
 - Fetch the current date/time stamp, or
@@ -94,7 +94,7 @@ In more complex cases however, the Core may well return multiple commands; each 
 - Whatever else you can think of...
 
 Many of these side-effecting-generating tasks are asynchronous.
-The application then packages these responses into further `Response`s that are then passed to the core for processing.
+The Shell then packages these responses into further `Response`s that are then passed to the core for processing.
 
 This exchange continues until the core returns a `Cmd::Render` signalling that no more side-effects are in flight.
 
