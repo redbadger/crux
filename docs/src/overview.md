@@ -4,7 +4,7 @@ RMM (better name pending) is an **experimental** approach to building cross-plat
 
 It splits the application into two distinct parts, a Core built in Rust, which drives as much of the business logic as possible, and a Shell, built in the platform native language (Swift, Kotlin, TypeScript), which provides all interfaces with the external world, including the human user, and acts as a platform on which the core runs.
 
-**TODO**: Image - onion architecture
+> **TODO**: Image - onion architecture
 
 The interface between the two is a native FFI (Foreign Function Interface) with cross-language type checking and message passing semantics, where simple data structures are passed across the boundary.
 

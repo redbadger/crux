@@ -6,15 +6,14 @@ If you want to follow along, you should start by following the [Shared core and 
 
 ## Creating an app
 
-To start with, we need a `struct` to be the root of our app. 
+To start with, we need a `struct` to be the root of our app.
 
 ```rust
 #[derive(Default)]
-pub struct Hello {
-}
+pub struct Hello;
 ```
 
-To turn it into an app, we need to implement the `App` trait from.
+To turn it into an app, we need to implement the `App` trait from the `rmm` crate.
 
 ```rust
 
@@ -33,9 +32,9 @@ impl App for Hello {
 }
 ```
 
-The `view` function returns the representation of what we want the Shell to show on screen. When the Shell calls us with any message, we simply tell it to display the UI.
+The `view` function returns the representation of what we want the Shell to show on screen. To start with, when the Shell calls us with any message, we simply tell it to display the UI.
 
-While techinicaly that's the hello world and successfully implements the trait, it doesn't yet _do_ anything. We need to add the key components of an app: `Message` and `Model`.
+While technically that's the hello world and successfully implements the trait, it doesn't yet _do_ anything. We need to add the key components of an app: `Message` and `Model`.
 
 ## Counting up and down
 
@@ -75,7 +74,7 @@ enum Message {
 }
 ```
 
-The message covers all the possible events we can respond to. "Will that not get massive??" I hear you ask. Don't worry about that, there's [a solution to make this scale](./composing.md). Let's carry on. We need to actuall handle those messages.
+The message covers all the possible events we can respond to. "Will that not get massive??" I hear you ask. Don't worry about that, there's [a solution to make this scale](./composing.md). Let's carry on. We need to actually handle those messages.
 
 ```rust
 impl App for Hello {

@@ -27,5 +27,3 @@
    1. [Type generation](./internals/typegen.md)
 1. [Serialisation](./internals/serialisation.md)
 1. [Continuations](./internals/continuations.md)
-
-

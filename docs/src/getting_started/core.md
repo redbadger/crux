@@ -2,7 +2,7 @@
 
 These are the steps to set up the two crates forming the shared core – the core itself, and the shared types crate which does type generation for the foreign languages.
 
-*SHARP EDGE WARNING*: Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from the example project.
+> _SHARP EDGE WARNING_: Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from the example project.
 
 ## Install the tools
 
@@ -42,7 +42,7 @@ These are the steps to set up the two crates forming the shared core – the cor
 
    Note that the crate type:
 
-   1. `"lib"` is the default rust library when linking into a rust binary, e.g. for WebAssembly in the web variant
+   1. `"lib"` is the default rust library when linking into a rust binary, e.g. in the `web-yew` variant
    2. `"staticlib"` is a static library (`libshared.a`) for including in the Swift iOS app variant
    3. `"cdylib"` is a c-abi dynamic library (`libshared.so`) for use with JNA when included in the Kotlin Android app variant
 
@@ -59,7 +59,7 @@ These are the steps to set up the two crates forming the shared core – the cor
    uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }
    ```
 
-   *FIXME:* update the above to include the framework crate. For now, you will have to copy it into your codebase or fetch from GitHub.
+   > _FIXME:_ update the above to include the framework crate. For now, you will have to copy it into your codebase or fetch from GitHub.
 
 1. Create `./shared/src/shared.udl`
 
@@ -124,52 +124,52 @@ These are the steps to set up the two crates forming the shared core – the cor
 
 1. Create a basic app implementation in `./shared/src/app.rs`
 
-    ```rust
-    pub use rmm::*;
-    use serde::{Deserialize, Serialize};
+   ```rust
+   pub use rmm::*;
+   use serde::{Deserialize, Serialize};
 
-    pub struct Model {
-        count: u8
-    }
+   pub struct Model {
+       count: u8
+   }
 
-    # [derive(Serialize, Deserialize, Default)]
-    pub struct ViewModel {
-        pub count: u8,
-    }
+   # [derive(Serialize, Deserialize, Default)]
+   pub struct ViewModel {
+       pub count: u8,
+   }
 
-    # [derive(Serialize, Deserialize)]
-    pub enum Message {
-        Increment(u8),
-        Decrement(u8),
-    }
+   # [derive(Serialize, Deserialize)]
+   pub enum Message {
+       Increment(u8),
+       Decrement(u8),
+   }
 
-    impl App for CatFacts {
-        type Message = Message;
-        type Model = Model;
-        type ViewModel = ViewModel;
+   impl App for CatFacts {
+       type Message = Message;
+       type Model = Model;
+       type ViewModel = ViewModel;
 
-        fn update(&self, msg: Message, model: &mut Model) -> Vec<Command<Message>> {
-            match msg {
-                Message::Increment(n) => {
-                    model.count += n;
+       fn update(&self, msg: Message, model: &mut Model) -> Vec<Command<Message>> {
+           match msg {
+               Message::Increment(n) => {
+                   model.count += n;
 
-                    vec![Command::Render]
-                },
-                Message::Decrement(n) => {
-                    model.count -= n;
+                   vec![Command::Render]
+               },
+               Message::Decrement(n) => {
+                   model.count -= n;
 
-                    vec![Command::Render]
-                },
-            }
-        }
+                   vec![Command::Render]
+               },
+           }
+       }
 
-        fn view(&self, model: &Model) -> ViewModel {        
-            ViewModel {
-                count: model.count
-            }
-        }
-    }
-    ```
+       fn view(&self, model: &Model) -> ViewModel {
+           ViewModel {
+               count: model.count
+           }
+       }
+   }
+   ```
 
 1. Make sure everything builds OK
 
@@ -187,6 +187,6 @@ This crate serves as the container for type generation for the foreign languages
 
 1. Make sure everything builds and foreign types get generated into the `generated` folder.
 
-    ```sh
-    cargo build -vv
-    ```
+   ```sh
+   cargo build -vv
+   ```
