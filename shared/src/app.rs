@@ -1,4 +1,4 @@
-pub use rmm::*;
+pub use crux_core::*;
 use serde::{Deserialize, Serialize};
 
 pub mod platform;

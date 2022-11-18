@@ -1,2 +1,2 @@
 [workspace]
-members = ["rmm", "shared", "shared_types", "web-yew", "cli"]
+members = ["crux_core", "shared", "shared_types", "web-yew", "cli"]

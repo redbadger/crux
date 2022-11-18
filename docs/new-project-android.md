@@ -9,7 +9,7 @@
    1. Go to File -> New -> New Module...
    1. Choose "Android Library"
    1. Call it something like `shared`
-   1. The package name must match that shown in [`./shared/uniffi.toml`](../shared/uniffi.toml), e.g. `com.redbadger.rmm.shared`
+   1. The package name must match that shown in [`./shared/uniffi.toml`](../shared/uniffi.toml), e.g. `com.redbadger.crux_core.shared`
 
 1. Add the `shared` library as a dependency of `app`
 
@@ -41,7 +41,7 @@
        id 'org.mozilla.rust-android-gradle.rust-android'
    }
    android {
-       namespace 'com.redbadger.rmm.shared'
+       namespace 'com.redbadger.crux_core.shared'
        ...
        ndkVersion '25.1.8937393'
    }
@@ -98,7 +98,7 @@
 1. Try calling into the rust library from the Android app, for example ...
 
    1. Open `Android/app/src/main/java/com/example/android/MainActivity.kt`
-   1. Add `import com.redbadger.rmm.shared.add`
+   1. Add `import com.redbadger.crux_core.shared.add`
    1. Add a `class` for the callback to get Platform details ...
       ```kotlin
       class GetPlatform : Platform {

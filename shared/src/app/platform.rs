@@ -1,4 +1,4 @@
-use rmm::{platform, App, Command};
+use crux_core::{platform, App, Command};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
