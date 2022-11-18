@@ -224,12 +224,16 @@ impl<A: App> Core<A> {
     ///     static ref CORE: Core<Hello> = Core::new();
     /// }
     /// ```
+    ///
+    /// The core interface passes across messages serialised as bytes. These can be
+    /// deserialised using the types generated using the [typegen] module.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// TODO docs
-    // Direct message
+    /// Receive a message from the shell.
+    ///
+    /// The `msg` is serialised and will be deserialised by the core.
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Message: Deserialize<'de>,
@@ -248,8 +252,11 @@ impl<A: App> Core<A> {
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
-    /// TODO docs
-    // Return from capability
+    /// Receive a response to a capability request from the shell.
+    ///
+    /// The `res` is serialised and will be deserialised by the core. The `uuid`  field of
+    /// the deserialised [`Response`] MUST match the `uuid` of the [`Request`] which
+    /// triggered it, else the core will panic.
     pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Message: Deserialize<'de>,
@@ -268,7 +275,7 @@ impl<A: App> Core<A> {
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
-    /// TODO docs
+    /// Get the current state of the app's view model (serialised).
     pub fn view(&self) -> Vec<u8> {
         let model = self.model.read().expect("Model RwLock was poisoned.");
 
@@ -277,7 +284,9 @@ impl<A: App> Core<A> {
     }
 }
 
-/// TODO docs
+/// Request for a side-effect passed from the Core to the Shell. The `uuid` links
+/// the `Request` with the corresponding [`Response`] to pass the data back
+/// to the [`App::update`] function wrapped in the correct `Message`.
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     pub uuid: Vec<u8>,
@@ -293,7 +302,7 @@ impl Request {
     }
 }
 
-/// TODO docs
+/// Body of a side-effect [`Request`]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum RequestBody {
     Time,
@@ -304,14 +313,16 @@ pub enum RequestBody {
     Render,
 }
 
-/// TODO docs
+/// Response to a side-effect request, returnig the resulting data from the Shell
+/// to the Core. The `uuid` links the [`Request`] with the corresponding `Response`
+/// to pass the data back to the [`App::update`] function wrapped in the correct `Message`.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Response {
     pub uuid: Vec<u8>,
     pub body: ResponseBody,
 }
 
-/// TODO docs
+/// Body of a side-effect [`Response`]
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum ResponseBody {
     Http(Vec<u8>),
