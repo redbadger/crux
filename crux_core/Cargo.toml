@@ -9,6 +9,9 @@ readme = "README.md"
 license = "Apache-2.0"
 keywords = ["ui", "ux", "ffi", "wasm", "rust"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 anyhow = "1.0.66"
 bcs = "0.1.4"
