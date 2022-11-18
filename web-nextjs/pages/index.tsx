@@ -6,7 +6,7 @@ import UAParser from "ua-parser-js";
 import useAsyncReducer from "../hooks/use_async_reducer";
 
 import init_core, { message, response, view } from "../shared/core";
-import * as types from "shared_types/types/shared";
+import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 import { Optional } from "shared_types/serde/mod";
 

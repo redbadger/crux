@@ -115,8 +115,8 @@ This exchange continues until the core returns a `Command::Render` signalling th
 
 ## Run the Example Locally
 
-Refer to the [local execution](./docs/previous/local-execution.md) README
+Refer to the [local execution](./docs/local-execution.md) README
 
 ## How to Start Your Own New Project
 
-Refer to the [new project](./docs/previous/new-project.md) README
+Refer to the [new project](./docs/new-project.md) README
