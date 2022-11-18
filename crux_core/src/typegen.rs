@@ -4,32 +4,33 @@
 //!
 //! Ensure that you have the following line in the `Cargo.toml` of your `shared_types` library.
 //!
-//! > Note that your `shared_types` library, should have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
-//!
 //! ```rust
 //! [build-dependencies]
 //! crux_core = { version = "0.1.", features = ["typegen"] }
 //! ```
 //!
-//! Then, you can create a `build.rs` in your `shared_types` library, that looks something like this:
+//! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
+//! * Create a `build.rs` in your `shared_types` library, that looks something like this:
 //!
 //! ```rust
 //! let mut gen = TypeGen::new();
 //!
-//! // you'll need to register more types than this...
-//! gen.register_type::<Msg>().expect("type registration failed");
+//! gen.register_type::<Msg>()?;
+//! gen.register_type::<platform::PlatformMsg>()?;
+//! gen.register_type::<ViewModel>()?;
+//! gen.register_type::<Request>()?;
+//! gen.register_type::<RequestBody>()?;
+//! gen.register_type::<Response>()?;
+//! gen.register_type::<ResponseBody>()?;
 //!
-//! gen.swift("shared_types", output_root.join("swift"))
-//!     .expect("swift type gen failed");
+//! gen.swift("shared_types", output_root.join("swift"))?;
 //!
 //! gen.java(
 //!     "com.redbadger.crux_core.shared_types",
 //!     output_root.join("java"),
-//! )
-//! .expect("java type gen failed");
+//! )?;
 //!
-//! gen.typescript("shared_types", output_root.join("typescript"))
-//!     .expect("typescript type gen failed");
+//! gen.typescript("shared_types", output_root.join("typescript"))?;
 //! ```
 
 use anyhow::{anyhow, bail, Result};
