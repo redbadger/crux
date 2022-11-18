@@ -1,6 +1,7 @@
 [package]
 name = "crux_core"
 description = "Cross-platform app development in Rust"
+authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
 version = "0.1.0"
 edition = "2021"
@@ -13,7 +14,7 @@ anyhow = "1.0.66"
 bcs = "0.1.4"
 derive_more = "0.99.17"
 serde = { version = "1.0.147", features = ["derive"] }
-serde_json = "1.0.87"
+serde_json = "1.0.88"
 serde-generate = { version = "0.24.0", optional = true }
 serde-reflection = { version = "0.3.6", optional = true }
 thiserror = "1.0.37"
