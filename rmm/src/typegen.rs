@@ -43,7 +43,7 @@ impl TypeGen {
         }
     }
 
-    pub fn swift(&mut self, path: impl AsRef<Path>) -> Result<()> {
+    pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
         fs::create_dir_all(&path)?;
@@ -69,21 +69,23 @@ impl TypeGen {
             include_str!("../typegen_extensions/swift/requests.swift")
         );
 
-        let path = path.as_ref().to_path_buf().join("shared_types.swift");
+        let path = path
+            .as_ref()
+            .to_path_buf()
+            .join(format!("{module_name}.swift"));
         let mut output = File::create(path)?;
         write!(output, "{}", out)?;
 
         Ok(())
     }
 
-    pub fn java(&mut self, path: impl AsRef<Path>) -> Result<()> {
+    pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
         fs::create_dir_all(&path)?;
 
-        let config =
-            serde_generate::CodeGeneratorConfig::new("com.redbadger.rmm.shared_types".to_string())
-                .with_encodings(vec![serde_generate::Encoding::Bcs]);
+        let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
+            .with_encodings(vec![serde_generate::Encoding::Bcs]);
 
         let registry = match &self.state {
             State::Registry(registry) => registry,
@@ -96,17 +98,19 @@ impl TypeGen {
         let extensions_dir =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/java");
 
+        let package_path = package_name.replace('.', "/");
         fs::copy(
-            extensions_dir.join("com/redbadger/rmm/shared_types/Requests.java"),
+            extensions_dir.join(&package_path).join("Requests.java"),
             path.as_ref()
                 .to_path_buf()
-                .join("com/redbadger/rmm/shared_types/Requests.java"),
+                .join(&package_path)
+                .join("Requests.java"),
         )?;
 
         Ok(())
     }
 
-    pub fn typescript(&mut self, path: impl AsRef<Path>) -> Result<()> {
+    pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
         fs::create_dir_all(&path)?;
@@ -130,7 +134,7 @@ impl TypeGen {
         };
 
         let runtime = Runtime::Bcs;
-        let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
+        let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
             .with_serialization(true)
             .with_encodings(vec![runtime.into()]);
 
@@ -142,7 +146,7 @@ impl TypeGen {
         let types_dir = output_dir.join("types");
         fs::create_dir_all(types_dir)?;
 
-        let mut output = File::create(output_dir.join("types/shared.ts"))?;
+        let mut output = File::create(output_dir.join(format!("types/{module_name}.ts")))?;
         write!(output, "{}", out)?;
 
         // Install dependencies

@@ -10,13 +10,13 @@ fn main() {
 
     let output_root = PathBuf::from("./generated");
 
-    gen.swift(output_root.join("swift"))
+    gen.swift("shared_types", output_root.join("swift"))
         .expect("swift type gen failed");
 
-    gen.java(output_root.join("java"))
+    gen.java("com.redbadger.rmm.shared_types", output_root.join("java"))
         .expect("java type gen failed");
 
-    gen.typescript(output_root.join("typescript"))
+    gen.typescript("shared_types", output_root.join("typescript"))
         .expect("typescript type gen failed");
 }
 
