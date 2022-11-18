@@ -1,3 +1,6 @@
+#[cfg(feature = "typegen")]
+pub mod typegen;
+
 mod continuations;
 pub mod http;
 pub mod key_value;

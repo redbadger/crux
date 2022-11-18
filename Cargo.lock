@@ -1772,6 +1772,8 @@ dependencies = [
  "bcs",
  "derive_more",
  "serde",
+ "serde-generate",
+ "serde-reflection",
  "serde_json",
  "thiserror",
  "uniffi",
@@ -2033,6 +2035,7 @@ dependencies = [
 name = "shared_types"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "rmm",
  "serde-generate",
  "serde-reflection",
