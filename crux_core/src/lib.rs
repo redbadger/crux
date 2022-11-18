@@ -1,6 +1,102 @@
-//! TODO mod docs
+//! Cross-platform app development in Rust
+//!
+//! Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web,
+//! as a single, reusable core built with Rust.
+//!
+//! Unlike React Native, the user interface layer is built natively, with modern declarative UI frameworks
+//! such as Swift UI, Jetpack Compose and React/Vue or a WASM based framework on the web.
+//!
+//! The UI layer is as thin as it can be, and all other work is done by the shared core.
+//! The interface with the core has static type checking across languages.
+//!
+//! ## Getting Started
+//!
+//! Crux applications are split into two parts: Core written in Rust and a Shell written in the platform
+//! native language (e.g. Swift or Kotlin).
+//!  
+//! Below is a minimal example of a Crux based application Core:
+//!
+//! ```rust
+//! use serde::{Serialize, Deserialize}
+//! use crux_core::App
+//!
+//! #[derive(Default)]
+//! struct Model {
+//!     count: isize,
+//! }
+//!
+//! #[derive(Serialize, Deserialize)]
+//! enum Message {
+//!     Increment,
+//!     Decrement,
+//!     Reset,
+//! }
+//!
+//! impl App for Hello {
+//!     type Message = ();
+//!     type Model = Model;
+//!     type ViewModel = String;
+//!
+//!     fn update(&self, message: Message, model: &mut Model) -> Vec<Command<Msg>> {
+//!         match message {
+//!             Message::Increment => model.count += 1,
+//!             Message::Decrement => model.count -= 1,
+//!             Message::Reset => model.count = 0,
+//!         };
+//!         vec![Command::Render]
+//!     }
+//!
+//!     fn view(&self, model: &Model) -> ViewModel {
+//!         format!("Count is: {}", model.count)
+//!     }
+//! }
+//! ```
+//!
+//! ## Integrating with a Shell
+//!
+//! To use the application in a user interface shell, you need to expose the core interface for FFI
+//!
+//! ```rust
+//! use lazy_static::lazy_static;
+//! use wasm_bindgen::prelude::wasm_bindgen;
+//! use crux::Core;
+//!
+//! uniffi_macros::include_scaffolding!("hello");
+//!
+//! lazy_static! {
+//!     static ref CORE: Core<Hello> = Core::new();
+//! }
+//!
+//! #[wasm_bindgen]
+//! pub fn message(data: &[u8]) -> Vec<u8> {
+//!     CORE.message(data)
+//! }
+//!
+//! #[wasm_bindgen]
+//! pub fn response(data: &[u8]) -> Vec<u8> {
+//!     CORE.response(data)
+//! }
+//!
+//! #[wasm_bindgen]
+//! pub fn view() -> Vec<u8> {
+//!     CORE.view()
+//! }
+//! ```
+//!
+//! You will also need an `hello.udl` file describing the interface:
+//!
+//! ```
+//! namespace hello {
+//!   sequence<u8> message([ByRef] sequence<u8> msg);
+//!   sequence<u8> response([ByRef] sequence<u8> res);
+//!   sequence<u8> view();
+//! };
+//! ```
+//!
+//! Finally, you will need to set up the type generation for the `Model`, `Message` and `ViewModel` types.
+//! See [typegen] for details.
+//!
 
-/// TODO docs
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
