@@ -17,6 +17,8 @@
 //! Below is a minimal example of a Crux based application Core:
 //!
 //! ```rust
+//! // src/app.rs
+//!
 //! use serde::{Serialize, Deserialize}
 //! use crux_core::App
 //!
@@ -61,6 +63,8 @@
 //! To use the application in a user interface shell, you need to expose the core interface for FFI
 //!
 //! ```rust
+//! src/lib.rs
+//!
 //! use lazy_static::lazy_static;
 //! use wasm_bindgen::prelude::wasm_bindgen;
 //! use crux::Core;
