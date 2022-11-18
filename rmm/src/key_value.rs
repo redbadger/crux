@@ -1,5 +1,8 @@
+//! TODO mod docs
+
 use crate::{Command, RequestBody, ResponseBody};
 
+/// TODO docs
 pub fn read<F, Message>(key: String, msg: F) -> Command<Message>
 where
     F: FnOnce(Option<Vec<u8>>) -> Message + Sync + Send + 'static,
@@ -21,6 +24,7 @@ where
     }
 }
 
+/// TODO docs
 pub fn write<F, Message>(key: String, value: Vec<u8>, msg: F) -> Command<Message>
 where
     F: FnOnce(bool) -> Message + Sync + Send + 'static,

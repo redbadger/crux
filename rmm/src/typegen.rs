@@ -1,3 +1,5 @@
+//! TODO mod docs
+
 use anyhow::{anyhow, bail, Result};
 use serde_generate::test_utils::Runtime;
 use serde_reflection::{Registry, Tracer, TracerConfig};
@@ -13,6 +15,7 @@ enum State {
     Registry(Registry),
 }
 
+/// TODO docs
 pub struct TypeGen {
     state: State,
 }
@@ -26,10 +29,12 @@ impl Default for TypeGen {
 }
 
 impl TypeGen {
+    /// TODO docs
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// TODO docs
     pub fn register_type<'de, T>(&mut self) -> Result<()>
     where
         T: serde::Deserialize<'de>,
@@ -43,6 +48,7 @@ impl TypeGen {
         }
     }
 
+    /// TODO docs
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
@@ -79,6 +85,7 @@ impl TypeGen {
         Ok(())
     }
 
+    /// TODO docs
     pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
@@ -110,6 +117,7 @@ impl TypeGen {
         Ok(())
     }
 
+    /// TODO docs
     pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 

@@ -1,3 +1,6 @@
+//! TODO mod docs
+
+/// TODO docs
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
@@ -11,26 +14,34 @@ use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
+/// TODO docs
 pub trait App: Default {
+    /// TODO docs
     type Message;
+    /// TODO docs
     type Model: Default;
+    /// TODO docs
     type ViewModel: Serialize;
 
+    /// TODO docs
     fn update(
         &self,
         msg: <Self as App>::Message,
         model: &mut <Self as App>::Model,
     ) -> Vec<Command<<Self as App>::Message>>;
 
+    /// TODO docs
     fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
 }
 
+/// TODO docs
 pub struct Command<Message> {
     body: RequestBody,
     msg_constructor: Option<Box<dyn FnOnce(ResponseBody) -> Message + Send + Sync>>,
 }
 
 impl<Message: 'static> Command<Message> {
+    /// TODO docs
     pub fn render() -> Command<Message> {
         Command {
             body: RequestBody::Render,
@@ -38,6 +49,7 @@ impl<Message: 'static> Command<Message> {
         }
     }
 
+    /// TODO docs
     pub fn lift<ParentMsg, F>(commands: Vec<Command<Message>>, f: F) -> Vec<Command<ParentMsg>>
     where
         F: FnOnce(Message) -> ParentMsg + Sync + Send + Copy + 'static,
@@ -45,7 +57,7 @@ impl<Message: 'static> Command<Message> {
         commands.into_iter().map(move |c| c.map(f)).collect()
     }
 
-    pub fn map<ParentMsg, F>(self, f: F) -> Command<ParentMsg>
+    fn map<ParentMsg, F>(self, f: F) -> Command<ParentMsg>
     where
         F: FnOnce(Message) -> ParentMsg + Sync + Send + 'static,
     {
@@ -59,19 +71,14 @@ impl<Message: 'static> Command<Message> {
     }
 }
 
-pub struct AppCore<A: App> {
+/// TODO docs
+pub struct Core<A: App> {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Message>,
     app: A,
 }
 
-impl<A: App> PartialEq for AppCore<A> {
-    fn eq(&self, _other: &Self) -> bool {
-        false // Core has all kinds of interior mutability
-    }
-}
-
-impl<A: App> Default for AppCore<A> {
+impl<A: App> Default for Core<A> {
     fn default() -> Self {
         Self {
             model: Default::default(),
@@ -81,11 +88,13 @@ impl<A: App> Default for AppCore<A> {
     }
 }
 
-impl<A: App> AppCore<A> {
+impl<A: App> Core<A> {
+    /// TODO docs
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// TODO docs
     // Direct message
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
@@ -105,6 +114,7 @@ impl<A: App> AppCore<A> {
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
+    /// TODO docs
     // Return from capability
     pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
     where
@@ -124,6 +134,7 @@ impl<A: App> AppCore<A> {
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
+    /// TODO docs
     pub fn view(&self) -> Vec<u8> {
         let model = self.model.read().expect("Model RwLock was poisoned.");
 
@@ -132,6 +143,7 @@ impl<A: App> AppCore<A> {
     }
 }
 
+/// TODO docs
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     pub uuid: Vec<u8>,
@@ -147,6 +159,7 @@ impl Request {
     }
 }
 
+/// TODO docs
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum RequestBody {
     Time,
@@ -157,12 +170,14 @@ pub enum RequestBody {
     Render,
 }
 
+/// TODO docs
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Response {
     pub uuid: Vec<u8>,
     pub body: ResponseBody,
 }
 
+/// TODO docs
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum ResponseBody {
     Http(Vec<u8>),
