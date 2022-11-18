@@ -1,5 +1,9 @@
 //! Generation of foreign language types (currently Swift, Java, TypeScript) for Crux
 //!
+//! In order to use this module, you'll need a separate crate from your shared library, possibly
+//! called `shared_types`. This is necessary because we need to reference types from your shared library
+//! during the build process (`build.rs`).
+//!
 //! This module is behind the feature called `typegen`, and is not compiled into the default crate.
 //!
 //! Ensure that you have the following line in the `Cargo.toml` of your `shared_types` library.
@@ -15,8 +19,7 @@
 //! ```rust
 //! let mut gen = TypeGen::new();
 //!
-//! gen.register_type::<Msg>()?;
-//! gen.register_type::<platform::PlatformMsg>()?;
+//! gen.register_type::<Message>()?;
 //! gen.register_type::<ViewModel>()?;
 //! gen.register_type::<Request>()?;
 //! gen.register_type::<RequestBody>()?;
@@ -71,8 +74,7 @@ impl TypeGen {
     /// For each of the types that you want to share with the Shell, call this method:
     /// e.g.
     /// ```rust
-    /// gen.register_type::<Msg>()?;
-    /// gen.register_type::<platform::PlatformMsg>()?;
+    /// gen.register_type::<Message>()?;
     /// gen.register_type::<ViewModel>()?;
     /// gen.register_type::<Request>()?;
     /// gen.register_type::<RequestBody>()?;

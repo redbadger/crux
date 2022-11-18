@@ -14,7 +14,7 @@
 //! Crux applications are split into two parts: Core written in Rust and a Shell written in the platform
 //! native language (e.g. Swift or Kotlin).
 //! The Core architecture is based on [Elm architecture](https://guide.elm-lang.org/architecture/).
-//!  
+//!
 //! Below is a minimal example of a Crux based application Core:
 //!
 //! ```rust
@@ -64,7 +64,7 @@
 //! To use the application in a user interface shell, you need to expose the core interface for FFI
 //!
 //! ```rust
-//! src/lib.rs
+//! // src/lib.rs
 //!
 //! use lazy_static::lazy_static;
 //! use wasm_bindgen::prelude::wasm_bindgen;
@@ -132,7 +132,7 @@ pub trait App: Default {
 
     /// Update method defines the transition from one `model` state to another in response to a `msg`.
     ///
-    /// Update function can return a list of [`Command`s], instructing the shell to perform side-effects.
+    /// Update function can return a list of [`Command`]s, instructing the shell to perform side-effects.
     /// Typically, the function should return at least [`Command::render`] to update the user interface.
     fn update(
         &self,
@@ -165,7 +165,7 @@ impl<Message: 'static> Command<Message> {
 
     /// Lift is used to convert a Command with one message type to a command with another.
     ///
-    /// This is normally used when composing applications. A typicall case in the top-level
+    /// This is normally used when composing applications. A typical case in the top-level
     /// `update` function would look like the following:
     ///
     /// ```rust
