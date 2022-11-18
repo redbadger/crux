@@ -21,15 +21,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import com.redbadger.rmm.shared.*
-import com.redbadger.rmm.shared_types.Msg
-import com.redbadger.rmm.shared_types.PlatformMsg
-import com.redbadger.rmm.shared_types.Request as Req
-import com.redbadger.rmm.shared_types.Requests
-import com.redbadger.rmm.shared_types.RequestBody as ReqBody
-import com.redbadger.rmm.shared_types.Response as Res
-import com.redbadger.rmm.shared_types.ResponseBody as ResBody
-import com.redbadger.rmm.shared_types.ViewModel as MyViewModel
+import com.redbadger.crux_core.shared.*
+import com.redbadger.crux_core.shared_types.Msg
+import com.redbadger.crux_core.shared_types.PlatformMsg
+import com.redbadger.crux_core.shared_types.Request as Req
+import com.redbadger.crux_core.shared_types.Requests
+import com.redbadger.crux_core.shared_types.RequestBody as ReqBody
+import com.redbadger.crux_core.shared_types.Response as Res
+import com.redbadger.crux_core.shared_types.ResponseBody as ResBody
+import com.redbadger.crux_core.shared_types.ViewModel as MyViewModel
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter

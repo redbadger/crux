@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rmm::{typegen::TypeGen, Request, RequestBody, Response, ResponseBody};
+use crux_core::{typegen::TypeGen, Request, RequestBody, Response, ResponseBody};
 use shared::{platform, Msg, ViewModel};
 use std::path::PathBuf;
 
@@ -13,8 +13,11 @@ fn main() {
     gen.swift("shared_types", output_root.join("swift"))
         .expect("swift type gen failed");
 
-    gen.java("com.redbadger.rmm.shared_types", output_root.join("java"))
-        .expect("java type gen failed");
+    gen.java(
+        "com.redbadger.crux_core.shared_types",
+        output_root.join("java"),
+    )
+    .expect("java type gen failed");
 
     gen.typescript("shared_types", output_root.join("typescript"))
         .expect("typescript type gen failed");

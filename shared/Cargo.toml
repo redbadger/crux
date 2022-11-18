@@ -12,7 +12,7 @@ anyhow = "1.0.66"
 bincode = "1.3.3"
 derive_more = "0.99.17"
 lazy_static = "1.4.0"
-rmm = { path = "../rmm" }
+crux_core = { path = "../crux_core" }
 serde = { version = "1.0.147", features = ["derive"] }
 serde_json = "1.0.87"
 thiserror = "1.0.37"

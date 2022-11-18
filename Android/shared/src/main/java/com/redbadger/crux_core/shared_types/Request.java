@@ -1,11 +1,11 @@
-package com.redbadger.rmm.shared_types;
+package com.redbadger.crux_core.shared_types;
 
 
-public final class Response {
+public final class Request {
     public final java.util.List<@com.novi.serde.Unsigned Byte> uuid;
-    public final ResponseBody body;
+    public final RequestBody body;
 
-    public Response(java.util.List<@com.novi.serde.Unsigned Byte> uuid, ResponseBody body) {
+    public Request(java.util.List<@com.novi.serde.Unsigned Byte> uuid, RequestBody body) {
         java.util.Objects.requireNonNull(uuid, "uuid must not be null");
         java.util.Objects.requireNonNull(body, "body must not be null");
         this.uuid = uuid;
@@ -25,21 +25,21 @@ public final class Response {
         return serializer.get_bytes();
     }
 
-    public static Response deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+    public static Request deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
         deserializer.increase_container_depth();
         Builder builder = new Builder();
         builder.uuid = TraitHelpers.deserialize_vector_u8(deserializer);
-        builder.body = ResponseBody.deserialize(deserializer);
+        builder.body = RequestBody.deserialize(deserializer);
         deserializer.decrease_container_depth();
         return builder.build();
     }
 
-    public static Response bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
+    public static Request bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
         if (input == null) {
              throw new com.novi.serde.DeserializationError("Cannot deserialize null array");
         }
         com.novi.serde.Deserializer deserializer = new com.novi.bcs.BcsDeserializer(input);
-        Response value = deserialize(deserializer);
+        Request value = deserialize(deserializer);
         if (deserializer.get_buffer_offset() < input.length) {
              throw new com.novi.serde.DeserializationError("Some input bytes were not read");
         }
@@ -50,7 +50,7 @@ public final class Response {
         if (this == obj) return true;
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
-        Response other = (Response) obj;
+        Request other = (Request) obj;
         if (!java.util.Objects.equals(this.uuid, other.uuid)) { return false; }
         if (!java.util.Objects.equals(this.body, other.body)) { return false; }
         return true;
@@ -65,10 +65,10 @@ public final class Response {
 
     public static final class Builder {
         public java.util.List<@com.novi.serde.Unsigned Byte> uuid;
-        public ResponseBody body;
+        public RequestBody body;
 
-        public Response build() {
-            return new Response(
+        public Request build() {
+            return new Request(
                 uuid,
                 body
             );

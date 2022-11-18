@@ -1,4 +1,4 @@
-package com.redbadger.rmm.shared_types;
+package com.redbadger.crux_core.shared_types;
 
 final class TraitHelpers {
     static void serialize_option_CatImage(java.util.Optional<CatImage> value, com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {

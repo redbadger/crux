@@ -7,7 +7,7 @@ edition = "2021"
 
 [build-dependencies]
 anyhow = "1.0.66"
-rmm = { path = "../rmm", features = ["typegen"] }
+crux_core = { path = "../crux_core", features = ["typegen"] }
 shared = { path = "../shared" }
 serde-generate = "0.24.0"
 serde-reflection = "0.3.6"

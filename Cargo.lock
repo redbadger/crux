@@ -641,6 +641,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bcs",
+ "derive_more",
+ "serde",
+ "serde-generate",
+ "serde-reflection",
+ "serde_json",
+ "thiserror",
+ "uniffi",
+ "uniffi_macros",
+ "uuid",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1765,24 +1783,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
 
 [[package]]
-name = "rmm"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bcs",
- "derive_more",
- "serde",
- "serde-generate",
- "serde-reflection",
- "serde_json",
- "thiserror",
- "uniffi",
- "uniffi_macros",
- "uuid",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2018,9 +2018,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "crux_core",
  "derive_more",
  "lazy_static",
- "rmm",
  "serde",
  "serde_json",
  "thiserror",
@@ -2036,7 +2036,7 @@ name = "shared_types"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "rmm",
+ "crux_core",
  "serde-generate",
  "serde-reflection",
  "shared",
