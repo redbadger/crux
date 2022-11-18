@@ -20,11 +20,13 @@
 //! use serde::{Serialize, Deserialize}
 //! use crux_core::App
 //!
+//! // Model describing the application state
 //! #[derive(Default)]
 //! struct Model {
 //!     count: isize,
 //! }
 //!
+//! // Message describing the actions that can be taken
 //! #[derive(Serialize, Deserialize)]
 //! enum Message {
 //!     Increment,
@@ -33,7 +35,9 @@
 //! }
 //!
 //! impl App for Hello {
-//!     type Message = ();
+//!     // Use the above Message as message
+//!     type Message = Message;
+//!     // Use the above Model as model
 //!     type Model = Model;
 //!     type ViewModel = String;
 //!
