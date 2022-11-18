@@ -13,6 +13,7 @@
 //!
 //! Crux applications are split into two parts: Core written in Rust and a Shell written in the platform
 //! native language (e.g. Swift or Kotlin).
+//! The Core architecture is based on [Elm architecture](https://guide.elm-lang.org/architecture/).
 //!  
 //! Below is a minimal example of a Crux based application Core:
 //!
@@ -118,34 +119,43 @@ use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
-/// TODO docs
+/// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
+/// as the type argument to [Core].
 pub trait App: Default {
-    /// TODO docs
+    /// Message, typically an `enum` defines the actions that can be taken to update the application state.
     type Message;
-    /// TODO docs
+    /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
-    /// TODO docs
+    /// ViewModel, typically a `struct` describes the user interface that should be
+    /// displayed to the user
     type ViewModel: Serialize;
 
-    /// TODO docs
+    /// Update method defines the transition from one `model` state to another in response to a `msg`.
+    ///
+    /// Update function can return a list of [`Command`s], instructing the shell to perform side-effects.
+    /// Typically, the function should return at least [`Command::render`] to update the user interface.
     fn update(
         &self,
         msg: <Self as App>::Message,
         model: &mut <Self as App>::Model,
     ) -> Vec<Command<<Self as App>::Message>>;
 
-    /// TODO docs
+    /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
 }
 
-/// TODO docs
+/// Command captures the intent for a side-effect. Commands are return by the [`App::update`] function.
+///
+/// You should never create a Command yourself, instead use one of the capabilities to create a command.
+/// Command is generic over `Message` in order to carry a "callback" which will be sent to the [`App::update`]
+/// function when the command has been executed, and passed the resulting data.
 pub struct Command<Message> {
     body: RequestBody,
     msg_constructor: Option<Box<dyn FnOnce(ResponseBody) -> Message + Send + Sync>>,
 }
 
 impl<Message: 'static> Command<Message> {
-    /// TODO docs
+    /// The built in command to request an update of the user interface from the Shell.
     pub fn render() -> Command<Message> {
         Command {
             body: RequestBody::Render,
@@ -153,7 +163,21 @@ impl<Message: 'static> Command<Message> {
         }
     }
 
-    /// TODO docs
+    /// Lift is used to convert a Command with one message type to a command with another.
+    ///
+    /// This is normally used when composing applications. A typicall case in the top-level
+    /// `update` function would look like the following:
+    ///
+    /// ```rust
+    /// match message {
+    ///     // ...
+    ///     Msg::Submodule(msg) => Command::lift(
+    ///             self.submodule.update(msg, &mut model.submodule),
+    ///             Msg::Submodule,
+    ///         ),
+    ///     // ...
+    /// }
+    /// ```
     pub fn lift<ParentMsg, F>(commands: Vec<Command<Message>>, f: F) -> Vec<Command<ParentMsg>>
     where
         F: FnOnce(Message) -> ParentMsg + Sync + Send + Copy + 'static,
@@ -175,7 +199,7 @@ impl<Message: 'static> Command<Message> {
     }
 }
 
-/// TODO docs
+/// The Crux core. Create an instance of this type with your app as the type parameter
 pub struct Core<A: App> {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Message>,
@@ -193,7 +217,13 @@ impl<A: App> Default for Core<A> {
 }
 
 impl<A: App> Core<A> {
-    /// TODO docs
+    /// Create an instance of the Crux core to start a Crux application, e.g.
+    ///
+    /// ```rust
+    /// lazy_static! {
+    ///     static ref CORE: Core<Hello> = Core::new();
+    /// }
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
