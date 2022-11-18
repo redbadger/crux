@@ -1,4 +1,4 @@
-package com.redbadger.rmm.shared_types;
+package com.redbadger.crux_core.shared_types;
 
 
 public final class CatImage {

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace 'com.redbadger.rmm.shared'
+    namespace 'com.redbadger.crux_core.shared'
     compileSdk 32
     ndkVersion '25.1.8937393'
 
