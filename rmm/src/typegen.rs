@@ -53,25 +53,27 @@ impl TypeGen {
             .with_encodings(vec![serde_generate::Encoding::Bcs]);
 
         let generator = serde_generate::swift::CodeGenerator::new(&config);
-        if let State::Registry(registry) = &self.state {
-            generator.output(&mut source, registry)?;
+        let registry = match &self.state {
+            State::Registry(registry) => registry,
+            _ => panic!("registry creation failed"),
+        };
 
-            // FIXME workaround for odd namespacing behaviour in Swift output
-            // which as far as I can tell does not support namespaces in this way
-            let out = String::from_utf8_lossy(&source).replace("shared.", "");
+        generator.output(&mut source, registry)?;
 
-            let out = format!(
-                "{out}\n\n{}",
-                include_str!("../typegen_extensions/swift/requests.swift")
-            );
+        // FIXME workaround for odd namespacing behaviour in Swift output
+        // which as far as I can tell does not support namespaces in this way
+        let out = String::from_utf8_lossy(&source).replace("shared.", "");
 
-            let path = path.as_ref().to_path_buf().join("shared_types.swift");
-            let mut output = File::create(path)?;
-            write!(output, "{}", out)?;
+        let out = format!(
+            "{out}\n\n{}",
+            include_str!("../typegen_extensions/swift/requests.swift")
+        );
 
-            return Ok(());
-        }
-        panic!("registry creation failed");
+        let path = path.as_ref().to_path_buf().join("shared_types.swift");
+        let mut output = File::create(path)?;
+        write!(output, "{}", out)?;
+
+        Ok(())
     }
 
     pub fn java(&mut self, path: impl AsRef<Path>) -> Result<()> {
@@ -83,23 +85,25 @@ impl TypeGen {
             serde_generate::CodeGeneratorConfig::new("com.redbadger.rmm.shared_types".to_string())
                 .with_encodings(vec![serde_generate::Encoding::Bcs]);
 
-        if let State::Registry(registry) = &self.state {
-            let generator = serde_generate::java::CodeGenerator::new(&config);
-            generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
+        let registry = match &self.state {
+            State::Registry(registry) => registry,
+            _ => panic!("registry creation failed"),
+        };
 
-            let extensions_dir =
-                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/java");
+        let generator = serde_generate::java::CodeGenerator::new(&config);
+        generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
 
-            fs::copy(
-                extensions_dir.join("com/redbadger/rmm/shared_types/Requests.java"),
-                path.as_ref()
-                    .to_path_buf()
-                    .join("com/redbadger/rmm/shared_types/Requests.java"),
-            )?;
+        let extensions_dir =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/java");
 
-            return Ok(());
-        }
-        panic!("registry creation failed");
+        fs::copy(
+            extensions_dir.join("com/redbadger/rmm/shared_types/Requests.java"),
+            path.as_ref()
+                .to_path_buf()
+                .join("com/redbadger/rmm/shared_types/Requests.java"),
+        )?;
+
+        Ok(())
     }
 
     pub fn typescript(&mut self, path: impl AsRef<Path>) -> Result<()> {
@@ -120,42 +124,44 @@ impl TypeGen {
         // installer.install_bcs_runtime()?;
         copy(extensions_dir, path).expect("Could not copy TS runtime");
 
-        if let State::Registry(registry) = &self.state {
-            let runtime = Runtime::Bcs;
-            let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
-                .with_serialization(true)
-                .with_encodings(vec![runtime.into()]);
+        let registry = match &self.state {
+            State::Registry(registry) => registry,
+            _ => panic!("registry creation failed"),
+        };
 
-            let generator = serde_generate::typescript::CodeGenerator::new(&config);
-            generator.output(&mut source, registry)?;
-            // FIXME fix import paths in generated code which assume running on Deno
-            let out = String::from_utf8_lossy(&source).replace(".ts'", "'");
+        let runtime = Runtime::Bcs;
+        let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
+            .with_serialization(true)
+            .with_encodings(vec![runtime.into()]);
 
-            let types_dir = output_dir.join("types");
-            fs::create_dir_all(types_dir)?;
+        let generator = serde_generate::typescript::CodeGenerator::new(&config);
+        generator.output(&mut source, registry)?;
+        // FIXME fix import paths in generated code which assume running on Deno
+        let out = String::from_utf8_lossy(&source).replace(".ts'", "'");
 
-            let mut output = File::create(output_dir.join("types/shared.ts"))?;
-            write!(output, "{}", out)?;
+        let types_dir = output_dir.join("types");
+        fs::create_dir_all(types_dir)?;
 
-            // Install dependencies
-            std::process::Command::new("pnpm")
-                .current_dir(output_dir.clone())
-                .arg("install")
-                .status()
-                .expect("Could not pnpm install");
+        let mut output = File::create(output_dir.join("types/shared.ts"))?;
+        write!(output, "{}", out)?;
 
-            // Build TS code and emit declarations
-            std::process::Command::new("pnpm")
-                .current_dir(output_dir)
-                .arg("exec")
-                .arg("tsc")
-                .arg("--build")
-                .status()
-                .expect("Could tsc --build");
+        // Install dependencies
+        std::process::Command::new("pnpm")
+            .current_dir(output_dir.clone())
+            .arg("install")
+            .status()
+            .expect("Could not pnpm install");
 
-            return Ok(());
-        }
-        panic!("registry creation failed");
+        // Build TS code and emit declarations
+        std::process::Command::new("pnpm")
+            .current_dir(output_dir)
+            .arg("exec")
+            .arg("tsc")
+            .arg("--build")
+            .status()
+            .expect("Could tsc --build");
+
+        Ok(())
     }
 
     fn ensure_registry(&mut self) -> Result<()> {
