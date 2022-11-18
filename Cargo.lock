@@ -2035,6 +2035,7 @@ dependencies = [
 name = "shared_types"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "rmm",
  "serde-generate",
  "serde-reflection",

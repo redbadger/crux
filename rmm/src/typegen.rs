@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use serde_generate::test_utils::Runtime;
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
@@ -43,10 +43,10 @@ impl TypeGen {
         }
     }
 
-    pub fn swift(&mut self, path: impl AsRef<Path>) {
-        self.ensure_registry();
+    pub fn swift(&mut self, path: impl AsRef<Path>) -> Result<()> {
+        self.ensure_registry()?;
 
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir_all(&path)?;
 
         let mut source = Vec::new();
         let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
@@ -54,7 +54,7 @@ impl TypeGen {
 
         let generator = serde_generate::swift::CodeGenerator::new(&config);
         if let State::Registry(registry) = &self.state {
-            generator.output(&mut source, registry).unwrap();
+            generator.output(&mut source, registry)?;
 
             // FIXME workaround for odd namespacing behaviour in Swift output
             // which as far as I can tell does not support namespaces in this way
@@ -66,31 +66,18 @@ impl TypeGen {
             );
 
             let path = path.as_ref().to_path_buf().join("shared_types.swift");
-            let mut output = File::create(path).unwrap();
-            write!(output, "{}", out).unwrap();
+            let mut output = File::create(path)?;
+            write!(output, "{}", out)?;
+
+            return Ok(());
         }
+        panic!("registry creation failed");
     }
 
-    fn ensure_registry(&mut self) {
-        if let State::Tracer(_) = self.state {
-            // replace the current state with a dummy tracer
-            let old_state = mem::replace(
-                &mut self.state,
-                State::Tracer(Tracer::new(TracerConfig::default())),
-            );
+    pub fn java(&mut self, path: impl AsRef<Path>) -> Result<()> {
+        self.ensure_registry()?;
 
-            // convert tracer to registry
-            if let State::Tracer(tracer) = old_state {
-                // replace dummy with registry
-                self.state = State::Registry(tracer.registry().unwrap());
-            }
-        }
-    }
-
-    pub fn java(&mut self, path: impl AsRef<Path>) {
-        self.ensure_registry();
-
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir_all(&path)?;
 
         let config =
             serde_generate::CodeGeneratorConfig::new("com.redbadger.rmm.shared_types".to_string())
@@ -98,9 +85,7 @@ impl TypeGen {
 
         if let State::Registry(registry) = &self.state {
             let generator = serde_generate::java::CodeGenerator::new(&config);
-            generator
-                .write_source_files(path.as_ref().to_path_buf(), registry)
-                .unwrap();
+            generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
 
             let extensions_dir =
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/java");
@@ -110,15 +95,17 @@ impl TypeGen {
                 path.as_ref()
                     .to_path_buf()
                     .join("com/redbadger/rmm/shared_types/Requests.java"),
-            )
-            .unwrap();
+            )?;
+
+            return Ok(());
         }
+        panic!("registry creation failed");
     }
 
-    pub fn typescript(&mut self, path: impl AsRef<Path>) {
-        self.ensure_registry();
+    pub fn typescript(&mut self, path: impl AsRef<Path>) -> Result<()> {
+        self.ensure_registry()?;
 
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir_all(&path)?;
         let output_dir = path.as_ref().to_path_buf();
 
         let extensions_dir =
@@ -129,8 +116,8 @@ impl TypeGen {
         // for Deno, so we patch it heavily in extensions:
         //
         // let installer = typescript::Installer::new(output_dir.clone());
-        // installer.install_serde_runtime().unwrap();
-        // installer.install_bcs_runtime().unwrap();
+        // installer.install_serde_runtime()?;
+        // installer.install_bcs_runtime()?;
         copy(extensions_dir, path).expect("Could not copy TS runtime");
 
         if let State::Registry(registry) = &self.state {
@@ -140,15 +127,15 @@ impl TypeGen {
                 .with_encodings(vec![runtime.into()]);
 
             let generator = serde_generate::typescript::CodeGenerator::new(&config);
-            generator.output(&mut source, registry).unwrap();
+            generator.output(&mut source, registry)?;
             // FIXME fix import paths in generated code which assume running on Deno
             let out = String::from_utf8_lossy(&source).replace(".ts'", "'");
 
             let types_dir = output_dir.join("types");
-            fs::create_dir_all(types_dir).unwrap();
+            fs::create_dir_all(types_dir)?;
 
-            let mut output = File::create(output_dir.join("types/shared.ts")).unwrap();
-            write!(output, "{}", out).unwrap();
+            let mut output = File::create(output_dir.join("types/shared.ts"))?;
+            write!(output, "{}", out)?;
 
             // Install dependencies
             std::process::Command::new("pnpm")
@@ -165,7 +152,27 @@ impl TypeGen {
                 .arg("--build")
                 .status()
                 .expect("Could tsc --build");
+
+            return Ok(());
         }
+        panic!("registry creation failed");
+    }
+
+    fn ensure_registry(&mut self) -> Result<()> {
+        if let State::Tracer(_) = self.state {
+            // replace the current state with a dummy tracer
+            let old_state = mem::replace(
+                &mut self.state,
+                State::Tracer(Tracer::new(TracerConfig::default())),
+            );
+
+            // convert tracer to registry
+            if let State::Tracer(tracer) = old_state {
+                // replace dummy with registry
+                self.state = State::Registry(tracer.registry().map_err(|e| anyhow!("{e}"))?);
+            }
+        }
+        Ok(())
     }
 }
 
