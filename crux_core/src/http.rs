@@ -1,5 +1,8 @@
+//! TODO mod docs
+
 use crate::{Command, RequestBody, ResponseBody};
 
+/// TODO docs
 pub fn get<F, Message>(url: String, msg: F) -> Command<Message>
 where
     F: FnOnce(Vec<u8>) -> Message + Sync + Send + 'static,
