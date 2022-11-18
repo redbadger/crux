@@ -1,4 +1,36 @@
-//! TODO mod docs
+//! Generation of foreign language types (currently Swift, Java, TypeScript) for Crux
+//!
+//! This module is behind the feature called `typegen`, and is not compiled into the default crate.
+//!
+//! Ensure that you have the following line in the `Cargo.toml` of your `shared_types` library.
+//!
+//! > Note that your `shared_types` library, should have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
+//!
+//! ```rust
+//! [build-dependencies]
+//! crux_core = { version = "0.1.", features = ["typegen"] }
+//! ```
+//!
+//! Then, you can create a `build.rs` in your `shared_types` library, that looks something like this:
+//!
+//! ```rust
+//! let mut gen = TypeGen::new();
+//!
+//! // you'll need to register more types than this...
+//! gen.register_type::<Msg>().expect("type registration failed");
+//!
+//! gen.swift("shared_types", output_root.join("swift"))
+//!     .expect("swift type gen failed");
+//!
+//! gen.java(
+//!     "com.redbadger.crux_core.shared_types",
+//!     output_root.join("java"),
+//! )
+//! .expect("java type gen failed");
+//!
+//! gen.typescript("shared_types", output_root.join("typescript"))
+//!     .expect("typescript type gen failed");
+//! ```
 
 use anyhow::{anyhow, bail, Result};
 use serde_generate::test_utils::Runtime;
@@ -15,7 +47,8 @@ enum State {
     Registry(Registry),
 }
 
-/// TODO docs
+/// The `TypeGen` struct stores the registered types so that they can be generated for foreign languages
+/// use `TypeGen::new()` to create an instance
 pub struct TypeGen {
     state: State,
 }
@@ -29,12 +62,22 @@ impl Default for TypeGen {
 }
 
 impl TypeGen {
-    /// TODO docs
+    /// Creates an instance of the `TypeGen` struct
     pub fn new() -> Self {
         Default::default()
     }
 
-    /// TODO docs
+    /// For each of the types that you want to share with the Shell, call this method:
+    /// e.g.
+    /// ```rust
+    /// gen.register_type::<Msg>()?;
+    /// gen.register_type::<platform::PlatformMsg>()?;
+    /// gen.register_type::<ViewModel>()?;
+    /// gen.register_type::<Request>()?;
+    /// gen.register_type::<RequestBody>()?;
+    /// gen.register_type::<Response>()?;
+    /// gen.register_type::<ResponseBody>()?;
+    /// ```
     pub fn register_type<'de, T>(&mut self) -> Result<()>
     where
         T: serde::Deserialize<'de>,
@@ -48,7 +91,12 @@ impl TypeGen {
         }
     }
 
-    /// TODO docs
+    /// Generates types for Swift
+    /// e.g.
+    /// ```rust
+    /// gen.swift("shared_types", output_root.join("swift"))
+    ///     .expect("swift type gen failed");
+    /// ```
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
@@ -85,7 +133,15 @@ impl TypeGen {
         Ok(())
     }
 
-    /// TODO docs
+    /// Generates types for Java (for use with Kotlin)
+    /// e.g.
+    /// ```rust
+    /// gen.java(
+    ///     "com.redbadger.crux_core.shared_types",
+    ///     output_root.join("java"),
+    /// )
+    /// .expect("java type gen failed");
+    /// ```
     pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
@@ -117,7 +173,12 @@ impl TypeGen {
         Ok(())
     }
 
-    /// TODO docs
+    /// Generates types for TypeScript
+    /// e.g.
+    /// ```rust
+    /// gen.typescript("shared_types", output_root.join("typescript"))
+    ///    .expect("typescript type gen failed");
+    /// ```
     pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
