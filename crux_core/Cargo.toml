@@ -1,7 +1,12 @@
 [package]
 name = "crux_core"
+description = "Cross-platform app development in Rust"
+repository = "https://github.com/redbadger/crux/"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+license = "Apache-2.0"
+keywords = ["ui", "ux", "ffi", "wasm", "rust", "onion_architecture"]
 
 [dependencies]
 anyhow = "1.0.66"
