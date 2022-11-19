@@ -1,0 +1,2 @@
+[workspace]
+members = ["cli", "shared", "shared_types", "web-yew"]
