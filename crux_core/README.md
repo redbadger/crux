@@ -72,7 +72,7 @@ This design means the core can be tested very easily, without any mocking and st
 
 The Foreign Function Interface allowing the shell to call the above functions is provided by Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/) on a mobile device, or in the browser, by [wasm-pack](https://rustwasm.github.io/wasm-pack/).
 
-In order both to send more complex data than UniFFI currently supports and to enforce the message passing semantics, all messages are serialised, sent across the boundary, then deserialised using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which also provides type generation for the foreign (non-Rust) languages.
+In order both to send more complex data than UniFFI currently supports and to enforce the message passing semantics, all messages are serialized, sent across the boundary, then deserialized using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which also provides type generation for the foreign (non-Rust) languages.
 
 This means that changes to types in the core, especially the `Message` type, propagate out into the shell implementations and cause errors where appropriate (such as an exhaustive match on an enum check).
 
@@ -120,8 +120,8 @@ This exchange continues until the core returns a `Command::Render` signalling th
 
 ## Run the Example Locally
 
-Refer to the [local execution](./docs/local-execution.md) README
+Refer to [examples/cat_facts](../examples/cat_facts/README.md) README
 
 ## How to Start Your Own New Project
 
-Refer to the [new project](./docs/new-project.md) README
+Refer to the [new project](../docs/new-project.md) README
