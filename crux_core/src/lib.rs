@@ -225,15 +225,15 @@ impl<A: App> Core<A> {
     /// }
     /// ```
     ///
-    /// The core interface passes across messages serialised as bytes. These can be
-    /// deserialised using the types generated using the [typegen] module.
+    /// The core interface passes across messages serialized as bytes. These can be
+    /// deserialized using the types generated using the [typegen] module.
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Receive a message from the shell.
     ///
-    /// The `msg` is serialised and will be deserialised by the core.
+    /// The `msg` is serialized and will be deserialized by the core.
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Message: Deserialize<'de>,
@@ -254,8 +254,8 @@ impl<A: App> Core<A> {
 
     /// Receive a response to a capability request from the shell.
     ///
-    /// The `res` is serialised and will be deserialised by the core. The `uuid`  field of
-    /// the deserialised [`Response`] MUST match the `uuid` of the [`Request`] which
+    /// The `res` is serialized and will be deserialized by the core. The `uuid`  field of
+    /// the deserialized [`Response`] MUST match the `uuid` of the [`Request`] which
     /// triggered it, else the core will panic.
     pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
     where
@@ -275,7 +275,7 @@ impl<A: App> Core<A> {
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
-    /// Get the current state of the app's view model (serialised).
+    /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
         let model = self.model.read().expect("Model RwLock was poisoned.");
 
@@ -313,7 +313,7 @@ pub enum RequestBody {
     Render,
 }
 
-/// Response to a side-effect request, returnig the resulting data from the Shell
+/// Response to a side-effect request, returning the resulting data from the Shell
 /// to the Core. The `uuid` links the [`Request`] with the corresponding `Response`
 /// to pass the data back to the [`App::update`] function wrapped in the correct `Message`.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]

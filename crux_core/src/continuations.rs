@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
 type Store<Message> = HashMap<[u8; 16], Box<dyn FnOnce(ResponseBody) -> Message + Sync + Send>>;
+
 pub(crate) struct ContinuationStore<Message>(RwLock<Store<Message>>);
 
 impl<Message> Default for ContinuationStore<Message> {
