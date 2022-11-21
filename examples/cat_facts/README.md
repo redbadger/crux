@@ -26,6 +26,13 @@
    # => Finished dev [unoptimized + debuginfo] target(s) in 1.40s
    ```
 
+1. Generate the shared types for your client applications
+
+   ```sh
+   cd shared_types
+   cargo build
+   ```
+
 ### Yew web app
 
 The web application should now build and run

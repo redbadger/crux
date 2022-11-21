@@ -1,11 +1,13 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import UAParser from "ua-parser-js";
 
-import useAsyncReducer from "../hooks/use_async_reducer";
-
-import init_core, { message, response, view } from "../shared/core";
+import init_core, {
+  message as sendMessage,
+  response as sendResponse,
+  view,
+} from "../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 import { Optional } from "shared_types/serde/mod";
@@ -49,102 +51,88 @@ function deserializeRequests(bytes: Uint8Array) {
   return requests;
 }
 
-async function reducer(state: State, action: Action): Promise<State> {
-  let serializer = new bcs.BcsSerializer();
-
-  var bytes;
-  switch (action.kind) {
-    case "response":
-      action.response.serialize(serializer);
-
-      bytes = response(serializer.getBytes());
-
-      break;
-    case "message":
-      action.message.serialize(serializer);
-
-      bytes = message(serializer.getBytes());
-
-      break;
-    default:
-      throw new Error();
-  }
-
-  let requests = deserializeRequests(bytes);
-
-  for (const request of requests) {
-    switch (request.body.constructor) {
-      case types.RequestBodyVariantRender:
-        let bytes = view();
-        let viewDeserializer = new bcs.BcsDeserializer(bytes);
-        let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-        state = {
-          platform: viewModel.platform,
-          image: viewModel.image,
-          fact: viewModel.fact,
-        };
-
-        break;
-      case types.RequestBodyVariantTime:
-        state = await reducer(state, {
-          kind: "response",
-          response: new types.Response(
-            request.uuid,
-            new types.ResponseBodyVariantTime(new Date().toISOString())
-          ),
-        });
-
-        break;
-      case types.RequestBodyVariantPlatform:
-        state = await reducer(state, {
-          kind: "response",
-          response: new types.Response(
-            request.uuid,
-            new types.ResponseBodyVariantPlatform(
-              new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
-            )
-          ),
-        });
-
-        break;
-      case types.RequestBodyVariantKVRead:
-        break;
-      case types.RequestBodyVariantKVWrite:
-        break;
-      case types.RequestBodyVariantHttp:
-        let url = (request.body as types.RequestBodyVariantHttp).value;
-
-        let resp = await fetch(url);
-        let body = await resp.arrayBuffer();
-        let response_bytes = Array.from(new Uint8Array(body));
-
-        state = await reducer(state, {
-          kind: "response",
-          response: new types.Response(
-            request.uuid,
-            new types.ResponseBodyVariantHttp(response_bytes)
-          ),
-        });
-
-        break;
-      default:
-    }
-  }
-
-  return state;
-}
-
 const Home: NextPage = () => {
-  const [state, dispatch] = useAsyncReducer(reducer, initialState);
+  const [state, setState] = useState(initialState);
+
+  const dispatch = (action: Message) => {
+    const serializer = new bcs.BcsSerializer();
+    action.message.serialize(serializer);
+    const requests = sendMessage(serializer.getBytes());
+    handleRequests(requests);
+  };
+
+  const respond = (action: Response) => {
+    const serializer = new bcs.BcsSerializer();
+    action.response.serialize(serializer);
+    const moreRequests = sendResponse(serializer.getBytes());
+    handleRequests(moreRequests);
+  };
+
+  const handleRequests = async (bytes: any) => {
+    let requests = deserializeRequests(bytes);
+
+    for (const request of requests) {
+      switch (request.body.constructor) {
+        case types.RequestBodyVariantRender:
+          let bytes = view();
+          let viewDeserializer = new bcs.BcsDeserializer(bytes);
+          let viewModel = types.ViewModel.deserialize(viewDeserializer);
+
+          // core asked for a re-render with new state
+          setState({
+            platform: viewModel.platform,
+            image: viewModel.image,
+            fact: viewModel.fact,
+          });
+
+          break;
+        case types.RequestBodyVariantTime:
+          respond({
+            kind: "response",
+            response: new types.Response(
+              request.uuid,
+              new types.ResponseBodyVariantTime(new Date().toISOString())
+            ),
+          });
+
+          break;
+        case types.RequestBodyVariantPlatform:
+          respond({
+            kind: "response",
+            response: new types.Response(
+              request.uuid,
+              new types.ResponseBodyVariantPlatform(
+                new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
+              )
+            ),
+          });
+          break;
+        case types.RequestBodyVariantKVRead:
+          break;
+        case types.RequestBodyVariantKVWrite:
+          break;
+        case types.RequestBodyVariantHttp:
+          const url = (request.body as types.RequestBodyVariantHttp).value;
+
+          const resp = await fetch(url);
+          const body = await resp.arrayBuffer();
+          const response_bytes = Array.from(new Uint8Array(body));
+
+          respond({
+            kind: "response",
+            response: new types.Response(
+              request.uuid,
+              new types.ResponseBodyVariantHttp(response_bytes)
+            ),
+          });
+          break;
+        default:
+      }
+    }
+  };
 
   useEffect(() => {
-    // Seems a bad idea...?
     async function loadCore() {
-      if (typeof window === undefined) {
-        return;
-      }
-
       await init_core();
 
       // Initial messages
