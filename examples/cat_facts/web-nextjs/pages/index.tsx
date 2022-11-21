@@ -54,7 +54,6 @@ function deserializeRequests(bytes: Uint8Array) {
 const Home: NextPage = () => {
   const [state, setState] = useState(initialState);
 
-  // think it would be great if responses could just be messages with an optional uuid field set.
   const dispatch = (action: Message) => {
     const serializer = new bcs.BcsSerializer();
     action.message.serialize(serializer);
