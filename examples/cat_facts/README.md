@@ -1,8 +1,8 @@
-## Run the Example Locally
+## Run the Cat Facts Example Locally
 
 ### Rust
 
-1. Make sure you have the following rust targets installed (e.g. `rustup target add <target-name>`)
+1. Make sure you have the following rust targets installed (e.g. `rustup target add <target-name>`). Note there is a `rust-toolchain.toml` in the root directory, so you should be able to just `rustup target list --installed` (in or below the root directory) and the targets should be installed if they are not already present.
 
    ```txt
    aarch64-apple-darwin
@@ -10,7 +10,6 @@
    aarch64-apple-ios-sim
    aarch64-linux-android
    wasm32-unknown-unknown
-   x86_64-apple-ios
    ```
 
 1. Install the `uniffi-bindgen` binary ...
@@ -32,8 +31,18 @@
 The web application should now build and run
 
 ```
-cd web
+cd web-yew
 trunk serve
+```
+
+### React web app
+
+The web application should now build and run
+
+```
+cd web-nextjs
+pnpm install
+pnpm dev
 ```
 
 ### iOS
@@ -47,8 +56,8 @@ You will need [Android Studio](https://developer.android.com/studio/).
 You might face a few problems:
 
 - The build fails due to a `linker-wrapper.sh` script failure.
-Make sure you have Python installed and your `PATH`
+  Make sure you have Python installed and your `PATH`
 - Android studio fails to install `git`.
-You can set the path to your git binary (e.g. the homebrew one) in the preferences under Version Control > Git
+  You can set the path to your git binary (e.g. the homebrew one) in the preferences under Version Control > Git
 
 You should be able to build and run the project in the simulator.

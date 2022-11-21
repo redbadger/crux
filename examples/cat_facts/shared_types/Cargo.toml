@@ -7,5 +7,5 @@ edition = "2021"
 
 [build-dependencies]
 anyhow = "1.0.66"
-crux_core = { path = "../crux_core", features = ["typegen"] }
+crux_core = { path = "../../../crux_core", features = ["typegen"] }
 shared = { path = "../shared" }
