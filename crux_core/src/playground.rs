@@ -4,7 +4,7 @@ pub struct Store<Effect, Event>(HashMap<usize, Command<Effect, Event>>);
 
 pub struct Command<Effect, Event> {
     effect: Effect, // TODO switch to `enum Effect`, so that shell knows what to do
-    resolve: Box<dyn Callback<Event>>,
+    resolve: Option<Box<dyn Callback<Event>>>,
 }
 
 impl<Effect, Event> Command<Effect, Event> {
@@ -16,12 +16,23 @@ impl<Effect, Event> Command<Effect, Event> {
     {
         Self {
             effect,
-            resolve: Box::new(resolve.into_callback()),
+            resolve: Some(Box::new(resolve.into_callback())),
+        }
+    }
+
+    pub fn new_without_callback(effect: Effect) -> Self {
+        Self {
+            effect,
+            resolve: None,
         }
     }
 
     pub fn resolve(&self, value: Box<dyn Any>) -> Event {
-        self.resolve.call(value)
+        if let Some(resolve) = &self.resolve {
+            return resolve.call(value);
+        }
+
+        panic!("mismatched capability response");
     }
 }
 
@@ -61,8 +72,8 @@ where
 }
 
 mod app {
-    use super::Command;
     use super::{cap_1, cap_2};
+    use super::{render, Command};
 
     #[derive(Debug, PartialEq, Eq)]
     pub enum AppEvent {
@@ -76,16 +87,18 @@ mod app {
     pub enum Effect {
         Capability1(cap_1::Request),
         Capability2(cap_2::Request),
+        Render,
     }
 
     pub fn update(event: AppEvent) -> Vec<Command<Effect, AppEvent>> {
         let cap1 = cap_1::Capability1::new(Effect::Capability1);
         let cap2 = cap_2::Capability2::new(Effect::Capability2);
+        let render = render::Render::new(Effect::Render);
         match event {
             AppEvent::Get1 => vec![cap1.get(1, AppEvent::Cap1)],
             AppEvent::Get2 => vec![cap2.get(2, AppEvent::Cap2)],
-            AppEvent::Cap1(_) => vec![],
-            AppEvent::Cap2(_) => vec![],
+            AppEvent::Cap1(_) => vec![render.render()],
+            AppEvent::Cap2(_) => vec![render.render()],
         }
     }
 }
@@ -162,6 +175,33 @@ mod cap_2 {
     // Public API of the capability, called by App::update.
 }
 
+mod render {
+    use super::Command;
+
+    pub struct Render<Ef>
+    where
+        Ef: Copy,
+    {
+        effect: Ef,
+    }
+
+    impl<Ef> Render<Ef>
+    where
+        Ef: Copy,
+    {
+        pub fn new(effect: Ef) -> Self {
+            Self { effect }
+        }
+
+        pub fn render<Ev>(&self) -> Command<Ef, Ev>
+        where
+            Ev: 'static,
+        {
+            Command::new_without_callback(self.effect)
+        }
+    } // Public API of the capability, called by App::update.
+}
+
 #[cfg(test)]
 mod tests {
     use std::any::Any;
@@ -211,5 +251,11 @@ mod tests {
 
         assert_eq!(event1, AppEvent::Cap1(cap_1::Response("1".to_string())));
         assert_eq!(event2, AppEvent::Cap2(cap_2::Response("2".to_string())));
+
+        let command3 = app::update(event1).remove(0);
+        let command4 = app::update(event2).remove(0);
+
+        assert!(matches!(command3.effect, Effect::Render));
+        assert!(matches!(command4.effect, Effect::Render));
     }
 }
