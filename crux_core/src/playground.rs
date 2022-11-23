@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap};
+use std::{any::Any, collections::HashMap, marker::PhantomData};
 
 struct Store<Event>(HashMap<usize, Box<dyn MakeEvent<Event>>>);
 
@@ -15,6 +15,39 @@ pub trait Event {}
 
 pub trait MakeEvent<Event> {
     fn make_event(&self, value: Box<dyn Any>) -> Event;
+}
+
+struct EventMaker<T, Event> {
+    function: Box<dyn Fn(T) -> Event>,
+    marker: PhantomData<T>,
+}
+
+impl<T, Event> MakeEvent<Event> for EventMaker<T, Event>
+where
+    T: 'static,
+{
+    fn make_event(&self, value: Box<dyn Any>) -> Event {
+        match value.downcast::<T>() {
+            Ok(response) => (self.function)(*response),
+            Err(_e) => panic!("Expected a Cap1Response to be returned!"),
+        }
+    }
+}
+
+trait IntoEventMaker<T, Event> {
+    fn into_event_maker(self) -> EventMaker<T, Event>;
+}
+
+impl<F, T, Event> IntoEventMaker<T, Event> for F
+where
+    F: Fn(T) -> Event + 'static,
+{
+    fn into_event_maker(self) -> EventMaker<T, Event> {
+        EventMaker {
+            function: Box::new(self),
+            marker: PhantomData,
+        }
+    }
 }
 
 mod app {
@@ -49,9 +82,7 @@ mod app {
 }
 
 mod cap_1 {
-    use std::any::Any;
-
-    use super::{CapabilityRequest, CapabilityResponse, Command, Event, MakeEvent};
+    use super::{CapabilityRequest, CapabilityResponse, Command, Event, IntoEventMaker};
 
     pub struct Cap1Request(bool);
     impl CapabilityRequest for Cap1Request {}
@@ -62,34 +93,21 @@ mod cap_1 {
 
     type Cap1Callback<Event> = fn(Cap1Response) -> Event;
 
-    impl<E> MakeEvent<E> for Cap1Callback<E>
-    where
-        E: Event + Sized,
-    {
-        // We need to know specific response type here at the latest
-        fn make_event(&self, response: Box<dyn Any>) -> E {
-            match response.downcast::<Cap1Response>() {
-                Ok(response) => self(*response),
-                Err(e) => panic!("Expected a Cap1Response to be returned!"),
-            }
-        }
-    }
-
     // Public API of the capability, called by App::update.
-    pub fn cap_1_get<E>(input: bool, callback: Cap1Callback<E>) -> Command<E>
+    pub fn cap_1_get<E, F>(input: bool, callback: F) -> Command<E>
     where
         E: Event + 'static,
+        F: Fn(Cap1Response) -> E + 'static,
     {
         Command {
             input: Box::new(Cap1Request(input)),
-            output_to_event: Box::new(callback),
+            output_to_event: Box::new(callback.into_event_maker()),
         }
     }
 }
 
 mod cap_2 {
-    use super::{CapabilityRequest, CapabilityResponse, Command, Event, MakeEvent};
-    use std::any::Any;
+    use super::{CapabilityRequest, CapabilityResponse, Command, Event, IntoEventMaker};
 
     pub struct Cap2Request(bool);
     impl CapabilityRequest for Cap2Request {}
@@ -98,34 +116,18 @@ mod cap_2 {
     pub struct Cap2Response(pub u8);
     impl CapabilityResponse for Cap2Response {}
 
-    type Cap2Callback<Event> = fn(Cap2Response) -> Event;
-
     // The capability is ~ `async (bool, (u8) -> Event(u8)) -> Event(u8);`
     // ex. (u8) -> Event(u8) = Event::Capability
 
-    impl<E> MakeEvent<E> for Cap2Callback<E>
-    where
-        E: Event + Sized,
-    {
-        // We need to know specific response type here at the latest
-        fn make_event(&self, response: Box<dyn Any>) -> E {
-            match response.downcast::<Cap2Response>() {
-                Ok(response) => self(*response),
-                Err(_) => panic!("Expected a Cap2Response to be returned!"),
-            }
-        }
-    }
-
     // Public API of the capability, called by App::update.
-    pub fn cap_2_get<E>(input: bool, callback: Cap2Callback<E>) -> Command<E>
+    pub fn cap_2_get<E, F>(input: bool, callback: F) -> Command<E>
     where
         E: Event + 'static,
+        F: Fn(Cap2Response) -> E + 'static + Sized,
     {
-        // convert callback into ???
-
         Command {
             input: Box::new(Cap2Request(input)),
-            output_to_event: Box::new(callback),
+            output_to_event: Box::new(callback.into_event_maker()),
         }
     }
 }
