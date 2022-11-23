@@ -4,28 +4,40 @@ pub struct Store<Effect, Event>(HashMap<usize, Command<Effect, Event>>);
 
 pub struct Command<Effect, Event> {
     effect: Effect, // TODO switch to `enum Effect`, so that shell knows what to do
-    resolve: Box<dyn MakeEvent<Event>>,
+    resolve: Box<dyn Callback<Event>>,
 }
 
 impl<Effect, Event> Command<Effect, Event> {
+    pub fn new<F, T>(effect: Effect, resolve: F) -> Self
+    where
+        F: Fn(T) -> Event + 'static,
+        Event: 'static,
+        T: 'static,
+    {
+        Self {
+            effect,
+            resolve: Box::new(resolve.into_callback()),
+        }
+    }
+
     pub fn resolve(&self, value: Box<dyn Any>) -> Event {
-        self.resolve.make_event(value)
+        self.resolve.call(value)
     }
 }
 
-pub trait MakeEvent<Event> {
-    fn make_event(&self, value: Box<dyn Any>) -> Event;
+pub trait Callback<Event> {
+    fn call(&self, value: Box<dyn Any>) -> Event;
 }
 
-struct EventMaker<T, Event> {
+struct CallBackFn<T, Event> {
     function: Box<dyn Fn(T) -> Event>,
 }
 
-impl<T, Event> MakeEvent<Event> for EventMaker<T, Event>
+impl<T, Event> Callback<Event> for CallBackFn<T, Event>
 where
     T: 'static,
 {
-    fn make_event(&self, value: Box<dyn Any>) -> Event {
+    fn call(&self, value: Box<dyn Any>) -> Event {
         match value.downcast::<T>() {
             Ok(response) => (self.function)(*response),
             Err(_e) => panic!("downcast failed!"),
@@ -33,16 +45,16 @@ where
     }
 }
 
-trait IntoEventMaker<T, Event> {
-    fn into_event_maker(self) -> EventMaker<T, Event>;
+trait IntoCallBack<T, Event> {
+    fn into_callback(self) -> CallBackFn<T, Event>;
 }
 
-impl<F, T, Event> IntoEventMaker<T, Event> for F
+impl<F, T, Event> IntoCallBack<T, Event> for F
 where
     F: Fn(T) -> Event + 'static,
 {
-    fn into_event_maker(self) -> EventMaker<T, Event> {
-        EventMaker {
+    fn into_callback(self) -> CallBackFn<T, Event> {
+        CallBackFn {
             function: Box::new(self),
         }
     }
@@ -79,7 +91,7 @@ mod app {
 }
 
 mod cap_1 {
-    use super::{Command, IntoEventMaker};
+    use super::Command;
 
     pub struct Capability1<MakeEffect, Ef>
     where
@@ -101,10 +113,7 @@ mod cap_1 {
             Ev: 'static,
             F: Fn(Response) -> Ev + 'static,
         {
-            Command {
-                effect: (self.effect)(Request(input)),
-                resolve: Box::new(callback.into_event_maker()),
-            }
+            Command::new((self.effect)(Request(input)), callback)
         }
     }
 
@@ -118,7 +127,7 @@ mod cap_1 {
 }
 
 mod cap_2 {
-    use super::{Command, IntoEventMaker};
+    use super::Command;
 
     pub struct Capability2<MakeEffect, Ef>
     where
@@ -140,10 +149,7 @@ mod cap_2 {
             Ev: 'static,
             F: Fn(Response) -> Ev + 'static,
         {
-            Command {
-                effect: (self.effect)(Request(input)),
-                resolve: Box::new(callback.into_event_maker()),
-            }
+            Command::new((self.effect)(Request(input)), callback)
         }
     }
 
