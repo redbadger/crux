@@ -1,13 +1,11 @@
 use std::{any::Any, collections::HashMap, marker::PhantomData};
 
-struct Store<Event>(HashMap<usize, Box<dyn MakeEvent<Event>>>);
+pub struct Store<Event>(HashMap<usize, Box<dyn MakeEvent<Event>>>);
 
 pub struct Command<Effect, Event> {
     input: Effect, // TODO switch to `enum Effect`, so that shell knows what to do
     pub output_to_event: Box<dyn MakeEvent<Event>>,
 }
-
-trait CapabilityResponse: Any {}
 
 pub trait Event {}
 
@@ -27,7 +25,7 @@ where
     fn make_event(&self, value: Box<dyn Any>) -> Event {
         match value.downcast::<T>() {
             Ok(response) => (self.function)(*response),
-            Err(_e) => panic!("Expected a Cap1Response to be returned!"),
+            Err(_e) => panic!("Invalid type!"),
         }
     }
 }
@@ -56,21 +54,23 @@ mod app {
     pub enum AppEvent {
         Get1,
         Get2,
-        Cap1(cap_1::Cap1Response), // FnOnce(u8) -> AppEvent
-        Cap2(cap_2::Cap2Response), // FnOnce(u8) -> AppEvent
+        Cap1(cap_1::Response), // FnOnce(u8) -> AppEvent
+        Cap2(cap_2::Response), // FnOnce(u8) -> AppEvent
     }
     impl Event for AppEvent {}
 
     pub enum Effect {
-        Capability1(cap_1::Cap1Request),
-        Capability2(cap_2::Cap2Request),
+        Capability1(cap_1::Request),
+        Capability2(cap_2::Request),
     }
 
     // App::update
     pub fn update(event: AppEvent) -> Vec<Command<Effect, AppEvent>> {
+        let cap1 = cap_1::Capability1::new(Effect::Capability1);
+        let cap2 = cap_2::Capability2::new(Effect::Capability2);
         match event {
-            AppEvent::Get1 => vec![cap_1::cap_1_get(1, AppEvent::Cap1)],
-            AppEvent::Get2 => vec![cap_2::cap_2_get(2, AppEvent::Cap2)],
+            AppEvent::Get1 => vec![cap1.get(1, AppEvent::Cap1)],
+            AppEvent::Get2 => vec![cap2.get(2, AppEvent::Cap2)],
             AppEvent::Cap1(_) => vec![],
             AppEvent::Cap2(_) => vec![],
         }
@@ -83,47 +83,77 @@ mod app {
 mod cap_1 {
     use super::{Command, Event, IntoEventMaker};
 
-    pub struct Cap1Request(pub u16);
-
-    #[derive(Debug, PartialEq, Eq)]
-    pub struct Cap1Response(pub String);
-
-    // Public API of the capability, called by App::update.
-    pub fn cap_1_get<Ef, Ev, F>(input: u16, callback: F) -> Command<Ef, Ev>
+    pub struct Capability1<MakeEffect, Ef>
     where
-        Ev: Event + 'static,
-        F: Fn(Cap1Response) -> Ev + 'static,
+        MakeEffect: Fn(Request) -> Ef,
     {
-        Command {
-            input: Box::new(Cap1Request(input)),
-            output_to_event: Box::new(callback.into_event_maker()),
+        effect: MakeEffect,
+    }
+
+    impl<MakeEffect, Ef> Capability1<MakeEffect, Ef>
+    where
+        MakeEffect: Fn(Request) -> Ef,
+    {
+        pub fn new(effect: MakeEffect) -> Self {
+            Self { effect }
+        }
+
+        pub fn get<Ev, F>(&self, input: u16, callback: F) -> Command<Ef, Ev>
+        where
+            Ev: Event + 'static,
+            F: Fn(Response) -> Ev + 'static,
+        {
+            Command {
+                input: (self.effect)(Request(input)),
+                output_to_event: Box::new(callback.into_event_maker()),
+            }
         }
     }
+
+    pub struct Request(pub u16);
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct Response(pub String);
+
+    // Public API of the capability, called by App::update.
 }
 
 mod cap_2 {
-    use super::{CapabilityResponse, Command, Event, IntoEventMaker};
+    use super::{Command, Event, IntoEventMaker};
 
-    pub struct Cap2Request(pub u8);
-
-    #[derive(Debug, PartialEq, Eq)]
-    pub struct Cap2Response(pub String);
-    impl CapabilityResponse for Cap2Response {}
-
-    // The capability is ~ `async (bool, (u8) -> Event(u8)) -> Event(u8);`
-    // ex. (u8) -> Event(u8) = Event::Capability
-
-    // Public API of the capability, called by App::update.
-    pub fn cap_2_get<Ef, Ev, F>(input: u8, callback: F) -> Command<Ef, Ev>
+    pub struct Capability2<MakeEffect, Ef>
     where
-        Ev: Event + 'static,
-        F: Fn(Cap2Response) -> Ev + 'static + Sized,
+        MakeEffect: Fn(Request) -> Ef,
     {
-        Command {
-            input: Box::new(Cap2Request(input)),
-            output_to_event: Box::new(callback.into_event_maker()),
+        effect: MakeEffect,
+    }
+
+    impl<MakeEffect, Ef> Capability2<MakeEffect, Ef>
+    where
+        MakeEffect: Fn(Request) -> Ef,
+    {
+        pub fn new(effect: MakeEffect) -> Self {
+            Self { effect }
+        }
+
+        pub fn get<Ev, F>(&self, input: u8, callback: F) -> Command<Ef, Ev>
+        where
+            Ev: Event + 'static,
+            F: Fn(Response) -> Ev + 'static,
+        {
+            Command {
+                input: (self.effect)(Request(input)),
+                output_to_event: Box::new(callback.into_event_maker()),
+            }
         }
     }
+
+    pub struct Request(pub u8);
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct Response(pub String);
+
+    // Public API of the capability, called by App::update.
 }
 
 #[cfg(test)]
@@ -131,8 +161,7 @@ mod tests {
     use std::any::Any;
     use std::collections::HashMap;
 
-    use super::cap_1::{Cap1Request, Cap1Response};
-    use super::cap_2::{Cap2Request, Cap2Response};
+    use super::{cap_1, cap_2};
 
     use super::app::{self, AppEvent, Effect};
     use super::Store;
@@ -157,12 +186,12 @@ mod tests {
         let effect2 = command2.input;
 
         let cap_1_response = match effect1 {
-            Effect::Capability1(Cap1Request(input)) => input.to_string(),
-            Effect::Capability2(Cap2Request(input)) => input.to_string(),
+            Effect::Capability1(cap_1::Request(input)) => cap_1::Response(input.to_string()),
+            _ => panic!(),
         };
         let cap_2_response = match effect2 {
-            Effect::Capability1(Cap1Request(input)) => input.to_string(),
-            Effect::Capability2(Cap2Request(input)) => input.to_string(),
+            Effect::Capability2(cap_2::Request(input)) => cap_2::Response(input.to_string()),
+            _ => panic!(),
         };
 
         // Core continuing
@@ -175,7 +204,7 @@ mod tests {
         let event1: AppEvent = continuation1.make_event(Box::new(cap_1_response) as Box<dyn Any>);
         let event2: AppEvent = continuation2.make_event(Box::new(cap_2_response) as Box<dyn Any>);
 
-        assert_eq!(event1, AppEvent::Cap1(Cap1Response("1".to_string())));
-        assert_eq!(event2, AppEvent::Cap2(Cap2Response("2".to_string())));
+        assert_eq!(event1, AppEvent::Cap1(cap_1::Response("1".to_string())));
+        assert_eq!(event2, AppEvent::Cap2(cap_2::Response("2".to_string())));
     }
 }
