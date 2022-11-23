@@ -1,28 +1,37 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-struct Store<Event>(HashMap<usize, Box<dyn MakeEvent<Event>>>);
+struct Store<T, Event>(HashMap<usize, Box<dyn MakeEvent<T, Event>>>)
+where
+    T: CapabilityResponse;
 
-pub struct Command<Event> {
-    input: Box<dyn CapabilityRequest>,
-    output_to_event: Box<dyn MakeEvent<Event>>,
+pub struct Command<T, Event>
+where
+    T: CapabilityResponse,
+{
+    input: Box<dyn CapabilityRequest>, // TODO switch to `enum Effect`, so that shell knows what to do
+    output_to_event: Box<dyn MakeEvent<T, Event>>,
 }
 
 trait CapabilityRequest {}
 
-trait CapabilityResponse {}
+trait CapabilityResponse: Sized {}
 
 pub trait Event {}
 
-struct Continuation<F, CapabilityOutput, Event>
+struct Continuation<F, T, Event>
 where
-    F: MakeEvent<Event>,
+    F: MakeEvent<T, Event>,
+    T: CapabilityResponse,
 {
     function: F,
-    marker: PhantomData<fn() -> (CapabilityOutput, Event)>,
+    marker: PhantomData<fn() -> (T, Event)>,
 }
 
-trait MakeEvent<Event> {
-    fn make(&self);
+trait MakeEvent<T, Event>
+where
+    T: CapabilityResponse,
+{
+    fn make_event(&self, value: T) -> Event;
 }
 
 struct IntoMakeEvent<T> {
@@ -30,10 +39,10 @@ struct IntoMakeEvent<T> {
 }
 
 mod app {
-    use super::{cap_1, cap_2, Store};
+    use super::{cap_1, cap_2, CapabilityResponse};
     use super::{Command, Event};
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq, Eq)]
     pub enum AppEvent {
         Get1,
         Get2,
@@ -47,9 +56,18 @@ mod app {
     }
 
     // App::update
-    pub fn update(_event: AppEvent) -> Command<AppEvent> {
+    pub fn update<T>(event: AppEvent) -> Vec<Command<T, AppEvent>>
+    where
+        T: CapabilityResponse,
+    {
+        match event {
+            AppEvent::Get1 => vec![cap_1::cap_1_get(true, AppEvent::Cap1)],
+            AppEvent::Get2 => vec![cap_2::cap_2_get(true, AppEvent::Cap2)],
+            AppEvent::Cap1(_) => vec![],
+            AppEvent::Cap2(_) => vec![],
+        }
         // eventually requests capability by calling
-        cap_1::cap_1_get(true, AppEvent::Cap1)
+
         // and wants AppEvent::Capability(u8) back
     }
 }
@@ -60,7 +78,7 @@ mod cap_1 {
     pub struct Cap1Request(bool);
     impl CapabilityRequest for Cap1Request {}
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq, Eq)]
     pub struct Cap1Response(u8);
     impl CapabilityResponse for Cap1Response {}
 
@@ -69,19 +87,21 @@ mod cap_1 {
     // The capability is ~ `async (bool, (u8) -> Event(u8)) -> Event(u8);`
     // ex. (u8) -> Event(u8) = Event::Capability
 
-    impl<E> MakeEvent<E> for Cap1Callback<E>
+    impl<R, E> MakeEvent<R, E> for Cap1Callback<E>
     where
         E: Event + Sized,
+        R: CapabilityResponse,
     {
-        fn make(&self) {
-            todo!()
+        fn make_event(&self, response: R) -> E {
+            (self)(response)
         }
     }
 
     // Public API of the capability, called by App::update.
-    pub fn cap_1_get<E>(input: bool, callback: Cap1Callback<E>) -> Command<E>
+    pub fn cap_1_get<R, E>(input: bool, callback: Cap1Callback<E>) -> Command<R, E>
     where
         E: Event + 'static,
+        R: CapabilityResponse,
     {
         // convert callback into ???
 
@@ -98,7 +118,7 @@ mod cap_2 {
     pub struct Cap2Request(bool);
     impl CapabilityRequest for Cap2Request {}
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq, Eq)]
     pub struct Cap2Response(u8);
     impl CapabilityResponse for Cap2Response {}
 
@@ -107,19 +127,21 @@ mod cap_2 {
     // The capability is ~ `async (bool, (u8) -> Event(u8)) -> Event(u8);`
     // ex. (u8) -> Event(u8) = Event::Capability
 
-    impl<E> MakeEvent<E> for Cap2Callback<E>
+    impl<R, E> MakeEvent<R, E> for Cap2Callback<E>
     where
         E: Event + Sized,
+        R: CapabilityResponse,
     {
-        fn make(&self) {
-            todo!()
+        fn make_event(&self, response: R) -> E {
+            (self)(response)
         }
     }
 
     // Public API of the capability, called by App::update.
-    pub fn cap_2_get<E>(input: bool, callback: Cap2Callback<E>) -> Command<E>
+    pub fn cap_2_get<R, E>(input: bool, callback: Cap2Callback<E>) -> Command<R, E>
     where
         E: Event + 'static,
+        R: CapabilityResponse,
     {
         // convert callback into ???
 
@@ -158,11 +180,12 @@ mod tests {
 
         let cap_1_response = Cap1Response(8u8);
         let cap_2_response = Cap2Response(8u8);
-        // call continuation with Http response
-        let event1: AppEvent = continuation1.call(cap_1_response);
-        let event2: AppEvent = continuation1.call(cap_2_response);
 
-        assert_eq!(event1, AppEvent::Cap1(cap_1_response));
-        assert_eq!(event2, AppEvent::Cap1(cap_2_response));
+        // call continuation with Http response
+        let event1: AppEvent = continuation1.make_event(cap_1_response);
+        let event2: AppEvent = continuation1.make_event(cap_2_response);
+
+        assert_eq!(event1, vec![AppEvent::Cap1(cap_1_response)]);
+        assert_eq!(event2, vec![AppEvent::Cap1(cap_2_response)]);
     }
 }
