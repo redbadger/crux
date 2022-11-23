@@ -1,15 +1,15 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-struct Store<Event>(HashMap<String, Box<dyn MakeEvent<Event>>>);
+struct Store<Event>(HashMap<usize, Box<dyn MakeEvent<Event>>>);
 
 pub struct Command<Event> {
-    input: Box<dyn CapabilityInput>,
+    input: Box<dyn CapabilityRequest>,
     output_to_event: Box<dyn MakeEvent<Event>>,
 }
 
-trait CapabilityInput {}
+trait CapabilityRequest {}
 
-trait CapabilityOutput {}
+trait CapabilityResponse {}
 
 pub trait Event {}
 
@@ -30,43 +30,46 @@ struct IntoMakeEvent<T> {
 }
 
 mod app {
-    use super::capability;
+    use super::{cap_1, cap_2, Store};
     use super::{Command, Event};
 
-    enum AppEvent {
-        Capability(capability::Output), // FnOnce(u8) -> AppEvent
-        SomeOther,
-        Whatever,
+    #[derive(Debug)]
+    pub enum AppEvent {
+        Get1,
+        Get2,
+        Cap1(cap_1::Cap1Response), // FnOnce(u8) -> AppEvent
+        Cap2(cap_2::Cap2Response), // FnOnce(u8) -> AppEvent
     }
     impl Event for AppEvent {}
 
     enum Effect {
-        Capability(capability::Input),
+        Capability(cap_1::Cap1Request),
     }
 
     // App::update
-    fn update(_event: AppEvent) -> Command<AppEvent> {
+    pub fn update(_event: AppEvent) -> Command<AppEvent> {
         // eventually requests capability by calling
-        capability::capability(true, AppEvent::Capability)
+        cap_1::cap_1_get(true, AppEvent::Cap1)
         // and wants AppEvent::Capability(u8) back
     }
 }
 
-mod capability {
-    use super::{CapabilityInput, CapabilityOutput, Command, Event, MakeEvent};
+mod cap_1 {
+    use super::{CapabilityRequest, CapabilityResponse, Command, Event, MakeEvent};
 
-    pub struct Input(bool);
-    impl CapabilityInput for Input {}
+    pub struct Cap1Request(bool);
+    impl CapabilityRequest for Cap1Request {}
 
-    pub struct Output(u8);
-    impl CapabilityOutput for Output {}
+    #[derive(Debug)]
+    pub struct Cap1Response(u8);
+    impl CapabilityResponse for Cap1Response {}
 
-    type Callback<Event> = fn(Output) -> Event;
+    type Cap1Callback<Event> = fn(Cap1Response) -> Event;
 
     // The capability is ~ `async (bool, (u8) -> Event(u8)) -> Event(u8);`
     // ex. (u8) -> Event(u8) = Event::Capability
 
-    impl<E> MakeEvent<E> for Callback<E>
+    impl<E> MakeEvent<E> for Cap1Callback<E>
     where
         E: Event + Sized,
     {
@@ -76,17 +79,90 @@ mod capability {
     }
 
     // Public API of the capability, called by App::update.
-    pub fn capability<E>(input: bool, callback: Callback<E>) -> Command<E>
+    pub fn cap_1_get<E>(input: bool, callback: Cap1Callback<E>) -> Command<E>
     where
         E: Event + 'static,
     {
         // convert callback into ???
 
-        let output_to_event = Box::new(callback);
+        Command {
+            input: Box::new(Cap1Request(input)),
+            output_to_event: Box::new(callback),
+        }
+    }
+}
+
+mod cap_2 {
+    use super::{CapabilityRequest, CapabilityResponse, Command, Event, MakeEvent};
+
+    pub struct Cap2Request(bool);
+    impl CapabilityRequest for Cap2Request {}
+
+    #[derive(Debug)]
+    pub struct Cap2Response(u8);
+    impl CapabilityResponse for Cap2Response {}
+
+    type Cap2Callback<Event> = fn(Cap2Response) -> Event;
+
+    // The capability is ~ `async (bool, (u8) -> Event(u8)) -> Event(u8);`
+    // ex. (u8) -> Event(u8) = Event::Capability
+
+    impl<E> MakeEvent<E> for Cap2Callback<E>
+    where
+        E: Event + Sized,
+    {
+        fn make(&self) {
+            todo!()
+        }
+    }
+
+    // Public API of the capability, called by App::update.
+    pub fn cap_2_get<E>(input: bool, callback: Cap2Callback<E>) -> Command<E>
+    where
+        E: Event + 'static,
+    {
+        // convert callback into ???
 
         Command {
-            input: Box::new(Input(input)),
-            output_to_event,
+            input: Box::new(Cap2Request(input)),
+            output_to_event: Box::new(callback),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::playground::{
+        app::{App, AppEvent},
+        Store,
+    };
+
+    use super::app;
+
+    #[test]
+    fn test_cap_output_to_event() {
+        let store = Store::<AppEvent>(HashMap::new());
+
+        let command1 = app::update(AppEvent::Get1);
+        let command2 = app::update(AppEvent::Get2);
+
+        // store continuation
+        store.0.insert(1, command1.output_to_event);
+        store.0.insert(2, command2.output_to_event);
+
+        // fetch continuation
+        let continuation1 = store.0.remove(1).unwrap();
+        let continuation2 = store.0.remove(2).unwrap();
+
+        let cap_1_response = Cap1Response(8u8);
+        let cap_2_response = Cap2Response(8u8);
+        // call continuation with Http response
+        let event1: AppEvent = continuation1.call(cap_1_response);
+        let event2: AppEvent = continuation1.call(cap_2_response);
+
+        assert_eq!(event1, AppEvent::Cap1(cap_1_response));
+        assert_eq!(event2, AppEvent::Cap1(cap_2_response));
     }
 }
