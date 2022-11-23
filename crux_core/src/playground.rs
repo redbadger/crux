@@ -1,15 +1,15 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-struct Store<T, Event>(HashMap<usize, Box<dyn MakeEvent<T, Event>>>)
+struct Store<R, Event>(HashMap<usize, Box<dyn MakeEvent<R, Event>>>)
 where
-    T: CapabilityResponse;
+    R: CapabilityResponse; // This could also be an app supplied `enum Outcome` with a similar effect
 
-pub struct Command<T, Event>
+pub struct Command<R, Event>
 where
-    T: CapabilityResponse,
+    R: CapabilityResponse, // This could also be an app supplied `enum Outcome` with a similar effect
 {
     input: Box<dyn CapabilityRequest>, // TODO switch to `enum Effect`, so that shell knows what to do
-    output_to_event: Box<dyn MakeEvent<T, Event>>,
+    output_to_event: Box<dyn MakeEvent<R, Event>>,
 }
 
 trait CapabilityRequest {}
@@ -18,20 +18,20 @@ trait CapabilityResponse: Sized {}
 
 pub trait Event {}
 
-struct Continuation<F, T, Event>
+struct Continuation<F, R, Event>
 where
-    F: MakeEvent<T, Event>,
-    T: CapabilityResponse,
+    F: MakeEvent<R, Event>,
+    R: CapabilityResponse,
 {
     function: F,
-    marker: PhantomData<fn() -> (T, Event)>,
+    marker: PhantomData<fn() -> (R, Event)>,
 }
 
-trait MakeEvent<T, Event>
+trait MakeEvent<R, Event>
 where
-    T: CapabilityResponse,
+    R: CapabilityResponse,
 {
-    fn make_event(&self, value: T) -> Event;
+    fn make_event(&self, value: R) -> Event;
 }
 
 struct IntoMakeEvent<T> {
@@ -56,9 +56,9 @@ mod app {
     }
 
     // App::update
-    pub fn update<T>(event: AppEvent) -> Vec<Command<T, AppEvent>>
+    pub fn update<R>(event: AppEvent) -> Vec<Command<R, AppEvent>>
     where
-        T: CapabilityResponse,
+        R: CapabilityResponse,
     {
         match event {
             AppEvent::Get1 => vec![cap_1::cap_1_get(true, AppEvent::Cap1)],
@@ -84,14 +84,12 @@ mod cap_1 {
 
     type Cap1Callback<Event> = fn(Cap1Response) -> Event;
 
-    // The capability is ~ `async (bool, (u8) -> Event(u8)) -> Event(u8);`
-    // ex. (u8) -> Event(u8) = Event::Capability
-
     impl<R, E> MakeEvent<R, E> for Cap1Callback<E>
     where
         E: Event + Sized,
         R: CapabilityResponse,
     {
+        // We need to know specific response type here at the latest
         fn make_event(&self, response: R) -> E {
             (self)(response)
         }
@@ -132,6 +130,7 @@ mod cap_2 {
         E: Event + Sized,
         R: CapabilityResponse,
     {
+        // We need to know specific response type here at the latest
         fn make_event(&self, response: R) -> E {
             (self)(response)
         }
