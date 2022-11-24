@@ -1,5 +1,3 @@
-package com.redbadger.crux_core.shared_types;
-
 public final class Requests {
 
   public static java.util.List<Request> bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {

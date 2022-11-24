@@ -3,7 +3,7 @@
 
 @file:Suppress("NAME_SHADOWING")
 
-package com.redbadger.crux_core.shared
+package com.redbadger.catfacts.shared
 
 // Common helper code.
 //

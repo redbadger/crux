@@ -1,4 +1,4 @@
-package com.redbadger.crux_core.shared_types;
+package com.redbadger.catfacts.shared_types;
 
 
 public final class ViewModel {
