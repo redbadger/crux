@@ -1,9 +1,11 @@
-use std::{any::Any, collections::HashMap};
+use bcs::from_bytes;
+use serde::de::DeserializeOwned;
+use std::collections::HashMap;
 
 pub struct Store<Effect, Event>(HashMap<usize, Command<Effect, Event>>);
 
 pub struct Command<Effect, Event> {
-    effect: Effect, // TODO switch to `enum Effect`, so that shell knows what to do
+    pub effect: Effect, // TODO switch to `enum Effect`, so that shell knows what to do
     resolve: Option<Box<dyn Callback<Event>>>,
 }
 
@@ -12,7 +14,7 @@ impl<Effect, Event> Command<Effect, Event> {
     where
         F: Fn(T) -> Event + 'static,
         Event: 'static,
-        T: 'static,
+        T: 'static + DeserializeOwned,
     {
         Self {
             effect,
@@ -27,7 +29,7 @@ impl<Effect, Event> Command<Effect, Event> {
         }
     }
 
-    pub fn resolve(&self, value: Box<dyn Any>) -> Event {
+    pub fn resolve(&self, value: Vec<u8>) -> Event {
         if let Some(resolve) = &self.resolve {
             return resolve.call(value);
         }
@@ -37,7 +39,7 @@ impl<Effect, Event> Command<Effect, Event> {
 }
 
 pub trait Callback<Event> {
-    fn call(&self, value: Box<dyn Any>) -> Event;
+    fn call(&self, value: Vec<u8>) -> Event;
 }
 
 struct CallBackFn<T, Event> {
@@ -46,13 +48,11 @@ struct CallBackFn<T, Event> {
 
 impl<T, Event> Callback<Event> for CallBackFn<T, Event>
 where
-    T: 'static,
+    T: 'static + DeserializeOwned,
 {
-    fn call(&self, value: Box<dyn Any>) -> Event {
-        match value.downcast::<T>() {
-            Ok(response) => (self.function)(*response),
-            Err(_e) => panic!("downcast failed!"),
-        }
+    fn call(&self, value: Vec<u8>) -> Event {
+        let response = from_bytes::<T>(&value).unwrap();
+        (self.function)(response)
     }
 }
 
@@ -71,7 +71,7 @@ where
     }
 }
 
-mod app {
+pub mod app {
     use super::{cap_1, cap_2};
     use super::{render, Command};
 
@@ -103,8 +103,9 @@ mod app {
     }
 }
 
-mod cap_1 {
+pub mod cap_1 {
     use super::Command;
+    use serde::{Deserialize, Serialize};
 
     pub struct Capability1<MakeEffect, Ef>
     where
@@ -133,14 +134,15 @@ mod cap_1 {
     #[derive(Copy, Clone)]
     pub struct Request(pub u16);
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Response(pub String);
 
     // Public API of the capability, called by App::update.
 }
 
-mod cap_2 {
+pub mod cap_2 {
     use super::Command;
+    use serde::{Deserialize, Serialize};
 
     pub struct Capability2<MakeEffect, Ef>
     where
@@ -169,13 +171,13 @@ mod cap_2 {
     #[derive(Copy, Clone)]
     pub struct Request(pub u8);
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Response(pub String);
 
     // Public API of the capability, called by App::update.
 }
 
-mod render {
+pub mod render {
     use super::Command;
 
     pub struct Render<Ef>
@@ -204,7 +206,7 @@ mod render {
 
 #[cfg(test)]
 mod tests {
-    use std::any::Any;
+    use bcs::to_bytes;
     use std::collections::HashMap;
 
     use super::{cap_1, cap_2};
@@ -246,8 +248,8 @@ mod tests {
         let command2 = store.0.remove(&2).unwrap();
 
         // call continuation with Http response
-        let event1: AppEvent = command1.resolve(Box::new(cap_1_response) as Box<dyn Any>);
-        let event2: AppEvent = command2.resolve(Box::new(cap_2_response) as Box<dyn Any>);
+        let event1: AppEvent = command1.resolve(to_bytes(&cap_1_response).unwrap());
+        let event2: AppEvent = command2.resolve(to_bytes(&cap_2_response).unwrap());
 
         assert_eq!(event1, AppEvent::Cap1(cap_1::Response("1".to_string())));
         assert_eq!(event2, AppEvent::Cap2(cap_2::Response("2".to_string())));
