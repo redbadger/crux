@@ -8,6 +8,12 @@ pub mod effect;
 pub use app::*;
 pub use effect::Effect;
 
+pub use crux_core::http;
+pub use crux_core::key_value;
+pub use crux_core::platform;
+pub use crux_core::time;
+pub use crux_core::{Request, Response};
+
 // TODO hide this plumbing
 
 uniffi_macros::include_scaffolding!("shared");
@@ -22,8 +28,8 @@ pub fn message(data: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
-pub fn response(data: &[u8]) -> Vec<u8> {
-    CORE.response(data)
+pub fn response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
+    CORE.response(uuid, data)
 }
 
 #[wasm_bindgen]

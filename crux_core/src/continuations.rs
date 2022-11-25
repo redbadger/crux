@@ -1,5 +1,5 @@
 use crate::command::{Callback, Command};
-use crate::{Request, Response};
+use crate::Request;
 
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
@@ -33,15 +33,13 @@ impl<Event> ContinuationStore<Event> {
         }
     }
 
-    pub(crate) fn resume(&self, response: Response) -> Event {
-        let Response { uuid, body } = response;
-
+    pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) -> Event {
         let resolve = self
             .0
             .write()
             .expect("Continuation RwLock poisoned.")
             .0
-            .remove(&uuid[..])
+            .remove(uuid)
             .unwrap_or_else(|| panic!("Continuation with UUID {:?} not found.", uuid));
 
         resolve.call(body)

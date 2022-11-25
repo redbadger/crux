@@ -5,12 +5,13 @@ use async_std::{
 };
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use shared::*;
 use std::{collections::VecDeque, time::SystemTime};
 
-enum CoreMessage {
+use shared::{http, time, Effect, Event, Request, Response};
+
+enum CoreMessage<T> {
     Message(Event),
-    Response(Response),
+    Response(Vec<u8>, Response<T>),
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -32,7 +33,7 @@ struct Args {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    let mut queue: VecDeque<CoreMessage> = VecDeque::new();
+    let mut queue: VecDeque<CoreMessage<_>> = VecDeque::new();
 
     queue.push_back(CoreMessage::Message(Event::Restore));
 
@@ -41,57 +42,68 @@ async fn main() -> Result<()> {
 
         let reqs = match msg {
             Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m)?),
-            Some(CoreMessage::Response(r)) => shared::response(&bcs::to_bytes(&r)?),
+            Some(CoreMessage::Response(uuid, output)) => {
+                shared::response(&uuid, &bcs::to_bytes(&output)?)
+            }
             _ => vec![],
         };
-        let reqs: Vec<Request> = bcs::from_bytes(&reqs)?;
+        let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
         for req in reqs {
-            let Request { uuid, body } = req;
-            match body {
-                RequestBody::Render => (),
-                RequestBody::Time => {
+            let Request { uuid, effect } = req;
+            match effect {
+                Effect::Render => (),
+                Effect::Time => {
                     let now: DateTime<Utc> = SystemTime::now().into();
                     let iso_time = now.to_rfc3339();
 
-                    queue.push_back(CoreMessage::Response(Response {
-                        body: ResponseBody::Time(iso_time),
+                    queue.push_back(CoreMessage::Response(
                         uuid,
-                    }));
+                        Response {
+                            body: time::Response(iso_time),
+                        },
+                    ));
                 }
-                RequestBody::Http(url) => match surf::get(&url).recv_bytes().await {
+                Effect::Http(url) => match surf::get(&url).recv_bytes().await {
                     Ok(bytes) => {
-                        queue.push_back(CoreMessage::Response(Response {
-                            body: ResponseBody::Http(bytes),
+                        queue.push_back(CoreMessage::Response(
                             uuid,
-                        }));
+                            Response {
+                                body: http::Response {
+                                    status: 200,
+                                    body: bytes,
+                                },
+                            },
+                        ));
                     }
                     Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
                 },
-                RequestBody::Platform => {}
-                RequestBody::KVRead(key) => {
-                    let bytes = read_state(&key).await.ok();
+                Effect::Platform => {}
+                Effect::KeyValue(request) => match request {
+                    crux_core::key_value::Request::Read(key) => {
+                        let bytes = read_state(&key).await.ok();
 
-                    let initial_msg = match &args.cmd {
-                        Command::Clear => CoreMessage::Message(Event::Clear),
-                        Command::Get => CoreMessage::Message(Event::Get),
-                        Command::Fetch => CoreMessage::Message(Event::Fetch),
-                    };
+                        let initial_msg = match &args.cmd {
+                            Command::Clear => CoreMessage::Message(Event::Clear),
+                            Command::Get => CoreMessage::Message(Event::Get),
+                            Command::Fetch => CoreMessage::Message(Event::Fetch),
+                        };
 
-                    queue.push_back(CoreMessage::Response(Response {
-                        body: ResponseBody::KVRead(bytes),
-                        uuid,
-                    }));
-                    queue.push_back(initial_msg);
-                }
-                RequestBody::KVWrite(key, val) => {
-                    let success = write_state(&key, &val).await.is_ok();
+                        queue.push_back(CoreMessage::Response(Response {
+                            body: ResponseBody::KVRead(bytes),
+                            uuid,
+                        }));
+                        queue.push_back(initial_msg);
+                    }
+                    crux_core::key_value::Request::Write(key, value) => {
+                        let success = write_state(&key, &val).await.is_ok();
 
-                    queue.push_back(CoreMessage::Response(Response {
-                        body: ResponseBody::KVWrite(success),
-                        uuid,
-                    }));
-                }
+                        queue.push_back(CoreMessage::Response(Response {
+                            body: ResponseBody::KVWrite(success),
+                            uuid,
+                        }));
+                    }
+                },
             }
         }
     }

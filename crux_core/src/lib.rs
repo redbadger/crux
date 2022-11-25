@@ -213,12 +213,11 @@ impl<A: App> Core<A> {
     /// The `res` is serialized and will be deserialized by the core. The `uuid`  field of
     /// the deserialized [`Response`] MUST match the `uuid` of the [`Request`] which
     /// triggered it, else the core will panic.
-    pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
+    pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let response = bcs::from_bytes(res).expect("Response deserialization failed.");
-        let msg = self.continuations.resume(response);
+        let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
@@ -254,7 +253,6 @@ pub struct Request<Effect> {
 /// to the Core. The `uuid` links the [`Request`] with the corresponding `Response`
 /// to pass the data back to the [`App::update`] function wrapped in the correct `Message`.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct Response {
-    pub uuid: Vec<u8>,
-    pub body: Vec<u8>, // Should this be an `enum Outcome`?
+pub struct Response<T> {
+    pub body: T, // Should this be an `enum Outcome`?
 }
