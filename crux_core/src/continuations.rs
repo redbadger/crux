@@ -4,7 +4,7 @@ use crate::{Request, Response};
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
-struct Store<Event>(HashMap<[u8; 16], Box<dyn Callback<Event>>>);
+struct Store<Event>(HashMap<[u8; 16], Box<dyn Callback<Event> + Send + Sync>>);
 
 pub(crate) struct ContinuationStore<Event>(RwLock<Store<Event>>);
 

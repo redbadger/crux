@@ -9,7 +9,7 @@ use shared::*;
 use std::{collections::VecDeque, time::SystemTime};
 
 enum CoreMessage {
-    Message(Msg),
+    Message(Event),
     Response(Response),
 }
 
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 
     let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-    queue.push_back(CoreMessage::Message(Msg::Restore));
+    queue.push_back(CoreMessage::Message(Event::Restore));
 
     while !queue.is_empty() {
         let msg = queue.pop_front();
@@ -73,9 +73,9 @@ async fn main() -> Result<()> {
                     let bytes = read_state(&key).await.ok();
 
                     let initial_msg = match &args.cmd {
-                        Command::Clear => CoreMessage::Message(Msg::Clear),
-                        Command::Get => CoreMessage::Message(Msg::Get),
-                        Command::Fetch => CoreMessage::Message(Msg::Fetch),
+                        Command::Clear => CoreMessage::Message(Event::Clear),
+                        Command::Get => CoreMessage::Message(Event::Get),
+                        Command::Fetch => CoreMessage::Message(Event::Fetch),
                     };
 
                     queue.push_back(CoreMessage::Response(Response {

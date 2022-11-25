@@ -8,13 +8,13 @@ use serde::de::DeserializeOwned;
 /// function when the command has been executed, and passed the resulting data.
 pub struct Command<Effect, Event> {
     pub(crate) effect: Effect, // TODO switch to `enum Effect`, so that shell knows what to do
-    pub(crate) resolve: Option<Box<dyn Callback<Event>>>,
+    pub(crate) resolve: Option<Box<dyn Callback<Event> + Send + Sync>>,
 }
 
 impl<Effect, Event> Command<Effect, Event> {
     pub fn new<F, T>(effect: Effect, resolve: F) -> Self
     where
-        F: Fn(T) -> Event + 'static,
+        F: Fn(T) -> Event + Send + Sync + 'static,
         Event: 'static,
         T: 'static + DeserializeOwned,
     {
@@ -68,7 +68,7 @@ impl<Effect, Event> Command<Effect, Event> {
 
     fn map<ParentEvent, F>(self, f: F) -> Command<Effect, ParentEvent>
     where
-        F: Fn(Event) -> ParentEvent + Sync + Send + 'static,
+        F: Fn(Event) -> ParentEvent + Sync + Send + Copy + 'static,
         Event: 'static,
         ParentEvent: 'static,
     {
@@ -90,7 +90,7 @@ pub trait Callback<Event> {
 }
 
 struct CallBackFn<T, Event> {
-    function: Box<dyn Fn(T) -> Event>,
+    function: Box<dyn Fn(T) -> Event + Send + Sync>,
 }
 
 impl<T, Event> Callback<Event> for CallBackFn<T, Event>
@@ -109,7 +109,7 @@ trait IntoCallBack<T, Event> {
 
 impl<F, T, Event> IntoCallBack<T, Event> for F
 where
-    F: Fn(T) -> Event + 'static,
+    F: Fn(T) -> Event + Send + Sync + 'static,
 {
     fn into_callback(self) -> CallBackFn<T, Event> {
         CallBackFn {

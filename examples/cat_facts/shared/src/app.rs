@@ -1,5 +1,8 @@
-pub use crux_core::*;
+use crux_core::{http, time};
+pub use crux_core::{App, Command};
 use serde::{Deserialize, Serialize};
+
+use crate::effect::{Capabilities, Effect};
 
 pub mod platform;
 
@@ -17,11 +20,6 @@ impl CatFact {
     fn format(&self) -> String {
         format!("{} ({} bytes)", self.fact, self.length)
     }
-}
-
-#[derive(Default)]
-pub struct CatFacts {
-    platform: platform::Platform,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -52,113 +50,130 @@ pub struct ViewModel {
     pub platform: String,
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum Msg {
+#[derive(Deserialize)]
+pub enum Event {
     None,
     GetPlatform,
-    Platform(platform::PlatformMsg),
+    Platform(platform::Event),
     Clear,
     Get,
     Fetch,
     Restore,                   // restore state
     SetState(Option<Vec<u8>>), // receive the data to restore state with
-    SetFact(Vec<u8>),
-    SetImage(Vec<u8>),
-    CurrentTime(String),
+    SetFact(http::Response),
+    SetImage(http::Response),
+    CurrentTime(time::Response),
+}
+
+#[derive(Default)]
+pub struct CatFacts {
+    capabilities: Capabilities,
+    platform: platform::Platform,
 }
 
 impl App for CatFacts {
-    type Message = Msg;
     type Model = Model;
+    type Event = Event;
+    type Effect = Effect;
     type ViewModel = ViewModel;
 
-    fn update(&self, msg: Msg, model: &mut Model) -> Vec<Command<Msg>> {
+    fn update(&self, msg: Event, model: &mut Model) -> Vec<Command<Effect, Event>> {
         match msg {
-            Msg::GetPlatform => Command::lift(
+            Event::GetPlatform => Command::lift(
                 self.platform
-                    .update(platform::PlatformMsg::Get, &mut model.platform),
-                Msg::Platform,
+                    .update(platform::Event::Get, &mut model.platform),
+                Event::Platform,
             ),
-            Msg::Platform(msg) => Command::lift(
+            Event::Platform(msg) => Command::lift(
                 self.platform.update(msg, &mut model.platform),
-                Msg::Platform,
+                Event::Platform,
             ),
-            Msg::Clear => {
+            Event::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    key_value::write("state".to_string(), bytes, |_| Msg::None),
-                    Command::render(),
+                    self.capabilities
+                        .key_value
+                        .write("state", bytes, |_| Event::None),
+                    self.capabilities.render.render(),
                 ]
             }
-            Msg::Get => {
+            Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![Command::render()]
+                    vec![self.capabilities.render.render()]
                 } else {
                     model.cat_image = Some(CatImage::default());
 
                     vec![
-                        http::get(FACT_API_URL.to_owned(), Msg::SetFact),
-                        http::get(IMAGE_API_URL.to_string(), Msg::SetImage),
-                        Command::render(),
+                        self.capabilities.http.get(FACT_API_URL, Event::SetFact),
+                        self.capabilities.http.get(IMAGE_API_URL, Event::SetImage),
+                        self.capabilities.render.render(),
                     ]
                 }
             }
-            Msg::Fetch => {
+            Event::Fetch => {
                 model.cat_image = Some(CatImage::default());
 
                 vec![
-                    http::get(FACT_API_URL.to_owned(), Msg::SetFact),
-                    http::get(IMAGE_API_URL.to_string(), Msg::SetImage),
-                    Command::render(),
+                    self.capabilities.http.get(FACT_API_URL, Event::SetFact),
+                    self.capabilities.http.get(IMAGE_API_URL, Event::SetImage),
+                    self.capabilities.render.render(),
                 ]
             }
-            Msg::SetFact(bytes) => {
-                let fact = serde_json::from_slice::<CatFact>(&bytes).unwrap();
+            Event::SetFact(http::Response { body, status: _ }) => {
+                // TODO check status
+                let fact = serde_json::from_slice::<CatFact>(&body).unwrap();
                 model.cat_fact = Some(fact);
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    key_value::write("state".to_string(), bytes, |_| Msg::None),
-                    time::get(Msg::CurrentTime),
+                    self.capabilities
+                        .key_value
+                        .write("state", bytes, |_| Event::None),
+                    self.capabilities.time.get(Event::CurrentTime),
                 ]
             }
-            Msg::CurrentTime(iso_time) => {
-                model.time = Some(iso_time);
+            Event::CurrentTime(iso_time) => {
+                model.time = Some(iso_time.0);
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    key_value::write("state".to_string(), bytes, |_| Msg::None),
-                    Command::render(),
+                    self.capabilities
+                        .key_value
+                        .write("state", bytes, |_| Event::None),
+                    self.capabilities.render.render(),
                 ]
             }
-            Msg::SetImage(bytes) => {
-                let image = serde_json::from_slice::<CatImage>(&bytes).unwrap();
+            Event::SetImage(http::Response { body, status: _ }) => {
+                // TODO check status
+                let image = serde_json::from_slice::<CatImage>(&body).unwrap();
                 model.cat_image = Some(image);
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    key_value::write("state".to_string(), bytes, |_| Msg::None),
-                    Command::render(),
+                    self.capabilities
+                        .key_value
+                        .write("state", bytes, |_| Event::None),
+                    self.capabilities.render.render(),
                 ]
             }
-            Msg::Restore => {
-                vec![key_value::read("state".to_string(), Msg::SetState)]
+            Event::Restore => {
+                vec![self.capabilities.key_value.read("state", Event::SetState)]
             }
-            Msg::SetState(bytes) => {
+            Event::SetState(bytes) => {
                 if let Some(bytes) = bytes {
                     if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
                         *model = m
                     };
                 }
 
-                vec![Command::render()]
+                vec![self.capabilities.render.render()]
             }
-            Msg::None => vec![],
+            Event::None => vec![],
         }
     }
 

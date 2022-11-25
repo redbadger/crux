@@ -1,34 +1,33 @@
 //! TODO mod docs
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::Command;
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Request {
     Read(String),
     Write(String, Vec<u8>),
 }
 
-pub struct KeyValue<MakeEffect, Ef>
-where
-    MakeEffect: Fn(Request) -> Ef,
-{
-    effect: MakeEffect,
+pub struct KeyValue<Ef> {
+    effect: Box<dyn Fn(Request) -> Ef + Sync>,
 }
 
-impl<MakeEffect, Ef> KeyValue<MakeEffect, Ef>
-where
-    MakeEffect: Fn(Request) -> Ef,
-{
-    pub fn new(effect: MakeEffect) -> Self {
-        Self { effect }
+impl<Ef> KeyValue<Ef> {
+    pub fn new<MakeEffect>(effect: MakeEffect) -> Self
+    where
+        MakeEffect: Fn(Request) -> Ef + Sync + 'static,
+    {
+        Self {
+            effect: Box::new(effect),
+        }
     }
 
     pub fn read<Ev, F>(&self, key: &str, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(Option<Vec<u8>>) -> Ev + 'static,
+        F: Fn(Option<Vec<u8>>) -> Ev + Send + Sync + 'static,
     {
         Command::new((self.effect)(Request::Read(key.to_string())), callback)
     }
@@ -36,7 +35,7 @@ where
     pub fn write<Ev, F>(&self, key: &str, value: Vec<u8>, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(bool) -> Ev + 'static,
+        F: Fn(bool) -> Ev + Send + Sync + 'static,
     {
         Command::new(
             (self.effect)(Request::Write(key.to_string(), value)),

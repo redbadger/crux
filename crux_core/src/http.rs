@@ -3,7 +3,7 @@
 use crate::Command;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Request {
     method: String, // FIXME this probably should be an enum instead.
     url: String,
@@ -12,29 +12,28 @@ pub struct Request {
 
 #[derive(Debug, Deserialize)]
 pub struct Response {
-    status: u16,   // FIXME this probably should be a giant enum instead.
-    body: Vec<u8>, // TODO support headers
+    pub status: u16,   // FIXME this probably should be a giant enum instead.
+    pub body: Vec<u8>, // TODO support headers
 }
 
-pub struct Http<MakeEffect, Ef>
-where
-    MakeEffect: Fn(Request) -> Ef,
-{
-    effect: MakeEffect,
+pub struct Http<Ef> {
+    effect: Box<dyn Fn(Request) -> Ef + Sync>,
 }
 
-impl<MakeEffect, Ef> Http<MakeEffect, Ef>
-where
-    MakeEffect: Fn(Request) -> Ef,
-{
-    pub fn new(effect: MakeEffect) -> Self {
-        Self { effect }
+impl<Ef> Http<Ef> {
+    pub fn new<MakeEffect>(effect: MakeEffect) -> Self
+    where
+        MakeEffect: Fn(Request) -> Ef + Sync + 'static,
+    {
+        Self {
+            effect: Box::new(effect),
+        }
     }
 
     pub fn get<Ev, F>(&self, url: &str, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(Response) -> Ev + 'static,
+        F: Fn(Response) -> Ev + Send + Sync + 'static,
     {
         self.request("GET", url, callback)
     }
@@ -42,7 +41,7 @@ where
     pub fn request<Ev, F>(&self, method: &str, url: &str, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(Response) -> Ev + 'static,
+        F: Fn(Response) -> Ev + Send + Sync + 'static,
     {
         let request = Request {
             method: method.to_string(),

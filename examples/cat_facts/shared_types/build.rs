@@ -1,6 +1,7 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request, RequestBody, Response, ResponseBody};
-use shared::{platform, Msg, ViewModel};
+use crux_core::{typegen::TypeGen, Request, Response};
+
+use shared::{platform, Effect, Event, ViewModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -24,12 +25,11 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Msg>()?;
-    gen.register_type::<platform::PlatformMsg>()?;
+    gen.register_type::<Effect>()?;
+    gen.register_type::<Event>()?;
+    gen.register_type::<platform::Event>()?;
     gen.register_type::<ViewModel>()?;
-    gen.register_type::<Request>()?;
-    gen.register_type::<RequestBody>()?;
+    gen.register_type::<Request<Effect>>()?;
     gen.register_type::<Response>()?;
-    gen.register_type::<ResponseBody>()?;
     Ok(())
 }

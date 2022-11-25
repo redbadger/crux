@@ -1,8 +1,12 @@
-pub use app::*;
+use crux_core::Core;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub mod app;
+pub mod effect;
+
+pub use app::*;
+pub use effect::Effect;
 
 // TODO hide this plumbing
 

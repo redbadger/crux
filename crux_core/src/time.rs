@@ -25,7 +25,7 @@ where
     pub fn get<Ev, F>(&self, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(Response) -> Ev + 'static,
+        F: Fn(Response) -> Ev + Send + Sync + 'static,
     {
         Command::new(self.effect.clone(), callback)
     }

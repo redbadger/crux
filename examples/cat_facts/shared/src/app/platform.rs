@@ -1,8 +1,12 @@
 use crux_core::{platform, App, Command};
 use serde::{Deserialize, Serialize};
 
+use crate::effect::{Capabilities, Effect};
+
 #[derive(Default)]
-pub struct Platform;
+pub struct Platform {
+    capabilities: Capabilities,
+}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Model {
@@ -10,26 +14,23 @@ pub struct Model {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum PlatformMsg {
+pub enum Event {
     Get,
-    Set(String),
+    Set(platform::Response),
 }
 
 impl App for Platform {
-    type Message = PlatformMsg;
+    type Event = Event;
+    type Effect = Effect;
     type Model = Model;
     type ViewModel = Model;
 
-    fn update(
-        &self,
-        msg: <Self as App>::Message,
-        model: &mut <Self as App>::Model,
-    ) -> Vec<Command<PlatformMsg>> {
+    fn update(&self, msg: Event, model: &mut Model) -> Vec<Command<Effect, Event>> {
         match msg {
-            PlatformMsg::Get => vec![platform::get(Box::new(PlatformMsg::Set))],
-            PlatformMsg::Set(platform) => {
-                model.platform = platform;
-                vec![Command::render()]
+            Event::Get => vec![self.capabilities.platform.get(Event::Set)],
+            Event::Set(platform) => {
+                model.platform = platform.0;
+                vec![self.capabilities.render.render()]
             }
         }
     }

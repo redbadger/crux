@@ -40,7 +40,7 @@ struct HelloWorld;
 
 #[derive(Serialize, Deserialize)]
 enum CoreMessage {
-    Message(Msg),
+    Message(Event),
     Response(Response),
 }
 
@@ -50,10 +50,8 @@ impl Component for HelloWorld {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(CoreMessage::Message(Msg::Get));
-        link.send_message(CoreMessage::Message(Msg::Platform(
-            platform::PlatformMsg::Get,
-        )));
+        link.send_message(CoreMessage::Message(Event::Get));
+        link.send_message(CoreMessage::Message(Event::Platform(platform::Event::Get)));
 
         Self::default()
     }
@@ -151,15 +149,15 @@ impl Component for HelloWorld {
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| CoreMessage::Message(Msg::Clear))}>
+                        onclick={link.callback(|_| CoreMessage::Message(Event::Clear))}>
                         {"Clear"}
                     </button>
                     <button class="button is-primary is-success"
-                        onclick={link.callback(|_| CoreMessage::Message(Msg::Get))}>
+                        onclick={link.callback(|_| CoreMessage::Message(Event::Get))}>
                         {"Get"}
                     </button>
                     <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| CoreMessage::Message(Msg::Fetch))}>
+                        onclick={link.callback(|_| CoreMessage::Message(Event::Fetch))}>
                         {"Fetch"}
                     </button>
                 </div>
