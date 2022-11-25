@@ -115,6 +115,8 @@ pub mod key_value;
 pub mod platform;
 pub mod time;
 
+pub mod playground;
+
 use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
