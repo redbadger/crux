@@ -48,7 +48,7 @@ struct CallBackFn<T, Event> {
 
 impl<T, Event> Callback<Event> for CallBackFn<T, Event>
 where
-    T: 'static + DeserializeOwned,
+    T: DeserializeOwned,
 {
     fn call(&self, value: Vec<u8>) -> Event {
         let response = from_bytes::<T>(&value).unwrap();
