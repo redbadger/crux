@@ -1,25 +1,32 @@
 //! TODO mod docs
 
-use crate::{Command, RequestBody, ResponseBody};
+use crate::Command;
+use serde::{Deserialize, Serialize};
 
-/// TODO docs
-pub fn get<F, Message>(msg: F) -> Command<Message>
+// TODO revisit this
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Response(pub String);
+
+pub struct Platform<Ef>
 where
-    F: FnOnce(String) -> Message + Sync + Send + 'static,
+    Ef: Clone,
 {
-    let body = RequestBody::Platform;
+    effect: Ef,
+}
 
-    Command {
-        body: body.clone(),
-        msg_constructor: Some(Box::new(move |rb| {
-            if let ResponseBody::Platform(data) = rb {
-                return msg(data);
-            }
+impl<Ef> Platform<Ef>
+where
+    Ef: Clone,
+{
+    pub fn new(effect: Ef) -> Self {
+        Self { effect }
+    }
 
-            panic!(
-                "Attempt to continue Platform request with different response {:?}",
-                body
-            );
-        })),
+    pub fn get<Ev, F>(&self, callback: F) -> Command<Ef, Ev>
+    where
+        Ev: 'static,
+        F: Fn(Response) -> Ev + 'static,
+    {
+        Command::new(self.effect.clone(), callback)
     }
 }

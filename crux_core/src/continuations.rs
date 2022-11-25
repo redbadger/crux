@@ -1,45 +1,49 @@
-use crate::{Command, Request, Response, ResponseBody};
+use crate::command::{Callback, Command};
+use crate::{Request, Response};
+
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
-type Store<Message> = HashMap<[u8; 16], Box<dyn FnOnce(ResponseBody) -> Message + Sync + Send>>;
+struct Store<Event>(HashMap<[u8; 16], Box<dyn Callback<Event>>>);
 
-pub(crate) struct ContinuationStore<Message>(RwLock<Store<Message>>);
+pub(crate) struct ContinuationStore<Event>(RwLock<Store<Event>>);
 
-impl<Message> Default for ContinuationStore<Message> {
+impl<Event> Default for ContinuationStore<Event> {
     fn default() -> Self {
-        Self(RwLock::new(HashMap::new()))
+        Self(RwLock::new(Store(HashMap::new())))
     }
 }
 
-impl<Message> ContinuationStore<Message> {
-    pub(crate) fn pause(&self, cmd: Command<Message>) -> Request {
-        let Command {
-            body,
-            msg_constructor,
-        } = cmd;
+impl<Event> ContinuationStore<Event> {
+    pub(crate) fn pause<Effect>(&self, cmd: Command<Effect, Event>) -> Request<Effect> {
+        let Command { effect, resolve } = cmd;
+
         let uuid = *Uuid::new_v4().as_bytes();
-        if let Some(msg_constructor) = msg_constructor {
+        if let Some(resolve) = resolve {
             self.0
                 .write()
                 .expect("Continuation RwLock poisoned.")
-                .insert(uuid, msg_constructor);
+                .0
+                .insert(uuid, resolve);
         }
+
         Request {
             uuid: uuid.to_vec(),
-            body,
+            effect,
         }
     }
 
-    pub(crate) fn resume(&self, response: Response) -> Message {
+    pub(crate) fn resume(&self, response: Response) -> Event {
         let Response { uuid, body } = response;
-        let cont = self
+
+        let resolve = self
             .0
             .write()
             .expect("Continuation RwLock poisoned.")
+            .0
             .remove(&uuid[..])
             .unwrap_or_else(|| panic!("Continuation with UUID {:?} not found.", uuid));
 
-        cont(body)
+        resolve.call(body)
     }
 }

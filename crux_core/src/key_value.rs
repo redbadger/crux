@@ -1,47 +1,46 @@
 //! TODO mod docs
 
-use crate::{Command, RequestBody, ResponseBody};
+use serde::Serialize;
 
-/// TODO docs
-pub fn read<F, Message>(key: String, msg: F) -> Command<Message>
-where
-    F: FnOnce(Option<Vec<u8>>) -> Message + Sync + Send + 'static,
-{
-    let body = RequestBody::KVRead(key);
+use crate::Command;
 
-    Command {
-        body: body.clone(),
-        msg_constructor: Some(Box::new(move |rb: ResponseBody| {
-            if let ResponseBody::KVRead(data) = rb {
-                return msg(data);
-            }
-
-            panic!(
-                "Attempt to continue KVRead request with different response {:?}",
-                body
-            );
-        })),
-    }
+#[derive(Serialize)]
+pub enum Request {
+    Read(String),
+    Write(String, Vec<u8>),
 }
 
-/// TODO docs
-pub fn write<F, Message>(key: String, value: Vec<u8>, msg: F) -> Command<Message>
+pub struct KeyValue<MakeEffect, Ef>
 where
-    F: FnOnce(bool) -> Message + Sync + Send + 'static,
+    MakeEffect: Fn(Request) -> Ef,
 {
-    let body = RequestBody::KVWrite(key, value);
+    effect: MakeEffect,
+}
 
-    Command {
-        body: body.clone(),
-        msg_constructor: Some(Box::new(move |rb| {
-            if let ResponseBody::KVWrite(data) = rb {
-                return msg(data);
-            }
+impl<MakeEffect, Ef> KeyValue<MakeEffect, Ef>
+where
+    MakeEffect: Fn(Request) -> Ef,
+{
+    pub fn new(effect: MakeEffect) -> Self {
+        Self { effect }
+    }
 
-            panic!(
-                "Attempt to continue KVWrite request with different response {:?}",
-                body
-            );
-        })),
+    pub fn read<Ev, F>(&self, key: &str, callback: F) -> Command<Ef, Ev>
+    where
+        Ev: 'static,
+        F: Fn(Option<Vec<u8>>) -> Ev + 'static,
+    {
+        Command::new((self.effect)(Request::Read(key.to_string())), callback)
+    }
+
+    pub fn write<Ev, F>(&self, key: &str, value: Vec<u8>, callback: F) -> Command<Ef, Ev>
+    where
+        Ev: 'static,
+        F: Fn(bool) -> Ev + 'static,
+    {
+        Command::new(
+            (self.effect)(Request::Write(key.to_string(), value)),
+            callback,
+        )
     }
 }
