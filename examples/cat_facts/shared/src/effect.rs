@@ -1,7 +1,5 @@
-use crux_core::{http, key_value, platform, render, time, GetCapabilityInstance};
+use crux_core::{http, key_value, platform, render, time};
 use serde::{Deserialize, Serialize};
-
-use crate::app::platform::Platform;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Effect {
@@ -29,11 +27,33 @@ pub(crate) struct Capabilities {
     pub render: render::Render<Effect>,
 }
 
-impl GetCapabilityInstance for Capabilities {
-    type Capability = platform::Platform<Effect>;
+impl crux_core::Capabilities<platform::Platform<Effect>> for Capabilities {
+    fn get(&self) -> &platform::Platform<Effect> {
+        &self.platform
+    }
+}
 
-    fn capability(&self) -> platform::Platform<Effect> {
-        self.platform
+impl crux_core::Capabilities<time::Time<Effect>> for Capabilities {
+    fn get(&self) -> &time::Time<Effect> {
+        &self.time
+    }
+}
+
+impl crux_core::Capabilities<http::Http<Effect>> for Capabilities {
+    fn get(&self) -> &http::Http<Effect> {
+        &self.http
+    }
+}
+
+impl crux_core::Capabilities<key_value::KeyValue<Effect>> for Capabilities {
+    fn get(&self) -> &key_value::KeyValue<Effect> {
+        &self.key_value
+    }
+}
+
+impl crux_core::Capabilities<render::Render<Effect>> for Capabilities {
+    fn get(&self) -> &render::Render<Effect> {
+        &self.render
     }
 }
 

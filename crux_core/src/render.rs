@@ -1,3 +1,5 @@
+use crate::Capability;
+
 use super::Command;
 
 pub struct Render<Ef>
@@ -22,3 +24,5 @@ where
         Command::new_without_callback(self.effect.clone())
     }
 } // Public API of the capability, called by App::update.
+
+impl<Ef> Capability for Render<Ef> where Ef: Clone {}

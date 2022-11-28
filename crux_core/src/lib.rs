@@ -122,7 +122,7 @@ pub mod time;
 
 pub mod playground;
 
-pub use capability::{Capability, GetCapabilityInstance};
+pub use capability::{Capabilities, Capability};
 pub use command::Command;
 use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
@@ -130,15 +130,14 @@ use std::sync::RwLock;
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
-pub trait App: Default {
+pub trait App<Effect, Capabilities>: Default
+where
+    Effect: Serialize,
+{
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event;
-    /// Effect, typically an `enum`, defines the set of effects the Core can request from the Shell.
-    /// The variants of the enum typically wrap payloads (requests) defined by the capabilities the
-    /// application uses.
-    type Effect: Serialize;
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
@@ -151,40 +150,37 @@ pub trait App: Default {
         &self,
         msg: Self::Event,
         model: &mut Self::Model,
-    ) -> Vec<Command<Self::Effect, Self::Event>>;
-
-    fn capability<T>() -> T where T: Capability {
-        ???.capability.capability::<T>()
-    } 
+    ) -> Vec<Command<Effect, Self::Event>>;
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
 /// The Crux core. Create an instance of this type with your app as the type parameter
-pub struct Core<A: App, Capabilities: GetCapabilityInstance> {
+pub struct Core<Effect, Capabilities, A: App<Effect, Capabilities>>
+where
+    Effect: Serialize,
+{
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
-    capabilities: Capabilities,
     app: A,
 }
 
-impl<A: App, Capabilities> Default for Core<A, Capabilities>
+impl<Effect, Capabilities, A: App<Effect, Capabilities>> Default for Core<Effect, Capabilities, A>
 where
-    Capabilities: GetCapabilityInstance + Default,
+    Effect: Serialize,
 {
     fn default() -> Self {
         Self {
             model: Default::default(),
             continuations: Default::default(),
-            capabilities: Default::default(),
             app: Default::default(),
         }
     }
 }
 
-impl<A: App, Capabilities> Core<A, Capabilities>
+impl<Effect, Capabilities, A: App<Effect, Capabilities>> Core<Effect, Capabilities, A>
 where
-    Capabilities: GetCapabilityInstance + Default,
+    Effect: Serialize,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
@@ -205,9 +201,10 @@ where
     /// The `msg` is serialized and will be deserialized by the core.
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Event: Deserialize<'de>,
+        <A as App<Effect, Capabilities>>::Event: Deserialize<'de>,
     {
-        let msg: <A as App>::Event = bcs::from_bytes(msg).expect("Message deserialization failed.");
+        let msg: <A as App<_, _>>::Event =
+            bcs::from_bytes(msg).expect("Message deserialization failed.");
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
@@ -227,7 +224,7 @@ where
     /// triggered it, else the core will panic.
     pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Event: Deserialize<'de>,
+        <A as App<Effect, Capabilities>>::Event: Deserialize<'de>,
     {
         let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
 

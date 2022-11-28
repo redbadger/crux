@@ -1,8 +1,8 @@
-use crux_core::{http, time};
+use crux_core::{
+    http, key_value, platform as platform_cap, render, time, Capabilities, Capability,
+};
 pub use crux_core::{App, Command};
 use serde::{Deserialize, Serialize};
-
-use crate::effect::{Capabilities, Effect};
 
 pub mod platform;
 
@@ -50,7 +50,7 @@ pub struct ViewModel {
     pub platform: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub enum Event {
     None,
     GetPlatform,
@@ -58,26 +58,48 @@ pub enum Event {
     Clear,
     Get,
     Fetch,
-    Restore,                   // restore state
-    SetState(Option<Vec<u8>>), // receive the data to restore state with
+    Restore,                       // restore state
+    SetState(key_value::Response), // receive the data to restore state with
     SetFact(http::Response),
     SetImage(http::Response),
     CurrentTime(time::Response),
 }
 
-#[derive(Default)]
-pub struct CatFacts {
-    capabilities: Capabilities,
-    platform: platform::Platform,
+pub struct CatFacts<Ef, Caps>
+where
+    Caps: Default,
+{
+    capabilities: Caps,
+    platform: platform::Platform<Ef, Caps>,
 }
 
-impl App for CatFacts {
+impl<Ef, Caps> Default for CatFacts<Ef, Caps>
+where
+    Caps: Default,
+{
+    fn default() -> Self {
+        Self {
+            capabilities: Default::default(),
+            platform: Default::default(),
+        }
+    }
+}
+
+impl<Ef, Caps> App<Ef, Caps> for CatFacts<Ef, Caps>
+where
+    Ef: Serialize + Clone,
+    Caps: Default
+        + Capabilities<http::Http<Ef>>
+        + Capabilities<key_value::KeyValue<Ef>>
+        + Capabilities<render::Render<Ef>>
+        + Capabilities<time::Time<Ef>>
+        + Capabilities<platform_cap::Platform<Ef>>,
+{
     type Model = Model;
     type Event = Event;
-    type Effect = Effect;
     type ViewModel = ViewModel;
 
-    fn update(&self, msg: Event, model: &mut Model) -> Vec<Command<Effect, Event>> {
+    fn update(&self, msg: Event, model: &mut Model) -> Vec<Command<Ef, Event>> {
         match msg {
             Event::GetPlatform => Command::lift(
                 self.platform
@@ -94,22 +116,23 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capabilities
-                        .key_value
+                    self.capability::<key_value::KeyValue<_>>()
                         .write("state", bytes, |_| Event::None),
-                    self.capabilities.render.render(),
+                    self.capability::<render::Render<_>>().render(),
                 ]
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![self.capabilities.render.render()]
+                    vec![self.capability::<render::Render<_>>().render()]
                 } else {
                     model.cat_image = Some(CatImage::default());
 
                     vec![
-                        self.capabilities.http.get(FACT_API_URL, Event::SetFact),
-                        self.capabilities.http.get(IMAGE_API_URL, Event::SetImage),
-                        self.capabilities.render.render(),
+                        self.capability::<http::Http<_>>()
+                            .get(FACT_API_URL, Event::SetFact),
+                        self.capability::<http::Http<_>>()
+                            .get(IMAGE_API_URL, Event::SetImage),
+                        self.capability::<render::Render<_>>().render(),
                     ]
                 }
             }
@@ -117,9 +140,11 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 vec![
-                    self.capabilities.http.get(FACT_API_URL, Event::SetFact),
-                    self.capabilities.http.get(IMAGE_API_URL, Event::SetImage),
-                    self.capabilities.render.render(),
+                    self.capability::<http::Http<_>>()
+                        .get(FACT_API_URL, Event::SetFact),
+                    self.capability::<http::Http<_>>()
+                        .get(IMAGE_API_URL, Event::SetImage),
+                    self.capability::<render::Render<_>>().render(),
                 ]
             }
             Event::SetFact(http::Response { body, status: _ }) => {
@@ -130,10 +155,9 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capabilities
-                        .key_value
+                    self.capability::<key_value::KeyValue<_>>()
                         .write("state", bytes, |_| Event::None),
-                    self.capabilities.time.get(Event::CurrentTime),
+                    self.capability::<time::Time<_>>().get(Event::CurrentTime),
                 ]
             }
             Event::CurrentTime(iso_time) => {
@@ -141,10 +165,9 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capabilities
-                        .key_value
+                    self.capability::<key_value::KeyValue<_>>()
                         .write("state", bytes, |_| Event::None),
-                    self.capabilities.render.render(),
+                    self.capability::<render::Render<_>>().render(),
                 ]
             }
             Event::SetImage(http::Response { body, status: _ }) => {
@@ -155,23 +178,24 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capabilities
-                        .key_value
+                    self.capability::<key_value::KeyValue<_>>()
                         .write("state", bytes, |_| Event::None),
-                    self.capabilities.render.render(),
+                    self.capability::<render::Render<_>>().render(),
                 ]
             }
             Event::Restore => {
-                vec![self.capabilities.key_value.read("state", Event::SetState)]
+                vec![self
+                    .capability::<key_value::KeyValue<_>>()
+                    .read("state", Event::SetState)]
             }
-            Event::SetState(bytes) => {
-                if let Some(bytes) = bytes {
+            Event::SetState(response) => {
+                if let key_value::Response::Read(Some(bytes)) = response {
                     if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
                         *model = m
                     };
                 }
 
-                vec![self.capabilities.render.render()]
+                vec![self.capability::<render::Render<_>>().render()]
             }
             Event::None => vec![],
         }
@@ -191,5 +215,19 @@ impl App for CatFacts {
             fact,
             image: model.cat_image.clone(),
         }
+    }
+}
+
+impl<Ef, Caps> CatFacts<Ef, Caps>
+where
+    Ef: Serialize + Clone,
+    Caps: Default,
+{
+    fn capability<C>(&self) -> &C
+    where
+        C: Capability,
+        Caps: Capabilities<C>,
+    {
+        <Caps as crux_core::Capabilities<C>>::get(&self.capabilities)
     }
 }

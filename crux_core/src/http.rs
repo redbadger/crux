@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crate::Command;
+use crate::{Capability, Command};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -51,3 +51,5 @@ impl<Ef> Http<Ef> {
         Command::new((self.effect)(request), callback)
     }
 }
+
+impl<Ef> Capability for Http<Ef> where Ef: Clone {}

@@ -64,7 +64,8 @@ async fn main() -> Result<()> {
                         },
                     ));
                 }
-                Effect::Http(url) => match surf::get(&url).recv_bytes().await {
+                Effect::Http(http::Request { url, .. }) => match surf::get(&url).recv_bytes().await
+                {
                     Ok(bytes) => {
                         queue.push_back(CoreMessage::Response(
                             uuid,

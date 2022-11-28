@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::Command;
+use crate::{Capability, Command};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Request {
@@ -49,3 +49,5 @@ impl<Ef> KeyValue<Ef> {
         )
     }
 }
+
+impl<Ef> Capability for KeyValue<Ef> where Ef: Clone {}

@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crate::Command;
+use crate::{Capability, Command};
 use serde::{Deserialize, Serialize};
 
 // TODO revisit this
@@ -30,3 +30,5 @@ where
         Command::new(self.effect.clone(), callback)
     }
 }
+
+impl<Ef> Capability for Platform<Ef> where Ef: Clone {}

@@ -1,8 +1,6 @@
 /// TODO docs!
 pub trait Capability {}
 
-pub trait GetCapabilityInstance {
-    type Capability;
-
-    fn capability(&self) -> Self::Capability;
+pub trait Capabilities<C> {
+    fn get(&self) -> &C;
 }
