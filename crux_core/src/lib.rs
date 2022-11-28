@@ -122,7 +122,7 @@ pub mod time;
 
 pub mod playground;
 
-pub use capability::Capability;
+pub use capability::{Capability, GetCapabilityInstance};
 pub use command::Command;
 use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
@@ -153,27 +153,39 @@ pub trait App: Default {
         model: &mut Self::Model,
     ) -> Vec<Command<Self::Effect, Self::Event>>;
 
+    fn capability<T>() -> T where T: Capability {
+        ???.capability.capability::<T>()
+    } 
+
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
 /// The Crux core. Create an instance of this type with your app as the type parameter
-pub struct Core<A: App> {
+pub struct Core<A: App, Capabilities: GetCapabilityInstance> {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
+    capabilities: Capabilities,
     app: A,
 }
 
-impl<A: App> Default for Core<A> {
+impl<A: App, Capabilities> Default for Core<A, Capabilities>
+where
+    Capabilities: GetCapabilityInstance + Default,
+{
     fn default() -> Self {
         Self {
             model: Default::default(),
             continuations: Default::default(),
+            capabilities: Default::default(),
             app: Default::default(),
         }
     }
 }
 
-impl<A: App> Core<A> {
+impl<A: App, Capabilities> Core<A, Capabilities>
+where
+    Capabilities: GetCapabilityInstance + Default,
+{
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
     /// ```rust

@@ -1,4 +1,5 @@
 use crux_core::Core;
+use effect::Capabilities;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -19,7 +20,7 @@ pub use crux_core::{Request, Response};
 uniffi_macros::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Core<CatFacts> = Core::new();
+    static ref CORE: Core<CatFacts, Capabilities> = Core::new();
 }
 
 #[wasm_bindgen]

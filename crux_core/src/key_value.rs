@@ -10,6 +10,12 @@ pub enum Request {
     Write(String, Vec<u8>),
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub enum Response {
+    Read(Option<Vec<u8>>),
+    Write(bool),
+}
+
 pub struct KeyValue<Ef> {
     effect: Box<dyn Fn(Request) -> Ef + Sync>,
 }
@@ -27,7 +33,7 @@ impl<Ef> KeyValue<Ef> {
     pub fn read<Ev, F>(&self, key: &str, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(Option<Vec<u8>>) -> Ev + Send + Sync + 'static,
+        F: Fn(Response) -> Ev + Send + Sync + 'static,
     {
         Command::new((self.effect)(Request::Read(key.to_string())), callback)
     }
@@ -35,7 +41,7 @@ impl<Ef> KeyValue<Ef> {
     pub fn write<Ev, F>(&self, key: &str, value: Vec<u8>, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(bool) -> Ev + Send + Sync + 'static,
+        F: Fn(Response) -> Ev + Send + Sync + 'static,
     {
         Command::new(
             (self.effect)(Request::Write(key.to_string(), value)),

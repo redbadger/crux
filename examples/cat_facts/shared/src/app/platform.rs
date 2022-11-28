@@ -25,9 +25,13 @@ impl App for Platform {
     type Model = Model;
     type ViewModel = Model;
 
-    fn update(&self, msg: Event, model: &mut Model) -> Vec<Command<Effect, Event>> {
+    fn init(capabilities: &Capabilities) -> (Model, Vec<Command<Effect, Event>>) {
+
+    }
+
+    fn update(&self, msg: Event, model: &mut Model, capability) -> Vec<Command<Effect, Event>> {
         match msg {
-            Event::Get => vec![self.capabilities.platform.get(Event::Set)],
+            Event::Get => vec![self.capabilities.get::<Platform>().get(Event::Set)],
             Event::Set(platform) => {
                 model.platform = platform.0;
                 vec![self.capabilities.render.render()]

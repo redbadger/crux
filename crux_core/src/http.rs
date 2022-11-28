@@ -10,7 +10,7 @@ pub struct Request {
     // TODO support headers
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
     pub status: u16,   // FIXME this probably should be a giant enum instead.
     pub body: Vec<u8>, // TODO support headers
