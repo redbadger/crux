@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
 use serde::{Deserialize, Serialize};
-use shared::*;
+use shared::{effect::Outcome, http, key_value, time, Effect, Event, Request, ViewModel};
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
@@ -41,7 +41,7 @@ struct HelloWorld;
 #[derive(Serialize, Deserialize)]
 enum CoreMessage {
     Message(Event),
-    Response(Response),
+    Response(Vec<u8>, Outcome),
 }
 
 impl Component for HelloWorld {
@@ -51,7 +51,7 @@ impl Component for HelloWorld {
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
         link.send_message(CoreMessage::Message(Event::Get));
-        link.send_message(CoreMessage::Message(Event::Platform(platform::Event::Get)));
+        link.send_message(CoreMessage::Message(Event::GetPlatform));
 
         Self::default()
     }
@@ -64,64 +64,67 @@ impl Component for HelloWorld {
                 let msg = bcs::to_bytes(&msg).unwrap();
                 shared::message(&msg)
             }
-            CoreMessage::Response(resp) => {
+            CoreMessage::Response(uuid, resp) => {
                 let resp = bcs::to_bytes(&resp).unwrap();
-                shared::response(&resp)
+                shared::response(&uuid, &resp)
             }
         };
 
-        let reqs: Vec<Request> = bcs::from_bytes(&reqs).unwrap();
+        let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
 
         reqs.into_iter().any(|req| {
-            let Request { uuid, body } = req;
-            match body {
-                RequestBody::Render => true,
-                RequestBody::Time => {
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::Time(time_get().unwrap()),
+            let Request { uuid, effect } = req;
+            match effect {
+                Effect::Render => true,
+                Effect::Time => {
+                    link.send_message(CoreMessage::Response(
                         uuid,
-                    }));
+                        Outcome::Time(time::Response(time_get().unwrap())),
+                    ));
 
                     false
                 }
-                RequestBody::Http(url) => {
+                Effect::Http(http::Request { url, .. }) => {
                     let link = link.clone();
 
                     wasm_bindgen_futures::spawn_local(async move {
                         let bytes = http_get(&url).await.unwrap_or_default();
 
-                        link.send_message(CoreMessage::Response(Response {
-                            body: ResponseBody::Http(bytes),
+                        link.send_message(CoreMessage::Response(
                             uuid,
-                        }));
+                            Outcome::Http(http::Response {
+                                status: 200,
+                                body: bytes,
+                            }),
+                        ));
                     });
 
                     false
                 }
-                RequestBody::Platform => {
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::Platform(
+                Effect::Platform => {
+                    link.send_message(CoreMessage::Response(
+                        uuid,
+                        Outcome::Platform(shared::platform::Response(
                             platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
-                        ),
-                        uuid,
-                    }));
+                        )),
+                    ));
 
                     false
                 }
-                RequestBody::KVRead(_) => {
+                Effect::KeyValue(key_value::Request::Read(_)) => {
                     // TODO implement state restoration
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::KVRead(None),
+                    link.send_message(CoreMessage::Response(
                         uuid,
-                    }));
+                        Outcome::KeyValue(key_value::Response::Read(None)),
+                    ));
 
                     false
                 }
-                RequestBody::KVWrite(_, _) => {
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::KVWrite(false),
+                Effect::KeyValue(key_value::Request::Write(..)) => {
+                    link.send_message(CoreMessage::Response(
                         uuid,
-                    }));
+                        Outcome::KeyValue(key_value::Response::Write(false)),
+                    ));
 
                     false
                 }

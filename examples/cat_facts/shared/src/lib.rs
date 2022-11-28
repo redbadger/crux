@@ -13,7 +13,7 @@ pub use crux_core::http;
 pub use crux_core::key_value;
 pub use crux_core::platform;
 pub use crux_core::time;
-pub use crux_core::{Request, Response};
+pub use crux_core::Request;
 
 // TODO hide this plumbing
 

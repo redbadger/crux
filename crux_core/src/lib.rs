@@ -257,11 +257,3 @@ pub struct Request<Effect> {
     pub uuid: Vec<u8>,
     pub effect: Effect,
 }
-
-/// Response to a side-effect request, returning the resulting data from the Shell
-/// to the Core. The `uuid` links the [`Request`] with the corresponding `Response`
-/// to pass the data back to the [`App::update`] function wrapped in the correct `Message`.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct Response<T> {
-    pub body: T, // Should this be an `enum Outcome`?
-}

@@ -5,13 +5,12 @@ use async_std::{
 };
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use shared::{effect::Outcome, http, key_value, time, Effect, Event, Request, ViewModel};
 use std::{collections::VecDeque, time::SystemTime};
 
-use shared::{http, time, Effect, Event, Request, Response};
-
-enum CoreMessage<T> {
+enum CoreMessage {
     Message(Event),
-    Response(Vec<u8>, Response<T>),
+    Response(Vec<u8>, Outcome),
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -33,7 +32,7 @@ struct Args {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    let mut queue: VecDeque<CoreMessage<_>> = VecDeque::new();
+    let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
     queue.push_back(CoreMessage::Message(Event::Restore));
 
@@ -59,9 +58,7 @@ async fn main() -> Result<()> {
 
                     queue.push_back(CoreMessage::Response(
                         uuid,
-                        Response {
-                            body: time::Response(iso_time),
-                        },
+                        Outcome::Time(time::Response(iso_time)),
                     ));
                 }
                 Effect::Http(http::Request { url, .. }) => match surf::get(&url).recv_bytes().await
@@ -69,19 +66,17 @@ async fn main() -> Result<()> {
                     Ok(bytes) => {
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Response {
-                                body: http::Response {
-                                    status: 200,
-                                    body: bytes,
-                                },
-                            },
+                            Outcome::Http(http::Response {
+                                status: 200,
+                                body: bytes,
+                            }),
                         ));
                     }
                     Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
                 },
                 Effect::Platform => {}
                 Effect::KeyValue(request) => match request {
-                    crux_core::key_value::Request::Read(key) => {
+                    key_value::Request::Read(key) => {
                         let bytes = read_state(&key).await.ok();
 
                         let initial_msg = match &args.cmd {
@@ -90,19 +85,19 @@ async fn main() -> Result<()> {
                             Command::Fetch => CoreMessage::Message(Event::Fetch),
                         };
 
-                        queue.push_back(CoreMessage::Response(Response {
-                            body: ResponseBody::KVRead(bytes),
+                        queue.push_back(CoreMessage::Response(
                             uuid,
-                        }));
+                            Outcome::KeyValue(key_value::Response::Read(bytes)),
+                        ));
                         queue.push_back(initial_msg);
                     }
-                    crux_core::key_value::Request::Write(key, value) => {
-                        let success = write_state(&key, &val).await.is_ok();
+                    key_value::Request::Write(key, value) => {
+                        let success = write_state(&key, &value).await.is_ok();
 
-                        queue.push_back(CoreMessage::Response(Response {
-                            body: ResponseBody::KVWrite(success),
+                        queue.push_back(CoreMessage::Response(
                             uuid,
-                        }));
+                            Outcome::KeyValue(key_value::Response::Write(success)),
+                        ));
                     }
                 },
             }

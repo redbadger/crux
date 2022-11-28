@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Request {
-    method: String, // FIXME this probably should be an enum instead.
-    url: String,
+    pub method: String, // FIXME this probably should be an enum instead.
+    pub url: String,
     // TODO support headers
 }
 
