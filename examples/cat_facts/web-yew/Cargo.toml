@@ -6,10 +6,10 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.66"
 bcs = "0.1.4"
-gloo-net = { version = "0.2.4", features = ["http"] }
+gloo-net = { version = "0.2.5", features = ["http"] }
 js-sys = "0.3.60"
 shared = { path = "../shared" }
 wasm-bindgen-futures = "0.4.33"
 web-sys = { version = "0.3.60", features = ["Navigator"] }
 woothee = "0.13.0"
-yew = "0.19.3"
+yew = { version = "0.20.0", features = ["csr"] }

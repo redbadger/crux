@@ -177,5 +177,5 @@ impl Component for HelloWorld {
 }
 
 fn main() {
-    yew::start_app::<HelloWorld>();
+    yew::Renderer::<HelloWorld>::new().render();
 }
