@@ -4,7 +4,7 @@ use crux_core::{
     platform::Platform,
     render::Render,
     time::{self, Time},
-    Capabilities, Capability,
+    Capabilities,
 };
 pub use crux_core::{App, Command};
 use serde::{Deserialize, Serialize};
@@ -70,29 +70,14 @@ pub enum Event {
     CurrentTime(time::Response),
 }
 
-pub struct CatFacts<Ef, Caps>
-where
-    Caps: Default,
-{
-    capabilities: Caps,
+#[derive(Default)]
+pub struct CatFacts<Ef, Caps> {
     platform: platform::Platform<Ef, Caps>,
-}
-
-impl<Ef, Caps> Default for CatFacts<Ef, Caps>
-where
-    Caps: Default,
-{
-    fn default() -> Self {
-        Self {
-            capabilities: Default::default(),
-            platform: Default::default(),
-        }
-    }
 }
 
 impl<Ef, Caps> App<Ef, Caps> for CatFacts<Ef, Caps>
 where
-    Ef: Serialize + Clone,
+    Ef: Serialize + Clone + Default,
     Caps: Default
         + Capabilities<Http<Ef>>
         + Capabilities<KeyValue<Ef>>
@@ -104,15 +89,15 @@ where
     type Event = Event;
     type ViewModel = ViewModel;
 
-    fn update(&self, msg: Event, model: &mut Model) -> Vec<Command<Ef, Event>> {
+    fn update(&self, msg: Event, model: &mut Model, caps: &Caps) -> Vec<Command<Ef, Event>> {
         match msg {
             Event::GetPlatform => Command::lift(
                 self.platform
-                    .update(platform::Event::Get, &mut model.platform),
+                    .update(platform::Event::Get, &mut model.platform, caps),
                 Event::Platform,
             ),
             Event::Platform(msg) => Command::lift(
-                self.platform.update(msg, &mut model.platform),
+                self.platform.update(msg, &mut model.platform, caps),
                 Event::Platform,
             ),
             Event::Clear => {
@@ -121,23 +106,26 @@ where
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capability::<key_value::KeyValue<_>>()
-                        .write("state", bytes, |_| Event::None),
-                    self.capability::<Render<_>>().render(),
+                    <Caps as crux_core::Capabilities<KeyValue<_>>>::get(caps).write(
+                        "state",
+                        bytes,
+                        |_| Event::None,
+                    ),
+                    <Caps as crux_core::Capabilities<Render<_>>>::get(caps).render(),
                 ]
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![self.capability::<Render<_>>().render()]
+                    vec![<Caps as crux_core::Capabilities<Render<_>>>::get(caps).render()]
                 } else {
                     model.cat_image = Some(CatImage::default());
 
                     vec![
-                        self.capability::<http::Http<_>>()
+                        <Caps as crux_core::Capabilities<Http<_>>>::get(caps)
                             .get(FACT_API_URL, Event::SetFact),
-                        self.capability::<http::Http<_>>()
+                        <Caps as crux_core::Capabilities<Http<_>>>::get(caps)
                             .get(IMAGE_API_URL, Event::SetImage),
-                        self.capability::<Render<_>>().render(),
+                        <Caps as crux_core::Capabilities<Render<_>>>::get(caps).render(),
                     ]
                 }
             }
@@ -145,11 +133,11 @@ where
                 model.cat_image = Some(CatImage::default());
 
                 vec![
-                    self.capability::<http::Http<_>>()
+                    <Caps as crux_core::Capabilities<Http<_>>>::get(caps)
                         .get(FACT_API_URL, Event::SetFact),
-                    self.capability::<http::Http<_>>()
+                    <Caps as crux_core::Capabilities<Http<_>>>::get(caps)
                         .get(IMAGE_API_URL, Event::SetImage),
-                    self.capability::<Render<_>>().render(),
+                    <Caps as crux_core::Capabilities<Render<_>>>::get(caps).render(),
                 ]
             }
             Event::SetFact(http::Response { body, status: _ }) => {
@@ -160,9 +148,12 @@ where
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capability::<key_value::KeyValue<_>>()
-                        .write("state", bytes, |_| Event::None),
-                    self.capability::<time::Time<_>>().get(Event::CurrentTime),
+                    <Caps as crux_core::Capabilities<KeyValue<_>>>::get(caps).write(
+                        "state",
+                        bytes,
+                        |_| Event::None,
+                    ),
+                    <Caps as crux_core::Capabilities<Time<_>>>::get(caps).get(Event::CurrentTime),
                 ]
             }
             Event::CurrentTime(iso_time) => {
@@ -170,9 +161,12 @@ where
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capability::<key_value::KeyValue<_>>()
-                        .write("state", bytes, |_| Event::None),
-                    self.capability::<Render<_>>().render(),
+                    <Caps as crux_core::Capabilities<KeyValue<_>>>::get(caps).write(
+                        "state",
+                        bytes,
+                        |_| Event::None,
+                    ),
+                    <Caps as crux_core::Capabilities<Render<_>>>::get(caps).render(),
                 ]
             }
             Event::SetImage(http::Response { body, status: _ }) => {
@@ -183,14 +177,16 @@ where
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 vec![
-                    self.capability::<key_value::KeyValue<_>>()
-                        .write("state", bytes, |_| Event::None),
-                    self.capability::<Render<_>>().render(),
+                    <Caps as crux_core::Capabilities<KeyValue<_>>>::get(caps).write(
+                        "state",
+                        bytes,
+                        |_| Event::None,
+                    ),
+                    <Caps as crux_core::Capabilities<Render<_>>>::get(caps).render(),
                 ]
             }
             Event::Restore => {
-                vec![self
-                    .capability::<key_value::KeyValue<_>>()
+                vec![<Caps as crux_core::Capabilities<KeyValue<_>>>::get(caps)
                     .read("state", Event::SetState)]
             }
             Event::SetState(response) => {
@@ -200,7 +196,7 @@ where
                     };
                 }
 
-                vec![self.capability::<Render<_>>().render()]
+                vec![<Caps as crux_core::Capabilities<Render<_>>>::get(caps).render()]
             }
             Event::None => vec![],
         }
@@ -213,26 +209,16 @@ where
             _ => "No fact".to_string(),
         };
 
-        let platform = self.platform.view(&model.platform).platform;
+        let platform = <platform::Platform<Ef, Caps> as crux_core::App<Ef, Caps>>::view(
+            &self.platform,
+            &model.platform,
+        )
+        .platform;
 
         ViewModel {
             platform: format!("Hello {}", platform),
             fact,
             image: model.cat_image.clone(),
         }
-    }
-}
-
-impl<Ef, Caps> CatFacts<Ef, Caps>
-where
-    Ef: Serialize + Clone,
-    Caps: Default,
-{
-    fn capability<C>(&self) -> &C
-    where
-        C: Capability,
-        Caps: Capabilities<C>,
-    {
-        <Caps as crux_core::Capabilities<C>>::get(&self.capabilities)
     }
 }

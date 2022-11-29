@@ -126,14 +126,11 @@ pub use capability::{Capabilities, Capability};
 pub use command::Command;
 use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
-use std::sync::RwLock;
+use std::{marker::PhantomData, sync::RwLock};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
-pub trait App<Ef, Caps>: Default
-where
-    Ef: Serialize,
-{
+pub trait App<Ef, Caps>: Default {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
@@ -146,37 +143,52 @@ where
     ///
     /// Update function can return a list of [`Command`]s, instructing the shell to perform side-effects.
     /// Typically, the function should return at least [`Command::render`] to update the user interface.
-    fn update(&self, msg: Self::Event, model: &mut Self::Model) -> Vec<Command<Ef, Self::Event>>;
+    fn update<'a>(
+        &self,
+        msg: Self::Event,
+        model: &mut Self::Model,
+        caps: &'a Caps,
+    ) -> Vec<Command<Ef, Self::Event>>
+    where
+        Ef: Serialize;
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
 /// The Crux core. Create an instance of this type with your app as the type parameter
-pub struct Core<Ef, Caps, A: App<Ef, Caps>>
+pub struct Core<Ef, Caps, A>
 where
-    Ef: Serialize,
+    Caps: Default,
+    A: App<Ef, Caps>,
 {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
+    capabilities: Caps,
     app: A,
+    _marker: PhantomData<Ef>,
 }
 
-impl<Ef, Caps, A: App<Ef, Caps>> Default for Core<Ef, Caps, A>
+impl<Ef, Caps, A> Default for Core<Ef, Caps, A>
 where
-    Ef: Serialize,
+    Caps: Default,
+    A: App<Ef, Caps>,
 {
     fn default() -> Self {
         Self {
             model: Default::default(),
             continuations: Default::default(),
             app: Default::default(),
+            capabilities: Default::default(),
+            _marker: PhantomData,
         }
     }
 }
 
-impl<Ef, Caps, A: App<Ef, Caps>> Core<Ef, Caps, A>
+impl<Ef, Caps, A> Core<Ef, Caps, A>
 where
+    Caps: Default,
     Ef: Serialize,
+    A: App<Ef, Caps>,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
@@ -204,7 +216,7 @@ where
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        let commands = self.app.update(msg, &mut model);
+        let commands = self.app.update(msg, &mut model, &self.capabilities);
         let requests: Vec<_> = commands
             .into_iter()
             .map(|c| self.continuations.pause(c))
@@ -226,7 +238,7 @@ where
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        let commands = self.app.update(msg, &mut model);
+        let commands = self.app.update(msg, &mut model, &self.capabilities);
 
         let requests: Vec<_> = commands
             .into_iter()
