@@ -1,21 +1,20 @@
 use crate::command::{Callback, Command};
 use crate::Request;
-
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
-struct Store<Event>(HashMap<[u8; 16], Box<dyn Callback<Event> + Send + Sync>>);
+struct Store<Ev>(HashMap<[u8; 16], Box<dyn Callback<Ev> + Send + Sync>>);
 
-pub(crate) struct ContinuationStore<Event>(RwLock<Store<Event>>);
+pub(crate) struct ContinuationStore<Ev>(RwLock<Store<Ev>>);
 
-impl<Event> Default for ContinuationStore<Event> {
+impl<Ev> Default for ContinuationStore<Ev> {
     fn default() -> Self {
         Self(RwLock::new(Store(HashMap::new())))
     }
 }
 
-impl<Event> ContinuationStore<Event> {
-    pub(crate) fn pause<Effect>(&self, cmd: Command<Effect, Event>) -> Request<Effect> {
+impl<Ev> ContinuationStore<Ev> {
+    pub(crate) fn pause<Ef>(&self, cmd: Command<Ef, Ev>) -> Request<Ef> {
         let Command { effect, resolve } = cmd;
 
         let uuid = *Uuid::new_v4().as_bytes();
@@ -33,7 +32,7 @@ impl<Event> ContinuationStore<Event> {
         }
     }
 
-    pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) -> Event {
+    pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) -> Ev {
         let resolve = self
             .0
             .write()

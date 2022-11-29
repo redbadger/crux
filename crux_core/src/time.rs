@@ -4,7 +4,7 @@ use crate::{Capability, Command};
 use serde::{Deserialize, Serialize};
 
 // TODO revisit this
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct Response(pub String);
 
 pub struct Time<Ef>

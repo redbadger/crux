@@ -130,9 +130,9 @@ use std::sync::RwLock;
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
-pub trait App<Effect, Capabilities>: Default
+pub trait App<Ef, Caps>: Default
 where
-    Effect: Serialize,
+    Ef: Serialize,
 {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
@@ -146,28 +146,24 @@ where
     ///
     /// Update function can return a list of [`Command`]s, instructing the shell to perform side-effects.
     /// Typically, the function should return at least [`Command::render`] to update the user interface.
-    fn update(
-        &self,
-        msg: Self::Event,
-        model: &mut Self::Model,
-    ) -> Vec<Command<Effect, Self::Event>>;
+    fn update(&self, msg: Self::Event, model: &mut Self::Model) -> Vec<Command<Ef, Self::Event>>;
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
 /// The Crux core. Create an instance of this type with your app as the type parameter
-pub struct Core<Effect, Capabilities, A: App<Effect, Capabilities>>
+pub struct Core<Ef, Caps, A: App<Ef, Caps>>
 where
-    Effect: Serialize,
+    Ef: Serialize,
 {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
     app: A,
 }
 
-impl<Effect, Capabilities, A: App<Effect, Capabilities>> Default for Core<Effect, Capabilities, A>
+impl<Ef, Caps, A: App<Ef, Caps>> Default for Core<Ef, Caps, A>
 where
-    Effect: Serialize,
+    Ef: Serialize,
 {
     fn default() -> Self {
         Self {
@@ -178,9 +174,9 @@ where
     }
 }
 
-impl<Effect, Capabilities, A: App<Effect, Capabilities>> Core<Effect, Capabilities, A>
+impl<Ef, Caps, A: App<Ef, Caps>> Core<Ef, Caps, A>
 where
-    Effect: Serialize,
+    Ef: Serialize,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
@@ -201,7 +197,7 @@ where
     /// The `msg` is serialized and will be deserialized by the core.
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Effect, Capabilities>>::Event: Deserialize<'de>,
+        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
     {
         let msg: <A as App<_, _>>::Event =
             bcs::from_bytes(msg).expect("Message deserialization failed.");
@@ -224,7 +220,7 @@ where
     /// triggered it, else the core will panic.
     pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Effect, Capabilities>>::Event: Deserialize<'de>,
+        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
     {
         let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
 

@@ -1,7 +1,6 @@
-use std::marker::PhantomData;
-
 use crux_core::{platform, render, App, Capabilities, Capability, Command};
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 
 pub struct Platform<Ef, Caps>
 where

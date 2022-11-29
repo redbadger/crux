@@ -1,8 +1,7 @@
 //! TODO mod docs
 
-use serde::{Deserialize, Serialize};
-
 use crate::{Capability, Command};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Request {

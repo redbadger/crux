@@ -6,16 +6,16 @@ use serde::de::DeserializeOwned;
 /// You should never create a Command yourself, instead use one of the capabilities to create a command.
 /// Command is generic over `Message` in order to carry a "callback" which will be sent to the [`App::update`]
 /// function when the command has been executed, and passed the resulting data.
-pub struct Command<Effect, Event> {
-    pub(crate) effect: Effect, // TODO switch to `enum Effect`, so that shell knows what to do
-    pub(crate) resolve: Option<Box<dyn Callback<Event> + Send + Sync>>,
+pub struct Command<Ef, Ev> {
+    pub(crate) effect: Ef, // TODO switch to `enum Effect`, so that shell knows what to do
+    pub(crate) resolve: Option<Box<dyn Callback<Ev> + Send + Sync>>,
 }
 
-impl<Effect, Event> Command<Effect, Event> {
-    pub fn new<F, T>(effect: Effect, resolve: F) -> Self
+impl<Ef, Ev> Command<Ef, Ev> {
+    pub fn new<F, T>(effect: Ef, resolve: F) -> Self
     where
-        F: Fn(T) -> Event + Send + Sync + 'static,
-        Event: 'static,
+        F: Fn(T) -> Ev + Send + Sync + 'static,
+        Ev: 'static,
         T: 'static + DeserializeOwned,
     {
         Self {
@@ -24,14 +24,14 @@ impl<Effect, Event> Command<Effect, Event> {
         }
     }
 
-    pub fn new_without_callback(effect: Effect) -> Self {
+    pub fn new_without_callback(effect: Ef) -> Self {
         Self {
             effect,
             resolve: None,
         }
     }
 
-    pub fn resolve(&self, value: Vec<u8>) -> Event {
+    pub fn resolve(&self, value: Vec<u8>) -> Ev {
         if let Some(resolve) = &self.resolve {
             return resolve.call(value);
         }
@@ -54,22 +54,19 @@ impl<Effect, Event> Command<Effect, Event> {
     ///     // ...
     /// }
     /// ```
-    pub fn lift<ParentEvent, F>(
-        commands: Vec<Command<Effect, Event>>,
-        f: F,
-    ) -> Vec<Command<Effect, ParentEvent>>
+    pub fn lift<ParentEv, F>(commands: Vec<Command<Ef, Ev>>, f: F) -> Vec<Command<Ef, ParentEv>>
     where
-        F: Fn(Event) -> ParentEvent + Sync + Send + Copy + 'static,
-        Event: 'static,
-        ParentEvent: 'static,
+        F: Fn(Ev) -> ParentEv + Sync + Send + Copy + 'static,
+        Ev: 'static,
+        ParentEv: 'static,
     {
         commands.into_iter().map(move |c| c.map(f)).collect()
     }
 
-    fn map<ParentEvent, F>(self, f: F) -> Command<Effect, ParentEvent>
+    fn map<ParentEvent, F>(self, f: F) -> Command<Ef, ParentEvent>
     where
-        F: Fn(Event) -> ParentEvent + Sync + Send + Copy + 'static,
-        Event: 'static,
+        F: Fn(Ev) -> ParentEvent + Sync + Send + Copy + 'static,
+        Ev: 'static,
         ParentEvent: 'static,
     {
         Command {

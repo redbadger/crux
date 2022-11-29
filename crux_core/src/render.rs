@@ -1,6 +1,5 @@
-use crate::Capability;
-
 use super::Command;
+use crate::Capability;
 
 pub struct Render<Ef>
 where

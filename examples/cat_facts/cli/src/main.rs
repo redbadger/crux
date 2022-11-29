@@ -5,7 +5,7 @@ use async_std::{
 };
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use shared::{effect::Outcome, http, key_value, time, Effect, Event, Request, ViewModel};
+use shared::{http, key_value, platform, time, Effect, Event, Request, ViewModel};
 use std::{collections::VecDeque, time::SystemTime};
 
 enum CoreMessage {
@@ -13,15 +13,22 @@ enum CoreMessage {
     Response(Vec<u8>, Outcome),
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Clone)]
 enum Command {
     Clear,
     Get,
     Fetch,
 }
 
+pub enum Outcome {
+    Platform(platform::Response),
+    Time(time::Response),
+    Http(http::Response),
+    KeyValue(key_value::Response),
+}
+
 /// Simple program to greet a person
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[command(subcommand)]
@@ -41,9 +48,15 @@ async fn main() -> Result<()> {
 
         let reqs = match msg {
             Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m)?),
-            Some(CoreMessage::Response(uuid, output)) => {
-                shared::response(&uuid, &bcs::to_bytes(&output)?)
-            }
+            Some(CoreMessage::Response(uuid, output)) => shared::response(
+                &uuid,
+                &match output {
+                    Outcome::Platform(x) => bcs::to_bytes(&x)?,
+                    Outcome::Time(x) => bcs::to_bytes(&x)?,
+                    Outcome::Http(x) => bcs::to_bytes(&x)?,
+                    Outcome::KeyValue(x) => bcs::to_bytes(&x)?,
+                },
+            ),
             _ => vec![],
         };
         let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;

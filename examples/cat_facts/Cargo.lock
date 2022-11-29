@@ -2698,7 +2698,6 @@ dependencies = [
  "bcs",
  "gloo-net",
  "js-sys",
- "serde",
  "shared",
  "wasm-bindgen-futures",
  "web-sys",

@@ -1,5 +1,10 @@
 use crux_core::{
-    http, key_value, platform as platform_cap, render, time, Capabilities, Capability,
+    http::{self, Http},
+    key_value::{self, KeyValue},
+    platform::Platform,
+    render::Render,
+    time::{self, Time},
+    Capabilities, Capability,
 };
 pub use crux_core::{App, Command};
 use serde::{Deserialize, Serialize};
@@ -89,11 +94,11 @@ impl<Ef, Caps> App<Ef, Caps> for CatFacts<Ef, Caps>
 where
     Ef: Serialize + Clone,
     Caps: Default
-        + Capabilities<http::Http<Ef>>
-        + Capabilities<key_value::KeyValue<Ef>>
-        + Capabilities<render::Render<Ef>>
-        + Capabilities<time::Time<Ef>>
-        + Capabilities<platform_cap::Platform<Ef>>,
+        + Capabilities<Http<Ef>>
+        + Capabilities<KeyValue<Ef>>
+        + Capabilities<Render<Ef>>
+        + Capabilities<Time<Ef>>
+        + Capabilities<Platform<Ef>>,
 {
     type Model = Model;
     type Event = Event;
@@ -118,12 +123,12 @@ where
                 vec![
                     self.capability::<key_value::KeyValue<_>>()
                         .write("state", bytes, |_| Event::None),
-                    self.capability::<render::Render<_>>().render(),
+                    self.capability::<Render<_>>().render(),
                 ]
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![self.capability::<render::Render<_>>().render()]
+                    vec![self.capability::<Render<_>>().render()]
                 } else {
                     model.cat_image = Some(CatImage::default());
 
@@ -132,7 +137,7 @@ where
                             .get(FACT_API_URL, Event::SetFact),
                         self.capability::<http::Http<_>>()
                             .get(IMAGE_API_URL, Event::SetImage),
-                        self.capability::<render::Render<_>>().render(),
+                        self.capability::<Render<_>>().render(),
                     ]
                 }
             }
@@ -144,7 +149,7 @@ where
                         .get(FACT_API_URL, Event::SetFact),
                     self.capability::<http::Http<_>>()
                         .get(IMAGE_API_URL, Event::SetImage),
-                    self.capability::<render::Render<_>>().render(),
+                    self.capability::<Render<_>>().render(),
                 ]
             }
             Event::SetFact(http::Response { body, status: _ }) => {
@@ -167,7 +172,7 @@ where
                 vec![
                     self.capability::<key_value::KeyValue<_>>()
                         .write("state", bytes, |_| Event::None),
-                    self.capability::<render::Render<_>>().render(),
+                    self.capability::<Render<_>>().render(),
                 ]
             }
             Event::SetImage(http::Response { body, status: _ }) => {
@@ -180,7 +185,7 @@ where
                 vec![
                     self.capability::<key_value::KeyValue<_>>()
                         .write("state", bytes, |_| Event::None),
-                    self.capability::<render::Render<_>>().render(),
+                    self.capability::<Render<_>>().render(),
                 ]
             }
             Event::Restore => {
@@ -195,7 +200,7 @@ where
                     };
                 }
 
-                vec![self.capability::<render::Render<_>>().render()]
+                vec![self.capability::<Render<_>>().render()]
             }
             Event::None => vec![],
         }

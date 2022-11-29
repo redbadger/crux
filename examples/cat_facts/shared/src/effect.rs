@@ -10,14 +10,6 @@ pub enum Effect {
     Render,
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum Outcome {
-    Platform(platform::Response),
-    Time(time::Response),
-    Http(http::Response),
-    KeyValue(key_value::Response),
-}
-
 // Will get generated?
 pub(crate) struct Capabilities {
     pub platform: platform::Platform<Effect>,

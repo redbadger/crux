@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
-use serde::{Deserialize, Serialize};
-use shared::{effect::Outcome, http, key_value, time, Effect, Event, Request, ViewModel};
+use shared::{http, key_value, platform, time, Effect, Event, Request, ViewModel};
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
@@ -38,10 +37,16 @@ fn platform_get() -> Result<String> {
 #[derive(Default)]
 struct HelloWorld;
 
-#[derive(Serialize, Deserialize)]
 enum CoreMessage {
     Message(Event),
     Response(Vec<u8>, Outcome),
+}
+
+pub enum Outcome {
+    Platform(platform::Response),
+    Time(time::Response),
+    Http(http::Response),
+    KeyValue(key_value::Response),
 }
 
 impl Component for HelloWorld {
@@ -50,7 +55,7 @@ impl Component for HelloWorld {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(CoreMessage::Message(Event::Get));
+        // link.send_message(CoreMessage::Message(Event::Get));
         link.send_message(CoreMessage::Message(Event::GetPlatform));
 
         Self::default()
@@ -60,14 +65,16 @@ impl Component for HelloWorld {
         let link = ctx.link();
 
         let reqs = match msg {
-            CoreMessage::Message(msg) => {
-                let msg = bcs::to_bytes(&msg).unwrap();
-                shared::message(&msg)
-            }
-            CoreMessage::Response(uuid, resp) => {
-                let resp = bcs::to_bytes(&resp).unwrap();
-                shared::response(&uuid, &resp)
-            }
+            CoreMessage::Message(event) => shared::message(&bcs::to_bytes(&event).unwrap()),
+            CoreMessage::Response(uuid, outcome) => shared::response(
+                &uuid,
+                &match outcome {
+                    Outcome::Platform(x) => bcs::to_bytes(&x).unwrap(),
+                    Outcome::Time(x) => bcs::to_bytes(&x).unwrap(),
+                    Outcome::Http(x) => bcs::to_bytes(&x).unwrap(),
+                    Outcome::KeyValue(x) => bcs::to_bytes(&x).unwrap(),
+                },
+            ),
         };
 
         let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
@@ -104,7 +111,7 @@ impl Component for HelloWorld {
                 Effect::Platform => {
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::Platform(shared::platform::Response(
+                        Outcome::Platform(platform::Response(
                             platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
                         )),
                     ));
