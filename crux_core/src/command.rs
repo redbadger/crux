@@ -73,7 +73,12 @@ impl<Ef, Ev> Command<Ef, Ev> {
             effect: self.effect,
             resolve: match self.resolve {
                 Some(resolve) => {
-                    let callback = move |capability_response| f(resolve.call(capability_response));
+                    let callback = move |capability_response: Vec<u8>| {
+                        // FIXME: remove the need for this (by avoiding double deserialization)
+                        let response = bcs::to_bytes(&capability_response).unwrap();
+
+                        f(resolve.call(response))
+                    };
                     Some(Box::new(callback.into_callback()))
                 }
                 None => None,

@@ -44,7 +44,9 @@ where
 
     fn update(&self, msg: Event, model: &mut Model) -> Vec<Command<Ef, Event>> {
         match msg {
-            Event::Get => vec![self.capability::<platform::Platform<_>>().get(Event::Set)],
+            Event::Get => {
+                vec![self.capability::<platform::Platform<_>>().get(Event::Set)]
+            }
             Event::Set(platform) => {
                 model.platform = platform.0;
                 vec![self.capability::<render::Render<_>>().render()]

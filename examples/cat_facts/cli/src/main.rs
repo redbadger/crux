@@ -42,6 +42,7 @@ async fn main() -> Result<()> {
     let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
     queue.push_back(CoreMessage::Message(Event::Restore));
+    queue.push_back(CoreMessage::Message(Event::GetPlatform));
 
     while !queue.is_empty() {
         let msg = queue.pop_front();
@@ -87,7 +88,10 @@ async fn main() -> Result<()> {
                     }
                     Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
                 },
-                Effect::Platform => {}
+                Effect::Platform => queue.push_back(CoreMessage::Response(
+                    uuid,
+                    Outcome::Platform(platform::Response("cli".to_string())),
+                )),
                 Effect::KeyValue(request) => match request {
                     key_value::Request::Read(key) => {
                         let bytes = read_state(&key).await.ok();
@@ -117,8 +121,9 @@ async fn main() -> Result<()> {
         }
     }
 
-    let view = shared::view();
-    println!("{}", bcs::from_bytes::<ViewModel>(&view)?.fact);
+    let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
+    println!("platform: {}", view.platform);
+    println!("{}", view.fact);
 
     Ok(())
 }
