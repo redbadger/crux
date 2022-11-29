@@ -5,6 +5,7 @@ use crux_core::{
     platform::PlatformResponse,
     time::TimeResponse,
     typegen::TypeGen,
+    Request,
 };
 use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
 use std::path::PathBuf;
@@ -30,6 +31,8 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
+    gen.register_type::<Request<Effect>>()?;
+
     gen.register_type::<Effect>()?;
     gen.register_type::<HttpRequest>()?;
     gen.register_type::<KeyValueRequest>()?;
