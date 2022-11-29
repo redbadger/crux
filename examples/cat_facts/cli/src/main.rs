@@ -5,7 +5,13 @@ use async_std::{
 };
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use shared::{http, key_value, platform, time, Effect, Event, Request, ViewModel};
+use shared::{
+    http::{HttpRequest, HttpResponse},
+    key_value::{KeyValueRequest, KeyValueResponse},
+    platform,
+    time::TimeResponse,
+    Effect, Event, Request, ViewModel,
+};
 use std::{collections::VecDeque, time::SystemTime};
 
 enum CoreMessage {
@@ -21,10 +27,10 @@ enum Command {
 }
 
 pub enum Outcome {
-    Platform(platform::Response),
-    Time(time::Response),
-    Http(http::Response),
-    KeyValue(key_value::Response),
+    Platform(platform::PlatformResponse),
+    Time(TimeResponse),
+    Http(HttpResponse),
+    KeyValue(KeyValueResponse),
 }
 
 /// Simple program to greet a person
@@ -72,15 +78,14 @@ async fn main() -> Result<()> {
 
                     queue.push_back(CoreMessage::Response(
                         uuid,
-                        Outcome::Time(time::Response(iso_time)),
+                        Outcome::Time(TimeResponse(iso_time)),
                     ));
                 }
-                Effect::Http(http::Request { url, .. }) => match surf::get(&url).recv_bytes().await
-                {
+                Effect::Http(HttpRequest { url, .. }) => match surf::get(&url).recv_bytes().await {
                     Ok(bytes) => {
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::Http(http::Response {
+                            Outcome::Http(HttpResponse {
                                 status: 200,
                                 body: bytes,
                             }),
@@ -90,10 +95,10 @@ async fn main() -> Result<()> {
                 },
                 Effect::Platform => queue.push_back(CoreMessage::Response(
                     uuid,
-                    Outcome::Platform(platform::Response("cli".to_string())),
+                    Outcome::Platform(platform::PlatformResponse("cli".to_string())),
                 )),
                 Effect::KeyValue(request) => match request {
-                    key_value::Request::Read(key) => {
+                    KeyValueRequest::Read(key) => {
                         let bytes = read_state(&key).await.ok();
 
                         let initial_msg = match &args.cmd {
@@ -104,16 +109,16 @@ async fn main() -> Result<()> {
 
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(key_value::Response::Read(bytes)),
+                            Outcome::KeyValue(KeyValueResponse::Read(bytes)),
                         ));
                         queue.push_back(initial_msg);
                     }
-                    key_value::Request::Write(key, value) => {
+                    KeyValueRequest::Write(key, value) => {
                         let success = write_state(&key, &value).await.is_ok();
 
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(key_value::Response::Write(success)),
+                            Outcome::KeyValue(KeyValueResponse::Write(success)),
                         ));
                     }
                 },

@@ -1,9 +1,10 @@
+use self::platform::PlatformEvent;
 use crux_core::{
-    http::{self, Http},
-    key_value::{self, KeyValue},
+    http::{Http, HttpResponse},
+    key_value::{KeyValue, KeyValueResponse},
     platform::Platform,
     render::Render,
-    time::{self, Time},
+    time::{Time, TimeResponse},
     Capabilities,
 };
 pub use crux_core::{App, Command};
@@ -59,15 +60,15 @@ pub struct ViewModel {
 pub enum Event {
     None,
     GetPlatform,
-    Platform(platform::Event),
+    Platform(PlatformEvent),
     Clear,
     Get,
     Fetch,
-    Restore,                       // restore state
-    SetState(key_value::Response), // receive the data to restore state with
-    SetFact(http::Response),
-    SetImage(http::Response),
-    CurrentTime(time::Response),
+    Restore,                    // restore state
+    SetState(KeyValueResponse), // receive the data to restore state with
+    SetFact(HttpResponse),
+    SetImage(HttpResponse),
+    CurrentTime(TimeResponse),
 }
 
 #[derive(Default)]
@@ -98,7 +99,7 @@ where
         match msg {
             Event::GetPlatform => Command::lift(
                 self.platform
-                    .update(platform::Event::Get, &mut model.platform, caps),
+                    .update(PlatformEvent::Get, &mut model.platform, caps),
                 Event::Platform,
             ),
             Event::Platform(msg) => Command::lift(
@@ -137,7 +138,7 @@ where
                     render.render(),
                 ]
             }
-            Event::SetFact(http::Response { body, status: _ }) => {
+            Event::SetFact(HttpResponse { body, status: _ }) => {
                 // TODO check status
                 let fact = serde_json::from_slice::<CatFact>(&body).unwrap();
                 model.cat_fact = Some(fact);
@@ -158,7 +159,7 @@ where
                     render.render(),
                 ]
             }
-            Event::SetImage(http::Response { body, status: _ }) => {
+            Event::SetImage(HttpResponse { body, status: _ }) => {
                 // TODO check status
                 let image = serde_json::from_slice::<CatImage>(&body).unwrap();
                 model.cat_image = Some(image);
@@ -174,7 +175,7 @@ where
                 vec![key_value.read("state", Event::SetState)]
             }
             Event::SetState(response) => {
-                if let key_value::Response::Read(Some(bytes)) = response {
+                if let KeyValueResponse::Read(Some(bytes)) = response {
                     if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
                         *model = m
                     };

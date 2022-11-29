@@ -1,11 +1,10 @@
-use std::marker::PhantomData;
-
 use crux_core::{
-    platform::{self, Platform as PlatformCap},
+    platform::{Platform as PlatformCap, PlatformResponse},
     render::Render,
     App, Capabilities, Command,
 };
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 
 #[derive(Default)]
 pub struct Platform<Ef, Caps> {
@@ -18,9 +17,9 @@ pub struct Model {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum Event {
+pub enum PlatformEvent {
     Get,
-    Set(platform::Response),
+    Set(PlatformResponse),
 }
 
 impl<Ef, Caps> App<Ef, Caps> for Platform<Ef, Caps>
@@ -28,19 +27,24 @@ where
     Ef: Serialize + Clone + Default,
     Caps: Default + Capabilities<PlatformCap<Ef>> + Capabilities<Render<Ef>>,
 {
-    type Event = Event;
+    type Event = PlatformEvent;
     type Model = Model;
     type ViewModel = Model;
 
-    fn update(&self, msg: Event, model: &mut Model, caps: &Caps) -> Vec<Command<Ef, Event>> {
+    fn update(
+        &self,
+        msg: PlatformEvent,
+        model: &mut Model,
+        caps: &Caps,
+    ) -> Vec<Command<Ef, PlatformEvent>> {
         let platform = <Caps as crux_core::Capabilities<PlatformCap<_>>>::get(caps);
         let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
 
         match msg {
-            Event::Get => {
-                vec![platform.get(Event::Set)]
+            PlatformEvent::Get => {
+                vec![platform.get(PlatformEvent::Set)]
             }
-            Event::Set(platform) => {
+            PlatformEvent::Set(platform) => {
                 model.platform = platform.0;
                 vec![render.render()]
             }

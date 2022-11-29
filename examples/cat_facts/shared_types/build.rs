@@ -1,12 +1,18 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request};
-use shared::{Effect, Event, ViewModel};
+use crux_core::{
+    http::{HttpRequest, HttpResponse},
+    key_value::{KeyValueRequest, KeyValueResponse},
+    platform::PlatformResponse,
+    time::TimeResponse,
+    typegen::TypeGen,
+};
+use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
 use std::path::PathBuf;
 
 fn main() {
     let mut gen = TypeGen::new();
 
-    // register_types(&mut gen).expect("type registration failed");
+    register_types(&mut gen).expect("type registration failed");
 
     let output_root = PathBuf::from("./generated");
 
@@ -25,10 +31,17 @@ fn main() {
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
     gen.register_type::<Effect>()?;
+    gen.register_type::<HttpRequest>()?;
+    gen.register_type::<KeyValueRequest>()?;
+
     gen.register_type::<Event>()?;
-    // gen.register_type::<platform::Event>()?;
+    gen.register_type::<HttpResponse>()?;
+    gen.register_type::<KeyValueResponse>()?;
+    gen.register_type::<TimeResponse>()?;
+
+    gen.register_type::<PlatformEvent>()?;
+    gen.register_type::<PlatformResponse>()?;
+
     gen.register_type::<ViewModel>()?;
-    gen.register_type::<Request<Effect>>()?;
-    // gen.register_type::<Response>()?;
     Ok(())
 }

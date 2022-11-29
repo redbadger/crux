@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 // TODO revisit this
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
-pub struct Response(pub String);
+pub struct TimeResponse(pub String);
 
 pub struct Time<Ef>
 where
@@ -25,7 +25,7 @@ where
     pub fn get<Ev, F>(&self, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
-        F: Fn(Response) -> Ev + Send + Sync + 'static,
+        F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
         Command::new(self.effect.clone(), callback)
     }

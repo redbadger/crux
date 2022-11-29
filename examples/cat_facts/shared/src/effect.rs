@@ -1,6 +1,6 @@
 use crux_core::{
-    http::{self, Http},
-    key_value::{self, KeyValue},
+    http::{Http, HttpRequest},
+    key_value::{KeyValue, KeyValueRequest},
     platform::Platform,
     render::Render,
     time::Time,
@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Effect {
-    Http(http::Request),
-    KeyValue(key_value::Request),
+    Http(HttpRequest),
+    KeyValue(KeyValueRequest),
     Platform,
     Render,
     Time,

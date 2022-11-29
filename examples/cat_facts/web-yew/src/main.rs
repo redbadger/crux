@@ -1,6 +1,12 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
-use shared::{http, key_value, platform, time, Effect, Event, Request, ViewModel};
+use shared::{
+    http::{HttpRequest, HttpResponse},
+    key_value::{KeyValueRequest, KeyValueResponse},
+    platform,
+    time::TimeResponse,
+    Effect, Event, Request, ViewModel,
+};
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
@@ -43,10 +49,10 @@ enum CoreMessage {
 }
 
 pub enum Outcome {
-    Platform(platform::Response),
-    Time(time::Response),
-    Http(http::Response),
-    KeyValue(key_value::Response),
+    Platform(platform::PlatformResponse),
+    Time(TimeResponse),
+    Http(HttpResponse),
+    KeyValue(KeyValueResponse),
 }
 
 impl Component for HelloWorld {
@@ -86,12 +92,12 @@ impl Component for HelloWorld {
                 Effect::Time => {
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::Time(time::Response(time_get().unwrap())),
+                        Outcome::Time(TimeResponse(time_get().unwrap())),
                     ));
 
                     false
                 }
-                Effect::Http(http::Request { url, .. }) => {
+                Effect::Http(HttpRequest { url, .. }) => {
                     let link = link.clone();
 
                     wasm_bindgen_futures::spawn_local(async move {
@@ -99,7 +105,7 @@ impl Component for HelloWorld {
 
                         link.send_message(CoreMessage::Response(
                             uuid,
-                            Outcome::Http(http::Response {
+                            Outcome::Http(HttpResponse {
                                 status: 200,
                                 body: bytes,
                             }),
@@ -111,26 +117,26 @@ impl Component for HelloWorld {
                 Effect::Platform => {
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::Platform(platform::Response(
+                        Outcome::Platform(platform::PlatformResponse(
                             platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
                         )),
                     ));
 
                     false
                 }
-                Effect::KeyValue(key_value::Request::Read(_)) => {
+                Effect::KeyValue(KeyValueRequest::Read(_)) => {
                     // TODO implement state restoration
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::KeyValue(key_value::Response::Read(None)),
+                        Outcome::KeyValue(KeyValueResponse::Read(None)),
                     ));
 
                     false
                 }
-                Effect::KeyValue(key_value::Request::Write(..)) => {
+                Effect::KeyValue(KeyValueRequest::Write(..)) => {
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::KeyValue(key_value::Response::Write(false)),
+                        Outcome::KeyValue(KeyValueResponse::Write(false)),
                     ));
 
                     false
