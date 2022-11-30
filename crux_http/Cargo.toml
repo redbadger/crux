@@ -1,6 +1,6 @@
 [package]
-name = "crux_platform"
-description = "Platform capability for use with crux_core"
+name = "crux_http"
+description = "HTTP capability for use with crux_core"
 authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
 version = "0.1.0"

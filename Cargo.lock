@@ -148,6 +148,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_http"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bcs",
+ "crux_core",
+ "serde",
+]
+
+[[package]]
 name = "crux_platform"
 version = "0.1.0"
 dependencies = [

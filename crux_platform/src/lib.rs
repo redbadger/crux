@@ -11,15 +11,15 @@ pub struct Platform<Ef>
 where
     Ef: Clone,
 {
-    effect: Ef,
+    make_effect: Ef,
 }
 
 impl<Ef> Platform<Ef>
 where
     Ef: Clone,
 {
-    pub fn new(effect: Ef) -> Self {
-        Self { effect }
+    pub fn new(make_effect: Ef) -> Self {
+        Self { make_effect }
     }
 
     pub fn get<Ev, F>(&self, callback: F) -> Command<Ef, Ev>
@@ -27,7 +27,7 @@ where
         Ev: 'static,
         F: Fn(PlatformResponse) -> Ev + Send + Sync + 'static,
     {
-        Command::new(self.effect.clone(), callback)
+        Command::new(self.make_effect.clone(), callback)
     }
 }
 

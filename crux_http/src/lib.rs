@@ -1,9 +1,9 @@
 //! TODO mod docs
 
-use crate::{Capability, Command};
+use crux_core::{Capability, Command};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpRequest {
     pub method: String, // FIXME this probably should be an enum instead.
     pub url: String,
@@ -17,16 +17,16 @@ pub struct HttpResponse {
 }
 
 pub struct Http<Ef> {
-    effect: Box<dyn Fn(HttpRequest) -> Ef + Sync>,
+    make_effect: Box<dyn Fn(HttpRequest) -> Ef + Sync>,
 }
 
 impl<Ef> Http<Ef> {
-    pub fn new<MakeEffect>(effect: MakeEffect) -> Self
+    pub fn new<MakeEffect>(make_effect: MakeEffect) -> Self
     where
         MakeEffect: Fn(HttpRequest) -> Ef + Sync + 'static,
     {
         Self {
-            effect: Box::new(effect),
+            make_effect: Box::new(make_effect),
         }
     }
 
@@ -48,7 +48,7 @@ impl<Ef> Http<Ef> {
             url: url.to_string(),
         };
 
-        Command::new((self.effect)(request), callback)
+        Command::new((self.make_effect)(request), callback)
     }
 }
 

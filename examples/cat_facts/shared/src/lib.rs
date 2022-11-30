@@ -1,6 +1,7 @@
 pub use app::*;
 use crux_core::Core;
-pub use crux_core::{http, key_value, time, Request};
+pub use crux_core::{key_value, time, Request};
+pub use crux_http as http;
 pub use crux_platform as platform;
 use effect::Capabilities;
 pub use effect::Effect;
