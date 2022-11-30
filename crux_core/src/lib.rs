@@ -120,8 +120,6 @@ pub mod platform;
 pub mod render;
 pub mod time;
 
-pub mod playground;
-
 pub use capability::{Capabilities, Capability};
 pub use command::Command;
 use continuations::ContinuationStore;
