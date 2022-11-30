@@ -72,7 +72,7 @@ mod shared {
         GetPlatform,
     }
 
-    #[derive(Clone, Serialize, Deserialize)]
+    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
     pub enum Effect {
         Platform,
         Render,
@@ -126,7 +126,7 @@ mod shell {
         Response(Vec<u8>, Outcome),
     }
 
-    pub fn run() -> Result<(Vec<&'static str>, ViewModel)> {
+    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
         let core: Core<Effect, MyCapabilities, PlatformApp<Effect, MyCapabilities>> = Core::new();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
@@ -152,9 +152,9 @@ mod shell {
             for req in reqs {
                 let Request { uuid, effect } = req;
                 match effect {
-                    Effect::Render => received.push("render"),
+                    Effect::Render => received.push(effect),
                     Effect::Platform => {
-                        received.push("platform");
+                        received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
                             Outcome::Platform(PlatformResponse("test shell".to_string())),
@@ -170,13 +170,13 @@ mod shell {
 }
 
 mod tests {
-    use crate::shell::run;
+    use crate::{shared::Effect, shell::run};
     use anyhow::Result;
 
     #[test]
     pub fn test_platform() -> Result<()> {
         let (received, view) = run()?;
-        assert_eq!(received, ["platform", "render"]);
+        assert_eq!(received, vec![Effect::Platform, Effect::Render]);
         assert_eq!(view.platform, "test shell");
         Ok(())
     }
