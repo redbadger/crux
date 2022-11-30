@@ -5,49 +5,49 @@ mod shared {
     use std::marker::PhantomData;
 
     #[derive(Default)]
-    pub struct PlatformApp<Ef, Caps> {
+    pub struct MyApp<Ef, Caps> {
         _marker: PhantomData<fn() -> (Ef, Caps)>,
     }
 
+    #[derive(Serialize, Deserialize)]
+    pub enum MyEvent {
+        PlatformGet,
+        PlatformSet(PlatformResponse),
+    }
+
     #[derive(Default, Serialize, Deserialize)]
-    pub struct PlatformModel {
+    pub struct MyModel {
         pub platform: String,
     }
 
     #[derive(Serialize, Deserialize, Default)]
-    pub struct ViewModel {
+    pub struct MyViewModel {
         pub platform: String,
     }
 
-    #[derive(Serialize, Deserialize)]
-    pub enum PlatformEvent {
-        Get,
-        Set(PlatformResponse),
-    }
-
-    impl<Ef, Caps> App<Ef, Caps> for PlatformApp<Ef, Caps>
+    impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
     where
         Ef: Serialize + Clone + Default,
         Caps: Default + Capabilities<Platform<Ef>> + Capabilities<Render<Ef>>,
     {
-        type Event = PlatformEvent;
-        type Model = PlatformModel;
-        type ViewModel = PlatformModel;
+        type Event = MyEvent;
+        type Model = MyModel;
+        type ViewModel = MyViewModel;
 
         fn update(
             &self,
-            msg: PlatformEvent,
-            model: &mut PlatformModel,
+            msg: MyEvent,
+            model: &mut MyModel,
             caps: &Caps,
-        ) -> Vec<Command<Ef, PlatformEvent>> {
+        ) -> Vec<Command<Ef, MyEvent>> {
             let platform = <Caps as crux_core::Capabilities<Platform<_>>>::get(caps);
             let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
 
             match msg {
-                PlatformEvent::Get => {
-                    vec![platform.get(PlatformEvent::Set)]
+                MyEvent::PlatformGet => {
+                    vec![platform.get(MyEvent::PlatformSet)]
                 }
-                PlatformEvent::Set(platform) => {
+                MyEvent::PlatformSet(platform) => {
                     model.platform = platform.0;
                     vec![render.render()]
                 }
@@ -58,42 +58,37 @@ mod shared {
             &self,
             model: &<Self as App<Ef, Caps>>::Model,
         ) -> <Self as App<Ef, Caps>>::ViewModel {
-            PlatformModel {
+            MyViewModel {
                 platform: model.platform.clone(),
             }
         }
     }
 
-    #[derive(Serialize, Deserialize)]
-    pub enum Event {
-        GetPlatform,
-    }
-
     #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-    pub enum Effect {
+    pub enum MyEffect {
         Platform,
         Render,
     }
 
-    impl Default for Effect {
+    impl Default for MyEffect {
         fn default() -> Self {
-            Effect::Render
+            MyEffect::Render
         }
     }
 
     pub(crate) struct MyCapabilities {
-        pub platform: Platform<Effect>,
-        pub render: Render<Effect>,
+        pub platform: Platform<MyEffect>,
+        pub render: Render<MyEffect>,
     }
 
-    impl crux_core::Capabilities<Platform<Effect>> for MyCapabilities {
-        fn get(&self) -> &Platform<Effect> {
+    impl crux_core::Capabilities<Platform<MyEffect>> for MyCapabilities {
+        fn get(&self) -> &Platform<MyEffect> {
             &self.platform
         }
     }
 
-    impl crux_core::Capabilities<Render<Effect>> for MyCapabilities {
-        fn get(&self) -> &Render<Effect> {
+    impl crux_core::Capabilities<Render<MyEffect>> for MyCapabilities {
+        fn get(&self) -> &Render<MyEffect> {
             &self.render
         }
     }
@@ -101,15 +96,15 @@ mod shared {
     impl Default for MyCapabilities {
         fn default() -> Self {
             Self {
-                platform: Platform::new(Effect::Platform),
-                render: Render::new(Effect::Render),
+                platform: Platform::new(MyEffect::Platform),
+                render: Render::new(MyEffect::Render),
             }
         }
     }
 }
 
 mod shell {
-    use super::shared::{Effect, Event, MyCapabilities, PlatformApp, ViewModel};
+    use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
     use crux_platform::PlatformResponse;
@@ -120,15 +115,15 @@ mod shell {
     }
 
     enum CoreMessage {
-        Message(Event),
+        Message(MyEvent),
         Response(Vec<u8>, Outcome),
     }
 
-    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
-        let core: Core<Effect, MyCapabilities, PlatformApp<Effect, MyCapabilities>> = Core::new();
+    pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
+        let core: Core<MyEffect, MyCapabilities, MyApp<MyEffect, MyCapabilities>> = Core::new();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-        queue.push_back(CoreMessage::Message(Event::GetPlatform));
+        queue.push_back(CoreMessage::Message(MyEvent::PlatformGet));
 
         let mut received = vec![];
 
@@ -145,13 +140,13 @@ mod shell {
                 ),
                 _ => vec![],
             };
-            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
+            let reqs: Vec<Request<MyEffect>> = bcs::from_bytes(&reqs)?;
 
             for req in reqs {
                 let Request { uuid, effect } = req;
                 match effect {
-                    Effect::Render => received.push(effect),
-                    Effect::Platform => {
+                    MyEffect::Render => received.push(effect),
+                    MyEffect::Platform => {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
@@ -162,19 +157,19 @@ mod shell {
             }
         }
 
-        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
+        let view = bcs::from_bytes::<MyViewModel>(&core.view())?;
         Ok((received, view))
     }
 }
 
 mod tests {
-    use crate::{shared::Effect, shell::run};
+    use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;
 
     #[test]
     pub fn test_platform() -> Result<()> {
         let (received, view) = run()?;
-        assert_eq!(received, vec![Effect::Platform, Effect::Render]);
+        assert_eq!(received, vec![MyEffect::Platform, MyEffect::Render]);
         assert_eq!(view.platform, "test shell");
         Ok(())
     }
