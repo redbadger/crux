@@ -1,2 +1,2 @@
 [workspace]
-members = ["crux_core"]
+members = ["crux_core", "crux_platform"]

@@ -1,10 +1,10 @@
 use crux_core::{
     http::{Http, HttpRequest},
     key_value::{KeyValue, KeyValueRequest},
-    platform::Platform,
     render::Render,
     time::Time,
 };
+use crux_platform::Platform;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]

@@ -1,10 +1,7 @@
 pub use app::*;
-pub use crux_core::http;
-pub use crux_core::key_value;
-pub use crux_core::platform;
-pub use crux_core::time;
 use crux_core::Core;
-pub use crux_core::Request;
+pub use crux_core::{http, key_value, time, Request};
+pub use crux_platform as platform;
 use effect::Capabilities;
 pub use effect::Effect;
 use lazy_static::lazy_static;

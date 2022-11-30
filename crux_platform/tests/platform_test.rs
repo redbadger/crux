@@ -1,9 +1,6 @@
 mod shared {
-    use crux_core::{
-        platform::{Platform, PlatformResponse},
-        render::Render,
-        App, Capabilities, Command,
-    };
+    use crux_core::{render::Render, App, Capabilities, Command};
+    use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
 
@@ -114,7 +111,8 @@ mod shared {
 mod shell {
     use super::shared::{Effect, Event, MyCapabilities, PlatformApp, ViewModel};
     use anyhow::Result;
-    use crux_core::{platform::PlatformResponse, Core, Request};
+    use crux_core::{Core, Request};
+    use crux_platform::PlatformResponse;
     use std::collections::VecDeque;
 
     pub enum Outcome {

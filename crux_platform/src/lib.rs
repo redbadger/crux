@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crate::{Capability, Command};
+use crux_core::{Capability, Command};
 use serde::{Deserialize, Serialize};
 
 // TODO revisit this

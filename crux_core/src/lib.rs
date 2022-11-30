@@ -116,7 +116,6 @@ mod continuations;
 // TODO move into separate crates
 pub mod http;
 pub mod key_value;
-pub mod platform;
 pub mod render;
 pub mod time;
 

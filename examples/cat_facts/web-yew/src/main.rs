@@ -3,7 +3,7 @@ use js_sys::Date;
 use shared::{
     http::{HttpRequest, HttpResponse},
     key_value::{KeyValueRequest, KeyValueResponse},
-    platform,
+    platform::PlatformResponse,
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
 };
@@ -49,7 +49,7 @@ enum CoreMessage {
 }
 
 pub enum Outcome {
-    Platform(platform::PlatformResponse),
+    Platform(PlatformResponse),
     Time(TimeResponse),
     Http(HttpResponse),
     KeyValue(KeyValueResponse),
@@ -117,7 +117,7 @@ impl Component for HelloWorld {
                 Effect::Platform => {
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::Platform(platform::PlatformResponse(
+                        Outcome::Platform(PlatformResponse(
                             platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
                         )),
                     ));

@@ -1,8 +1,5 @@
-use crux_core::{
-    platform::{Platform as PlatformCap, PlatformResponse},
-    render::Render,
-    App, Capabilities, Command,
-};
+use crux_core::{render::Render, App, Capabilities, Command};
+use crux_platform::{Platform as PlatformCap, PlatformResponse};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 

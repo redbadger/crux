@@ -1,0 +1,17 @@
+[package]
+name = "crux_platform"
+description = "Platform capability for use with crux_core"
+authors = ["Red Badger Consulting Limited"]
+repository = "https://github.com/redbadger/crux/"
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+license = "Apache-2.0"
+keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+anyhow = "1.0.66"
+bcs = "0.1.4"
+crux_core = { version = "0.1", path = "../crux_core" }
+serde = { version = "1.0.148", features = ["derive"] }

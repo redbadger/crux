@@ -7,7 +7,7 @@ version = "0.1.1"
 edition = "2021"
 readme = "README.md"
 license = "Apache-2.0"
-keywords = ["ui", "ux", "ffi", "wasm", "rust"]
+keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 
 [package.metadata.docs.rs]
 all-features = true

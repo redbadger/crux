@@ -2,12 +2,12 @@ use self::platform::PlatformEvent;
 use crux_core::{
     http::{Http, HttpResponse},
     key_value::{KeyValue, KeyValueResponse},
-    platform::Platform,
     render::Render,
     time::{Time, TimeResponse},
     Capabilities,
 };
 pub use crux_core::{App, Command};
+use crux_platform::Platform;
 use serde::{Deserialize, Serialize};
 
 pub mod platform;

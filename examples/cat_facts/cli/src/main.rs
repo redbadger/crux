@@ -8,7 +8,7 @@ use clap::Parser;
 use shared::{
     http::{HttpRequest, HttpResponse},
     key_value::{KeyValueRequest, KeyValueResponse},
-    platform,
+    platform::PlatformResponse,
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
 };
@@ -27,7 +27,7 @@ enum Command {
 }
 
 pub enum Outcome {
-    Platform(platform::PlatformResponse),
+    Platform(PlatformResponse),
     Time(TimeResponse),
     Http(HttpResponse),
     KeyValue(KeyValueResponse),
@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
                 },
                 Effect::Platform => queue.push_back(CoreMessage::Response(
                     uuid,
-                    Outcome::Platform(platform::PlatformResponse("cli".to_string())),
+                    Outcome::Platform(PlatformResponse("cli".to_string())),
                 )),
                 Effect::KeyValue(request) => match request {
                     KeyValueRequest::Read(key) => {
