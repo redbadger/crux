@@ -21,7 +21,7 @@ fn main() {
         .expect("swift type gen failed");
 
     gen.java(
-        "com.redbadger.crux_core.shared_types",
+        "com.redbadger.catfacts.shared_types",
         output_root.join("java"),
     )
     .expect("java type gen failed");

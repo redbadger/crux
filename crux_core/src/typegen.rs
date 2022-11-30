@@ -161,16 +161,19 @@ impl TypeGen {
         let generator = serde_generate::java::CodeGenerator::new(&config);
         generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
 
-        let extensions_dir =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/java");
-
         let package_path = package_name.replace('.', "/");
-        fs::copy(
-            extensions_dir.join(&package_path).join("Requests.java"),
+
+        let requests = format!(
+            "package {package_name};\n\n{}",
+            include_str!("../typegen_extensions/java/Requests.java")
+        );
+
+        fs::write(
             path.as_ref()
                 .to_path_buf()
                 .join(&package_path)
                 .join("Requests.java"),
+            requests,
         )?;
 
         Ok(())
