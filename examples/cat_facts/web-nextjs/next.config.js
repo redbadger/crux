@@ -25,4 +25,30 @@ module.exports = {
 
     return nextConfig;
   },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self' 'unsafe-inline' 'unsafe-eval' catfact.ninja *.tenor.com aws.random.cat *.dream.io cdn.jsdelivr.net",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "origin-when-cross-origin",
+          },
+        ],
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/",
+        destination: "https://aws.random.cat/meow",
+      },
+    ];
+  },
 };
