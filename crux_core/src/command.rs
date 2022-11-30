@@ -44,7 +44,7 @@ impl<Ef, Ev> Command<Ef, Ev> {
     /// This is normally used when composing applications. A typical case in the top-level
     /// `update` function would look like the following:
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// match message {
     ///     // ...
     ///     Msg::Submodule(msg) => Command::lift(

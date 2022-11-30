@@ -17,7 +17,7 @@
 //!
 //! Below is a minimal example of a Crux based application Core:
 //!
-//! ```rust
+//! ```rust,ignore
 //! // src/app.rs
 //!
 //! use serde::{Serialize, Deserialize}
@@ -63,7 +63,7 @@
 //!
 //! To use the application in a user interface shell, you need to expose the core interface for FFI
 //!
-//! ```rust
+//! ```rust,ignore
 //! // src/lib.rs
 //!
 //! use lazy_static::lazy_static;
@@ -94,7 +94,7 @@
 //!
 //! You will also need an `hello.udl` file describing the interface:
 //!
-//! ```
+//! ```ignore
 //! namespace hello {
 //!   sequence<u8> message([ByRef] sequence<u8> msg);
 //!   sequence<u8> response([ByRef] sequence<u8> res);
@@ -192,7 +192,7 @@ where
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// lazy_static! {
     ///     static ref CORE: Core<Hello> = Core::new();
     /// }
