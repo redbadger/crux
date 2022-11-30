@@ -26,6 +26,7 @@ pub fn message(data: &[u8]) -> Vec<u8> {
     CORE.message(data)
 }
 
+#[wasm_bindgen]
 pub fn response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
     CORE.response(uuid, data)
 }
