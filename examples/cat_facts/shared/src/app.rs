@@ -118,15 +118,9 @@ where
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![<Caps as crux_core::Capabilities<Render<_>>>::get(caps).render()]
+                    vec![render.render()]
                 } else {
-                    model.cat_image = Some(CatImage::default());
-
-                    vec![
-                        http.get(FACT_API_URL, Event::SetFact),
-                        http.get(IMAGE_API_URL, Event::SetImage),
-                        render.render(),
-                    ]
+                    self.update(Event::Fetch, model, caps)
                 }
             }
             Event::Fetch => {
