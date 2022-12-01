@@ -36,14 +36,14 @@ mod shared {
 
         fn update(
             &self,
-            msg: MyEvent,
+            event: MyEvent,
             model: &mut MyModel,
             caps: &Caps,
         ) -> Vec<Command<Ef, MyEvent>> {
             let platform = <Caps as crux_core::Capabilities<Platform<_>>>::get(caps);
             let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
 
-            match msg {
+            match event {
                 MyEvent::PlatformGet => {
                     vec![platform.get(MyEvent::PlatformSet)]
                 }

@@ -114,7 +114,6 @@ pub mod command;
 mod continuations;
 
 // TODO move into separate crates
-pub mod key_value;
 pub mod render;
 pub mod time;
 

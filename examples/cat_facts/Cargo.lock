@@ -660,6 +660,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_kv"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bcs",
+ "crux_core",
+ "serde",
+]
+
+[[package]]
 name = "crux_platform"
 version = "0.1.0"
 dependencies = [
@@ -2225,6 +2235,7 @@ dependencies = [
  "bincode",
  "crux_core",
  "crux_http",
+ "crux_kv",
  "crux_platform",
  "derive_more",
  "lazy_static",
@@ -2245,6 +2256,7 @@ dependencies = [
  "anyhow",
  "crux_core",
  "crux_http",
+ "crux_kv",
  "crux_platform",
  "shared",
 ]

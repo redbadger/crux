@@ -1,11 +1,7 @@
 use anyhow::Result;
-use crux_core::{
-    key_value::{KeyValueRequest, KeyValueResponse},
-    time::TimeResponse,
-    typegen::TypeGen,
-    Request,
-};
+use crux_core::{time::TimeResponse, typegen::TypeGen, Request};
 use crux_http::{HttpRequest, HttpResponse};
+use crux_kv::{KeyValueRequest, KeyValueResponse};
 use crux_platform::PlatformResponse;
 use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
 use std::path::PathBuf;

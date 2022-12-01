@@ -1,9 +1,9 @@
 //! TODO mod docs
 
-use crate::{Capability, Command};
+use crux_core::{Capability, Command};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum KeyValueRequest {
     Read(String),
     Write(String, Vec<u8>),

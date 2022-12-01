@@ -1,9 +1,6 @@
-use crux_core::{
-    key_value::{KeyValue, KeyValueRequest},
-    render::Render,
-    time::Time,
-};
+use crux_core::{render::Render, time::Time};
 use crux_http::{Http, HttpRequest};
+use crux_kv::{KeyValue, KeyValueRequest};
 use crux_platform::Platform;
 use serde::{Deserialize, Serialize};
 
