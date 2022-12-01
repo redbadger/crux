@@ -106,16 +106,12 @@
 //! See [typegen] for details.
 //!
 
-#[cfg(feature = "typegen")]
-pub mod typegen;
-
 pub mod capability;
 pub mod command;
 mod continuations;
-
-// TODO move into separate crates
 pub mod render;
-pub mod time;
+#[cfg(feature = "typegen")]
+pub mod typegen;
 
 pub use capability::{Capabilities, Capability};
 pub use command::Command;

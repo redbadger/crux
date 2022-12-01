@@ -680,6 +680,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_time"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bcs",
+ "crux_core",
+ "serde",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2237,6 +2247,7 @@ dependencies = [
  "crux_http",
  "crux_kv",
  "crux_platform",
+ "crux_time",
  "derive_more",
  "lazy_static",
  "serde",
@@ -2258,6 +2269,7 @@ dependencies = [
  "crux_http",
  "crux_kv",
  "crux_platform",
+ "crux_time",
  "shared",
 ]
 

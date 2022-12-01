@@ -1,7 +1,8 @@
-use crux_core::{render::Render, time::Time};
+use crux_core::render::Render;
 use crux_http::{Http, HttpRequest};
 use crux_kv::{KeyValue, KeyValueRequest};
 use crux_platform::Platform;
+use crux_time::Time;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
