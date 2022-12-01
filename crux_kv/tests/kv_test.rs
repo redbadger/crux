@@ -173,6 +173,8 @@ mod shell {
                     }
                     MyEffect::KeyValue(KeyValueRequest::Read(ref k)) => {
                         received.push(effect.clone());
+
+                        // do work
                         let v = kv_store.get(k).unwrap();
                         queue.push_back(CoreMessage::Response(
                             uuid,
