@@ -1,11 +1,35 @@
 //! TODO mod docs
 
 use crux_core::{Capability, Command};
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
+use url::Url;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Display)]
+pub enum HttpMethod {
+    #[display(fmt = "GET")]
+    Get,
+    #[display(fmt = "HEAD")]
+    Head,
+    #[display(fmt = "POST")]
+    Post,
+    #[display(fmt = "PUT")]
+    Put,
+    #[display(fmt = "DELETE")]
+    Delete,
+    #[display(fmt = "CONNECT")]
+    Connect,
+    #[display(fmt = "OPTIONS")]
+    Options,
+    #[display(fmt = "TRACE")]
+    Trace,
+    #[display(fmt = "PATCH")]
+    Patch,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpRequest {
-    pub method: String, // FIXME this probably should be an enum instead.
+    pub method: String,
     pub url: String,
     // TODO support headers
 }
@@ -30,15 +54,15 @@ impl<Ef> Http<Ef> {
         }
     }
 
-    pub fn get<Ev, F>(&self, url: &str, callback: F) -> Command<Ef, Ev>
+    pub fn get<Ev, F>(&self, url: Url, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
         F: Fn(HttpResponse) -> Ev + Send + Sync + 'static,
     {
-        self.request("GET", url, callback)
+        self.request(HttpMethod::Get, url, callback)
     }
 
-    pub fn request<Ev, F>(&self, method: &str, url: &str, callback: F) -> Command<Ef, Ev>
+    pub fn request<Ev, F>(&self, method: HttpMethod, url: Url, callback: F) -> Command<Ef, Ev>
     where
         Ev: 'static,
         F: Fn(HttpResponse) -> Ev + Send + Sync + 'static,

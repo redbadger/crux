@@ -3,6 +3,7 @@ mod shared {
     use crux_http::{Http, HttpRequest, HttpResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
+    use url::Url;
 
     #[derive(Default)]
     pub struct MyApp<Ef, Caps> {
@@ -46,7 +47,7 @@ mod shared {
 
             match event {
                 MyEvent::HttpGet => {
-                    vec![http.get("http://example.com", MyEvent::HttpSet)]
+                    vec![http.get(Url::parse("http://example.com").unwrap(), MyEvent::HttpSet)]
                 }
                 MyEvent::HttpSet(response) => {
                     model.status = response.status;
@@ -184,7 +185,7 @@ mod tests {
             vec![
                 MyEffect::Http(HttpRequest {
                     method: "GET".to_string(),
-                    url: "http://example.com".to_string()
+                    url: "http://example.com/".to_string()
                 }),
                 MyEffect::Render
             ]

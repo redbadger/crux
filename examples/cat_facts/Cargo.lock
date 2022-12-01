@@ -656,7 +656,9 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "derive_more",
  "serde",
+ "url",
 ]
 
 [[package]]
@@ -2256,6 +2258,7 @@ dependencies = [
  "uniffi",
  "uniffi_build",
  "uniffi_macros",
+ "url",
  "uuid",
  "wasm-bindgen",
 ]

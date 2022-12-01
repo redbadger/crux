@@ -6,6 +6,7 @@ use crux_kv::{KeyValue, KeyValueResponse};
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 pub mod platform;
 
@@ -124,8 +125,8 @@ where
                 model.cat_image = Some(CatImage::default());
 
                 vec![
-                    http.get(FACT_API_URL, Event::SetFact),
-                    http.get(IMAGE_API_URL, Event::SetImage),
+                    http.get(Url::parse(FACT_API_URL).unwrap(), Event::SetFact),
+                    http.get(Url::parse(IMAGE_API_URL).unwrap(), Event::SetImage),
                     render.render(),
                 ]
             }
