@@ -1,6 +1,6 @@
 # Overview
 
-RMM (better name pending) is an **experimental** approach to building cross-platform applications with better testability, higher code and behaviour reuse, better safety, security, and more joy from better tools.
+Crux is an **experimental** approach to building cross-platform applications with better testability, higher code and behaviour reuse, better safety, security, and more joy from better tools.
 
 It splits the application into two distinct parts, a Core built in Rust, which drives as much of the business logic as possible, and a Shell, built in the platform native language (Swift, Kotlin, TypeScript), which provides all interfaces with the external world, including the human user, and acts as a platform on which the core runs.
 
@@ -20,7 +20,9 @@ The user interface layer is built natively, with modern declarative UI framework
 
 The core requests side-effects from the Shell through common [capabilities](./guide/capabilities.md). The basic concept is that instead of _doing_ the asynchronous work, the core _describes_ the intent for the work with data, and passes this to the Shell to be performed. The Shell performs the work, and returns the outcomes back to the Core. This approach is inspired by [Elm](https://elm-lang.org/), and similar to how other purely functional languages deal with effects and I/O (e.g. the IO monad in Haskell). It is also similar to how iterators work in Rust.
 
-The Core exports types for the messages it can understand. The Shell can call the Core and pass one of the messages, and receives a set of side-effect requests to perform. When the work is completed, the Shell sends the result into the Core, which responds with further requests if necessary. Re-drawing the user interface is one of the side-effects the Core can request. The entire interface is strongly typed and breaking changes in the core will result in build failures in the Shell.
+The Core exports types for the messages it can understand. The Shell can call the Core and pass one of the messages. In return, it receives a set of side-effect requests to perform. When the work is completed, the Shell sends the result back into the Core, which responds with further requests if necessary.
+
+Updating the user interface is considered one of the side-effects the Core can request. The entire interface is strongly typed and breaking changes in the core will result in build failures in the Shell.
 
 ## Goals
 
