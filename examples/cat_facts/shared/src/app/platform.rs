@@ -34,8 +34,8 @@ where
         model: &mut Model,
         caps: &Caps,
     ) -> Vec<Command<Ef, PlatformEvent>> {
-        let platform = <Caps as crux_core::Capabilities<PlatformCap<_>>>::get(caps);
-        let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
+        let platform: &PlatformCap<_> = caps.get();
+        let render: &Render<_> = caps.get();
 
         match msg {
             PlatformEvent::Get => {
