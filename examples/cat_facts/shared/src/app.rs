@@ -84,8 +84,7 @@ impl<Ef, Caps> Default for CatFacts<Ef, Caps> {
 impl<Ef, Caps> App<Ef, Caps> for CatFacts<Ef, Caps>
 where
     Ef: Serialize + Clone,
-    Caps: Default
-        + Capabilities<Http<Ef>>
+    Caps: Capabilities<Http<Ef>>
         + Capabilities<KeyValue<Ef>>
         + Capabilities<Render<Ef>>
         + Capabilities<Time<Ef>>

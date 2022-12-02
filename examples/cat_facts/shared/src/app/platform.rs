@@ -29,7 +29,7 @@ pub enum PlatformEvent {
 impl<Ef, Caps> App<Ef, Caps> for Platform<Ef, Caps>
 where
     Ef: Serialize + Clone,
-    Caps: Default + Capabilities<PlatformCap<Ef>> + Capabilities<Render<Ef>>,
+    Caps: Capabilities<PlatformCap<Ef>> + Capabilities<Render<Ef>>,
 {
     type Event = PlatformEvent;
     type Model = Model;
