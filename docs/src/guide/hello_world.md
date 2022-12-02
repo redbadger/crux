@@ -226,7 +226,7 @@ mod test {
         let model = Model::default();
         let hello = Hello::default();
  
-        let actual_view = hello.view()
+        let actual_view = hello.view(&model)
         let expected_view = "Count is: 0";
 
         assert_eq!(actual_view, expected_view);
@@ -254,7 +254,7 @@ mod test {
  
         hello.update(Event::Decrement, &mut model, &capabilities);
 
-        let actual_view = hello.view()
+        let actual_view = hello.view(&model)
         let expected_view = "Count is: -1";
 
         assert_eq!(actual_view, expected_view);
@@ -269,7 +269,7 @@ mod test {
         hello.update(Event::Increment, &mut model, &capabilities);
         hello.update(Event::Reset, &mut model, &capabilities);
 
-        let actual_view = hello.view()
+        let actual_view = hello.view(&model)
         let expected_view = "Count is: 0";
 
         assert_eq!(actual_view, expected_view);
@@ -287,7 +287,7 @@ mod test {
         hello.update(Event::Increment, &mut model, &capabilities);
         hello.update(Event::Increment, &mut model, &capabilities);
 
-        let actual_view = hello.view()
+        let actual_view = hello.view(&model)
         let expected_view = "Count is: 1";
 
         assert_eq!(actual_view, expected_view);
