@@ -74,6 +74,12 @@ pub struct CatFacts<Ef, Caps> {
     platform: platform::Platform<Ef, Caps>,
 }
 
+macro_rules! capability {
+    ( $cap:ident, $caps:expr ) => {
+        <Caps as Capabilities<$cap<_>>>::get($caps)
+    };
+}
+
 impl<Ef, Caps> App<Ef, Caps> for CatFacts<Ef, Caps>
 where
     Ef: Serialize + Clone + Default,
@@ -89,10 +95,10 @@ where
     type ViewModel = ViewModel;
 
     fn update(&self, msg: Event, model: &mut Model, caps: &Caps) -> Vec<Command<Ef, Event>> {
-        let http = <Caps as crux_core::Capabilities<Http<_>>>::get(caps);
-        let key_value = <Caps as crux_core::Capabilities<KeyValue<_>>>::get(caps);
-        let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
-        let time = <Caps as crux_core::Capabilities<Time<_>>>::get(caps);
+        let http = capability!(Http, caps);
+        let key_value = capability!(KeyValue, caps);
+        let render = capability!(Render, caps);
+        let time = capability!(Time, caps);
 
         match msg {
             Event::GetPlatform => Command::lift(
