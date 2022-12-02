@@ -69,14 +69,21 @@ pub enum Event {
     CurrentTime(TimeResponse),
 }
 
-#[derive(Default)]
 pub struct CatFacts<Ef, Caps> {
     platform: platform::Platform<Ef, Caps>,
 }
 
+impl<Ef, Caps> Default for CatFacts<Ef, Caps> {
+    fn default() -> Self {
+        Self {
+            platform: Default::default(),
+        }
+    }
+}
+
 impl<Ef, Caps> App<Ef, Caps> for CatFacts<Ef, Caps>
 where
-    Ef: Serialize + Clone + Default,
+    Ef: Serialize + Clone,
     Caps: Default
         + Capabilities<Http<Ef>>
         + Capabilities<KeyValue<Ef>>

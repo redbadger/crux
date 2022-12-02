@@ -3,9 +3,16 @@ use crux_platform::{Platform as PlatformCap, PlatformResponse};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
-#[derive(Default)]
 pub struct Platform<Ef, Caps> {
     _marker: PhantomData<fn() -> (Ef, Caps)>,
+}
+
+impl<Ef, Caps> Default for Platform<Ef, Caps> {
+    fn default() -> Self {
+        Self {
+            _marker: Default::default(),
+        }
+    }
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -21,7 +28,7 @@ pub enum PlatformEvent {
 
 impl<Ef, Caps> App<Ef, Caps> for Platform<Ef, Caps>
 where
-    Ef: Serialize + Clone + Default,
+    Ef: Serialize + Clone,
     Caps: Default + Capabilities<PlatformCap<Ef>> + Capabilities<Render<Ef>>,
 {
     type Event = PlatformEvent;

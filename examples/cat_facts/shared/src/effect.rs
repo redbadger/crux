@@ -14,12 +14,6 @@ pub enum Effect {
     Time,
 }
 
-impl Default for Effect {
-    fn default() -> Self {
-        Effect::Render
-    }
-}
-
 // Will get generated?
 pub(crate) struct Capabilities {
     pub http: Http<Effect>,
