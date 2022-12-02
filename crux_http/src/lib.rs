@@ -1,6 +1,12 @@
 //! TODO mod docs
 
-use crux_core::{Capability, Command};
+use std::{
+    marker::PhantomData,
+    sync::{mpsc::Sender, Arc, Mutex},
+};
+
+use bcs::from_bytes;
+use crux_core::{command::Callback, sender::CruxSender, Command};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -40,29 +46,31 @@ pub struct HttpResponse {
     pub body: Vec<u8>, // TODO support headers
 }
 
-pub struct Http<Ef> {
-    make_effect: Box<dyn Fn(HttpRequest) -> Ef + Sync>,
+pub struct Http<Ev> {
+    // TODO: On wasm this'll need to be an Rc<RefCell<VecDeque<T>>> or w/e - build a wrapper.
+    // Or at least check if we need to.  Probably also incorporate the mutex into that wrapper for ease of use...
+    sender: Mutex<Box<dyn CruxSender<Command<HttpRequest, Ev>> + Send + 'static>>,
 }
 
-impl<Ef> Http<Ef> {
-    pub fn new<MakeEffect>(make_effect: MakeEffect) -> Self
-    where
-        MakeEffect: Fn(HttpRequest) -> Ef + Sync + 'static,
-    {
+impl<Ev> Http<Ev>
+where
+    Ev: 'static,
+{
+    pub fn new(sender: Box<dyn CruxSender<Command<HttpRequest, Ev>> + Send + 'static>) -> Self {
         Self {
-            make_effect: Box::new(make_effect),
+            sender: Mutex::new(sender),
         }
     }
 
-    pub fn get<Ev, F>(&self, url: Url, callback: F) -> Command<Ef, Ev>
+    pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
         F: Fn(HttpResponse) -> Ev + Send + Sync + 'static,
     {
-        self.request(HttpMethod::Get, url, callback)
+        self.send(HttpMethod::Get, url, callback)
     }
 
-    pub fn request<Ev, F>(&self, method: HttpMethod, url: Url, callback: F) -> Command<Ef, Ev>
+    pub fn send<F>(&self, method: HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
         F: Fn(HttpResponse) -> Ev + Send + Sync + 'static,
@@ -72,8 +80,9 @@ impl<Ef> Http<Ef> {
             url: url.to_string(),
         };
 
-        Command::new((self.make_effect)(request), callback)
+        self.sender
+            .lock()
+            .expect("the mutex to not be poisoned")
+            .send(Command::new(request, callback))
     }
 }
-
-impl<Ef> Capability for Http<Ef> where Ef: Clone {}

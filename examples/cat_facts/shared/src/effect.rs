@@ -1,4 +1,5 @@
 use crux_core::render::Render;
+use crux_core::sender::SenderExt;
 use crux_http::{Http, HttpRequest};
 use crux_kv::{KeyValue, KeyValueRequest};
 use crux_platform::Platform;
@@ -20,53 +21,21 @@ impl Default for Effect {
     }
 }
 
-// Will get generated?
-pub(crate) struct Capabilities {
-    pub http: Http<Effect>,
-    pub key_value: KeyValue<Effect>,
-    pub platform: Platform<Effect>,
-    pub render: Render<Effect>,
-    pub time: Time<Effect>,
+pub struct CatFactCapabilities {
+    pub http: Http<super::Event>,
 }
 
-impl crux_core::Capabilities<Http<Effect>> for Capabilities {
-    fn get(&self) -> &Http<Effect> {
-        &self.http
-    }
-}
-
-impl crux_core::Capabilities<KeyValue<Effect>> for Capabilities {
-    fn get(&self) -> &KeyValue<Effect> {
-        &self.key_value
-    }
-}
-
-impl crux_core::Capabilities<Platform<Effect>> for Capabilities {
-    fn get(&self) -> &Platform<Effect> {
-        &self.platform
-    }
-}
-
-impl crux_core::Capabilities<Render<Effect>> for Capabilities {
-    fn get(&self) -> &Render<Effect> {
-        &self.render
-    }
-}
-
-impl crux_core::Capabilities<Time<Effect>> for Capabilities {
-    fn get(&self) -> &Time<Effect> {
-        &self.time
-    }
-}
-
-impl Default for Capabilities {
-    fn default() -> Self {
-        Self {
-            http: Http::new(Effect::Http),
-            key_value: KeyValue::new(Effect::KeyValue),
-            platform: Platform::new(Effect::Platform),
-            render: Render::new(Effect::Render),
-            time: Time::new(Effect::Time),
+impl crux_core::CapabilityFactory<super::CatFacts<Effect>, Effect> for CatFactCapabilities {
+    fn build(
+        sender: std::sync::mpsc::Sender<crux_core::Command<Effect, super::Event>>,
+    ) -> CatFactCapabilities {
+        // TODO: this is fucking hideous tbqh.  See if I can clean it up...
+        CatFactCapabilities {
+            http: Http::new(Box::new(sender.map_input(
+                |command: crux_core::Command<HttpRequest, super::Event>| {
+                    command.map_effect::<Effect, _>(Effect::Http)
+                },
+            ))),
         }
     }
 }

@@ -1,5 +1,6 @@
+#[cfg(nope)]
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command};
+    use crux_core::{render::Render, App, Capabilities, Command, Commander};
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
@@ -39,17 +40,16 @@ mod shared {
             event: MyEvent,
             model: &mut MyModel,
             caps: &Caps,
-        ) -> Vec<Command<Ef, MyEvent>> {
+            commander: &Commander<Command<Ef, Self::Event>>,
+        ) {
             let platform: &Platform<_> = caps.get();
             let render: &Render<_> = caps.get();
 
             match event {
-                MyEvent::PlatformGet => {
-                    vec![platform.get(MyEvent::PlatformSet)]
-                }
+                MyEvent::PlatformGet => commander.send_command(platform.get(MyEvent::PlatformSet)),
                 MyEvent::PlatformSet(platform) => {
                     model.platform = platform.0;
-                    vec![render.render()]
+                    commander.send_command(render.render())
                 }
             }
         }
@@ -103,6 +103,7 @@ mod shared {
     }
 }
 
+#[cfg(nope)]
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
@@ -162,6 +163,7 @@ mod shell {
     }
 }
 
+#[cfg(nope)]
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;

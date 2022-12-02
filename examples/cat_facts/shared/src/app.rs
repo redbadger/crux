@@ -1,5 +1,7 @@
+use crate::effect::CatFactCapabilities;
+
 use self::platform::PlatformEvent;
-use crux_core::{render::Render, Capabilities};
+use crux_core::{render::Render, Capabilities, Commander};
 pub use crux_core::{App, Command};
 use crux_http::{Http, HttpResponse};
 use crux_kv::{KeyValue, KeyValueResponse};
@@ -70,53 +72,69 @@ pub enum Event {
 }
 
 #[derive(Default)]
-pub struct CatFacts<Ef, Caps> {
-    platform: platform::Platform<Ef, Caps>,
+pub struct CatFacts<Ef> {
+    platform: platform::Platform<Ef>,
 }
 
-impl<Ef, Caps> App<Ef, Caps> for CatFacts<Ef, Caps>
+// TODO: also get rid of Ef from here if possible.
+impl<Ef> App<Ef> for CatFacts<Ef>
 where
     Ef: Serialize + Clone + Default,
-    Caps: Default
-        + Capabilities<Http<Ef>>
-        + Capabilities<KeyValue<Ef>>
-        + Capabilities<Render<Ef>>
-        + Capabilities<Time<Ef>>
-        + Capabilities<Platform<Ef>>,
 {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
+    type Capabilities = CatFactCapabilities;
 
-    fn update(&self, msg: Event, model: &mut Model, caps: &Caps) -> Vec<Command<Ef, Event>> {
-        let http: &Http<_> = caps.get();
-        let key_value: &KeyValue<_> = caps.get();
-        let render: &Render<_> = caps.get();
-        let time: &Time<_> = caps.get();
+    fn update(&self, msg: Event, model: &mut Model, caps: &CatFactCapabilities) {
+        // TOOD: ok, so I think the reason I'm struggling here is that we have `Caps` and we have `Commander` and they're separate.
+        // If I merge them does this become easier?  Then we don't need the `Ef` "binding" type-param here.
+        // We just need `Caps` to hide the `Ef` type somehow?
+        // So we could make a
+
+        // let key_value: &KeyValue<_> = caps.get();
+        // let render: &Render<_> = caps.get();
+        // let time: &Time<_> = caps.get();
+
+        // Ok, so some thoughts:
+        // 1. Don't return a Vec<Command<..>>.
+        //    - I know from experience it gets a tiny bit awkward when you need to
+        //      do things conditionally.
+        //    - I also think it means you end up with far more generic params than you
+        //      need.
+        // 2. Use channels/vecs/whatever instead probably?
+        //    - The eff parameter can be erased from this struct entirely then.
+        //    -
 
         match msg {
-            Event::GetPlatform => Command::lift(
-                self.platform
-                    .update(PlatformEvent::Get, &mut model.platform, caps),
-                Event::Platform,
-            ),
-            Event::Platform(msg) => Command::lift(
-                self.platform.update(msg, &mut model.platform, caps),
-                Event::Platform,
-            ),
+            Event::GetPlatform => {
+                todo!()
+            } /*Command::lift(
+            self.platform
+            .update(PlatformEvent::Get, &mut model.platform, caps, commander),
+            Event::Platform,
+            ),*/
+            Event::Platform(msg) => {
+                todo!()
+            } /*Command::lift(
+            self.platform
+            .update(msg, &mut model.platform, caps, commander),
+            Event::Platform,
+            ),*/
             Event::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
+                /*
                 vec![
                     key_value.write("state", bytes, |_| Event::None),
                     render.render(),
-                ]
+                ]); */
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    vec![render.render()]
+                    // commander.send_command(render.render())
                 } else {
                     self.update(Event::Fetch, model, caps)
                 }
@@ -124,11 +142,11 @@ where
             Event::Fetch => {
                 model.cat_image = Some(CatImage::default());
 
-                vec![
-                    http.get(Url::parse(FACT_API_URL).unwrap(), Event::SetFact),
-                    http.get(Url::parse(IMAGE_API_URL).unwrap(), Event::SetImage),
-                    render.render(),
-                ]
+                caps.http
+                    .get(Url::parse(FACT_API_URL).unwrap(), Event::SetFact);
+                caps.http
+                    .get(Url::parse(IMAGE_API_URL).unwrap(), Event::SetImage);
+                // render.render(),
             }
             Event::SetFact(HttpResponse { body, status: _ }) => {
                 // TODO check status
@@ -137,19 +155,20 @@ where
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                vec![
+                /*vec![
                     key_value.write("state", bytes, |_| Event::None),
                     time.get(Event::CurrentTime),
-                ]
+                ]*/
             }
             Event::CurrentTime(iso_time) => {
                 model.time = Some(iso_time.0);
                 let bytes = serde_json::to_vec(&model).unwrap();
 
+                /*
                 vec![
                     key_value.write("state", bytes, |_| Event::None),
                     render.render(),
-                ]
+                ] */
             }
             Event::SetImage(HttpResponse { body, status: _ }) => {
                 // TODO check status
@@ -158,24 +177,25 @@ where
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
+                /*
                 vec![
                     key_value.write("state", bytes, |_| Event::None),
                     render.render(),
-                ]
+                ] */
             }
-            Event::Restore => {
-                vec![key_value.read("state", Event::SetState)]
-            }
+            Event::Restore => {} /*key_value.read("state", Event::SetState))*/
             Event::SetState(response) => {
+                /*
                 if let KeyValueResponse::Read(Some(bytes)) = response {
                     if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
                         *model = m
                     };
                 }
 
-                vec![render.render()]
+                render.render()
+                */
             }
-            Event::None => vec![],
+            Event::None => {}
         }
     }
 
@@ -186,11 +206,9 @@ where
             _ => "No fact".to_string(),
         };
 
-        let platform = <platform::Platform<Ef, Caps> as crux_core::App<Ef, Caps>>::view(
-            &self.platform,
-            &model.platform,
-        )
-        .platform;
+        let platform =
+            <platform::Platform<Ef> as crux_core::App<Ef>>::view(&self.platform, &model.platform)
+                .platform;
 
         ViewModel {
             platform: format!("Hello {}", platform),

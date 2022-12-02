@@ -1,5 +1,6 @@
+#[cfg(nope)]
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command};
+    use crux_core::{render::Render, App, Capabilities, Command, Commander};
     use crux_http::{Http, HttpRequest, HttpResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
@@ -27,32 +28,36 @@ mod shared {
         pub result: String,
     }
 
-    impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
+    impl<Ef> App<Ef> for MyApp<Ef>
     where
         Ef: Serialize + Clone + Default,
-        Caps: Default + Capabilities<Http<Ef>> + Capabilities<Render<Ef>>,
+        // Caps: Default + Capabilities<Http<Ef>> + Capabilities<Render<Ef>>,
     {
         type Event = MyEvent;
         type Model = MyModel;
         type ViewModel = MyViewModel;
+
+        // TODO
+        type Capabilities = ();
 
         fn update(
             &self,
             event: MyEvent,
             model: &mut MyModel,
             caps: &Caps,
-        ) -> Vec<Command<Ef, MyEvent>> {
+            commander: &Commander<Command<Ef, Self::Event>>,
+        ) {
             let http: &Http<_> = caps.get();
             let render: &Render<_> = caps.get();
 
             match event {
-                MyEvent::HttpGet => {
-                    vec![http.get(Url::parse("http://example.com").unwrap(), MyEvent::HttpSet)]
-                }
+                MyEvent::HttpGet => commander.send_commands(vec![
+                    http.get(Url::parse("http://example.com").unwrap(), MyEvent::HttpSet)
+                ]),
                 MyEvent::HttpSet(response) => {
                     model.status = response.status;
                     model.body = response.body;
-                    vec![render.render()]
+                    commander.send_command(render.render())
                 }
             }
         }
@@ -110,6 +115,7 @@ mod shared {
     }
 }
 
+#[cfg(nope)]
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
@@ -172,6 +178,7 @@ mod shell {
     }
 }
 
+#[cfg(nope)]
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;

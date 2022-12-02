@@ -113,15 +113,29 @@ pub mod render;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-pub use capability::{Capabilities, Capability};
+// TODO: should this be public?  Not sure...
+pub mod sender;
+
+// TODO: remove this, its just here to keep things compiling
+pub trait Capability {}
+// TODO: remove this, its just here to keep things compiling
+pub trait Capabilities<C> {
+    fn get(&self) -> &C;
+}
+
+pub use capability::CapabilityFactory;
+use command::Callback;
 pub use command::Command;
 use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
-use std::{marker::PhantomData, sync::RwLock};
+use std::{
+    marker::PhantomData,
+    sync::{Mutex, RwLock},
+};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
-pub trait App<Ef, Caps>: Default {
+pub trait App<Ef>: Default {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
@@ -130,16 +144,13 @@ pub trait App<Ef, Caps>: Default {
     /// displayed to the user
     type ViewModel: Serialize;
 
+    type Capabilities;
+
     /// Update method defines the transition from one `model` state to another in response to a `msg`.
     ///
     /// Update function can return a list of [`Command`]s, instructing the shell to perform side-effects.
     /// Typically, the function should return at least [`Command::render`] to update the user interface.
-    fn update<'a>(
-        &self,
-        msg: Self::Event,
-        model: &mut Self::Model,
-        caps: &'a Caps,
-    ) -> Vec<Command<Ef, Self::Event>>
+    fn update<'a>(&self, msg: Self::Event, model: &mut Self::Model, caps: &'a Self::Capabilities)
     where
         Ef: Serialize;
 
@@ -147,39 +158,22 @@ pub trait App<Ef, Caps>: Default {
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
 /// The Crux core. Create an instance of this type with your app as the type parameter
-pub struct Core<Ef, Caps, A>
+pub struct Core<Ef, A>
 where
-    Caps: Default,
-    A: App<Ef, Caps>,
+    A: App<Ef>,
 {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
-    capabilities: Caps,
+    capabilities: A::Capabilities,
+    command_receiver: Mutex<std::sync::mpsc::Receiver<Command<Ef, A::Event>>>,
     app: A,
     _marker: PhantomData<Ef>,
 }
 
-impl<Ef, Caps, A> Default for Core<Ef, Caps, A>
+impl<Ef, A> Core<Ef, A>
 where
-    Caps: Default,
-    A: App<Ef, Caps>,
-{
-    fn default() -> Self {
-        Self {
-            model: Default::default(),
-            continuations: Default::default(),
-            app: Default::default(),
-            capabilities: Default::default(),
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<Ef, Caps, A> Core<Ef, Caps, A>
-where
-    Caps: Default,
     Ef: Serialize,
-    A: App<Ef, Caps>,
+    A: App<Ef>,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
@@ -191,8 +185,19 @@ where
     ///
     /// The core interface passes across messages serialized as bytes. These can be
     /// deserialized using the types generated using the [typegen] module.
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new<CapFactory>() -> Self
+    where
+        CapFactory: CapabilityFactory<A, Ef>,
+    {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        Self {
+            model: Default::default(),
+            continuations: Default::default(),
+            app: Default::default(),
+            capabilities: CapFactory::build(sender),
+            command_receiver: Mutex::new(receiver),
+            _marker: PhantomData,
+        }
     }
 
     /// Receive a message from the shell.
@@ -200,18 +205,20 @@ where
     /// The `msg` is serialized and will be deserialized by the core.
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
+        <A as App<Ef>>::Event: Deserialize<'de>,
     {
-        let msg: <A as App<_, _>>::Event =
+        let msg: <A as App<_>>::Event =
             bcs::from_bytes(msg).expect("Message deserialization failed.");
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        let commands = self.app.update(msg, &mut model, &self.capabilities);
-        let requests: Vec<_> = commands
-            .into_iter()
-            .map(|c| self.continuations.pause(c))
-            .collect();
+        self.app.update(msg, &mut model, &self.capabilities);
+
+        let mut requests = Vec::new();
+        let commands = self.command_receiver.lock().expect("the mutext to be ok");
+        while let Ok(command) = commands.try_recv() {
+            requests.push(self.continuations.pause(command));
+        }
 
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
@@ -223,18 +230,19 @@ where
     /// triggered it, else the core will panic.
     pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
+        <A as App<Ef>>::Event: Deserialize<'de>,
     {
         let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        let commands = self.app.update(msg, &mut model, &self.capabilities);
+        self.app.update(msg, &mut model, &self.capabilities);
 
-        let requests: Vec<_> = commands
-            .into_iter()
-            .map(|c| self.continuations.pause(c))
-            .collect();
+        let mut requests = Vec::new();
+        let commands = self.command_receiver.lock().expect("the mutex to be ok");
+        while let Ok(command) = commands.try_recv() {
+            requests.push(self.continuations.pause(command));
+        }
 
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }

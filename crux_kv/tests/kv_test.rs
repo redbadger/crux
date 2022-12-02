@@ -1,5 +1,6 @@
+#[cfg(nope)]
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command};
+    use crux_core::{render::Render, App, Capabilities, Command, Commander};
     use crux_kv::{KeyValue, KeyValueRequest, KeyValueResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
@@ -41,26 +42,31 @@ mod shared {
             event: MyEvent,
             model: &mut MyModel,
             caps: &Caps,
-        ) -> Vec<Command<Ef, MyEvent>> {
+            commander: &Commander<Command<Ef, Self::Event>>,
+        ) {
             let key_value: &KeyValue<_> = caps.get();
             let render: &Render<_> = caps.get();
 
             match event {
                 MyEvent::Write => {
-                    vec![key_value.write("test", 42i32.to_ne_bytes().to_vec(), MyEvent::Set)]
+                    commander.send_command(key_value.write(
+                        "test",
+                        42i32.to_ne_bytes().to_vec(),
+                        MyEvent::Set,
+                    ));
                 }
                 MyEvent::Set(KeyValueResponse::Write(success)) => {
                     model.successful = success;
-                    vec![render.render()]
+                    commander.send_command(render.render())
                 }
-                MyEvent::Read => vec![key_value.read("test", MyEvent::Set)],
+                MyEvent::Read => commander.send_command(key_value.read("test", MyEvent::Set)),
                 MyEvent::Set(KeyValueResponse::Read(value)) => {
                     if let Some(value) = value {
                         // TODO: should KeyValueResponse::Read be generic over the value type?
                         let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                         model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
                     }
-                    vec![render.render()]
+                    commander.send_command(render.render())
                 }
             }
         }
@@ -114,6 +120,7 @@ mod shared {
     }
 }
 
+#[cfg(nope)]
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
@@ -190,6 +197,7 @@ mod shell {
     }
 }
 
+#[cfg(nope)]
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;

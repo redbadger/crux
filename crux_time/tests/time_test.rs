@@ -1,5 +1,6 @@
+#[cfg(nope)]
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command};
+    use crux_core::{render::Render, App, Capabilities, Command, Commander};
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
@@ -39,17 +40,16 @@ mod shared {
             event: MyEvent,
             model: &mut MyModel,
             caps: &Caps,
-        ) -> Vec<Command<Ef, MyEvent>> {
+            commander: &Commander<Command<Ef, Self::Event>>,
+        ) {
             let time: &Time<_> = caps.get();
             let render: &Render<_> = caps.get();
 
             match event {
-                MyEvent::TimeGet => {
-                    vec![time.get(MyEvent::TimeSet)]
-                }
+                MyEvent::TimeGet => commander.send_command(time.get(MyEvent::TimeSet)),
                 MyEvent::TimeSet(time) => {
                     model.time = time.0;
-                    vec![render.render()]
+                    commander.send_command(render.render())
                 }
             }
         }
@@ -103,6 +103,7 @@ mod shared {
     }
 }
 
+#[cfg(nope)]
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
@@ -164,6 +165,7 @@ mod shell {
     }
 }
 
+#[cfg(nope)]
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;

@@ -85,6 +85,18 @@ impl<Ef, Ev> Command<Ef, Ev> {
             },
         }
     }
+
+    pub fn map_effect<NewEffect, F>(self, f: F) -> Command<NewEffect, Ev>
+    where
+        F: Fn(Ef) -> NewEffect + Sync + Send + Copy + 'static,
+        Ef: 'static,
+        NewEffect: 'static,
+    {
+        Command {
+            effect: f(self.effect),
+            resolve: self.resolve,
+        }
+    }
 }
 
 pub trait Callback<Event> {

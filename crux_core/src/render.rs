@@ -24,4 +24,4 @@ where
     }
 } // Public API of the capability, called by App::update.
 
-impl<Ef> Capability for Render<Ef> where Ef: Clone {}
+impl<Ef> super::Capability for Render<Ef> where Ef: Clone {}

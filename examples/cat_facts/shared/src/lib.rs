@@ -5,10 +5,11 @@ pub use crux_http as http;
 pub use crux_kv as key_value;
 pub use crux_platform as platform;
 pub use crux_time as time;
-use effect::Capabilities;
 pub use effect::Effect;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
+
+use crate::effect::CatFactCapabilities;
 
 pub mod app;
 pub mod effect;
@@ -18,7 +19,7 @@ pub mod effect;
 uniffi_macros::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Core<Effect, Capabilities, CatFacts<Effect, Capabilities>> = Core::new();
+    static ref CORE: Core<Effect, CatFacts<Effect>> = Core::new::<CatFactCapabilities>();
 }
 
 #[wasm_bindgen]
