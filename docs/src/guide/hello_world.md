@@ -6,15 +6,17 @@ If you want to follow along, you should start by following the [Shared core and 
 
 ## Side-effects and capabilities
 
-I know we said we'd build a simple application, but we need to start by talking about side-effects a little. One of the key design choices in Crux is that the Core is free of side-effects (besides its internal state). Your application can never _perform_ anything that directly interacts with the environment around it - no network calls, no reading/writing files, and (somewhat obviously) not even updating the screen. _Doing_ all those things is the job of the Shell, the core can only _ask_ for them to be done.
+I know we said we'd build a simple application, but we need to start by talking about side-effects a little. One of the key design choices in Crux is that the Core is free of side-effects (besides its internal state). Your application can never _perform_ anything that directly interacts with the environment around it - no network calls, no reading/writing files, and (somewhat obviously) not even updating the screen. Actually _doing_ all those things is the job of the Shell, the core can only _ask_ for them to be done.
 
-This makes the core portable between platforms, and, importantly, really easy to test. It also separates the intent, the "functional" requirements from the implementation of the side-effects and the "non-functional" requirements (NFRs). For example, your application knows it wants to store data in a SQL database, but it doesn't particularly care whether that database is local or remote. That decision can even change as the application evolve. You can read a lot more about how side-effects work in Crux in the chapter on [capabilities](./capabilities.md).
+This makes the core portable between platforms, and, importantly, really easy to test. It also separates the intent, the "functional" requirements, from the implementation of the side-effects and the "non-functional" requirements (NFRs). For example, your application knows it wants to store data in a SQL database, but it doesn't need to know or care whether that database is local or remote. That decision can even change as the application evolves. You can read a lot more about how side-effects work in Crux in the chapter on [capabilities](./capabilities.md).
 
 To _ask_ the Shell for side effects, we will need to describe the possible side-effects the Core will request. And to help us create these requests, we can use capabilities - reusable bits of functionality which give us a nice API for performing side-effects. We'll look at them in a lot more detail later.
 
 ```rust
+use serde::{Serialize, Deserialize};
 use crux_core::{render::Render};
 
+#[derive(Serialize, Deserialize)]
 enum Effect {
     Render
 }
@@ -31,7 +33,7 @@ impl crux_core::Capabilities<Render<Effect>> {
 }
 ```
 
-For now, we will need a single capability, `Render`, which is built into Crux and available from the `crux_core` crate. It simply tells the shell to update the screen using the latest information. That means the core also produces a single `Effect`, but it will soon be more than one, so we make Effect an enum to prepare for that.
+For now, we will need a single capability, `Render`, which is built into Crux and available from the `crux_core` crate. It simply tells the shell to update the screen using the latest information. That means the core also produces a single `Effect`, but it will soon be more than one, so we make Effect an enum to prepare for that. Effect also needs to be serializable, so it can be passed across the language boundary between Core and Shell.
 
 > 🚨 **Sharp edge warning**
 >
