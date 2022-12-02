@@ -1,15 +1,15 @@
 use crate::command::{Callback, Command};
 use crate::Request;
-use std::{collections::HashMap, sync::RwLock};
+use std::{collections::HashMap, sync::Mutex};
 use uuid::Uuid;
 
-struct Store<Ev>(HashMap<[u8; 16], Box<dyn Callback<Ev> + Send + Sync>>);
+struct Store<Ev>(HashMap<[u8; 16], Box<dyn Callback<Ev> + Send>>);
 
-pub(crate) struct ContinuationStore<Ev>(RwLock<Store<Ev>>);
+pub(crate) struct ContinuationStore<Ev>(Mutex<Store<Ev>>);
 
 impl<Ev> Default for ContinuationStore<Ev> {
     fn default() -> Self {
-        Self(RwLock::new(Store(HashMap::new())))
+        Self(Mutex::new(Store(HashMap::new())))
     }
 }
 
@@ -20,8 +20,8 @@ impl<Ev> ContinuationStore<Ev> {
         let uuid = *Uuid::new_v4().as_bytes();
         if let Some(resolve) = resolve {
             self.0
-                .write()
-                .expect("Continuation RwLock poisoned.")
+                .lock()
+                .expect("Continuation Mutex poisoned.")
                 .0
                 .insert(uuid, resolve);
         }
@@ -35,8 +35,8 @@ impl<Ev> ContinuationStore<Ev> {
     pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) -> Ev {
         let resolve = self
             .0
-            .write()
-            .expect("Continuation RwLock poisoned.")
+            .lock()
+            .expect("Continuation Mutex poisoned.")
             .0
             .remove(uuid)
             .unwrap_or_else(|| panic!("Continuation with UUID {:?} not found.", uuid));
