@@ -40,8 +40,8 @@ mod shared {
             model: &mut MyModel,
             caps: &Caps,
         ) -> Vec<Command<Ef, MyEvent>> {
-            let platform = <Caps as crux_core::Capabilities<Platform<_>>>::get(caps);
-            let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
+            let platform: &Platform<_> = caps.get();
+            let render: &Render<_> = caps.get();
 
             match event {
                 MyEvent::PlatformGet => {

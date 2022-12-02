@@ -42,8 +42,8 @@ mod shared {
             model: &mut MyModel,
             caps: &Caps,
         ) -> Vec<Command<Ef, MyEvent>> {
-            let key_value = <Caps as crux_core::Capabilities<KeyValue<_>>>::get(caps);
-            let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
+            let key_value: &KeyValue<_> = caps.get();
+            let render: &Render<_> = caps.get();
 
             match event {
                 MyEvent::Write => {

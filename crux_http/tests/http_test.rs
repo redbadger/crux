@@ -42,8 +42,8 @@ mod shared {
             model: &mut MyModel,
             caps: &Caps,
         ) -> Vec<Command<Ef, MyEvent>> {
-            let http = <Caps as crux_core::Capabilities<Http<_>>>::get(caps);
-            let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
+            let http: &Http<_> = caps.get();
+            let render: &Render<_> = caps.get();
 
             match event {
                 MyEvent::HttpGet => {

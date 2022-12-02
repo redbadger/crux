@@ -40,8 +40,8 @@ mod shared {
             model: &mut MyModel,
             caps: &Caps,
         ) -> Vec<Command<Ef, MyEvent>> {
-            let time = <Caps as crux_core::Capabilities<Time<_>>>::get(caps);
-            let render = <Caps as crux_core::Capabilities<Render<_>>>::get(caps);
+            let time: &Time<_> = caps.get();
+            let render: &Render<_> = caps.get();
 
             match event {
                 MyEvent::TimeGet => {
