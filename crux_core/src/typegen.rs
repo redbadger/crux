@@ -1,3 +1,41 @@
+//! Generation of foreign language types (currently Swift, Java, TypeScript) for Crux
+//!
+//! In order to use this module, you'll need a separate crate from your shared library, possibly
+//! called `shared_types`. This is necessary because we need to reference types from your shared library
+//! during the build process (`build.rs`).
+//!
+//! This module is behind the feature called `typegen`, and is not compiled into the default crate.
+//!
+//! Ensure that you have the following line in the `Cargo.toml` of your `shared_types` library.
+//!
+//! ```rust
+//! [build-dependencies]
+//! crux_core = { version = "0.1.", features = ["typegen"] }
+//! ```
+//!
+//! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
+//! * Create a `build.rs` in your `shared_types` library, that looks something like this:
+//!
+//! ```rust
+//! let mut gen = TypeGen::new();
+//!
+//! gen.register_type::<Message>()?;
+//! gen.register_type::<ViewModel>()?;
+//! gen.register_type::<Request>()?;
+//! gen.register_type::<RequestBody>()?;
+//! gen.register_type::<Response>()?;
+//! gen.register_type::<ResponseBody>()?;
+//!
+//! gen.swift("shared_types", output_root.join("swift"))?;
+//!
+//! gen.java(
+//!     "com.redbadger.crux_core.shared_types",
+//!     output_root.join("java"),
+//! )?;
+//!
+//! gen.typescript("shared_types", output_root.join("typescript"))?;
+//! ```
+
 use anyhow::{anyhow, bail, Result};
 use serde_generate::test_utils::Runtime;
 use serde_reflection::{Registry, Tracer, TracerConfig};
@@ -13,6 +51,8 @@ enum State {
     Registry(Registry),
 }
 
+/// The `TypeGen` struct stores the registered types so that they can be generated for foreign languages
+/// use `TypeGen::new()` to create an instance
 pub struct TypeGen {
     state: State,
 }
@@ -26,10 +66,21 @@ impl Default for TypeGen {
 }
 
 impl TypeGen {
+    /// Creates an instance of the `TypeGen` struct
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// For each of the types that you want to share with the Shell, call this method:
+    /// e.g.
+    /// ```rust
+    /// gen.register_type::<Message>()?;
+    /// gen.register_type::<ViewModel>()?;
+    /// gen.register_type::<Request>()?;
+    /// gen.register_type::<RequestBody>()?;
+    /// gen.register_type::<Response>()?;
+    /// gen.register_type::<ResponseBody>()?;
+    /// ```
     pub fn register_type<'de, T>(&mut self) -> Result<()>
     where
         T: serde::Deserialize<'de>,
@@ -43,6 +94,12 @@ impl TypeGen {
         }
     }
 
+    /// Generates types for Swift
+    /// e.g.
+    /// ```rust
+    /// gen.swift("shared_types", output_root.join("swift"))
+    ///     .expect("swift type gen failed");
+    /// ```
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
@@ -79,6 +136,15 @@ impl TypeGen {
         Ok(())
     }
 
+    /// Generates types for Java (for use with Kotlin)
+    /// e.g.
+    /// ```rust
+    /// gen.java(
+    ///     "com.redbadger.crux_core.shared_types",
+    ///     output_root.join("java"),
+    /// )
+    /// .expect("java type gen failed");
+    /// ```
     pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 
@@ -110,6 +176,12 @@ impl TypeGen {
         Ok(())
     }
 
+    /// Generates types for TypeScript
+    /// e.g.
+    /// ```rust
+    /// gen.typescript("shared_types", output_root.join("typescript"))
+    ///    .expect("typescript type gen failed");
+    /// ```
     pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
         self.ensure_registry()?;
 

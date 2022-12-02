@@ -1,5 +1,8 @@
+//! TODO mod docs
+
 use crate::{Command, RequestBody, ResponseBody};
 
+/// TODO docs
 pub fn get<F, Message>(msg: F) -> Command<Message>
 where
     F: FnOnce(String) -> Message + Sync + Send + 'static,

@@ -3,7 +3,8 @@ use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
 type Store<Message> = HashMap<[u8; 16], Box<dyn FnOnce(ResponseBody) -> Message + Sync + Send>>;
-pub struct ContinuationStore<Message>(RwLock<Store<Message>>);
+
+pub(crate) struct ContinuationStore<Message>(RwLock<Store<Message>>);
 
 impl<Message> Default for ContinuationStore<Message> {
     fn default() -> Self {
@@ -12,7 +13,7 @@ impl<Message> Default for ContinuationStore<Message> {
 }
 
 impl<Message> ContinuationStore<Message> {
-    pub fn pause(&self, cmd: Command<Message>) -> Request {
+    pub(crate) fn pause(&self, cmd: Command<Message>) -> Request {
         let Command {
             body,
             msg_constructor,
@@ -30,7 +31,7 @@ impl<Message> ContinuationStore<Message> {
         }
     }
 
-    pub fn resume(&self, response: Response) -> Message {
+    pub(crate) fn resume(&self, response: Response) -> Message {
         let Response { uuid, body } = response;
         let cont = self
             .0

@@ -1,16 +1,15 @@
+pub use app::*;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub mod app;
-
-pub use app::*;
 
 // TODO hide this plumbing
 
 uniffi_macros::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: AppCore<CatFacts> = Default::default();
+    static ref CORE: Core<CatFacts> = Core::new();
 }
 
 #[wasm_bindgen]

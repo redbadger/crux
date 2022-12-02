@@ -1,5 +1,10 @@
 # Crux — Cross-platform app development in Rust
 
+<p>
+  <a href="https://crates.io/crates/crux_core"><img alt="Crate Info" src="https://img.shields.io/crates/v/crux_core.svg"/></a>
+  <a href="https://docs.rs/crux_core/"><img alt="API Docs" src="https://img.shields.io/badge/docs.rs-crux_core-green"/></a>
+</p>
+
 Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web, as a single, reusable core built with Rust.
 
 Unlike React Native, the user interface layer is built natively, with modern declarative UI frameworks such as Swift UI, Jetpack Compose and React/Vue or a WASM based framework on the web.
@@ -67,7 +72,7 @@ This design means the core can be tested very easily, without any mocking and st
 
 The Foreign Function Interface allowing the shell to call the above functions is provided by Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/) on a mobile device, or in the browser, by [wasm-pack](https://rustwasm.github.io/wasm-pack/).
 
-In order both to send more complex data than UniFFI currently supports and to enforce the message passing semantics, all messages are serialised, sent across the boundary, then deserialised using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which also provides type generation for the foreign (non-Rust) languages.
+In order both to send more complex data than UniFFI currently supports and to enforce the message passing semantics, all messages are serialized, sent across the boundary, then deserialized using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which also provides type generation for the foreign (non-Rust) languages.
 
 This means that changes to types in the core, especially the `Message` type, propagate out into the shell implementations and cause errors where appropriate (such as an exhaustive match on an enum check).
 
@@ -113,9 +118,9 @@ Whenever the Shell then receives a response, it packages the data into further `
 
 This exchange continues until the core returns a `Command::Render` signalling that no more side-effects are in flight.
 
-## Run the Example Locally
+## Run the Cat Facts Example Locally
 
-Refer to the [local execution](./docs/previous/local-execution.md) README
+Refer to [examples/cat_facts](./examples/cat_facts/README.md) README
 
 ## How to Start Your Own New Project
 
