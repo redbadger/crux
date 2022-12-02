@@ -205,9 +205,11 @@ where
         let msg: <A as App<_, _>>::Event =
             bcs::from_bytes(msg).expect("Message deserialization failed.");
 
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        let commands = {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app.update(msg, &mut model, &self.capabilities)
+        };
 
-        let commands = self.app.update(msg, &mut model, &self.capabilities);
         let requests: Vec<_> = commands
             .into_iter()
             .map(|c| self.continuations.pause(c))
@@ -227,9 +229,10 @@ where
     {
         let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
 
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
-        let commands = self.app.update(msg, &mut model, &self.capabilities);
+        let commands = {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app.update(msg, &mut model, &self.capabilities)
+        };
 
         let requests: Vec<_> = commands
             .into_iter()
@@ -241,9 +244,11 @@ where
 
     /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
-        let model = self.model.read().expect("Model RwLock was poisoned.");
+        let value = {
+            let model = self.model.read().expect("Model RwLock was poisoned.");
+            self.app.view(&model)
+        };
 
-        let value = self.app.view(&model);
         bcs::to_bytes(&value).expect("View model serialization failed.")
     }
 }
