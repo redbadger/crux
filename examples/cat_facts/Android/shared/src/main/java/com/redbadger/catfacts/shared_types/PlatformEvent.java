@@ -1,16 +1,16 @@
 package com.redbadger.catfacts.shared_types;
 
 
-public abstract class PlatformMsg {
+public abstract class PlatformEvent {
 
     abstract public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError;
 
-    public static PlatformMsg deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+    public static PlatformEvent deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
         int index = deserializer.deserialize_variant_index();
         switch (index) {
             case 0: return Get.load(deserializer);
             case 1: return Set.load(deserializer);
-            default: throw new com.novi.serde.DeserializationError("Unknown variant index for PlatformMsg: " + index);
+            default: throw new com.novi.serde.DeserializationError("Unknown variant index for PlatformEvent: " + index);
         }
     }
 
@@ -20,19 +20,19 @@ public abstract class PlatformMsg {
         return serializer.get_bytes();
     }
 
-    public static PlatformMsg bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
+    public static PlatformEvent bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
         if (input == null) {
              throw new com.novi.serde.DeserializationError("Cannot deserialize null array");
         }
         com.novi.serde.Deserializer deserializer = new com.novi.bcs.BcsDeserializer(input);
-        PlatformMsg value = deserialize(deserializer);
+        PlatformEvent value = deserialize(deserializer);
         if (deserializer.get_buffer_offset() < input.length) {
              throw new com.novi.serde.DeserializationError("Some input bytes were not read");
         }
         return value;
     }
 
-    public static final class Get extends PlatformMsg {
+    public static final class Get extends PlatformEvent {
         public Get() {
         }
 
@@ -70,10 +70,10 @@ public abstract class PlatformMsg {
         }
     }
 
-    public static final class Set extends PlatformMsg {
-        public final String value;
+    public static final class Set extends PlatformEvent {
+        public final PlatformResponse value;
 
-        public Set(String value) {
+        public Set(PlatformResponse value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -81,14 +81,14 @@ public abstract class PlatformMsg {
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(1);
-            serializer.serialize_str(value);
+            value.serialize(serializer);
             serializer.decrease_container_depth();
         }
 
         static Set load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = deserializer.deserialize_str();
+            builder.value = PlatformResponse.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -109,7 +109,7 @@ public abstract class PlatformMsg {
         }
 
         public static final class Builder {
-            public String value;
+            public PlatformResponse value;
 
             public Set build() {
                 return new Set(
