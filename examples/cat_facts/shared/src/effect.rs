@@ -25,7 +25,7 @@ pub struct CatFactCapabilities {
     pub http: Http<super::Event>,
 }
 
-impl crux_core::CapabilityFactory<super::CatFacts<Effect>, Effect> for CatFactCapabilities {
+impl crux_core::CapabilityFactory<super::CatFacts, Effect> for CatFactCapabilities {
     fn build(
         sender: std::sync::mpsc::Sender<crux_core::Command<Effect, super::Event>>,
     ) -> CatFactCapabilities {

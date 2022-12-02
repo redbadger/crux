@@ -1,7 +1,7 @@
 use crate::effect::CatFactCapabilities;
 
 use self::platform::PlatformEvent;
-use crux_core::{render::Render, Capabilities, Commander};
+use crux_core::{render::Render, Capabilities};
 pub use crux_core::{App, Command};
 use crux_http::{Http, HttpResponse};
 use crux_kv::{KeyValue, KeyValueResponse};
@@ -72,15 +72,12 @@ pub enum Event {
 }
 
 #[derive(Default)]
-pub struct CatFacts<Ef> {
-    platform: platform::Platform<Ef>,
+pub struct CatFacts {
+    platform: platform::Platform,
 }
 
 // TODO: also get rid of Ef from here if possible.
-impl<Ef> App<Ef> for CatFacts<Ef>
-where
-    Ef: Serialize + Clone + Default,
-{
+impl App for CatFacts {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
@@ -207,8 +204,7 @@ where
         };
 
         let platform =
-            <platform::Platform<Ef> as crux_core::App<Ef>>::view(&self.platform, &model.platform)
-                .platform;
+            <platform::Platform as crux_core::App>::view(&self.platform, &model.platform).platform;
 
         ViewModel {
             platform: format!("Hello {}", platform),

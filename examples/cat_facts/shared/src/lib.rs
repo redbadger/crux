@@ -19,7 +19,7 @@ pub mod effect;
 uniffi_macros::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Core<Effect, CatFacts<Effect>> = Core::new::<CatFactCapabilities>();
+    static ref CORE: Core<Effect, CatFacts> = Core::new::<CatFactCapabilities>();
 }
 
 #[wasm_bindgen]

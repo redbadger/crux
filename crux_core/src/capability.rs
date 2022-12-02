@@ -11,7 +11,7 @@ use crate::Command;
 // the individual apps use that name...
 pub trait CapabilityFactory<App, Ef>
 where
-    App: crate::App<Ef>,
+    App: crate::App,
 {
     fn build(channel: std::sync::mpsc::Sender<Command<Ef, App::Event>>) -> App::Capabilities;
 }

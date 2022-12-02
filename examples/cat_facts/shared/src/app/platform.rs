@@ -1,4 +1,4 @@
-use crux_core::{render::Render, App, Capabilities, Command, Commander};
+use crux_core::{render::Render, App, Capabilities, Command};
 use crux_platform::{Platform as PlatformCap, PlatformResponse};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
@@ -6,9 +6,7 @@ use std::marker::PhantomData;
 use crate::effect::CatFactCapabilities;
 
 #[derive(Default)]
-pub struct Platform<Ef> {
-    _marker: PhantomData<fn() -> Ef>,
-}
+pub struct Platform {}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Model {
@@ -22,10 +20,7 @@ pub enum PlatformEvent {
 }
 
 // A thought: arguably this doesn't even need to be an `App` since nothing generic is driving it...
-impl<Ef> App<Ef> for Platform<Ef>
-where
-    Ef: Serialize + Clone + Default,
-{
+impl App for Platform {
     type Event = PlatformEvent;
     type Model = Model;
     type ViewModel = Model;

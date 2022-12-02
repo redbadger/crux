@@ -135,7 +135,7 @@ use std::{
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
-pub trait App<Ef>: Default {
+pub trait App: Default {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
@@ -150,9 +150,7 @@ pub trait App<Ef>: Default {
     ///
     /// Update function can return a list of [`Command`]s, instructing the shell to perform side-effects.
     /// Typically, the function should return at least [`Command::render`] to update the user interface.
-    fn update<'a>(&self, msg: Self::Event, model: &mut Self::Model, caps: &'a Self::Capabilities)
-    where
-        Ef: Serialize;
+    fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities);
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
@@ -160,7 +158,7 @@ pub trait App<Ef>: Default {
 /// The Crux core. Create an instance of this type with your app as the type parameter
 pub struct Core<Ef, A>
 where
-    A: App<Ef>,
+    A: App,
 {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
@@ -173,7 +171,7 @@ where
 impl<Ef, A> Core<Ef, A>
 where
     Ef: Serialize,
-    A: App<Ef>,
+    A: App,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
@@ -205,10 +203,9 @@ where
     /// The `msg` is serialized and will be deserialized by the core.
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Ef>>::Event: Deserialize<'de>,
+        <A as App>::Event: Deserialize<'de>,
     {
-        let msg: <A as App<_>>::Event =
-            bcs::from_bytes(msg).expect("Message deserialization failed.");
+        let msg: <A as App>::Event = bcs::from_bytes(msg).expect("Message deserialization failed.");
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
@@ -230,7 +227,7 @@ where
     /// triggered it, else the core will panic.
     pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Ef>>::Event: Deserialize<'de>,
+        <A as App>::Event: Deserialize<'de>,
     {
         let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
 
