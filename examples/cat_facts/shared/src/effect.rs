@@ -1,10 +1,13 @@
-use crux_core::render::Render;
-use crux_core::sender::SenderExt;
+use std::sync::Arc;
+
+use crux_core::{render::Render, Command};
 use crux_http::{Http, HttpRequest};
 use crux_kv::{KeyValue, KeyValueRequest};
 use crux_platform::Platform;
 use crux_time::Time;
 use serde::{Deserialize, Serialize};
+
+use crate::{app::platform::PlatformCapabilities, CatFact};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Effect {
@@ -27,15 +30,18 @@ pub struct CatFactCapabilities {
 
 impl crux_core::CapabilityFactory<super::CatFacts, Effect> for CatFactCapabilities {
     fn build(
-        sender: std::sync::mpsc::Sender<crux_core::Command<Effect, super::Event>>,
+        sender: crux_core::channels::Sender<Command<Effect, super::Event>>,
     ) -> CatFactCapabilities {
-        // TODO: this is fucking hideous tbqh.  See if I can clean it up...
         CatFactCapabilities {
-            http: Http::new(Box::new(sender.map_input(
-                |command: crux_core::Command<HttpRequest, super::Event>| {
-                    command.map_effect::<Effect, _>(Effect::Http)
-                },
-            ))),
+            http: Http::new(sender.map_effect(Effect::Http)),
+        }
+    }
+}
+
+impl From<&CatFactCapabilities> for PlatformCapabilities {
+    fn from(incoming: &CatFactCapabilities) -> Self {
+        PlatformCapabilities {
+            http: incoming.http.map_event(super::Event::Platform),
         }
     }
 }

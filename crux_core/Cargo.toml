@@ -15,6 +15,7 @@ all-features = true
 [dependencies]
 anyhow = "1.0.66"
 bcs = "0.1.4"
+crossbeam-channel = "0.5"
 derive_more = "0.99.17"
 serde = { version = "1.0.148", features = ["derive"] }
 serde_json = "1.0.89"
@@ -25,6 +26,9 @@ uniffi = "0.21.0"
 uniffi_macros = "0.21.0"
 uuid = { version = "1.2.1", features = ["v4", "wasm-bindgen", "js"] }
 wasm-bindgen = "0.2.83"
+
+[dev-dependencies]
+static_assertions = "1.1"
 
 [features]
 typegen = ["dep:serde-generate", "dep:serde-reflection"]

@@ -6,7 +6,7 @@ use std::{
 };
 
 use bcs::from_bytes;
-use crux_core::{command::Callback, sender::CruxSender, Command};
+use crux_core::{command::Callback, Command};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -49,23 +49,21 @@ pub struct HttpResponse {
 pub struct Http<Ev> {
     // TODO: On wasm this'll need to be an Rc<RefCell<VecDeque<T>>> or w/e - build a wrapper.
     // Or at least check if we need to.  Probably also incorporate the mutex into that wrapper for ease of use...
-    sender: Mutex<Box<dyn CruxSender<Command<HttpRequest, Ev>> + Send + 'static>>,
+    sender: crux_core::channels::Sender<Command<HttpRequest, Ev>>,
 }
 
 impl<Ev> Http<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(sender: Box<dyn CruxSender<Command<HttpRequest, Ev>> + Send + 'static>) -> Self {
-        Self {
-            sender: Mutex::new(sender),
-        }
+    pub fn new(sender: crux_core::channels::Sender<Command<HttpRequest, Ev>>) -> Self {
+        Self { sender }
     }
 
     pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(HttpResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(HttpResponse) -> Ev + Send + 'static,
     {
         self.send(HttpMethod::Get, url, callback)
     }
@@ -73,7 +71,7 @@ where
     pub fn send<F>(&self, method: HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(HttpResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(HttpResponse) -> Ev + Send + 'static,
     {
         let request = HttpRequest {
             method: method.to_string(),
@@ -81,8 +79,15 @@ where
         };
 
         self.sender
-            .lock()
-            .expect("the mutex to not be poisoned")
             .send(Command::new(request, callback))
+    }
+
+    pub fn map_event<F, NewEvent>(&self, f: F) -> Http<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ev + Send + Sync + Copy + 'static,
+        Ev: 'static,
+        NewEvent: 'static,
+    {
+        Http::new(self.sender.map_event(f))
     }
 }

@@ -19,14 +19,19 @@ pub enum PlatformEvent {
     Set(PlatformResponse),
 }
 
+pub struct PlatformCapabilities {
+    pub http: crux_http::Http<PlatformEvent>,
+}
+
 // A thought: arguably this doesn't even need to be an `App` since nothing generic is driving it...
 impl App for Platform {
     type Event = PlatformEvent;
     type Model = Model;
     type ViewModel = Model;
-    type Capabilities = CatFactCapabilities;
+    type Capabilities = PlatformCapabilities;
 
-    fn update(&self, msg: PlatformEvent, model: &mut Model, caps: &CatFactCapabilities) {
+    fn update(&self, msg: PlatformEvent, model: &mut Model, caps: &PlatformCapabilities) {
+
         // let platform: &PlatformCap<_> = caps.get();
         // let render: &Render<_> = caps.get();
 

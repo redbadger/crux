@@ -105,19 +105,10 @@ impl App for CatFacts {
 
         match msg {
             Event::GetPlatform => {
-                todo!()
-            } /*Command::lift(
-            self.platform
-            .update(PlatformEvent::Get, &mut model.platform, caps, commander),
-            Event::Platform,
-            ),*/
-            Event::Platform(msg) => {
-                todo!()
-            } /*Command::lift(
-            self.platform
-            .update(msg, &mut model.platform, caps, commander),
-            Event::Platform,
-            ),*/
+                self.platform
+                    .update(PlatformEvent::Get, &mut model.platform, &caps.into())
+            }
+            Event::Platform(msg) => self.platform.update(msg, &mut model.platform, &caps.into()),
             Event::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;

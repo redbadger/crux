@@ -1,9 +1,9 @@
 // TODO docs!
-// pub trait Capability {}
+pub trait Capability {}
 
-// pub trait Capabilities<C> {
-//     fn get(&self) -> &C;
-// }
+pub trait Capabilities<C> {
+    fn get(&self) -> &C;
+}
 
 use crate::Command;
 
@@ -13,5 +13,5 @@ pub trait CapabilityFactory<App, Ef>
 where
     App: crate::App,
 {
-    fn build(channel: std::sync::mpsc::Sender<Command<Ef, App::Event>>) -> App::Capabilities;
+    fn build(channel: crate::channels::Sender<Command<Ef, App::Event>>) -> App::Capabilities;
 }

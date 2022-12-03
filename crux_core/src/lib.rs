@@ -114,16 +114,9 @@ pub mod render;
 pub mod typegen;
 
 // TODO: should this be public?  Not sure...
-pub mod sender;
+pub mod channels;
 
-// TODO: remove this, its just here to keep things compiling
-pub trait Capability {}
-// TODO: remove this, its just here to keep things compiling
-pub trait Capabilities<C> {
-    fn get(&self) -> &C;
-}
-
-pub use capability::CapabilityFactory;
+pub use capability::{Capabilities, Capability, CapabilityFactory};
 use command::Callback;
 pub use command::Command;
 use continuations::ContinuationStore;
@@ -139,7 +132,7 @@ pub trait App: Default {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
-    type Event;
+    type Event: 'static;
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
@@ -163,14 +156,14 @@ where
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
     capabilities: A::Capabilities,
-    command_receiver: Mutex<std::sync::mpsc::Receiver<Command<Ef, A::Event>>>,
+    command_receiver: crate::channels::Receiver<Command<Ef, A::Event>>,
     app: A,
     _marker: PhantomData<Ef>,
 }
 
 impl<Ef, A> Core<Ef, A>
 where
-    Ef: Serialize,
+    Ef: Serialize + Send + 'static,
     A: App,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
@@ -187,13 +180,13 @@ where
     where
         CapFactory: CapabilityFactory<A, Ef>,
     {
-        let (sender, receiver) = std::sync::mpsc::channel();
+        let (sender, receiver) = crate::channels::channel();
         Self {
             model: Default::default(),
             continuations: Default::default(),
             app: Default::default(),
             capabilities: CapFactory::build(sender),
-            command_receiver: Mutex::new(receiver),
+            command_receiver: receiver,
             _marker: PhantomData,
         }
     }
@@ -212,8 +205,7 @@ where
         self.app.update(msg, &mut model, &self.capabilities);
 
         let mut requests = Vec::new();
-        let commands = self.command_receiver.lock().expect("the mutext to be ok");
-        while let Ok(command) = commands.try_recv() {
+        while let Some(command) = self.command_receiver.receive() {
             requests.push(self.continuations.pause(command));
         }
 
@@ -236,8 +228,7 @@ where
         self.app.update(msg, &mut model, &self.capabilities);
 
         let mut requests = Vec::new();
-        let commands = self.command_receiver.lock().expect("the mutex to be ok");
-        while let Ok(command) = commands.try_recv() {
+        while let Some(command) = self.command_receiver.receive() {
             requests.push(self.continuations.pause(command));
         }
 
