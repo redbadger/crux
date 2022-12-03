@@ -1,15 +1,12 @@
-#[cfg(nope)]
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command, Commander};
+    use crux_core::{render::Render, App, Capabilities, CapabilityFactory, Command};
     use crux_http::{Http, HttpRequest, HttpResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
     use url::Url;
 
     #[derive(Default)]
-    pub struct MyApp<Ef, Caps> {
-        _marker: PhantomData<fn() -> (Ef, Caps)>,
-    }
+    pub(crate) struct MyApp;
 
     #[derive(Serialize, Deserialize)]
     pub enum MyEvent {
@@ -28,44 +25,28 @@ mod shared {
         pub result: String,
     }
 
-    impl<Ef> App<Ef> for MyApp<Ef>
-    where
-        Ef: Serialize + Clone + Default,
-        // Caps: Default + Capabilities<Http<Ef>> + Capabilities<Render<Ef>>,
-    {
+    impl App for MyApp {
         type Event = MyEvent;
         type Model = MyModel;
         type ViewModel = MyViewModel;
 
-        // TODO
-        type Capabilities = ();
+        type Capabilities = MyCapabilities;
 
-        fn update(
-            &self,
-            event: MyEvent,
-            model: &mut MyModel,
-            caps: &Caps,
-            commander: &Commander<Command<Ef, Self::Event>>,
-        ) {
-            let http: &Http<_> = caps.get();
-            let render: &Render<_> = caps.get();
-
+        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
             match event {
-                MyEvent::HttpGet => commander.send_commands(vec![
-                    http.get(Url::parse("http://example.com").unwrap(), MyEvent::HttpSet)
-                ]),
+                MyEvent::HttpGet => {
+                    caps.http
+                        .get(Url::parse("http://example.com").unwrap(), MyEvent::HttpSet);
+                }
                 MyEvent::HttpSet(response) => {
                     model.status = response.status;
                     model.body = response.body;
-                    commander.send_command(render.render())
+                    caps.render.render()
                 }
             }
         }
 
-        fn view(
-            &self,
-            model: &<Self as App<Ef, Caps>>::Model,
-        ) -> <Self as App<Ef, Caps>>::ViewModel {
+        fn view(&self, model: &Self::Model) -> Self::ViewModel {
             MyViewModel {
                 result: format!(
                     "Status: {}, Body: {}",
@@ -89,33 +70,22 @@ mod shared {
     }
 
     pub(crate) struct MyCapabilities {
-        pub http: Http<MyEffect>,
-        pub render: Render<MyEffect>,
+        pub http: Http<MyEvent>,
+        pub render: Render<MyEffect, MyEvent>,
     }
 
-    impl crux_core::Capabilities<Http<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Http<MyEffect> {
-            &self.http
-        }
-    }
-
-    impl crux_core::Capabilities<Render<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Render<MyEffect> {
-            &self.render
-        }
-    }
-
-    impl Default for MyCapabilities {
-        fn default() -> Self {
-            Self {
-                http: Http::new(MyEffect::Http),
-                render: Render::new(MyEffect::Render),
+    impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
+        fn build(
+            channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
+        ) -> MyCapabilities {
+            MyCapabilities {
+                http: Http::new(channel.map_effect(MyEffect::Http)),
+                render: Render::new(channel, MyEffect::Render),
             }
         }
     }
 }
 
-#[cfg(nope)]
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
@@ -133,7 +103,7 @@ mod shell {
     }
 
     pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyCapabilities, MyApp<MyEffect, MyCapabilities>> = Core::new();
+        let core: Core<MyEffect, MyApp> = Core::new::<MyCapabilities>();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Message(MyEvent::HttpGet));
@@ -178,7 +148,6 @@ mod shell {
     }
 }
 
-#[cfg(nope)]
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;

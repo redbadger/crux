@@ -1,27 +1,24 @@
 use super::Command;
-use crate::Capability;
+use crate::{channels::Sender, Capability};
 
-pub struct Render<Ef>
-where
-    Ef: Clone,
-{
-    make_effect: Ef,
+pub struct Render<Ef, Ev> {
+    sender: Sender<Command<Ef, Ev>>,
+    effect: Ef,
 }
 
-impl<Ef> Render<Ef>
+impl<Ef, Ev> Render<Ef, Ev>
 where
-    Ef: Clone,
+    Ef: Clone + 'static,
+    Ev: 'static,
 {
-    pub fn new(make_effect: Ef) -> Self {
-        Self { make_effect }
+    pub fn new(sender: Sender<Command<Ef, Ev>>, effect: Ef) -> Self {
+        Self { sender, effect }
     }
 
-    pub fn render<Ev>(&self) -> Command<Ef, Ev>
-    where
-        Ev: 'static,
-    {
-        Command::new_without_callback(self.make_effect.clone())
+    pub fn render(&self) {
+        self.sender
+            .send(Command::new_without_callback(self.effect.clone()))
     }
 } // Public API of the capability, called by App::update.
 
-impl<Ef> super::Capability for Render<Ef> where Ef: Clone {}
+impl<Ef, Ev> super::Capability for Render<Ef, Ev> where Ef: Clone {}
