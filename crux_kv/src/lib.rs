@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crux_core::{Capability, Command};
+use crux_core::{channels::Sender, Capability, Command};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -15,40 +15,36 @@ pub enum KeyValueResponse {
     Write(bool),
 }
 
-pub struct KeyValue<Ef> {
-    effect: Box<dyn Fn(KeyValueRequest) -> Ef + Sync>,
+pub struct KeyValue<Ev> {
+    sender: Sender<Command<KeyValueRequest, Ev>>,
 }
 
-impl<Ef> KeyValue<Ef> {
-    pub fn new<MakeEffect>(effect: MakeEffect) -> Self
-    where
-        MakeEffect: Fn(KeyValueRequest) -> Ef + Sync + 'static,
-    {
-        Self {
-            effect: Box::new(effect),
-        }
+impl<Ev> KeyValue<Ev>
+where
+    Ev: 'static,
+{
+    pub fn new(sender: Sender<Command<KeyValueRequest, Ev>>) -> Self {
+        Self { sender }
     }
 
-    pub fn read<Ev, F>(&self, key: &str, callback: F) -> Command<Ef, Ev>
+    pub fn read<F>(&self, key: &str, callback: F)
     where
-        Ev: 'static,
         F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
     {
-        Command::new(
-            (self.effect)(KeyValueRequest::Read(key.to_string())),
+        self.sender.send(Command::new(
+            KeyValueRequest::Read(key.to_string()),
             callback,
-        )
+        ));
     }
 
-    pub fn write<Ev, F>(&self, key: &str, value: Vec<u8>, callback: F) -> Command<Ef, Ev>
+    pub fn write<F>(&self, key: &str, value: Vec<u8>, callback: F)
     where
-        Ev: 'static,
         F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
     {
-        Command::new(
-            (self.effect)(KeyValueRequest::Write(key.to_string(), value)),
+        self.sender.send(Command::new(
+            KeyValueRequest::Write(key.to_string(), value),
             callback,
-        )
+        ))
     }
 }
 

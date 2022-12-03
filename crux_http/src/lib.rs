@@ -1,12 +1,6 @@
 //! TODO mod docs
 
-use std::{
-    marker::PhantomData,
-    sync::{mpsc::Sender, Arc, Mutex},
-};
-
-use bcs::from_bytes;
-use crux_core::{command::Callback, Command};
+use crux_core::{channels::Sender, Command};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -47,16 +41,14 @@ pub struct HttpResponse {
 }
 
 pub struct Http<Ev> {
-    // TODO: On wasm this'll need to be an Rc<RefCell<VecDeque<T>>> or w/e - build a wrapper.
-    // Or at least check if we need to.  Probably also incorporate the mutex into that wrapper for ease of use...
-    sender: crux_core::channels::Sender<Command<HttpRequest, Ev>>,
+    sender: Sender<Command<HttpRequest, Ev>>,
 }
 
 impl<Ev> Http<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(sender: crux_core::channels::Sender<Command<HttpRequest, Ev>>) -> Self {
+    pub fn new(sender: Sender<Command<HttpRequest, Ev>>) -> Self {
         Self { sender }
     }
 
