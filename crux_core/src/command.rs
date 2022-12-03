@@ -39,30 +39,6 @@ impl<Ef, Ev> Command<Ef, Ev> {
         panic!("mismatched capability response");
     }
 
-    /// Lift is used to convert a Command with one message type to a command with another.
-    ///
-    /// This is normally used when composing applications. A typical case in the top-level
-    /// `update` function would look like the following:
-    ///
-    /// ```rust,ignore
-    /// match message {
-    ///     // ...
-    ///     Msg::Submodule(msg) => Command::lift(
-    ///             self.submodule.update(msg, &mut model.submodule),
-    ///             Msg::Submodule,
-    ///         ),
-    ///     // ...
-    /// }
-    /// ```
-    pub fn lift<ParentEv, F>(commands: Vec<Command<Ef, Ev>>, f: F) -> Vec<Command<Ef, ParentEv>>
-    where
-        F: Fn(Ev) -> ParentEv + Send + Copy + 'static,
-        Ev: 'static,
-        ParentEv: 'static,
-    {
-        commands.into_iter().map(move |c| c.map(f)).collect()
-    }
-
     pub fn map<ParentEvent, F>(self, f: F) -> Command<Ef, ParentEvent>
     where
         F: Fn(Ev) -> ParentEvent + Send + Copy + 'static,

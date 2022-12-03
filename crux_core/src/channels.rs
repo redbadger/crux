@@ -97,7 +97,6 @@ where
 
 trait SenderInner<T> {
     fn send(&self, t: T);
-    // fn map_input(&self, func: F) -> Sender<F>;
 }
 
 impl<T> SenderInner<T> for crossbeam_channel::Sender<T> {
@@ -118,18 +117,9 @@ where
     fn send(&self, value: U) {
         self.sender.send((self.func)(value))
     }
-
-    // fn map_input(&self, func: F) -> Sender<F> {
-    //     Sender {
-    //         inner: MappedInner {
-    //             sender: self.sender.clone(),
-    //             func,
-    //         },
-    //     }
-    // }
 }
 
-// TOOD: Some tests that this meets safe/sync requirements, is compatible with wasm etc.
+// TOOD: Some tests that this is compatible with wasm etc.
 
 #[cfg(test)]
 mod tests {
