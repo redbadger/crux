@@ -1,34 +1,36 @@
 //! TODO mod docs
 
-use crux_core::{Capability, Command};
+use crux_core::{channels::Sender, Capability, Command};
 use serde::{Deserialize, Serialize};
 
 // TODO revisit this
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformResponse(pub String);
 
-pub struct Platform<Ef>
-where
-    Ef: Clone,
-{
-    make_effect: Ef,
+pub struct Platform<Ev, Ef> {
+    sender: Sender<Command<Ef, Ev>>,
+    make_effect: fn() -> Ef,
 }
 
-impl<Ef> Platform<Ef>
+impl<Ev, Ef> Platform<Ev, Ef>
 where
-    Ef: Clone,
+    Ef: 'static,
+    Ev: 'static,
 {
-    pub fn new(make_effect: Ef) -> Self {
-        Self { make_effect }
+    pub fn new(sender: Sender<Command<Ef, Ev>>, make_effect: fn() -> Ef) -> Self {
+        Self {
+            sender,
+            make_effect,
+        }
     }
 
-    pub fn get<Ev, F>(&self, callback: F) -> Command<Ef, Ev>
+    pub fn get<F>(&self, callback: F)
     where
-        Ev: 'static,
         F: Fn(PlatformResponse) -> Ev + Send + Sync + 'static,
     {
-        Command::new(self.make_effect.clone(), callback)
+        self.sender
+            .send(Command::new((self.make_effect)(), callback))
     }
 }
 
-impl<Ef> Capability for Platform<Ef> where Ef: Clone {}
+impl<Ev, Ef> Capability for Platform<Ev, Ef> {}

@@ -1,14 +1,11 @@
-#[cfg(nope)]
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command, Commander};
+    use crux_core::{render::Render, App, Capabilities, CapabilityFactory, Command};
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
 
     #[derive(Default)]
-    pub struct MyApp<Ef, Caps> {
-        _marker: PhantomData<fn() -> (Ef, Caps)>,
-    }
+    pub struct MyApp;
 
     #[derive(Serialize, Deserialize)]
     pub enum MyEvent {
@@ -26,38 +23,23 @@ mod shared {
         pub platform: String,
     }
 
-    impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
-    where
-        Ef: Serialize + Clone + Default,
-        Caps: Default + Capabilities<Platform<Ef>> + Capabilities<Render<Ef>>,
-    {
+    impl App for MyApp {
         type Event = MyEvent;
         type Model = MyModel;
         type ViewModel = MyViewModel;
+        type Capabilities = MyCapabilities;
 
-        fn update(
-            &self,
-            event: MyEvent,
-            model: &mut MyModel,
-            caps: &Caps,
-            commander: &Commander<Command<Ef, Self::Event>>,
-        ) {
-            let platform: &Platform<_> = caps.get();
-            let render: &Render<_> = caps.get();
-
+        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
             match event {
-                MyEvent::PlatformGet => commander.send_command(platform.get(MyEvent::PlatformSet)),
+                MyEvent::PlatformGet => caps.platform.get(MyEvent::PlatformSet),
                 MyEvent::PlatformSet(platform) => {
                     model.platform = platform.0;
-                    commander.send_command(render.render())
+                    caps.render.render()
                 }
             }
         }
 
-        fn view(
-            &self,
-            model: &<Self as App<Ef, Caps>>::Model,
-        ) -> <Self as App<Ef, Caps>>::ViewModel {
+        fn view(&self, model: &Self::Model) -> Self::ViewModel {
             MyViewModel {
                 platform: model.platform.clone(),
             }
@@ -76,34 +58,23 @@ mod shared {
         }
     }
 
-    pub(crate) struct MyCapabilities {
-        pub platform: Platform<MyEffect>,
-        pub render: Render<MyEffect>,
+    pub struct MyCapabilities {
+        pub platform: Platform<MyEvent, MyEffect>,
+        pub render: Render<MyEvent, MyEffect>,
     }
 
-    impl crux_core::Capabilities<Platform<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Platform<MyEffect> {
-            &self.platform
-        }
-    }
-
-    impl crux_core::Capabilities<Render<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Render<MyEffect> {
-            &self.render
-        }
-    }
-
-    impl Default for MyCapabilities {
-        fn default() -> Self {
-            Self {
-                platform: Platform::new(MyEffect::Platform),
-                render: Render::new(MyEffect::Render),
+    impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
+        fn build(
+            channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
+        ) -> MyCapabilities {
+            MyCapabilities {
+                platform: Platform::new(channel.clone(), || MyEffect::Platform),
+                render: Render::new(channel, || MyEffect::Render),
             }
         }
     }
 }
 
-#[cfg(nope)]
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
@@ -121,7 +92,7 @@ mod shell {
     }
 
     pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyCapabilities, MyApp<MyEffect, MyCapabilities>> = Core::new();
+        let core: Core<MyEffect, MyApp> = Core::new::<MyCapabilities>();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Message(MyEvent::PlatformGet));
@@ -163,7 +134,6 @@ mod shell {
     }
 }
 
-#[cfg(nope)]
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;
