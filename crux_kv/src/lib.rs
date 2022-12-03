@@ -48,4 +48,15 @@ where
     }
 }
 
-impl<Ef> Capability for KeyValue<Ef> where Ef: Clone {}
+impl<Ef> Capability<Ef> for KeyValue<Ef> {
+    type MappedSelf<MappedEv> = KeyValue<MappedEv>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
+        Ef: 'static,
+        NewEvent: 'static,
+    {
+        KeyValue::new(self.sender.map_event(f))
+    }
+}

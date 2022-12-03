@@ -27,4 +27,15 @@ where
     }
 }
 
-impl<Ef> Capability for Time<Ef> {}
+impl<Ef> Capability<Ef> for Time<Ef> {
+    type MappedSelf<MappedEv> = Time<MappedEv>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
+        Ef: 'static,
+        NewEvent: 'static,
+    {
+        Time::new(self.sender.map_event(f))
+    }
+}

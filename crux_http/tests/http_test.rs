@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, CapabilityFactory, Command};
+    use crux_core::{render::Render, App, Capabilities, CapabilitiesFactory, Command};
     use crux_http::{Http, HttpRequest, HttpResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
@@ -74,7 +74,7 @@ mod shared {
         pub render: Render<MyEvent>,
     }
 
-    impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
+    impl CapabilitiesFactory<MyApp, MyEffect> for MyCapabilities {
         fn build(
             channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
         ) -> MyCapabilities {

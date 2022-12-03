@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crux_core::{channels::Sender, Command};
+use crux_core::{channels::Sender, Capability, Command};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -73,11 +73,15 @@ where
         self.sender
             .send(Command::new(request, callback))
     }
+}
 
-    pub fn map_event<F, NewEvent>(&self, f: F) -> Http<NewEvent>
+impl<Ef> Capability<Ef> for Http<Ef> {
+    type MappedSelf<MappedEv> = Http<MappedEv>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
     where
-        F: Fn(NewEvent) -> Ev + Send + Sync + Copy + 'static,
-        Ev: 'static,
+        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
+        Ef: 'static,
         NewEvent: 'static,
     {
         Http::new(self.sender.map_event(f))

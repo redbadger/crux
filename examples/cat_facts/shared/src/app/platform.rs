@@ -20,10 +20,10 @@ pub enum PlatformEvent {
 }
 
 pub struct PlatformCapabilities {
-    pub http: crux_http::Http<PlatformEvent>,
+    pub platform: PlatformCap<PlatformEvent>,
+    pub render: Render<PlatformEvent>,
 }
 
-// A thought: arguably this doesn't even need to be an `App` since nothing generic is driving it...
 impl App for Platform {
     type Event = PlatformEvent;
     type Model = Model;
@@ -31,18 +31,13 @@ impl App for Platform {
     type Capabilities = PlatformCapabilities;
 
     fn update(&self, msg: PlatformEvent, model: &mut Model, caps: &PlatformCapabilities) {
-
-        // let platform: &PlatformCap<_> = caps.get();
-        // let render: &Render<_> = caps.get();
-
-        /*
         match msg {
-            PlatformEvent::Get => platform.get(PlatformEvent::Set),
+            PlatformEvent::Get => caps.platform.get(PlatformEvent::Set),
             PlatformEvent::Set(platform) => {
                 model.platform = platform.0;
-                render.render()
+                caps.render.render()
             }
-        } */
+        }
     }
 
     fn view(&self, model: &Model) -> Model {

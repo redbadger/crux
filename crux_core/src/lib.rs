@@ -116,7 +116,7 @@ pub mod typegen;
 // TODO: should this be public?  Not sure...
 pub mod channels;
 
-pub use capability::{Capabilities, Capability, CapabilityFactory};
+pub use capability::{Capabilities, CapabilitiesFactory, Capability};
 use command::Callback;
 pub use command::Command;
 use continuations::ContinuationStore;
@@ -178,7 +178,7 @@ where
     /// deserialized using the types generated using the [typegen] module.
     pub fn new<CapFactory>() -> Self
     where
-        CapFactory: CapabilityFactory<A, Ef>,
+        CapFactory: CapabilitiesFactory<A, Ef>,
     {
         let (sender, receiver) = crate::channels::channel();
         Self {
@@ -250,7 +250,7 @@ impl<Ef, A> Default for Core<Ef, A>
 where
     Ef: Serialize + Send + 'static,
     A: App,
-    A::Capabilities: CapabilityFactory<A, Ef>,
+    A::Capabilities: CapabilitiesFactory<A, Ef>,
 {
     fn default() -> Self {
         Self::new::<A::Capabilities>()

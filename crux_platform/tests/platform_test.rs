@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{render::Render, App, CapabilityFactory, Command};
+    use crux_core::{render::Render, App, CapabilitiesFactory, Command};
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
 
@@ -62,7 +62,7 @@ mod shared {
         pub render: Render<MyEvent>,
     }
 
-    impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
+    impl CapabilitiesFactory<MyApp, MyEffect> for MyCapabilities {
         fn build(
             channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
         ) -> MyCapabilities {

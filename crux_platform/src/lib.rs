@@ -27,4 +27,15 @@ where
     }
 }
 
-impl<Ev> Capability for Platform<Ev> {}
+impl<Ef> Capability<Ef> for Platform<Ef> {
+    type MappedSelf<MappedEv> = Platform<MappedEv>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
+        Ef: 'static,
+        NewEvent: 'static,
+    {
+        Platform::new(self.sender.map_event(f))
+    }
+}

@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, CapabilityFactory, Command};
+    use crux_core::{render::Render, App, Capabilities, CapabilitiesFactory, Command};
     use crux_kv::{KeyValue, KeyValueRequest, KeyValueResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
@@ -78,7 +78,7 @@ mod shared {
         pub render: Render<MyEvent>,
     }
 
-    impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
+    impl CapabilitiesFactory<MyApp, MyEffect> for MyCapabilities {
         fn build(
             channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
         ) -> MyCapabilities {
@@ -93,7 +93,7 @@ mod shared {
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
-    use crux_core::{CapabilityFactory, Core, Request};
+    use crux_core::{CapabilitiesFactory, Core, Request};
     use crux_kv::{KeyValueRequest, KeyValueResponse};
     use std::collections::{HashMap, VecDeque};
 
