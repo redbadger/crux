@@ -246,6 +246,17 @@ where
     }
 }
 
+impl<Ef, A> Default for Core<Ef, A>
+where
+    Ef: Serialize + Send + 'static,
+    A: App,
+    A::Capabilities: CapabilityFactory<A, Ef>,
+{
+    fn default() -> Self {
+        Self::new::<A::Capabilities>()
+    }
+}
+
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding [`Response`] to pass the data back
 /// to the [`App::update`] function wrapped in the correct `Message`.

@@ -1,14 +1,10 @@
-#[cfg(nope)]
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command, Commander};
+    use crux_core::{render::Render, App, CapabilityFactory, Command};
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
-    use std::marker::PhantomData;
 
     #[derive(Default)]
-    pub struct MyApp<Ef, Caps> {
-        _marker: PhantomData<fn() -> (Ef, Caps)>,
-    }
+    pub struct MyApp;
 
     #[derive(Serialize, Deserialize)]
     pub enum MyEvent {
@@ -26,38 +22,23 @@ mod shared {
         pub time: String,
     }
 
-    impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
-    where
-        Ef: Serialize + Clone + Default,
-        Caps: Default + Capabilities<Time<Ef>> + Capabilities<Render<Ef>>,
-    {
+    impl App for MyApp {
         type Event = MyEvent;
         type Model = MyModel;
         type ViewModel = MyViewModel;
+        type Capabilities = MyCapabilities;
 
-        fn update(
-            &self,
-            event: MyEvent,
-            model: &mut MyModel,
-            caps: &Caps,
-            commander: &Commander<Command<Ef, Self::Event>>,
-        ) {
-            let time: &Time<_> = caps.get();
-            let render: &Render<_> = caps.get();
-
+        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
             match event {
-                MyEvent::TimeGet => commander.send_command(time.get(MyEvent::TimeSet)),
+                MyEvent::TimeGet => caps.time.get(MyEvent::TimeSet),
                 MyEvent::TimeSet(time) => {
                     model.time = time.0;
-                    commander.send_command(render.render())
+                    caps.render.render()
                 }
             }
         }
 
-        fn view(
-            &self,
-            model: &<Self as App<Ef, Caps>>::Model,
-        ) -> <Self as App<Ef, Caps>>::ViewModel {
+        fn view(&self, model: &Self::Model) -> Self::ViewModel {
             MyViewModel {
                 time: model.time.clone(),
             }
@@ -70,44 +51,28 @@ mod shared {
         Render,
     }
 
-    impl Default for MyEffect {
-        fn default() -> Self {
-            MyEffect::Render
-        }
+    pub struct MyCapabilities {
+        pub time: Time<MyEvent>,
+        // TODO: Don't forget to fix Render
+        pub render: Render<MyEvent, MyEffect>,
     }
 
-    pub(crate) struct MyCapabilities {
-        pub time: Time<MyEffect>,
-        pub render: Render<MyEffect>,
-    }
-
-    impl crux_core::Capabilities<Time<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Time<MyEffect> {
-            &self.time
-        }
-    }
-
-    impl crux_core::Capabilities<Render<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Render<MyEffect> {
-            &self.render
-        }
-    }
-
-    impl Default for MyCapabilities {
-        fn default() -> Self {
-            Self {
-                time: Time::new(MyEffect::Time),
-                render: Render::new(MyEffect::Render),
+    impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
+        fn build(
+            channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
+        ) -> MyCapabilities {
+            MyCapabilities {
+                time: Time::new(channel.map_effect(|_| MyEffect::Time)),
+                render: Render::new(channel, || MyEffect::Render),
             }
         }
     }
 }
 
-#[cfg(nope)]
 mod shell {
     use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
-    use crux_core::{Core, Request};
+    use crux_core::{CapabilityFactory, Core, Request};
     use crux_time::TimeResponse;
     use std::collections::VecDeque;
 
@@ -121,7 +86,7 @@ mod shell {
     }
 
     pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyCapabilities, MyApp<MyEffect, MyCapabilities>> = Core::new();
+        let core: Core<MyEffect, MyApp> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Message(MyEvent::TimeGet));
@@ -165,7 +130,6 @@ mod shell {
     }
 }
 
-#[cfg(nope)]
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;

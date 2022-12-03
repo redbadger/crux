@@ -1,8 +1,7 @@
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, CapabilityFactory, Command};
+    use crux_core::{render::Render, App, CapabilityFactory, Command};
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
-    use std::marker::PhantomData;
 
     #[derive(Default)]
     pub struct MyApp;

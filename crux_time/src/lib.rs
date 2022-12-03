@@ -1,34 +1,30 @@
 //! TODO mod docs
 
-use crux_core::{Capability, Command};
+use crux_core::{channels::Sender, Capability, Command};
 use serde::{Deserialize, Serialize};
 
 // TODO revisit this
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeResponse(pub String);
 
-pub struct Time<Ef>
-where
-    Ef: Clone,
-{
-    effect: Ef,
+pub struct Time<Ev> {
+    sender: Sender<Command<(), Ev>>,
 }
 
-impl<Ef> Time<Ef>
+impl<Ev> Time<Ev>
 where
-    Ef: Clone,
+    Ev: 'static,
 {
-    pub fn new(effect: Ef) -> Self {
-        Self { effect }
+    pub fn new(sender: Sender<Command<(), Ev>>) -> Self {
+        Self { sender }
     }
 
-    pub fn get<Ev, F>(&self, callback: F) -> Command<Ef, Ev>
+    pub fn get<F>(&self, callback: F)
     where
-        Ev: 'static,
         F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        Command::new(self.effect.clone(), callback)
+        self.sender.send(Command::new((), callback))
     }
 }
 
-impl<Ef> Capability for Time<Ef> where Ef: Clone {}
+impl<Ef> Capability for Time<Ef> {}
