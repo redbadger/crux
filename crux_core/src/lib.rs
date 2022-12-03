@@ -204,10 +204,11 @@ where
 
         self.app.update(msg, &mut model, &self.capabilities);
 
-        let mut requests = Vec::new();
-        while let Some(command) = self.command_receiver.receive() {
-            requests.push(self.continuations.pause(command));
-        }
+        let requests = self
+            .command_receiver
+            .drain()
+            .map(|c| self.continuations.pause(c))
+            .collect::<Vec<_>>();
 
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
@@ -227,10 +228,11 @@ where
 
         self.app.update(msg, &mut model, &self.capabilities);
 
-        let mut requests = Vec::new();
-        while let Some(command) = self.command_receiver.receive() {
-            requests.push(self.continuations.pause(command));
-        }
+        let requests = self
+            .command_receiver
+            .drain()
+            .map(|c| self.continuations.pause(c))
+            .collect::<Vec<_>>();
 
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }

@@ -30,6 +30,22 @@ impl<T> Receiver<T> {
             }
         }
     }
+
+    pub fn drain(&self) -> Drain<T> {
+        Drain { receiver: self }
+    }
+}
+
+pub struct Drain<'a, T> {
+    receiver: &'a Receiver<T>,
+}
+
+impl<'a, T> Iterator for Drain<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.receiver.receive()
+    }
 }
 
 pub struct Sender<T> {
