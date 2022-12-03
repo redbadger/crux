@@ -41,7 +41,7 @@ For now, we will need a single capability, `Render`, which is built into Crux an
 > It provides a convenience API to access the capabilities from your app code which we'll see shortly.
 > For now, it needs to be implemented by hand for all capabilities used by the app.
 
-With this short detour out of the way, we can finally create and app and start implementing some behavior.
+With this short detour out of the way, we can finally create an app and start implementing some behavior.
 
 ## Creating an app
 
@@ -63,7 +63,7 @@ impl Default for Hello {
 }
 ```
 
-The struct is generic over two types parameters, `E` (for effect) and `C` (for capabilities). This supports composability and reusability of Crux apps (you can read more about that in the chapter on [Composing apps](./composing.md)). These are type parameters correspond to the types we defined in the previous section. We also need to implement `Default` so that Crux can construct the app for us.
+The struct is generic over two types parameters, `E` (for effect) and `C` (for capabilities). This supports composability and reusability of Crux apps (you can read more about that in the chapter on [Composing apps](./composing.md)). These are type parameters corresponding to the types we defined in the previous section. We also need to implement `Default` so that Crux can construct the app for us.
 
 To turn it into an app, we need to implement the `App` trait from the `crux_core` crate. And we'll need a few dependencies to make it work as well.
 
@@ -71,16 +71,16 @@ To turn it into an app, we need to implement the `App` trait from the `crux_core
 use serde::{Serialize};
 use crux_core::{App, Capabilities, Command, render::Render};
 
-impl<E, C> App<E, C> for Hello where 
-    E: Clone + Serialize, 
-    C: Capabilities<Render<E>> 
+impl<E, C> App<E, C> for Hello where
+    E: Clone + Serialize,
+    C: Capabilities<Render<E>>
 {
     type Event = ();
     type Model = ();
     type ViewModel = String;
 
     fn update(&self, _e: Event, _s: &mut Model, caps: &C) -> Vec<Command<Event>> {
-        let render = caps::get<Render<_>>();
+        let render: &Render<_> = caps.get();
 
         vec![render.render()]
     }
@@ -119,7 +119,7 @@ mod tests {
 
         // Call 'update' and receive commands
         let commands = hello.update((), &mut model, &capabilities);
-        
+
         let Command { effect: actual_effect, .. } = commands[0];
         let expected_effect = Effect::Render;
 
@@ -150,9 +150,9 @@ struct Model {
 We need `Default` implemented to define the initial state. For now we derive it, as our state is quite simple. We also update the app to use the model:
 
 ```rust
-impl<E, C> App<E, C> for Hello where 
-    E: Clone + Serialize, 
-    C: Capabilities<Render<E>> 
+impl<E, C> App<E, C> for Hello where
+    E: Clone + Serialize,
+    C: Capabilities<Render<E>>
 {
 // ...
 
@@ -180,17 +180,17 @@ enum Event {
 The event type covers all the possible events we can respond to. "Will that not get massive really quickly??" I hear you ask. Don't worry about that, there is [a way to make this scale](./composing.md). Let's carry on. We need to actually handle those messages.
 
 ```rust
-impl<E, C> App<E, C> for Hello where 
-    E: Clone + Serialize, 
-    C: Capabilities<Render<E>> 
+impl<E, C> App<E, C> for Hello where
+    E: Clone + Serialize,
+    C: Capabilities<Render<E>>
 {
     type Event = Event;
     type Model = Model;
     type ViewModel = String;
 
     fn update(&self, event: Event, state: &mut Model, caps: &C) -> Vec<Command<Event>> {
-        let render = caps::get<Render<_>>();
-        
+        let render: &Render<_> = caps.get();
+
         match event {
             Event::Increment => model.count += 1,
             Event::Decrement => model.count -= 1,
@@ -217,7 +217,7 @@ mod test {
         let hello = Hello::default();
 
         let commands = hello.update(Event::Reset, &mut model, &capabilities);
-        
+
         let Command { effect: actual_effect, .. } = commands[0];
         let expected_effect = Effect::Render;
     }
@@ -227,7 +227,7 @@ mod test {
         let capabilities = Capabilities::default();
         let model = Model::default();
         let hello = Hello::default();
- 
+
         let actual_view = hello.view(&model)
         let expected_view = "Count is: 0";
 
@@ -239,7 +239,7 @@ mod test {
         let capabilities = Capabilities::default();
         let model = Model::default();
         let hello = Hello::default();
- 
+
         hello.update(Event::Increment, &mut model, &capabilities);
 
         let actual_view = hello.view()
@@ -253,7 +253,7 @@ mod test {
         let capabilities = Capabilities::default();
         let model = Model::default();
         let hello = Hello::default();
- 
+
         hello.update(Event::Decrement, &mut model, &capabilities);
 
         let actual_view = hello.view(&model)
@@ -267,7 +267,7 @@ mod test {
         let capabilities = Capabilities::default();
         let model = Model::default();
         let hello = Hello::default();
- 
+
         hello.update(Event::Increment, &mut model, &capabilities);
         hello.update(Event::Reset, &mut model, &capabilities);
 
@@ -282,7 +282,7 @@ mod test {
         let capabilities = Capabilities::default();
         let model = Model::default();
         let hello = Hello::default();
- 
+
         hello.update(Event::Increment, &mut model, &capabilities);
         hello.update(Event::Reset, &mut model, &capabilities);
         hello.update(Event::Decrement, &mut model, &capabilities);
