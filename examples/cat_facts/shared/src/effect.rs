@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crux_core::{render::Render, Capability, Command};
 use crux_http::{Http, HttpRequest};
 use crux_kv::{KeyValue, KeyValueRequest};
@@ -8,7 +6,7 @@ use crux_time::Time;
 use serde::{Deserialize, Serialize};
 
 use super::Event;
-use crate::{app::platform::PlatformCapabilities, CatFact};
+use crate::app::platform::PlatformCapabilities;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Effect {

@@ -69,9 +69,9 @@ mod shared {
 }
 
 mod shell {
-    use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
-    use crux_core::{CapabilitiesFactory, Core, Request};
+    use crux_core::{Core, Request};
     use crux_time::TimeResponse;
     use std::collections::VecDeque;
 

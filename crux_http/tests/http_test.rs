@@ -1,8 +1,7 @@
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, CapabilitiesFactory, Command};
+    use crux_core::{render::Render, App, CapabilitiesFactory, Command};
     use crux_http::{Http, HttpRequest, HttpResponse};
     use serde::{Deserialize, Serialize};
-    use std::marker::PhantomData;
     use url::Url;
 
     #[derive(Default)]
@@ -87,7 +86,7 @@ mod shared {
 }
 
 mod shell {
-    use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
     use crux_http::{HttpRequest, HttpResponse};
@@ -103,7 +102,7 @@ mod shell {
     }
 
     pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyApp> = Core::new::<MyCapabilities>();
+        let core: Core<MyEffect, MyApp> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Message(MyEvent::HttpGet));

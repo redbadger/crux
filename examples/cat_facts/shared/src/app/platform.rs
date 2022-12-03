@@ -1,9 +1,6 @@
-use crux_core::{render::Render, App, Capabilities, Command};
+use crux_core::{render::Render, App};
 use crux_platform::{Platform as PlatformCap, PlatformResponse};
 use serde::{Deserialize, Serialize};
-use std::marker::PhantomData;
-
-use crate::effect::CatFactCapabilities;
 
 #[derive(Default)]
 pub struct Platform {}

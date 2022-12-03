@@ -1,3 +1,8 @@
+use crate::{
+    channels::{channel, Receiver, Sender},
+    Command,
+};
+
 // TODO docs!
 pub trait Capability<Ev> {
     type MappedSelf<MappedEv>;
@@ -9,17 +14,20 @@ pub trait Capability<Ev> {
         NewEvent: 'static;
 }
 
-pub trait Capabilities<C> {
-    fn get(&self) -> &C;
-}
-
-use crate::Command;
-
-// Don't like this factory name but the other obvious option is `Capabilities` and I'd rather let
-// the individual apps use that name...
 pub trait CapabilitiesFactory<App, Ef>
 where
     App: crate::App,
 {
-    fn build(channel: crate::channels::Sender<Command<Ef, App::Event>>) -> App::Capabilities;
+    fn build(channel: Sender<Command<Ef, App::Event>>) -> App::Capabilities;
+}
+
+pub fn test_capabilities<Caps, App, Ef>() -> (App::Capabilities, Receiver<Command<Ef, App::Event>>)
+where
+    Caps: CapabilitiesFactory<App, Ef>,
+    App: crate::App,
+    App::Event: Send,
+    Ef: Send + 'static,
+{
+    let (sender, receiver) = channel();
+    (Caps::build(sender), receiver)
 }

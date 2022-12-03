@@ -116,15 +116,11 @@ pub mod typegen;
 // TODO: should this be public?  Not sure...
 pub mod channels;
 
-pub use capability::{Capabilities, CapabilitiesFactory, Capability};
-use command::Callback;
+pub use capability::{CapabilitiesFactory, Capability};
 pub use command::Command;
 use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
-use std::{
-    marker::PhantomData,
-    sync::{Mutex, RwLock},
-};
+use std::{marker::PhantomData, sync::RwLock};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
