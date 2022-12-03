@@ -75,7 +75,7 @@ mod shared {
 
     pub struct MyCapabilities {
         pub key_value: KeyValue<MyEvent>,
-        pub render: Render<MyEvent, MyEffect>,
+        pub render: Render<MyEvent>,
     }
 
     impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
@@ -84,7 +84,7 @@ mod shared {
         ) -> MyCapabilities {
             MyCapabilities {
                 key_value: KeyValue::new(channel.map_effect(MyEffect::KeyValue)),
-                render: Render::new(channel, || MyEffect::Render),
+                render: Render::new(channel.map_effect(|_| MyEffect::Render)),
             }
         }
     }

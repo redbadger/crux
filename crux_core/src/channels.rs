@@ -52,14 +52,6 @@ pub struct Sender<T> {
     inner: Arc<dyn SenderInner<T> + Send + Sync>,
 }
 
-impl<T> Clone for Sender<T> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
-}
-
 impl<T> Sender<T>
 where
     T: 'static,

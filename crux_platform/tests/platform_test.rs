@@ -58,8 +58,8 @@ mod shared {
     }
 
     pub struct MyCapabilities {
-        pub platform: Platform<MyEvent, MyEffect>,
-        pub render: Render<MyEvent, MyEffect>,
+        pub platform: Platform<MyEvent>,
+        pub render: Render<MyEvent>,
     }
 
     impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
@@ -67,8 +67,8 @@ mod shared {
             channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
         ) -> MyCapabilities {
             MyCapabilities {
-                platform: Platform::new(channel.clone(), || MyEffect::Platform),
-                render: Render::new(channel, || MyEffect::Render),
+                platform: Platform::new(channel.map_effect(|_| MyEffect::Platform)),
+                render: Render::new(channel.map_effect(|_| MyEffect::Render)),
             }
         }
     }

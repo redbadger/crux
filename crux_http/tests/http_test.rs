@@ -71,7 +71,7 @@ mod shared {
 
     pub(crate) struct MyCapabilities {
         pub http: Http<MyEvent>,
-        pub render: Render<MyEvent, MyEffect>,
+        pub render: Render<MyEvent>,
     }
 
     impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
@@ -80,7 +80,7 @@ mod shared {
         ) -> MyCapabilities {
             MyCapabilities {
                 http: Http::new(channel.map_effect(MyEffect::Http)),
-                render: Render::new(channel, || MyEffect::Render),
+                render: Render::new(channel.map_effect(|_| MyEffect::Render)),
             }
         }
     }

@@ -53,8 +53,7 @@ mod shared {
 
     pub struct MyCapabilities {
         pub time: Time<MyEvent>,
-        // TODO: Don't forget to fix Render
-        pub render: Render<MyEvent, MyEffect>,
+        pub render: Render<MyEvent>,
     }
 
     impl CapabilityFactory<MyApp, MyEffect> for MyCapabilities {
@@ -63,7 +62,7 @@ mod shared {
         ) -> MyCapabilities {
             MyCapabilities {
                 time: Time::new(channel.map_effect(|_| MyEffect::Time)),
-                render: Render::new(channel, || MyEffect::Render),
+                render: Render::new(channel.map_effect(|_| MyEffect::Render)),
             }
         }
     }

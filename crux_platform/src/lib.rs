@@ -7,30 +7,24 @@ use serde::{Deserialize, Serialize};
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformResponse(pub String);
 
-pub struct Platform<Ev, Ef> {
-    sender: Sender<Command<Ef, Ev>>,
-    make_effect: fn() -> Ef,
+pub struct Platform<Ev> {
+    sender: Sender<Command<(), Ev>>,
 }
 
-impl<Ev, Ef> Platform<Ev, Ef>
+impl<Ev> Platform<Ev>
 where
-    Ef: 'static,
     Ev: 'static,
 {
-    pub fn new(sender: Sender<Command<Ef, Ev>>, make_effect: fn() -> Ef) -> Self {
-        Self {
-            sender,
-            make_effect,
-        }
+    pub fn new(sender: Sender<Command<(), Ev>>) -> Self {
+        Self { sender }
     }
 
     pub fn get<F>(&self, callback: F)
     where
         F: Fn(PlatformResponse) -> Ev + Send + Sync + 'static,
     {
-        self.sender
-            .send(Command::new((self.make_effect)(), callback))
+        self.sender.send(Command::new((), callback))
     }
 }
 
-impl<Ev, Ef> Capability for Platform<Ev, Ef> {}
+impl<Ev> Capability for Platform<Ev> {}
