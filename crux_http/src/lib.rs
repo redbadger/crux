@@ -71,27 +71,18 @@ where
         T: serde::de::DeserializeOwned,
         F: Fn(T) -> Ev + Send + Clone + 'static,
     {
-        let request = HttpRequest {
-            method: HttpMethod::Get.to_string(),
-            url: url.to_string(),
-        };
-        // TODO: Ok, so clearly this spawn API requires some work :|
-        self.context.spawn(move |ctx| {
-            let req = request.clone();
-            let callback = callback.clone();
-            async move {
-                let resp = ctx.effect(req).await;
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let request = HttpRequest {
+                method: HttpMethod::Get.to_string(),
+                url: url.to_string(),
+            };
+            let resp = ctx.effect(request).await;
 
-                let data = serde_json::from_slice::<T>(&resp.body)
-                    .expect("TODO: do something sensible here");
+            let data =
+                serde_json::from_slice::<T>(&resp.body).expect("TODO: do something sensible here");
 
-                ctx.send_event(callback(data))
-
-                // TODO: Now we just need a way to pass events back in...
-                // also might be good to not hook into sender _directly_
-                // like this...
-                // And maybe have the received_messages live in the executor.
-            }
+            ctx.send_event(callback(data))
         });
     }
 

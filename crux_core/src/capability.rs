@@ -47,6 +47,14 @@ struct ContextInner<Ef, Event> {
     spawner: crate::executor::Spawner,
 }
 
+impl<Ef, Ev> Clone for CapabilityContext<Ef, Ev> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+}
+
 impl<Ef, Ev> CapabilityContext<Ef, Ev>
 where
     Ef: 'static,
@@ -70,12 +78,8 @@ where
         self.inner.command_sender.send(cmd);
     }
 
-    pub fn spawn<F, Fut>(&self, func: F)
-    where
-        F: Fn(Self) -> Fut,
-        Fut: Future<Output = ()> + 'static + Send,
-    {
-        self.inner.spawner.spawn(func(self.private_clone()));
+    pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
+        self.inner.spawner.spawn(f);
     }
 
     pub fn send_event(&self, event: Ev) {
@@ -109,13 +113,6 @@ where
             spawner: self.inner.spawner.clone(),
         });
 
-        CapabilityContext { inner }
-    }
-
-    // I'm uneasy about exposing clone on this...
-    // Although if we need to I guess we can.
-    fn private_clone(&self) -> Self {
-        let inner = Arc::clone(&self.inner);
         CapabilityContext { inner }
     }
 }

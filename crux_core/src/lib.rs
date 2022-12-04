@@ -116,14 +116,17 @@ pub mod render;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
+use std::{marker::PhantomData, sync::RwLock};
+
+use serde::{Deserialize, Serialize};
+
 use capability::CapabilityContext;
-pub use capability::{CapabilitiesFactory, Capability};
 use channels::Receiver;
-pub use command::Command;
 use continuations::ContinuationStore;
 use executor::Executor;
-use serde::{Deserialize, Serialize};
-use std::{marker::PhantomData, sync::RwLock};
+
+pub use capability::{CapabilitiesFactory, Capability};
+pub use command::Command;
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
