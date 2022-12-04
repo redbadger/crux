@@ -11,12 +11,12 @@ pub struct Command<Ef> {
 // TODO: Ok, now - does command even need to be public?
 
 // TODO: Could probably just use the type direct, look into that
-pub(crate) type Resolve = Box<dyn Fn(Vec<u8>) + Send>;
+pub(crate) type Resolve = Box<dyn Fn(&[u8]) + Send>;
 
 impl<Ef> Command<Ef> {
     pub fn new<F>(effect: Ef, resolve: F) -> Self
     where
-        F: Fn(Vec<u8>) + Send + 'static,
+        F: Fn(&[u8]) + Send + 'static,
     {
         Self {
             effect,

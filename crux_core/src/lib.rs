@@ -240,7 +240,7 @@ where
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
+        self.continuations.resume(uuid, body);
         self.executor.run_all();
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");

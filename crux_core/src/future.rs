@@ -5,19 +5,19 @@ use std::{
 
 use futures::Future;
 
-use crate::{capability::CapabilityContext, Command};
+use crate::Command;
 
-pub struct EffectFuture {
-    shared_state: Arc<Mutex<SharedState>>,
+pub struct EffectFuture<T> {
+    shared_state: Arc<Mutex<SharedState<T>>>,
 }
 
-struct SharedState {
-    result: Option<Vec<u8>>,
+struct SharedState<T> {
+    result: Option<T>,
     waker: Option<Waker>,
 }
 
-impl Future for EffectFuture {
-    type Output = Vec<u8>;
+impl<T> Future for EffectFuture<T> {
+    type Output = T;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
@@ -39,31 +39,21 @@ where
     Ef: crate::Effect,
     Ev: 'static,
 {
-    pub async fn effect(&self, effect: Ef) -> Ef::Response {
-        let bytes = effect_future(self, effect).await;
+    pub fn effect(&self, effect: Ef) -> EffectFuture<Ef::Response> {
+        let shared_state = Arc::new(Mutex::new(SharedState {
+            result: None,
+            waker: None,
+        }));
 
-        bcs::from_bytes(&bytes).unwrap()
+        let callback_shared_state = shared_state.clone();
+        self.run_command(Command::new(effect, move |bytes| {
+            let mut shared_state = callback_shared_state.lock().unwrap();
+            shared_state.result = Some(bcs::from_bytes(bytes).unwrap());
+            if let Some(waker) = shared_state.waker.take() {
+                waker.wake()
+            }
+        }));
+
+        EffectFuture { shared_state }
     }
-}
-
-fn effect_future<Ef, Ev>(ctx: &CapabilityContext<Ef, Ev>, effect: Ef) -> EffectFuture
-where
-    Ef: crate::Effect,
-    Ev: 'static,
-{
-    let shared_state = Arc::new(Mutex::new(SharedState {
-        result: None,
-        waker: None,
-    }));
-
-    let callback_shared_state = shared_state.clone();
-    ctx.run_command(Command::new(effect, move |result| {
-        let mut shared_state = callback_shared_state.lock().unwrap();
-        shared_state.result = Some(result);
-        if let Some(waker) = shared_state.waker.take() {
-            waker.wake()
-        }
-    }));
-
-    EffectFuture { shared_state }
 }

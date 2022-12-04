@@ -33,7 +33,7 @@ impl ContinuationStore {
         }
     }
 
-    pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) {
+    pub(crate) fn resume(&self, uuid: &[u8], body: &[u8]) {
         let resolve = self
             .0
             .lock()
