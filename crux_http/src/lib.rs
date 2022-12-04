@@ -5,6 +5,22 @@ use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+mod client;
+mod config;
+mod middleware;
+mod request;
+mod request_builder;
+mod response;
+
+// TODO: Think about this Result re-export.
+pub use http_types::{self as http, Error, Result};
+
+pub use self::{
+    config::Config, request::Request, request_builder::RequestBuilder, response::Response,
+};
+
+use client::Client;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Display)]
 pub enum HttpMethod {
     #[display(fmt = "GET")]

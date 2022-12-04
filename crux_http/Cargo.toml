@@ -11,9 +11,13 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 
 [dependencies]
 anyhow = "1.0.66"
+async-trait = "0.1.59"
 bcs = "0.1.4"
 crux_core = { version = "0.1", path = "../crux_core" }
 derive_more = "0.99.17"
+futures-util = "0.3"
+http-types = "2.12"
+pin-project-lite = "0.2"
 serde = { version = "1.0.148", features = ["derive"] }
 serde_json = "1.0.89"
 url = "2.3.1"

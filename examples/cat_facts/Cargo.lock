@@ -666,9 +666,13 @@ name = "crux_http"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bcs",
  "crux_core",
  "derive_more",
+ "futures-util",
+ "http-types",
+ "pin-project-lite",
  "serde",
  "serde_json",
  "url",
