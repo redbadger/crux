@@ -108,7 +108,7 @@
 
 pub mod capability;
 pub mod channels;
-pub mod command;
+mod command;
 mod continuations;
 pub mod executor;
 mod future;
@@ -122,11 +122,11 @@ use serde::{Deserialize, Serialize};
 
 use capability::CapabilityContext;
 use channels::Receiver;
+use command::Command;
 use continuations::ContinuationStore;
 use executor::Executor;
 
 pub use capability::{CapabilitiesFactory, Capability};
-pub use command::Command;
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].

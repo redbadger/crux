@@ -1,7 +1,7 @@
 use crate::effect::CatFactCapabilities;
 
 use self::platform::PlatformEvent;
-pub use crux_core::{App, Command};
+pub use crux_core::App;
 use crux_http::HttpResponse;
 use crux_kv::KeyValueResponse;
 use crux_time::TimeResponse;
