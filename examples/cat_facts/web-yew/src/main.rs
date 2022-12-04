@@ -85,17 +85,17 @@ impl Component for HelloWorld {
 
         let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
 
-        reqs.into_iter().any(|req| {
+        let should_render = reqs.iter().any(|req| matches!(req.effect, Effect::Render));
+
+        reqs.into_iter().for_each(|req| {
             let Request { uuid, effect } = req;
             match effect {
-                Effect::Render => true,
+                Effect::Render => {}
                 Effect::Time => {
                     link.send_message(CoreMessage::Response(
                         uuid,
                         Outcome::Time(TimeResponse(time_get().unwrap())),
                     ));
-
-                    false
                 }
                 Effect::Http(HttpRequest { url, .. }) => {
                     let link = link.clone();
@@ -111,8 +111,6 @@ impl Component for HelloWorld {
                             }),
                         ));
                     });
-
-                    false
                 }
                 Effect::Platform => {
                     link.send_message(CoreMessage::Response(
@@ -121,8 +119,6 @@ impl Component for HelloWorld {
                             platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
                         )),
                     ));
-
-                    false
                 }
                 Effect::KeyValue(KeyValueRequest::Read(_)) => {
                     // TODO implement state restoration
@@ -130,19 +126,17 @@ impl Component for HelloWorld {
                         uuid,
                         Outcome::KeyValue(KeyValueResponse::Read(None)),
                     ));
-
-                    false
                 }
                 Effect::KeyValue(KeyValueRequest::Write(..)) => {
                     link.send_message(CoreMessage::Response(
                         uuid,
                         Outcome::KeyValue(KeyValueResponse::Write(false)),
                     ));
-
-                    false
                 }
             }
-        })
+        });
+
+        should_render
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
