@@ -1,7 +1,5 @@
 mod shared {
-    use crux_core::{
-        capability::CapabilityContext, render::Render, App, CapabilitiesFactory, Command,
-    };
+    use crux_core::{capability::CapabilityContext, render::Render, App, CapabilitiesFactory};
     use crux_http::{Http, HttpRequest, HttpResponse};
     use serde::{Deserialize, Serialize};
     use url::Url;

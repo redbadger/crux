@@ -1,8 +1,6 @@
 //! TODO mod docs
 
-use crux_core::{
-    capability::CapabilityContext, channels::Sender, executor::Spawner, Capability, Command,
-};
+use crux_core::{capability::CapabilityContext, Capability};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -91,12 +89,16 @@ where
         Ev: 'static,
         F: Fn(HttpResponse) -> Ev + Send + 'static,
     {
-        let request = HttpRequest {
-            method: method.to_string(),
-            url: url.to_string(),
-        };
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let request = HttpRequest {
+                method: method.to_string(),
+                url: url.to_string(),
+            };
+            let resp = ctx.effect(request).await;
 
-        self.context.run_command(Command::new(request, callback))
+            ctx.send_event(callback(resp))
+        });
     }
 }
 

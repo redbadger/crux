@@ -1,4 +1,4 @@
-use crux_core::{capability::CapabilityContext, render::Render, Capability, Command};
+use crux_core::{capability::CapabilityContext, render::Render, Capability};
 use crux_http::{Http, HttpRequest};
 use crux_kv::{KeyValue, KeyValueRequest};
 use crux_platform::Platform;

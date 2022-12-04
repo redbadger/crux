@@ -81,26 +81,18 @@ where
     }
 }
 
-impl<Ef, Ev> Sender<crate::Command<Ef, Ev>>
+impl<Ef> Sender<crate::Command<Ef>>
 where
-    Ev: 'static,
     Ef: 'static,
 {
-    pub fn map_effect<NewEf, F>(&self, func: F) -> Sender<crate::Command<NewEf, Ev>>
+    pub fn map_effect<NewEf, F>(&self, func: F) -> Sender<crate::Command<NewEf>>
     where
         F: Fn(NewEf) -> Ef + Sync + Send + Copy + 'static,
         NewEf: 'static,
     {
-        self.map_input::<crate::Command<_, _>, _>(move |command| command.map_effect(func))
+        self.map_input::<crate::Command<_>, _>(move |command| command.map_effect(func))
     }
 
-    pub fn map_event<NewEv, F>(&self, func: F) -> Sender<crate::Command<Ef, NewEv>>
-    where
-        F: Fn(NewEv) -> Ev + Sync + Send + Copy + 'static,
-        NewEv: 'static,
-    {
-        self.map_input::<crate::Command<_, _>, _>(move |command| command.map(func))
-    }
 }
 
 trait SenderInner<T> {

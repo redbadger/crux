@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crux_core::{capability::CapabilityContext, channels::Sender, Capability, Command};
+use crux_core::{capability::CapabilityContext, Capability};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -35,20 +35,26 @@ where
     where
         F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
     {
-        self.context.run_command(Command::new(
-            KeyValueRequest::Read(key.to_string()),
-            callback,
-        ));
+        let ctx = self.context.clone();
+        let key = key.to_string();
+        self.context.spawn(async move {
+            let resp = ctx.effect(KeyValueRequest::Read(key)).await;
+
+            ctx.send_event(callback(resp))
+        });
     }
 
     pub fn write<F>(&self, key: &str, value: Vec<u8>, callback: F)
     where
         F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
     {
-        self.context.run_command(Command::new(
-            KeyValueRequest::Write(key.to_string(), value),
-            callback,
-        ))
+        let ctx = self.context.clone();
+        let key = key.to_string();
+        self.context.spawn(async move {
+            let resp = ctx.effect(KeyValueRequest::Write(key, value)).await;
+
+            ctx.send_event(callback(resp))
+        });
     }
 }
 

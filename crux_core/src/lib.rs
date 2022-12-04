@@ -156,10 +156,10 @@ where
     A: App,
 {
     model: RwLock<A::Model>,
-    continuations: ContinuationStore<A::Event>,
+    continuations: ContinuationStore,
     executor: Executor,
     capabilities: A::Capabilities,
-    command_receiver: Receiver<Command<Ef, A::Event>>,
+    command_receiver: Receiver<Command<Ef>>,
     event_receiver: Receiver<A::Event>,
     app: A,
     _marker: PhantomData<Ef>,
@@ -240,16 +240,10 @@ where
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let event = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
-
+        self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
         self.executor.run_all();
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
-        if let Some(event) = event {
-            self.app.update(event, &mut model, &self.capabilities);
-            self.executor.run_all();
-        }
 
         while let Some(event) = self.event_receiver.receive() {
             self.app.update(event, &mut model, &self.capabilities);

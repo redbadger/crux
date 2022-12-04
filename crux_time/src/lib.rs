@@ -1,21 +1,28 @@
 //! TODO mod docs
 
-use crux_core::{capability::CapabilityContext, channels::Sender, Capability, Command};
+use crux_core::{capability::CapabilityContext, Capability};
 use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Eq, Serialize)]
+pub struct TimeEffect;
 
 // TODO revisit this
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeResponse(pub String);
 
+impl crux_core::Effect for TimeEffect {
+    type Response = TimeResponse;
+}
+
 pub struct Time<Ev> {
-    context: CapabilityContext<(), Ev>,
+    context: CapabilityContext<TimeEffect, Ev>,
 }
 
 impl<Ev> Time<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<(), Ev>) -> Self {
+    pub fn new(context: CapabilityContext<TimeEffect, Ev>) -> Self {
         Self { context }
     }
 
@@ -23,7 +30,12 @@ where
     where
         F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        self.context.run_command(Command::new((), callback))
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let response = ctx.effect(TimeEffect).await;
+
+            ctx.send_event(callback(response));
+        });
     }
 }
 

@@ -1,7 +1,5 @@
 mod shared {
-    use crux_core::{
-        capability::CapabilityContext, render::Render, App, CapabilitiesFactory, Command,
-    };
+    use crux_core::{capability::CapabilityContext, render::Render, App, CapabilitiesFactory};
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
 

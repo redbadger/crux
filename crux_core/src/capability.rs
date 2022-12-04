@@ -3,7 +3,7 @@ use std::sync::Arc;
 use futures::Future;
 
 use crate::{
-    channels::{channel, Receiver, Sender},
+    channels::{Receiver, Sender},
     Command,
 };
 
@@ -25,7 +25,7 @@ where
     fn build(context: CapabilityContext<Ef, App::Event>) -> App::Capabilities;
 }
 
-pub fn test_capabilities<Caps, App, Ef>() -> (App::Capabilities, Receiver<Command<Ef, App::Event>>)
+pub fn test_capabilities<Caps, App, Ef>() -> (App::Capabilities, Receiver<Command<Ef>>)
 where
     Caps: CapabilitiesFactory<App, Ef>,
     App: crate::App,
@@ -42,7 +42,7 @@ pub struct CapabilityContext<Ef, Event> {
 }
 
 struct ContextInner<Ef, Event> {
-    command_sender: Sender<Command<Ef, Event>>,
+    command_sender: Sender<Command<Ef>>,
     event_sender: Sender<Event>,
     spawner: crate::executor::Spawner,
 }
@@ -61,7 +61,7 @@ where
     Ev: 'static,
 {
     pub(crate) fn new(
-        command_sender: Sender<Command<Ef, Ev>>,
+        command_sender: Sender<Command<Ef>>,
         event_sender: Sender<Ev>,
         spawner: crate::executor::Spawner,
     ) -> Self {
@@ -74,7 +74,7 @@ where
         CapabilityContext { inner }
     }
 
-    pub fn run_command(&self, cmd: Command<Ef, Ev>) {
+    pub(crate) fn run_command(&self, cmd: Command<Ef>) {
         self.inner.command_sender.send(cmd);
     }
 
@@ -102,13 +102,11 @@ where
 
     pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Ef, NewEv>
     where
-        // TODO: See if these `Copy` bounds can fuck off.  Means they can't really capture _anything_
-        // At the very least, clone would be more sensible...
-        F: Fn(NewEv) -> Ev + Sync + Send + Copy + 'static,
+        F: Fn(NewEv) -> Ev + Sync + Send + 'static,
         NewEv: 'static,
     {
         let inner = Arc::new(ContextInner {
-            command_sender: self.inner.command_sender.map_event(func),
+            command_sender: self.inner.command_sender.clone(),
             event_sender: self.inner.event_sender.map_input(func),
             spawner: self.inner.spawner.clone(),
         });

@@ -1,5 +1,5 @@
 use super::Command;
-use crate::{capability::CapabilityContext, channels::Sender, Capability};
+use crate::{capability::CapabilityContext, Capability};
 
 pub struct Render<Ev> {
     context: CapabilityContext<(), Ev>,
