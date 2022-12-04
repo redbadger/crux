@@ -114,3 +114,18 @@ where
         CapabilityContext { inner }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use static_assertions::assert_impl_all;
+
+    use super::*;
+
+    #[allow(dead_code)]
+    enum Effect {}
+
+    #[allow(dead_code)]
+    enum Event {}
+
+    assert_impl_all!(CapabilityContext<Effect, Event>: Send, Sync);
+}
