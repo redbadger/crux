@@ -50,50 +50,20 @@ use std::task::{Context, Poll};
 /// # }
 /// ```
 
+#[must_use]
 pub struct RequestBuilder {
     /// Holds the state of the request.
     req: Option<Request>,
     /// Hold an optional Client.
-    client: Option<Client>,
-    /// Holds the state of the `impl Future`.
-    fut: Option<BoxFuture<'static, Result<Response>>>,
+    client: Client,
 }
 
 impl RequestBuilder {
-    /// Create a new instance.
-    ///
-    /// This method is particularly useful when input URLs might be passed by third parties, and
-    /// you don't want to panic if they're malformed. If URLs are statically encoded, it might be
-    /// easier to use one of the shorthand methods instead.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// use crux_http::http::{Method, Url};
-    ///
-    /// let url = Url::parse("https://httpbin.org/get")?;
-    /// let req = crux_http::RequestBuilder::new(Method::Get, url).build();
-    /// # Ok(()) }
-    /// ```
-    pub fn new(method: Method, url: Url) -> Self {
+    pub(crate) fn new(method: Method, url: Url, client: Client) -> Self {
         Self {
             req: Some(Request::new(method, url)),
-            client: None,
-            fut: None,
+            client: client,
         }
-    }
-
-    pub(crate) fn with_client(mut self, client: Client) -> Self {
-        let req = self.req.as_mut().unwrap();
-
-        for (header_name, header_values) in client.config().headers.iter() {
-            req.append_header(header_name, header_values);
-        }
-
-        self.client = Some(client);
-        self
     }
 
     /// Sets a header on the request.
@@ -390,14 +360,14 @@ impl RequestBuilder {
         self.req.unwrap()
     }
 
-    /// Create a `Client` and send the constructed `Request` from it.
-    pub async fn send(mut self) -> Result<Response> {
-        todo!("impl this somehow...")
-        // self.client
-        //     .take()
-        //     .unwrap_or_else(Client::new_shared_or_panic)
-        //     .send(self.build())
-        //     .await
+    /// Sends the constructed `Request`.
+    pub async fn send(self) -> Result<Response> {
+        // TODO: This is the bit that's going to need work.
+        // Since surf is based on async but crux currently only exposes
+        // callbacks to users this function is a bit useless...
+        // Ideally we need some sort of recv_json a-like function here...
+        todo!();
+        self.client.send(self.req.unwrap()).await
     }
 }
 

@@ -1,8 +1,9 @@
+// #![warn(missing_docs)]
 //! TODO mod docs
+//!
+//!
 
 use crux_core::{capability::CapabilityContext, Capability};
-use derive_more::Display;
-use serde::{Deserialize, Serialize};
 use url::Url;
 
 mod client;
@@ -12,6 +13,8 @@ mod request;
 mod request_builder;
 mod response;
 
+pub mod effect;
+
 // TODO: Think about this Result re-export.
 pub use http_types::{self as http, Error, Result};
 
@@ -19,65 +22,69 @@ pub use self::{
     config::Config, request::Request, request_builder::RequestBuilder, response::Response,
 };
 
+// TODO: These are definitely temporary
+pub use self::{effect::HttpRequest, effect::HttpResponse};
+
 use client::Client;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Display)]
-pub enum HttpMethod {
-    #[display(fmt = "GET")]
-    Get,
-    #[display(fmt = "HEAD")]
-    Head,
-    #[display(fmt = "POST")]
-    Post,
-    #[display(fmt = "PUT")]
-    Put,
-    #[display(fmt = "DELETE")]
-    Delete,
-    #[display(fmt = "CONNECT")]
-    Connect,
-    #[display(fmt = "OPTIONS")]
-    Options,
-    #[display(fmt = "TRACE")]
-    Trace,
-    #[display(fmt = "PATCH")]
-    Patch,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct HttpRequest {
-    pub method: String,
-    pub url: String,
-    // TODO support headers
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct HttpResponse {
-    pub status: u16,   // FIXME this probably should be a giant enum instead.
-    pub body: Vec<u8>, // TODO support headers
-}
-
-impl crux_core::Effect for HttpRequest {
-    type Response = HttpResponse;
-}
-
 pub struct Http<Ev> {
-    context: CapabilityContext<HttpRequest, Ev>,
+    context: CapabilityContext<effect::HttpRequest, Ev>,
+    client: Client,
 }
 
 impl<Ev> Http<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<HttpRequest, Ev>) -> Self {
-        Self { context }
+    pub fn new(context: CapabilityContext<effect::HttpRequest, Ev>) -> Self {
+        Self {
+            client: Client::new(context.clone()),
+            context,
+        }
+    }
+
+    pub fn send_<F>(req: impl Into<Request>, callback: F) {
+        todo!()
+    }
+
+    // TODO: document all of these.
+    pub fn get_(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn head(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn post(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn put(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn delete(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn connect(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn options(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn trace(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn patch(url: impl AsRef<str>) -> RequestBuilder {
+        todo!()
+    }
+    pub fn request(method: http::Method, url: Url) -> RequestBuilder {
+        todo!()
     }
 
     pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(HttpResponse) -> Ev + Send + 'static,
+        F: Fn(effect::HttpResponse) -> Ev + Send + 'static,
     {
-        self.send(HttpMethod::Get, url, callback)
+        self.send(effect::HttpMethod::Get, url, callback)
     }
 
     pub fn get_json<T, F>(&self, url: Url, callback: F)
@@ -87,8 +94,8 @@ where
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let request = HttpRequest {
-                method: HttpMethod::Get.to_string(),
+            let request = effect::HttpRequest {
+                method: effect::HttpMethod::Get.to_string(),
                 url: url.to_string(),
             };
             let resp = ctx.effect(request).await;
@@ -100,14 +107,14 @@ where
         });
     }
 
-    pub fn send<F>(&self, method: HttpMethod, url: Url, callback: F)
+    pub fn send<F>(&self, method: effect::HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(HttpResponse) -> Ev + Send + 'static,
+        F: Fn(effect::HttpResponse) -> Ev + Send + 'static,
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let request = HttpRequest {
+            let request = effect::HttpRequest {
                 method: method.to_string(),
                 url: url.to_string(),
             };

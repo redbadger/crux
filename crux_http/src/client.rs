@@ -2,6 +2,9 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::sync::Arc;
 
+use async_trait::async_trait;
+
+use crate::effect::EffectSender;
 use crate::http::{Method, Url};
 use crate::middleware::{Middleware, Next};
 use crate::{Config, Request, RequestBuilder, Response, Result};
@@ -23,6 +26,7 @@ use crate::{Config, Request, RequestBuilder, Response, Result};
 /// ```
 pub struct Client {
     config: Config,
+    effect_sender: Arc<dyn EffectSender + Send + Sync>,
     /// Holds the middleware stack.
     ///
     /// Note(Fishrock123): We do actually want this structure.
@@ -44,6 +48,7 @@ impl Clone for Client {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
+            effect_sender: Arc::clone(&self.effect_sender),
             middleware: Arc::new(self.middleware.iter().cloned().collect()),
         }
     }
@@ -55,30 +60,16 @@ impl fmt::Debug for Client {
     }
 }
 
-#[cfg(feature = "default-client")]
-impl Default for Client {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// TODO: Config might be absolutely useless, look into that...
 
 impl Client {
-    /// Create a new `Client` instance.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::Client::new();
-    ///
-    /// let req = crux_http::get("https://httpbin.org/get");
-    /// let res = client.send(req).await?;
-    /// # Ok(()) }
-    /// ```
-    pub fn new() -> Self {
+    pub(crate) fn new<Sender>(sender: Sender) -> Self
+    where
+        Sender: EffectSender + Send + Sync + 'static,
+    {
         Self {
             config: Config::default(),
+            effect_sender: Arc::new(sender),
             middleware: Arc::new(vec![]),
         }
     }
@@ -122,39 +113,36 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub async fn send(&self, req: impl Into<Request>) -> Result<Response> {
-        todo!()
-        /*
-               let mut req: Request = req.into();
-               let http_client = self.http_client.clone();
-               let middleware = self.middleware.clone();
+        let mut req: Request = req.into();
+        let middleware = self.middleware.clone();
 
-               let mw_stack = match req.take_middleware() {
-                   Some(req_mw) => {
-                       let mut mw = Vec::with_capacity(middleware.len() + req_mw.len());
-                       mw.extend(middleware.iter().cloned());
-                       mw.extend(req_mw);
-                       Arc::new(mw)
-                   }
-                   None => middleware,
-               };
+        let mw_stack = match req.take_middleware() {
+            Some(req_mw) => {
+                let mut mw = Vec::with_capacity(middleware.len() + req_mw.len());
+                mw.extend(middleware.iter().cloned());
+                mw.extend(req_mw);
+                Arc::new(mw)
+            }
+            None => middleware,
+        };
 
-               let next = Next::new(&mw_stack, &|req, client| {
-                   Box::pin(async move {
-                       let req: http_types::Request = req.into();
-                       client.http_client.send(req).await.map(Into::into)
-                   })
-               });
+        let next = Next::new(&mw_stack, &|req, client| {
+            Box::pin(async move {
+                let req = crate::effect::HttpRequest::from(req);
+                Ok(client.effect_sender.send(req).await.into())
+            })
+        });
 
-               let client = Self {
-                   config: self.config.clone(),
-                   // Erase the middleware stack for the Client accessible from within middleware.
-                   // This avoids gratuitous circular borrow & logic issues.
-                   middleware: Arc::new(vec![]),
-               };
+        let client = Self {
+            config: self.config.clone(),
+            effect_sender: Arc::clone(&self.effect_sender),
+            // Erase the middleware stack for the Client accessible from within middleware.
+            // This avoids gratuitous circular borrow & logic issues.
+            middleware: Arc::new(vec![]),
+        };
 
-               let res = next.run(req, client).await?;
-               Ok(Response::new(res.into()))
-        */
+        let res = next.run(req, client).await?;
+        Ok(Response::new(res.into()))
     }
 
     /// Submit a `Request` and get the response body as bytes.
@@ -270,7 +258,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn get(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Get, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Get, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `HEAD` request using the `Client` connection.
@@ -293,7 +281,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn head(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Head, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Head, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `POST` request using the `Client` connection.
@@ -316,7 +304,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn post(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Post, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Post, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `PUT` request using the `Client` connection.
@@ -339,7 +327,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn put(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Put, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Put, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `DELETE` request using the `Client` connection.
@@ -362,7 +350,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn delete(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Delete, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Delete, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `CONNECT` request using the `Client` connection.
@@ -385,7 +373,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn connect(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Connect, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Connect, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `OPTIONS` request using the `Client` connection.
@@ -408,7 +396,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn options(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Options, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Options, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `TRACE` request using the `Client` connection.
@@ -431,7 +419,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn trace(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Trace, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Trace, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `PATCH` request using the `Client` connection.
@@ -454,7 +442,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn patch(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Patch, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(Method::Patch, self.url(uri), self.clone())
     }
 
     /// Perform a HTTP request with the given verb using the `Client` connection.
@@ -478,7 +466,7 @@ impl Client {
     /// # Ok(()) }
     /// ```
     pub fn request(&self, verb: Method, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(verb, self.url(uri)).with_client(self.clone())
+        RequestBuilder::new(verb, self.url(uri), self.clone())
     }
 
     /// Sets the base URL for this client. All request URLs will be relative to this URL.
@@ -515,15 +503,6 @@ impl Client {
     }
 }
 
-impl From<Config> for Client {
-    fn from(mut config: Config) -> Self {
-        Client {
-            config,
-            middleware: Arc::new(vec![]),
-        }
-    }
-}
-
 #[cfg(test)]
 mod client_tests {
     use std::convert::TryInto;
@@ -532,12 +511,12 @@ mod client_tests {
     use super::Config;
     use crate::Url;
 
-    #[test]
-    fn base_url() {
-        let base_url = Url::parse("http://example.com/api/v1/").unwrap();
+    // #[test]
+    // fn base_url() {
+    //     let base_url = Url::parse("http://example.com/api/v1/").unwrap();
 
-        let client: Client = Config::new().set_base_url(base_url).try_into().unwrap();
-        let url = client.url("posts.json");
-        assert_eq!(url.as_str(), "http://example.com/api/v1/posts.json");
-    }
+    //     let client: Client = Config::new().set_base_url(base_url).try_into().unwrap();
+    //     let url = client.url("posts.json");
+    //     assert_eq!(url.as_str(), "http://example.com/api/v1/posts.json");
+    // }
 }
