@@ -64,7 +64,7 @@ pub enum Event {
     Fetch,
     Restore,                    // restore state
     SetState(KeyValueResponse), // receive the data to restore state with
-    SetFact(HttpResponse),
+    SetFact(CatFact),
     SetImage(HttpResponse),
     CurrentTime(TimeResponse),
 }
@@ -106,14 +106,13 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 caps.http
-                    .get(Url::parse(FACT_API_URL).unwrap(), Event::SetFact);
+                    .get_json(Url::parse(FACT_API_URL).unwrap(), Event::SetFact);
                 caps.http
                     .get(Url::parse(IMAGE_API_URL).unwrap(), Event::SetImage);
                 caps.render.render();
             }
-            Event::SetFact(HttpResponse { body, status: _ }) => {
+            Event::SetFact(fact) => {
                 // TODO check status
-                let Ok(fact) = serde_json::from_slice::<CatFact>(&body) else { return };
                 model.cat_fact = Some(fact);
 
                 let bytes = serde_json::to_vec(&model).unwrap();
