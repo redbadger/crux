@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crux_core::{channels::Sender, Capability, Command};
+use crux_core::{capability::CapabilityContext, channels::Sender, Capability, Command};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -15,23 +15,27 @@ pub enum KeyValueResponse {
     Write(bool),
 }
 
+impl crux_core::Effect for KeyValueRequest {
+    type Response = KeyValueResponse;
+}
+
 pub struct KeyValue<Ev> {
-    sender: Sender<Command<KeyValueRequest, Ev>>,
+    context: CapabilityContext<KeyValueRequest, Ev>,
 }
 
 impl<Ev> KeyValue<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(sender: Sender<Command<KeyValueRequest, Ev>>) -> Self {
-        Self { sender }
+    pub fn new(context: CapabilityContext<KeyValueRequest, Ev>) -> Self {
+        Self { context }
     }
 
     pub fn read<F>(&self, key: &str, callback: F)
     where
         F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
     {
-        self.sender.send(Command::new(
+        self.context.run_command(Command::new(
             KeyValueRequest::Read(key.to_string()),
             callback,
         ));
@@ -41,7 +45,7 @@ where
     where
         F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
     {
-        self.sender.send(Command::new(
+        self.context.run_command(Command::new(
             KeyValueRequest::Write(key.to_string(), value),
             callback,
         ))
@@ -57,6 +61,6 @@ impl<Ef> Capability<Ef> for KeyValue<Ef> {
         Ef: 'static,
         NewEvent: 'static,
     {
-        KeyValue::new(self.sender.map_event(f))
+        KeyValue::new(self.context.map_event(f))
     }
 }

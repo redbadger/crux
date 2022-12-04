@@ -1,9 +1,9 @@
-use crate::command::{Callback, Command};
+use crate::command::{Callback, Command, Resolve};
 use crate::Request;
 use std::{collections::HashMap, sync::Mutex};
 use uuid::Uuid;
 
-struct Store<Ev>(HashMap<[u8; 16], Box<dyn Callback<Ev> + Send>>);
+struct Store<Ev>(HashMap<[u8; 16], Resolve<Ev>>);
 
 pub(crate) struct ContinuationStore<Ev>(Mutex<Store<Ev>>);
 
@@ -18,6 +18,7 @@ impl<Ev> ContinuationStore<Ev> {
         let Command { effect, resolve } = cmd;
 
         let uuid = *Uuid::new_v4().as_bytes();
+
         if let Some(resolve) = resolve {
             self.0
                 .lock()
@@ -32,7 +33,7 @@ impl<Ev> ContinuationStore<Ev> {
         }
     }
 
-    pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) -> Ev {
+    pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) -> Option<Ev> {
         let resolve = self
             .0
             .lock()
@@ -41,6 +42,12 @@ impl<Ev> ContinuationStore<Ev> {
             .remove(uuid)
             .unwrap_or_else(|| panic!("Continuation with UUID {:?} not found.", uuid));
 
-        resolve.call(body)
+        match resolve {
+            Resolve::Event(callback) => Some(callback.call(body)),
+            Resolve::Continue(callback) => {
+                callback.call(body);
+                None
+            }
+        }
     }
 }

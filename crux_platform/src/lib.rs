@@ -1,6 +1,6 @@
 //! TODO mod docs
 
-use crux_core::{channels::Sender, Capability, Command};
+use crux_core::{capability::CapabilityContext, channels::Sender, Capability, Command};
 use serde::{Deserialize, Serialize};
 
 // TODO revisit this
@@ -8,22 +8,22 @@ use serde::{Deserialize, Serialize};
 pub struct PlatformResponse(pub String);
 
 pub struct Platform<Ev> {
-    sender: Sender<Command<(), Ev>>,
+    context: CapabilityContext<(), Ev>,
 }
 
 impl<Ev> Platform<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(sender: Sender<Command<(), Ev>>) -> Self {
-        Self { sender }
+    pub fn new(context: CapabilityContext<(), Ev>) -> Self {
+        Self { context }
     }
 
     pub fn get<F>(&self, callback: F)
     where
         F: Fn(PlatformResponse) -> Ev + Send + Sync + 'static,
     {
-        self.sender.send(Command::new((), callback))
+        self.context.run_command(Command::new((), callback))
     }
 }
 
@@ -36,6 +36,6 @@ impl<Ef> Capability<Ef> for Platform<Ef> {
         Ef: 'static,
         NewEvent: 'static,
     {
-        Platform::new(self.sender.map_event(f))
+        Platform::new(self.context.map_event(f))
     }
 }

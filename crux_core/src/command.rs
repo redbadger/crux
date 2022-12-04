@@ -8,7 +8,12 @@ use serde::de::DeserializeOwned;
 /// function when the command has been executed, and passed the resulting data.
 pub struct Command<Ef, Ev> {
     pub(crate) effect: Ef, // TODO switch to `enum Effect`, so that shell knows what to do
-    pub(crate) resolve: Option<Box<dyn Callback<Ev> + Send>>,
+    pub(crate) resolve: Option<Resolve<Ev>>,
+}
+
+pub(crate) enum Resolve<Ev> {
+    Event(Box<dyn Callback<Ev> + Send>),
+    Continue(Box<dyn Callback<()> + Send>),
 }
 
 impl<Ef, Ev> Command<Ef, Ev> {
@@ -20,7 +25,7 @@ impl<Ef, Ev> Command<Ef, Ev> {
     {
         Self {
             effect,
-            resolve: Some(Box::new(resolve.into_callback())),
+            resolve: Some(Resolve::Event(Box::new(resolve.into_callback()))),
         }
     }
 
@@ -31,12 +36,15 @@ impl<Ef, Ev> Command<Ef, Ev> {
         }
     }
 
-    pub fn resolve(&self, value: Vec<u8>) -> Ev {
-        if let Some(resolve) = &self.resolve {
-            return resolve.call(value);
+    pub fn new_continuation<F, T>(effect: Ef, resolve: F) -> Self
+    where
+        F: Fn(T) + Send + 'static,
+        T: 'static + DeserializeOwned,
+    {
+        Self {
+            effect,
+            resolve: Some(Resolve::Continue(Box::new(resolve.into_callback()))),
         }
-
-        panic!("mismatched capability response");
     }
 
     pub fn map<ParentEvent, F>(self, f: F) -> Command<Ef, ParentEvent>
@@ -48,15 +56,16 @@ impl<Ef, Ev> Command<Ef, Ev> {
         Command {
             effect: self.effect,
             resolve: match self.resolve {
-                Some(resolve) => {
+                Some(Resolve::Event(resolve)) => {
                     let callback = move |capability_response: Vec<u8>| {
                         // FIXME: remove the need for this (by avoiding double deserialization)
                         let response = bcs::to_bytes(&capability_response).unwrap();
 
                         f(resolve.call(response))
                     };
-                    Some(Box::new(callback.into_callback()))
+                    Some(Resolve::Event(Box::new(callback.into_callback())))
                 }
+                Some(Resolve::Continue(inner)) => Some(Resolve::Continue(inner)),
                 None => None,
             },
         }

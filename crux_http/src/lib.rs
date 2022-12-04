@@ -1,6 +1,8 @@
 //! TODO mod docs
 
-use crux_core::{channels::Sender, Capability, Command};
+use crux_core::{
+    capability::CapabilityContext, channels::Sender, executor::Spawner, Capability, Command,
+};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -40,16 +42,20 @@ pub struct HttpResponse {
     pub body: Vec<u8>, // TODO support headers
 }
 
+impl crux_core::Effect for HttpRequest {
+    type Response = HttpResponse;
+}
+
 pub struct Http<Ev> {
-    sender: Sender<Command<HttpRequest, Ev>>,
+    context: CapabilityContext<HttpRequest, Ev>,
 }
 
 impl<Ev> Http<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(sender: Sender<Command<HttpRequest, Ev>>) -> Self {
-        Self { sender }
+    pub fn new(context: CapabilityContext<HttpRequest, Ev>) -> Self {
+        Self { context }
     }
 
     pub fn get<F>(&self, url: Url, callback: F)
@@ -58,6 +64,35 @@ where
         F: Fn(HttpResponse) -> Ev + Send + 'static,
     {
         self.send(HttpMethod::Get, url, callback)
+    }
+
+    pub fn get_json<T, F>(&self, url: Url, callback: F)
+    where
+        T: serde::de::DeserializeOwned,
+        F: Fn(T) -> Ev + Send + Clone + 'static,
+    {
+        let request = HttpRequest {
+            method: HttpMethod::Get.to_string(),
+            url: url.to_string(),
+        };
+        // TODO: Ok, so clearly this spawn API requires some work :|
+        self.context.spawn(move |ctx| {
+            let req = request.clone();
+            let callback = callback.clone();
+            async move {
+                let resp = ctx.effect(req).await;
+
+                let data = serde_json::from_slice::<T>(&resp.body)
+                    .expect("TODO: do something sensible here");
+
+                ctx.send_event(callback(data))
+
+                // TODO: Now we just need a way to pass events back in...
+                // also might be good to not hook into sender _directly_
+                // like this...
+                // And maybe have the received_messages live in the executor.
+            }
+        });
     }
 
     pub fn send<F>(&self, method: HttpMethod, url: Url, callback: F)
@@ -70,8 +105,7 @@ where
             url: url.to_string(),
         };
 
-        self.sender
-            .send(Command::new(request, callback))
+        self.context.run_command(Command::new(request, callback))
     }
 }
 
@@ -84,6 +118,6 @@ impl<Ef> Capability<Ef> for Http<Ef> {
         Ef: 'static,
         NewEvent: 'static,
     {
-        Http::new(self.sender.map_event(f))
+        Http::new(self.context.map_event(f))
     }
 }

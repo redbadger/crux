@@ -1,20 +1,20 @@
 use super::Command;
-use crate::{channels::Sender, Capability};
+use crate::{capability::CapabilityContext, channels::Sender, Capability};
 
 pub struct Render<Ev> {
-    sender: Sender<Command<(), Ev>>,
+    context: CapabilityContext<(), Ev>,
 }
 
 impl<Ev> Render<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(sender: Sender<Command<(), Ev>>) -> Self {
-        Self { sender }
+    pub fn new(context: CapabilityContext<(), Ev>) -> Self {
+        Self { context }
     }
 
     pub fn render(&self) {
-        self.sender.send(Command::new_without_callback(()))
+        self.context.run_command(Command::new_without_callback(()))
     }
 } // Public API of the capability, called by App::update.
 
@@ -27,6 +27,6 @@ impl<Ev> Capability<Ev> for Render<Ev> {
         Ev: 'static,
         NewEvent: 'static,
     {
-        Render::new(self.sender.map_event(f))
+        Render::new(self.context.map_event(f))
     }
 }

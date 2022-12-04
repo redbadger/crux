@@ -1,4 +1,4 @@
-use crux_core::{render::Render, Capability, Command};
+use crux_core::{capability::CapabilityContext, render::Render, Capability, Command};
 use crux_http::{Http, HttpRequest};
 use crux_kv::{KeyValue, KeyValueRequest};
 use crux_platform::Platform;
@@ -26,15 +26,13 @@ pub struct CatFactCapabilities {
 }
 
 impl crux_core::CapabilitiesFactory<super::CatFacts, Effect> for CatFactCapabilities {
-    fn build(
-        sender: crux_core::channels::Sender<Command<Effect, super::Event>>,
-    ) -> CatFactCapabilities {
+    fn build(context: CapabilityContext<Effect, super::Event>) -> CatFactCapabilities {
         CatFactCapabilities {
-            http: Http::new(sender.map_effect(Effect::Http)),
-            key_value: KeyValue::new(sender.map_effect(Effect::KeyValue)),
-            platform: Platform::new(sender.map_effect(|_| Effect::Platform)),
-            render: Render::new(sender.map_effect(|_| Effect::Render)),
-            time: Time::new(sender.map_effect(|_| Effect::Time)),
+            http: Http::new(context.map_effect(Effect::Http)),
+            key_value: KeyValue::new(context.map_effect(Effect::KeyValue)),
+            platform: Platform::new(context.map_effect(|_| Effect::Platform)),
+            render: Render::new(context.map_effect(|_| Effect::Render)),
+            time: Time::new(context.map_effect(|_| Effect::Time)),
         }
     }
 }

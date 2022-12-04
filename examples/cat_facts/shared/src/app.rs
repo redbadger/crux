@@ -113,7 +113,7 @@ impl App for CatFacts {
             }
             Event::SetFact(HttpResponse { body, status: _ }) => {
                 // TODO check status
-                let fact = serde_json::from_slice::<CatFact>(&body).unwrap();
+                let Ok(fact) = serde_json::from_slice::<CatFact>(&body) else { return };
                 model.cat_fact = Some(fact);
 
                 let bytes = serde_json::to_vec(&model).unwrap();
@@ -130,7 +130,7 @@ impl App for CatFacts {
             }
             Event::SetImage(HttpResponse { body, status: _ }) => {
                 // TODO check status
-                let image = serde_json::from_slice::<CatImage>(&body).unwrap();
+                let Ok(image) = serde_json::from_slice::<CatImage>(&body) else { return };
                 model.cat_image = Some(image);
 
                 let bytes = serde_json::to_vec(&model).unwrap();

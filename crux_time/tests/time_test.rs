@@ -1,5 +1,7 @@
 mod shared {
-    use crux_core::{render::Render, App, CapabilitiesFactory, Command};
+    use crux_core::{
+        capability::CapabilityContext, render::Render, App, CapabilitiesFactory, Command,
+    };
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
 
@@ -57,12 +59,10 @@ mod shared {
     }
 
     impl CapabilitiesFactory<MyApp, MyEffect> for MyCapabilities {
-        fn build(
-            channel: crux_core::channels::Sender<Command<MyEffect, MyEvent>>,
-        ) -> MyCapabilities {
+        fn build(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
             MyCapabilities {
-                time: Time::new(channel.map_effect(|_| MyEffect::Time)),
-                render: Render::new(channel.map_effect(|_| MyEffect::Render)),
+                time: Time::new(context.map_effect(|_| MyEffect::Time)),
+                render: Render::new(context.map_effect(|_| MyEffect::Render)),
             }
         }
     }

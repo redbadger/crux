@@ -649,6 +649,7 @@ dependencies = [
  "bcs",
  "crossbeam-channel",
  "derive_more",
+ "futures",
  "serde",
  "serde-generate",
  "serde-reflection",
@@ -669,6 +670,7 @@ dependencies = [
  "crux_core",
  "derive_more",
  "serde",
+ "serde_json",
  "url",
 ]
 
@@ -919,6 +921,7 @@ checksum = "38390104763dc37a5145a53c29c63c1290b5d316d6086ec32c293f6736051bb0"
 dependencies = [
  "futures-channel",
  "futures-core",
+ "futures-executor",
  "futures-io",
  "futures-sink",
  "futures-task",
@@ -940,6 +943,17 @@ name = "futures-core"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04909a7a7e4633ae6c4a9ab280aeb86da1236243a77b694a49eacd659a4bd3ac"
+
+[[package]]
+name = "futures-executor"
+version = "0.3.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7acc85df6714c176ab5edf386123fafe217be88c0840ec11f199441134a074e2"
+dependencies = [
+ "futures-core",
+ "futures-task",
+ "futures-util",
+]
 
 [[package]]
 name = "futures-io"

@@ -107,18 +107,21 @@
 //!
 
 pub mod capability;
+pub mod channels;
 pub mod command;
 mod continuations;
+pub mod executor;
+mod future;
 pub mod render;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-// TODO: should this be public?  Not sure...
-pub mod channels;
-
+use capability::CapabilityContext;
 pub use capability::{CapabilitiesFactory, Capability};
+use channels::Receiver;
 pub use command::Command;
 use continuations::ContinuationStore;
+use executor::Executor;
 use serde::{Deserialize, Serialize};
 use std::{marker::PhantomData, sync::RwLock};
 
@@ -128,7 +131,7 @@ pub trait App: Default {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
-    type Event: 'static;
+    type Event: Send + 'static;
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
@@ -151,8 +154,10 @@ where
 {
     model: RwLock<A::Model>,
     continuations: ContinuationStore<A::Event>,
+    executor: Executor,
     capabilities: A::Capabilities,
-    command_receiver: crate::channels::Receiver<Command<Ef, A::Event>>,
+    command_receiver: Receiver<Command<Ef, A::Event>>,
+    event_receiver: Receiver<A::Event>,
     app: A,
     _marker: PhantomData<Ef>,
 }
@@ -176,13 +181,19 @@ where
     where
         CapFactory: CapabilitiesFactory<A, Ef>,
     {
-        let (sender, receiver) = crate::channels::channel();
+        let (command_sender, command_receiver) = crate::channels::channel();
+        let (event_sender, event_receiver) = crate::channels::channel();
+        let (executor, spawner) = executor::executor_and_spawner();
+        let capability_context = CapabilityContext::new(command_sender, event_sender, spawner);
+
         Self {
             model: Default::default(),
             continuations: Default::default(),
+            executor,
             app: Default::default(),
-            capabilities: CapFactory::build(sender),
-            command_receiver: receiver,
+            capabilities: CapFactory::build(capability_context),
+            command_receiver,
+            event_receiver,
             _marker: PhantomData,
         }
     }
@@ -194,11 +205,19 @@ where
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let msg: <A as App>::Event = bcs::from_bytes(msg).expect("Message deserialization failed.");
+        let event: <A as App>::Event =
+            bcs::from_bytes(msg).expect("Message deserialization failed.");
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        self.app.update(msg, &mut model, &self.capabilities);
+        self.app.update(event, &mut model, &self.capabilities);
+
+        self.executor.run_all();
+
+        while let Some(event) = self.event_receiver.receive() {
+            self.app.update(event, &mut model, &self.capabilities);
+            self.executor.run_all()
+        }
 
         let requests = self
             .command_receiver
@@ -218,11 +237,21 @@ where
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
+        let event = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
+
+        self.executor.run_all();
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        self.app.update(msg, &mut model, &self.capabilities);
+        if let Some(event) = event {
+            self.app.update(event, &mut model, &self.capabilities);
+            self.executor.run_all();
+        }
+
+        while let Some(event) = self.event_receiver.receive() {
+            self.app.update(event, &mut model, &self.capabilities);
+            self.executor.run_all()
+        }
 
         let requests = self
             .command_receiver
@@ -260,4 +289,12 @@ where
 pub struct Request<Effect> {
     pub uuid: Vec<u8>,
     pub effect: Effect,
+}
+
+// This name is too confusing, since we kind of have two "Effects"
+// We've got the `Effect` enum that gets serialised to the shell
+// and the capability level stuff, which this represnets.
+// TODO: Think up a better name...
+pub trait Effect: serde::Serialize + Send + 'static {
+    type Response: serde::de::DeserializeOwned + Send + 'static;
 }
