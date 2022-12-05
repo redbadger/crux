@@ -24,30 +24,6 @@ pub(crate) struct Capabilities {
     pub time: Time<Effect>,
 }
 
-impl crux_core::Capabilities<KeyValue<Effect>> for Capabilities {
-    fn get(&self) -> &KeyValue<Effect> {
-        &self.key_value
-    }
-}
-
-impl crux_core::Capabilities<Platform<Effect>> for Capabilities {
-    fn get(&self) -> &Platform<Effect> {
-        &self.platform
-    }
-}
-
-impl crux_core::Capabilities<Render<Effect>> for Capabilities {
-    fn get(&self) -> &Render<Effect> {
-        &self.render
-    }
-}
-
-impl crux_core::Capabilities<Time<Effect>> for Capabilities {
-    fn get(&self) -> &Time<Effect> {
-        &self.time
-    }
-}
-
 impl Default for Capabilities {
     fn default() -> Self {
         Self {
