@@ -14,7 +14,9 @@ where
     }
 
     pub fn render(&self) {
-        self.context.run_command(Command::new_without_callback(()))
+        let ctx = self.context.clone();
+        self.context
+            .spawn(async move { ctx.run_command(Command::new_without_callback(())) })
     }
 } // Public API of the capability, called by App::update.
 
