@@ -8,4 +8,8 @@ edition = "2021"
 [build-dependencies]
 anyhow = "1.0.66"
 crux_core = { path = "../../../crux_core", features = ["typegen"] }
+crux_http = { path = "../../../crux_http" }
+crux_kv = { path = "../../../crux_kv" }
+crux_platform = { path = "../../../crux_platform" }
+crux_time = { path = "../../../crux_time" }
 shared = { path = "../shared" }

@@ -1,6 +1,10 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request, RequestBody, Response, ResponseBody};
-use shared::{platform, Msg, ViewModel};
+use crux_core::{typegen::TypeGen, Request};
+use crux_http::{HttpRequest, HttpResponse};
+use crux_kv::{KeyValueRequest, KeyValueResponse};
+use crux_platform::PlatformResponse;
+use crux_time::TimeResponse;
+use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -24,12 +28,20 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Msg>()?;
-    gen.register_type::<platform::PlatformMsg>()?;
+    gen.register_type::<Request<Effect>>()?;
+
+    gen.register_type::<Effect>()?;
+    gen.register_type::<HttpRequest>()?;
+    gen.register_type::<KeyValueRequest>()?;
+
+    gen.register_type::<Event>()?;
+    gen.register_type::<HttpResponse>()?;
+    gen.register_type::<KeyValueResponse>()?;
+    gen.register_type::<TimeResponse>()?;
+
+    gen.register_type::<PlatformEvent>()?;
+    gen.register_type::<PlatformResponse>()?;
+
     gen.register_type::<ViewModel>()?;
-    gen.register_type::<Request>()?;
-    gen.register_type::<RequestBody>()?;
-    gen.register_type::<Response>()?;
-    gen.register_type::<ResponseBody>()?;
     Ok(())
 }

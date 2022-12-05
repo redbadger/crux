@@ -17,7 +17,7 @@
 //!
 //! Below is a minimal example of a Crux based application Core:
 //!
-//! ```rust
+//! ```rust,ignore
 //! // src/app.rs
 //!
 //! use serde::{Serialize, Deserialize}
@@ -63,7 +63,7 @@
 //!
 //! To use the application in a user interface shell, you need to expose the core interface for FFI
 //!
-//! ```rust
+//! ```rust,ignore
 //! // src/lib.rs
 //!
 //! use lazy_static::lazy_static;
@@ -94,7 +94,7 @@
 //!
 //! You will also need an `hello.udl` file describing the interface:
 //!
-//! ```
+//! ```ignore
 //! namespace hello {
 //!   sequence<u8> message([ByRef] sequence<u8> msg);
 //!   sequence<u8> response([ByRef] sequence<u8> res);
@@ -106,26 +106,26 @@
 //! See [typegen] for details.
 //!
 
+pub mod capability;
+pub mod command;
+mod continuations;
+pub mod render;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-mod continuations;
-pub mod http;
-pub mod key_value;
-pub mod platform;
-pub mod time;
-
+pub use capability::{Capabilities, Capability};
+pub use command::Command;
 use continuations::ContinuationStore;
 use serde::{Deserialize, Serialize};
-use std::sync::RwLock;
+use std::{marker::PhantomData, sync::RwLock};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
-pub trait App: Default {
-    /// Message, typically an `enum` defines the actions that can be taken to update the application state.
-    type Message;
+pub trait App<Ef, Caps>: Default {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
+    /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
+    type Event;
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
@@ -134,92 +134,56 @@ pub trait App: Default {
     ///
     /// Update function can return a list of [`Command`]s, instructing the shell to perform side-effects.
     /// Typically, the function should return at least [`Command::render`] to update the user interface.
-    fn update(
+    fn update<'a>(
         &self,
-        msg: <Self as App>::Message,
-        model: &mut <Self as App>::Model,
-    ) -> Vec<Command<<Self as App>::Message>>;
+        msg: Self::Event,
+        model: &mut Self::Model,
+        caps: &'a Caps,
+    ) -> Vec<Command<Ef, Self::Event>>
+    where
+        Ef: Serialize;
 
     /// View method is used by the Shell to request the current state of the user interface
-    fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel;
+    fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
-
-/// Command captures the intent for a side-effect. Commands are return by the [`App::update`] function.
-///
-/// You should never create a Command yourself, instead use one of the capabilities to create a command.
-/// Command is generic over `Message` in order to carry a "callback" which will be sent to the [`App::update`]
-/// function when the command has been executed, and passed the resulting data.
-pub struct Command<Message> {
-    body: RequestBody,
-    msg_constructor: Option<Box<dyn FnOnce(ResponseBody) -> Message + Send + Sync>>,
-}
-
-impl<Message: 'static> Command<Message> {
-    /// The built in command to request an update of the user interface from the Shell.
-    pub fn render() -> Command<Message> {
-        Command {
-            body: RequestBody::Render,
-            msg_constructor: None,
-        }
-    }
-
-    /// Lift is used to convert a Command with one message type to a command with another.
-    ///
-    /// This is normally used when composing applications. A typical case in the top-level
-    /// `update` function would look like the following:
-    ///
-    /// ```rust
-    /// match message {
-    ///     // ...
-    ///     Msg::Submodule(msg) => Command::lift(
-    ///             self.submodule.update(msg, &mut model.submodule),
-    ///             Msg::Submodule,
-    ///         ),
-    ///     // ...
-    /// }
-    /// ```
-    pub fn lift<ParentMsg, F>(commands: Vec<Command<Message>>, f: F) -> Vec<Command<ParentMsg>>
-    where
-        F: FnOnce(Message) -> ParentMsg + Sync + Send + Copy + 'static,
-    {
-        commands.into_iter().map(move |c| c.map(f)).collect()
-    }
-
-    fn map<ParentMsg, F>(self, f: F) -> Command<ParentMsg>
-    where
-        F: FnOnce(Message) -> ParentMsg + Sync + Send + 'static,
-    {
-        Command {
-            body: self.body,
-            msg_constructor: match self.msg_constructor {
-                Some(g) => Some(Box::new(|b| f(g(b)))),
-                None => None,
-            },
-        }
-    }
-}
-
 /// The Crux core. Create an instance of this type with your app as the type parameter
-pub struct Core<A: App> {
+pub struct Core<Ef, Caps, A>
+where
+    Caps: Default,
+    A: App<Ef, Caps>,
+{
     model: RwLock<A::Model>,
-    continuations: ContinuationStore<A::Message>,
+    continuations: ContinuationStore<A::Event>,
+    capabilities: Caps,
     app: A,
+    _marker: PhantomData<Ef>,
 }
 
-impl<A: App> Default for Core<A> {
+impl<Ef, Caps, A> Default for Core<Ef, Caps, A>
+where
+    Caps: Default,
+    A: App<Ef, Caps>,
+{
     fn default() -> Self {
         Self {
             model: Default::default(),
             continuations: Default::default(),
             app: Default::default(),
+            capabilities: Default::default(),
+            _marker: PhantomData,
         }
     }
 }
 
-impl<A: App> Core<A> {
+impl<Ef, Caps, A> Core<Ef, Caps, A>
+where
+    Caps: Default,
+    Ef: Serialize,
+    A: App<Ef, Caps>,
+{
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// lazy_static! {
     ///     static ref CORE: Core<Hello> = Core::new();
     /// }
@@ -236,15 +200,17 @@ impl<A: App> Core<A> {
     /// The `msg` is serialized and will be deserialized by the core.
     pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Message: Deserialize<'de>,
+        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
     {
-        let msg: <A as App>::Message =
+        let msg: <A as App<_, _>>::Event =
             bcs::from_bytes(msg).expect("Message deserialization failed.");
 
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        let commands = {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app.update(msg, &mut model, &self.capabilities)
+        };
 
-        let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
-        let requests: Vec<Request> = commands
+        let requests: Vec<_> = commands
             .into_iter()
             .map(|c| self.continuations.pause(c))
             .collect();
@@ -257,17 +223,18 @@ impl<A: App> Core<A> {
     /// The `res` is serialized and will be deserialized by the core. The `uuid`  field of
     /// the deserialized [`Response`] MUST match the `uuid` of the [`Request`] which
     /// triggered it, else the core will panic.
-    pub fn response<'de>(&self, res: &'de [u8]) -> Vec<u8>
+    pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Message: Deserialize<'de>,
+        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
     {
-        let response = bcs::from_bytes(res).expect("Response deserialization failed.");
-        let msg = self.continuations.resume(response);
+        let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
 
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        let commands = {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app.update(msg, &mut model, &self.capabilities)
+        };
 
-        let commands: Vec<Command<<A as App>::Message>> = self.app.update(msg, &mut model);
-        let requests: Vec<Request> = commands
+        let requests: Vec<_> = commands
             .into_iter()
             .map(|c| self.continuations.pause(c))
             .collect();
@@ -277,9 +244,11 @@ impl<A: App> Core<A> {
 
     /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
-        let model = self.model.read().expect("Model RwLock was poisoned.");
+        let value = {
+            let model = self.model.read().expect("Model RwLock was poisoned.");
+            self.app.view(&model)
+        };
 
-        let value = self.app.view(&model);
         bcs::to_bytes(&value).expect("View model serialization failed.")
     }
 }
@@ -288,46 +257,7 @@ impl<A: App> Core<A> {
 /// the `Request` with the corresponding [`Response`] to pass the data back
 /// to the [`App::update`] function wrapped in the correct `Message`.
 #[derive(Serialize, Deserialize)]
-pub struct Request {
+pub struct Request<Effect> {
     pub uuid: Vec<u8>,
-    pub body: RequestBody,
-}
-
-impl Request {
-    pub fn render() -> Self {
-        Self {
-            uuid: Default::default(),
-            body: RequestBody::Render,
-        }
-    }
-}
-
-/// Body of a side-effect [`Request`]
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum RequestBody {
-    Time,
-    Http(String),
-    Platform,
-    KVRead(String),
-    KVWrite(String, Vec<u8>),
-    Render,
-}
-
-/// Response to a side-effect request, returning the resulting data from the Shell
-/// to the Core. The `uuid` links the [`Request`] with the corresponding `Response`
-/// to pass the data back to the [`App::update`] function wrapped in the correct `Message`.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct Response {
-    pub uuid: Vec<u8>,
-    pub body: ResponseBody,
-}
-
-/// Body of a side-effect [`Response`]
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub enum ResponseBody {
-    Http(Vec<u8>),
-    Time(String),
-    Platform(String),
-    KVRead(Option<Vec<u8>>),
-    KVWrite(bool),
+    pub effect: Effect,
 }

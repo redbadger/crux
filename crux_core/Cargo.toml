@@ -7,7 +7,7 @@ version = "0.1.1"
 edition = "2021"
 readme = "README.md"
 license = "Apache-2.0"
-keywords = ["ui", "ux", "ffi", "wasm", "rust"]
+keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -16,8 +16,8 @@ all-features = true
 anyhow = "1.0.66"
 bcs = "0.1.4"
 derive_more = "0.99.17"
-serde = { version = "1.0.147", features = ["derive"] }
-serde_json = "1.0.88"
+serde = { version = "1.0.148", features = ["derive"] }
+serde_json = "1.0.89"
 serde-generate = { version = "0.24.0", optional = true }
 serde-reflection = { version = "0.3.6", optional = true }
 thiserror = "1.0.37"

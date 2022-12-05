@@ -1,5 +1,5 @@
 namespace shared {
   sequence<u8> message([ByRef] sequence<u8> msg);
-  sequence<u8> response([ByRef] sequence<u8> res);
+  sequence<u8> response([ByRef] sequence<u8> uuid, [ByRef] sequence<u8> res);
   sequence<u8> view();
 };

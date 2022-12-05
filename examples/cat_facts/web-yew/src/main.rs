@@ -1,7 +1,12 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
-use serde::{Deserialize, Serialize};
-use shared::*;
+use shared::{
+    http::{HttpRequest, HttpResponse},
+    key_value::{KeyValueRequest, KeyValueResponse},
+    platform::PlatformResponse,
+    time::TimeResponse,
+    Effect, Event, Request, ViewModel,
+};
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
@@ -38,10 +43,16 @@ fn platform_get() -> Result<String> {
 #[derive(Default)]
 struct HelloWorld;
 
-#[derive(Serialize, Deserialize)]
 enum CoreMessage {
-    Message(Msg),
-    Response(Response),
+    Message(Event),
+    Response(Vec<u8>, Outcome),
+}
+
+pub enum Outcome {
+    Platform(PlatformResponse),
+    Time(TimeResponse),
+    Http(HttpResponse),
+    KeyValue(KeyValueResponse),
 }
 
 impl Component for HelloWorld {
@@ -50,10 +61,8 @@ impl Component for HelloWorld {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(CoreMessage::Message(Msg::Get));
-        link.send_message(CoreMessage::Message(Msg::Platform(
-            platform::PlatformMsg::Get,
-        )));
+        link.send_message(CoreMessage::Message(Event::Get));
+        link.send_message(CoreMessage::Message(Event::GetPlatform));
 
         Self::default()
     }
@@ -62,68 +71,73 @@ impl Component for HelloWorld {
         let link = ctx.link();
 
         let reqs = match msg {
-            CoreMessage::Message(msg) => {
-                let msg = bcs::to_bytes(&msg).unwrap();
-                shared::message(&msg)
-            }
-            CoreMessage::Response(resp) => {
-                let resp = bcs::to_bytes(&resp).unwrap();
-                shared::response(&resp)
-            }
+            CoreMessage::Message(event) => shared::message(&bcs::to_bytes(&event).unwrap()),
+            CoreMessage::Response(uuid, outcome) => shared::response(
+                &uuid,
+                &match outcome {
+                    Outcome::Platform(x) => bcs::to_bytes(&x).unwrap(),
+                    Outcome::Time(x) => bcs::to_bytes(&x).unwrap(),
+                    Outcome::Http(x) => bcs::to_bytes(&x).unwrap(),
+                    Outcome::KeyValue(x) => bcs::to_bytes(&x).unwrap(),
+                },
+            ),
         };
 
-        let reqs: Vec<Request> = bcs::from_bytes(&reqs).unwrap();
+        let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
 
         reqs.into_iter().any(|req| {
-            let Request { uuid, body } = req;
-            match body {
-                RequestBody::Render => true,
-                RequestBody::Time => {
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::Time(time_get().unwrap()),
+            let Request { uuid, effect } = req;
+            match effect {
+                Effect::Render => true,
+                Effect::Time => {
+                    link.send_message(CoreMessage::Response(
                         uuid,
-                    }));
+                        Outcome::Time(TimeResponse(time_get().unwrap())),
+                    ));
 
                     false
                 }
-                RequestBody::Http(url) => {
+                Effect::Http(HttpRequest { url, .. }) => {
                     let link = link.clone();
 
                     wasm_bindgen_futures::spawn_local(async move {
                         let bytes = http_get(&url).await.unwrap_or_default();
 
-                        link.send_message(CoreMessage::Response(Response {
-                            body: ResponseBody::Http(bytes),
+                        link.send_message(CoreMessage::Response(
                             uuid,
-                        }));
+                            Outcome::Http(HttpResponse {
+                                status: 200,
+                                body: bytes,
+                            }),
+                        ));
                     });
 
                     false
                 }
-                RequestBody::Platform => {
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::Platform(
+                Effect::Platform => {
+                    link.send_message(CoreMessage::Response(
+                        uuid,
+                        Outcome::Platform(PlatformResponse(
                             platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
-                        ),
-                        uuid,
-                    }));
+                        )),
+                    ));
 
                     false
                 }
-                RequestBody::KVRead(_) => {
+                Effect::KeyValue(KeyValueRequest::Read(_)) => {
                     // TODO implement state restoration
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::KVRead(None),
+                    link.send_message(CoreMessage::Response(
                         uuid,
-                    }));
+                        Outcome::KeyValue(KeyValueResponse::Read(None)),
+                    ));
 
                     false
                 }
-                RequestBody::KVWrite(_, _) => {
-                    link.send_message(CoreMessage::Response(Response {
-                        body: ResponseBody::KVWrite(false),
+                Effect::KeyValue(KeyValueRequest::Write(..)) => {
+                    link.send_message(CoreMessage::Response(
                         uuid,
-                    }));
+                        Outcome::KeyValue(KeyValueResponse::Write(false)),
+                    ));
 
                     false
                 }
@@ -151,15 +165,15 @@ impl Component for HelloWorld {
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| CoreMessage::Message(Msg::Clear))}>
+                        onclick={link.callback(|_| CoreMessage::Message(Event::Clear))}>
                         {"Clear"}
                     </button>
                     <button class="button is-primary is-success"
-                        onclick={link.callback(|_| CoreMessage::Message(Msg::Get))}>
+                        onclick={link.callback(|_| CoreMessage::Message(Event::Get))}>
                         {"Get"}
                     </button>
                     <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| CoreMessage::Message(Msg::Fetch))}>
+                        onclick={link.callback(|_| CoreMessage::Message(Event::Fetch))}>
                         {"Fetch"}
                     </button>
                 </div>
@@ -169,5 +183,5 @@ impl Component for HelloWorld {
 }
 
 fn main() {
-    yew::start_app::<HelloWorld>();
+    yew::Renderer::<HelloWorld>::new().render();
 }

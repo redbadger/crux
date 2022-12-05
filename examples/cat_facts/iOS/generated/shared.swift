@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_8c38_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_bdce_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_8c38_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_bdce_rustbuffer_free(self, $0) }
     }
 }
 
@@ -360,7 +360,7 @@ public func `message`(_ `msg`: [UInt8])  -> [UInt8] {
     
     rustCall() {
     
-    shared_8c38_message(
+    shared_bdce_message(
         FfiConverterSequenceUInt8.lower(`msg`), $0)
 }
     )
@@ -368,13 +368,14 @@ public func `message`(_ `msg`: [UInt8])  -> [UInt8] {
 
 
 
-public func `response`(_ `res`: [UInt8])  -> [UInt8] {
+public func `response`(_ `uuid`: [UInt8], _ `res`: [UInt8])  -> [UInt8] {
     return try! FfiConverterSequenceUInt8.lift(
         try!
     
     rustCall() {
     
-    shared_8c38_response(
+    shared_bdce_response(
+        FfiConverterSequenceUInt8.lower(`uuid`), 
         FfiConverterSequenceUInt8.lower(`res`), $0)
 }
     )
@@ -388,7 +389,7 @@ public func `view`()  -> [UInt8] {
     
     rustCall() {
     
-    shared_8c38_view($0)
+    shared_bdce_view($0)
 }
     )
 }

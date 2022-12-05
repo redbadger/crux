@@ -1,45 +1,46 @@
-use crate::{Command, Request, Response, ResponseBody};
+use crate::command::{Callback, Command};
+use crate::Request;
 use std::{collections::HashMap, sync::RwLock};
 use uuid::Uuid;
 
-type Store<Message> = HashMap<[u8; 16], Box<dyn FnOnce(ResponseBody) -> Message + Sync + Send>>;
+struct Store<Ev>(HashMap<[u8; 16], Box<dyn Callback<Ev> + Send + Sync>>);
 
-pub(crate) struct ContinuationStore<Message>(RwLock<Store<Message>>);
+pub(crate) struct ContinuationStore<Ev>(RwLock<Store<Ev>>);
 
-impl<Message> Default for ContinuationStore<Message> {
+impl<Ev> Default for ContinuationStore<Ev> {
     fn default() -> Self {
-        Self(RwLock::new(HashMap::new()))
+        Self(RwLock::new(Store(HashMap::new())))
     }
 }
 
-impl<Message> ContinuationStore<Message> {
-    pub(crate) fn pause(&self, cmd: Command<Message>) -> Request {
-        let Command {
-            body,
-            msg_constructor,
-        } = cmd;
+impl<Ev> ContinuationStore<Ev> {
+    pub(crate) fn pause<Ef>(&self, cmd: Command<Ef, Ev>) -> Request<Ef> {
+        let Command { effect, resolve } = cmd;
+
         let uuid = *Uuid::new_v4().as_bytes();
-        if let Some(msg_constructor) = msg_constructor {
+        if let Some(resolve) = resolve {
             self.0
                 .write()
                 .expect("Continuation RwLock poisoned.")
-                .insert(uuid, msg_constructor);
+                .0
+                .insert(uuid, resolve);
         }
+
         Request {
             uuid: uuid.to_vec(),
-            body,
+            effect,
         }
     }
 
-    pub(crate) fn resume(&self, response: Response) -> Message {
-        let Response { uuid, body } = response;
-        let cont = self
+    pub(crate) fn resume(&self, uuid: &[u8], body: Vec<u8>) -> Ev {
+        let resolve = self
             .0
             .write()
             .expect("Continuation RwLock poisoned.")
-            .remove(&uuid[..])
+            .0
+            .remove(uuid)
             .unwrap_or_else(|| panic!("Continuation with UUID {:?} not found.", uuid));
 
-        cont(body)
+        resolve.call(body)
     }
 }

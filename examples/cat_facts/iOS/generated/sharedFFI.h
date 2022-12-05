@@ -46,31 +46,31 @@ typedef struct RustCallStatus {
 // ⚠️ increment the version suffix in all instances of UNIFFI_SHARED_HEADER_V4 in this file.           ⚠️
 #endif // def UNIFFI_SHARED_H
 
-RustBuffer shared_8c38_message(
+RustBuffer shared_bdce_message(
       RustBuffer msg,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer shared_8c38_response(
-      RustBuffer res,
+RustBuffer shared_bdce_response(
+      RustBuffer uuid,RustBuffer res,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer shared_8c38_view(
+RustBuffer shared_bdce_view(
       
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_8c38_rustbuffer_alloc(
+RustBuffer ffi_shared_bdce_rustbuffer_alloc(
       int32_t size,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_8c38_rustbuffer_from_bytes(
+RustBuffer ffi_shared_bdce_rustbuffer_from_bytes(
       ForeignBytes bytes,
     RustCallStatus *_Nonnull out_status
     );
-void ffi_shared_8c38_rustbuffer_free(
+void ffi_shared_bdce_rustbuffer_free(
       RustBuffer buf,
     RustCallStatus *_Nonnull out_status
     );
-RustBuffer ffi_shared_8c38_rustbuffer_reserve(
+RustBuffer ffi_shared_bdce_rustbuffer_reserve(
       RustBuffer buf,int32_t additional,
     RustCallStatus *_Nonnull out_status
     );
