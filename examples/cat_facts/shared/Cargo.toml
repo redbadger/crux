@@ -13,6 +13,7 @@ bincode = "1.3.3"
 crux_core = { path = "../../../crux_core" }
 crux_http = { path = "../../../crux_http" }
 crux_kv = { path = "../../../crux_kv" }
+crux_macros = { path = "../../../crux_macros" }
 crux_platform = { path = "../../../crux_platform" }
 crux_time = { path = "../../../crux_time" }
 derive_more = "0.99.17"

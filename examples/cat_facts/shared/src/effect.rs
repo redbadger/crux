@@ -1,6 +1,7 @@
 use crux_core::render::Render;
 use crux_http::{Http, HttpRequest};
 use crux_kv::{KeyValue, KeyValueRequest};
+use crux_macros::Capabilities;
 use crux_platform::Platform;
 use crux_time::Time;
 use serde::{Deserialize, Serialize};
@@ -14,19 +15,13 @@ pub enum Effect {
     Time,
 }
 
-// Will get generated?
+#[derive(Capabilities)]
 pub(crate) struct Capabilities {
     pub http: Http<Effect>,
     pub key_value: KeyValue<Effect>,
     pub platform: Platform<Effect>,
     pub render: Render<Effect>,
     pub time: Time<Effect>,
-}
-
-impl crux_core::Capabilities<Http<Effect>> for Capabilities {
-    fn get(&self) -> &Http<Effect> {
-        &self.http
-    }
 }
 
 impl crux_core::Capabilities<KeyValue<Effect>> for Capabilities {
