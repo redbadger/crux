@@ -1,5 +1,6 @@
 mod shared {
     use crux_core::{render::Render, App, Capabilities, Command};
+    use crux_macros::Capabilities;
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
@@ -76,21 +77,10 @@ mod shared {
         }
     }
 
+    #[derive(Capabilities)]
     pub(crate) struct MyCapabilities {
         pub platform: Platform<MyEffect>,
         pub render: Render<MyEffect>,
-    }
-
-    impl crux_core::Capabilities<Platform<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Platform<MyEffect> {
-            &self.platform
-        }
-    }
-
-    impl crux_core::Capabilities<Render<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Render<MyEffect> {
-            &self.render
-        }
     }
 
     impl Default for MyCapabilities {

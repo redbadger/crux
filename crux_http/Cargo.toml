@@ -13,6 +13,7 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 anyhow = "1.0.66"
 bcs = "0.1.4"
 crux_core = { version = "0.1", path = "../crux_core" }
+crux_macros = { version = "0.1", path = "../crux_macros" }
 derive_more = "0.99.17"
 serde = { version = "1.0.148", features = ["derive"] }
 url = "2.3.1"

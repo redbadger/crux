@@ -1,6 +1,7 @@
 mod shared {
     use crux_core::{render::Render, App, Capabilities, Command};
     use crux_http::{Http, HttpRequest, HttpResponse};
+    use crux_macros::Capabilities;
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
     use url::Url;
@@ -83,21 +84,10 @@ mod shared {
         }
     }
 
+    #[derive(Capabilities)]
     pub(crate) struct MyCapabilities {
         pub http: Http<MyEffect>,
         pub render: Render<MyEffect>,
-    }
-
-    impl crux_core::Capabilities<Http<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Http<MyEffect> {
-            &self.http
-        }
-    }
-
-    impl crux_core::Capabilities<Render<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Render<MyEffect> {
-            &self.render
-        }
     }
 
     impl Default for MyCapabilities {

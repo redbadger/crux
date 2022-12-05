@@ -17,11 +17,11 @@ pub enum Effect {
 
 #[derive(Capabilities)]
 pub(crate) struct Capabilities {
-    pub http: Http<Effect>,
-    pub key_value: KeyValue<Effect>,
-    pub platform: Platform<Effect>,
-    pub render: Render<Effect>,
-    pub time: Time<Effect>,
+    http: Http<Effect>,
+    key_value: KeyValue<Effect>,
+    platform: Platform<Effect>,
+    render: Render<Effect>,
+    time: Time<Effect>,
 }
 
 impl Default for Capabilities {

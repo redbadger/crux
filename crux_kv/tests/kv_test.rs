@@ -1,6 +1,7 @@
 mod shared {
     use crux_core::{render::Render, App, Capabilities, Command};
     use crux_kv::{KeyValue, KeyValueRequest, KeyValueResponse};
+    use crux_macros::Capabilities;
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
 
@@ -87,21 +88,10 @@ mod shared {
         }
     }
 
+    #[derive(Capabilities)]
     pub(crate) struct MyCapabilities {
         pub key_value: KeyValue<MyEffect>,
         pub render: Render<MyEffect>,
-    }
-
-    impl crux_core::Capabilities<KeyValue<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &KeyValue<MyEffect> {
-            &self.key_value
-        }
-    }
-
-    impl crux_core::Capabilities<Render<MyEffect>> for MyCapabilities {
-        fn get(&self) -> &Render<MyEffect> {
-            &self.render
-        }
     }
 
     impl Default for MyCapabilities {
