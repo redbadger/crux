@@ -5,9 +5,16 @@ mod shared {
     use serde::{Deserialize, Serialize};
     use std::marker::PhantomData;
 
-    #[derive(Default)]
     pub struct MyApp<Ef, Caps> {
         _marker: PhantomData<fn() -> (Ef, Caps)>,
+    }
+
+    impl<Ef, Caps> Default for MyApp<Ef, Caps> {
+        fn default() -> Self {
+            Self {
+                _marker: Default::default(),
+            }
+        }
     }
 
     #[derive(Serialize, Deserialize)]
@@ -30,8 +37,8 @@ mod shared {
 
     impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
     where
-        Ef: Serialize + Clone + Default,
-        Caps: Default + Capabilities<KeyValue<Ef>> + Capabilities<Render<Ef>>,
+        Ef: Serialize + Clone,
+        Caps: Capabilities<KeyValue<Ef>> + Capabilities<Render<Ef>>,
     {
         type Event = MyEvent;
         type Model = MyModel;

@@ -6,9 +6,16 @@ mod shared {
     use std::marker::PhantomData;
     use url::Url;
 
-    #[derive(Default)]
     pub struct MyApp<Ef, Caps> {
         _marker: PhantomData<fn() -> (Ef, Caps)>,
+    }
+
+    impl<Ef, Caps> Default for MyApp<Ef, Caps> {
+        fn default() -> Self {
+            Self {
+                _marker: Default::default(),
+            }
+        }
     }
 
     #[derive(Serialize, Deserialize)]
@@ -30,8 +37,8 @@ mod shared {
 
     impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
     where
-        Ef: Serialize + Clone + Default,
-        Caps: Default + Capabilities<Http<Ef>> + Capabilities<Render<Ef>>,
+        Ef: Serialize + Clone,
+        Caps: Capabilities<Http<Ef>> + Capabilities<Render<Ef>>,
     {
         type Event = MyEvent;
         type Model = MyModel;
