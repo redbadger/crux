@@ -46,34 +46,6 @@ impl Request {
         }
     }
 
-    /// Begin a chained request builder. For more details, see [RequestBuilder](crate::RequestBuilder)
-    ///
-    /// # Example:
-    /// ```rust
-    /// use crux_core::http::{Method, mime::HTML, Url};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
-    /// let url = Url::parse("https://httpbin.org/post")?;
-    /// let mut request = crux_core::Request::builder(Method::Post, url.clone())
-    ///     .body("<html>hi</html>")
-    ///     .header("custom-header", "value")
-    ///     .content_type(HTML)
-    ///     .build();
-    ///
-    /// assert_eq!(request.take_body().into_string().await.unwrap(), "<html>hi</html>");
-    /// assert_eq!(request.method(), Method::Post);
-    /// assert_eq!(request.url(), &url);
-    /// assert_eq!(request["custom-header"], "value");
-    /// assert_eq!(request["content-type"], "text/html;charset=utf-8");
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[must_use]
-    pub fn builder(method: Method, url: Url) -> RequestBuilder {
-        todo!()
-        // RequestBuilder::new(method, url)
-    }
-
     /// Get the URL querystring.
     ///
     /// # Examples

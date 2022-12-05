@@ -1,17 +1,22 @@
-use crate::http::{
-    headers::{HeaderName, ToHeaderValues},
-    Body, Method, Mime, Url,
-};
+use crate::expect::{ExpectBytes, ExpectJson};
 use crate::middleware::Middleware;
-use crate::{Client, Error, Request, Response, Result};
+use crate::{
+    expect::ResponseExpectation,
+    http::{
+        headers::{HeaderName, ToHeaderValues},
+        Body, Method, Mime, Url,
+    },
+};
+use crate::{Client, Error, Request, Response, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
+use http_types::convert::DeserializeOwned;
 use serde::Serialize;
 
-use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::{fmt, marker::PhantomData};
 
 /// Request Builder
 ///
@@ -51,21 +56,52 @@ use std::task::{Context, Poll};
 /// ```
 
 #[must_use]
-pub struct RequestBuilder {
+pub struct RequestBuilder<Event, ExpectBody = Vec<u8>> {
     /// Holds the state of the request.
     req: Option<Request>,
-    /// Hold an optional Client.
-    client: Client,
+
+    cap_or_client: CapOrClient<Event>,
+
+    phantom: PhantomData<fn() -> Event>,
+
+    expectation: Box<dyn ResponseExpectation<Body = ExpectBody> + Send>,
 }
 
-impl RequestBuilder {
-    pub(crate) fn new(method: Method, url: Url, client: Client) -> Self {
+// Middleware request builders won't have access to the capability, so they get a client
+// and therefore can't send events themselves.  Normal request builders get direct access
+// to the capability itself.
+enum CapOrClient<Event> {
+    Client(Client),
+    Capability(crate::Http<Event>),
+}
+
+impl<Event> RequestBuilder<Event, Vec<u8>> {
+    pub(crate) fn new(method: Method, url: Url, capability: crate::Http<Event>) -> Self {
         Self {
             req: Some(Request::new(method, url)),
-            client: client,
+            cap_or_client: CapOrClient::Capability(capability),
+            phantom: PhantomData,
+            expectation: Box::new(ExpectBytes),
         }
     }
+}
 
+impl RequestBuilder<(), Vec<u8>> {
+    pub(crate) fn new_for_middleware(method: Method, url: Url, client: Client) -> Self {
+        Self {
+            req: Some(Request::new(method, url)),
+            cap_or_client: CapOrClient::Client(client),
+            phantom: PhantomData,
+            expectation: Box::new(ExpectBytes),
+        }
+    }
+}
+
+impl<Event, ExpectBody> RequestBuilder<Event, ExpectBody>
+where
+    Event: 'static,
+    ExpectBody: 'static,
+{
     /// Sets a header on the request.
     ///
     /// # Examples
@@ -244,91 +280,6 @@ impl RequestBuilder {
         Ok(self)
     }
 
-    /// Submit the request and get the response body as bytes.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let bytes = crux_http::get("https://httpbin.org/get").recv_bytes().await?;
-    /// assert!(bytes.len() > 0);
-    /// # Ok(()) }
-    /// ```
-    pub async fn recv_bytes(self) -> Result<Vec<u8>> {
-        let mut res = self.send().await?;
-        res.body_bytes().await
-    }
-
-    /// Submit the request and get the response body as a string.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let string = crux_http::get("https://httpbin.org/get").recv_string().await?;
-    /// assert!(string.len() > 0);
-    /// # Ok(()) }
-    /// ```
-    pub async fn recv_string(self) -> Result<String> {
-        let mut res = self.send().await?;
-        res.body_string().await
-    }
-
-    /// Submit the request and decode the response body from json into a struct.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// #[derive(Deserialize, Serialize)]
-    /// struct Ip {
-    ///     ip: String
-    /// }
-    ///
-    /// let uri = "https://api.ipify.org?format=json";
-    /// let Ip { ip } = crux_http::get(uri).recv_json().await?;
-    /// assert!(ip.len() > 10);
-    /// # Ok(()) }
-    /// ```
-    pub async fn recv_json<T: serde::de::DeserializeOwned>(self) -> Result<T> {
-        let mut res = self.send().await?;
-        res.body_json::<T>().await
-    }
-
-    /// Submit the request and decode the response body from form encoding into a struct.
-    ///
-    /// # Errors
-    ///
-    /// Any I/O error encountered while reading the body is immediately returned
-    /// as an `Err`.
-    ///
-    /// If the body cannot be interpreted as valid json for the target type `T`,
-    /// an `Err` is returned.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// #[derive(Deserialize, Serialize)]
-    /// struct Body {
-    ///     apples: u32
-    /// }
-    ///
-    /// let url = "https://api.example.com/v1/response";
-    /// let Body { apples } = crux_http::get(url).recv_form().await?;
-    /// # Ok(()) }
-    /// ```
-    pub async fn recv_form<T: serde::de::DeserializeOwned>(self) -> Result<T> {
-        let mut res = self.send().await?;
-        res.body_form::<T>().await
-    }
-
     /// Push middleware onto a per-request middleware stack.
     ///
     /// **Important**: Setting per-request middleware incurs extra allocations.
@@ -360,26 +311,72 @@ impl RequestBuilder {
         self.req.unwrap()
     }
 
-    /// Sends the constructed `Request`.
-    pub async fn send(self) -> Result<Response> {
-        // TODO: This is the bit that's going to need work.
-        // Since surf is based on async but crux currently only exposes
-        // callbacks to users this function is a bit useless...
-        // Ideally we need some sort of recv_json a-like function here...
-        todo!();
-        self.client.send(self.req.unwrap()).await
+    // TODO: Ideally this would only be allowed where Event != ()
+    pub fn expect_json<T>(self) -> RequestBuilder<Event, T>
+    where
+        T: DeserializeOwned + 'static,
+    {
+        let expectation = Box::new(ExpectJson::<T>::default());
+        RequestBuilder {
+            req: self.req,
+            cap_or_client: self.cap_or_client,
+            phantom: PhantomData,
+            expectation,
+        }
+    }
+
+    // TODO: Ideally this would only be allowed where Event != ()
+    /// Sends the constructed `Request` and returns its result as an update `Event`
+    pub fn send<F>(self, make_event: F)
+    where
+        F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
+    {
+        let CapOrClient::Capability(capability) = self.cap_or_client else {
+            panic!("Called RequestBuilder::send in a middleware context");
+        };
+        let request = self.req;
+
+        let ctx = capability.context.clone();
+        ctx.spawn(async move {
+            let result = capability.client.send(request.unwrap()).await;
+
+            let resp = match result {
+                Ok(resp) => resp,
+                Err(e) => {
+                    capability.context.send_event(make_event(Err(e)));
+                    return;
+                }
+            };
+            let resp = Response::new(resp).await;
+
+            capability
+                .context
+                .send_event(make_event(self.expectation.decode(resp)));
+        });
     }
 }
 
-impl fmt::Debug for RequestBuilder {
+impl RequestBuilder<()> {
+    /// A send function for middlewares to use that bypasses the usual "we must return an event"
+    /// stuff.
+    pub async fn middleware_send(self) -> Result<ResponseAsync> {
+        let CapOrClient::Client(client) = self.cap_or_client else {
+            panic!("Called RequestBuilder::middleware_send in a non-middleware context");
+        };
+
+        client.send(self.req.unwrap()).await
+    }
+}
+
+impl<Ev> fmt::Debug for RequestBuilder<Ev> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.req, f)
     }
 }
 
-impl From<RequestBuilder> for Request {
-    /// Converts a `crux_http::RequestBuilder` to a `crux_http::Request`.
-    fn from(builder: RequestBuilder) -> Request {
-        builder.build()
-    }
-}
+// impl From<RequestBuilder<Ev>> for Request {
+//     /// Converts a `crux_http::RequestBuilder` to a `crux_http::Request`.
+//     fn from(builder: RequestBuilder) -> Request {
+//         builder.build()
+//     }
+// }

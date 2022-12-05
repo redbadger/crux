@@ -8,6 +8,7 @@ use url::Url;
 
 mod client;
 mod config;
+mod expect;
 mod middleware;
 mod request;
 mod request_builder;
@@ -19,7 +20,10 @@ pub mod effect;
 pub use http_types::{self as http, Error, Result};
 
 pub use self::{
-    config::Config, request::Request, request_builder::RequestBuilder, response::Response,
+    config::Config,
+    request::Request,
+    request_builder::RequestBuilder,
+    response::{Response, ResponseAsync},
 };
 
 // TODO: These are definitely temporary
@@ -27,6 +31,7 @@ pub use self::{effect::HttpRequest, effect::HttpResponse};
 
 use client::Client;
 
+#[derive(Clone)]
 pub struct Http<Ev> {
     context: CapabilityContext<effect::HttpRequest, Ev>,
     client: Client,
@@ -48,34 +53,34 @@ where
     }
 
     // TODO: document all of these.
-    pub fn get_(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn get_(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn head(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn head(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn post(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn post(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn put(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn put(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn delete(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn delete(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn connect(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn connect(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn options(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn options(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn trace(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn trace(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn patch(url: impl AsRef<str>) -> RequestBuilder {
+    pub fn patch(url: impl AsRef<str>) -> RequestBuilder<Ev> {
         todo!()
     }
-    pub fn request(method: http::Method, url: Url) -> RequestBuilder {
+    pub fn request(method: http::Method, url: Url) -> RequestBuilder<Ev> {
         todo!()
     }
 

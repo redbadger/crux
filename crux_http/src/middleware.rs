@@ -56,7 +56,7 @@
 
 use std::sync::Arc;
 
-use crate::{Client, Request, Response, Result};
+use crate::{Client, Request, ResponseAsync, Result};
 
 // TODO: Later
 // mod redirect;
@@ -70,7 +70,7 @@ use futures_util::future::BoxFuture;
 #[async_trait]
 pub trait Middleware: 'static + Send + Sync {
     /// Asynchronously handle the request, and return a response.
-    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<Response>;
+    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<ResponseAsync>;
 }
 
 // This allows functions to work as middleware too.
@@ -80,9 +80,9 @@ where
     F: Send
         + Sync
         + 'static
-        + for<'a> Fn(Request, Client, Next<'a>) -> BoxFuture<'a, Result<Response>>,
+        + for<'a> Fn(Request, Client, Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>>,
 {
-    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<Response> {
+    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<ResponseAsync> {
         (self)(req, client, next).await
     }
 }
@@ -91,7 +91,7 @@ where
 #[allow(missing_debug_implementations)]
 pub struct Next<'a> {
     next_middleware: &'a [Arc<dyn Middleware>],
-    endpoint: &'a (dyn (Fn(Request, Client) -> BoxFuture<'static, Result<Response>>)
+    endpoint: &'a (dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
              + Send
              + Sync
              + 'static),
@@ -112,7 +112,7 @@ impl<'a> Next<'a> {
     /// Create a new instance
     pub fn new(
         next: &'a [Arc<dyn Middleware>],
-        endpoint: &'a (dyn (Fn(Request, Client) -> BoxFuture<'static, Result<Response>>)
+        endpoint: &'a (dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
                  + Send
                  + Sync
                  + 'static),
@@ -124,7 +124,7 @@ impl<'a> Next<'a> {
     }
 
     /// Asynchronously execute the remaining middleware chain.
-    pub fn run(mut self, req: Request, client: Client) -> BoxFuture<'a, Result<Response>> {
+    pub fn run(mut self, req: Request, client: Client) -> BoxFuture<'a, Result<ResponseAsync>> {
         if let Some((current, next)) = self.next_middleware.split_first() {
             self.next_middleware = next;
             current.handle(req, client, self)

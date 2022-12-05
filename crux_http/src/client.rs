@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use crate::effect::EffectSender;
 use crate::http::{Method, Url};
 use crate::middleware::{Middleware, Next};
-use crate::{Config, Request, RequestBuilder, Response, Result};
+use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
 
 /// An HTTP client, capable of sending `Request`s and running a middleware stack.
 ///
@@ -112,7 +112,7 @@ impl Client {
     /// let res = client.send(req).await?;
     /// # Ok(()) }
     /// ```
-    pub async fn send(&self, req: impl Into<Request>) -> Result<Response> {
+    pub async fn send(&self, req: impl Into<Request>) -> Result<ResponseAsync> {
         let mut req: Request = req.into();
         let middleware = self.middleware.clone();
 
@@ -142,7 +142,7 @@ impl Client {
         };
 
         let res = next.run(req, client).await?;
-        Ok(Response::new(res.into()))
+        Ok(ResponseAsync::new(res.into()))
     }
 
     /// Submit a `Request` and get the response body as bytes.
@@ -257,8 +257,8 @@ impl Client {
     /// let string = client.get("https://httpbin.org/get").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn get(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Get, self.url(uri), self.clone())
+    pub fn get(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Get, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `HEAD` request using the `Client` connection.
@@ -280,8 +280,8 @@ impl Client {
     /// let string = client.head("https://httpbin.org/head").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn head(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Head, self.url(uri), self.clone())
+    pub fn head(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Head, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `POST` request using the `Client` connection.
@@ -303,8 +303,8 @@ impl Client {
     /// let string = client.post("https://httpbin.org/post").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn post(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Post, self.url(uri), self.clone())
+    pub fn post(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Post, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `PUT` request using the `Client` connection.
@@ -326,8 +326,8 @@ impl Client {
     /// let string = client.put("https://httpbin.org/put").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn put(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Put, self.url(uri), self.clone())
+    pub fn put(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Put, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `DELETE` request using the `Client` connection.
@@ -349,8 +349,8 @@ impl Client {
     /// let string = client.delete("https://httpbin.org/delete").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn delete(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Delete, self.url(uri), self.clone())
+    pub fn delete(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Delete, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `CONNECT` request using the `Client` connection.
@@ -372,8 +372,8 @@ impl Client {
     /// let string = client.connect("https://httpbin.org/connect").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn connect(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Connect, self.url(uri), self.clone())
+    pub fn connect(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Connect, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `OPTIONS` request using the `Client` connection.
@@ -395,8 +395,8 @@ impl Client {
     /// let string = client.options("https://httpbin.org/options").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn options(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Options, self.url(uri), self.clone())
+    pub fn options(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Options, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `TRACE` request using the `Client` connection.
@@ -418,8 +418,8 @@ impl Client {
     /// let string = client.trace("https://httpbin.org/trace").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn trace(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Trace, self.url(uri), self.clone())
+    pub fn trace(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Trace, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `PATCH` request using the `Client` connection.
@@ -441,8 +441,8 @@ impl Client {
     /// let string = client.patch("https://httpbin.org/patch").recv_string().await?;
     /// # Ok(()) }
     /// ```
-    pub fn patch(&self, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(Method::Patch, self.url(uri), self.clone())
+    pub fn patch(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(Method::Patch, self.url(uri), self.clone())
     }
 
     /// Perform a HTTP request with the given verb using the `Client` connection.
@@ -465,8 +465,8 @@ impl Client {
     /// let res = client.send(req).await?;
     /// # Ok(()) }
     /// ```
-    pub fn request(&self, verb: Method, uri: impl AsRef<str>) -> RequestBuilder {
-        RequestBuilder::new(verb, self.url(uri), self.clone())
+    pub fn request(&self, verb: Method, uri: impl AsRef<str>) -> RequestBuilder<()> {
+        RequestBuilder::new_for_middleware(verb, self.url(uri), self.clone())
     }
 
     /// Sets the base URL for this client. All request URLs will be relative to this URL.
