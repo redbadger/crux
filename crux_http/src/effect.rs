@@ -69,7 +69,9 @@ impl From<crate::Request> for HttpRequest {
 }
 
 impl From<HttpResponse> for crate::ResponseAsync {
-    fn from(_: HttpResponse) -> Self {
-        todo!()
+    fn from(effect_response: HttpResponse) -> Self {
+        let mut res = crate::http::Response::new(effect_response.status);
+        res.set_body(effect_response.body);
+        crate::ResponseAsync::new(res)
     }
 }

@@ -4,6 +4,7 @@
 //!
 
 use crux_core::{capability::CapabilityContext, Capability};
+use http::Method;
 use url::Url;
 
 mod client;
@@ -31,10 +32,18 @@ pub use self::{effect::HttpRequest, effect::HttpResponse};
 
 use client::Client;
 
-#[derive(Clone)]
 pub struct Http<Ev> {
     context: CapabilityContext<effect::HttpRequest, Ev>,
     client: Client,
+}
+
+impl<Ev> Clone for Http<Ev> {
+    fn clone(&self) -> Self {
+        Self {
+            context: self.context.clone(),
+            client: self.client.clone(),
+        }
+    }
 }
 
 impl<Ev> Http<Ev>
@@ -53,35 +62,35 @@ where
     }
 
     // TODO: document all of these.
-    pub fn get_(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn get_(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn head(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn post(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn put(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn delete(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn connect(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn options(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn trace(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn patch(url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn patch(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+        RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn request(method: http::Method, url: Url) -> RequestBuilder<Ev> {
-        todo!()
+    pub fn request(&self, method: http::Method, url: Url) -> RequestBuilder<Ev> {
+        RequestBuilder::new(method, url, self.clone())
     }
 
     pub fn get<F>(&self, url: Url, callback: F)

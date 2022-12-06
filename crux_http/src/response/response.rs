@@ -21,9 +21,13 @@ pub struct Response<Body> {
 
 impl<Body> Response<Body> {
     /// Create a new instance.
-    pub(crate) async fn new(res: super::ResponseAsync) -> Self {
-        todo!()
-        // Self { res }
+    pub(crate) async fn new(mut res: super::ResponseAsync) -> crate::Result<Response<Vec<u8>>> {
+        let body = res.body_bytes().await?;
+
+        Ok(Response {
+            res,
+            body: Some(body),
+        })
     }
 
     /// Get the HTTP status code.
@@ -151,6 +155,14 @@ impl<Body> Response<Body> {
     /// ```
     pub fn content_type(&self) -> Option<Mime> {
         self.res.content_type()
+    }
+
+    pub fn body(&self) -> Option<&Body> {
+        self.body.as_ref()
+    }
+
+    pub fn take_body(&mut self) -> Option<Body> {
+        self.body.take()
     }
 
     pub fn with_body<NewBody>(self, body: NewBody) -> Response<NewBody> {
