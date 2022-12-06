@@ -14,7 +14,7 @@ const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
 
-#[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
     fact: String,
     length: i32,
@@ -54,7 +54,7 @@ pub struct ViewModel {
     pub platform: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Event {
     None,
     GetPlatform,
@@ -168,5 +168,68 @@ impl App for CatFacts {
             fact,
             image: model.cat_image.clone(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crux_core::capability::CapabilitiesTestHelper;
+    use crux_http::HttpRequest;
+
+    use crate::Effect;
+
+    use super::*;
+
+    #[test]
+    fn fetch_sends_some_requests() {
+        let caps = CapabilitiesTestHelper::<CatFacts, _>::default();
+        let app = CatFacts::default();
+        let mut model = Model::default();
+
+        app.update(Event::Fetch, &mut model, caps.as_ref());
+
+        let effects = caps.effects();
+        assert_eq!(
+            effects[0],
+            Effect::Http(HttpRequest {
+                method: "GET".into(),
+                url: FACT_API_URL.into()
+            })
+        );
+        assert_eq!(
+            effects[1],
+            Effect::Http(HttpRequest {
+                method: "GET".into(),
+                url: IMAGE_API_URL.into()
+            })
+        );
+    }
+
+    #[test]
+    fn fact_response_results_in_set_fact() {
+        let caps = CapabilitiesTestHelper::<CatFacts, _>::default();
+        let app = CatFacts::default();
+        let mut model = Model::default();
+
+        app.update(Event::Fetch, &mut model, caps.as_ref());
+
+        let effects = caps.effects();
+        assert_eq!(
+            effects[0],
+            Effect::Http(HttpRequest {
+                method: "GET".into(),
+                url: FACT_API_URL.into()
+            })
+        );
+        let a_fact = CatFact {
+            fact: "cats are good".to_string(),
+            length: 13,
+        };
+        effects[0].resolve(&HttpResponse {
+            status: 200,
+            body: serde_json::to_vec(&a_fact).unwrap(),
+        });
+
+        assert_eq!(caps.events(), vec![Event::SetFact(a_fact)]);
     }
 }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::Event;
 use crate::app::platform::PlatformCapabilities;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Effect {
     Http(HttpRequest),
     KeyValue(KeyValueRequest),

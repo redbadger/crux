@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct PlatformEffect;
 
 // TODO revisit this
-#[derive(PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformResponse(pub String);
 
 impl crux_core::Effect for PlatformEffect {
