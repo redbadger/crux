@@ -185,17 +185,17 @@ mod tests {
         let app = AppTester::<CatFacts, _>::default();
         let mut model = Model::default();
 
-        let effects = app.update(Event::Fetch, &mut model);
+        let update = app.update(Event::Fetch, &mut model);
 
         assert_eq!(
-            effects[0],
+            update.effects[0],
             Effect::Http(HttpRequest {
                 method: "GET".into(),
                 url: FACT_API_URL.into()
             })
         );
         assert_eq!(
-            effects[1],
+            update.effects[1],
             Effect::Http(HttpRequest {
                 method: "GET".into(),
                 url: IMAGE_API_URL.into()
@@ -208,10 +208,10 @@ mod tests {
         let app = AppTester::<CatFacts, _>::default();
         let mut model = Model::default();
 
-        let effects = app.update(Event::Fetch, &mut model);
+        let update = app.update(Event::Fetch, &mut model);
 
         assert_eq!(
-            effects[0],
+            update.effects[0],
             Effect::Http(HttpRequest {
                 method: "GET".into(),
                 url: FACT_API_URL.into()
@@ -221,11 +221,11 @@ mod tests {
             fact: "cats are good".to_string(),
             length: 13,
         };
-        effects[0].resolve(&HttpResponse {
+
+        let update = update.effects[0].resolve(&HttpResponse {
             status: 200,
             body: serde_json::to_vec(&a_fact).unwrap(),
         });
-
-        assert_eq!(app.events(), vec![Event::SetFact(a_fact)]);
+        assert_eq!(update.events, vec![Event::SetFact(a_fact)])
     }
 }

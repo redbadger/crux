@@ -1,13 +1,8 @@
-use std::{fmt, marker::PhantomData, rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use futures::Future;
 
-use crate::{
-    channels::{Receiver, Sender},
-    continuations::ContinuationStore,
-    executor::{executor_and_spawner, Executor},
-    Command, Request,
-};
+use crate::{channels::Sender, Command};
 
 // TODO docs!
 pub trait Capability<Ev> {

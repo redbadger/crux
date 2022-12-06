@@ -1,10 +1,8 @@
-use std::{fmt, marker::PhantomData, rc::Rc, sync::Arc};
-
-use futures::Future;
+use std::{fmt, rc::Rc};
 
 use crate::{
     capability::CapabilityContext,
-    channels::{Receiver, Sender},
+    channels::Receiver,
     continuations::ContinuationStore,
     executor::{executor_and_spawner, Executor},
     CapabilitiesFactory, Command, Request,
@@ -16,39 +14,24 @@ where
 {
     app: App,
     capabilities: App::Capabilities,
+    context: Rc<AppContext<Ef, App::Event>>,
+}
+
+// TODO: I think this could probably be shared with Core to cut down on a bit of code.
+struct AppContext<Ef, Ev> {
     commands: Receiver<Command<Ef>>,
-    events: Rc<Receiver<App::Event>>,
-    executor: Rc<Executor>,
-    continuation_store: Rc<ContinuationStore>,
+    events: Receiver<Ev>,
+    executor: Executor,
+    continuations: ContinuationStore,
 }
 
 impl<App, Ef> AppTester<App, Ef>
 where
     App: crate::App,
 {
-    pub fn update(&self, msg: App::Event, model: &mut App::Model) -> Vec<TestEffect<Ef>> {
+    pub fn update(&self, msg: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
         self.app.update(msg, model, &self.capabilities);
-
-        self.effects()
-    }
-
-    fn effects(&self) -> Vec<TestEffect<Ef>> {
-        self.executor.run_all();
-        self.commands
-            .drain()
-            .map(|cmd| {
-                let request = self.continuation_store.pause(cmd);
-                TestEffect {
-                    request,
-                    store: self.continuation_store.clone(),
-                    executor: self.executor.clone(),
-                }
-            })
-            .collect()
-    }
-
-    pub fn events(&self) -> Vec<App::Event> {
-        self.events.drain().collect()
+        self.context.updates()
     }
 }
 
@@ -60,6 +43,7 @@ where
     Ef: Send + 'static,
 {
     fn default() -> Self {
+        // Thoughts: all of this shit is _kind_ of an AppContext or CoreContext or something isn't it...?
         let (command_sender, commands) = crate::channels::channel();
         let (event_sender, events) = crate::channels::channel();
         let (executor, spawner) = executor_and_spawner();
@@ -68,10 +52,12 @@ where
         Self {
             app: App::default(),
             capabilities: App::Capabilities::build(capability_context),
-            commands,
-            events: Rc::new(events),
-            executor: Rc::new(executor),
-            continuation_store: Rc::new(ContinuationStore::default()),
+            context: Rc::new(AppContext {
+                commands,
+                events,
+                executor,
+                continuations: ContinuationStore::default(),
+            }),
         }
     }
 }
@@ -85,34 +71,59 @@ where
     }
 }
 
-pub struct TestEffect<Ef> {
-    request: Request<Ef>,
-    store: Rc<ContinuationStore>,
-    executor: Rc<Executor>,
-}
-
-impl<Ef> TestEffect<Ef> {
-    pub fn resolve<T>(&self, result: &T)
-    where
-        T: serde::ser::Serialize,
-    {
-        self.store.resume(
-            self.request.uuid.as_slice(),
-            &bcs::to_bytes(result).unwrap(),
-        );
-
-        // TODO: decide if this is a good idea...
+impl<Ef, Ev> AppContext<Ef, Ev> {
+    pub fn updates(self: &Rc<Self>) -> Update<Ef, Ev> {
         self.executor.run_all();
+        let effects = self
+            .commands
+            .drain()
+            .map(|cmd| {
+                let request = self.continuations.pause(cmd);
+                TestEffect {
+                    request,
+                    context: Rc::clone(self),
+                }
+            })
+            .collect();
+
+        let events = self.events.drain().collect();
+
+        Update { effects, events }
     }
 }
 
-impl<Ef> AsRef<Ef> for TestEffect<Ef> {
+#[derive(Debug)]
+// TODO: is this is a shit name?  I feel it might be.
+pub struct Update<Ef, Ev> {
+    pub effects: Vec<TestEffect<Ef, Ev>>,
+    pub events: Vec<Ev>,
+}
+
+pub struct TestEffect<Ef, Ev> {
+    request: Request<Ef>,
+    context: Rc<AppContext<Ef, Ev>>,
+}
+
+impl<Ef, Ev> TestEffect<Ef, Ev> {
+    pub fn resolve<T>(&self, result: &T) -> Update<Ef, Ev>
+    where
+        T: serde::ser::Serialize,
+    {
+        self.context.continuations.resume(
+            self.request.uuid.as_slice(),
+            &bcs::to_bytes(result).unwrap(),
+        );
+        self.context.updates()
+    }
+}
+
+impl<Ef, Ev> AsRef<Ef> for TestEffect<Ef, Ev> {
     fn as_ref(&self) -> &Ef {
         &self.request.effect
     }
 }
 
-impl<Ef> PartialEq<Ef> for TestEffect<Ef>
+impl<Ef, Ev> PartialEq<Ef> for TestEffect<Ef, Ev>
 where
     Ef: PartialEq,
 {
@@ -121,7 +132,7 @@ where
     }
 }
 
-impl<Ef> fmt::Debug for TestEffect<Ef>
+impl<Ef, Ev> fmt::Debug for TestEffect<Ef, Ev>
 where
     Ef: fmt::Debug,
 {
