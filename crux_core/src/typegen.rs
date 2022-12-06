@@ -225,20 +225,20 @@ impl TypeGen {
         write!(output, "{}", out)?;
 
         // Install dependencies
-        // std::process::Command::new("pnpm")
-        //     .current_dir(output_dir.clone())
-        //     .arg("install")
-        //     .status()
-        //     .expect("Could not pnpm install");
+        std::process::Command::new("pnpm")
+            .current_dir(output_dir.clone())
+            .arg("install")
+            .status()
+            .expect("Could not pnpm install");
 
         // Build TS code and emit declarations
-        // std::process::Command::new("pnpm")
-        //     .current_dir(output_dir)
-        //     .arg("exec")
-        //     .arg("tsc")
-        //     .arg("--build")
-        //     .status()
-        //     .expect("Could tsc --build");
+        std::process::Command::new("pnpm")
+            .current_dir(output_dir)
+            .arg("exec")
+            .arg("tsc")
+            .arg("--build")
+            .status()
+            .expect("Could tsc --build");
 
         Ok(())
     }
