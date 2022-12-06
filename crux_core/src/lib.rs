@@ -113,6 +113,7 @@ mod continuations;
 pub mod executor;
 mod future;
 pub mod render;
+pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 

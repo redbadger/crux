@@ -173,7 +173,7 @@ impl App for CatFacts {
 
 #[cfg(test)]
 mod tests {
-    use crux_core::capability::CapabilitiesTestHelper;
+    use crux_core::testing::AppTester;
     use crux_http::HttpRequest;
 
     use crate::Effect;
@@ -182,13 +182,11 @@ mod tests {
 
     #[test]
     fn fetch_sends_some_requests() {
-        let caps = CapabilitiesTestHelper::<CatFacts, _>::default();
-        let app = CatFacts::default();
+        let app = AppTester::<CatFacts, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Fetch, &mut model, caps.as_ref());
+        let effects = app.update(Event::Fetch, &mut model);
 
-        let effects = caps.effects();
         assert_eq!(
             effects[0],
             Effect::Http(HttpRequest {
@@ -207,13 +205,11 @@ mod tests {
 
     #[test]
     fn fact_response_results_in_set_fact() {
-        let caps = CapabilitiesTestHelper::<CatFacts, _>::default();
-        let app = CatFacts::default();
+        let app = AppTester::<CatFacts, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Fetch, &mut model, caps.as_ref());
+        let effects = app.update(Event::Fetch, &mut model);
 
-        let effects = caps.effects();
         assert_eq!(
             effects[0],
             Effect::Http(HttpRequest {
@@ -230,6 +226,6 @@ mod tests {
             body: serde_json::to_vec(&a_fact).unwrap(),
         });
 
-        assert_eq!(caps.events(), vec![Event::SetFact(a_fact)]);
+        assert_eq!(app.events(), vec![Event::SetFact(a_fact)]);
     }
 }
