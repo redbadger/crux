@@ -668,6 +668,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "derive_more",
  "serde",
  "serde_json",
@@ -681,7 +682,17 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "serde",
+]
+
+[[package]]
+name = "crux_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -691,6 +702,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 
@@ -701,6 +713,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 
@@ -2273,6 +2286,7 @@ dependencies = [
  "crux_core",
  "crux_http",
  "crux_kv",
+ "crux_macros",
  "crux_platform",
  "crux_time",
  "derive_more",
@@ -2483,9 +2497,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.104"
+version = "1.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ae548ec36cf198c0ef7710d3c230987c2d6d7bd98ad6edc0274462724c585ce"
+checksum = "60b9b43d45702de4c839cb9b51d9f529c5dd26a4aff255b42b1ebc03e88ee908"
 dependencies = [
  "proc-macro2",
  "quote",

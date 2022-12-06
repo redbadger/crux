@@ -3,19 +3,19 @@ package com.redbadger.catfacts.shared_types;
 
 public final class Request {
     public final java.util.List<@com.novi.serde.Unsigned Byte> uuid;
-    public final RequestBody body;
+    public final Effect effect;
 
-    public Request(java.util.List<@com.novi.serde.Unsigned Byte> uuid, RequestBody body) {
+    public Request(java.util.List<@com.novi.serde.Unsigned Byte> uuid, Effect effect) {
         java.util.Objects.requireNonNull(uuid, "uuid must not be null");
-        java.util.Objects.requireNonNull(body, "body must not be null");
+        java.util.Objects.requireNonNull(effect, "effect must not be null");
         this.uuid = uuid;
-        this.body = body;
+        this.effect = effect;
     }
 
     public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
         serializer.increase_container_depth();
         TraitHelpers.serialize_vector_u8(uuid, serializer);
-        body.serialize(serializer);
+        effect.serialize(serializer);
         serializer.decrease_container_depth();
     }
 
@@ -29,7 +29,7 @@ public final class Request {
         deserializer.increase_container_depth();
         Builder builder = new Builder();
         builder.uuid = TraitHelpers.deserialize_vector_u8(deserializer);
-        builder.body = RequestBody.deserialize(deserializer);
+        builder.effect = Effect.deserialize(deserializer);
         deserializer.decrease_container_depth();
         return builder.build();
     }
@@ -52,25 +52,25 @@ public final class Request {
         if (getClass() != obj.getClass()) return false;
         Request other = (Request) obj;
         if (!java.util.Objects.equals(this.uuid, other.uuid)) { return false; }
-        if (!java.util.Objects.equals(this.body, other.body)) { return false; }
+        if (!java.util.Objects.equals(this.effect, other.effect)) { return false; }
         return true;
     }
 
     public int hashCode() {
         int value = 7;
         value = 31 * value + (this.uuid != null ? this.uuid.hashCode() : 0);
-        value = 31 * value + (this.body != null ? this.body.hashCode() : 0);
+        value = 31 * value + (this.effect != null ? this.effect.hashCode() : 0);
         return value;
     }
 
     public static final class Builder {
         public java.util.List<@com.novi.serde.Unsigned Byte> uuid;
-        public RequestBody body;
+        public Effect effect;
 
         public Request build() {
             return new Request(
                 uuid,
-                body
+                effect
             );
         }
     }

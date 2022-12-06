@@ -82,6 +82,7 @@ mod shared {
         }
     }
 
+    // #[derive(Capabilities)]
     pub(crate) struct MyCapabilities {
         pub http: Http<MyEvent>,
         pub render: Render<MyEvent>,

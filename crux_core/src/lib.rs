@@ -212,13 +212,15 @@ where
             bcs::from_bytes(msg).expect("Message deserialization failed.");
 
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
         self.app.update(event, &mut model, &self.capabilities);
+        drop(model);
 
         self.executor.run_all();
 
         while let Some(event) = self.event_receiver.receive() {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
             self.app.update(event, &mut model, &self.capabilities);
+            drop(model);
             self.executor.run_all()
         }
 
@@ -243,10 +245,10 @@ where
         self.continuations.resume(uuid, body);
         self.executor.run_all();
 
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
         while let Some(event) = self.event_receiver.receive() {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
             self.app.update(event, &mut model, &self.capabilities);
+            drop(model);
             self.executor.run_all()
         }
 
@@ -261,9 +263,11 @@ where
 
     /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
-        let model = self.model.read().expect("Model RwLock was poisoned.");
+        let value = {
+            let model = self.model.read().expect("Model RwLock was poisoned.");
+            self.app.view(&model)
+        };
 
-        let value = self.app.view(&model);
         bcs::to_bytes(&value).expect("View model serialization failed.")
     }
 }
