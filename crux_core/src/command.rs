@@ -8,9 +8,6 @@ pub struct Command<Ef> {
     pub(crate) resolve: Option<Resolve>,
 }
 
-// TODO: Ok, now - does command even need to be public?
-
-// TODO: Could probably just use the type direct, look into that
 pub(crate) type Resolve = Box<dyn Fn(&[u8]) + Send>;
 
 impl<Ef> Command<Ef> {

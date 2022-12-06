@@ -92,7 +92,6 @@ where
     {
         self.map_input::<crate::Command<_>, _>(move |command| command.map_effect(func))
     }
-
 }
 
 trait SenderInner<T> {
@@ -118,8 +117,6 @@ where
         self.sender.send((self.func)(value))
     }
 }
-
-// TOOD: Some tests that this is compatible with wasm etc.
 
 #[cfg(test)]
 mod tests {
