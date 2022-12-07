@@ -25,8 +25,10 @@ impl<T> Receiver<T> {
             Ok(inner) => Some(inner),
             Err(crossbeam_channel::TryRecvError::Empty) => None,
             Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                // Users _generally_ shouldn't be messing with channels themselves, so
+                // this probably shouldn't happen.  Might happen in tests, but lets
+                // fix that if we get complaints
                 panic!("Receiver was disconnected.")
-                // TODO: Should this be a panic or just return None?  Not sure
             }
         }
     }
