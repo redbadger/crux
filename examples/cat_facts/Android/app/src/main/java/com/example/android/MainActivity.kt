@@ -165,13 +165,13 @@ class Model : ViewModel() {
                 )
             }
             is Effect.KeyValue -> when (effect.value) {
-                is KeyValueRequest.Read -> update(
+                is KeyValueOperation.Read -> update(
                     CoreMessage.Response(
                         req.uuid.toByteArray().toUByteArray().toList(),
                         Outcome.KeyValue(KeyValueOutput.Read(null))
                     )
                 )
-                is KeyValueRequest.Write -> update(
+                is KeyValueOperation.Write -> update(
                     CoreMessage.Response(
                         req.uuid.toByteArray().toUByteArray().toList(),
                         Outcome.KeyValue(KeyValueOutput.Write(false)),

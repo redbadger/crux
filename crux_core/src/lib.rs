@@ -115,7 +115,7 @@ mod steps;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-use std::{marker::PhantomData, sync::RwLock};
+use std::sync::RwLock;
 
 use serde::{Deserialize, Serialize};
 
@@ -160,7 +160,6 @@ where
     steps: Receiver<Step<Ef>>,
     capability_events: Receiver<A::Event>,
     app: A,
-    _marker: PhantomData<Ef>,
 }
 
 impl<Ef, A> Core<Ef, A>
@@ -195,7 +194,6 @@ where
             capabilities: CapFactory::build(capability_context),
             steps: command_receiver,
             capability_events: event_receiver,
-            _marker: PhantomData,
         }
     }
 
@@ -206,21 +204,13 @@ where
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let shell_event: <A as App>::Event =
-            bcs::from_bytes(msg).expect("Message deserialization failed.");
-
-        {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app.update(shell_event, &mut model, &self.capabilities);
-        }
+        let shell_event = bcs::from_bytes(msg).expect("Message deserialization failed.");
+        self.update(shell_event);
         self.executor.run_all();
 
-        while let Some(event) = self.capability_events.receive() {
-            {
-                let mut model = self.model.write().expect("Model RwLock was poisoned.");
-                self.app.update(event, &mut model, &self.capabilities);
-            }
-            self.executor.run_all()
+        while let Some(capability_event) = self.capability_events.receive() {
+            self.update(capability_event);
+            self.executor.run_all();
         }
 
         let requests = self
@@ -244,12 +234,9 @@ where
         self.step_registry.resume(uuid, body);
         self.executor.run_all();
 
-        while let Some(event) = self.capability_events.receive() {
-            {
-                let mut model = self.model.write().expect("Model RwLock was poisoned.");
-                self.app.update(event, &mut model, &self.capabilities);
-            }
-            self.executor.run_all()
+        while let Some(capability_event) = self.capability_events.receive() {
+            self.update(capability_event);
+            self.executor.run_all();
         }
 
         let requests = self
@@ -269,6 +256,11 @@ where
         };
 
         bcs::to_bytes(&value).expect("View model serialization failed.")
+    }
+
+    fn update(&self, e: <A as App>::Event) {
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        self.app.update(e, &mut model, &self.capabilities);
     }
 }
 

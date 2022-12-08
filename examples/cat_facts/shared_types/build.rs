@@ -8,6 +8,8 @@ use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
 use std::path::PathBuf;
 
 fn main() {
+    println!("cargo:rerun-if-changed=../shared");
+
     let mut gen = TypeGen::new();
 
     register_types(&mut gen).expect("type registration failed");
