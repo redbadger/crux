@@ -51,12 +51,6 @@ mod shared {
         Render,
     }
 
-    impl Default for MyEffect {
-        fn default() -> Self {
-            MyEffect::Render
-        }
-    }
-
     pub struct MyCapabilities {
         pub platform: Platform<MyEvent>,
         pub render: Render<MyEvent>,

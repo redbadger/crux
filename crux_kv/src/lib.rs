@@ -9,7 +9,7 @@ pub enum KeyValueRequest {
     Write(String, Vec<u8>),
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum KeyValueResponse {
     Read(Option<Vec<u8>>),
     Write(bool),

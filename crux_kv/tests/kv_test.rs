@@ -66,12 +66,6 @@ mod shared {
         Render,
     }
 
-    impl Default for MyEffect {
-        fn default() -> Self {
-            MyEffect::Render
-        }
-    }
-
     pub struct MyCapabilities {
         pub key_value: KeyValue<MyEvent>,
         pub render: Render<MyEvent>,

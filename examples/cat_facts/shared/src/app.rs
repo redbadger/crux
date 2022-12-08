@@ -54,7 +54,7 @@ pub struct ViewModel {
     pub platform: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Event {
     None,
     GetPlatform,

@@ -10,7 +10,7 @@ pub struct Model {
     pub platform: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PlatformEvent {
     Get,
     Set(PlatformResponse),
