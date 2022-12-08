@@ -9,7 +9,7 @@ enum Outcome {
     case platform(PlatformResponse)
     case time(TimeResponse)
     case http(HttpResponse)
-    case key_value(KeyValueResponse)
+    case key_value(KeyValueOutput)
 }
 
 enum Message {
@@ -61,9 +61,9 @@ class Model: ObservableObject {
             case .platform:
                 update(msg: .response(req.uuid, .platform(PlatformResponse(value: get_platform()))))
             case .keyValue(.read):
-                update(msg: .response(req.uuid, .key_value(KeyValueResponse.read(.none))))
+                update(msg: .response(req.uuid, .key_value(KeyValueOutput.read(.none))))
             case .keyValue(.write):
-                update(msg: .response(req.uuid, .key_value(KeyValueResponse.write(false))))
+                update(msg: .response(req.uuid, .key_value(KeyValueOutput.write(false))))
             }
         }
     }

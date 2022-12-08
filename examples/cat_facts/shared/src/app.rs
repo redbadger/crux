@@ -3,7 +3,7 @@ use crate::effect::CatFactCapabilities;
 use self::platform::PlatformEvent;
 pub use crux_core::App;
 use crux_http::HttpResponse;
-use crux_kv::KeyValueResponse;
+use crux_kv::KeyValueOutput;
 use crux_time::TimeResponse;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -62,8 +62,8 @@ pub enum Event {
     Clear,
     Get,
     Fetch,
-    Restore,                    // restore state
-    SetState(KeyValueResponse), // receive the data to restore state with
+    Restore,                  // restore state
+    SetState(KeyValueOutput), // receive the data to restore state with
     SetFact(CatFact),
     SetImage(HttpResponse),
     CurrentTime(TimeResponse),
@@ -141,7 +141,7 @@ impl App for CatFacts {
                 caps.key_value.read("state", Event::SetState);
             }
             Event::SetState(response) => {
-                if let KeyValueResponse::Read(Some(bytes)) = response {
+                if let KeyValueOutput::Read(Some(bytes)) = response {
                     if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
                         *model = m
                     };

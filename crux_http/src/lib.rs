@@ -1,6 +1,9 @@
 //! TODO mod docs
 
-use crux_core::{capability::CapabilityContext, Capability};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -40,8 +43,8 @@ pub struct HttpResponse {
     pub body: Vec<u8>, // TODO support headers
 }
 
-impl crux_core::Effect for HttpRequest {
-    type Response = HttpResponse;
+impl Operation for HttpRequest {
+    type Output = HttpResponse;
 }
 
 pub struct Http<Ev> {
@@ -75,12 +78,12 @@ where
                 method: HttpMethod::Get.to_string(),
                 url: url.to_string(),
             };
-            let resp = ctx.effect(request).await;
+            let resp = ctx.request_effect(request).await;
 
             let data =
                 serde_json::from_slice::<T>(&resp.body).expect("TODO: do something sensible here");
 
-            ctx.send_event(callback(data))
+            ctx.dispatch(callback(data))
         });
     }
 
@@ -95,9 +98,9 @@ where
                 method: method.to_string(),
                 url: url.to_string(),
             };
-            let resp = ctx.effect(request).await;
+            let resp = ctx.request_effect(request).await;
 
-            ctx.send_event(callback(resp))
+            ctx.dispatch(callback(resp))
         });
     }
 }

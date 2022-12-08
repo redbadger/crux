@@ -1,6 +1,6 @@
 mod shared {
     use crux_core::{capability::CapabilityContext, render::Render, App, CapabilitiesFactory};
-    use crux_kv::{KeyValue, KeyValueRequest, KeyValueResponse};
+    use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -10,7 +10,7 @@ mod shared {
     pub enum MyEvent {
         Write,
         Read,
-        Set(KeyValueResponse),
+        Set(KeyValueOutput),
     }
 
     #[derive(Default, Serialize, Deserialize)]
@@ -37,14 +37,14 @@ mod shared {
                     caps.key_value
                         .write("test", 42i32.to_ne_bytes().to_vec(), MyEvent::Set);
                 }
-                MyEvent::Set(KeyValueResponse::Write(success)) => {
+                MyEvent::Set(KeyValueOutput::Write(success)) => {
                     model.successful = success;
                     caps.render.render()
                 }
                 MyEvent::Read => caps.key_value.read("test", MyEvent::Set),
-                MyEvent::Set(KeyValueResponse::Read(value)) => {
+                MyEvent::Set(KeyValueOutput::Read(value)) => {
                     if let Some(value) = value {
-                        // TODO: should KeyValueResponse::Read be generic over the value type?
+                        // TODO: should KeyValueOutput::Read be generic over the value type?
                         let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                         model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
                     }
@@ -62,14 +62,8 @@ mod shared {
 
     #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
     pub enum MyEffect {
-        KeyValue(KeyValueRequest),
+        KeyValue(KeyValueOperation),
         Render,
-    }
-
-    impl Default for MyEffect {
-        fn default() -> Self {
-            MyEffect::Render
-        }
     }
 
     pub struct MyCapabilities {
@@ -91,11 +85,11 @@ mod shell {
     use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
-    use crux_kv::{KeyValueRequest, KeyValueResponse};
+    use crux_kv::{KeyValueOperation, KeyValueOutput};
     use std::collections::{HashMap, VecDeque};
 
     pub enum Outcome {
-        KeyValue(KeyValueResponse),
+        KeyValue(KeyValueOutput),
     }
 
     enum CoreMessage {
@@ -131,27 +125,27 @@ mod shell {
                 let Request { uuid, effect } = req;
                 match effect {
                     MyEffect::Render => received.push(effect.clone()),
-                    MyEffect::KeyValue(KeyValueRequest::Write(ref k, ref v)) => {
+                    MyEffect::KeyValue(KeyValueOperation::Write(ref k, ref v)) => {
                         received.push(effect.clone());
 
                         // do work
                         kv_store.insert(k.clone(), v.clone());
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(KeyValueResponse::Write(true)),
+                            Outcome::KeyValue(KeyValueOutput::Write(true)),
                         ));
 
                         // now trigger a read
                         queue.push_back(CoreMessage::Message(MyEvent::Read));
                     }
-                    MyEffect::KeyValue(KeyValueRequest::Read(ref k)) => {
+                    MyEffect::KeyValue(KeyValueOperation::Read(ref k)) => {
                         received.push(effect.clone());
 
                         // do work
                         let v = kv_store.get(k).unwrap();
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(KeyValueResponse::Read(Some(v.to_vec()))),
+                            Outcome::KeyValue(KeyValueOutput::Read(Some(v.to_vec()))),
                         ));
                     }
                 }
@@ -166,7 +160,7 @@ mod shell {
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;
-    use crux_kv::KeyValueRequest;
+    use crux_kv::KeyValueOperation;
 
     #[test]
     pub fn test_http() -> Result<()> {
@@ -174,12 +168,12 @@ mod tests {
         assert_eq!(
             received,
             vec![
-                MyEffect::KeyValue(KeyValueRequest::Write(
+                MyEffect::KeyValue(KeyValueOperation::Write(
                     "test".to_string(),
                     42i32.to_ne_bytes().to_vec()
                 )),
                 MyEffect::Render,
-                MyEffect::KeyValue(KeyValueRequest::Read("test".to_string())),
+                MyEffect::KeyValue(KeyValueOperation::Read("test".to_string())),
                 MyEffect::Render
             ]
         );

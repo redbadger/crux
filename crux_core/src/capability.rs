@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use futures::Future;
 
-use crate::{
-    channels::{Receiver, Sender},
-    Command,
-};
+use crate::{channels::Sender, Step};
+
+pub trait Operation: serde::Serialize + Send + 'static {
+    type Output: serde::de::DeserializeOwned + Send + 'static;
+}
 
 // TODO docs!
 pub trait Capability<Ev> {
@@ -30,8 +31,8 @@ pub struct CapabilityContext<Ef, Event> {
 }
 
 struct ContextInner<Ef, Event> {
-    command_sender: Sender<Command<Ef>>,
-    event_sender: Sender<Event>,
+    steps: Sender<Step<Ef>>,
+    events: Sender<Event>,
     spawner: crate::executor::Spawner,
 }
 
@@ -49,29 +50,29 @@ where
     Ev: 'static,
 {
     pub(crate) fn new(
-        command_sender: Sender<Command<Ef>>,
-        event_sender: Sender<Ev>,
+        steps: Sender<Step<Ef>>,
+        events: Sender<Ev>,
         spawner: crate::executor::Spawner,
     ) -> Self {
         let inner = Arc::new(ContextInner {
-            command_sender,
-            event_sender,
+            steps,
+            events,
             spawner,
         });
 
         CapabilityContext { inner }
     }
 
-    pub(crate) fn run_command(&self, cmd: Command<Ef>) {
-        self.inner.command_sender.send(cmd);
+    pub(crate) fn advance(&self, step: Step<Ef>) {
+        self.inner.steps.send(step);
     }
 
     pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
         self.inner.spawner.spawn(f);
     }
 
-    pub fn send_event(&self, event: Ev) {
-        self.inner.event_sender.send(event);
+    pub fn dispatch(&self, event: Ev) {
+        self.inner.events.send(event);
     }
 
     pub fn map_effect<NewEf, F>(&self, func: F) -> CapabilityContext<NewEf, Ev>
@@ -80,8 +81,8 @@ where
         NewEf: 'static,
     {
         let inner = Arc::new(ContextInner {
-            command_sender: self.inner.command_sender.map_effect(func),
-            event_sender: self.inner.event_sender.clone(),
+            steps: self.inner.steps.map_effect(func),
+            events: self.inner.events.clone(),
             spawner: self.inner.spawner.clone(),
         });
 
@@ -94,8 +95,8 @@ where
         NewEv: 'static,
     {
         let inner = Arc::new(ContextInner {
-            command_sender: self.inner.command_sender.clone(),
-            event_sender: self.inner.event_sender.map_input(func),
+            steps: self.inner.steps.clone(),
+            events: self.inner.events.map_input(func),
             spawner: self.inner.spawner.clone(),
         });
 

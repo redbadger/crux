@@ -319,9 +319,9 @@ public abstract class Event {
     }
 
     public static final class SetState extends Event {
-        public final KeyValueResponse value;
+        public final KeyValueOutput value;
 
-        public SetState(KeyValueResponse value) {
+        public SetState(KeyValueOutput value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -336,7 +336,7 @@ public abstract class Event {
         static SetState load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = KeyValueResponse.deserialize(deserializer);
+            builder.value = KeyValueOutput.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -357,7 +357,7 @@ public abstract class Event {
         }
 
         public static final class Builder {
-            public KeyValueResponse value;
+            public KeyValueOutput value;
 
             public SetState build() {
                 return new SetState(
@@ -514,4 +514,3 @@ public abstract class Event {
         }
     }
 }
-

@@ -108,11 +108,10 @@
 
 pub mod capability;
 pub mod channels;
-mod command;
-mod continuations;
 pub mod executor;
 mod future;
 pub mod render;
+mod steps;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
@@ -122,9 +121,8 @@ use serde::{Deserialize, Serialize};
 
 use capability::CapabilityContext;
 use channels::Receiver;
-use command::Command;
-use continuations::ContinuationStore;
 use executor::Executor;
+use steps::{Step, StepRegistry};
 
 pub use capability::{CapabilitiesFactory, Capability};
 
@@ -156,11 +154,11 @@ where
     A: App,
 {
     model: RwLock<A::Model>,
-    continuations: ContinuationStore,
+    step_registry: StepRegistry,
     executor: Executor,
     capabilities: A::Capabilities,
-    command_receiver: Receiver<Command<Ef>>,
-    event_receiver: Receiver<A::Event>,
+    steps: Receiver<Step<Ef>>,
+    capability_events: Receiver<A::Event>,
     app: A,
     _marker: PhantomData<Ef>,
 }
@@ -191,12 +189,12 @@ where
 
         Self {
             model: Default::default(),
-            continuations: Default::default(),
+            step_registry: Default::default(),
             executor,
             app: Default::default(),
             capabilities: CapFactory::build(capability_context),
-            command_receiver,
-            event_receiver,
+            steps: command_receiver,
+            capability_events: event_receiver,
             _marker: PhantomData,
         }
     }
@@ -208,26 +206,27 @@ where
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let event: <A as App>::Event =
+        let shell_event: <A as App>::Event =
             bcs::from_bytes(msg).expect("Message deserialization failed.");
 
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-        self.app.update(event, &mut model, &self.capabilities);
-        drop(model);
-
+        {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app.update(shell_event, &mut model, &self.capabilities);
+        }
         self.executor.run_all();
 
-        while let Some(event) = self.event_receiver.receive() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app.update(event, &mut model, &self.capabilities);
-            drop(model);
+        while let Some(event) = self.capability_events.receive() {
+            {
+                let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                self.app.update(event, &mut model, &self.capabilities);
+            }
             self.executor.run_all()
         }
 
         let requests = self
-            .command_receiver
+            .steps
             .drain()
-            .map(|c| self.continuations.pause(c))
+            .map(|c| self.step_registry.register(c))
             .collect::<Vec<_>>();
 
         bcs::to_bytes(&requests).expect("Request serialization failed.")
@@ -242,20 +241,21 @@ where
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        self.continuations.resume(uuid, body);
+        self.step_registry.resume(uuid, body);
         self.executor.run_all();
 
-        while let Some(event) = self.event_receiver.receive() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app.update(event, &mut model, &self.capabilities);
-            drop(model);
+        while let Some(event) = self.capability_events.receive() {
+            {
+                let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                self.app.update(event, &mut model, &self.capabilities);
+            }
             self.executor.run_all()
         }
 
         let requests = self
-            .command_receiver
+            .steps
             .drain()
-            .map(|c| self.continuations.pause(c))
+            .map(|c| self.step_registry.register(c))
             .collect::<Vec<_>>();
 
         bcs::to_bytes(&requests).expect("Request serialization failed.")
@@ -290,12 +290,4 @@ where
 pub struct Request<Effect> {
     pub uuid: Vec<u8>,
     pub effect: Effect,
-}
-
-// This name is too confusing, since we kind of have two "Effects"
-// We've got the `Effect` enum that gets serialised to the shell
-// and the capability level stuff, which this represnets.
-// TODO: Think up a better name...
-pub trait Effect: serde::Serialize + Send + 'static {
-    type Response: serde::de::DeserializeOwned + Send + 'static;
 }

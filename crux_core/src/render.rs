@@ -1,4 +1,4 @@
-use super::Command;
+use super::Step;
 use crate::{capability::CapabilityContext, Capability};
 
 pub struct Render<Ev> {
@@ -16,7 +16,7 @@ where
     pub fn render(&self) {
         let ctx = self.context.clone();
         self.context
-            .spawn(async move { ctx.run_command(Command::new_without_callback(())) })
+            .spawn(async move { ctx.advance(Step::once(())) })
     }
 } // Public API of the capability, called by App::update.
 

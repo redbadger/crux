@@ -5,7 +5,7 @@ use std::{
 
 use futures::Future;
 
-use crate::Command;
+use crate::Step;
 
 pub struct EffectFuture<T> {
     shared_state: Arc<Mutex<SharedState<T>>>,
@@ -34,19 +34,19 @@ impl<T> Future for EffectFuture<T> {
     }
 }
 
-impl<Ef, Ev> crate::capability::CapabilityContext<Ef, Ev>
+impl<Op, Ev> crate::capability::CapabilityContext<Op, Ev>
 where
-    Ef: crate::Effect,
+    Op: crate::capability::Operation,
     Ev: 'static,
 {
-    pub fn effect(&self, effect: Ef) -> EffectFuture<Ef::Response> {
+    pub fn request_effect(&self, operation: Op) -> EffectFuture<Op::Output> {
         let shared_state = Arc::new(Mutex::new(SharedState {
             result: None,
             waker: None,
         }));
 
         let callback_shared_state = shared_state.clone();
-        self.run_command(Command::new(effect, move |bytes| {
+        self.advance(Step::new(operation, move |bytes| {
             let mut shared_state = callback_shared_state.lock().unwrap();
             shared_state.result = Some(bcs::from_bytes(bytes).unwrap());
             if let Some(waker) = shared_state.waker.take() {

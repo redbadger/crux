@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use clap::Parser;
 use shared::{
     http::{HttpRequest, HttpResponse},
-    key_value::{KeyValueRequest, KeyValueResponse},
+    key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
@@ -30,7 +30,7 @@ pub enum Outcome {
     Platform(PlatformResponse),
     Time(TimeResponse),
     Http(HttpResponse),
-    KeyValue(KeyValueResponse),
+    KeyValue(KeyValueOutput),
 }
 
 /// Simple program to greet a person
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
                     Outcome::Platform(PlatformResponse("cli".to_string())),
                 )),
                 Effect::KeyValue(request) => match request {
-                    KeyValueRequest::Read(key) => {
+                    KeyValueOperation::Read(key) => {
                         let bytes = read_state(&key).await.ok();
 
                         let initial_msg = match &args.cmd {
@@ -109,16 +109,16 @@ async fn main() -> Result<()> {
 
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(KeyValueResponse::Read(bytes)),
+                            Outcome::KeyValue(KeyValueOutput::Read(bytes)),
                         ));
                         queue.push_back(initial_msg);
                     }
-                    KeyValueRequest::Write(key, value) => {
+                    KeyValueOperation::Write(key, value) => {
                         let success = write_state(&key, &value).await.is_ok();
 
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(KeyValueResponse::Write(success)),
+                            Outcome::KeyValue(KeyValueOutput::Write(success)),
                         ));
                     }
                 },

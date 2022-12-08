@@ -76,12 +76,6 @@ mod shared {
         Render,
     }
 
-    impl Default for MyEffect {
-        fn default() -> Self {
-            MyEffect::Render
-        }
-    }
-
     // #[derive(Capabilities)]
     pub(crate) struct MyCapabilities {
         pub http: Http<MyEvent>,

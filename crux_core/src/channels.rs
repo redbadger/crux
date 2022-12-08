@@ -83,16 +83,16 @@ where
     }
 }
 
-impl<Ef> Sender<crate::Command<Ef>>
+impl<Ef> Sender<crate::Step<Ef>>
 where
     Ef: 'static,
 {
-    pub fn map_effect<NewEf, F>(&self, func: F) -> Sender<crate::Command<NewEf>>
+    pub fn map_effect<NewEf, F>(&self, func: F) -> Sender<crate::Step<NewEf>>
     where
         F: Fn(NewEf) -> Ef + Sync + Send + Copy + 'static,
         NewEf: 'static,
     {
-        self.map_input::<crate::Command<_>, _>(move |command| command.map_effect(func))
+        self.map_input::<crate::Step<_>, _>(move |step| step.map_effect(func))
     }
 }
 
