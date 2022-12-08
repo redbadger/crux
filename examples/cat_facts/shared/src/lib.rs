@@ -1,18 +1,19 @@
-pub use app::*;
+pub mod app;
+pub mod effect;
+
+use lazy_static::lazy_static;
+use wasm_bindgen::prelude::wasm_bindgen;
+
 use crux_core::Core;
 pub use crux_core::Request;
 pub use crux_http as http;
 pub use crux_kv as key_value;
 pub use crux_platform as platform;
 pub use crux_time as time;
+
+pub use app::*;
+use effect::CatFactCapabilities;
 pub use effect::Effect;
-use lazy_static::lazy_static;
-use wasm_bindgen::prelude::wasm_bindgen;
-
-use crate::effect::CatFactCapabilities;
-
-pub mod app;
-pub mod effect;
 
 // TODO hide this plumbing
 

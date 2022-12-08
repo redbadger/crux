@@ -25,12 +25,13 @@ impl<T> Future for EffectFuture<T> {
     ) -> std::task::Poll<Self::Output> {
         let mut shared_state = self.shared_state.lock().unwrap();
 
-        if let Some(result) = shared_state.result.take() {
-            return Poll::Ready(result);
+        match shared_state.result.take() {
+            Some(result) => Poll::Ready(result),
+            None => {
+                shared_state.waker = Some(cx.waker().clone());
+                Poll::Pending
+            }
         }
-
-        shared_state.waker = Some(cx.waker().clone());
-        Poll::Pending
     }
 }
 

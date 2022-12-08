@@ -1,14 +1,15 @@
-use crate::effect::CatFactCapabilities;
+pub mod platform;
 
-use self::platform::PlatformEvent;
+use serde::{Deserialize, Serialize};
+use url::Url;
+
 pub use crux_core::App;
 use crux_http::HttpResponse;
 use crux_kv::KeyValueOutput;
 use crux_time::TimeResponse;
-use serde::{Deserialize, Serialize};
-use url::Url;
 
-pub mod platform;
+use crate::effect::CatFactCapabilities;
+use platform::PlatformEvent;
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
