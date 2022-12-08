@@ -121,7 +121,7 @@ use serde::{Deserialize, Serialize};
 
 use capability::CapabilityContext;
 use channels::Receiver;
-use executor::Executor;
+use executor::QueuingExecutor;
 use steps::{Step, StepRegistry};
 
 pub use capability::{Capability, WithContext};
@@ -155,7 +155,7 @@ where
 {
     model: RwLock<A::Model>,
     step_registry: StepRegistry,
-    executor: Executor,
+    executor: QueuingExecutor,
     capabilities: A::Capabilities,
     steps: Receiver<Step<Ef>>,
     capability_events: Receiver<A::Event>,

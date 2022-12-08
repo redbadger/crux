@@ -10,7 +10,7 @@ use futures::{
     Future, FutureExt,
 };
 
-pub(crate) struct Executor {
+pub(crate) struct QueuingExecutor {
     ready_queue: Receiver<Arc<Task>>,
 }
 
@@ -25,10 +25,10 @@ struct Task {
     task_sender: Sender<Arc<Task>>,
 }
 
-pub(crate) fn executor_and_spawner() -> (Executor, Spawner) {
+pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
     let (task_sender, ready_queue) = crossbeam_channel::unbounded();
 
-    (Executor { ready_queue }, Spawner { task_sender })
+    (QueuingExecutor { ready_queue }, Spawner { task_sender })
 }
 
 impl Spawner {
@@ -55,7 +55,7 @@ impl ArcWake for Task {
     }
 }
 
-impl Executor {
+impl QueuingExecutor {
     pub fn run_all(&self) {
         while let Ok(task) = self.ready_queue.try_recv() {
             let mut future_slot = task.future.lock().unwrap();
