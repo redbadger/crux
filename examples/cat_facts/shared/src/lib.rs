@@ -1,7 +1,7 @@
 pub mod app;
 
 use lazy_static::lazy_static;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub use crux_core::Request;
@@ -43,7 +43,7 @@ pub fn view() -> Vec<u8> {
 // TODO macro effect generation:
 // crux_macros::generate_effect!(Effect, CatFactCapabilities);
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Effect {
     Http(HttpRequest),
     KeyValue(KeyValueOperation),
