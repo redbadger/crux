@@ -9,10 +9,10 @@ mod shared {
 
     #[derive(Serialize, Deserialize)]
     pub enum MyEvent {
-        HttpGet,
-        HttpGetJson,
-        HttpSet(HttpResponse),
-        HttpSetJson(String),
+        Get,
+        GetJson,
+        Set(HttpResponse),
+        SetJson(String),
     }
 
     #[derive(Default, Serialize, Deserialize)]
@@ -36,22 +36,20 @@ mod shared {
 
         fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
             match event {
-                MyEvent::HttpGet => {
+                MyEvent::Get => {
                     caps.http
-                        .get(Url::parse("http://example.com").unwrap(), MyEvent::HttpSet);
+                        .get(Url::parse("http://example.com").unwrap(), MyEvent::Set);
                 }
-                MyEvent::HttpGetJson => {
-                    caps.http.get_json(
-                        Url::parse("http://example.com").unwrap(),
-                        MyEvent::HttpSetJson,
-                    );
+                MyEvent::GetJson => {
+                    caps.http
+                        .get_json(Url::parse("http://example.com").unwrap(), MyEvent::SetJson);
                 }
-                MyEvent::HttpSet(response) => {
+                MyEvent::Set(response) => {
                     model.status = response.status;
                     model.body = response.body;
                     caps.render.render()
                 }
-                MyEvent::HttpSetJson(body) => {
+                MyEvent::SetJson(body) => {
                     model.json_body = body;
                     caps.render.render()
                 }
@@ -163,7 +161,7 @@ mod tests {
 
     #[test]
     pub fn test_http() -> Result<()> {
-        let (received, view) = run(MyEvent::HttpGet)?;
+        let (received, view) = run(MyEvent::Get)?;
         assert_eq!(
             received,
             vec![
@@ -180,7 +178,7 @@ mod tests {
 
     #[test]
     pub fn test_http_json() -> Result<()> {
-        let (received, view) = run(MyEvent::HttpGetJson)?;
+        let (received, view) = run(MyEvent::GetJson)?;
         assert_eq!(
             received,
             vec![
