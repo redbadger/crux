@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App, CapabilitiesFactory};
+    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
     use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
     use serde::{Deserialize, Serialize};
 
@@ -71,11 +71,11 @@ mod shared {
         pub render: Render<MyEvent>,
     }
 
-    impl CapabilitiesFactory<MyApp, MyEffect> for MyCapabilities {
-        fn build(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
+    impl WithContext<MyApp, MyEffect> for MyCapabilities {
+        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
             MyCapabilities {
-                key_value: KeyValue::new(context.map_effect(MyEffect::KeyValue)),
-                render: Render::new(context.map_effect(|_| MyEffect::Render)),
+                key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
+                render: Render::new(context.with_effect(|_| MyEffect::Render)),
             }
         }
     }

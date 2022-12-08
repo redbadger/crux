@@ -1,19 +1,21 @@
 pub mod app;
-pub mod effect;
 
 use lazy_static::lazy_static;
+use serde::Serialize;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crux_core::Core;
 pub use crux_core::Request;
+use crux_core::{capability::CapabilityContext, render::Render, Core};
 pub use crux_http as http;
 pub use crux_kv as key_value;
 pub use crux_platform as platform;
 pub use crux_time as time;
+use http::{Http, HttpRequest};
+use key_value::{KeyValue, KeyValueOperation};
+use platform::Platform;
+use time::Time;
 
 pub use app::*;
-use effect::CatFactCapabilities;
-pub use effect::Effect;
 
 // TODO hide this plumbing
 
@@ -36,4 +38,28 @@ pub fn response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
 #[wasm_bindgen]
 pub fn view() -> Vec<u8> {
     CORE.view()
+}
+
+// TODO macro effect generation:
+// crux_macros::generate_effect!(Effect, CatFactCapabilities);
+
+#[derive(Clone, Serialize)]
+pub enum Effect {
+    Http(HttpRequest),
+    KeyValue(KeyValueOperation),
+    Platform,
+    Render,
+    Time,
+}
+
+impl crux_core::WithContext<CatFacts, Effect> for CatFactCapabilities {
+    fn new_with_context(context: CapabilityContext<Effect, Event>) -> CatFactCapabilities {
+        CatFactCapabilities {
+            http: Http::new(context.with_effect(Effect::Http)),
+            key_value: KeyValue::new(context.with_effect(Effect::KeyValue)),
+            platform: Platform::new(context.with_effect(|_| Effect::Platform)),
+            render: Render::new(context.with_effect(|_| Effect::Render)),
+            time: Time::new(context.with_effect(|_| Effect::Time)),
+        }
+    }
 }

@@ -1,15 +1,16 @@
 pub mod platform;
 
+use crux_platform::Platform;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 pub use crux_core::App;
-use crux_http::HttpResponse;
-use crux_kv::KeyValueOutput;
-use crux_time::TimeResponse;
+use crux_core::{render::Render, Capability};
+use crux_http::{Http, HttpResponse};
+use crux_kv::{KeyValue, KeyValueOutput};
+use crux_time::{Time, TimeResponse};
 
-use crate::effect::CatFactCapabilities;
-use platform::PlatformEvent;
+use platform::{PlatformCapabilities, PlatformEvent};
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
@@ -73,6 +74,24 @@ pub enum Event {
 #[derive(Default)]
 pub struct CatFacts {
     platform: platform::Platform,
+}
+
+pub struct CatFactCapabilities {
+    pub http: Http<Event>,
+    pub key_value: KeyValue<Event>,
+    pub platform: Platform<Event>,
+    pub render: Render<Event>,
+    pub time: Time<Event>,
+}
+
+// Allow easily using Platform as a submodule
+impl From<&CatFactCapabilities> for PlatformCapabilities {
+    fn from(incoming: &CatFactCapabilities) -> Self {
+        PlatformCapabilities {
+            platform: incoming.platform.map_event(super::Event::Platform),
+            render: incoming.render.map_event(super::Event::Platform),
+        }
+    }
 }
 
 impl App for CatFacts {

@@ -19,11 +19,11 @@ pub trait Capability<Ev> {
         NewEvent: 'static;
 }
 
-pub trait CapabilitiesFactory<App, Ef>
+pub trait WithContext<App, Ef>
 where
     App: crate::App,
 {
-    fn build(context: CapabilityContext<Ef, App::Event>) -> App::Capabilities;
+    fn new_with_context(context: CapabilityContext<Ef, App::Event>) -> App::Capabilities;
 }
 
 pub struct CapabilityContext<Ef, Event> {

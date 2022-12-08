@@ -124,7 +124,7 @@ use channels::Receiver;
 use executor::Executor;
 use steps::{Step, StepRegistry};
 
-pub use capability::{CapabilitiesFactory, Capability};
+pub use capability::{Capability, WithContext};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
@@ -177,9 +177,9 @@ where
     ///
     /// The core interface passes across messages serialized as bytes. These can be
     /// deserialized using the types generated using the [typegen] module.
-    pub fn new<CapFactory>() -> Self
+    pub fn new<Capabilities>() -> Self
     where
-        CapFactory: CapabilitiesFactory<A, Ef>,
+        Capabilities: WithContext<A, Ef>,
     {
         let (step_sender, step_receiver) = crate::channels::channel();
         let (event_sender, event_receiver) = crate::channels::channel();
@@ -191,7 +191,7 @@ where
             step_registry: Default::default(),
             executor,
             app: Default::default(),
-            capabilities: CapFactory::build(capability_context),
+            capabilities: Capabilities::new_with_context(capability_context),
             steps: step_receiver,
             capability_events: event_receiver,
         }
@@ -268,7 +268,7 @@ impl<Ef, A> Default for Core<Ef, A>
 where
     Ef: Serialize + Send + 'static,
     A: App,
-    A::Capabilities: CapabilitiesFactory<A, Ef>,
+    A::Capabilities: WithContext<A, Ef>,
 {
     fn default() -> Self {
         Self::new::<A::Capabilities>()
