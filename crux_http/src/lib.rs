@@ -78,12 +78,12 @@ where
                 method: HttpMethod::Get.to_string(),
                 url: url.to_string(),
             };
-            let resp = ctx.request_effect(request).await;
+            let resp = ctx.request_from_shell(request).await;
 
             let data =
                 serde_json::from_slice::<T>(&resp.body).expect("TODO: do something sensible here");
 
-            ctx.dispatch(callback(data))
+            ctx.update_app(callback(data))
         });
     }
 
@@ -98,9 +98,9 @@ where
                 method: method.to_string(),
                 url: url.to_string(),
             };
-            let resp = ctx.request_effect(request).await;
+            let resp = ctx.request_from_shell(request).await;
 
-            ctx.dispatch(callback(resp))
+            ctx.update_app(callback(resp))
         });
     }
 }

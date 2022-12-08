@@ -3,39 +3,39 @@ use std::{collections::HashMap, sync::Mutex};
 use uuid::Uuid;
 
 /// TODO: docs
-pub(crate) struct Step<Ef> {
-    pub(crate) effect: Ef,
+pub(crate) struct Step<T> {
+    pub(crate) payload: T, // T is an Operation first, then Effect once mapped
     pub(crate) resolve: Option<Resolve>,
 }
 
 pub(crate) type Resolve = Box<dyn Fn(&[u8]) + Send>;
 
-impl<Ef> Step<Ef> {
-    pub fn new<F>(effect: Ef, resume: F) -> Self
+impl<T> Step<T> {
+    pub fn new<F>(payload: T, resume: F) -> Self
     where
         F: Fn(&[u8]) + Send + 'static,
     {
         Self {
-            effect,
+            payload,
             resolve: Some(Box::new(resume)),
         }
     }
 
-    pub fn once(effect: Ef) -> Self {
+    pub fn once(payload: T) -> Self {
         Self {
-            effect,
+            payload,
             resolve: None,
         }
     }
 
-    pub fn map_effect<NewEffect, F>(self, f: F) -> Step<NewEffect>
+    pub fn map_effect<Ef, F>(self, f: F) -> Step<Ef>
     where
-        F: Fn(Ef) -> NewEffect + Sync + Send + Copy + 'static,
+        F: Fn(T) -> Ef + Sync + Send + Copy + 'static,
+        T: 'static,
         Ef: 'static,
-        NewEffect: 'static,
     {
         Step {
-            effect: f(self.effect),
+            payload: f(self.payload),
             resolve: self.resolve,
         }
     }
@@ -53,7 +53,10 @@ impl Default for StepRegistry {
 
 impl StepRegistry {
     pub(crate) fn register<Ef>(&self, step: Step<Ef>) -> Request<Ef> {
-        let Step { effect, resolve } = step;
+        let Step {
+            payload: effect,
+            resolve,
+        } = step;
 
         let uuid = *Uuid::new_v4().as_bytes();
 

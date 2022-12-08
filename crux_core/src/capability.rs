@@ -44,13 +44,13 @@ impl<Ef, Ev> Clone for CapabilityContext<Ef, Ev> {
     }
 }
 
-impl<Ef, Ev> CapabilityContext<Ef, Ev>
+impl<T, Ev> CapabilityContext<T, Ev>
 where
-    Ef: 'static,
+    T: 'static,
     Ev: 'static,
 {
     pub(crate) fn new(
-        steps: Sender<Step<Ef>>,
+        steps: Sender<Step<T>>,
         events: Sender<Ev>,
         spawner: crate::executor::Spawner,
     ) -> Self {
@@ -63,22 +63,22 @@ where
         CapabilityContext { inner }
     }
 
-    pub(crate) fn advance(&self, step: Step<Ef>) {
-        self.inner.steps.send(step);
-    }
-
     pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
         self.inner.spawner.spawn(f);
     }
 
-    pub fn dispatch(&self, event: Ev) {
+    pub fn notify_shell(&self, operation: T) {
+        self.inner.steps.send(Step::once(operation));
+    }
+
+    pub fn update_app(&self, event: Ev) {
         self.inner.events.send(event);
     }
 
-    pub fn map_effect<NewEf, F>(&self, func: F) -> CapabilityContext<NewEf, Ev>
+    pub fn with_effect<OtherT, F>(&self, func: F) -> CapabilityContext<OtherT, Ev>
     where
-        F: Fn(NewEf) -> Ef + Sync + Send + Copy + 'static,
-        NewEf: 'static,
+        F: Fn(OtherT) -> T + Sync + Send + Copy + 'static,
+        OtherT: 'static,
     {
         let inner = Arc::new(ContextInner {
             steps: self.inner.steps.map_effect(func),
@@ -89,7 +89,7 @@ where
         CapabilityContext { inner }
     }
 
-    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Ef, NewEv>
+    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<T, NewEv>
     where
         F: Fn(NewEv) -> Ev + Sync + Send + 'static,
         NewEv: 'static,
@@ -101,6 +101,10 @@ where
         });
 
         CapabilityContext { inner }
+    }
+
+    pub(crate) fn send_step(&self, step: Step<T>) {
+        self.inner.steps.send(step);
     }
 }
 

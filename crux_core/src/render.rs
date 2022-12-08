@@ -1,22 +1,31 @@
-use super::Step;
-use crate::{capability::CapabilityContext, Capability};
+use serde::Serialize;
+
+use crate::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 
 pub struct Render<Ev> {
-    context: CapabilityContext<(), Ev>,
+    context: CapabilityContext<RenderOperation, Ev>,
+}
+
+#[derive(Serialize)]
+pub struct RenderOperation;
+
+impl Operation for RenderOperation {
+    type Output = ();
 }
 
 impl<Ev> Render<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<(), Ev>) -> Self {
+    pub fn new(context: CapabilityContext<RenderOperation, Ev>) -> Self {
         Self { context }
     }
 
     pub fn render(&self) {
-        let ctx = self.context.clone();
-        self.context
-            .spawn(async move { ctx.advance(Step::once(())) })
+        self.context.notify_shell(RenderOperation {})
     }
 } // Public API of the capability, called by App::update.
 

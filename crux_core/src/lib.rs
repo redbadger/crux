@@ -181,10 +181,10 @@ where
     where
         CapFactory: CapabilitiesFactory<A, Ef>,
     {
-        let (command_sender, command_receiver) = crate::channels::channel();
+        let (step_sender, step_receiver) = crate::channels::channel();
         let (event_sender, event_receiver) = crate::channels::channel();
         let (executor, spawner) = executor::executor_and_spawner();
-        let capability_context = CapabilityContext::new(command_sender, event_sender, spawner);
+        let capability_context = CapabilityContext::new(step_sender, event_sender, spawner);
 
         Self {
             model: Default::default(),
@@ -192,7 +192,7 @@ where
             executor,
             app: Default::default(),
             capabilities: CapFactory::build(capability_context),
-            steps: command_receiver,
+            steps: step_receiver,
             capability_events: event_receiver,
         }
     }

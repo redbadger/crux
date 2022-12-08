@@ -40,14 +40,14 @@ where
     Op: crate::capability::Operation,
     Ev: 'static,
 {
-    pub fn request_effect(&self, operation: Op) -> EffectFuture<Op::Output> {
+    pub fn request_from_shell(&self, operation: Op) -> EffectFuture<Op::Output> {
         let shared_state = Arc::new(Mutex::new(SharedState {
             result: None,
             waker: None,
         }));
 
         let callback_shared_state = shared_state.clone();
-        self.advance(Step::new(operation, move |bytes| {
+        self.send_step(Step::new(operation, move |bytes| {
             let mut shared_state = callback_shared_state.lock().unwrap();
             shared_state.result = Some(bcs::from_bytes(bytes).unwrap());
             if let Some(waker) = shared_state.waker.take() {

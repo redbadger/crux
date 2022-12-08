@@ -35,9 +35,9 @@ where
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let response = ctx.request_effect(TimeRequest).await;
+            let response = ctx.request_from_shell(TimeRequest).await;
 
-            ctx.dispatch(callback(response));
+            ctx.update_app(callback(response));
         });
     }
 }

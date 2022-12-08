@@ -43,9 +43,9 @@ where
         let ctx = self.context.clone();
         let key = key.to_string();
         self.context.spawn(async move {
-            let output = ctx.request_effect(KeyValueOperation::Read(key)).await;
+            let output = ctx.request_from_shell(KeyValueOperation::Read(key)).await;
 
-            ctx.dispatch(make_event(output))
+            ctx.update_app(make_event(output))
         });
     }
 
@@ -57,10 +57,10 @@ where
         let key = key.to_string();
         self.context.spawn(async move {
             let resp = ctx
-                .request_effect(KeyValueOperation::Write(key, value))
+                .request_from_shell(KeyValueOperation::Write(key, value))
                 .await;
 
-            ctx.dispatch(make_event(resp))
+            ctx.update_app(make_event(resp))
         });
     }
 }
