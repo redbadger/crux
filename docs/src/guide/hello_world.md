@@ -93,7 +93,7 @@ impl<E, C> App<E, C> for Hello where
 
 There's a fair bit going on, so lets look at all of it one by one:
 
-Like the `Hello` struct, the `impl` is generic over `E`, the effect and `C`, the capabilities. The effect type needs to support cloning and serialisation. The trait bound on `C` says that this app requires the capabilities provided to include the `Render` capability.
+Like the `Hello` struct, the `impl` is generic over `E`, the effect, and `C`, the capabilities. The effect type needs to support cloning and serialisation. The trait bound on `C` says that this app requires the capabilities provided to include the `Render` capability. This  may seem quite awkward at first but will become important as a form of dependency injection when we start [composing](./composing.md) apps from reusable modules.
 
 The trait has three associated types. The `Event` type describes the possible actions this app can perform. For now its's a unit type. The `Model` describes the internal state of the app, also a unit type for now, as there is no state to hold. The `ViewModel` describes the user interface to display.
 
@@ -103,7 +103,7 @@ All our `update` function does is ignore all its arguments and ask the Shell to 
 
 Finally, the `view` function returns the representation of what we want the Shell to show on screen. To start with, it's a simple hello world.
 
-That's a working hello world done, lets try it. For now we'll do it from tests.
+That's a working hello world done, lets try it. For now we'll do it from tests. That's not really a limitation, in fact, this is the intended way for apps to be developed with Crux - from inside out, with unit tests, focusing on behavior first and presentation later.
 
 ```rust
 #[cfg(test)]
