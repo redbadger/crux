@@ -63,7 +63,7 @@ impl StepRegistry {
         if let Some(resolve) = resolve {
             self.0
                 .lock()
-                .expect("Continuation Mutex poisoned.")
+                .expect("Step Mutex poisoned.")
                 .0
                 .insert(uuid, resolve);
         }
@@ -78,10 +78,10 @@ impl StepRegistry {
         let resolve = self
             .0
             .lock()
-            .expect("Continuation Mutex poisoned.")
+            .expect("Step Mutex poisoned.")
             .0
             .remove(uuid)
-            .unwrap_or_else(|| panic!("Continuation with UUID {uuid:?} not found."));
+            .unwrap_or_else(|| panic!("Step with UUID {uuid:?} not found."));
 
         (*resolve)(body);
     }
