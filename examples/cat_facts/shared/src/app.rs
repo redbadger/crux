@@ -1,6 +1,5 @@
 pub mod platform;
 
-use crux_platform::Platform;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -8,6 +7,7 @@ pub use crux_core::App;
 use crux_core::{render::Render, Capability};
 use crux_http::{Http, HttpResponse};
 use crux_kv::{KeyValue, KeyValueOutput};
+use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
 use platform::{PlatformCapabilities, PlatformEvent};
@@ -184,7 +184,7 @@ impl App for CatFacts {
             <platform::Platform as crux_core::App>::view(&self.platform, &model.platform).platform;
 
         ViewModel {
-            platform: format!("Hello {}", platform),
+            platform: format!("Hello {platform}"),
             fact,
             image: model.cat_image.clone(),
         }

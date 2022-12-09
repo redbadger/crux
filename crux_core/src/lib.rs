@@ -199,53 +199,23 @@ where
 
     /// Receive a message from the shell.
     ///
-    /// The `msg` is serialized and will be deserialized by the core.
-    pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
+    /// The `event` is serialized and will be deserialized by the core.
+    pub fn message<'de>(&self, event: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let shell_event = bcs::from_bytes(msg).expect("Message deserialization failed.");
-        self.update(shell_event);
-        self.executor.run_all();
-
-        while let Some(capability_event) = self.capability_events.receive() {
-            self.update(capability_event);
-            self.executor.run_all();
-        }
-
-        let requests = self
-            .steps
-            .drain()
-            .map(|c| self.step_registry.register(c))
-            .collect::<Vec<_>>();
-
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+        self.process(None, event)
     }
 
     /// Receive a response to a capability request from the shell.
     ///
-    /// The `res` is serialized and will be deserialized by the core. The `uuid`  field of
-    /// the deserialized [`Response`] MUST match the `uuid` of the [`Request`] which
-    /// triggered it, else the core will panic.
-    pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
+    /// The `event` is serialized and will be deserialized by the core. The `uuid` MUST match
+    /// the `uuid` of the effect that triggered it, else the core will panic.
+    pub fn response<'de>(&self, uuid: &[u8], event: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        self.step_registry.resume(uuid, body);
-        self.executor.run_all();
-
-        while let Some(capability_event) = self.capability_events.receive() {
-            self.update(capability_event);
-            self.executor.run_all();
-        }
-
-        let requests = self
-            .steps
-            .drain()
-            .map(|c| self.step_registry.register(c))
-            .collect::<Vec<_>>();
-
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+        self.process(Some(uuid), event)
     }
 
     /// Get the current state of the app's view model (serialized).
@@ -258,9 +228,38 @@ where
         bcs::to_bytes(&value).expect("View model serialization failed.")
     }
 
-    fn update(&self, e: <A as App>::Event) {
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-        self.app.update(e, &mut model, &self.capabilities);
+    fn process<'de>(&self, uuid: Option<&[u8]>, event: &'de [u8]) -> Vec<u8>
+    where
+        <A as App>::Event: Deserialize<'de>,
+    {
+        match uuid {
+            None => {
+                let shell_event = bcs::from_bytes(event).expect("Message deserialization failed.");
+                let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                self.app.update(shell_event, &mut model, &self.capabilities);
+            }
+            Some(uuid) => {
+                self.step_registry.resume(uuid, event);
+            }
+        }
+
+        self.executor.run_all();
+
+        while let Some(capability_event) = self.capability_events.receive() {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app
+                .update(capability_event, &mut model, &self.capabilities);
+            drop(model);
+            self.executor.run_all();
+        }
+
+        let requests = self
+            .steps
+            .drain()
+            .map(|c| self.step_registry.register(c))
+            .collect::<Vec<_>>();
+
+        bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 }
 

@@ -1,5 +1,9 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
+use web_sys::window;
+use woothee::parser::Parser;
+use yew::prelude::*;
+
 use shared::{
     http::{HttpRequest, HttpResponse},
     key_value::{KeyValueOperation, KeyValueOutput},
@@ -7,9 +11,6 @@ use shared::{
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
 };
-use web_sys::window;
-use woothee::parser::Parser;
-use yew::prelude::*;
 
 async fn http_get(url: &str) -> Result<Vec<u8>> {
     let bytes = gloo_net::http::Request::get(url)

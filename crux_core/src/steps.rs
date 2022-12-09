@@ -81,7 +81,7 @@ impl StepRegistry {
             .expect("Continuation Mutex poisoned.")
             .0
             .remove(uuid)
-            .unwrap_or_else(|| panic!("Continuation with UUID {:?} not found.", uuid));
+            .unwrap_or_else(|| panic!("Continuation with UUID {uuid:?} not found."));
 
         (*resolve)(body);
     }
