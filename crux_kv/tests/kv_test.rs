@@ -1,27 +1,16 @@
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command};
-    use crux_kv::{KeyValue, KeyValueRequest, KeyValueResponse};
-    use crux_macros::Capabilities;
+    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
+    use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
     use serde::{Deserialize, Serialize};
-    use std::marker::PhantomData;
 
-    pub struct MyApp<Ef, Caps> {
-        _marker: PhantomData<fn() -> (Ef, Caps)>,
-    }
-
-    impl<Ef, Caps> Default for MyApp<Ef, Caps> {
-        fn default() -> Self {
-            Self {
-                _marker: Default::default(),
-            }
-        }
-    }
+    #[derive(Default)]
+    pub struct MyApp;
 
     #[derive(Serialize, Deserialize)]
     pub enum MyEvent {
         Write,
         Read,
-        Set(KeyValueResponse),
+        Set(KeyValueOutput),
     }
 
     #[derive(Default, Serialize, Deserialize)]
@@ -35,48 +24,36 @@ mod shared {
         pub result: String,
     }
 
-    impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
-    where
-        Ef: Serialize + Clone,
-        Caps: Capabilities<KeyValue<Ef>> + Capabilities<Render<Ef>>,
-    {
+    impl App for MyApp {
         type Event = MyEvent;
         type Model = MyModel;
         type ViewModel = MyViewModel;
 
-        fn update(
-            &self,
-            event: MyEvent,
-            model: &mut MyModel,
-            caps: &Caps,
-        ) -> Vec<Command<Ef, MyEvent>> {
-            let key_value: &KeyValue<_> = caps.get();
-            let render: &Render<_> = caps.get();
+        type Capabilities = MyCapabilities;
 
+        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
             match event {
                 MyEvent::Write => {
-                    vec![key_value.write("test", 42i32.to_ne_bytes().to_vec(), MyEvent::Set)]
+                    caps.key_value
+                        .write("test", 42i32.to_ne_bytes().to_vec(), MyEvent::Set);
                 }
-                MyEvent::Set(KeyValueResponse::Write(success)) => {
+                MyEvent::Set(KeyValueOutput::Write(success)) => {
                     model.successful = success;
-                    vec![render.render()]
+                    caps.render.render()
                 }
-                MyEvent::Read => vec![key_value.read("test", MyEvent::Set)],
-                MyEvent::Set(KeyValueResponse::Read(value)) => {
+                MyEvent::Read => caps.key_value.read("test", MyEvent::Set),
+                MyEvent::Set(KeyValueOutput::Read(value)) => {
                     if let Some(value) = value {
-                        // TODO: should KeyValueResponse::Read be generic over the value type?
+                        // TODO: should KeyValueOutput::Read be generic over the value type?
                         let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                         model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
                     }
-                    vec![render.render()]
+                    caps.render.render()
                 }
             }
         }
 
-        fn view(
-            &self,
-            model: &<Self as App<Ef, Caps>>::Model,
-        ) -> <Self as App<Ef, Caps>>::ViewModel {
+        fn view(&self, model: &Self::Model) -> Self::ViewModel {
             MyViewModel {
                 result: format!("Success: {}, Value: {}", model.successful, model.value),
             }
@@ -85,41 +62,34 @@ mod shared {
 
     #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
     pub enum MyEffect {
-        KeyValue(KeyValueRequest),
+        KeyValue(KeyValueOperation),
         Render,
     }
 
-    impl Default for MyEffect {
-        fn default() -> Self {
-            MyEffect::Render
-        }
+    pub struct MyCapabilities {
+        pub key_value: KeyValue<MyEvent>,
+        pub render: Render<MyEvent>,
     }
 
-    #[derive(Capabilities)]
-    pub(crate) struct MyCapabilities {
-        pub key_value: KeyValue<MyEffect>,
-        pub render: Render<MyEffect>,
-    }
-
-    impl Default for MyCapabilities {
-        fn default() -> Self {
-            Self {
-                key_value: KeyValue::new(MyEffect::KeyValue),
-                render: Render::new(MyEffect::Render),
+    impl WithContext<MyApp, MyEffect> for MyCapabilities {
+        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
+            MyCapabilities {
+                key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
+                render: Render::new(context.with_effect(|_| MyEffect::Render)),
             }
         }
     }
 }
 
 mod shell {
-    use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
-    use crux_kv::{KeyValueRequest, KeyValueResponse};
+    use crux_kv::{KeyValueOperation, KeyValueOutput};
     use std::collections::{HashMap, VecDeque};
 
     pub enum Outcome {
-        KeyValue(KeyValueResponse),
+        KeyValue(KeyValueOutput),
     }
 
     enum CoreMessage {
@@ -128,7 +98,7 @@ mod shell {
     }
 
     pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyCapabilities, MyApp<MyEffect, MyCapabilities>> = Core::new();
+        let core: Core<MyEffect, MyApp> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Message(MyEvent::Write));
@@ -155,27 +125,27 @@ mod shell {
                 let Request { uuid, effect } = req;
                 match effect {
                     MyEffect::Render => received.push(effect.clone()),
-                    MyEffect::KeyValue(KeyValueRequest::Write(ref k, ref v)) => {
+                    MyEffect::KeyValue(KeyValueOperation::Write(ref k, ref v)) => {
                         received.push(effect.clone());
 
                         // do work
                         kv_store.insert(k.clone(), v.clone());
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(KeyValueResponse::Write(true)),
+                            Outcome::KeyValue(KeyValueOutput::Write(true)),
                         ));
 
                         // now trigger a read
                         queue.push_back(CoreMessage::Message(MyEvent::Read));
                     }
-                    MyEffect::KeyValue(KeyValueRequest::Read(ref k)) => {
+                    MyEffect::KeyValue(KeyValueOperation::Read(ref k)) => {
                         received.push(effect.clone());
 
                         // do work
                         let v = kv_store.get(k).unwrap();
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::KeyValue(KeyValueResponse::Read(Some(v.to_vec()))),
+                            Outcome::KeyValue(KeyValueOutput::Read(Some(v.to_vec()))),
                         ));
                     }
                 }
@@ -190,7 +160,7 @@ mod shell {
 mod tests {
     use crate::{shared::MyEffect, shell::run};
     use anyhow::Result;
-    use crux_kv::KeyValueRequest;
+    use crux_kv::KeyValueOperation;
 
     #[test]
     pub fn test_http() -> Result<()> {
@@ -198,12 +168,12 @@ mod tests {
         assert_eq!(
             received,
             vec![
-                MyEffect::KeyValue(KeyValueRequest::Write(
+                MyEffect::KeyValue(KeyValueOperation::Write(
                     "test".to_string(),
                     42i32.to_ne_bytes().to_vec()
                 )),
                 MyEffect::Render,
-                MyEffect::KeyValue(KeyValueRequest::Read("test".to_string())),
+                MyEffect::KeyValue(KeyValueOperation::Read("test".to_string())),
                 MyEffect::Render
             ]
         );

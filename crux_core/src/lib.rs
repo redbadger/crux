@@ -107,79 +107,65 @@
 //!
 
 pub mod capability;
-pub mod command;
-mod continuations;
+pub mod channels;
+pub mod executor;
+mod future;
 pub mod render;
+mod steps;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-pub use capability::{Capabilities, Capability};
-pub use command::Command;
-use continuations::ContinuationStore;
+use std::sync::RwLock;
+
 use serde::{Deserialize, Serialize};
-use std::{marker::PhantomData, sync::RwLock};
+
+use capability::CapabilityContext;
+use channels::Receiver;
+use executor::QueuingExecutor;
+use steps::{Step, StepRegistry};
+
+pub use capability::{Capability, WithContext};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
-pub trait App<Ef, Caps>: Default {
+pub trait App: Default {
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// Message, typically an `enum`, defines the actions that can be taken to update the application state.
-    type Event;
+    type Event: Send + 'static;
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
+
+    type Capabilities;
 
     /// Update method defines the transition from one `model` state to another in response to a `msg`.
     ///
     /// Update function can return a list of [`Command`]s, instructing the shell to perform side-effects.
     /// Typically, the function should return at least [`Command::render`] to update the user interface.
-    fn update<'a>(
-        &self,
-        msg: Self::Event,
-        model: &mut Self::Model,
-        caps: &'a Caps,
-    ) -> Vec<Command<Ef, Self::Event>>
-    where
-        Ef: Serialize;
+    fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities);
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
 /// The Crux core. Create an instance of this type with your app as the type parameter
-pub struct Core<Ef, Caps, A>
+pub struct Core<Ef, A>
 where
-    Caps: Default,
-    A: App<Ef, Caps>,
+    A: App,
 {
     model: RwLock<A::Model>,
-    continuations: ContinuationStore<A::Event>,
-    capabilities: Caps,
+    step_registry: StepRegistry,
+    executor: QueuingExecutor,
+    capabilities: A::Capabilities,
+    steps: Receiver<Step<Ef>>,
+    capability_events: Receiver<A::Event>,
     app: A,
-    _marker: PhantomData<Ef>,
 }
 
-impl<Ef, Caps, A> Default for Core<Ef, Caps, A>
+impl<Ef, A> Core<Ef, A>
 where
-    Caps: Default,
-    A: App<Ef, Caps>,
-{
-    fn default() -> Self {
-        Self {
-            model: Default::default(),
-            continuations: Default::default(),
-            app: Default::default(),
-            capabilities: Default::default(),
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<Ef, Caps, A> Core<Ef, Caps, A>
-where
-    Caps: Default,
-    Ef: Serialize,
-    A: App<Ef, Caps>,
+    Ef: Serialize + Send + 'static,
+    A: App,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
@@ -191,55 +177,45 @@ where
     ///
     /// The core interface passes across messages serialized as bytes. These can be
     /// deserialized using the types generated using the [typegen] module.
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new<Capabilities>() -> Self
+    where
+        Capabilities: WithContext<A, Ef>,
+    {
+        let (step_sender, step_receiver) = crate::channels::channel();
+        let (event_sender, event_receiver) = crate::channels::channel();
+        let (executor, spawner) = executor::executor_and_spawner();
+        let capability_context = CapabilityContext::new(step_sender, event_sender, spawner);
+
+        Self {
+            model: Default::default(),
+            step_registry: Default::default(),
+            executor,
+            app: Default::default(),
+            capabilities: Capabilities::new_with_context(capability_context),
+            steps: step_receiver,
+            capability_events: event_receiver,
+        }
     }
 
     /// Receive a message from the shell.
     ///
-    /// The `msg` is serialized and will be deserialized by the core.
-    pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
+    /// The `event` is serialized and will be deserialized by the core.
+    pub fn message<'de>(&self, event: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
+        <A as App>::Event: Deserialize<'de>,
     {
-        let msg: <A as App<_, _>>::Event =
-            bcs::from_bytes(msg).expect("Message deserialization failed.");
-
-        let commands = {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app.update(msg, &mut model, &self.capabilities)
-        };
-
-        let requests: Vec<_> = commands
-            .into_iter()
-            .map(|c| self.continuations.pause(c))
-            .collect();
-
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+        self.process(None, event)
     }
 
     /// Receive a response to a capability request from the shell.
     ///
-    /// The `res` is serialized and will be deserialized by the core. The `uuid`  field of
-    /// the deserialized [`Response`] MUST match the `uuid` of the [`Request`] which
-    /// triggered it, else the core will panic.
-    pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
+    /// The `event` is serialized and will be deserialized by the core. The `uuid` MUST match
+    /// the `uuid` of the effect that triggered it, else the core will panic.
+    pub fn response<'de>(&self, uuid: &[u8], event: &'de [u8]) -> Vec<u8>
     where
-        <A as App<Ef, Caps>>::Event: Deserialize<'de>,
+        <A as App>::Event: Deserialize<'de>,
     {
-        let msg = self.continuations.resume(uuid, body.to_owned()); // FIXME is this to_owned the right fix?
-
-        let commands = {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app.update(msg, &mut model, &self.capabilities)
-        };
-
-        let requests: Vec<_> = commands
-            .into_iter()
-            .map(|c| self.continuations.pause(c))
-            .collect();
-
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+        self.process(Some(uuid), event)
     }
 
     /// Get the current state of the app's view model (serialized).
@@ -250,6 +226,51 @@ where
         };
 
         bcs::to_bytes(&value).expect("View model serialization failed.")
+    }
+
+    fn process<'de>(&self, uuid: Option<&[u8]>, event: &'de [u8]) -> Vec<u8>
+    where
+        <A as App>::Event: Deserialize<'de>,
+    {
+        match uuid {
+            None => {
+                let shell_event = bcs::from_bytes(event).expect("Message deserialization failed.");
+                let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                self.app.update(shell_event, &mut model, &self.capabilities);
+            }
+            Some(uuid) => {
+                self.step_registry.resume(uuid, event);
+            }
+        }
+
+        self.executor.run_all();
+
+        while let Some(capability_event) = self.capability_events.receive() {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app
+                .update(capability_event, &mut model, &self.capabilities);
+            drop(model);
+            self.executor.run_all();
+        }
+
+        let requests = self
+            .steps
+            .drain()
+            .map(|c| self.step_registry.register(c))
+            .collect::<Vec<_>>();
+
+        bcs::to_bytes(&requests).expect("Request serialization failed.")
+    }
+}
+
+impl<Ef, A> Default for Core<Ef, A>
+where
+    Ef: Serialize + Send + 'static,
+    A: App,
+    A::Capabilities: WithContext<A, Ef>,
+{
+    fn default() -> Self {
+        Self::new::<A::Capabilities>()
     }
 }
 

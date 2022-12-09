@@ -1,55 +1,79 @@
 //! TODO mod docs
 
-use crux_core::{Capability, Command};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum KeyValueRequest {
+pub enum KeyValueOperation {
     Read(String),
     Write(String, Vec<u8>),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub enum KeyValueResponse {
+pub enum KeyValueOutput {
+    // TODO: Add support for errors
     Read(Option<Vec<u8>>),
+    // TODO: Add support for errors
     Write(bool),
 }
 
-pub struct KeyValue<Ef> {
-    effect: Box<dyn Fn(KeyValueRequest) -> Ef + Sync>,
+impl Operation for KeyValueOperation {
+    type Output = KeyValueOutput;
 }
 
-impl<Ef> KeyValue<Ef> {
-    pub fn new<MakeEffect>(effect: MakeEffect) -> Self
-    where
-        MakeEffect: Fn(KeyValueRequest) -> Ef + Sync + 'static,
-    {
-        Self {
-            effect: Box::new(effect),
-        }
+pub struct KeyValue<Ev> {
+    context: CapabilityContext<KeyValueOperation, Ev>,
+}
+
+impl<Ev> KeyValue<Ev>
+where
+    Ev: 'static,
+{
+    pub fn new(context: CapabilityContext<KeyValueOperation, Ev>) -> Self {
+        Self { context }
     }
 
-    pub fn read<Ev, F>(&self, key: &str, callback: F) -> Command<Ef, Ev>
+    pub fn read<F>(&self, key: &str, make_event: F)
     where
-        Ev: 'static,
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
-        Command::new(
-            (self.effect)(KeyValueRequest::Read(key.to_string())),
-            callback,
-        )
+        let ctx = self.context.clone();
+        let key = key.to_string();
+        self.context.spawn(async move {
+            let output = ctx.request_from_shell(KeyValueOperation::Read(key)).await;
+
+            ctx.update_app(make_event(output))
+        });
     }
 
-    pub fn write<Ev, F>(&self, key: &str, value: Vec<u8>, callback: F) -> Command<Ef, Ev>
+    pub fn write<F>(&self, key: &str, value: Vec<u8>, make_event: F)
     where
-        Ev: 'static,
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
-        Command::new(
-            (self.effect)(KeyValueRequest::Write(key.to_string(), value)),
-            callback,
-        )
+        let ctx = self.context.clone();
+        let key = key.to_string();
+        self.context.spawn(async move {
+            let resp = ctx
+                .request_from_shell(KeyValueOperation::Write(key, value))
+                .await;
+
+            ctx.update_app(make_event(resp))
+        });
     }
 }
 
-impl<Ef> Capability for KeyValue<Ef> where Ef: Clone {}
+impl<Ef> Capability<Ef> for KeyValue<Ef> {
+    type MappedSelf<MappedEv> = KeyValue<MappedEv>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
+        Ef: 'static,
+        NewEvent: 'static,
+    {
+        KeyValue::new(self.context.map_event(f))
+    }
+}

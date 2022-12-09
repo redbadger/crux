@@ -623,6 +623,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcb25d077389e53838a8158c8e99174c5a9d902dee4904320db714f3c653ffba"
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2dd04ddaf88237dc3b8d8f9a3c1004b506b54b3313403944054d23c0870c521"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -637,7 +647,9 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "bcs",
+ "crossbeam-channel",
  "derive_more",
+ "futures",
  "serde",
  "serde-generate",
  "serde-reflection",
@@ -656,9 +668,9 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "derive_more",
  "serde",
+ "serde_json",
  "url",
 ]
 
@@ -669,17 +681,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "serde",
-]
-
-[[package]]
-name = "crux_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -689,7 +691,6 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "serde",
 ]
 
@@ -700,7 +701,6 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "serde",
 ]
 
@@ -921,6 +921,7 @@ checksum = "38390104763dc37a5145a53c29c63c1290b5d316d6086ec32c293f6736051bb0"
 dependencies = [
  "futures-channel",
  "futures-core",
+ "futures-executor",
  "futures-io",
  "futures-sink",
  "futures-task",
@@ -942,6 +943,17 @@ name = "futures-core"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04909a7a7e4633ae6c4a9ab280aeb86da1236243a77b694a49eacd659a4bd3ac"
+
+[[package]]
+name = "futures-executor"
+version = "0.3.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7acc85df6714c176ab5edf386123fafe217be88c0840ec11f199441134a074e2"
+dependencies = [
+ "futures-core",
+ "futures-task",
+ "futures-util",
+]
 
 [[package]]
 name = "futures-io"
@@ -2261,7 +2273,6 @@ dependencies = [
  "crux_core",
  "crux_http",
  "crux_kv",
- "crux_macros",
  "crux_platform",
  "crux_time",
  "derive_more",

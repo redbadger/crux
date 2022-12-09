@@ -1,16 +1,16 @@
 package com.redbadger.catfacts.shared_types;
 
 
-public abstract class KeyValueRequest {
+public abstract class KeyValueOperation {
 
     abstract public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError;
 
-    public static KeyValueRequest deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+    public static KeyValueOperation deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
         int index = deserializer.deserialize_variant_index();
         switch (index) {
             case 0: return Read.load(deserializer);
             case 1: return Write.load(deserializer);
-            default: throw new com.novi.serde.DeserializationError("Unknown variant index for KeyValueRequest: " + index);
+            default: throw new com.novi.serde.DeserializationError("Unknown variant index for KeyValueOperation: " + index);
         }
     }
 
@@ -20,19 +20,19 @@ public abstract class KeyValueRequest {
         return serializer.get_bytes();
     }
 
-    public static KeyValueRequest bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
+    public static KeyValueOperation bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
         if (input == null) {
              throw new com.novi.serde.DeserializationError("Cannot deserialize null array");
         }
         com.novi.serde.Deserializer deserializer = new com.novi.bcs.BcsDeserializer(input);
-        KeyValueRequest value = deserialize(deserializer);
+        KeyValueOperation value = deserialize(deserializer);
         if (deserializer.get_buffer_offset() < input.length) {
              throw new com.novi.serde.DeserializationError("Some input bytes were not read");
         }
         return value;
     }
 
-    public static final class Read extends KeyValueRequest {
+    public static final class Read extends KeyValueOperation {
         public final String value;
 
         public Read(String value) {
@@ -81,7 +81,7 @@ public abstract class KeyValueRequest {
         }
     }
 
-    public static final class Write extends KeyValueRequest {
+    public static final class Write extends KeyValueOperation {
         public final String field0;
         public final java.util.List<@com.novi.serde.Unsigned Byte> field1;
 

@@ -1,27 +1,46 @@
-use super::Command;
-use crate::Capability;
+use serde::Serialize;
 
-pub struct Render<Ef>
-where
-    Ef: Clone,
-{
-    make_effect: Ef,
+use crate::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
+
+pub struct Render<Ev> {
+    context: CapabilityContext<RenderOperation, Ev>,
 }
 
-impl<Ef> Render<Ef>
+#[derive(Serialize)]
+pub struct RenderOperation;
+
+impl Operation for RenderOperation {
+    type Output = ();
+}
+
+impl<Ev> Render<Ev>
 where
-    Ef: Clone,
+    Ev: 'static,
 {
-    pub fn new(make_effect: Ef) -> Self {
-        Self { make_effect }
+    pub fn new(context: CapabilityContext<RenderOperation, Ev>) -> Self {
+        Self { context }
     }
 
-    pub fn render<Ev>(&self) -> Command<Ef, Ev>
-    where
-        Ev: 'static,
-    {
-        Command::new_without_callback(self.make_effect.clone())
+    pub fn render(&self) {
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            ctx.notify_shell(RenderOperation).await;
+        });
     }
 } // Public API of the capability, called by App::update.
 
-impl<Ef> Capability for Render<Ef> where Ef: Clone {}
+impl<Ev> Capability<Ev> for Render<Ev> {
+    type MappedSelf<Ev2> = Render<Ev2>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ev + Send + Sync + Copy + 'static,
+        Ev: 'static,
+        NewEvent: 'static,
+    {
+        Render::new(self.context.map_event(f))
+    }
+}

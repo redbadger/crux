@@ -1,15 +1,16 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
+use web_sys::window;
+use woothee::parser::Parser;
+use yew::prelude::*;
+
 use shared::{
     http::{HttpRequest, HttpResponse},
-    key_value::{KeyValueRequest, KeyValueResponse},
+    key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
 };
-use web_sys::window;
-use woothee::parser::Parser;
-use yew::prelude::*;
 
 async fn http_get(url: &str) -> Result<Vec<u8>> {
     let bytes = gloo_net::http::Request::get(url)
@@ -52,7 +53,7 @@ pub enum Outcome {
     Platform(PlatformResponse),
     Time(TimeResponse),
     Http(HttpResponse),
-    KeyValue(KeyValueResponse),
+    KeyValue(KeyValueOutput),
 }
 
 impl Component for HelloWorld {
@@ -85,17 +86,17 @@ impl Component for HelloWorld {
 
         let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
 
-        reqs.into_iter().any(|req| {
+        let should_render = reqs.iter().any(|req| matches!(req.effect, Effect::Render));
+
+        reqs.into_iter().for_each(|req| {
             let Request { uuid, effect } = req;
             match effect {
-                Effect::Render => true,
+                Effect::Render => {}
                 Effect::Time => {
                     link.send_message(CoreMessage::Response(
                         uuid,
                         Outcome::Time(TimeResponse(time_get().unwrap())),
                     ));
-
-                    false
                 }
                 Effect::Http(HttpRequest { url, .. }) => {
                     let link = link.clone();
@@ -111,8 +112,6 @@ impl Component for HelloWorld {
                             }),
                         ));
                     });
-
-                    false
                 }
                 Effect::Platform => {
                     link.send_message(CoreMessage::Response(
@@ -121,28 +120,24 @@ impl Component for HelloWorld {
                             platform_get().unwrap_or_else(|_| "Unknown browser".to_string()),
                         )),
                     ));
-
-                    false
                 }
-                Effect::KeyValue(KeyValueRequest::Read(_)) => {
+                Effect::KeyValue(KeyValueOperation::Read(_)) => {
                     // TODO implement state restoration
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::KeyValue(KeyValueResponse::Read(None)),
+                        Outcome::KeyValue(KeyValueOutput::Read(None)),
                     ));
-
-                    false
                 }
-                Effect::KeyValue(KeyValueRequest::Write(..)) => {
+                Effect::KeyValue(KeyValueOperation::Write(..)) => {
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::KeyValue(KeyValueResponse::Write(false)),
+                        Outcome::KeyValue(KeyValueOutput::Write(false)),
                     ));
-
-                    false
                 }
             }
-        })
+        });
+
+        should_render
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {

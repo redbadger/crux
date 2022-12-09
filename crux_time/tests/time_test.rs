@@ -1,21 +1,10 @@
 mod shared {
-    use crux_core::{render::Render, App, Capabilities, Command};
-    use crux_macros::Capabilities;
+    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
-    use std::marker::PhantomData;
 
-    pub struct MyApp<Ef, Caps> {
-        _marker: PhantomData<fn() -> (Ef, Caps)>,
-    }
-
-    impl<Ef, Caps> Default for MyApp<Ef, Caps> {
-        fn default() -> Self {
-            Self {
-                _marker: Default::default(),
-            }
-        }
-    }
+    #[derive(Default)]
+    pub struct MyApp;
 
     #[derive(Serialize, Deserialize)]
     pub enum MyEvent {
@@ -33,39 +22,23 @@ mod shared {
         pub time: String,
     }
 
-    impl<Ef, Caps> App<Ef, Caps> for MyApp<Ef, Caps>
-    where
-        Ef: Serialize + Clone,
-        Caps: Capabilities<Time<Ef>> + Capabilities<Render<Ef>>,
-    {
+    impl App for MyApp {
         type Event = MyEvent;
         type Model = MyModel;
         type ViewModel = MyViewModel;
+        type Capabilities = MyCapabilities;
 
-        fn update(
-            &self,
-            event: MyEvent,
-            model: &mut MyModel,
-            caps: &Caps,
-        ) -> Vec<Command<Ef, MyEvent>> {
-            let time: &Time<_> = caps.get();
-            let render: &Render<_> = caps.get();
-
+        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
             match event {
-                MyEvent::TimeGet => {
-                    vec![time.get(MyEvent::TimeSet)]
-                }
+                MyEvent::TimeGet => caps.time.get(MyEvent::TimeSet),
                 MyEvent::TimeSet(time) => {
                     model.time = time.0;
-                    vec![render.render()]
+                    caps.render.render()
                 }
             }
         }
 
-        fn view(
-            &self,
-            model: &<Self as App<Ef, Caps>>::Model,
-        ) -> <Self as App<Ef, Caps>>::ViewModel {
+        fn view(&self, model: &Self::Model) -> Self::ViewModel {
             MyViewModel {
                 time: model.time.clone(),
             }
@@ -78,30 +51,23 @@ mod shared {
         Render,
     }
 
-    impl Default for MyEffect {
-        fn default() -> Self {
-            MyEffect::Render
-        }
+    pub struct MyCapabilities {
+        pub time: Time<MyEvent>,
+        pub render: Render<MyEvent>,
     }
 
-    #[derive(Capabilities)]
-    pub(crate) struct MyCapabilities {
-        pub time: Time<MyEffect>,
-        pub render: Render<MyEffect>,
-    }
-
-    impl Default for MyCapabilities {
-        fn default() -> Self {
-            Self {
-                time: Time::new(MyEffect::Time),
-                render: Render::new(MyEffect::Render),
+    impl WithContext<MyApp, MyEffect> for MyCapabilities {
+        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
+            MyCapabilities {
+                time: Time::new(context.with_effect(|_| MyEffect::Time)),
+                render: Render::new(context.with_effect(|_| MyEffect::Render)),
             }
         }
     }
 }
 
 mod shell {
-    use super::shared::{MyApp, MyCapabilities, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
     use crux_time::TimeResponse;
@@ -117,7 +83,7 @@ mod shell {
     }
 
     pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyCapabilities, MyApp<MyEffect, MyCapabilities>> = Core::new();
+        let core: Core<MyEffect, MyApp> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Message(MyEvent::TimeGet));

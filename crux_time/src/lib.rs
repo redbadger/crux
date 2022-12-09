@@ -1,34 +1,56 @@
 //! TODO mod docs
 
-use crux_core::{Capability, Command};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Eq, Serialize)]
+pub struct TimeRequest;
 
 // TODO revisit this
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeResponse(pub String);
 
-pub struct Time<Ef>
-where
-    Ef: Clone,
-{
-    effect: Ef,
+impl Operation for TimeRequest {
+    type Output = TimeResponse;
 }
 
-impl<Ef> Time<Ef>
+pub struct Time<Ev> {
+    context: CapabilityContext<TimeRequest, Ev>,
+}
+
+impl<Ev> Time<Ev>
 where
-    Ef: Clone,
+    Ev: 'static,
 {
-    pub fn new(effect: Ef) -> Self {
-        Self { effect }
+    pub fn new(context: CapabilityContext<TimeRequest, Ev>) -> Self {
+        Self { context }
     }
 
-    pub fn get<Ev, F>(&self, callback: F) -> Command<Ef, Ev>
+    pub fn get<F>(&self, callback: F)
     where
-        Ev: 'static,
         F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        Command::new(self.effect.clone(), callback)
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let response = ctx.request_from_shell(TimeRequest).await;
+
+            ctx.update_app(callback(response));
+        });
     }
 }
 
-impl<Ef> Capability for Time<Ef> where Ef: Clone {}
+impl<Ef> Capability<Ef> for Time<Ef> {
+    type MappedSelf<MappedEv> = Time<MappedEv>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
+        Ef: 'static,
+        NewEvent: 'static,
+    {
+        Time::new(self.context.map_event(f))
+    }
+}

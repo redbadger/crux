@@ -26,7 +26,7 @@ interface Response {
     | types.PlatformResponse
     | types.TimeResponse
     | types.HttpResponse
-    | types.KeyValueResponse;
+    | types.KeyValueOutput;
 }
 
 type State = {
