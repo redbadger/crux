@@ -25,7 +25,10 @@ where
     }
 
     pub fn render(&self) {
-        self.context.notify_shell(RenderOperation {})
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            ctx.notify_shell(RenderOperation).await;
+        });
     }
 } // Public API of the capability, called by App::update.
 

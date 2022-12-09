@@ -67,14 +67,12 @@ where
         self.inner.spawner.spawn(f);
     }
 
-    pub fn notify_shell(&self, operation: T) {
-        // Technically we could just call `self.inner.steps.send` here,
-        // but if we hand everything off to the executor it should keep
-        // the ordering of effects consistent with their function calls
-        let closure_self = self.clone();
-        self.spawn(async move {
-            closure_self.inner.steps.send(Step::once(operation));
-        });
+    pub async fn notify_shell(&self, operation: T) {
+        // This function might look like it doesn't need to be async but
+        // it's important that it is.  It forces all capabilities to
+        // spawn onto the executor which keeps the ordering of effects
+        // consistent with their function calls.
+        self.inner.steps.send(Step::once(operation));
     }
 
     pub fn update_app(&self, event: Ev) {
