@@ -1,5 +1,5 @@
 use crate::Request;
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, fmt, sync::Mutex};
 use uuid::Uuid;
 
 /// TODO: docs
@@ -8,7 +8,7 @@ pub(crate) struct Step<T> {
     pub(crate) resolve: Option<Resolve>,
 }
 
-pub(crate) type Resolve = Box<dyn Fn(&[u8]) + Send>;
+pub(crate) type Resolve = Box<dyn FnOnce(&[u8]) + Send>;
 
 impl<T> Step<T> {
     pub fn new<F>(payload: T, resume: F) -> Self
@@ -38,6 +38,17 @@ impl<T> Step<T> {
             payload: f(self.payload),
             resolve: self.resolve,
         }
+    }
+}
+
+impl<T> fmt::Debug for Step<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Step")
+            .field("payload", &self.payload)
+            .finish_non_exhaustive()
     }
 }
 
@@ -83,6 +94,6 @@ impl StepRegistry {
             .remove(uuid)
             .unwrap_or_else(|| panic!("Step with UUID {uuid:?} not found."));
 
-        (*resolve)(body);
+        resolve(body);
     }
 }

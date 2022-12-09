@@ -69,3 +69,64 @@ where
         EffectFuture { shared_state }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use assert_matches::assert_matches;
+
+    use crate::{
+        capability::{CapabilityContext, Operation},
+        channels::channel,
+        executor::executor_and_spawner,
+    };
+
+    #[derive(serde::Serialize, PartialEq, Eq, Debug)]
+    struct TestOperation;
+
+    impl Operation for TestOperation {
+        type Output = ();
+    }
+
+    #[test]
+    fn test_effect_future() {
+        let (step_sender, steps) = channel();
+        let (event_sender, events) = channel::<()>();
+        let (executor, spawner) = executor_and_spawner();
+        let capability_context =
+            CapabilityContext::new(step_sender, event_sender.clone(), spawner.clone());
+
+        let future = capability_context.request_from_shell(TestOperation);
+
+        // The future hasn't been awaited so we shouldn't have any steps.
+        assert_matches!(steps.receive(), None);
+        assert_matches!(events.receive(), None);
+
+        // It also shouldn't have spawned anything so check that
+        executor.run_all();
+        assert_matches!(steps.receive(), None);
+        assert_matches!(events.receive(), None);
+
+        spawner.spawn(async move {
+            future.await;
+            event_sender.send(());
+        });
+
+        // We still shouldn't have any steps
+        assert_matches!(steps.receive(), None);
+        assert_matches!(events.receive(), None);
+
+        executor.run_all();
+        let step = steps.receive().expect("we should have a step here");
+        assert_matches!(steps.receive(), None);
+        assert_matches!(events.receive(), None);
+
+        (step.resolve.unwrap())(&[]);
+        assert_matches!(steps.receive(), None);
+        assert_matches!(events.receive(), None);
+
+        executor.run_all();
+        assert_matches!(steps.receive(), None);
+        assert_matches!(events.receive(), Some(()));
+        assert_matches!(events.receive(), None);
+    }
+}
