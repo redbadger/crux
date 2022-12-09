@@ -46,7 +46,7 @@ impl<Ef, Ev> Clone for CapabilityContext<Ef, Ev> {
 
 impl<T, Ev> CapabilityContext<T, Ev>
 where
-    T: 'static,
+    T: Send + 'static,
     Ev: 'static,
 {
     pub(crate) fn new(
@@ -68,7 +68,13 @@ where
     }
 
     pub fn notify_shell(&self, operation: T) {
-        self.inner.steps.send(Step::once(operation));
+        // Technically we could just call `self.inner.steps.send` here,
+        // but if we hand everything off to the executor it should keep
+        // the ordering of effects consistent with their function calls
+        let closure_self = self.clone();
+        self.spawn(async move {
+            closure_self.inner.steps.send(Step::once(operation));
+        });
     }
 
     pub fn update_app(&self, event: Ev) {
