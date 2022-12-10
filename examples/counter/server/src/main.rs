@@ -1,14 +1,18 @@
 use std::{
+    convert::Infallible,
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::Duration,
 };
+use tokio_stream::StreamExt as _;
 
 use axum::{
     extract::State,
-    response::IntoResponse,
+    response::{sse::Event, IntoResponse, Sse},
     routing::{get, post},
     Json, Router,
 };
+use futures::{stream, Stream};
 use serde::Serialize;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -38,6 +42,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(get_counter))
+        .route("/sse", get(sse_handler))
         .route("/inc", post(inc))
         .route("/dec", post(dec))
         .with_state(state);
@@ -74,4 +79,26 @@ async fn dec(State(counter): State<CounterState>) -> impl IntoResponse {
     };
 
     Json(Counter { value })
+}
+
+async fn sse_handler(
+    State(counter): State<CounterState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    // A `Stream` that repeats an event every second
+    let stream = stream::repeat_with(move || {
+        Event::default().data(
+            &serde_json::to_string(&Counter {
+                value: *counter.value.lock().unwrap(),
+            })
+            .unwrap(),
+        )
+    })
+    .map(Ok)
+    .throttle(Duration::from_secs(1));
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    )
 }
