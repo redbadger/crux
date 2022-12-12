@@ -17,7 +17,6 @@ where
     context: Rc<AppContext<Ef, App::Event>>,
 }
 
-// TODO: I think this could probably be shared with Core to cut down on a bit of code.
 struct AppContext<Ef, Ev> {
     commands: Receiver<Step<Ef>>,
     events: Receiver<Ev>,
@@ -43,7 +42,6 @@ where
     Ef: Send + 'static,
 {
     fn default() -> Self {
-        // Thoughts: all of this shit is _kind_ of an AppContext or CoreContext or something isn't it...?
         let (command_sender, commands) = crate::channels::channel();
         let (event_sender, events) = crate::channels::channel();
         let (executor, spawner) = executor_and_spawner();
@@ -93,7 +91,6 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
 }
 
 #[derive(Debug)]
-// TODO: is this is a shit name?  I feel it might be.
 pub struct Update<Ef, Ev> {
     pub effects: Vec<TestEffect<Ef, Ev>>,
     pub events: Vec<Ev>,
