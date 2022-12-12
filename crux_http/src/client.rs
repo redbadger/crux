@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::effect::EffectSender;
 use crate::http::{Method, Url};
 use crate::middleware::{Middleware, Next};
+use crate::protocol::EffectSender;
 use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
 
 /// An HTTP client, capable of sending `Request`s and running a middleware stack.
@@ -128,7 +128,7 @@ impl Client {
 
         let next = Next::new(&mw_stack, &|req, client| {
             Box::pin(async move {
-                let req = crate::effect::HttpRequest::from(req);
+                let req = crate::protocol::HttpRequest::from(req);
                 Ok(client.effect_sender.send(req).await.into())
             })
         });

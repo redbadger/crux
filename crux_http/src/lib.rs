@@ -18,7 +18,7 @@ mod request;
 mod request_builder;
 mod response;
 
-pub mod effect;
+pub mod protocol;
 
 // TODO: Think about this Result re-export.
 pub use http_types::{self as http, Error, Result};
@@ -31,12 +31,12 @@ pub use self::{
 };
 
 // TODO: These are definitely temporary
-pub use self::{effect::HttpRequest, effect::HttpResponse};
+pub use self::{protocol::HttpRequest, protocol::HttpResponse};
 
 use client::Client;
 
 pub struct Http<Ev> {
-    context: CapabilityContext<effect::HttpRequest, Ev>,
+    context: CapabilityContext<protocol::HttpRequest, Ev>,
     client: Client,
 }
 
@@ -53,7 +53,7 @@ impl<Ev> Http<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<effect::HttpRequest, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<protocol::HttpRequest, Ev>) -> Self {
         Self {
             client: Client::new(context.clone()),
             context,
@@ -99,9 +99,9 @@ where
     pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(effect::HttpResponse) -> Ev + Send + 'static,
+        F: Fn(protocol::HttpResponse) -> Ev + Send + 'static,
     {
-        self.send(effect::HttpMethod::Get, url, callback)
+        self.send(protocol::HttpMethod::Get, url, callback)
     }
 
     pub fn get_json<T, F>(&self, url: Url, callback: F)
@@ -111,8 +111,8 @@ where
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let request = effect::HttpRequest {
-                method: effect::HttpMethod::Get.to_string(),
+            let request = protocol::HttpRequest {
+                method: protocol::HttpMethod::Get.to_string(),
                 url: url.to_string(),
             };
             let resp = ctx.request_from_shell(request).await;
@@ -124,14 +124,14 @@ where
         });
     }
 
-    pub fn send<F>(&self, method: effect::HttpMethod, url: Url, callback: F)
+    pub fn send<F>(&self, method: protocol::HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(effect::HttpResponse) -> Ev + Send + 'static,
+        F: Fn(protocol::HttpResponse) -> Ev + Send + 'static,
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let request = effect::HttpRequest {
+            let request = protocol::HttpRequest {
                 method: method.to_string(),
                 url: url.to_string(),
             };
