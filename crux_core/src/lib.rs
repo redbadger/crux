@@ -112,6 +112,7 @@ pub mod executor;
 mod future;
 pub mod render;
 mod steps;
+pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
@@ -277,7 +278,7 @@ where
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding [`Response`] to pass the data back
 /// to the [`App::update`] function wrapped in the correct `Message`.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Request<Effect> {
     pub uuid: Vec<u8>,
     pub effect: Effect,
