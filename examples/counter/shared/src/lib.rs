@@ -16,7 +16,7 @@ pub use app::*;
 uniffi_macros::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Core<Effect, MyApp> = Core::new::<MyCapabilities>();
+    static ref CORE: Core<Effect, App> = Core::new::<Capabilities>();
 }
 
 #[wasm_bindgen]
@@ -37,15 +37,15 @@ pub fn view() -> Vec<u8> {
 // TODO macro effect generation:
 // crux_macros::generate_effect!(Effect, MyCapabilities);
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Effect {
     Http(HttpRequest),
     Render,
 }
 
-impl crux_core::WithContext<MyApp, Effect> for MyCapabilities {
-    fn new_with_context(context: CapabilityContext<Effect, MyEvent>) -> MyCapabilities {
-        MyCapabilities {
+impl crux_core::WithContext<App, Effect> for Capabilities {
+    fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
+        Capabilities {
             http: Http::new(context.with_effect(Effect::Http)),
             render: Render::new(context.with_effect(|_| Effect::Render)),
         }

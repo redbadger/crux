@@ -1,0 +1,14 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+anyhow = "1.0.66"
+async-std = { version = "1.12.0", features = ["std", "attributes"] }
+bcs = "0.1.4"
+clap = { version = "4.0.29", features = ["derive"] }
+serde = { version = "1.0.148", features = ["derive"] }
+shared = { path = "../shared" }
+surf = "2.3.2"
