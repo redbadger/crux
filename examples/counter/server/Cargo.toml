@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.6.1", features = ["headers"] }
 futures = "0.3.25"
+futures-signals = "0.3.31"
 serde = { version = "1.0.150", features = ["derive"] }
 serde_json = "1.0.89"
 tokio = { version = "1.23.0", features = ["full"] }

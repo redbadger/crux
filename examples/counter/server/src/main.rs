@@ -1,26 +1,24 @@
-use std::{
-    convert::Infallible,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
-use tokio_stream::StreamExt as _;
+use futures_signals::signal::{Mutable, SignalExt};
+use std::{convert::Infallible, net::SocketAddr};
 
 use axum::{
     extract::State,
     http::Method,
-    response::{sse::Event, IntoResponse, Sse},
+    response::{
+        sse::{Event, KeepAlive},
+        IntoResponse, Sse,
+    },
     routing::{get, post},
     Json, Router,
 };
-use futures::{stream, Stream};
+use futures::Stream;
 use serde::Serialize;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
 struct CounterState {
-    value: Arc<Mutex<isize>>,
+    value: Mutable<isize>,
 }
 
 #[derive(Serialize)]
@@ -39,7 +37,7 @@ async fn main() {
         .init();
 
     let state = CounterState {
-        value: Arc::new(Mutex::new(0)),
+        value: Mutable::new(0),
     };
 
     let app = Router::new()
@@ -63,14 +61,14 @@ async fn main() {
 }
 
 async fn get_counter(State(counter): State<CounterState>) -> impl IntoResponse {
-    let value = *counter.value.lock().unwrap();
+    let value = *counter.value.lock_mut();
 
     Json(Counter { value })
 }
 
 async fn inc(State(counter): State<CounterState>) -> impl IntoResponse {
     let value = {
-        let mut value = counter.value.lock().unwrap();
+        let mut value = counter.value.lock_mut();
         *value = value.saturating_add(1);
         *value
     };
@@ -80,7 +78,7 @@ async fn inc(State(counter): State<CounterState>) -> impl IntoResponse {
 
 async fn dec(State(counter): State<CounterState>) -> impl IntoResponse {
     let value = {
-        let mut value = counter.value.lock().unwrap();
+        let mut value = counter.value.lock_mut();
         *value = value.saturating_sub(1);
         *value
     };
@@ -91,21 +89,12 @@ async fn dec(State(counter): State<CounterState>) -> impl IntoResponse {
 async fn sse_handler(
     State(counter): State<CounterState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    // A `Stream` that repeats an event every second
-    let stream = stream::repeat_with(move || {
-        Event::default().data(
-            &serde_json::to_string(&Counter {
-                value: *counter.value.lock().unwrap(),
-            })
-            .unwrap(),
-        )
-    })
-    .map(Ok)
-    .throttle(Duration::from_secs(1));
+    let stream = counter
+        .value
+        .signal()
+        .map(|value| Event::default().data(&serde_json::to_string(&Counter { value }).unwrap()))
+        .map(Ok)
+        .to_stream();
 
-    Sse::new(stream).keep_alive(
-        axum::response::sse::KeepAlive::new()
-            .interval(Duration::from_secs(1))
-            .text("keep-alive-text"),
-    )
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }

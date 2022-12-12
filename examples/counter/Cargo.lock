@@ -918,6 +918,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures-signals"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3acc659ba666cff13fdf65242d16428f2f11935b688f82e4024ad39667a5132"
+dependencies = [
+ "discard",
+ "futures-channel",
+ "futures-core",
+ "futures-util",
+ "log",
+ "pin-project",
+ "serde",
+]
+
+[[package]]
 name = "futures-sink"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2135,6 +2150,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "futures",
+ "futures-signals",
  "serde",
  "serde_json",
  "tokio",
