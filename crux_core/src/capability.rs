@@ -112,7 +112,6 @@ where
     }
 }
 
-// TODO: Could this be "TestCore" or someshit?
 #[cfg(test)]
 mod tests {
     use static_assertions::assert_impl_all;
