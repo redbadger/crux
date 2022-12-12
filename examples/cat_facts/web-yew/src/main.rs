@@ -1,15 +1,16 @@
 use anyhow::{anyhow, Result};
 use js_sys::Date;
+use web_sys::window;
+use woothee::parser::Parser;
+use yew::prelude::*;
+
 use shared::{
     http::{HttpRequest, HttpResponse},
-    key_value::{KeyValueRequest, KeyValueResponse},
+    key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
 };
-use web_sys::window;
-use woothee::parser::Parser;
-use yew::prelude::*;
 
 async fn http_get(url: &str) -> Result<Vec<u8>> {
     let bytes = gloo_net::http::Request::get(url)
@@ -52,7 +53,7 @@ pub enum Outcome {
     Platform(PlatformResponse),
     Time(TimeResponse),
     Http(HttpResponse),
-    KeyValue(KeyValueResponse),
+    KeyValue(KeyValueOutput),
 }
 
 impl Component for HelloWorld {
@@ -120,17 +121,17 @@ impl Component for HelloWorld {
                         )),
                     ));
                 }
-                Effect::KeyValue(KeyValueRequest::Read(_)) => {
+                Effect::KeyValue(KeyValueOperation::Read(_)) => {
                     // TODO implement state restoration
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::KeyValue(KeyValueResponse::Read(None)),
+                        Outcome::KeyValue(KeyValueOutput::Read(None)),
                     ));
                 }
-                Effect::KeyValue(KeyValueRequest::Write(..)) => {
+                Effect::KeyValue(KeyValueOperation::Write(..)) => {
                     link.send_message(CoreMessage::Response(
                         uuid,
-                        Outcome::KeyValue(KeyValueResponse::Write(false)),
+                        Outcome::KeyValue(KeyValueOutput::Write(false)),
                     ));
                 }
             }

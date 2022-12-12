@@ -343,7 +343,7 @@ where
             let resp = match result {
                 Ok(resp) => resp,
                 Err(e) => {
-                    capability.context.send_event(make_event(Err(e)));
+                    capability.context.update_app(make_event(Err(e)));
                     return;
                 }
             };
@@ -355,7 +355,7 @@ where
 
             capability
                 .context
-                .send_event(make_event(self.expectation.decode(resp)));
+                .update_app(make_event(self.expectation.decode(resp)));
         });
     }
 }

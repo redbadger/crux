@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use futures::Future;
 
-use crate::{
-    channels::{Receiver, Sender},
-    Command,
-};
+use crate::{channels::Sender, Step};
+
+pub trait Operation: serde::Serialize + Send + 'static {
+    type Output: serde::de::DeserializeOwned + Send + 'static;
+}
 
 // TODO docs!
 pub trait Capability<Ev> {
@@ -18,23 +19,11 @@ pub trait Capability<Ev> {
         NewEvent: 'static;
 }
 
-pub trait CapabilitiesFactory<App, Ef>
+pub trait WithContext<App, Ef>
 where
     App: crate::App,
 {
-    fn build(context: CapabilityContext<Ef, App::Event>) -> App::Capabilities;
-}
-
-pub fn test_capabilities<Caps, App, Ef>() -> (App::Capabilities, Receiver<Command<Ef>>)
-where
-    Caps: CapabilitiesFactory<App, Ef>,
-    App: crate::App,
-    App::Event: Send,
-    Ef: Send + 'static,
-{
-    todo!("reinstate this")
-    // let (sender, receiver) = channel();
-    // (Caps::build(sender), receiver)
+    fn new_with_context(context: CapabilityContext<Ef, App::Event>) -> App::Capabilities;
 }
 
 pub struct CapabilityContext<Ef, Event> {
@@ -42,8 +31,8 @@ pub struct CapabilityContext<Ef, Event> {
 }
 
 struct ContextInner<Ef, Event> {
-    command_sender: Sender<Command<Ef>>,
-    event_sender: Sender<Event>,
+    steps: Sender<Step<Ef>>,
+    events: Sender<Event>,
     spawner: crate::executor::Spawner,
 }
 
@@ -55,63 +44,71 @@ impl<Ef, Ev> Clone for CapabilityContext<Ef, Ev> {
     }
 }
 
-impl<Ef, Ev> CapabilityContext<Ef, Ev>
+impl<T, Ev> CapabilityContext<T, Ev>
 where
-    Ef: 'static,
+    T: Send + 'static,
     Ev: 'static,
 {
     pub(crate) fn new(
-        command_sender: Sender<Command<Ef>>,
-        event_sender: Sender<Ev>,
+        steps: Sender<Step<T>>,
+        events: Sender<Ev>,
         spawner: crate::executor::Spawner,
     ) -> Self {
         let inner = Arc::new(ContextInner {
-            command_sender,
-            event_sender,
+            steps,
+            events,
             spawner,
         });
 
         CapabilityContext { inner }
     }
 
-    pub(crate) fn run_command(&self, cmd: Command<Ef>) {
-        self.inner.command_sender.send(cmd);
-    }
-
     pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
         self.inner.spawner.spawn(f);
     }
 
-    pub fn send_event(&self, event: Ev) {
-        self.inner.event_sender.send(event);
+    pub async fn notify_shell(&self, operation: T) {
+        // This function might look like it doesn't need to be async but
+        // it's important that it is.  It forces all capabilities to
+        // spawn onto the executor which keeps the ordering of effects
+        // consistent with their function calls.
+        self.inner.steps.send(Step::once(operation));
     }
 
-    pub fn map_effect<NewEf, F>(&self, func: F) -> CapabilityContext<NewEf, Ev>
+    pub fn update_app(&self, event: Ev) {
+        self.inner.events.send(event);
+    }
+
+    pub fn with_effect<OtherT, F>(&self, func: F) -> CapabilityContext<OtherT, Ev>
     where
-        F: Fn(NewEf) -> Ef + Sync + Send + Copy + 'static,
-        NewEf: 'static,
+        F: Fn(OtherT) -> T + Sync + Send + Copy + 'static,
+        OtherT: 'static,
     {
         let inner = Arc::new(ContextInner {
-            command_sender: self.inner.command_sender.map_effect(func),
-            event_sender: self.inner.event_sender.clone(),
+            steps: self.inner.steps.map_effect(func),
+            events: self.inner.events.clone(),
             spawner: self.inner.spawner.clone(),
         });
 
         CapabilityContext { inner }
     }
 
-    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Ef, NewEv>
+    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<T, NewEv>
     where
         F: Fn(NewEv) -> Ev + Sync + Send + 'static,
         NewEv: 'static,
     {
         let inner = Arc::new(ContextInner {
-            command_sender: self.inner.command_sender.clone(),
-            event_sender: self.inner.event_sender.map_input(func),
+            steps: self.inner.steps.clone(),
+            events: self.inner.events.map_input(func),
             spawner: self.inner.spawner.clone(),
         });
 
         CapabilityContext { inner }
+    }
+
+    pub(crate) fn send_step(&self, step: Step<T>) {
+        self.inner.steps.send(step);
     }
 }
 

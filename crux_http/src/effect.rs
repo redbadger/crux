@@ -40,8 +40,8 @@ pub struct HttpResponse {
     pub body: Vec<u8>, // TODO support headers
 }
 
-impl crux_core::Effect for HttpRequest {
-    type Response = HttpResponse;
+impl crux_core::capability::Operation for HttpRequest {
+    type Output = HttpResponse;
 }
 
 #[async_trait]
@@ -55,7 +55,7 @@ where
     Ev: 'static,
 {
     async fn send(&self, effect: HttpRequest) -> HttpResponse {
-        crux_core::capability::CapabilityContext::effect(self, effect).await
+        crux_core::capability::CapabilityContext::request_from_shell(self, effect).await
     }
 }
 

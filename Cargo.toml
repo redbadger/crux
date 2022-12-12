@@ -1,2 +1,8 @@
 [workspace]
-members = ["crux_core", "crux_http", "crux_kv", "crux_platform", "crux_time"]
+members = [
+  "crux_core",
+  "crux_http",
+  "crux_kv",
+  "crux_platform",
+  "crux_time"
+]

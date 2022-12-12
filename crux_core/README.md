@@ -11,6 +11,10 @@ Unlike React Native, the user interface layer is built natively, with modern dec
 
 The UI layer is as thin as it can be, and all other work is done by the shared core. The interface with the core has static type checking across languages.
 
+> Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). The master branch should always be working well though, and we will try to keep the examples and documentation up to date as we go. The API hasn't settled yet, so beware! :-)
+
+> Another Note: we've just merged the ability to use async when writing capabilities. This makes capabilities much more powerful (e.g. subscriptions), but the docs might be a tad out of date. Bear with us, we're sweeping them as we speak.
+
 # Architectural Overview
 
 ![Architecture](./architecture.png)
@@ -38,14 +42,19 @@ Following the Elm architecture, the core defines the key component types within 
 - `Message` — an `enum` describing the events which the core can handle
 - `ViewModel` — represents information that should be displayed to the user
 
-The former two are tied together by the `update` function, familiar from Elm, Redux or other event sourcing architectures, and has this type signature:
+The former two are tied together by the `update` function, familiar from Elm, Redux or other event sourcing architectures, which currently has this type signature:
 
 ```rust
-fn update(message: Message, model: &mut Model) -> Vec<Command<Message>>
+fn update(
+    &self,
+    event: MyEvent,
+    model: &mut MyModel,
+    caps: &Capabilities,
+) -> Vec<Command<Effect, MyEvent>>
 ```
 
 The job of the `update` function is to process a message, update the model accordingly, and potentially request some side-effects using `Command`s.
-(The `Command` type is generic over the `Message` because each command specifies the subsequent message to be dispatched when it's completed — behaving essentially as a callback).
+(The `Command` type is generic over the `Event` because each command specifies the subsequent message to be dispatched when it's completed — behaving essentially as a callback).
 
 ### Application Shell
 
@@ -58,12 +67,12 @@ Following the Elm architecture, the interface with the core is message based.
 This means that the core is unable to perform anything other than pure calculations.
 To perform any task that creates a side-effect (such as HTTP calls or random number generation), the core must request them from the shell.
 
-The core has a concept of Capabilities — reusable interfaces for common side-effects with request/response semantics.
+The core has a concept of Capabilities — reusable interfaces for common side-effects with request/response semantics. There are now a few embryonic Capability crates (Http, KeyValue, Time, Platform, and the builtin Render) — and you can write your own if you need/want to.
 
-This means the core interface is very simple:
+This means the core interface is simple:
 
-- `message: Message -> Vec<Request>` - processes a user interaction event and potentially responds with capability requests
-- `response: Response -> Vec<Request>` - handles the response from the capability and potentially follows up with further requests
+- `message: Event -> Vec<Command>` - processes a user interaction event and potentially responds with capability requests
+- `response: (uuid, SomeResponse) -> Vec<Command>` - handles the response from the capability and potentially follows up with further requests
 - `view: () -> ViewModel` - provides the shell with the current data for displaying user interface
 
 Updating the user interface is considered a capability.
@@ -74,20 +83,20 @@ The Foreign Function Interface allowing the shell to call the above functions is
 
 In order both to send more complex data than UniFFI currently supports and to enforce the message passing semantics, all messages are serialized, sent across the boundary, then deserialized using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which also provides type generation for the foreign (non-Rust) languages.
 
-This means that changes to types in the core, especially the `Message` type, propagate out into the shell implementations and cause errors where appropriate (such as an exhaustive match on an enum check).
+This means that changes to types in the core, especially the `Event` type, propagate out into the shell implementations and cause type errors where appropriate (such as an exhaustive match on an enum check).
 
 ### Message Types
 
 Three types of message are exchanged between the application and the core.
 
-- Messages of type `Message` are sent from the Shell to the Core in response to an event happening in the user interface.
+- Messages of type `Event` are sent from the Shell to the Core in response to an event happening in the user interface.
   They start a potential sequence of further message exchanges between the shell and the core.
   Messages are passed on unchanged.
-- Messages of type `Request` are sent from the Core to the Shell to request the execution of some side-effect-inducing task.
-  The core can respond with `Request` messages after receiving either `Message` or `Response` messages.
-- Messages of type `Response` are sent from the Shell to the Core as a means of supplying the result of an earlier request (synchronous or asynchronous).
+- Messages of type `Effect` are sent from the Core to the Shell to request the execution of some side-effect-inducing task.
+  The Core responds with zero or more `Effect` messages after receiving an `Event` message.
+- Messages of type `Event` are sent from the Shell to the Core as a means of supplying the result of an earlier request (synchronous or asynchronous).
 
-`Request` and `Response` message contain the useful payloads for the capability, along with a `uuid` used by the core to keep track of the continuations, i.e. what message should be dispatched when a `Response` has been received.
+`Effect` and `Event` messages contain the useful payloads for the capability, along with a `uuid` used by the core to keep track of the continuations, i.e. what message should be dispatched when a response has been received.
 The exact mechanics are not important, but it is important for the request's `uuid` to be passed on to the corresponding response.
 
 ## Typical Message Exchange Cycle
@@ -96,14 +105,14 @@ A typical message exchange cycle is as follows:
 
 1. User interaction occurs in the Shell, which raises an event
 1. The Shell handles this event by constructing a message
-1. The Shell calls the Core's `message` function passing the `Message` instance as an argument
+1. The Shell calls the Core's `message` function passing the `Event` as an argument
 1. The Core performs the required processing, updating both its inner state and the view model
-1. The Core returns one or more `Request` messages to the Shell
+1. The Core returns one or more `Effect` messages to the Shell
 
-In the simplest case, the Core will respond to a `Message` by returning the single request - render (produced when the `update` function returns a `Command::Render`).
+In the simplest case, the Core will respond to an `Event` by returning the single `Effect` - render (produced when the `update` function returns a `Render` command).
 
 This requests that the Shell re-renders the user interface.
-When `Command::Render` is the last (or only) response from the Core, means the message cycle has terminated and the Core has now "settled".
+When `Render` is the last (or only) response from the Core, means the message cycle has terminated and the Core has now "settled".
 
 In more complex cases however, the Core may well return multiple commands; each of which instructs the Shell to perform a side-effect-inducing task such as:
 
@@ -114,14 +123,14 @@ In more complex cases however, the Core may well return multiple commands; each 
 - Whatever else you can think of...
 
 Many of these side-effecting-inducing tasks are asynchronous.
-Whenever the Shell then receives a response, it packages the data into further `Response`s that are then passed to the core for processing.
+Whenever the Shell then receives a response, it packages the data into further `Event`s that are then passed to the core for processing.
 
-This exchange continues until the core returns a `Command::Render` signalling that no more side-effects are in flight.
+This exchange continues until the core returns a `Render` signalling that no more side-effects are in flight.
 
-## Run the Example Locally
+## Run the Cat Facts Example Locally
 
-Refer to [examples/cat_facts](../examples/cat_facts/README.md) README
+Refer to [examples/cat_facts](./examples/cat_facts/README.md) README
 
 ## How to Start Your Own New Project
 
-Refer to the [new project](../docs/new-project.md) README
+Refer to the [new project](./docs/new-project.md) README

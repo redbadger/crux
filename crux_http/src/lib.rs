@@ -3,7 +3,10 @@
 //!
 //!
 
-use crux_core::{capability::CapabilityContext, Capability};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 use http::Method;
 use url::Url;
 
@@ -112,12 +115,12 @@ where
                 method: effect::HttpMethod::Get.to_string(),
                 url: url.to_string(),
             };
-            let resp = ctx.effect(request).await;
+            let resp = ctx.request_from_shell(request).await;
 
             let data =
                 serde_json::from_slice::<T>(&resp.body).expect("TODO: do something sensible here");
 
-            ctx.send_event(callback(data))
+            ctx.update_app(callback(data))
         });
     }
 
@@ -132,9 +135,9 @@ where
                 method: method.to_string(),
                 url: url.to_string(),
             };
-            let resp = ctx.effect(request).await;
+            let resp = ctx.request_from_shell(request).await;
 
-            ctx.send_event(callback(resp))
+            ctx.update_app(callback(resp))
         });
     }
 }

@@ -1,11 +1,11 @@
 package com.redbadger.catfacts.shared_types;
 
 
-public abstract class Msg {
+public abstract class Event {
 
     abstract public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError;
 
-    public static Msg deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+    public static Event deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
         int index = deserializer.deserialize_variant_index();
         switch (index) {
             case 0: return None.load(deserializer);
@@ -19,7 +19,7 @@ public abstract class Msg {
             case 8: return SetFact.load(deserializer);
             case 9: return SetImage.load(deserializer);
             case 10: return CurrentTime.load(deserializer);
-            default: throw new com.novi.serde.DeserializationError("Unknown variant index for Msg: " + index);
+            default: throw new com.novi.serde.DeserializationError("Unknown variant index for Event: " + index);
         }
     }
 
@@ -29,19 +29,19 @@ public abstract class Msg {
         return serializer.get_bytes();
     }
 
-    public static Msg bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
+    public static Event bcsDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
         if (input == null) {
              throw new com.novi.serde.DeserializationError("Cannot deserialize null array");
         }
         com.novi.serde.Deserializer deserializer = new com.novi.bcs.BcsDeserializer(input);
-        Msg value = deserialize(deserializer);
+        Event value = deserialize(deserializer);
         if (deserializer.get_buffer_offset() < input.length) {
              throw new com.novi.serde.DeserializationError("Some input bytes were not read");
         }
         return value;
     }
 
-    public static final class None extends Msg {
+    public static final class None extends Event {
         public None() {
         }
 
@@ -79,7 +79,7 @@ public abstract class Msg {
         }
     }
 
-    public static final class GetPlatform extends Msg {
+    public static final class GetPlatform extends Event {
         public GetPlatform() {
         }
 
@@ -117,10 +117,10 @@ public abstract class Msg {
         }
     }
 
-    public static final class Platform extends Msg {
-        public final PlatformMsg value;
+    public static final class Platform extends Event {
+        public final PlatformEvent value;
 
-        public Platform(PlatformMsg value) {
+        public Platform(PlatformEvent value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -135,7 +135,7 @@ public abstract class Msg {
         static Platform load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = PlatformMsg.deserialize(deserializer);
+            builder.value = PlatformEvent.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -156,7 +156,7 @@ public abstract class Msg {
         }
 
         public static final class Builder {
-            public PlatformMsg value;
+            public PlatformEvent value;
 
             public Platform build() {
                 return new Platform(
@@ -166,7 +166,7 @@ public abstract class Msg {
         }
     }
 
-    public static final class Clear extends Msg {
+    public static final class Clear extends Event {
         public Clear() {
         }
 
@@ -204,7 +204,7 @@ public abstract class Msg {
         }
     }
 
-    public static final class Get extends Msg {
+    public static final class Get extends Event {
         public Get() {
         }
 
@@ -242,7 +242,7 @@ public abstract class Msg {
         }
     }
 
-    public static final class Fetch extends Msg {
+    public static final class Fetch extends Event {
         public Fetch() {
         }
 
@@ -280,7 +280,7 @@ public abstract class Msg {
         }
     }
 
-    public static final class Restore extends Msg {
+    public static final class Restore extends Event {
         public Restore() {
         }
 
@@ -318,10 +318,10 @@ public abstract class Msg {
         }
     }
 
-    public static final class SetState extends Msg {
-        public final java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value;
+    public static final class SetState extends Event {
+        public final KeyValueOutput value;
 
-        public SetState(java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value) {
+        public SetState(KeyValueOutput value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -329,14 +329,14 @@ public abstract class Msg {
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(7);
-            TraitHelpers.serialize_option_vector_u8(value, serializer);
+            value.serialize(serializer);
             serializer.decrease_container_depth();
         }
 
         static SetState load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = TraitHelpers.deserialize_option_vector_u8(deserializer);
+            builder.value = KeyValueOutput.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -357,7 +357,7 @@ public abstract class Msg {
         }
 
         public static final class Builder {
-            public java.util.Optional<java.util.List<@com.novi.serde.Unsigned Byte>> value;
+            public KeyValueOutput value;
 
             public SetState build() {
                 return new SetState(
@@ -367,10 +367,10 @@ public abstract class Msg {
         }
     }
 
-    public static final class SetFact extends Msg {
-        public final java.util.List<@com.novi.serde.Unsigned Byte> value;
+    public static final class SetFact extends Event {
+        public final CatFact value;
 
-        public SetFact(java.util.List<@com.novi.serde.Unsigned Byte> value) {
+        public SetFact(CatFact value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -378,14 +378,14 @@ public abstract class Msg {
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(8);
-            TraitHelpers.serialize_vector_u8(value, serializer);
+            value.serialize(serializer);
             serializer.decrease_container_depth();
         }
 
         static SetFact load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = TraitHelpers.deserialize_vector_u8(deserializer);
+            builder.value = CatFact.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -406,7 +406,7 @@ public abstract class Msg {
         }
 
         public static final class Builder {
-            public java.util.List<@com.novi.serde.Unsigned Byte> value;
+            public CatFact value;
 
             public SetFact build() {
                 return new SetFact(
@@ -416,10 +416,10 @@ public abstract class Msg {
         }
     }
 
-    public static final class SetImage extends Msg {
-        public final java.util.List<@com.novi.serde.Unsigned Byte> value;
+    public static final class SetImage extends Event {
+        public final HttpResponse value;
 
-        public SetImage(java.util.List<@com.novi.serde.Unsigned Byte> value) {
+        public SetImage(HttpResponse value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -427,14 +427,14 @@ public abstract class Msg {
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(9);
-            TraitHelpers.serialize_vector_u8(value, serializer);
+            value.serialize(serializer);
             serializer.decrease_container_depth();
         }
 
         static SetImage load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = TraitHelpers.deserialize_vector_u8(deserializer);
+            builder.value = HttpResponse.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -455,7 +455,7 @@ public abstract class Msg {
         }
 
         public static final class Builder {
-            public java.util.List<@com.novi.serde.Unsigned Byte> value;
+            public HttpResponse value;
 
             public SetImage build() {
                 return new SetImage(
@@ -465,10 +465,10 @@ public abstract class Msg {
         }
     }
 
-    public static final class CurrentTime extends Msg {
-        public final String value;
+    public static final class CurrentTime extends Event {
+        public final TimeResponse value;
 
-        public CurrentTime(String value) {
+        public CurrentTime(TimeResponse value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -476,14 +476,14 @@ public abstract class Msg {
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(10);
-            serializer.serialize_str(value);
+            value.serialize(serializer);
             serializer.decrease_container_depth();
         }
 
         static CurrentTime load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = deserializer.deserialize_str();
+            builder.value = TimeResponse.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -504,7 +504,7 @@ public abstract class Msg {
         }
 
         public static final class Builder {
-            public String value;
+            public TimeResponse value;
 
             public CurrentTime build() {
                 return new CurrentTime(

@@ -1,28 +1,31 @@
 //! TODO mod docs
 
-use crux_core::{capability::CapabilityContext, Capability};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(serde::Serialize)]
-pub struct PlatformEffect;
+pub struct PlatformRequest;
 
 // TODO revisit this
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformResponse(pub String);
 
-impl crux_core::Effect for PlatformEffect {
-    type Response = PlatformResponse;
+impl Operation for PlatformRequest {
+    type Output = PlatformResponse;
 }
 
 pub struct Platform<Ev> {
-    context: CapabilityContext<PlatformEffect, Ev>,
+    context: CapabilityContext<PlatformRequest, Ev>,
 }
 
 impl<Ev> Platform<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<PlatformEffect, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<PlatformRequest, Ev>) -> Self {
         Self { context }
     }
 
@@ -32,9 +35,9 @@ where
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let response = ctx.effect(PlatformEffect).await;
+            let response = ctx.request_from_shell(PlatformRequest).await;
 
-            ctx.send_event(callback(response));
+            ctx.update_app(callback(response));
         });
     }
 }
