@@ -12,7 +12,7 @@ pub enum KeyValueOperation {
     Write(String, Vec<u8>),
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum KeyValueOutput {
     // TODO: Add support for errors
     Read(Option<Vec<u8>>),

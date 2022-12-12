@@ -43,7 +43,7 @@ pub fn view() -> Vec<u8> {
 // TODO macro effect generation:
 // crux_macros::generate_effect!(Effect, CatFactCapabilities);
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Effect {
     Http(HttpRequest),
     KeyValue(KeyValueOperation),

@@ -2,7 +2,7 @@
 
 This crate contains the `Http` capability, which can be used to ask the Shell to make an HTTP request.
 
-For an example of how to use the capability, see the [integration test](./tests/http_test.rs).
+For an example of how to use the capability, see the [integration test](./tests/with_shell.rs).
 
 ## About Crux Capabilities
 

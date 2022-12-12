@@ -37,7 +37,7 @@ pub struct HttpRequest {
     // TODO support headers
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HttpResponse {
     pub status: u16,   // FIXME this probably should be a giant enum instead.
     pub body: Vec<u8>, // TODO support headers

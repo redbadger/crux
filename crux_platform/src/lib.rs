@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct PlatformRequest;
 
 // TODO revisit this
-#[derive(PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformResponse(pub String);
 
 impl Operation for PlatformRequest {
