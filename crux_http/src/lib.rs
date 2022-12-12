@@ -87,6 +87,26 @@ where
         });
     }
 
+    pub fn post<Res, F>(&self, url: Url, callback: F)
+    where
+        Res: serde::de::DeserializeOwned,
+        F: Fn(Res) -> Ev + Send + Clone + 'static,
+    {
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let request = HttpRequest {
+                method: HttpMethod::Post.to_string(),
+                url: url.to_string(),
+            };
+            let resp = ctx.request_from_shell(request).await;
+
+            let data = serde_json::from_slice::<Res>(&resp.body)
+                .expect("TODO: do something sensible here");
+
+            ctx.update_app(callback(data))
+        });
+    }
+
     pub fn send<F>(&self, method: HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
