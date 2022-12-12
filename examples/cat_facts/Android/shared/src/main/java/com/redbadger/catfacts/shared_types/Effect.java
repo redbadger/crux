@@ -85,9 +85,9 @@ public abstract class Effect {
     }
 
     public static final class KeyValue extends Effect {
-        public final KeyValueRequest value;
+        public final KeyValueOperation value;
 
-        public KeyValue(KeyValueRequest value) {
+        public KeyValue(KeyValueOperation value) {
             java.util.Objects.requireNonNull(value, "value must not be null");
             this.value = value;
         }
@@ -102,7 +102,7 @@ public abstract class Effect {
         static KeyValue load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
-            builder.value = KeyValueRequest.deserialize(deserializer);
+            builder.value = KeyValueOperation.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -123,7 +123,7 @@ public abstract class Effect {
         }
 
         public static final class Builder {
-            public KeyValueRequest value;
+            public KeyValueOperation value;
 
             public KeyValue build() {
                 return new KeyValue(

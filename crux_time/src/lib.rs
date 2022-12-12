@@ -1,28 +1,31 @@
 //! TODO mod docs
 
-use crux_core::{capability::CapabilityContext, Capability};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Serialize)]
-pub struct TimeEffect;
+pub struct TimeRequest;
 
 // TODO revisit this
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeResponse(pub String);
 
-impl crux_core::Effect for TimeEffect {
-    type Response = TimeResponse;
+impl Operation for TimeRequest {
+    type Output = TimeResponse;
 }
 
 pub struct Time<Ev> {
-    context: CapabilityContext<TimeEffect, Ev>,
+    context: CapabilityContext<TimeRequest, Ev>,
 }
 
 impl<Ev> Time<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<TimeEffect, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<TimeRequest, Ev>) -> Self {
         Self { context }
     }
 
@@ -32,9 +35,9 @@ where
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let response = ctx.effect(TimeEffect).await;
+            let response = ctx.request_from_shell(TimeRequest).await;
 
-            ctx.send_event(callback(response));
+            ctx.update_app(callback(response));
         });
     }
 }

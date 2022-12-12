@@ -1,59 +1,66 @@
 //! TODO mod docs
 
-use crux_core::{capability::CapabilityContext, Capability};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Capability,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum KeyValueRequest {
+pub enum KeyValueOperation {
     Read(String),
     Write(String, Vec<u8>),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub enum KeyValueResponse {
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum KeyValueOutput {
+    // TODO: Add support for errors
     Read(Option<Vec<u8>>),
+    // TODO: Add support for errors
     Write(bool),
 }
 
-impl crux_core::Effect for KeyValueRequest {
-    type Response = KeyValueResponse;
+impl Operation for KeyValueOperation {
+    type Output = KeyValueOutput;
 }
 
 pub struct KeyValue<Ev> {
-    context: CapabilityContext<KeyValueRequest, Ev>,
+    context: CapabilityContext<KeyValueOperation, Ev>,
 }
 
 impl<Ev> KeyValue<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<KeyValueRequest, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<KeyValueOperation, Ev>) -> Self {
         Self { context }
     }
 
-    pub fn read<F>(&self, key: &str, callback: F)
+    pub fn read<F>(&self, key: &str, make_event: F)
     where
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
         let ctx = self.context.clone();
         let key = key.to_string();
         self.context.spawn(async move {
-            let resp = ctx.effect(KeyValueRequest::Read(key)).await;
+            let output = ctx.request_from_shell(KeyValueOperation::Read(key)).await;
 
-            ctx.send_event(callback(resp))
+            ctx.update_app(make_event(output))
         });
     }
 
-    pub fn write<F>(&self, key: &str, value: Vec<u8>, callback: F)
+    pub fn write<F>(&self, key: &str, value: Vec<u8>, make_event: F)
     where
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
         let ctx = self.context.clone();
         let key = key.to_string();
         self.context.spawn(async move {
-            let resp = ctx.effect(KeyValueRequest::Write(key, value)).await;
+            let resp = ctx
+                .request_from_shell(KeyValueOperation::Write(key, value))
+                .await;
 
-            ctx.send_event(callback(resp))
+            ctx.update_app(make_event(resp))
         });
     }
 }

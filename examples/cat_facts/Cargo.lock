@@ -668,7 +668,6 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "derive_more",
  "serde",
  "serde_json",
@@ -682,17 +681,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "serde",
-]
-
-[[package]]
-name = "crux_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -702,7 +691,6 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "serde",
 ]
 
@@ -713,7 +701,6 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
- "crux_macros",
  "serde",
 ]
 
@@ -2286,7 +2273,6 @@ dependencies = [
  "crux_core",
  "crux_http",
  "crux_kv",
- "crux_macros",
  "crux_platform",
  "crux_time",
  "derive_more",

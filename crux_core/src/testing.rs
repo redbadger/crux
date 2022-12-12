@@ -3,9 +3,9 @@ use std::{fmt, rc::Rc};
 use crate::{
     capability::CapabilityContext,
     channels::Receiver,
-    continuations::ContinuationStore,
-    executor::{executor_and_spawner, Executor},
-    CapabilitiesFactory, Command, Request,
+    executor::{executor_and_spawner, QueuingExecutor},
+    steps::StepRegistry,
+    Request, Step, WithContext,
 };
 
 pub struct AppTester<App, Ef>
@@ -19,10 +19,10 @@ where
 
 // TODO: I think this could probably be shared with Core to cut down on a bit of code.
 struct AppContext<Ef, Ev> {
-    commands: Receiver<Command<Ef>>,
+    commands: Receiver<Step<Ef>>,
     events: Receiver<Ev>,
-    executor: Executor,
-    continuations: ContinuationStore,
+    executor: QueuingExecutor,
+    steps: StepRegistry,
 }
 
 impl<App, Ef> AppTester<App, Ef>
@@ -38,7 +38,7 @@ where
 impl<App, Ef> Default for AppTester<App, Ef>
 where
     App: crate::App,
-    App::Capabilities: CapabilitiesFactory<App, Ef>,
+    App::Capabilities: WithContext<App, Ef>,
     App::Event: Send,
     Ef: Send + 'static,
 {
@@ -51,12 +51,12 @@ where
 
         Self {
             app: App::default(),
-            capabilities: App::Capabilities::build(capability_context),
+            capabilities: App::Capabilities::new_with_context(capability_context),
             context: Rc::new(AppContext {
                 commands,
                 events,
                 executor,
-                continuations: ContinuationStore::default(),
+                steps: StepRegistry::default(),
             }),
         }
     }
@@ -78,7 +78,7 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
             .commands
             .drain()
             .map(|cmd| {
-                let request = self.continuations.pause(cmd);
+                let request = self.steps.register(cmd);
                 TestEffect {
                     request,
                     context: Rc::clone(self),
@@ -109,7 +109,7 @@ impl<Ef, Ev> TestEffect<Ef, Ev> {
     where
         T: serde::ser::Serialize,
     {
-        self.context.continuations.resume(
+        self.context.steps.resume(
             self.request.uuid.as_slice(),
             &bcs::to_bytes(result).unwrap(),
         );

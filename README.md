@@ -13,6 +13,8 @@ The UI layer is as thin as it can be, and all other work is done by the shared c
 
 > Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). The master branch should always be working well though, and we will try to keep the examples and documentation up to date as we go. The API hasn't settled yet, so beware! :-)
 
+> Another Note: we've just merged the ability to use async when writing capabilities. This makes capabilities much more powerful (e.g. subscriptions), but the docs might be a tad out of date. Bear with us, we're sweeping them as we speak.
+
 # Architectural Overview
 
 ![Architecture](./architecture.png)

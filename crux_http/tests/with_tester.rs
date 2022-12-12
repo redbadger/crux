@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, App, CapabilitiesFactory};
+    use crux_core::{capability::CapabilityContext, App, WithContext};
     use crux_http::{Http, HttpRequest};
     use serde::{Deserialize, Serialize};
     use url::Url;
@@ -58,10 +58,10 @@ mod shared {
         pub http: Http<MyEvent>,
     }
 
-    impl CapabilitiesFactory<MyApp, MyEffect> for MyCapabilities {
-        fn build(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
+    impl WithContext<MyApp, MyEffect> for MyCapabilities {
+        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
             MyCapabilities {
-                http: Http::new(context.map_effect(MyEffect::Http)),
+                http: Http::new(context.with_effect(MyEffect::Http)),
             }
         }
     }

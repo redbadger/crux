@@ -74,7 +74,7 @@ sealed class Outcome {
     data class Platform(val res: PlatformResponse) : Outcome()
     data class Time(val res: TimeResponse) : Outcome()
     data class Http(val res: HttpResponse) : Outcome()
-    data class KeyValue(val res: KeyValueResponse) : Outcome()
+    data class KeyValue(val res: KeyValueOutput) : Outcome()
 }
 
 sealed class CoreMessage {
@@ -165,16 +165,16 @@ class Model : ViewModel() {
                 )
             }
             is Effect.KeyValue -> when (effect.value) {
-                is KeyValueRequest.Read -> update(
+                is KeyValueOperation.Read -> update(
                     CoreMessage.Response(
                         req.uuid.toByteArray().toUByteArray().toList(),
-                        Outcome.KeyValue(KeyValueResponse.Read(null))
+                        Outcome.KeyValue(KeyValueOutput.Read(null))
                     )
                 )
-                is KeyValueRequest.Write -> update(
+                is KeyValueOperation.Write -> update(
                     CoreMessage.Response(
                         req.uuid.toByteArray().toUByteArray().toList(),
-                        Outcome.KeyValue(KeyValueResponse.Write(false)),
+                        Outcome.KeyValue(KeyValueOutput.Write(false)),
                     )
                 )
             }

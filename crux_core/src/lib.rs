@@ -108,26 +108,24 @@
 
 pub mod capability;
 pub mod channels;
-mod command;
-mod continuations;
 pub mod executor;
 mod future;
 pub mod render;
+mod steps;
 pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-use std::{marker::PhantomData, sync::RwLock};
+use std::sync::RwLock;
 
 use serde::{Deserialize, Serialize};
 
 use capability::CapabilityContext;
 use channels::Receiver;
-use command::Command;
-use continuations::ContinuationStore;
-use executor::Executor;
+use executor::QueuingExecutor;
+use steps::{Step, StepRegistry};
 
-pub use capability::{CapabilitiesFactory, Capability};
+pub use capability::{Capability, WithContext};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
@@ -157,13 +155,12 @@ where
     A: App,
 {
     model: RwLock<A::Model>,
-    continuations: ContinuationStore,
-    executor: Executor,
+    step_registry: StepRegistry,
+    executor: QueuingExecutor,
     capabilities: A::Capabilities,
-    command_receiver: Receiver<Command<Ef>>,
-    event_receiver: Receiver<A::Event>,
+    steps: Receiver<Step<Ef>>,
+    capability_events: Receiver<A::Event>,
     app: A,
-    _marker: PhantomData<Ef>,
 }
 
 impl<Ef, A> Core<Ef, A>
@@ -181,85 +178,45 @@ where
     ///
     /// The core interface passes across messages serialized as bytes. These can be
     /// deserialized using the types generated using the [typegen] module.
-    pub fn new<CapFactory>() -> Self
+    pub fn new<Capabilities>() -> Self
     where
-        CapFactory: CapabilitiesFactory<A, Ef>,
+        Capabilities: WithContext<A, Ef>,
     {
-        let (command_sender, command_receiver) = crate::channels::channel();
+        let (step_sender, step_receiver) = crate::channels::channel();
         let (event_sender, event_receiver) = crate::channels::channel();
         let (executor, spawner) = executor::executor_and_spawner();
-        let capability_context = CapabilityContext::new(command_sender, event_sender, spawner);
+        let capability_context = CapabilityContext::new(step_sender, event_sender, spawner);
 
         Self {
             model: Default::default(),
-            continuations: Default::default(),
+            step_registry: Default::default(),
             executor,
             app: Default::default(),
-            capabilities: CapFactory::build(capability_context),
-            command_receiver,
-            event_receiver,
-            _marker: PhantomData,
+            capabilities: Capabilities::new_with_context(capability_context),
+            steps: step_receiver,
+            capability_events: event_receiver,
         }
     }
 
     /// Receive a message from the shell.
     ///
-    /// The `msg` is serialized and will be deserialized by the core.
-    pub fn message<'de>(&self, msg: &'de [u8]) -> Vec<u8>
+    /// The `event` is serialized and will be deserialized by the core.
+    pub fn message<'de>(&self, event: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        let event: <A as App>::Event =
-            bcs::from_bytes(msg).expect("Message deserialization failed.");
-
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-        self.app.update(event, &mut model, &self.capabilities);
-        drop(model);
-
-        self.executor.run_all();
-
-        while let Some(event) = self.event_receiver.receive() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app.update(event, &mut model, &self.capabilities);
-            drop(model);
-            self.executor.run_all()
-        }
-
-        let requests = self
-            .command_receiver
-            .drain()
-            .map(|c| self.continuations.pause(c))
-            .collect::<Vec<_>>();
-
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+        self.process(None, event)
     }
 
     /// Receive a response to a capability request from the shell.
     ///
-    /// The `res` is serialized and will be deserialized by the core. The `uuid`  field of
-    /// the deserialized [`Response`] MUST match the `uuid` of the [`Request`] which
-    /// triggered it, else the core will panic.
-    pub fn response<'de>(&self, uuid: &[u8], body: &'de [u8]) -> Vec<u8>
+    /// The `event` is serialized and will be deserialized by the core. The `uuid` MUST match
+    /// the `uuid` of the effect that triggered it, else the core will panic.
+    pub fn response<'de>(&self, uuid: &[u8], event: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
-        self.continuations.resume(uuid, body);
-        self.executor.run_all();
-
-        while let Some(event) = self.event_receiver.receive() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app.update(event, &mut model, &self.capabilities);
-            drop(model);
-            self.executor.run_all()
-        }
-
-        let requests = self
-            .command_receiver
-            .drain()
-            .map(|c| self.continuations.pause(c))
-            .collect::<Vec<_>>();
-
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+        self.process(Some(uuid), event)
     }
 
     /// Get the current state of the app's view model (serialized).
@@ -271,13 +228,47 @@ where
 
         bcs::to_bytes(&value).expect("View model serialization failed.")
     }
+
+    fn process<'de>(&self, uuid: Option<&[u8]>, event: &'de [u8]) -> Vec<u8>
+    where
+        <A as App>::Event: Deserialize<'de>,
+    {
+        match uuid {
+            None => {
+                let shell_event = bcs::from_bytes(event).expect("Message deserialization failed.");
+                let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                self.app.update(shell_event, &mut model, &self.capabilities);
+            }
+            Some(uuid) => {
+                self.step_registry.resume(uuid, event);
+            }
+        }
+
+        self.executor.run_all();
+
+        while let Some(capability_event) = self.capability_events.receive() {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app
+                .update(capability_event, &mut model, &self.capabilities);
+            drop(model);
+            self.executor.run_all();
+        }
+
+        let requests = self
+            .steps
+            .drain()
+            .map(|c| self.step_registry.register(c))
+            .collect::<Vec<_>>();
+
+        bcs::to_bytes(&requests).expect("Request serialization failed.")
+    }
 }
 
 impl<Ef, A> Default for Core<Ef, A>
 where
     Ef: Serialize + Send + 'static,
     A: App,
-    A::Capabilities: CapabilitiesFactory<A, Ef>,
+    A::Capabilities: WithContext<A, Ef>,
 {
     fn default() -> Self {
         Self::new::<A::Capabilities>()
@@ -291,12 +282,4 @@ where
 pub struct Request<Effect> {
     pub uuid: Vec<u8>,
     pub effect: Effect,
-}
-
-// This name is too confusing, since we kind of have two "Effects"
-// We've got the `Effect` enum that gets serialised to the shell
-// and the capability level stuff, which this represnets.
-// TODO: Think up a better name...
-pub trait Effect: serde::Serialize + Send + 'static {
-    type Response: serde::de::DeserializeOwned + Send + 'static;
 }
