@@ -6,9 +6,10 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.6.1", features = ["headers"] }
 futures = "0.3.25"
-serde = { version = "1.0.149", features = ["derive"] }
+serde = { version = "1.0.150", features = ["derive"] }
 serde_json = "1.0.89"
 tokio = { version = "1.23.0", features = ["full"] }
 tokio-stream = "0.1.11"
+tower-http = { version = "0.3.5", features = ["cors"] }
 tracing = "0.1.37"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }

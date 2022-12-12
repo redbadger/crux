@@ -8,12 +8,14 @@ use tokio_stream::StreamExt as _;
 
 use axum::{
     extract::State,
+    http::Method,
     response::{sse::Event, IntoResponse, Sse},
     routing::{get, post},
     Json, Router,
 };
 use futures::{stream, Stream};
 use serde::Serialize;
+use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
@@ -45,6 +47,11 @@ async fn main() {
         .route("/sse", get(sse_handler))
         .route("/inc", post(inc))
         .route("/dec", post(dec))
+        .layer(
+            CorsLayer::new()
+                .allow_methods([Method::GET, Method::POST])
+                .allow_origin(Any),
+        )
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
