@@ -24,11 +24,21 @@ impl crux_core::App for App {
                 caps.render.render();
             }
             Event::Increment => {
+                // optimistic update
+                model.count += 1;
+                caps.render.render();
+
+                // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/inc");
                 caps.http.post(url.unwrap(), Event::Set)
             }
             Event::Decrement => {
+                // optimistic update
+                model.count -= 1;
+                caps.render.render();
+
+                // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/dec");
                 caps.http.post(url.unwrap(), Event::Set)
@@ -130,13 +140,21 @@ mod tests {
         let update = app.update(Event::Increment, &mut model);
 
         let actual = &update.effects[0];
+        let expected = &Effect::Render;
+        assert_eq!(actual, expected);
+
+        let actual = model.count;
+        let expected = 1;
+        assert_eq!(actual, expected);
+
+        let actual = &update.effects[1];
         let expected = &Effect::Http(HttpRequest {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/inc".to_string(),
         });
         assert_eq!(actual, expected);
 
-        let update = update.effects[0].resolve(&HttpResponse {
+        let update = update.effects[1].resolve(&HttpResponse {
             status: 200,
             body: serde_json::to_vec(&Counter { value: 1 }).unwrap(),
         });
@@ -154,13 +172,21 @@ mod tests {
         let update = app.update(Event::Decrement, &mut model);
 
         let actual = &update.effects[0];
+        let expected = &Effect::Render;
+        assert_eq!(actual, expected);
+
+        let actual = model.count;
+        let expected = -1;
+        assert_eq!(actual, expected);
+
+        let actual = &update.effects[1];
         let expected = &Effect::Http(HttpRequest {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/dec".to_string(),
         });
         assert_eq!(actual, expected);
 
-        let update = update.effects[0].resolve(&HttpResponse {
+        let update = update.effects[1].resolve(&HttpResponse {
             status: 200,
             body: serde_json::to_vec(&Counter { value: 1 }).unwrap(),
         });
