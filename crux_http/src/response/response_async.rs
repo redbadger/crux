@@ -213,7 +213,7 @@ impl ResponseAsync {
     /// # Ok(()) }
     /// ```
     pub async fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
-        self.res.body_bytes().await
+        Ok(self.res.body_bytes().await?)
     }
 
     /// Reads the entire response body into a string.
@@ -253,7 +253,7 @@ impl ResponseAsync {
             .as_ref()
             .and_then(|mime| mime.param("charset"))
             .map(|name| name.to_string());
-        decode_body(bytes, claimed_encoding.as_deref())
+        Ok(decode_body(bytes, claimed_encoding.as_deref())?)
     }
 
     /// Reads and deserialized the entire request body from json.
@@ -312,7 +312,7 @@ impl ResponseAsync {
     /// # Ok(()) }
     /// ```
     pub async fn body_form<T: serde::de::DeserializeOwned>(&mut self) -> crate::Result<T> {
-        self.res.body_form().await
+        Ok(self.res.body_form().await?)
     }
 }
 

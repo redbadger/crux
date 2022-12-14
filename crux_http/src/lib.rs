@@ -12,6 +12,7 @@ use url::Url;
 
 mod client;
 mod config;
+mod error;
 mod expect;
 mod middleware;
 mod request;
@@ -21,10 +22,11 @@ mod response;
 pub mod protocol;
 
 // TODO: Think about this Result re-export.
-pub use http_types::{self as http, Error, Result};
+pub use http_types::{self as http};
 
 pub use self::{
     config::Config,
+    error::Error,
     request::Request,
     request_builder::RequestBuilder,
     response::{Response, ResponseAsync},
@@ -34,6 +36,8 @@ pub use self::{
 pub use self::{protocol::HttpRequest, protocol::HttpResponse};
 
 use client::Client;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 pub struct Http<Ev> {
     context: CapabilityContext<protocol::HttpRequest, Ev>,

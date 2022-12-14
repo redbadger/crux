@@ -226,35 +226,6 @@ where
         self.body(Body::from(bytes.as_ref()))
     }
 
-    /// Pass a file as the request body.
-    ///
-    /// # Mime
-    ///
-    /// The encoding is set based on the file extension using [`mime_guess`] if the operation was
-    /// successful. If `path` has no extension, or its extension has no known MIME type mapping,
-    /// then `None` is returned.
-    ///
-    /// [`mime_guess`]: https://docs.rs/mime_guess
-    ///
-    /// # Errors
-    ///
-    /// This method will return an error if the file couldn't be read.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let uri = "https://httpbin.org/post";
-    /// let res = crux_http::post(uri).body_file("./archive.tgz").await?.await?;
-    /// assert_eq!(res.status(), 200);
-    /// # Ok(()) }
-    /// ```
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn body_file(self, path: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
-        Ok(self.body(Body::from_file(path).await?))
-    }
-
     /// Set the URL querystring.
     ///
     /// # Examples

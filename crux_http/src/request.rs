@@ -65,7 +65,7 @@ impl Request {
     /// # Ok(()) }
     /// ```
     pub fn query<T: serde::de::DeserializeOwned>(&self) -> crate::Result<T> {
-        self.req.query()
+        Ok(self.req.query()?)
     }
 
     /// Set the URL querystring.
@@ -89,7 +89,7 @@ impl Request {
     /// # Ok(()) }
     /// ```
     pub fn set_query(&mut self, query: &impl Serialize) -> crate::Result<()> {
-        self.req.set_query(query)
+        Ok(self.req.set_query(query)?)
     }
 
     /// Get an HTTP header.

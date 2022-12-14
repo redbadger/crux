@@ -66,9 +66,8 @@ pub enum Event {
     Fetch,
     Restore,                  // restore state
     SetState(KeyValueOutput), // receive the data to restore state with
-    #[serde(skip)] // TODO: Make result serde compatible
     SetFact(crux_http::Result<crux_http::Response<CatFact>>),
-    SetImage(HttpResponse),
+    SetImage(crux_http::Result<crux_http::Response<CatImage>>),
     CurrentTime(TimeResponse),
 }
 
@@ -128,36 +127,39 @@ impl App for CatFacts {
 
                 caps.http
                     .get_(FACT_API_URL)
-                    .header("Accept", "application/json")
                     .expect_json::<CatFact>()
                     .send(Event::SetFact);
 
-                // .get_json(Url::parse(FACT_API_URL).unwrap(), Event::SetFact);
                 caps.http
-                    .get(Url::parse(IMAGE_API_URL).unwrap(), Event::SetImage);
+                    .get_(FACT_API_URL)
+                    .expect_json::<CatImage>()
+                    .send(Event::SetImage);
+
                 caps.render.render();
             }
-            Event::SetFact(mut res) => {
+            Event::SetFact(Ok(mut response)) => {
                 // TODO check status
-                model.cat_fact = Some(res.unwrap().take_body().unwrap());
+                model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 caps.key_value.write("state", bytes, |_| Event::None);
                 caps.time.get(Event::CurrentTime);
             }
-            Event::CurrentTime(iso_time) => {
-                model.time = Some(iso_time.0);
+            Event::SetImage(Ok(mut response)) => {
+                // TODO check status
+                model.cat_image = Some(response.take_body().unwrap());
+
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 caps.key_value.write("state", bytes, |_| Event::None);
                 caps.render.render();
             }
-            Event::SetImage(HttpResponse { body, status: _ }) => {
-                // TODO check status
-                let Ok(image) = serde_json::from_slice::<CatImage>(&body) else { return };
-                model.cat_image = Some(image);
-
+            Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
+                // TODO: Display an error or something?
+            }
+            Event::CurrentTime(iso_time) => {
+                model.time = Some(iso_time.0);
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 caps.key_value.write("state", bytes, |_| Event::None);

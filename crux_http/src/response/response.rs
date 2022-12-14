@@ -6,6 +6,7 @@ use crate::http::{
 };
 
 use futures_util::io::AsyncRead;
+use http::{headers::CONTENT_TYPE, Headers};
 use serde::de::DeserializeOwned;
 
 use std::fmt;
@@ -14,8 +15,12 @@ use std::ops::Index;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
-    res: super::ResponseAsync,
+    version: Option<http::Version>,
+    status: http::StatusCode,
+    #[serde(with = "header_serde")]
+    headers: Headers,
     body: Option<Body>,
 }
 
@@ -24,8 +29,13 @@ impl<Body> Response<Body> {
     pub(crate) async fn new(mut res: super::ResponseAsync) -> crate::Result<Response<Vec<u8>>> {
         let body = res.body_bytes().await?;
 
+        let headers: &Headers = res.as_ref();
+        let headers = headers.clone();
+
         Ok(Response {
-            res,
+            status: res.status(),
+            headers,
+            version: res.version(),
             body: Some(body),
         })
     }
@@ -42,7 +52,7 @@ impl<Body> Response<Body> {
     /// # Ok(()) }
     /// ```
     pub fn status(&self) -> StatusCode {
-        self.res.status()
+        self.status
     }
 
     /// Get the HTTP protocol version.
@@ -59,7 +69,7 @@ impl<Body> Response<Body> {
     /// # Ok(()) }
     /// ```
     pub fn version(&self) -> Option<Version> {
-        self.res.version()
+        self.version
     }
 
     /// Get a header.
@@ -74,63 +84,52 @@ impl<Body> Response<Body> {
     /// # Ok(()) }
     /// ```
     pub fn header(&self, name: impl Into<HeaderName>) -> Option<&HeaderValues> {
-        self.res.header(name)
+        self.headers.get(name)
     }
 
     /// Get an HTTP header mutably.
     pub fn header_mut(&mut self, name: impl Into<HeaderName>) -> Option<&mut HeaderValues> {
-        self.res.header_mut(name)
+        self.headers.get_mut(name)
     }
 
     /// Remove a header.
     pub fn remove_header(&mut self, name: impl Into<HeaderName>) -> Option<HeaderValues> {
-        self.res.remove_header(name)
+        self.headers.remove(name)
     }
 
     /// Insert an HTTP header.
     pub fn insert_header(&mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) {
-        self.res.insert_header(key, value);
+        self.headers.insert(key, value);
     }
 
     /// Append an HTTP header.
     pub fn append_header(&mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) {
-        self.res.append_header(key, value);
+        self.headers.append(key, value);
     }
 
     /// An iterator visiting all header pairs in arbitrary order.
     #[must_use]
     pub fn iter(&self) -> headers::Iter<'_> {
-        self.res.iter()
+        self.headers.iter()
     }
 
     /// An iterator visiting all header pairs in arbitrary order, with mutable references to the
     /// values.
     #[must_use]
     pub fn iter_mut(&mut self) -> headers::IterMut<'_> {
-        self.res.iter_mut()
+        self.headers.iter_mut()
     }
 
     /// An iterator visiting all header names in arbitrary order.
     #[must_use]
     pub fn header_names(&self) -> headers::Names<'_> {
-        self.res.header_names()
+        self.headers.names()
     }
 
     /// An iterator visiting all header values in arbitrary order.
     #[must_use]
     pub fn header_values(&self) -> headers::Values<'_> {
-        self.res.header_values()
-    }
-
-    /// Get a response scoped extension value.
-    #[must_use]
-    pub fn ext<T: Send + Sync + 'static>(&self) -> Option<&T> {
-        self.res.ext::<T>()
-    }
-
-    /// Set a response scoped extension value.
-    pub fn insert_ext<T: Send + Sync + 'static>(&mut self, val: T) {
-        self.res.insert_ext(val)
+        self.headers.values()
     }
 
     /// Get the response content type as a `Mime`.
@@ -154,7 +153,7 @@ impl<Body> Response<Body> {
     /// # Ok(()) }
     /// ```
     pub fn content_type(&self) -> Option<Mime> {
-        self.res.content_type()
+        self.header(CONTENT_TYPE)?.last().as_str().parse().ok()
     }
 
     pub fn body(&self) -> Option<&Body> {
@@ -167,8 +166,10 @@ impl<Body> Response<Body> {
 
     pub fn with_body<NewBody>(self, body: NewBody) -> Response<NewBody> {
         Response {
-            res: self.res,
             body: Some(body),
+            headers: self.headers,
+            status: self.status,
+            version: self.version,
         }
     }
 }
@@ -196,7 +197,7 @@ impl Response<Vec<u8>> {
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
         self.body
             .take()
-            .ok_or(crate::Error::from_str(self.status(), "Body had no bytes"))
+            .ok_or(crate::Error::new(Some(self.status()), "Body had no bytes"))
     }
 
     /// Reads the entire response body into a string.
@@ -237,7 +238,7 @@ impl Response<Vec<u8>> {
             .as_ref()
             .and_then(|mime| mime.param("charset"))
             .map(|name| name.to_string());
-        decode_body(bytes, claimed_encoding.as_deref())
+        Ok(decode_body(bytes, claimed_encoding.as_deref())?)
     }
 
     /// Reads and deserialized the entire request body from json.
@@ -269,46 +270,17 @@ impl Response<Vec<u8>> {
         let body_bytes = self.body_bytes()?;
         serde_json::from_slice(&body_bytes).map_err(crate::Error::from)
     }
-
-    /// Reads and deserialized the entire request body from form encoding.
-    ///
-    /// # Errors
-    ///
-    /// Any I/O error encountered while reading the body is immediately returned
-    /// as an `Err`.
-    ///
-    /// If the body cannot be interpreted as valid json for the target type `T`,
-    /// an `Err` is returned.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// #[derive(Deserialize, Serialize)]
-    /// struct Body {
-    ///     apples: u32
-    /// }
-    ///
-    /// let mut res = crux_http::get("https://api.example.com/v1/response").await?;
-    /// let Body { apples } = res.body_form().await?;
-    /// # Ok(()) }
-    /// ```
-    pub async fn body_form<T: serde::de::DeserializeOwned>(&mut self) -> crate::Result<T> {
-        self.res.body_form().await
-    }
 }
 
 impl<Body> AsRef<http::Headers> for Response<Body> {
     fn as_ref(&self) -> &http::Headers {
-        self.res.as_ref()
+        &self.headers
     }
 }
 
 impl<Body> AsMut<http::Headers> for Response<Body> {
     fn as_mut(&mut self) -> &mut http::Headers {
-        self.res.as_mut()
+        &mut self.headers
     }
 }
 
@@ -316,8 +288,10 @@ impl<Body> fmt::Debug for Response<Body> {
     #[allow(missing_doc_code_examples)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Response")
-            .field("response", &self.res)
-            .finish()
+            .field("version", &self.version)
+            .field("status", &self.status)
+            .field("headers", &self.headers)
+            .finish_non_exhaustive()
     }
 }
 
@@ -331,7 +305,7 @@ impl<Body> Index<HeaderName> for Response<Body> {
     /// Panics if the name is not present in `Response`.
     #[inline]
     fn index(&self, name: HeaderName) -> &HeaderValues {
-        &self.res[name]
+        &self.headers[name]
     }
 }
 
@@ -345,6 +319,46 @@ impl<Body> Index<&str> for Response<Body> {
     /// Panics if the name is not present in `Response`.
     #[inline]
     fn index(&self, name: &str) -> &HeaderValues {
-        &self.res[name]
+        &self.headers[name]
+    }
+}
+
+mod header_serde {
+    use crate::http::{self, Headers};
+    use http::headers::HeaderName;
+    use serde::{de::Error, Deserializer, Serializer};
+
+    pub fn serialize<S>(headers: &Headers, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_map(headers.iter().map(|(name, values)| {
+            (
+                name.as_str(),
+                values.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
+            )
+        }))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Headers, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let strs = <Vec<(String, Vec<String>)> as serde::Deserialize>::deserialize(deserializer)?;
+
+        // http-types doesn't seem to let you construct a Headers, very annoying.
+        // So here's a horrible hack to do it.
+        let mut headers: Headers = http::Request::new(http::Method::Get, "thisisveryannoying.com")
+            .as_ref()
+            .clone();
+
+        for (name, values) in strs {
+            let name = HeaderName::from_string(name).map_err(D::Error::custom)?;
+            for value in values {
+                headers.append(&name, value);
+            }
+        }
+
+        Ok(headers)
     }
 }
