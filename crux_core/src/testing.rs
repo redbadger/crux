@@ -1,3 +1,4 @@
+//! Testing support for unit testing Crux apps.
 use std::{fmt, rc::Rc};
 
 use crate::{
@@ -8,6 +9,17 @@ use crate::{
     Request, Step, WithContext,
 };
 
+/// AppTester is a simplified execution environment for Crux apps for use in
+/// tests.
+///
+/// Create an intance of `AppTester` with your `App` and an `Effect` type
+/// using [`AppTester::default`].
+///
+/// for example:
+///
+/// ```rust,ignore
+/// let app = AppTester::<ExampleApp, ExampleEffect>::default();
+/// ```
 pub struct AppTester<App, Ef>
 where
     App: crate::App,
@@ -28,8 +40,12 @@ impl<App, Ef> AppTester<App, Ef>
 where
     App: crate::App,
 {
-    pub fn update(&self, msg: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
-        self.app.update(msg, model, &self.capabilities);
+    /// Run the app's `update` function with an event and a model state
+    ///
+    /// You can use the resulting [`Update`] to inspect the effects which were requested
+    /// and potential further events dispatched by capabilities.
+    pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
+        self.app.update(event, model, &self.capabilities);
         self.context.updates()
     }
 }
@@ -90,9 +106,12 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
     }
 }
 
+/// Update test helper holds the result of running an app update using [`AppTester::update`].
 #[derive(Debug)]
 pub struct Update<Ef, Ev> {
+    /// Effects requested from the update run
     pub effects: Vec<TestEffect<Ef, Ev>>,
+    /// Events dispatchd from the update run
     pub events: Vec<Ev>,
 }
 

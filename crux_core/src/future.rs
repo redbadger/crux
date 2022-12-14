@@ -1,3 +1,5 @@
+//! Async support for implementing capabilities
+//!
 use std::{
     sync::{Arc, Mutex},
     task::{Poll, Waker},
@@ -45,6 +47,14 @@ where
     Op: crate::capability::Operation,
     Ev: 'static,
 {
+    /// Send an effect request to the shell, expecting an output. The
+    /// provided `operation` describes the effect input in a serialisable fashion,
+    /// and must implement the [`Operation`](crate::capability::Operation) trait to declare the expected
+    /// output type.
+    ///
+    /// `request_from_shell` is returns a future of the output, which can be
+    /// `await`ed. You should only call this method inside an async task
+    /// created with [`CapabilityContext::spawn`](crate::capability::CapabilityContext::spawn).
     pub fn request_from_shell(&self, operation: Op) -> EffectFuture<Op::Output> {
         let shared_state = Arc::new(Mutex::new(SharedState {
             result: None,

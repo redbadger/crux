@@ -1,3 +1,5 @@
+//! Built-in capability used to notify the Shell that a UI update is necessary.
+
 use serde::Serialize;
 
 use crate::{
@@ -5,10 +7,18 @@ use crate::{
     Capability,
 };
 
+/// Use an instance of `Render` to notify the Shell that it should update the user
+/// interface. This assumes a declarative UI framework is used in the Shell, which will
+/// take the viewmodel provided by [`Core::view`](crate::Core::view) and reconcile the new UI state based
+/// on the view model with the previous one.
+///
+/// For imperative UIs, the Shell will need to understande the difference between the two
+/// view models and update the user interface accordingly.
 pub struct Render<Ev> {
     context: CapabilityContext<RenderOperation, Ev>,
 }
 
+/// The single operation `Render` implements.
 #[derive(Serialize)]
 pub struct RenderOperation;
 
@@ -16,6 +26,7 @@ impl Operation for RenderOperation {
     type Output = ();
 }
 
+/// Public API of the capability, called by App::update.
 impl<Ev> Render<Ev>
 where
     Ev: 'static,
@@ -24,13 +35,15 @@ where
         Self { context }
     }
 
+    /// Call `render` from [`App::update`](crate::App::update) to signal to the Shell that
+    /// UI should be re-drawn.
     pub fn render(&self) {
         let ctx = self.context.clone();
         self.context.spawn(async move {
             ctx.notify_shell(RenderOperation).await;
         });
     }
-} // Public API of the capability, called by App::update.
+}
 
 impl<Ev> Capability<Ev> for Render<Ev> {
     type MappedSelf<Ev2> = Render<Ev2>;
