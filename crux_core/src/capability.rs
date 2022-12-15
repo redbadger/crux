@@ -11,7 +11,7 @@
 //! ```rust,ignore
 //! fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
 //!     match event {
-//!         ...         
+//!         //...
 //!         Event::Increment => {
 //!             model.count += 1;
 //!             caps.render.render(); // Render capability
@@ -25,7 +25,7 @@
 //! ```
 //!
 //! Capabilities don't _perform_ side-effects themselves, they request them from the Shell. As a consequence
-//! The capability calls within the `update` function **only queue up the requests**. The side-effects themselves
+//! the capability calls within the `update` function **only queue up the requests**. The side-effects themselves
 //! are performed concurrently and don't block the update function.
 //!
 //! In order to use a capability, the app needs to include it in its `Capabilities` associated type and `WithContext`
@@ -37,28 +37,28 @@
 //! // An app module which can be reused in different apps
 //! mod my_app {
 //!     use crux_core::App;
-//!     use crux_core::render::{Render};
-//!     
+//!     use crux_core::render::Render;
+//!
 //!     #[derive(Default)]
 //!     pub struct MyApp;
 //!     pub struct Event;
-//!    
+//!
 //!     pub struct Capabilities {
 //!         pub render: Render<Event>
 //!     }
-//!     
+//!
 //!     impl App for MyApp {
 //!         type Model = ();
 //!         type Event = Event;
 //!         type ViewModel = ();
 //!         type Capabilities = Capabilities;
-//!    
+//!
 //!         fn update(&self, event: Event, model: &mut (), caps: &Capabilities) {
 //!             caps.render.render();
 //!         }
-//!     
+//!
 //!         fn view(&self, model: &()) {
-//!             ()    
+//!             ()
 //!         }
 //!     }
 //! }
@@ -66,8 +66,8 @@
 //! // Specific app core using the my_app module
 //! mod core {
 //!     use serde::{Serialize, Deserialize};
-//!     use crux_core::capability::{CapabilityContext};
-//!     use crux_core::render::{Render};
+//!     use crux_core::capability::CapabilityContext;
+//!     use crux_core::render::Render;
 //!     use super::my_app::{MyApp, Event, Capabilities};
 //!
 //!     // Effect type is used by the Shell to dispatch side-effect requests to
@@ -77,7 +77,7 @@
 //!     enum Effect {
 //!         Render
 //!     }
-//!    
+//!
 //!     // Link the (reusable) capabilities with the app-specific `Effect` type
 //!     impl crux_core::WithContext<MyApp, Effect> for Capabilities {
 //!        fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
@@ -100,14 +100,14 @@
 //! ```
 //!
 //! The call above translates into "Get 10 ducks in a row and return them to me using the `RowOfDucks` event".
-//! The capability's job is to translate this request into serialisable message and instruct the Shell to
-//! do the duck herding and when it receives the ducks back, wrap them in the requested event and return
+//! The capability's job is to translate this request into a serializable message and instruct the Shell to
+//! do the duck herding and when it receives the ducks back, wrap them in the requested event and return it
 //! to the app.
 //!
 //! We will refer to `get_in_row` in the above call as an _operation_, the `10` is an _input_, and the
 //! `Event::RowOfDucks` is an event constructor - a function, which eventually receives the row of ducks
-//! and returns a variant of the `Event` enum. Conveniently, enum variants are functions, and so that
-//! will be the typical use.
+//! and returns a variant of the `Event` enum. Conveniently, enum tuple variants can be used as functions,
+//! and so that will be the typical use.
 //!
 //! This is what the capability implementation could look like:
 //!
@@ -160,7 +160,7 @@
 //!         self.context.spawn(async move {
 //!             // Instruct Shell to get ducks in a row and await the ducks
 //!             let ducks = ctx.request_from_shell(DuckOperation::GetInARow(number_of_ducks)).await;
-//!             
+//!
 //!             // Unwrap the ducks and wrap them in the requested event
 //!             // This will always succeed, as long as the Shell implementation is correct
 //!             // and doesn't send the wrong output type back
@@ -261,7 +261,7 @@ where
     fn new_with_context(context: CapabilityContext<Ef, App::Event>) -> App::Capabilities;
 }
 
-/// An interface for capabilites to interact with the app and the shell.
+/// An interface for capabilities to interact with the app and the shell.
 ///
 /// To use [`update_app`](CapabilityContext::update_app), [`notify_shell`](CapabilityContext::notify_shell)
 /// or [`request_from_shell`](CapabilityContext::request_from_shell), spawn a task first.
@@ -364,7 +364,7 @@ where
         CapabilityContext { inner }
     }
 
-    /// Transform the CapabilityContext into one which uses the profived function to
+    /// Transform the CapabilityContext into one which uses the provided function to
     /// map each event dispatched with `update_app` to a different event type.
     ///
     /// This is useful when composing apps from modules to wrap a submodule's

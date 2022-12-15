@@ -11,31 +11,38 @@
 //!
 //! ## Getting Started
 //!
-//! Crux applications are split into two parts: Core written in Rust and a Shell written in the platform
+//! Crux applications are split into two parts: a Core written in Rust and a Shell written in the platform
 //! native language (e.g. Swift or Kotlin).
 //! The Core architecture is based on [Elm architecture](https://guide.elm-lang.org/architecture/).
 //!
 //! Quick glossary of terms to help you follow the example:
 //!
 //! * Core - the shared core written in Rust
-//! * Shell - the native side of the app on each platform handling UI and executing side effecgts
+//!
+//! * Shell - the native side of the app on each platform handling UI and executing side effects
+//!
 //! * App - the main module of the core containing the application logic, especially model changes
 //!   and side-effects triggered by events. App can be composed from modules, each resembling a smaller, simpler app.
+//!
 //! * Event - main input for the core, typically triggered by user interaction in the UI
+//!
 //! * Model - data structure (typically tree-like) holding the entire application state
-//! * View model - data structure describing the current state of the user interface
-//! * Effect - A side-effect the core can request from the shell. This is typically a form of I/O or similar
+//!
+//! * View model - data structure describing the current state of the user interface
+//!
+//! * Effect - A side-effect the core can request from the shell. This is typically a form of I/O or similar
 //!   interaction with the host platform. Updating the UI is considered an effect.
+//!
 //! * Capability - A user-friendly API used to request effects and provide events that should be dispatched
 //!   when the effect is completed. For example, a HTTP client is a capability.
 //!
-//! Below is a minimal example of a Crux based application Core:
+//! Below is a minimal example of a Crux-based application Core:
 //!
 //! ```rust,ignore
 //! // src/app.rs
 //!
-//! use serde::{Serialize, Deserialize}
-//! use crux_core::{App, render::Render}
+//! use serde::{Serialize, Deserialize};
+//! use crux_core::{App, render::Render};
 //!
 //! // Model describing the application state
 //! #[derive(Default)]
@@ -66,18 +73,18 @@
 //!     // Use the above Capabilities
 //!     type Capabilities = Capabilities;
 //!
-//!     fn update(&self, eventt: Event, model: &mut Model, caps: &Capabilities) {
+//!     fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
 //!         match event {
 //!             Event::Increment => model.count += 1,
 //!             Event::Decrement => model.count -= 1,
 //!             Event::Reset => model.count = 0,
 //!         };
-//!         
+//!
 //!         // Request a UI update
-//!         caps.render()
+//!         caps.render.render()
 //!     }
 //!
-//!     fn view(&self, model: &Model) -> ViewModel {
+//!     fn view(&self, model: &Model) -> self::ViewModel {
 //!         format!("Count is: {}", model.count)
 //!     }
 //! }
@@ -128,7 +135,7 @@
 //!     Render,
 //! }
 //!
-//! // Trait used to build an instance of each used apability with a context enabling
+//! // Trait used to build an instance of each used capability with a context enabling
 //! // the capability to request side effects.
 //! impl crux_core::WithContext<App, Effect> for Capabilities {
 //!     fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
@@ -139,7 +146,7 @@
 //! }
 //! ```
 //!
-//! You will also need a `hello.udl` file describing the foregin function interface:
+//! You will also need a `hello.udl` file describing the foreign function interface:
 //!
 //! ```ignore
 //! // src/hello.udl
