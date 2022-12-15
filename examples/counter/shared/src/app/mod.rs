@@ -188,11 +188,11 @@ mod tests {
 
         let update = update.effects[1].resolve(&HttpResponse {
             status: 200,
-            body: serde_json::to_vec(&Counter { value: 1 }).unwrap(),
+            body: serde_json::to_vec(&Counter { value: -1 }).unwrap(),
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set(Counter { value: 1 })];
+        let expected = vec![Event::Set(Counter { value: -1 })];
         assert_eq!(actual, expected);
     }
 }

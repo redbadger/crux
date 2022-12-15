@@ -1,5 +1,5 @@
 use anyhow::Result;
-use gloo_net::http::Method;
+use gloo_net::http;
 use yew::prelude::*;
 
 use shared::{
@@ -7,8 +7,8 @@ use shared::{
     Effect, Event, Request, ViewModel,
 };
 
-async fn http(url: &str, method: Method) -> Result<Vec<u8>> {
-    let bytes = gloo_net::http::Request::new(url)
+async fn http(url: &str, method: http::Method) -> Result<Vec<u8>> {
+    let bytes = http::Request::new(url)
         .method(method)
         .send()
         .await?
@@ -55,35 +55,31 @@ impl Component for RootComponent {
 
         let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
 
-        let should_render = reqs.iter().any(|req| matches!(req.effect, Effect::Render));
+        let mut should_render = false;
 
-        reqs.into_iter().for_each(|req| {
-            let Request { uuid, effect } = req;
+        for Request { uuid, effect } in reqs {
             match effect {
-                Effect::Render => {}
+                Effect::Render => should_render = true,
                 Effect::Http(HttpRequest { url, method }) => {
                     let method = match method.as_str() {
-                        "GET" => Method::GET,
-                        "POST" => Method::POST,
+                        "GET" => http::Method::GET,
+                        "POST" => http::Method::POST,
                         _ => panic!("not yet handling this method"),
                     };
 
                     let link = link.clone();
 
                     wasm_bindgen_futures::spawn_local(async move {
-                        let bytes = http(&url, method).await.unwrap_or_default();
-
-                        link.send_message(CoreMessage::Response(
-                            uuid,
-                            Outcome::Http(HttpResponse {
-                                status: 200,
-                                body: bytes,
-                            }),
-                        ));
+                        if let Ok(body) = http(&url, method).await {
+                            link.send_message(CoreMessage::Response(
+                                uuid,
+                                Outcome::Http(HttpResponse { status: 200, body }), // TODO: handle status
+                            ));
+                        }
                     });
                 }
             }
-        });
+        }
 
         should_render
     }

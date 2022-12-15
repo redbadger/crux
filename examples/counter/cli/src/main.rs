@@ -5,7 +5,7 @@ use shared::{
     Effect, Event, Request, ViewModel,
 };
 use std::{collections::VecDeque, str::FromStr, time::Duration};
-use surf::{Client, Config, Url};
+use surf::{http, Client, Config, Url};
 
 enum CoreMessage {
     Message(Event),
@@ -44,8 +44,8 @@ struct Args {
 async fn main() -> Result<()> {
     let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-    let msg = Args::parse().cmd.into();
-    queue.push_back(msg);
+    let cmd = Args::parse().cmd;
+    queue.push_back(cmd.into());
 
     while !queue.is_empty() {
         let msg = queue.pop_front();
@@ -62,14 +62,12 @@ async fn main() -> Result<()> {
         };
         let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
-        for req in reqs {
-            let Request { uuid, effect } = req;
+        for Request { uuid, effect } in reqs {
             match effect {
                 Effect::Render => (),
                 Effect::Http(HttpRequest { url, method }) => {
                     let url = Url::parse(&url)?;
-                    let method =
-                        surf::http::Method::from_str(&method).expect("unknown http method");
+                    let method = http::Method::from_str(&method).expect("unknown http method");
 
                     let client: Client = Config::new()
                         .set_timeout(Some(Duration::from_secs(5)))

@@ -1,6 +1,3 @@
-use futures_signals::signal::{Mutable, SignalExt};
-use std::{convert::Infallible, net::SocketAddr};
-
 use axum::{
     extract::State,
     http::Method,
@@ -9,10 +6,12 @@ use axum::{
         IntoResponse, Sse,
     },
     routing::{get, post},
-    Json, Router,
+    Json, Router, Server,
 };
 use futures::Stream;
+use futures_signals::signal::{Mutable, SignalExt};
 use serde::Serialize;
+use std::{convert::Infallible, net::SocketAddr};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -31,7 +30,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_counter=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "e.g. RUST_LOG=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -54,7 +53,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::info!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -92,8 +91,10 @@ async fn sse_handler(
     let stream = counter
         .value
         .signal()
-        .map(|value| Event::default().data(&serde_json::to_string(&Counter { value }).unwrap()))
-        .map(Ok)
+        .map(|value| {
+            let data = serde_json::to_string(&Counter { value }).unwrap();
+            Ok(Event::default().data(&data))
+        })
         .to_stream();
 
     Sse::new(stream).keep_alive(KeepAlive::default())
