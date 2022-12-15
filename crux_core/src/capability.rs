@@ -364,8 +364,8 @@ where
         CapabilityContext { inner }
     }
 
-    /// Transform the CapabilityContext into one maps each event passed to
-    /// `update_app` using the provided function.
+    /// Transform the CapabilityContext into one which uses the profived function to
+    /// map each event dispatched with `update_app` to a different event type.
     ///
     /// This is useful when composing apps from modules to wrap a submodule's
     /// event type with a specific variant of the parent module's event, so it can
