@@ -367,7 +367,7 @@ where
     /// Transform the CapabilityContext into one maps each event passed to
     /// `update_app` using the provided function.
     ///
-    /// This is useful when composing apps from modules to wrap submodule's
+    /// This is useful when composing apps from modules to wrap a submodule's
     /// event type with a specific variant of parent module event, so it can
     /// be forwarded to the submodule when received.
     ///
