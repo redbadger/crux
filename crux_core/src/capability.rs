@@ -368,7 +368,7 @@ where
     /// `update_app` using the provided function.
     ///
     /// This is useful when composing apps from modules to wrap a submodule's
-    /// event type with a specific variant of parent module event, so it can
+    /// event type with a specific variant of the parent module's event, so it can
     /// be forwarded to the submodule when received.
     ///
     /// In a typical case you would implement `From` on the submodule's `Capabilities` type
