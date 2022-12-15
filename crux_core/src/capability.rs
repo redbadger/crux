@@ -144,7 +144,6 @@
 //!     context: CapabilityContext<DuckOperation, Event>
 //! };
 //!
-//! // Basic empty implementation of the capability
 //! impl<Event> Ducks<Event> {
 //!     pub fn new(context: CapabilityContext<DuckOperation, Event>) -> Self {
 //!         Self { context }
