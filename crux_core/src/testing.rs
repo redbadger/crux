@@ -12,7 +12,7 @@ use crate::{
 /// AppTester is a simplified execution environment for Crux apps for use in
 /// tests.
 ///
-/// Create an intance of `AppTester` with your `App` and an `Effect` type
+/// Create an instance of `AppTester` with your `App` and an `Effect` type
 /// using [`AppTester::default`].
 ///
 /// for example:
