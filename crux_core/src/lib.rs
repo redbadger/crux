@@ -185,7 +185,7 @@ pub trait App: Default {
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
-    /// Capabilites, typically a `struct` lists the capabilities used by this application
+    /// Capabilites, typically a `struct`, lists the capabilities used by this application
     /// Typically, Capabilities should contain at least an instance of the built-in [`Render`](crate::render::Render) capability.
     type Capabilities;
 
