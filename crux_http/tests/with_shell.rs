@@ -128,8 +128,7 @@ mod shell {
             };
             let reqs: Vec<Request<MyEffect>> = bcs::from_bytes(&reqs)?;
 
-            for req in reqs {
-                let Request { uuid, effect } = req;
+            for Request { uuid, effect } in reqs {
                 match effect {
                     MyEffect::Render => received.push(effect.clone()),
                     MyEffect::Http(HttpRequest { .. }) => {
