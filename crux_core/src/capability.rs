@@ -70,11 +70,15 @@
 //!     use crux_core::render::{Render};
 //!     use super::my_app::{MyApp, Event, Capabilities};
 //!
+//!     // Effect type is used by the Shell to dispatch side-effect requests to
+//!     // the right capability implementation (and, in some languages, checking
+//!     // that all necessary capabilities are implemented)
 //!     #[derive(Serialize, Deserialize)]
 //!     enum Effect {
 //!         Render
 //!     }
 //!    
+//!     // Link the (reusable) capabilities with the app-specific `Effect` type
 //!     impl crux_core::WithContext<MyApp, Effect> for Capabilities {
 //!        fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
 //!            Capabilities {
@@ -85,10 +89,6 @@
 //! }
 //! }
 //! ```
-//!
-//! This links the (reusable) capabilities with the app-specific `Effect` type, used by the Shell to dispatch
-//! side-effect requests to the right capability implementation (and, in some languages, checking that all necessary
-//! capabilities are implemented).
 //!
 //! # Implementing a capability
 //!
