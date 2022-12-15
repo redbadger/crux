@@ -320,7 +320,7 @@ where
     }
 
     /// Spawn a task to do the asynchronous work. Within the task, async code
-    /// can be used to interact with the Shell.
+    /// can be used to interact with the Shell and the App.
     pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
         self.inner.spawner.spawn(f);
     }
