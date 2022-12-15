@@ -1,4 +1,8 @@
-//! TODO mod docs
+//! A HTTP client for use with Crux
+//!
+//! `crux_http` allows Crux apps to make HTTP requests by asking the Shell to perform them.
+//!
+//! This is still work in progress and large parts of HTTP are not yet supported.
 
 use crux_core::{
     capability::{CapabilityContext, Operation},
@@ -30,6 +34,7 @@ pub enum HttpMethod {
     Patch,
 }
 
+/// A HTTP request
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpRequest {
     pub method: String,
@@ -37,6 +42,7 @@ pub struct HttpRequest {
     // TODO support headers
 }
 
+/// A HTTP Response with body stored as bytes
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HttpResponse {
     pub status: u16,   // FIXME this probably should be a giant enum instead.
@@ -47,6 +53,7 @@ impl Operation for HttpRequest {
     type Output = HttpResponse;
 }
 
+/// The Http capability API.
 pub struct Http<Ev> {
     context: CapabilityContext<HttpRequest, Ev>,
 }
@@ -59,6 +66,9 @@ where
         Self { context }
     }
 
+    /// Instruct the Shell to perform a HTTP GET request to the provided URL
+    /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
+    /// will be dispatched to the app's `update` function.
     pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
@@ -67,6 +77,11 @@ where
         self.send(HttpMethod::Get, url, callback)
     }
 
+    /// Instruct the Shell to perform a HTTP GET request to the provided `url`, expecting
+    /// a JSON response.
+    ///
+    /// When finished, the response will be deserialized into type `T`, wrapped
+    /// in an event using `callback` and dispatched to the app's `update function.
     pub fn get_json<T, F>(&self, url: Url, callback: F)
     where
         T: serde::de::DeserializeOwned,
@@ -87,6 +102,10 @@ where
         });
     }
 
+    /// Instruct the Shell to perform a HTTP request with the provided `method` to the provided `url`.
+    ///
+    /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
+    /// will be dispatched to the app's `update` function.
     pub fn send<F>(&self, method: HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
