@@ -64,7 +64,7 @@ Following the Elm architecture, the interface with the core is message based.
 This means that the core is unable to perform anything other than pure calculations.
 To perform any task that creates a side-effect (such as an HTTP call or random number generation), the core must request it from the shell.
 
-The core has a concept of Capabilities — reusable interfaces for common side-effects with request/response semantics. There are now a few embryonic Capability crates (Http, KeyValue, Time, Platform, and the builtin Render) — and you can write your own if you need/want to.
+The core has a concept of Capabilities — reusable interfaces for common side-effects with request/response semantics. There are already a few embryonic Capability crates ([Http](./crux_http/), [KeyValue](./crux_kv/), [Time](./crux_time/), [Platform](./crux_platform/), and the builtin [Render](./crux_core//src//render.rs)) — and you can write your own if you need/want to.
 
 ![crux](./docs//src/crux.png)
 
