@@ -1,14 +1,21 @@
-//! TODO mod docs
-
+//! A basic Key-Value store for use with Crux
+//!
+//! `crux_kv` allows Crux apps to store and retrieve abirtrary data by asking the Shell to
+//! persist the data using platform native capabilitis (e.g. disk or web localStorage)
+//!
+//! This is still work in progress and extremely basic.
 use crux_core::{
     capability::{CapabilityContext, Operation},
     Capability,
 };
 use serde::{Deserialize, Serialize};
 
+/// Supported operations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum KeyValueOperation {
+    /// Read bytes stored under a key
     Read(String),
+    /// Write bytes under a key
     Write(String, Vec<u8>),
 }
 
@@ -36,6 +43,8 @@ where
         Self { context }
     }
 
+    /// Read a value under `key`, will dispatch the event with a
+    /// `KeyValueOutput::Read(Option<Vec<u8>>)` as payload
     pub fn read<F>(&self, key: &str, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
@@ -49,6 +58,10 @@ where
         });
     }
 
+    /// Set `key` to be the provided `value`. Typically the bytes would be
+    /// a value serialised/deserialised by the app.
+    ///
+    /// Will dispatch the event with a `KeyValueOutput::Write(bool)` as payload
     pub fn write<F>(&self, key: &str, value: Vec<u8>, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,

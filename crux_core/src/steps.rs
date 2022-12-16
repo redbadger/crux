@@ -2,7 +2,6 @@ use crate::Request;
 use std::{collections::HashMap, fmt, sync::Mutex};
 use uuid::Uuid;
 
-/// TODO: docs
 pub(crate) struct Step<T> {
     pub(crate) payload: T, // T is an Operation first, then Effect once mapped
     pub(crate) resolve: Option<Resolve>,

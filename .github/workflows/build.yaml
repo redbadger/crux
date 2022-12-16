@@ -1,0 +1,111 @@
+name: build
+
+on:
+  push:
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: short
+  NEXTEST_PROFILE: ci
+  CI: 1
+
+jobs:
+  build-crux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: Swatinem/rust-cache@v1
+      - uses: dtolnay/rust-toolchain@1.66.0
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        shell: bash
+        run: cargo fmt --all --check
+
+      - name: Build crux
+        shell: bash
+        run: cargo build --workspace
+
+      - name: Install nextest
+        shell: bash
+        run: |
+          curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
+      - name: Build tests
+        shell: bash
+        run: |
+          cargo nextest run --workspace --all-features --no-run
+
+      - name: Run tests
+        shell: bash
+        run: |
+          cargo nextest run --workspace --all-features
+
+      - name: Build & run doctests
+        shell: bash
+        run: |
+          cargo test --doc --workspace
+
+  find-examples:
+    runs-on: ubuntu-latest
+    outputs:
+      examples: ${{ steps.find.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: find
+        run: |
+          EXAMPLES=$(ls -d examples/*/ | xargs basename | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
+          echo "examples=$EXAMPLES" >> $GITHUB_OUTPUT
+
+  build-examples:
+    runs-on: ubuntu-latest
+    needs: find-examples
+    strategy:
+      matrix:
+        example: ${{ fromJson(needs.find-examples.outputs.examples) }}
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: Swatinem/rust-cache@v1
+      - uses: dtolnay/rust-toolchain@1.66.0
+        with:
+          components: rustfmt
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 7.18.1
+
+      - name: Check formatting
+        shell: bash
+        run: cargo fmt --all --check
+
+      - name: Build ${{ matrix.example }}
+        shell: bash
+        run: cargo build --workspace
+
+      - name: Install nextest
+        shell: bash
+        run: |
+          curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
+      - name: Build tests
+        shell: bash
+        run: |
+          cargo nextest run --workspace --all-features --no-run
+
+      - name: Run tests
+        shell: bash
+        run: |
+          cargo nextest run --workspace --all-features
+
+      - name: Build & run doctests
+        shell: bash
+        run: |
+          cargo test --doc --workspace
