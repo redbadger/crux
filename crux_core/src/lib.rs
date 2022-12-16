@@ -162,8 +162,8 @@
 //!
 
 pub mod capability;
-pub mod channels;
-pub mod executor;
+mod channels;
+mod executor;
 mod future;
 pub mod render;
 mod steps;
