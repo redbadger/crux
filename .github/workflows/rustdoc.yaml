@@ -12,7 +12,7 @@ env:
 
 jobs:
   rustdoc:
-    if: github.repository == 'red-badger/crux'
+    if: github.repository == 'redbadger/crux'
     runs-on: ubuntu-latest
 
     steps:
