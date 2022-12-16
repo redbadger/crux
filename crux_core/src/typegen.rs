@@ -192,7 +192,7 @@ impl TypeGen {
         fs::write(
             path.as_ref()
                 .to_path_buf()
-                .join(&package_path)
+                .join(package_path)
                 .join("Requests.java"),
             requests,
         )?;

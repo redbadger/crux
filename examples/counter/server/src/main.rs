@@ -93,7 +93,7 @@ async fn sse_handler(
         .signal()
         .map(|value| {
             let data = serde_json::to_string(&Counter { value }).unwrap();
-            Ok(Event::default().data(&data))
+            Ok(Event::default().data(data))
         })
         .to_stream();
 
