@@ -10,6 +10,6 @@ async-std = { version = "1.12.0", features = ["std", "attributes"] }
 bcs = "0.1.4"
 chrono = "0.4.23"
 clap = { version = "4.0.29", features = ["derive"] }
-serde = { version = "1.0.148", features = ["derive"] }
+serde = { version = "1.0.151", features = ["derive"] }
 shared = { path = "../shared" }
 surf = "2.3.2"
