@@ -3,7 +3,7 @@
 
 @file:Suppress("NAME_SHADOWING")
 
-package uniffi.shared
+package com.example.counter.shared
 
 // Common helper code.
 //
@@ -243,7 +243,7 @@ private fun findLibraryName(componentName: String): String {
     if (libOverride != null) {
         return libOverride
     }
-    return "uniffi_shared"
+    return "shared"
 }
 
 private inline fun <reified Lib : Library> loadIndirect(

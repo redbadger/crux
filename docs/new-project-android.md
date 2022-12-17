@@ -54,34 +54,47 @@
    apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
    cargo {
-       module  = "../.."
-       libname = "shared"
-       targets = ["arm64"]
-       extraCargoBuildArguments = ['--package', 'shared']
+      module  = "../.."
+      libname = "shared"
+      targets = ["arm64"]
+      extraCargoBuildArguments = ['--package', 'shared']
    }
 
    afterEvaluate {
-       // The `cargoBuild` task isn't available until after evaluation.
-       android.libraryVariants.all { variant ->
-           def productFlavor = ""
-           variant.productFlavors.each {
+      // The `cargoBuild` task isn't available until after evaluation.
+      android.libraryVariants.all { variant ->
+         def productFlavor = ""
+         variant.productFlavors.each {
                productFlavor += "${it.name.capitalize()}"
-           }
-           def buildType = "${variant.buildType.name.capitalize()}"
-           tasks["cargoBuild"].dependsOn(tasks["bindGen"])
-           tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
+         }
+         def buildType = "${variant.buildType.name.capitalize()}"
+         tasks["cargoBuild"].dependsOn(tasks["bindGen"])
+         tasks["typesGen"].dependsOn(tasks["cargoBuild"])
+         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
       }
    }
 
    task bindGen(type: Exec) {
-       def outDir = "${projectDir}/src/main/java"
-       workingDir "../../"
-       commandLine(
+      def outDir = "${projectDir}/src/main/java"
+      workingDir "../../"
+      commandLine(
                "sh", "-c",
                """\
                \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
                --language kotlin \
                --out-dir $outDir
+               """
+      )
+   }
+
+   task typesGen(type: Exec) {
+      def outDir = "${projectDir}/src/main/java"
+      def srcDir = "shared_types/generated/java/com"
+      workingDir "../../"
+      commandLine(
+               "sh", "-c",
+               """\
+               cp -r $srcDir $outDir
                """
       )
    }

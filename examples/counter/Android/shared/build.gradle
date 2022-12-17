@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.shared'
+    namespace 'com.example.counter.shared'
     compileSdk 33
 
     ndkVersion '25.1.8937393'
@@ -66,7 +66,8 @@ afterEvaluate {
         }
         def buildType = "${variant.buildType.name.capitalize()}"
         tasks["cargoBuild"].dependsOn(tasks["bindGen"])
-        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
+        tasks["typesGen"].dependsOn(tasks["cargoBuild"])
+        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
     }
 }
 
@@ -76,9 +77,21 @@ task bindGen(type: Exec) {
     commandLine(
             "sh", "-c",
             """\
-               \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
-               --language kotlin \
-               --out-dir $outDir
-               """
+            \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
+            --language kotlin \
+            --out-dir $outDir
+            """
+    )
+}
+
+task typesGen(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    def srcDir = "shared_types/generated/java/com"
+    workingDir "../../"
+    commandLine(
+            "sh", "-c",
+            """\
+            cp -r $srcDir $outDir
+            """
     )
 }
