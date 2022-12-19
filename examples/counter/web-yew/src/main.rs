@@ -95,7 +95,7 @@ impl Component for RootComponent {
                     <p>{"Crux Counter Example"}</p>
                 </section>
                 <section class="section container has-text-centered">
-                    <p>{&view.count}</p>
+                    <p>{&view.text}</p>
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-warning"

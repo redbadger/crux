@@ -1,3 +1,4 @@
+use chrono::{DateTime, NaiveDateTime, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
 use serde::{Deserialize, Serialize};
@@ -20,12 +21,14 @@ impl crux_core::App for App {
                 caps.http.get_json(Url::parse(API_URL).unwrap(), Event::Set);
             }
             Event::Set(counter) => {
-                model.count = counter.value;
+                model.count = counter;
+                model.confirmed = Some(true);
                 caps.render.render();
             }
             Event::Increment => {
                 // optimistic update
-                model.count += 1;
+                model.count.value += 1;
+                model.confirmed = Some(false);
                 caps.render.render();
 
                 // real update
@@ -35,7 +38,8 @@ impl crux_core::App for App {
             }
             Event::Decrement => {
                 // optimistic update
-                model.count -= 1;
+                model.count.value -= 1;
+                model.confirmed = Some(false);
                 caps.render.render();
 
                 // real update
@@ -53,17 +57,29 @@ impl crux_core::App for App {
 
 #[derive(Default)]
 pub struct Model {
-    count: isize,
+    count: Counter,
+    confirmed: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ViewModel {
-    pub count: isize,
+    pub text: String,
 }
 
 impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
-        Self { count: model.count }
+        let updated_at = DateTime::<Utc>::from_utc(
+            NaiveDateTime::from_timestamp_millis(model.count.updated_at).unwrap(),
+            Utc,
+        );
+        let suffix = match model.confirmed {
+            Some(true) => format!(" ({})", updated_at),
+            Some(false) => " (pending)".to_string(),
+            None => "".to_string(),
+        };
+        Self {
+            text: model.count.value.to_string() + &suffix,
+        }
     }
 }
 
@@ -80,9 +96,10 @@ pub struct Capabilities {
     pub render: Render<Event>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
 pub struct Counter {
     value: isize,
+    updated_at: i64,
 }
 
 #[cfg(test)]
@@ -108,11 +125,18 @@ mod tests {
 
         let update = update.effects[0].resolve(&HttpResponse {
             status: 200,
-            body: serde_json::to_vec(&Counter { value: 1 }).unwrap(),
+            body: serde_json::to_vec(&Counter {
+                value: 1,
+                updated_at: 1,
+            })
+            .unwrap(),
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set(Counter { value: 1 })];
+        let expected = vec![Event::Set(Counter {
+            value: 1,
+            updated_at: 1,
+        })];
         assert_eq!(actual, expected);
     }
 
@@ -121,14 +145,24 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::Set(Counter { value: 1 }), &mut model);
+        let update = app.update(
+            Event::Set(Counter {
+                value: 1,
+                updated_at: 1,
+            }),
+            &mut model,
+        );
 
         let actual = &update.effects[0];
         let expected = &Effect::Render;
         assert_eq!(actual, expected);
 
-        let actual = model.count;
+        let actual = model.count.value;
         let expected = 1;
+        assert_eq!(actual, expected);
+
+        let actual = model.confirmed;
+        let expected = Some(true);
         assert_eq!(actual, expected);
     }
 
@@ -143,8 +177,12 @@ mod tests {
         let expected = &Effect::Render;
         assert_eq!(actual, expected);
 
-        let actual = model.count;
+        let actual = model.count.value;
         let expected = 1;
+        assert_eq!(actual, expected);
+
+        let actual = model.confirmed;
+        let expected = Some(false);
         assert_eq!(actual, expected);
 
         let actual = &update.effects[1];
@@ -156,11 +194,18 @@ mod tests {
 
         let update = update.effects[1].resolve(&HttpResponse {
             status: 200,
-            body: serde_json::to_vec(&Counter { value: 1 }).unwrap(),
+            body: serde_json::to_vec(&Counter {
+                value: 1,
+                updated_at: 1,
+            })
+            .unwrap(),
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set(Counter { value: 1 })];
+        let expected = vec![Event::Set(Counter {
+            value: 1,
+            updated_at: 1,
+        })];
         assert_eq!(actual, expected);
     }
 
@@ -175,8 +220,12 @@ mod tests {
         let expected = &Effect::Render;
         assert_eq!(actual, expected);
 
-        let actual = model.count;
+        let actual = model.count.value;
         let expected = -1;
+        assert_eq!(actual, expected);
+
+        let actual = model.confirmed;
+        let expected = Some(false);
         assert_eq!(actual, expected);
 
         let actual = &update.effects[1];
@@ -188,11 +237,18 @@ mod tests {
 
         let update = update.effects[1].resolve(&HttpResponse {
             status: 200,
-            body: serde_json::to_vec(&Counter { value: -1 }).unwrap(),
+            body: serde_json::to_vec(&Counter {
+                value: -1,
+                updated_at: 1,
+            })
+            .unwrap(),
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set(Counter { value: -1 })];
+        let expected = vec![Event::Set(Counter {
+            value: -1,
+            updated_at: 1,
+        })];
         assert_eq!(actual, expected);
     }
 }

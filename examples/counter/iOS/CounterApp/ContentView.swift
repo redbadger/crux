@@ -12,7 +12,7 @@ enum Message {
 
 @MainActor
 class Model: ObservableObject {
-    @Published var view = ViewModel(count: 0)
+    @Published var view = ViewModel(text: "")
 
     init() {
         update(msg: .message(.get))
@@ -79,7 +79,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
-            Text(String(model.view.count)).padding()
+            Text(String(model.view.text)).padding()
             HStack {
                 ActionButton(label: "Decrement", color: .yellow) {
                     model.update(msg: .message(.decrement))

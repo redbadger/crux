@@ -11,32 +11,39 @@ use axum::{
 use futures::Stream;
 use futures_signals::signal::{Mutable, SignalExt};
 use serde::Serialize;
-use std::{convert::Infallible, net::SocketAddr};
+use std::{
+    convert::Infallible,
+    net::SocketAddr,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
 struct CounterState {
-    value: Mutable<isize>,
+    value: Mutable<Counter>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Copy, Clone)]
 struct Counter {
     value: isize,
+    updated_at: u128,
 }
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "e.g. RUST_LOG=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
     let state = CounterState {
-        value: Mutable::new(0),
+        value: Mutable::new(Counter {
+            value: 0,
+            updated_at: now(),
+        }),
     };
 
     let app = Router::new()
@@ -60,29 +67,31 @@ async fn main() {
 }
 
 async fn get_counter(State(counter): State<CounterState>) -> impl IntoResponse {
-    let value = *counter.value.lock_mut();
+    let value = counter.value.lock_mut();
 
-    Json(Counter { value })
+    Json(*value)
 }
 
 async fn inc(State(counter): State<CounterState>) -> impl IntoResponse {
-    let value = {
-        let mut value = counter.value.lock_mut();
-        *value = value.saturating_add(1);
-        *value
+    let mut value = counter.value.lock_mut();
+    let new = value.value.saturating_add(1);
+    *value = Counter {
+        value: new,
+        updated_at: now(),
     };
 
-    Json(Counter { value })
+    Json(*value)
 }
 
 async fn dec(State(counter): State<CounterState>) -> impl IntoResponse {
-    let value = {
-        let mut value = counter.value.lock_mut();
-        *value = value.saturating_sub(1);
-        *value
+    let mut value = counter.value.lock_mut();
+    let new = value.value.saturating_add(1);
+    *value = Counter {
+        value: new,
+        updated_at: now(),
     };
 
-    Json(Counter { value })
+    Json(*value)
 }
 
 async fn sse_handler(
@@ -92,10 +101,17 @@ async fn sse_handler(
         .value
         .signal()
         .map(|value| {
-            let data = serde_json::to_string(&Counter { value }).unwrap();
+            let data = serde_json::to_string(&value).unwrap();
             Ok(Event::default().data(data))
         })
         .to_stream();
 
     Sse::new(stream).keep_alive(KeepAlive::default())
+}
+
+fn now() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis()
 }

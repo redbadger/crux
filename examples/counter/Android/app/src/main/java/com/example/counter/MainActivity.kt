@@ -52,7 +52,7 @@ sealed class CoreMessage {
 }
 
 class Model : ViewModel() {
-    var view: MyViewModel by mutableStateOf(MyViewModel(0))
+    var view: MyViewModel by mutableStateOf(MyViewModel(""))
         private set
     private val client = OkHttpClient()
 
@@ -132,7 +132,7 @@ fun View(model: Model = viewModel()) {
             .fillMaxSize()
             .padding(10.dp),
     ) {
-        Text(text = model.view.count.toString(), modifier = Modifier.padding(10.dp))
+        Text(text = model.view.text, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = { model.update(CoreMessage.Message(Event.Decrement())) },

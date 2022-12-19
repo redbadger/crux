@@ -91,7 +91,7 @@ async fn main() -> Result<()> {
     }
 
     let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
-    println!("{}", view.count);
+    println!("{}", view.text);
 
     Ok(())
 }
