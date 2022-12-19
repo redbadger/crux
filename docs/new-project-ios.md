@@ -60,8 +60,7 @@
    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../target/x86_64-apple-ios/release";
    ```
 
-1. Create a script to build the Rust library (e.g. this script [`./iOS/bin/compile-library.sh`](../iOS/bin/compile-library.sh))
-1. Test the build (which will still fail, but should create the `generated` directory)
+1. Create a script to build the Rust library (e.g. this script [`/examples/cat_facts/iOS/bin/compile-library.sh`](../examples/cat_facts/iOS/bin/compile-library.sh))
 1. In "Build phases", create or modify the following phases (you can drag them so that they match the order below) ...
 
    1. Add a "New Run Script Phase" with the following script, and uncheck "Based on dependency analysis".
@@ -72,24 +71,10 @@
       bash "${PROJECT_DIR}/bin/compile-library.sh" shared "$build_variant"
       ```
 
-   1. Add `./shared/src/shared.udl` to "Compile Sources" (using the "add other" button).
+   1. Add `../shared/src/shared.udl` to "Compile Sources" (using the "add other" button).
       Select "Copy items if needed" and "Create folder references"
-   1. Add a "Headers" section that includes `./iOS/generated/sharedFFI.h` as a "Public" header
-   1. Add `./target/debug/libshared.a` to the "Link Binary with Libraries" section (this is the wrong target, but the library search paths, which we set above, should resolve this.
+   1. Test the build (which will still fail, but should create the `generated` directory)
+   1. Add a "Headers" section that includes `./iOS/generated/sharedFFI.h` as a "Public" header. Drag the
+      "Build Rust library" phase that was added above, so that it appears above this new "Headers" phase.
+   1. Add `../target/debug/libshared.a` to the "Link Binary with Libraries" section (this is the wrong target, but the library search paths, which we set above, should resolve this.
       For more info see the blog post linked above ([this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/)))
-
-1. Add a `class` for the callback to get Platform details ...
-
-   ```swift
-   class GetPlatform: Platform {
-       func get() -> String {
-           return UIDevice.current.systemName + " " + UIDevice.current.systemVersion
-       }
-   }
-   ```
-
-1. Call the `addForPlatform` function, e.g. in a Text UI component ...
-
-   ```swift
-   Text(try! addForPlatform(1, 2, GetPlatform()))
-   ```

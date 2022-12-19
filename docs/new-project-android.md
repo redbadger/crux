@@ -107,23 +107,3 @@
    ls Android/shared/build/rustJniLibs/android/arm64-v8a
    libshared.so
    ```
-
-1. Try calling into the rust library from the Android app, for example ...
-
-   1. Open `Android/app/src/main/java/com/example/android/MainActivity.kt`
-   1. Add `import com.redbadger.crux_core.shared.add`
-   1. Add a `class` for the callback to get Platform details ...
-      ```kotlin
-      class GetPlatform : Platform {
-         override fun get(): String {
-            return Build.BRAND + " " + Build.VERSION.RELEASE
-         }
-      }
-      ```
-   1. Call the `addForPlatform` function, e.g. in a Text UI component ...
-
-      ```kotlin
-      Text(text = addForPlatform(1u, 2u, GetPlatform()))
-      ```
-
-   1. Run the app in a simulator to show that the function in the shared library is called
