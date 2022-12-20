@@ -85,7 +85,7 @@ async fn inc(State(counter): State<CounterState>) -> impl IntoResponse {
 
 async fn dec(State(counter): State<CounterState>) -> impl IntoResponse {
     let mut value = counter.value.lock_mut();
-    let new = value.value.saturating_add(1);
+    let new = value.value.saturating_sub(1);
     *value = Counter {
         value: new,
         updated_at: now(),
