@@ -113,44 +113,47 @@ const Home: NextPage = () => {
   }, []);
 
   return (
-    <div className="container">
+    <>
       <Head>
         <title>Crux Counter Example - NextJS</title>
       </Head>
 
       <main>
-        <section className="section title has-text-centered">
-          <p>Crux Counter Example</p>
+        <section className="section has-text-centered">
+          <p className="title">Crux Counter Example</p>
         </section>
-        <section className="section container has-text-centered">
-          <p>{state.text}</p>
+        <section className="section has-text-centered">
+          <p className="is-size-5">Rust Core, TypeScript Shell (NextJS)</p>
         </section>
-        <div className="buttons container is-centered">
-          <button
-            className="button is-primary is-warning"
-            onClick={() =>
-              dispatch({
-                kind: "message",
-                message: new types.EventVariantDecrement(),
-              })
-            }
-          >
-            {"Decrement"}
-          </button>
-          <button
-            className="button is-primary is-danger"
-            onClick={() =>
-              dispatch({
-                kind: "message",
-                message: new types.EventVariantIncrement(),
-              })
-            }
-          >
-            {"Increment"}
-          </button>
-        </div>
+        <section className="container has-text-centered">
+          <p className="is-size-5">{state.text}</p>
+          <div className="buttons section is-centered">
+            <button
+              className="button is-primary is-warning"
+              onClick={() =>
+                dispatch({
+                  kind: "message",
+                  message: new types.EventVariantDecrement(),
+                })
+              }
+            >
+              {"Decrement"}
+            </button>
+            <button
+              className="button is-primary is-danger"
+              onClick={() =>
+                dispatch({
+                  kind: "message",
+                  message: new types.EventVariantIncrement(),
+                })
+              }
+            >
+              {"Increment"}
+            </button>
+          </div>
+        </section>
       </main>
-    </div>
+    </>
   );
 };
 

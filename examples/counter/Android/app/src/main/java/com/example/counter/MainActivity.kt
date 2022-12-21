@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.counter.shared.*
@@ -132,20 +133,22 @@ fun View(model: Model = viewModel()) {
             .fillMaxSize()
             .padding(10.dp),
     ) {
+        Text(text = "Crux Counter Example", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
+        Text(text = "Rust Core, Kotlin Shell (Jetpack Compose)", modifier = Modifier.padding(10.dp))
         Text(text = model.view.text, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = { model.update(CoreMessage.Message(Event.Decrement())) },
                 colors =
                 ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
+                    containerColor = Color.hsl(44F, 1F, 0.77F)
                 )
-            ) { Text(text = "Decrement", color = Color.White) }
+            ) { Text(text = "Decrement", color = Color.DarkGray) }
             Button(
                 onClick = { model.update(CoreMessage.Message(Event.Increment())) },
                 colors =
                 ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = Color.hsl(348F, 0.86F, 0.61F)
                 )
             ) { Text(text = "Increment", color = Color.White) }
         }

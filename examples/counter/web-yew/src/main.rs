@@ -91,22 +91,25 @@ impl Component for RootComponent {
 
         html! {
             <>
-                <section class="section title has-text-centered">
-                    <p>{"Crux Counter Example"}</p>
+                <section class="section has-text-centered">
+                    <p class="title">{"Crux Counter Example"}</p>
                 </section>
-                <section class="section container has-text-centered">
-                    <p>{&view.text}</p>
+                <section class="section has-text-centered">
+                    <p class="is-size-5">{"Rust Core, Rust Shell (Yew)"}</p>
                 </section>
-                <div class="buttons container is-centered">
-                    <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| CoreMessage::Message(Event::Decrement))}>
-                        {"Decrement"}
-                    </button>
-                    <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| CoreMessage::Message(Event::Increment))}>
-                        {"Increment"}
-                    </button>
-                </div>
+                <section class="container has-text-centered">
+                    <p class="is-size-5">{&view.text}</p>
+                    <div class="buttons section is-centered">
+                        <button class="button is-primary is-warning"
+                            onclick={link.callback(|_| CoreMessage::Message(Event::Decrement))}>
+                            {"Decrement"}
+                        </button>
+                        <button class="button is-primary is-danger"
+                            onclick={link.callback(|_| CoreMessage::Message(Event::Increment))}>
+                            {"Increment"}
+                        </button>
+                    </div>
+                </section>
             </>
         }
     }

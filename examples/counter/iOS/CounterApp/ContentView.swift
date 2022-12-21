@@ -79,6 +79,8 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
+            Text("Crux Counter Example").font(.headline)
+            Text("Rust Core, Swift Shell (SwiftUI)").padding()
             Text(String(model.view.text)).padding()
             HStack {
                 ActionButton(label: "Decrement", color: .yellow) {

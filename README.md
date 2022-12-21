@@ -128,9 +128,9 @@ The Shell is responsible for passing responses back to the core, which may respo
 
 This exchange continues until the core stops requesting further side-effects (typically the last side-effect requested would be `Render`).
 
-## Run the Cat Facts Example Locally
+## Run the Counter Example locally
 
-Refer to [examples/cat_facts](./examples/cat_facts/README.md) README
+Refer to [examples/counter](./examples/counter/README.md) README
 
 ## How to Start Your Own New Project
 
