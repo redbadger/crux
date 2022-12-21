@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@v2
       - id: find
         run: |
-          EXAMPLES=$(ls -d examples/*/ | xargs basename | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
+          EXAMPLES=$(ls -d examples/*/ | xargs -L 1 basename | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
           echo "examples=$EXAMPLES" >> $GITHUB_OUTPUT
 
   build-examples:

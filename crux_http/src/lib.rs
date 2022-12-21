@@ -102,6 +102,31 @@ where
         });
     }
 
+    /// Instruct the Shell to perform a HTTP POST request to the provided `url`, expecting
+    /// a JSON response.
+    ///
+    /// When finished, the response will be deserialized into type `T`, wrapped
+    /// in an event using `callback` and dispatched to the app's `update function.
+    pub fn post<Res, F>(&self, url: Url, callback: F)
+    where
+        Res: serde::de::DeserializeOwned,
+        F: Fn(Res) -> Ev + Send + Clone + 'static,
+    {
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let request = HttpRequest {
+                method: HttpMethod::Post.to_string(),
+                url: url.to_string(),
+            };
+            let resp = ctx.request_from_shell(request).await;
+
+            let data = serde_json::from_slice::<Res>(&resp.body)
+                .expect("TODO: do something sensible here");
+
+            ctx.update_app(callback(data))
+        });
+    }
+
     /// Instruct the Shell to perform a HTTP request with the provided `method` to the provided `url`.
     ///
     /// When finished, a `HttpResponse` wrapped in the event returned by `callback`

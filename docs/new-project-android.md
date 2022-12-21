@@ -54,34 +54,47 @@
    apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
    cargo {
-       module  = "../.."
-       libname = "shared"
-       targets = ["arm64"]
-       extraCargoBuildArguments = ['--package', 'shared']
+      module  = "../.."
+      libname = "shared"
+      targets = ["arm64"]
+      extraCargoBuildArguments = ['--package', 'shared']
    }
 
    afterEvaluate {
-       // The `cargoBuild` task isn't available until after evaluation.
-       android.libraryVariants.all { variant ->
-           def productFlavor = ""
-           variant.productFlavors.each {
+      // The `cargoBuild` task isn't available until after evaluation.
+      android.libraryVariants.all { variant ->
+         def productFlavor = ""
+         variant.productFlavors.each {
                productFlavor += "${it.name.capitalize()}"
-           }
-           def buildType = "${variant.buildType.name.capitalize()}"
-           tasks["cargoBuild"].dependsOn(tasks["bindGen"])
-           tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
+         }
+         def buildType = "${variant.buildType.name.capitalize()}"
+         tasks["cargoBuild"].dependsOn(tasks["bindGen"])
+         tasks["typesGen"].dependsOn(tasks["cargoBuild"])
+         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
       }
    }
 
    task bindGen(type: Exec) {
-       def outDir = "${projectDir}/src/main/java"
-       workingDir "../../"
-       commandLine(
+      def outDir = "${projectDir}/src/main/java"
+      workingDir "../../"
+      commandLine(
                "sh", "-c",
                """\
                \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
                --language kotlin \
                --out-dir $outDir
+               """
+      )
+   }
+
+   task typesGen(type: Exec) {
+      def outDir = "${projectDir}/src/main/java"
+      def srcDir = "shared_types/generated/java/com"
+      workingDir "../../"
+      commandLine(
+               "sh", "-c",
+               """\
+               cp -r $srcDir $outDir
                """
       )
    }
@@ -94,23 +107,3 @@
    ls Android/shared/build/rustJniLibs/android/arm64-v8a
    libshared.so
    ```
-
-1. Try calling into the rust library from the Android app, for example ...
-
-   1. Open `Android/app/src/main/java/com/example/android/MainActivity.kt`
-   1. Add `import com.redbadger.crux_core.shared.add`
-   1. Add a `class` for the callback to get Platform details ...
-      ```kotlin
-      class GetPlatform : Platform {
-         override fun get(): String {
-            return Build.BRAND + " " + Build.VERSION.RELEASE
-         }
-      }
-      ```
-   1. Call the `addForPlatform` function, e.g. in a Text UI component ...
-
-      ```kotlin
-      Text(text = addForPlatform(1u, 2u, GetPlatform()))
-      ```
-
-   1. Run the app in a simulator to show that the function in the shared library is called

@@ -42,7 +42,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_bdce_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_302d_rustbuffer_alloc(size, status).also {
                 if (it.data == null) {
                     throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
                 }
@@ -50,7 +50,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_bdce_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_302d_rustbuffer_free(buf, status)
         }
     }
 
@@ -247,7 +247,7 @@ private fun findLibraryName(componentName: String): String {
 }
 
 private inline fun <reified Lib : Library> loadIndirect(
-    componentName: String
+    componentName: String,
 ): Lib {
     return Native.load<Lib>(findLibraryName(componentName), Lib::class.java)
 }
@@ -262,40 +262,40 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun shared_bdce_message(
+    fun shared_302d_message(
         `msg`: RustBuffer.ByValue,
-        _uniffi_out_err: RustCallStatus
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun shared_bdce_response(
+    fun shared_302d_response(
         `uuid`: RustBuffer.ByValue,
         `res`: RustBuffer.ByValue,
-        _uniffi_out_err: RustCallStatus
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun shared_bdce_view(
-        _uniffi_out_err: RustCallStatus
+    fun shared_302d_view(
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_bdce_rustbuffer_alloc(
+    fun ffi_shared_302d_rustbuffer_alloc(
         `size`: Int,
-        _uniffi_out_err: RustCallStatus
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_bdce_rustbuffer_from_bytes(
+    fun ffi_shared_302d_rustbuffer_from_bytes(
         `bytes`: ForeignBytes.ByValue,
-        _uniffi_out_err: RustCallStatus
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_bdce_rustbuffer_free(
+    fun ffi_shared_302d_rustbuffer_free(
         `buf`: RustBuffer.ByValue,
-        _uniffi_out_err: RustCallStatus
+        _uniffi_out_err: RustCallStatus,
     ): Unit
 
-    fun ffi_shared_bdce_rustbuffer_reserve(
+    fun ffi_shared_302d_rustbuffer_reserve(
         `buf`: RustBuffer.ByValue,
         `additional`: Int,
-        _uniffi_out_err: RustCallStatus
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 }
 
@@ -392,23 +392,23 @@ public object FfiConverterSequenceUByte : FfiConverterRustBuffer<List<UByte>> {
 fun `message`(`msg`: List<UByte>): List<UByte> {
     return FfiConverterSequenceUByte.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_bdce_message(FfiConverterSequenceUByte.lower(`msg`), _status)
-        }
+            _UniFFILib.INSTANCE.shared_302d_message(FfiConverterSequenceUByte.lower(`msg`), _status)
+        },
     )
 }
 
 fun `response`(`uuid`: List<UByte>, `res`: List<UByte>): List<UByte> {
     return FfiConverterSequenceUByte.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_bdce_response(FfiConverterSequenceUByte.lower(`uuid`), FfiConverterSequenceUByte.lower(`res`), _status)
-        }
+            _UniFFILib.INSTANCE.shared_302d_response(FfiConverterSequenceUByte.lower(`uuid`), FfiConverterSequenceUByte.lower(`res`), _status)
+        },
     )
 }
 
 fun `view`(): List<UByte> {
     return FfiConverterSequenceUByte.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_bdce_view(_status)
-        }
+            _UniFFILib.INSTANCE.shared_302d_view(_status)
+        },
     )
 }

@@ -136,15 +136,16 @@ impl App for CatFacts {
                 model.cat_fact = Some(fact);
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-
                 caps.key_value.write("state", bytes, |_| Event::None);
+
                 caps.time.get(Event::CurrentTime);
             }
             Event::CurrentTime(iso_time) => {
                 model.time = Some(iso_time.0);
-                let bytes = serde_json::to_vec(&model).unwrap();
 
+                let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.write("state", bytes, |_| Event::None);
+
                 caps.render.render();
             }
             Event::SetImage(HttpResponse { body, status: _ }) => {
@@ -153,8 +154,8 @@ impl App for CatFacts {
                 model.cat_image = Some(image);
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-
                 caps.key_value.write("state", bytes, |_| Event::None);
+
                 caps.render.render();
             }
             Event::Restore => {
