@@ -1,15 +1,15 @@
-mod generate_effect;
+mod effect;
 
-use generate_effect::{impl_generate_effect, GenerateEffectAttr};
+use effect::effect_impl;
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, ItemStruct};
+use syn::{parse_macro_input, AttributeArgs, FieldsNamed, ItemStruct};
 
 #[proc_macro_attribute]
-pub fn generate_effect(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr = parse_macro_input!(attr as GenerateEffectAttr);
+pub fn effect(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = parse_macro_input!(attr as AttributeArgs);
     let item = parse_macro_input!(item as ItemStruct);
 
-    let output = impl_generate_effect(attr, item);
+    let output = effect_impl(attr, item);
 
     TokenStream::from(output)
 }
