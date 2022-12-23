@@ -1,6 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
-use crux_core::render::Render;
-use crux_http::Http;
+use crux_core::{capability::CapabilityContext, render::Render};
+use crux_http::{Http, HttpRequest};
+use crux_macros::generate_effect;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -91,6 +92,7 @@ pub enum Event {
     Decrement,
 }
 
+#[generate_effect(Effect)]
 pub struct Capabilities {
     pub http: Http<Event>,
     pub render: Render<Event>,

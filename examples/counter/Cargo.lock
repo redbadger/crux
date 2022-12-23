@@ -697,6 +697,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "crux_platform"
 version = "0.1.0"
 dependencies = [
@@ -2524,6 +2533,7 @@ dependencies = [
  "chrono",
  "crux_core",
  "crux_http",
+ "crux_macros",
  "derive_more",
  "lazy_static",
  "serde",
