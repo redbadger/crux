@@ -92,8 +92,9 @@ pub enum Event {
     Decrement,
 }
 
-#[generate_effect(Effect)]
+#[generate_effect(Effect, http = HttpRequest)]
 pub struct Capabilities {
+    // #[operation(HttpRequest)]
     pub http: Http<Event>,
     pub render: Render<Event>,
 }

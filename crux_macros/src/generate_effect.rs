@@ -1,21 +1,48 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse::Parse, ItemStruct, Type};
+use std::collections::HashMap;
+use syn::{parse::Parse, punctuated::Punctuated, ItemStruct, Token, Type};
 
 pub(crate) struct GenerateEffectAttr {
-    pub ty: Type,
+    effect_type: Type,
+    operations: Punctuated<Operation, Token![,]>,
 }
+
+type Operation = Punctuated<Type, Token!(=)>;
 
 impl Parse for GenerateEffectAttr {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let ty = input.parse()?;
-        Ok(GenerateEffectAttr { ty })
+        let effect_type = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let operations =
+            Punctuated::parse_separated_nonempty_with(input, Punctuated::parse_separated_nonempty)?;
+        Ok(GenerateEffectAttr {
+            effect_type,
+            operations,
+        })
     }
 }
 
 pub(crate) fn impl_generate_effect(attr: GenerateEffectAttr, item: ItemStruct) -> TokenStream {
-    let effect_type = attr.ty;
+    let GenerateEffectAttr {
+        effect_type,
+        operations,
+    } = attr;
     let ident = &item.ident;
+
+    // for op in operations {
+    //     let key = op.first();
+    //     let val = op.last();
+    // }
+
+    // let lookup: HashMap<_, _> = operations
+    //     .into_pairs()
+    //     .map(|p| p.into_value().into_pairs())
+    //     .map(|op| {
+    //         let op = op.into_value();
+    //         (op.first().clone(), op.last())
+    //     })
+    //     .collect();
     quote! {
         #item
 
