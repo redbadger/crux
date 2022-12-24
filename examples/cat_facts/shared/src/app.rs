@@ -4,9 +4,10 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 pub use crux_core::App;
-use crux_core::{render::Render, Capability};
-use crux_http::{Http, HttpResponse};
-use crux_kv::{KeyValue, KeyValueOutput};
+use crux_core::{capability::CapabilityContext, render::Render, Capability};
+use crux_http::{Http, HttpRequest, HttpResponse};
+use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
+use crux_macros::WithContext;
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
@@ -76,8 +77,12 @@ pub struct CatFacts {
     platform: platform::Platform,
 }
 
+#[derive(WithContext)]
+#[effect(name = "Effect")]
 pub struct CatFactCapabilities {
+    #[effect(operation = "HttpRequest")]
     pub http: Http<Event>,
+    #[effect(operation = "KeyValueOperation")]
     pub key_value: KeyValue<Event>,
     pub platform: Platform<Event>,
     pub render: Render<Event>,

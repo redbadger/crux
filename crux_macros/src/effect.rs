@@ -1,7 +1,8 @@
+use convert_case::{Case, Casing};
 use darling::{ast, util, FromDeriveInput, FromField, FromMeta};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Ident, Type};
+use syn::{DeriveInput, Ident, Index, Type};
 
 #[derive(FromDeriveInput)]
 #[darling(attributes(effect), supports(struct_named))]
@@ -19,7 +20,7 @@ pub struct EffectFieldReceiver {
 }
 
 pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
-    let args = match EffectStructReceiver::from_derive_input(input) {
+    let input = match EffectStructReceiver::from_derive_input(input) {
         Ok(v) => v,
         Err(e) => {
             return e.write_errors();
@@ -27,22 +28,59 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
     };
 
     let ident = &input.ident;
-    let name = args
+    let name = input
         .name
         .unwrap_or_else(|| Type::from_string("Effect").unwrap());
+
+    let fields = input
+        .data
+        .as_ref()
+        .take_struct()
+        .expect("Should never be enum")
+        .fields;
+
+    let (variants, fields): (Vec<_>, Vec<_>) = fields
+        .into_iter()
+        .enumerate()
+        .map(|(i, f)| {
+            // This works with named or indexed fields, so we'll fall back to the index so we can
+            // write the output as a key-value pair.
+            let (snake, pascal) = f
+                .ident
+                .as_ref()
+                .map(|snake| {
+                    let pascal = Ident::new(&snake.to_string().to_case(Case::Pascal), snake.span());
+                    (quote!(#snake), quote!(#pascal))
+                })
+                .unwrap_or_else(|| {
+                    let i = Index::from(i);
+                    (quote!(#i), quote!(#i))
+                });
+
+            if let Some(operation) = &f.operation {
+                (
+                    quote! {#pascal(#operation)},
+                    quote! {#snake: #pascal::new(context.with_effect(#name::#pascal))},
+                )
+            } else {
+                (
+                    quote! {#pascal},
+                    quote! {#snake: #pascal::new(context.with_effect(|_| #name::#pascal))},
+                )
+            }
+        })
+        .unzip();
 
     quote! {
         #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
         pub enum #name {
-            Http(HttpRequest),
-            Render,
+            #(#variants),*
         }
 
         impl crux_core::WithContext<App, #name> for #ident {
             fn new_with_context(context: CapabilityContext<#name, Event>) -> #ident {
                 #ident {
-                    http: Http::new(context.with_effect(#name::Http)),
-                    render: Render::new(context.with_effect(|_| #name::Render)),
+                    #(#fields),*
                 }
             }
         }
