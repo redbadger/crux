@@ -1,49 +1,37 @@
-use darling::{
-    ast::{Data, Fields},
-    FromField, FromMeta,
-};
+use darling::{ast, util, FromDeriveInput, FromField, FromMeta};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{AttributeArgs, ItemStruct, Type};
+use syn::{DeriveInput, Ident, Type};
 
-#[derive(Debug, FromMeta)]
-struct EffectArgs {
-    #[darling(default)]
+#[derive(FromDeriveInput)]
+#[darling(attributes(effect), supports(struct_named))]
+struct EffectStructReceiver {
+    ident: Ident,
     name: Option<Type>,
+    data: ast::Data<util::Ignored, EffectFieldReceiver>,
 }
 
 #[derive(Debug, FromField)]
-#[darling(attributes(operation))]
-struct FieldArgs {
-    #[darling(default)]
-    ty: Type,
+#[darling(attributes(effect))]
+pub struct EffectFieldReceiver {
+    ident: Option<Ident>,
+    operation: Option<Type>,
 }
 
-pub(crate) fn effect_impl(attr_args: AttributeArgs, item: ItemStruct) -> TokenStream {
-    let args = match EffectArgs::from_list(&attr_args) {
+pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
+    let args = match EffectStructReceiver::from_derive_input(input) {
         Ok(v) => v,
         Err(e) => {
             return e.write_errors();
         }
     };
-    let ident = &item.ident;
-    let name = match args.name {
-        Some(name) => name,
-        None => Type::from_string("Effect").unwrap(),
-    };
 
-    // if let Data::Struct(s) = &item.data {
-    //     if let Fields::Named(fields) = &s.fields {
-    //         for f in &fields.named {
-    //             let props = FieldProps::from_field(&f);
+    let ident = &input.ident;
+    let name = args
+        .name
+        .unwrap_or_else(|| Type::from_string("Effect").unwrap());
 
-    //             println!("{}: {:?}", f.ident.as_ref().unwrap().to_string(), props);
-    //         }
-    //     }
-    // }
     quote! {
-        #item
-
         #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
         pub enum #name {
             Http(HttpRequest),
