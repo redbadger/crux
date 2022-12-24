@@ -93,7 +93,7 @@ pub enum Event {
 }
 
 #[derive(WithContext)]
-#[effect(name = "Effect")]
+#[effect(name = "Effect", app = "App")]
 pub struct Capabilities {
     #[effect(operation = "HttpRequest")]
     pub http: Http<Event>,

@@ -9,6 +9,7 @@ use syn::{DeriveInput, Ident, Index, Type};
 struct EffectStructReceiver {
     ident: Ident,
     name: Option<Type>,
+    app: Option<Type>,
     data: ast::Data<util::Ignored, EffectFieldReceiver>,
 }
 
@@ -31,6 +32,10 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
     let name = input
         .name
         .unwrap_or_else(|| Type::from_string("Effect").unwrap());
+
+    let app = input
+        .app
+        .unwrap_or_else(|| Type::from_string("App").unwrap());
 
     let fields = input
         .data
@@ -77,7 +82,7 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
             #(#variants),*
         }
 
-        impl crux_core::WithContext<App, #name> for #ident {
+        impl crux_core::WithContext<#app, #name> for #ident {
             fn new_with_context(context: CapabilityContext<#name, Event>) -> #ident {
                 #ident {
                     #(#fields),*

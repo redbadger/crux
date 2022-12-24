@@ -78,7 +78,7 @@ pub struct CatFacts {
 }
 
 #[derive(WithContext)]
-#[effect(name = "Effect")]
+#[effect(name = "Effect", app = "CatFacts")]
 pub struct CatFactCapabilities {
     #[effect(operation = "HttpRequest")]
     pub http: Http<Event>,
