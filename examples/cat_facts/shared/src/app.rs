@@ -7,7 +7,7 @@ pub use crux_core::App;
 use crux_core::{capability::CapabilityContext, render::Render, Capability};
 use crux_http::{Http, HttpRequest, HttpResponse};
 use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
-use crux_macros::WithContext;
+use crux_macros::Effect;
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
@@ -77,8 +77,8 @@ pub struct CatFacts {
     platform: platform::Platform,
 }
 
-#[derive(WithContext)]
-#[effect(name = "Effect", app = "CatFacts")]
+#[derive(Effect)]
+#[effect(app = "CatFacts")]
 pub struct CatFactCapabilities {
     #[effect(operation = "HttpRequest")]
     pub http: Http<Event>,
