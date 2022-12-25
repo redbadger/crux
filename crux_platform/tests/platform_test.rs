@@ -1,5 +1,6 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
+    use crux_core::{capability::CapabilityContext, render::Render, App};
+    use crux_macros::Effect;
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
 
@@ -45,24 +46,11 @@ mod shared {
         }
     }
 
-    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-    pub enum MyEffect {
-        Platform,
-        Render,
-    }
-
+    #[derive(Effect)]
+    #[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
     pub struct MyCapabilities {
         pub platform: Platform<MyEvent>,
         pub render: Render<MyEvent>,
-    }
-
-    impl WithContext<MyApp, MyEffect> for MyCapabilities {
-        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
-            MyCapabilities {
-                platform: Platform::new(context.with_effect(|_| MyEffect::Platform)),
-                render: Render::new(context.with_effect(|_| MyEffect::Render)),
-            }
-        }
     }
 }
 

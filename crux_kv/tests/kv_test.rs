@@ -1,6 +1,7 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
+    use crux_core::{capability::CapabilityContext, render::Render, App};
     use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
+    use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -60,24 +61,12 @@ mod shared {
         }
     }
 
-    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-    pub enum MyEffect {
-        KeyValue(KeyValueOperation),
-        Render,
-    }
-
+    #[derive(Effect)]
+    #[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
     pub struct MyCapabilities {
+        #[effect(operation = "KeyValueOperation")]
         pub key_value: KeyValue<MyEvent>,
         pub render: Render<MyEvent>,
-    }
-
-    impl WithContext<MyApp, MyEffect> for MyCapabilities {
-        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
-            MyCapabilities {
-                key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
-                render: Render::new(context.with_effect(|_| MyEffect::Render)),
-            }
-        }
     }
 }
 

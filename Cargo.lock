@@ -167,6 +167,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "derive_more",
  "serde",
  "serde_json",
@@ -180,6 +181,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 
@@ -201,6 +203,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 
@@ -211,6 +214,7 @@ dependencies = [
  "anyhow",
  "bcs",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 

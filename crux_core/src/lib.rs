@@ -60,6 +60,7 @@
 //!
 //! // Capabilities listing the side effects the Core
 //! // will use to request side effects from the Shell
+//! #[derive(Effect)]
 //! pub struct Capabilities {
 //!     pub render: Render<Event>
 //! }
@@ -100,11 +101,10 @@
 //! pub mod app;
 //!
 //! use lazy_static::lazy_static;
-//! use serde::{Deserialize, Serialize};
 //! use wasm_bindgen::prelude::wasm_bindgen;
 //!
 //! pub use crux_core::Request;
-//! use crux_core::{capability::CapabilityContext, render::Render, Core};
+//! use crux_core::Core;
 //!
 //! pub use app::*;
 //!
@@ -127,22 +127,6 @@
 //! #[wasm_bindgen]
 //! pub fn view() -> Vec<u8> {
 //!     CORE.view()
-//! }
-//!
-//! // Effect describing the side effects that can be requested
-//! #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-//! pub enum Effect {
-//!     Render,
-//! }
-//!
-//! // Trait used to build an instance of each used capability with a context enabling
-//! // the capability to request side effects.
-//! impl crux_core::WithContext<App, Effect> for Capabilities {
-//!     fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
-//!         Capabilities {
-//!             render: Render::new(context.with_effect(|_| Effect::Render)),
-//!         }
-//!     }
 //! }
 //! ```
 //!

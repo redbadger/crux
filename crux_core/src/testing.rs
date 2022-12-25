@@ -111,7 +111,7 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run
     pub effects: Vec<TestEffect<Ef, Ev>>,
-    /// Events dispatchd from the update run
+    /// Events dispatched from the update run
     pub events: Vec<Ev>,
 }
 

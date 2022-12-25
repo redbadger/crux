@@ -1,6 +1,7 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
+    use crux_core::{capability::CapabilityContext, render::Render, App};
     use crux_http::{Http, HttpRequest, HttpResponse};
+    use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
 
@@ -68,24 +69,12 @@ mod shared {
         }
     }
 
-    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-    pub enum MyEffect {
-        Http(HttpRequest),
-        Render,
-    }
-
+    #[derive(Effect)]
+    #[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
     pub(crate) struct MyCapabilities {
+        #[effect(operation = "HttpRequest")]
         pub http: Http<MyEvent>,
         pub render: Render<MyEvent>,
-    }
-
-    impl WithContext<MyApp, MyEffect> for MyCapabilities {
-        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
-            MyCapabilities {
-                http: Http::new(context.with_effect(MyEffect::Http)),
-                render: Render::new(context.with_effect(|_| MyEffect::Render)),
-            }
-        }
     }
 }
 

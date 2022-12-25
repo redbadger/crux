@@ -10,6 +10,7 @@ struct EffectStructReceiver {
     ident: Ident,
     name: Option<Type>,
     app: Option<Type>,
+    event: Option<Type>,
     data: ast::Data<util::Ignored, EffectFieldReceiver>,
 }
 
@@ -36,6 +37,10 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
     let app = input
         .app
         .unwrap_or_else(|| Type::from_string("App").unwrap());
+
+    let event = input
+        .event
+        .unwrap_or_else(|| Type::from_string("Event").unwrap());
 
     let fields = input
         .data
@@ -83,7 +88,7 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
         }
 
         impl crux_core::WithContext<#app, #name> for #ident {
-            fn new_with_context(context: CapabilityContext<#name, Event>) -> #ident {
+            fn new_with_context(context: CapabilityContext<#name, #event>) -> #ident {
                 #ident {
                     #(#fields),*
                 }

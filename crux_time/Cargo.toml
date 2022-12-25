@@ -13,4 +13,5 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 anyhow = "1.0.66"
 bcs = "0.1.4"
 crux_core = { path = "../crux_core", version = "0.2" }
+crux_macros = { path = "../crux_macros", version = "0.1" }
 serde = { version = "1.0.151", features = ["derive"] }
