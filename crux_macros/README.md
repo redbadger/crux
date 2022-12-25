@@ -16,7 +16,7 @@ It also needs to know the operation types for any capabilities you are using tha
 
 ### Example usage
 
-If you want to generate an enum called `Effect` and your app struct is called `App`, and the capabilities you are using don't have operations, then you can simply just use the macro without additional configuration:
+If you want to generate an enum called `Effect` and your app struct is called `App`, and your event enum is called `Event`, and the capabilities you are using only have unit operations, then you can simply just use the macro without additional configuration:
 
 ```rust
 #[derive(Effect)]
