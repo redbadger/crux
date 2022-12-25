@@ -36,8 +36,9 @@
 //!
 //! // An app module which can be reused in different apps
 //! mod my_app {
-//!     use crux_core::App;
-//!     use crux_core::render::Render;
+//!     use crux_core::{capability::CapabilityContext, App, render::Render};
+//!     use crux_macros::Effect;
+//!     use serde::{Serialize, Deserialize};
 //!
 //!     #[derive(Default)]
 //!     pub struct MyApp;
@@ -47,6 +48,7 @@
 //!     // Shell to dispatch side-effect requests to the right capability implementation
 //!     // (and, in some languages, checking that all necessary capabilities are implemented)
 //!     #[derive(Effect)]
+//!     #[effect(app = "MyApp")]
 //!     pub struct Capabilities {
 //!         pub render: Render<Event>
 //!     }
@@ -65,6 +67,7 @@
 //!             ()
 //!         }
 //!     }
+//! }
 //! }
 //! ```
 //!

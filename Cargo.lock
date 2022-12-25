@@ -146,6 +146,7 @@ dependencies = [
  "assert_matches",
  "bcs",
  "crossbeam-channel",
+ "crux_macros",
  "derive_more",
  "futures",
  "serde",
