@@ -94,11 +94,11 @@ Full usage might look something like this:
 #[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
 pub struct CatFactCapabilities {
     #[effect(operation = "HttpRequest")]
-    pub http: Http<Event>,
+    pub http: Http<MyEvent>,
     #[effect(operation = "KeyValueOperation")]
-    pub key_value: KeyValue<Event>,
-    pub platform: Platform<Event>,
-    pub render: Render<Event>,
-    pub time: Time<Event>,
+    pub key_value: KeyValue<MyEvent>,
+    pub platform: Platform<MyEvent>,
+    pub render: Render<MyEvent>,
+    pub time: Time<MyEvent>,
 }
 ```
