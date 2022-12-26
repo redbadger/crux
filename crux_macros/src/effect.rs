@@ -2,7 +2,7 @@ use convert_case::{Case, Casing};
 use darling::{ast, util, FromDeriveInput, FromField, FromMeta};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Ident, Index, Type};
+use syn::{DeriveInput, Ident, Type};
 
 #[derive(FromDeriveInput)]
 #[darling(attributes(effect), supports(struct_named))]
@@ -51,23 +51,17 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
 
     let (variants, fields): (Vec<_>, Vec<_>) = fields
         .into_iter()
-        .enumerate()
-        .map(|(i, f)| {
-            // This works with named or indexed fields, so we'll fall back to the index so we can
-            // write the output as a key-value pair.
-            let (snake, pascal) = f
+        .map(|field| {
+            let (snake, pascal) = field
                 .ident
                 .as_ref()
                 .map(|snake| {
                     let pascal = Ident::new(&snake.to_string().to_case(Case::Pascal), snake.span());
                     (quote!(#snake), quote!(#pascal))
                 })
-                .unwrap_or_else(|| {
-                    let i = Index::from(i);
-                    (quote!(#i), quote!(#i))
-                });
+                .expect("We already told darling we're on a struct with named fields");
 
-            if let Some(operation) = &f.operation {
+            if let Some(operation) = &field.operation {
                 (
                     quote! {#pascal(#operation)},
                     quote! {#snake: #pascal::new(context.with_effect(#name::#pascal))},
