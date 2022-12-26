@@ -1,38 +1,38 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App};
+    use crux_core::{capability::CapabilityContext, render::Render};
     use crux_macros::Effect;
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
-    pub struct MyApp;
+    pub struct App;
 
     #[derive(Serialize, Deserialize)]
-    pub enum MyEvent {
+    pub enum Event {
         TimeGet,
         TimeSet(TimeResponse),
     }
 
     #[derive(Default, Serialize, Deserialize)]
-    pub struct MyModel {
+    pub struct Model {
         pub time: String,
     }
 
     #[derive(Serialize, Deserialize, Default)]
-    pub struct MyViewModel {
+    pub struct ViewModel {
         pub time: String,
     }
 
-    impl App for MyApp {
-        type Event = MyEvent;
-        type Model = MyModel;
-        type ViewModel = MyViewModel;
-        type Capabilities = MyCapabilities;
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = Model;
+        type ViewModel = ViewModel;
+        type Capabilities = Capabilities;
 
-        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
             match event {
-                MyEvent::TimeGet => caps.time.get(MyEvent::TimeSet),
-                MyEvent::TimeSet(time) => {
+                Event::TimeGet => caps.time.get(Event::TimeSet),
+                Event::TimeSet(time) => {
                     model.time = time.0;
                     caps.render.render()
                 }
@@ -40,22 +40,21 @@ mod shared {
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
-            MyViewModel {
+            ViewModel {
                 time: model.time.clone(),
             }
         }
     }
 
     #[derive(Effect)]
-    #[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
-    pub struct MyCapabilities {
-        pub time: Time<MyEvent>,
-        pub render: Render<MyEvent>,
+    pub struct Capabilities {
+        pub time: Time<Event>,
+        pub render: Render<Event>,
     }
 }
 
 mod shell {
-    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
     use crux_time::TimeResponse;
@@ -66,15 +65,15 @@ mod shell {
     }
 
     enum CoreMessage {
-        Message(MyEvent),
+        Message(Event),
         Response(Vec<u8>, Outcome),
     }
 
-    pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyApp> = Core::default();
+    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
+        let core: Core<Effect, App> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-        queue.push_back(CoreMessage::Message(MyEvent::TimeGet));
+        queue.push_back(CoreMessage::Message(Event::TimeGet));
 
         let mut received = vec![];
 
@@ -91,12 +90,12 @@ mod shell {
                 ),
                 _ => vec![],
             };
-            let reqs: Vec<Request<MyEffect>> = bcs::from_bytes(&reqs)?;
+            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
             for Request { uuid, effect } in reqs {
                 match effect {
-                    MyEffect::Render => received.push(effect),
-                    MyEffect::Time => {
+                    Effect::Render => received.push(effect),
+                    Effect::Time => {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
@@ -109,19 +108,19 @@ mod shell {
             }
         }
 
-        let view = bcs::from_bytes::<MyViewModel>(&core.view())?;
+        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
         Ok((received, view))
     }
 }
 
 mod tests {
-    use crate::{shared::MyEffect, shell::run};
+    use crate::{shared::Effect, shell::run};
     use anyhow::Result;
 
     #[test]
     pub fn test_time() -> Result<()> {
         let (received, view) = run()?;
-        assert_eq!(received, vec![MyEffect::Time, MyEffect::Render]);
+        assert_eq!(received, vec![Effect::Time, Effect::Render]);
         assert_eq!(view.time, "2022-12-01T01:47:12.746202562+00:00");
         Ok(())
     }

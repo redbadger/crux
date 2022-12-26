@@ -1,78 +1,77 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, App};
+    use crux_core::capability::CapabilityContext;
     use crux_http::{Http, HttpRequest};
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
 
     #[derive(Default)]
-    pub(crate) struct MyApp;
+    pub(crate) struct App;
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-    pub enum MyEvent {
+    pub enum Event {
         Get,
         Set(String),
     }
 
     #[derive(Default, Serialize, Deserialize)]
-    pub struct MyModel {
+    pub struct Model {
         pub body: String,
     }
 
     #[derive(Serialize, Deserialize, Default)]
-    pub struct MyViewModel {
+    pub struct ViewModel {
         pub result: String,
     }
 
-    impl App for MyApp {
-        type Event = MyEvent;
-        type Model = MyModel;
-        type ViewModel = MyViewModel;
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = Model;
+        type ViewModel = ViewModel;
 
-        type Capabilities = MyCapabilities;
+        type Capabilities = Capabilities;
 
-        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
             match event {
-                MyEvent::Get => {
+                Event::Get => {
                     caps.http
-                        .get_json(Url::parse("http://example.com").unwrap(), MyEvent::Set);
+                        .get_json(Url::parse("http://example.com").unwrap(), Event::Set);
                 }
-                MyEvent::Set(body) => {
+                Event::Set(body) => {
                     model.body = body;
                 }
             }
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
-            MyViewModel {
+            ViewModel {
                 result: format!("Body: {}", model.body),
             }
         }
     }
 
     #[derive(Effect)]
-    #[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
-    pub(crate) struct MyCapabilities {
+    pub(crate) struct Capabilities {
         #[effect(operation = "HttpRequest")]
-        pub http: Http<MyEvent>,
+        pub http: Http<Event>,
     }
 }
 
 mod tests {
-    use crate::shared::{MyApp, MyEffect, MyEvent, MyModel};
+    use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
     use crux_http::{HttpRequest, HttpResponse};
 
     #[test]
     fn with_tester() {
-        let app = AppTester::<MyApp, _>::default();
-        let mut model = MyModel::default();
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
 
-        let update = app.update(MyEvent::Get, &mut model);
+        let update = app.update(Event::Get, &mut model);
 
         assert_eq!(
             update.effects[0],
-            MyEffect::Http(HttpRequest {
+            Effect::Http(HttpRequest {
                 method: "GET".to_string(),
                 url: "http://example.com/".to_string()
             })
@@ -84,7 +83,7 @@ mod tests {
         });
 
         let actual = update.events;
-        let expected = vec![MyEvent::Set("hello".to_string())];
+        let expected = vec![Event::Set("hello".to_string())];
         assert_eq!(actual, expected);
     }
 }
