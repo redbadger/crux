@@ -12,7 +12,7 @@ It also needs to know the operation types for any capabilities you are using tha
 
 > The macro should really, by convention, be called `WithContext`, but it's possible that the name `Effect` more usefully describes the code that is generated.
 
-> It is implemented as a derive macro, rather than an attribute macro, because it needs to be configured by non-attribute macros within the struct itself (which is not possible with attribute macros).
+> It is implemented as a derive macro, rather than an attribute macro, because it needs to be configured by non-macro attributes within the struct itself (which is not possible with attribute macros).
 
 ### Example usage
 
