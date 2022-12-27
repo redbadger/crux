@@ -6,7 +6,7 @@ This crate provides macros that can be used in conjunction with [`crux_core`](ht
 
 The `Effect` derive macro can be used to create an effect enum for use by the Shell when performing side effects for the Core. It also derives `WithContext` for the Capabilities struct.
 
-The name of the generated enum is `Effect` by default, but can be overridden (see below). The macro needs to know the name of your app struct (which is `App` by default, but can be specified), and your event enum type (`Event` by default, but can be specified).
+The name of the generated enum is `Effect` by default, but can be overridden (see below). The macro also needs to know the name of your app struct (which is `App` by default, but can be specified).
 
 It also needs to know the operation types for any capabilities you are using that have non-unit structs as their request types (have the `Operation` trait implemented).
 
@@ -16,7 +16,7 @@ It also needs to know the operation types for any capabilities you are using tha
 
 ### Example usage
 
-If you want to generate an enum called `Effect` and your app struct is called `App`, and your event enum is called `Event`, and the capabilities you are using only have unit operations, then you can simply just use the macro without additional configuration:
+If you want to generate an enum called `Effect` and your app struct is called `App`, and the capabilities you are using only have unit operations, then you can simply just use the macro without additional configuration:
 
 ```rust
 #[derive(Effect)]
@@ -56,16 +56,6 @@ pub struct Capabilities {
 }
 ```
 
-If your event enum (that the Shell uses to send events to the Core) is called something other than `Event`, you can specify its name:
-
-```rust
-#[derive(Effect)]
-#[effect(event = "MyEvent")]
-pub struct Capabilities {
-    pub render: Render<Event>,
-}
-```
-
 To specify both `app` _and_ `name` you can either use the attribute twice, like this:
 
 ```rust
@@ -91,7 +81,7 @@ Full usage might look something like this:
 
 ```rust
 #[derive(Effect)]
-#[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
+#[effect(name = "MyEffect", app = "MyApp")]
 pub struct CatFactCapabilities {
     #[effect(operation = "HttpRequest")]
     pub http: Http<MyEvent>,

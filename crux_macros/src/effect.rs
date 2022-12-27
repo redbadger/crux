@@ -2,7 +2,7 @@ use convert_case::{Case, Casing};
 use darling::{ast, util, FromDeriveInput, FromField, FromMeta, ToTokens};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Ident, Type};
+use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(effect), supports(struct_named))]
@@ -10,7 +10,6 @@ struct EffectStructReceiver {
     ident: Ident,
     name: Option<Type>,
     app: Option<Type>,
-    event: Option<Type>,
     data: ast::Data<util::Ignored, EffectFieldReceiver>,
 }
 
@@ -18,6 +17,7 @@ struct EffectStructReceiver {
 #[darling(attributes(effect))]
 pub struct EffectFieldReceiver {
     ident: Option<Ident>,
+    ty: Type,
     operation: Option<Type>,
 }
 
@@ -41,20 +41,20 @@ impl ToTokens for EffectStructReceiver {
             }
         };
 
-        let event = match self.event {
-            Some(ref event) => quote!(#event),
-            None => {
-                let x = Type::from_string("Event").unwrap();
-                quote!(#x)
-            }
-        };
-
         let fields = self
             .data
             .as_ref()
             .take_struct()
             .expect("Should never be enum")
             .fields;
+
+        let event = extract_event_type(&fields.first().as_ref().unwrap().ty);
+        let event = fields
+            .iter()
+            .map(|f| extract_event_type(&f.ty))
+            .all(|t| quote!(#t).to_string() == quote!(#event).to_string())
+            .then_some(event)
+            .expect("all fields should be generic over the same event type");
 
         let (variants, fields): (Vec<_>, Vec<_>) = fields
             .into_iter()
@@ -111,6 +111,27 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
     quote!(#input)
 }
 
+fn extract_event_type(ty: &Type) -> Type {
+    match ty {
+        Type::Path(p) if p.qself.is_none() => {
+            // Get the first segment of the path (there should be only one)
+            let type_params = &p.path.segments.first().unwrap().arguments;
+            // It should have only one angle-bracketed param
+            let generic_arg = match type_params {
+                PathArguments::AngleBracketed(params) => params.args.first(),
+                _ => None,
+            };
+            // This argument must be a type
+            match generic_arg {
+                Some(GenericArgument::Type(ty)) => Some(ty.clone()),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+    .expect("capabilities should be generic over a single event type")
+}
+
 #[cfg(test)]
 mod tests {
     use darling::{FromDeriveInput, ToTokens};
@@ -155,7 +176,7 @@ mod tests {
     fn full() {
         let input = r#"
             #[derive(Effect)]
-            #[effect(name = "MyEffect", app = "MyApp", event = "MyEvent")]
+            #[effect(name = "MyEffect", app = "MyApp")]
             pub struct MyCapabilities {
                 #[effect(operation = "HttpRequest")]
                 pub http: Http<MyEvent>,
@@ -196,5 +217,22 @@ mod tests {
         };
 
         assert_eq!(actual.to_string(), expected.to_string());
+    }
+
+    #[test]
+    #[should_panic]
+    fn should_panic_when_multiple_event_types() {
+        let input = r#"
+            #[derive(Effect)]
+            pub struct Capabilities {
+                pub render: Render<MyEvent>,
+                pub time: Time<YourEvent>,
+            }
+        "#;
+        let input = parse_str(input).unwrap();
+        let input = EffectStructReceiver::from_derive_input(&input).unwrap();
+
+        let mut actual = quote!();
+        input.to_tokens(&mut actual);
     }
 }
