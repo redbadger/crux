@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render};
-    use crux_http::{Http, HttpRequest, HttpResponse};
+    use crux_core::render::Render;
+    use crux_http::{Http, HttpResponse};
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
@@ -71,7 +71,6 @@ mod shared {
 
     #[derive(Effect)]
     pub(crate) struct Capabilities {
-        #[effect(operation = "HttpRequest")]
         pub http: Http<Event>,
         pub render: Render<Event>,
     }
@@ -118,7 +117,7 @@ mod shell {
 
             for Request { uuid, effect } in reqs {
                 match effect {
-                    Effect::Render => received.push(effect.clone()),
+                    Effect::Render(_) => received.push(effect.clone()),
                     Effect::Http(HttpRequest { .. }) => {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
@@ -144,6 +143,7 @@ mod tests {
         shell::run,
     };
     use anyhow::Result;
+    use crux_core::render::RenderOperation;
     use crux_http::HttpRequest;
 
     #[test]
@@ -156,7 +156,7 @@ mod tests {
                     method: "GET".to_string(),
                     url: "http://example.com/".to_string()
                 }),
-                Effect::Render
+                Effect::Render(RenderOperation)
             ]
         );
         assert_eq!(view.result, "Status: 200, Body: \"Hello\", Json Body: ");
@@ -173,7 +173,7 @@ mod tests {
                     method: "GET".to_string(),
                     url: "http://example.com/".to_string()
                 }),
-                Effect::Render
+                Effect::Render(RenderOperation)
             ]
         );
         assert_eq!(view.result, "Status: 0, Body: , Json Body: Hello");

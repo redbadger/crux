@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render};
-    use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
+    use crux_core::render::Render;
+    use crux_kv::{KeyValue, KeyValueOutput};
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
 
@@ -63,7 +63,6 @@ mod shared {
 
     #[derive(Effect)]
     pub struct Capabilities {
-        #[effect(operation = "KeyValueOperation")]
         pub key_value: KeyValue<Event>,
         pub render: Render<Event>,
     }
@@ -111,7 +110,7 @@ mod shell {
 
             for Request { uuid, effect } in reqs {
                 match effect {
-                    Effect::Render => received.push(effect.clone()),
+                    Effect::Render(_) => received.push(effect.clone()),
                     Effect::KeyValue(KeyValueOperation::Write(ref k, ref v)) => {
                         received.push(effect.clone());
 
@@ -147,6 +146,7 @@ mod shell {
 mod tests {
     use crate::{shared::Effect, shell::run};
     use anyhow::Result;
+    use crux_core::render::RenderOperation;
     use crux_kv::KeyValueOperation;
 
     #[test]
@@ -159,9 +159,9 @@ mod tests {
                     "test".to_string(),
                     42i32.to_ne_bytes().to_vec()
                 )),
-                Effect::Render,
+                Effect::Render(RenderOperation),
                 Effect::KeyValue(KeyValueOperation::Read("test".to_string())),
-                Effect::Render
+                Effect::Render(RenderOperation)
             ]
         );
         assert_eq!(view.result, "Success: true, Value: 42");

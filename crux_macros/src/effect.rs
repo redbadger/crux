@@ -18,7 +18,6 @@ struct EffectStructReceiver {
 pub struct EffectFieldReceiver {
     ident: Option<Ident>,
     ty: Type,
-    operation: Option<Type>,
 }
 
 impl ToTokens for EffectStructReceiver {
@@ -59,7 +58,7 @@ impl ToTokens for EffectStructReceiver {
         let (variants, fields): (Vec<_>, Vec<_>) = fields
             .into_iter()
             .map(|field| {
-                let (snake, pascal) = field
+                let (field_name, variant) = field
                     .ident
                     .as_ref()
                     .map(|snake| {
@@ -69,28 +68,23 @@ impl ToTokens for EffectStructReceiver {
                     })
                     .expect("We already told darling we're on a struct with named fields");
 
-                if let Some(operation) = &field.operation {
-                    (
-                        quote! {#pascal(#operation)},
-                        quote! {#snake: #pascal::new(context.with_effect(#name::#pascal))},
-                    )
-                } else {
-                    (
-                        quote! {#pascal},
-                        quote! {#snake: #pascal::new(context.with_effect(|_| #name::#pascal))},
-                    )
-                }
+                let ty = &field.ty;
+                (
+                    quote! { #variant(<#ty as ::crux_core::capability::Capability<#event>>::Operation) },
+                    // TODO: Make this use the actual type, not #variant
+                    quote! { #field_name: #variant::new(context.with_effect(#name::#variant)) },
+                )
             })
             .unzip();
 
         tokens.extend(quote! {
-            #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+            #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
             pub enum #name {
                 #(#variants ,)*
             }
 
-            impl crux_core::WithContext<#app, #name> for #ident {
-                fn new_with_context(context: CapabilityContext<#name, #event>) -> #ident {
+            impl ::crux_core::WithContext<#app, #name> for #ident {
+                fn new_with_context(context: ::crux_core::capability::CapabilityContext<#name, #event>) -> #ident {
                     #ident {
                         #(#fields ,)*
                     }

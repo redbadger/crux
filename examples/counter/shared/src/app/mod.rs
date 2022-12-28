@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
-use crux_core::{capability::CapabilityContext, render::Render};
-use crux_http::{Http, HttpRequest};
+use crux_core::render::Render;
+use crux_http::Http;
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -94,7 +94,6 @@ pub enum Event {
 
 #[derive(Effect)]
 pub struct Capabilities {
-    #[effect(operation = "HttpRequest")]
     pub http: Http<Event>,
     pub render: Render<Event>,
 }
@@ -109,7 +108,7 @@ pub struct Counter {
 mod tests {
     use super::{App, Event, Model};
     use crate::{Counter, Effect};
-    use crux_core::testing::AppTester;
+    use crux_core::{render::RenderOperation, testing::AppTester};
     use crux_http::{HttpRequest, HttpResponse};
 
     #[test]
@@ -157,7 +156,7 @@ mod tests {
         );
 
         let actual = &update.effects[0];
-        let expected = &Effect::Render;
+        let expected = &Effect::Render(RenderOperation);
         assert_eq!(actual, expected);
 
         let actual = model.count.value;
@@ -177,7 +176,7 @@ mod tests {
         let update = app.update(Event::Increment, &mut model);
 
         let actual = &update.effects[0];
-        let expected = &Effect::Render;
+        let expected = &Effect::Render(RenderOperation);
         assert_eq!(actual, expected);
 
         let actual = model.count.value;
@@ -220,7 +219,7 @@ mod tests {
         let update = app.update(Event::Decrement, &mut model);
 
         let actual = &update.effects[0];
-        let expected = &Effect::Render;
+        let expected = &Effect::Render(RenderOperation);
         assert_eq!(actual, expected);
 
         let actual = model.count.value;

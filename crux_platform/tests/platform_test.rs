@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render};
+    use crux_core::{render::Render};
     use crux_macros::Effect;
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
@@ -94,8 +94,8 @@ mod shell {
 
             for Request { uuid, effect } in reqs {
                 match effect {
-                    Effect::Render => received.push(effect),
-                    Effect::Platform => {
+                    Effect::Render(_) => received.push(effect),
+                    Effect::Platform(_) => {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
@@ -114,11 +114,19 @@ mod shell {
 mod tests {
     use crate::{shared::Effect, shell::run};
     use anyhow::Result;
+    use crux_core::render::RenderOperation;
+    use crux_platform::PlatformRequest;
 
     #[test]
     pub fn test_platform() -> Result<()> {
         let (received, view) = run()?;
-        assert_eq!(received, vec![Effect::Platform, Effect::Render]);
+        assert_eq!(
+            received,
+            vec![
+                Effect::Platform(PlatformRequest),
+                Effect::Render(RenderOperation)
+            ]
+        );
         assert_eq!(view.platform, "test shell");
         Ok(())
     }

@@ -150,6 +150,7 @@ where
 }
 
 impl<Ef> Capability<Ef> for Http<Ef> {
+    type Operation = HttpRequest;
     type MappedSelf<MappedEv> = Http<MappedEv>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

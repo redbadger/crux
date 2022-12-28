@@ -207,6 +207,8 @@ pub trait Operation: serde::Serialize + Send + 'static {
 /// }
 /// ```
 pub trait Capability<Ev> {
+    type Operation: Operation;
+
     type MappedSelf<MappedEv>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

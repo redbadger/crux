@@ -11,7 +11,7 @@ use crux_core::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeRequest;
 
 // TODO revisit this
@@ -51,6 +51,7 @@ where
 }
 
 impl<Ef> Capability<Ef> for Time<Ef> {
+    type Operation = TimeRequest;
     type MappedSelf<MappedEv> = Time<MappedEv>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

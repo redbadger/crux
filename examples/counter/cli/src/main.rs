@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
 
         for Request { uuid, effect } in reqs {
             match effect {
-                Effect::Render => (),
+                Effect::Render(_) => (),
                 Effect::Http(HttpRequest { url, method }) => {
                     let url = Url::parse(&url)?;
                     let method = http::Method::from_str(&method).expect("unknown http method");

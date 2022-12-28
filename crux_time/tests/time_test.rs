@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render};
+    use crux_core::{render::Render};
     use crux_macros::Effect;
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
@@ -94,8 +94,8 @@ mod shell {
 
             for Request { uuid, effect } in reqs {
                 match effect {
-                    Effect::Render => received.push(effect),
-                    Effect::Time => {
+                    Effect::Render(_) => received.push(effect),
+                    Effect::Time(_) => {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
@@ -116,11 +116,16 @@ mod shell {
 mod tests {
     use crate::{shared::Effect, shell::run};
     use anyhow::Result;
+    use crux_core::render::RenderOperation;
+    use crux_time::TimeRequest;
 
     #[test]
     pub fn test_time() -> Result<()> {
         let (received, view) = run()?;
-        assert_eq!(received, vec![Effect::Time, Effect::Render]);
+        assert_eq!(
+            received,
+            vec![Effect::Time(TimeRequest), Effect::Render(RenderOperation)]
+        );
         assert_eq!(view.time, "2022-12-01T01:47:12.746202562+00:00");
         Ok(())
     }

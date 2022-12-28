@@ -71,8 +71,8 @@ async fn main() -> Result<()> {
         for req in reqs {
             let Request { uuid, effect } = req;
             match effect {
-                Effect::Render => (),
-                Effect::Time => {
+                Effect::Render(_) => (),
+                Effect::Time(_) => {
                     let now: DateTime<Utc> = SystemTime::now().into();
                     let iso_time = now.to_rfc3339();
 
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
                     }
                     Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
                 },
-                Effect::Platform => queue.push_back(CoreMessage::Response(
+                Effect::Platform(_) => queue.push_back(CoreMessage::Response(
                     uuid,
                     Outcome::Platform(PlatformResponse("cli".to_string())),
                 )),

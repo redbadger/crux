@@ -6,7 +6,7 @@ use crux_core::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformRequest;
 
 // TODO revisit this
@@ -43,6 +43,7 @@ where
 }
 
 impl<Ef> Capability<Ef> for Platform<Ef> {
+    type Operation = PlatformRequest;
     type MappedSelf<MappedEv> = Platform<MappedEv>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

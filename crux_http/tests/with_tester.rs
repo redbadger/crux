@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::capability::CapabilityContext;
-    use crux_http::{Http, HttpRequest};
+
+    use crux_http::Http;
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
@@ -52,7 +52,6 @@ mod shared {
 
     #[derive(Effect)]
     pub(crate) struct Capabilities {
-        #[effect(operation = "HttpRequest")]
         pub http: Http<Event>,
     }
 }
