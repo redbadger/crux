@@ -42,7 +42,7 @@ class Model: ObservableObject {
 
         for req in reqs {
             switch req.effect {
-            case .render: view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
+            case .render(_): view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
             case let .http(r): httpRequest(uuid: req.uuid, method: r.method, url: r.url)
             }
         }
