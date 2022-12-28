@@ -145,25 +145,23 @@ mod tests {
         let input = parse_str(input).unwrap();
         let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 
-        let mut actual = quote!();
-        input.to_tokens(&mut actual);
+        let actual = quote!(#input);
 
-        let expected = quote! {
-            #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-            pub enum Effect {
-                Render,
-            }
-
-            impl crux_core::WithContext<App, Effect> for Capabilities {
-                fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
-                    Capabilities {
-                        render: Render::new(context.with_effect(|_| Effect::Render)),
-                    }
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
+        pub enum Effect {
+            Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
+        }
+        impl ::crux_core::WithContext<App, Effect> for Capabilities {
+            fn new_with_context(
+                context: ::crux_core::capability::CapabilityContext<Effect, Event>,
+            ) -> Capabilities {
+                Capabilities {
+                    render: Render::new(context.with_effect(Effect::Render)),
                 }
             }
-        };
-
-        assert_eq!(actual.to_string(), expected.to_string());
+        }
+        "###);
     }
 
     #[test]
@@ -172,9 +170,7 @@ mod tests {
             #[derive(Effect)]
             #[effect(name = "MyEffect", app = "MyApp")]
             pub struct MyCapabilities {
-                #[effect(operation = "HttpRequest")]
                 pub http: Http<MyEvent>,
-                #[effect(operation = "KeyValueOperation")]
                 pub key_value: KeyValue<MyEvent>,
                 pub platform: Platform<MyEvent>,
                 pub render: Render<MyEvent>,
@@ -184,33 +180,35 @@ mod tests {
         let input = parse_str(input).unwrap();
         let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 
-        let mut actual = quote!();
-        input.to_tokens(&mut actual);
+        let actual = quote!(#input);
 
-        let expected = quote! {
-            #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-            pub enum MyEffect {
-                Http(HttpRequest),
-                KeyValue(KeyValueOperation),
-                Platform,
-                Render,
-                Time,
-            }
-
-            impl crux_core::WithContext<MyApp, MyEffect> for MyCapabilities {
-                fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
-                    MyCapabilities {
-                        http: Http::new(context.with_effect(MyEffect::Http)),
-                        key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
-                        platform: Platform::new(context.with_effect(|_| MyEffect::Platform)),
-                        render: Render::new(context.with_effect(|_| MyEffect::Render)),
-                        time: Time::new(context.with_effect(|_| MyEffect::Time)),
-                    }
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
+        pub enum MyEffect {
+            Http(<Http<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
+            KeyValue(
+                <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            ),
+            Platform(
+                <Platform<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            ),
+            Render(<Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
+            Time(<Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
+        }
+        impl ::crux_core::WithContext<MyApp, MyEffect> for MyCapabilities {
+            fn new_with_context(
+                context: ::crux_core::capability::CapabilityContext<MyEffect, MyEvent>,
+            ) -> MyCapabilities {
+                MyCapabilities {
+                    http: Http::new(context.with_effect(MyEffect::Http)),
+                    key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
+                    platform: Platform::new(context.with_effect(MyEffect::Platform)),
+                    render: Render::new(context.with_effect(MyEffect::Render)),
+                    time: Time::new(context.with_effect(MyEffect::Time)),
                 }
             }
-        };
-
-        assert_eq!(actual.to_string(), expected.to_string());
+        }
+        "###);
     }
 
     #[test]
@@ -228,5 +226,10 @@ mod tests {
 
         let mut actual = quote!();
         input.to_tokens(&mut actual);
+    }
+
+    fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
+        let file = syn::parse_file(&ts.to_string()).unwrap();
+        prettyplease::unparse(&file)
     }
 }

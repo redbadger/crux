@@ -25,17 +25,6 @@ pub struct Capabilities {
 }
 ```
 
-If, however, you are using capabilities with non-unit operations (i.e. that take request data), you have to tell the macro what the operation struct is called (this is the struct that implements the `Operation` trait):
-
-```rust
-#[derive(Effect)]
-pub struct Capabilities {
-    #[effect(operation = "HttpRequest")]
-    pub http: Http<Event>,
-    pub render: Render<Event>,
-}
-```
-
 If you want the generated Effect enum to be called something different, you can specify another name:
 
 ```rust
@@ -83,9 +72,7 @@ Full usage might look something like this:
 #[derive(Effect)]
 #[effect(name = "MyEffect", app = "MyApp")]
 pub struct CatFactCapabilities {
-    #[effect(operation = "HttpRequest")]
     pub http: Http<MyEvent>,
-    #[effect(operation = "KeyValueOperation")]
     pub key_value: KeyValue<MyEvent>,
     pub platform: Platform<MyEvent>,
     pub render: Render<MyEvent>,
