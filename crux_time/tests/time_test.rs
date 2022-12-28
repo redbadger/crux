@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::{render::Render};
+    use crux_core::render::Render;
     use crux_macros::Effect;
     use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
