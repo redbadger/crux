@@ -1,7 +1,7 @@
-use convert_case::{Case, Casing};
 use darling::{ast, util, FromDeriveInput, FromField, FromMeta, ToTokens};
 use proc_macro2::TokenStream;
 use quote::quote;
+use std::collections::BTreeMap;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
 #[derive(FromDeriveInput, Debug)]
@@ -47,31 +47,30 @@ impl ToTokens for EffectStructReceiver {
             .expect("Should never be enum")
             .fields;
 
-        let event = extract_event_type(&fields.first().as_ref().unwrap().ty);
-        let event = fields
+        let fields: BTreeMap<Ident, (Ident, Type)> = fields
             .iter()
-            .map(|f| extract_event_type(&f.ty))
-            .all(|t| quote!(#t).to_string() == quote!(#event).to_string())
-            .then_some(event)
-            .expect("all fields should be generic over the same event type");
-
-        let (variants, fields): (Vec<_>, Vec<_>) = fields
-            .into_iter()
-            .map(|field| {
-                let (field_name, variant) = field
-                    .ident
-                    .as_ref()
-                    .map(|snake| {
-                        let pascal =
-                            Ident::new(&snake.to_string().to_case(Case::Pascal), snake.span());
-                        (quote!(#snake), quote!(#pascal))
-                    })
-                    .expect("We already told darling we're on a struct with named fields");
-
-                let ty = &field.ty;
+            .map(|f| {
                 (
-                    quote! { #variant(<#ty as ::crux_core::capability::Capability<#event>>::Operation) },
-                    // TODO: Make this use the actual type, not #variant
+                    f.ident.as_ref().unwrap().to_owned(),
+                    split_event_type(&f.ty),
+                )
+            })
+            .collect();
+
+        let events = fields.values().map(|(_, t2)| t2).collect::<Vec<_>>();
+        if !events.windows(2).all(|win| {
+            let t0 = win[0];
+            let t1 = win[1];
+            quote!(#t0).to_string() == quote!(#t1).to_string()
+        }) {
+            panic!("all fields should be generic over the same event type");
+        }
+        let event = events[0];
+
+        let (variants, fields): (Vec<_>, Vec<_>) = fields.iter()
+            .map(|(field_name, (variant, event))| {
+                (
+                    quote! { #variant(<#variant<#event> as ::crux_core::capability::Capability<#event>>::Operation) },
                     quote! { #field_name: #variant::new(context.with_effect(#name::#variant)) },
                 )
             })
@@ -105,11 +104,13 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
     quote!(#input)
 }
 
-fn extract_event_type(ty: &Type) -> Type {
+fn split_event_type(ty: &Type) -> (Ident, Type) {
     match ty {
         Type::Path(p) if p.qself.is_none() => {
             // Get the first segment of the path (there should be only one)
-            let type_params = &p.path.segments.first().unwrap().arguments;
+            let path_segment = &p.path.segments.first().unwrap();
+            let t1 = &path_segment.ident;
+            let type_params = &path_segment.arguments;
             // It should have only one angle-bracketed param
             let generic_arg = match type_params {
                 PathArguments::AngleBracketed(params) => params.args.first(),
@@ -117,7 +118,7 @@ fn extract_event_type(ty: &Type) -> Type {
             };
             // This argument must be a type
             match generic_arg {
-                Some(GenericArgument::Type(ty)) => Some(ty.clone()),
+                Some(GenericArgument::Type(t2)) => Some((t1.clone(), t2.clone())),
                 _ => None,
             }
         }
