@@ -14,7 +14,6 @@ struct EffectStructReceiver {
 }
 
 #[derive(FromField, Debug)]
-#[darling(attributes(effect))]
 pub struct EffectFieldReceiver {
     ident: Option<Ident>,
     ty: Type,
@@ -49,23 +48,17 @@ impl ToTokens for EffectStructReceiver {
 
         let fields: BTreeMap<Ident, (Ident, Type)> = fields
             .iter()
-            .map(|f| {
-                (
-                    f.ident.as_ref().unwrap().to_owned(),
-                    split_event_type(&f.ty),
-                )
-            })
+            .map(|f| (f.ident.clone().unwrap(), split_event_type(&f.ty)))
             .collect();
 
-        let events = fields.values().map(|(_, t2)| t2).collect::<Vec<_>>();
-        if !events.windows(2).all(|win| {
-            let t0 = win[0];
-            let t1 = win[1];
-            quote!(#t0).to_string() == quote!(#t1).to_string()
-        }) {
+        let events: Vec<_> = fields.values().map(|(_, t)| t).collect();
+        if !events
+            .windows(2)
+            .all(|win| win[0].to_token_stream().to_string() == win[1].to_token_stream().to_string())
+        {
             panic!("all fields should be generic over the same event type");
         }
-        let event = events[0];
+        let event = events.first().expect("Capabilities struct has no fields");
 
         let (variants, fields): (Vec<_>, Vec<_>) = fields.iter()
             .map(|(field_name, (variant, event))| {
@@ -108,14 +101,16 @@ fn split_event_type(ty: &Type) -> (Ident, Type) {
     match ty {
         Type::Path(p) if p.qself.is_none() => {
             // Get the first segment of the path (there should be only one)
-            let path_segment = &p.path.segments.first().unwrap();
+            let path_segment = p.path.segments.first().unwrap();
             let t1 = &path_segment.ident;
             let type_params = &path_segment.arguments;
+
             // It should have only one angle-bracketed param
             let generic_arg = match type_params {
                 PathArguments::AngleBracketed(params) => params.args.first(),
                 _ => None,
             };
+
             // This argument must be a type
             match generic_arg {
                 Some(GenericArgument::Type(t2)) => Some((t1.clone(), t2.clone())),
