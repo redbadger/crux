@@ -1,48 +1,49 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
-    use crux_kv::{KeyValue, KeyValueOperation, KeyValueOutput};
+    use crux_core::render::Render;
+    use crux_kv::{KeyValue, KeyValueOutput};
+    use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
-    pub struct MyApp;
+    pub struct App;
 
     #[derive(Serialize, Deserialize)]
-    pub enum MyEvent {
+    pub enum Event {
         Write,
         Read,
         Set(KeyValueOutput),
     }
 
     #[derive(Default, Serialize, Deserialize)]
-    pub struct MyModel {
+    pub struct Model {
         pub value: i32,
         pub successful: bool,
     }
 
     #[derive(Serialize, Deserialize, Default)]
-    pub struct MyViewModel {
+    pub struct ViewModel {
         pub result: String,
     }
 
-    impl App for MyApp {
-        type Event = MyEvent;
-        type Model = MyModel;
-        type ViewModel = MyViewModel;
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = Model;
+        type ViewModel = ViewModel;
 
-        type Capabilities = MyCapabilities;
+        type Capabilities = Capabilities;
 
-        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
             match event {
-                MyEvent::Write => {
+                Event::Write => {
                     caps.key_value
-                        .write("test", 42i32.to_ne_bytes().to_vec(), MyEvent::Set);
+                        .write("test", 42i32.to_ne_bytes().to_vec(), Event::Set);
                 }
-                MyEvent::Set(KeyValueOutput::Write(success)) => {
+                Event::Set(KeyValueOutput::Write(success)) => {
                     model.successful = success;
                     caps.render.render()
                 }
-                MyEvent::Read => caps.key_value.read("test", MyEvent::Set),
-                MyEvent::Set(KeyValueOutput::Read(value)) => {
+                Event::Read => caps.key_value.read("test", Event::Set),
+                Event::Set(KeyValueOutput::Read(value)) => {
                     if let Some(value) = value {
                         // TODO: should KeyValueOutput::Read be generic over the value type?
                         let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
@@ -54,35 +55,21 @@ mod shared {
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
-            MyViewModel {
+            ViewModel {
                 result: format!("Success: {}, Value: {}", model.successful, model.value),
             }
         }
     }
 
-    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-    pub enum MyEffect {
-        KeyValue(KeyValueOperation),
-        Render,
-    }
-
-    pub struct MyCapabilities {
-        pub key_value: KeyValue<MyEvent>,
-        pub render: Render<MyEvent>,
-    }
-
-    impl WithContext<MyApp, MyEffect> for MyCapabilities {
-        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
-            MyCapabilities {
-                key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
-                render: Render::new(context.with_effect(|_| MyEffect::Render)),
-            }
-        }
+    #[derive(Effect)]
+    pub struct Capabilities {
+        pub key_value: KeyValue<Event>,
+        pub render: Render<Event>,
     }
 }
 
 mod shell {
-    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
     use crux_kv::{KeyValueOperation, KeyValueOutput};
@@ -93,15 +80,15 @@ mod shell {
     }
 
     enum CoreMessage {
-        Message(MyEvent),
+        Message(Event),
         Response(Vec<u8>, Outcome),
     }
 
-    pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyApp> = Core::default();
+    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
+        let core: Core<Effect, App> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-        queue.push_back(CoreMessage::Message(MyEvent::Write));
+        queue.push_back(CoreMessage::Message(Event::Write));
 
         let mut received = vec![];
         let mut kv_store = HashMap::new();
@@ -119,12 +106,12 @@ mod shell {
                 ),
                 _ => vec![],
             };
-            let reqs: Vec<Request<MyEffect>> = bcs::from_bytes(&reqs)?;
+            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
             for Request { uuid, effect } in reqs {
                 match effect {
-                    MyEffect::Render => received.push(effect.clone()),
-                    MyEffect::KeyValue(KeyValueOperation::Write(ref k, ref v)) => {
+                    Effect::Render(_) => received.push(effect.clone()),
+                    Effect::KeyValue(KeyValueOperation::Write(ref k, ref v)) => {
                         received.push(effect.clone());
 
                         // do work
@@ -135,9 +122,9 @@ mod shell {
                         ));
 
                         // now trigger a read
-                        queue.push_back(CoreMessage::Message(MyEvent::Read));
+                        queue.push_back(CoreMessage::Message(Event::Read));
                     }
-                    MyEffect::KeyValue(KeyValueOperation::Read(ref k)) => {
+                    Effect::KeyValue(KeyValueOperation::Read(ref k)) => {
                         received.push(effect.clone());
 
                         // do work
@@ -151,14 +138,15 @@ mod shell {
             }
         }
 
-        let view = bcs::from_bytes::<MyViewModel>(&core.view())?;
+        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
         Ok((received, view))
     }
 }
 
 mod tests {
-    use crate::{shared::MyEffect, shell::run};
+    use crate::{shared::Effect, shell::run};
     use anyhow::Result;
+    use crux_core::render::RenderOperation;
     use crux_kv::KeyValueOperation;
 
     #[test]
@@ -167,13 +155,13 @@ mod tests {
         assert_eq!(
             received,
             vec![
-                MyEffect::KeyValue(KeyValueOperation::Write(
+                Effect::KeyValue(KeyValueOperation::Write(
                     "test".to_string(),
                     42i32.to_ne_bytes().to_vec()
                 )),
-                MyEffect::Render,
-                MyEffect::KeyValue(KeyValueOperation::Read("test".to_string())),
-                MyEffect::Render
+                Effect::Render(RenderOperation),
+                Effect::KeyValue(KeyValueOperation::Read("test".to_string())),
+                Effect::Render(RenderOperation)
             ]
         );
         assert_eq!(view.result, "Success: true, Value: 42");

@@ -50,8 +50,8 @@ The former two are tied together by the `update` function, familiar from Elm, Re
 ```rust
 fn update(
     &self,
-    event: MyEvent,
-    model: &mut MyModel,
+    event: Event,
+    model: &mut Model,
     capabilities: &Capabilities,
 )
 ```

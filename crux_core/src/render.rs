@@ -1,6 +1,6 @@
 //! Built-in capability used to notify the Shell that a UI update is necessary.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     capability::{CapabilityContext, Operation},
@@ -19,7 +19,7 @@ pub struct Render<Ev> {
 }
 
 /// The single operation `Render` implements.
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct RenderOperation;
 
 impl Operation for RenderOperation {
@@ -46,6 +46,8 @@ where
 }
 
 impl<Ev> Capability<Ev> for Render<Ev> {
+    type Operation = RenderOperation;
+
     type MappedSelf<Ev2> = Render<Ev2>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

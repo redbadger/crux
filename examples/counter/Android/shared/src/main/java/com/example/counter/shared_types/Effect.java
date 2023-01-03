@@ -82,18 +82,24 @@ public abstract class Effect {
     }
 
     public static final class Render extends Effect {
-        public Render() {
+        public final RenderOperation value;
+
+        public Render(RenderOperation value) {
+            java.util.Objects.requireNonNull(value, "value must not be null");
+            this.value = value;
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
             serializer.serialize_variant_index(1);
+            value.serialize(serializer);
             serializer.decrease_container_depth();
         }
 
         static Render load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
+            builder.value = RenderOperation.deserialize(deserializer);
             deserializer.decrease_container_depth();
             return builder.build();
         }
@@ -103,17 +109,22 @@ public abstract class Effect {
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
             Render other = (Render) obj;
+            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
             return true;
         }
 
         public int hashCode() {
             int value = 7;
+            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
             return value;
         }
 
         public static final class Builder {
+            public RenderOperation value;
+
             public Render build() {
                 return new Render(
+                    value
                 );
             }
         }

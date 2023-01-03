@@ -79,6 +79,7 @@ where
 }
 
 impl<Ef> Capability<Ef> for KeyValue<Ef> {
+    type Operation = KeyValueOperation;
     type MappedSelf<MappedEv> = KeyValue<MappedEv>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

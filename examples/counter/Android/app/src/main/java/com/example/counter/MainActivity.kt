@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalUnsignedTypes::class)
 package com.example.counter
 
 import android.os.Bundle
@@ -110,7 +111,7 @@ class Model : ViewModel() {
                         println("$name: $value")
                     }
 
-                    response.body!!.bytes().toList()?.let { bytes ->
+                    response.body!!.bytes().toList().let { bytes ->
                         update(
                             CoreMessage.Response(
                                 uuid.toByteArray().toUByteArray().toList(),

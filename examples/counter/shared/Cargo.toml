@@ -13,6 +13,7 @@ bincode = "1.3.3"
 chrono = "0.4.23"
 crux_core = { path = "../../../crux_core" }
 crux_http = { path = "../../../crux_http" }
+crux_macros = { path = "../../../crux_macros" }
 derive_more = "0.99.17"
 lazy_static = "1.4.0"
 serde = { version = "1.0.151", features = ["derive"] }

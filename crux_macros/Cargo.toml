@@ -1,6 +1,6 @@
 [package]
-name = "crux_time"
-description = "Time capability for use with crux_core"
+name = "crux_macros"
+description = "Macros for use with crux_core"
 authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
 version = "0.1.0"
@@ -9,11 +9,15 @@ readme = "README.md"
 license = "Apache-2.0"
 keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 
+[lib]
+proc-macro = true
+
 [dependencies]
-anyhow = "1.0.66"
-bcs = "0.1.4"
-crux_core = { path = "../crux_core", version = "0.2" }
-serde = { version = "1.0.151", features = ["derive"] }
+darling = "0.14.2"
+proc-macro2 = "1.0.47"
+quote = "1.0.21"
+syn = "1.0.105"
 
 [dev-dependencies]
-crux_macros = { version = "0.1", path = "../crux_macros" }
+insta = "1.23"
+prettyplease = "0.1"

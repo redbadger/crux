@@ -59,7 +59,7 @@ impl Component for RootComponent {
 
         for Request { uuid, effect } in reqs {
             match effect {
-                Effect::Render => should_render = true,
+                Effect::Render(_) => should_render = true,
                 Effect::Http(HttpRequest { url, method }) => {
                     let method = match method.as_str() {
                         "GET" => http::Method::GET,

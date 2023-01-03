@@ -14,3 +14,6 @@ anyhow = "1.0.66"
 bcs = "0.1.4"
 crux_core = { version = "0.2", path = "../crux_core" }
 serde = { version = "1.0.151", features = ["derive"] }
+
+[dev-dependencies]
+crux_macros = { version = "0.1", path = "../crux_macros" }
