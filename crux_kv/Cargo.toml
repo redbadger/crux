@@ -1,19 +1,19 @@
 [package]
 name = "crux_kv"
 description = "Key-Value capability for use with crux_core"
-authors = ["Red Badger Consulting Limited"]
-repository = "https://github.com/redbadger/crux/"
 version = "0.1.0"
-edition = "2021"
 readme = "README.md"
-license = "Apache-2.0"
-keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
 
 [dependencies]
-anyhow = "1.0.66"
-bcs = "0.1.4"
+anyhow.workspace = true
+bcs.workspace = true
 crux_core = { version = "0.2", path = "../crux_core" }
-serde = { version = "1.0.151", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 crux_macros = { version = "0.1", path = "../crux_macros" }

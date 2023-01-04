@@ -1,15 +1,19 @@
 [package]
 name = "cli"
 version = "0.1.0"
-edition = "2021"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-anyhow = "1.0.66"
+anyhow.workspace = true
 async-std = { version = "1.12.0", features = ["std", "attributes"] }
 bcs = "0.1.4"
 chrono = "0.4.23"
-clap = { version = "4.0.29", features = ["derive"] }
-serde = { version = "1.0.151", features = ["derive"] }
+clap = { version = "4.0.32", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 shared = { path = "../shared" }
 surf = "2.3.2"
