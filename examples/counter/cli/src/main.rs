@@ -1,11 +1,11 @@
-use anyhow::{bail, Result};
 use clap::Parser;
+use eyre::{bail, eyre, Result};
 use shared::{
     http::{HttpRequest, HttpResponse},
     Effect, Event, Request, ViewModel,
 };
 use std::{collections::VecDeque, str::FromStr, time::Duration};
-use surf::{http, Client, Config, Url};
+use surf::{http::Method, Client, Config, Url};
 
 enum CoreMessage {
     Message(Event),
@@ -65,26 +65,12 @@ async fn main() -> Result<()> {
         for Request { uuid, effect } in reqs {
             match effect {
                 Effect::Render(_) => (),
-                Effect::Http(HttpRequest { url, method }) => {
+                Effect::Http(HttpRequest { method, url }) => {
+                    let method = Method::from_str(&method).expect("unknown http method");
                     let url = Url::parse(&url)?;
-                    let method = http::Method::from_str(&method).expect("unknown http method");
+                    let response = http(method, &url).await?;
 
-                    let client: Client = Config::new()
-                        .set_timeout(Some(Duration::from_secs(5)))
-                        .try_into()?;
-
-                    match client.request(method, &url).recv_bytes().await {
-                        Ok(bytes) => {
-                            queue.push_back(CoreMessage::Response(
-                                uuid,
-                                Outcome::Http(HttpResponse {
-                                    status: 200,
-                                    body: bytes,
-                                }),
-                            ));
-                        }
-                        Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
-                    }
+                    queue.push_back(CoreMessage::Response(uuid, Outcome::Http(response)));
                 }
             }
         }
@@ -94,4 +80,26 @@ async fn main() -> Result<()> {
     println!("{}", view.text);
 
     Ok(())
+}
+
+async fn http(method: Method, url: &Url) -> Result<HttpResponse> {
+    let client: Client = Config::new()
+        .set_timeout(Some(Duration::from_secs(5)))
+        .try_into()?;
+
+    let mut response = client
+        .request(method, url)
+        .await
+        .map_err(|e| eyre!("{method} {url}: error {e}"))?;
+
+    let status = response.status().into();
+
+    if let 200..=299 = status {
+        response.body_bytes().await.map_or_else(
+            |e| bail!("{method} {url}: error {e}"),
+            |body| Ok(HttpResponse { status, body }),
+        )
+    } else {
+        bail!("{method} {url}: status {status}");
+    }
 }
