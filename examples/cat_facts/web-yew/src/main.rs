@@ -1,25 +1,17 @@
 use anyhow::{anyhow, Result};
+use gloo_net::http;
 use js_sys::Date;
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::prelude::*;
 
 use shared::{
-    http::{HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse},
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
 };
-
-async fn http_get(url: &str) -> Result<Vec<u8>> {
-    let bytes = gloo_net::http::Request::get(url)
-        .send()
-        .await?
-        .binary()
-        .await?;
-    Ok(bytes)
-}
 
 fn time_get() -> Result<String> {
     let date = Date::new_0();
@@ -52,7 +44,7 @@ enum CoreMessage {
 pub enum Outcome {
     Platform(PlatformResponse),
     Time(TimeResponse),
-    Http(HttpResponse),
+    Http(Result<HttpResponse, HttpError>),
     KeyValue(KeyValueOutput),
 }
 
@@ -100,19 +92,18 @@ impl Component for HelloWorld {
                         Outcome::Time(TimeResponse(time_get().unwrap())),
                     ));
                 }
-                Effect::Http(HttpRequest { url, .. }) => {
+                Effect::Http(HttpRequest { url, method }) => {
+                    let method = match method.as_str() {
+                        "GET" => http::Method::GET,
+                        "POST" => http::Method::POST,
+                        _ => panic!("not yet handling this method"),
+                    };
+
                     let link = link.clone();
 
                     wasm_bindgen_futures::spawn_local(async move {
-                        let bytes = http_get(&url).await.unwrap_or_default();
-
-                        link.send_message(CoreMessage::Response(
-                            uuid,
-                            Outcome::Http(HttpResponse {
-                                status: 200,
-                                body: Some(bytes),
-                            }),
-                        ));
+                        let response = http(method, &url).await;
+                        link.send_message(CoreMessage::Response(uuid, Outcome::Http(response)));
                     });
                 }
                 Effect::Platform(_) => {
@@ -181,4 +172,33 @@ impl Component for HelloWorld {
 
 fn main() {
     yew::Renderer::<HelloWorld>::new().render();
+}
+
+async fn http(method: http::Method, url: &str) -> Result<HttpResponse, HttpError> {
+    let error = |error| HttpError {
+        method: method.to_string(),
+        url: url.to_string(),
+        error,
+    };
+
+    let response = http::Request::new(url)
+        .method(method)
+        .send()
+        .await
+        .map_err(|e| error(e.to_string()))?;
+
+    let status = response.status();
+
+    match status {
+        200..=299 => response.binary().await.map_or_else(
+            |e| Err(error(format!("{e}"))),
+            |body| {
+                Ok(HttpResponse {
+                    status,
+                    body: Some(body),
+                })
+            },
+        ),
+        status => Err(error(format!("status: {status}"))),
+    }
 }

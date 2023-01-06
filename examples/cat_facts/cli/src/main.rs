@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use async_std::{
     fs::{File, OpenOptions},
     io::{ReadExt, WriteExt},
@@ -6,13 +6,18 @@ use async_std::{
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use shared::{
-    http::{HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse},
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
     Effect, Event, Request, ViewModel,
 };
-use std::{collections::VecDeque, time::SystemTime};
+use std::{
+    collections::VecDeque,
+    str::FromStr,
+    time::{Duration, SystemTime},
+};
+use surf::{http::Method, Client, Config, Url};
 
 enum CoreMessage {
     Message(Event),
@@ -29,7 +34,7 @@ enum Command {
 pub enum Outcome {
     Platform(PlatformResponse),
     Time(TimeResponse),
-    Http(HttpResponse),
+    Http(Result<HttpResponse, HttpError>),
     KeyValue(KeyValueOutput),
 }
 
@@ -81,18 +86,13 @@ async fn main() -> Result<()> {
                         Outcome::Time(TimeResponse(iso_time)),
                     ));
                 }
-                Effect::Http(HttpRequest { url, .. }) => match surf::get(&url).recv_bytes().await {
-                    Ok(bytes) => {
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::Http(HttpResponse {
-                                status: 200,
-                                body: Some(bytes),
-                            }),
-                        ));
-                    }
-                    Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
-                },
+                Effect::Http(HttpRequest { method, url }) => {
+                    let method = Method::from_str(&method).expect("unknown http method");
+                    let url = Url::parse(&url)?;
+
+                    let response = http(method, &url).await;
+                    queue.push_back(CoreMessage::Response(uuid, Outcome::Http(response)));
+                }
                 Effect::Platform(_) => queue.push_back(CoreMessage::Response(
                     uuid,
                     Outcome::Platform(PlatformResponse("cli".to_string())),
@@ -153,4 +153,37 @@ async fn read_state(_key: &str) -> Result<Vec<u8>> {
     f.read_to_end(&mut buf).await?;
 
     Ok(buf)
+}
+
+async fn http(method: Method, url: &Url) -> Result<HttpResponse, HttpError> {
+    let error = |error| HttpError {
+        method: method.to_string(),
+        url: url.to_string(),
+        error,
+    };
+
+    let client: Client = Config::new()
+        .set_timeout(Some(Duration::from_secs(5)))
+        .try_into()
+        .map_err(|e| error(format!("{e}")))?;
+
+    let mut response = client
+        .request(method, url)
+        .await
+        .map_err(|e| error(format!("{e}")))?;
+
+    let status = response.status().into();
+
+    match status {
+        200..=299 => response.body_bytes().await.map_or_else(
+            |e| Err(error(format!("{e}"))),
+            |body| {
+                Ok(HttpResponse {
+                    status,
+                    body: Some(body),
+                })
+            },
+        ),
+        status => Err(error(format!("status: {status}"))),
+    }
 }

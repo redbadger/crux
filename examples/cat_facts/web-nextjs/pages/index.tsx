@@ -12,8 +12,6 @@ import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 import { Optional } from "shared_types/serde/mod";
 
-type Action = Message | Response;
-
 interface Message {
   kind: "message";
   message: types.Event;
@@ -25,7 +23,7 @@ interface Response {
   outcome:
     | types.PlatformResponse
     | types.TimeResponse
-    | types.HttpResponse
+    | types.Result
     | types.KeyValueOutput;
 }
 
@@ -123,7 +121,9 @@ const Home: NextPage = () => {
           respond({
             kind: "response",
             uuid: request.uuid,
-            outcome: new types.HttpResponse(resp.status, response_bytes),
+            outcome: new types.ResultVariantOk(
+              new types.HttpResponse(resp.status, response_bytes)
+            ),
           });
           break;
         default:
