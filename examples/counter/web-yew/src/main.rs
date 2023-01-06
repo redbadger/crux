@@ -3,19 +3,9 @@ use gloo_net::http;
 use yew::prelude::*;
 
 use shared::{
-    http::{HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse},
     Effect, Event, Request, ViewModel,
 };
-
-async fn http(url: &str, method: http::Method) -> Result<Vec<u8>> {
-    let bytes = http::Request::new(url)
-        .method(method)
-        .send()
-        .await?
-        .binary()
-        .await?;
-    Ok(bytes)
-}
 
 #[derive(Default)]
 struct RootComponent;
@@ -26,7 +16,7 @@ enum CoreMessage {
 }
 
 pub enum Outcome {
-    Http(HttpResponse),
+    Http(Result<HttpResponse, HttpError>),
 }
 
 impl Component for RootComponent {
@@ -70,12 +60,8 @@ impl Component for RootComponent {
                     let link = link.clone();
 
                     wasm_bindgen_futures::spawn_local(async move {
-                        if let Ok(body) = http(&url, method).await {
-                            link.send_message(CoreMessage::Response(
-                                uuid,
-                                Outcome::Http(HttpResponse { status: 200, body }), // TODO: handle status
-                            ));
-                        }
+                        let response = http(method, &url).await;
+                        link.send_message(CoreMessage::Response(uuid, Outcome::Http(response)));
                     });
                 }
             }
@@ -117,4 +103,33 @@ impl Component for RootComponent {
 
 fn main() {
     yew::Renderer::<RootComponent>::new().render();
+}
+
+async fn http(method: http::Method, url: &str) -> Result<HttpResponse, HttpError> {
+    let error = |error| HttpError {
+        method: method.to_string(),
+        url: url.to_string(),
+        error,
+    };
+
+    let response = http::Request::new(url)
+        .method(method)
+        .send()
+        .await
+        .map_err(|e| error(e.to_string()))?;
+
+    let status = response.status();
+
+    match status {
+        200..=299 => response.binary().await.map_or_else(
+            |e| Err(error(format!("{e}"))),
+            |body| {
+                Ok(HttpResponse {
+                    status,
+                    body: Some(body),
+                })
+            },
+        ),
+        status => Err(error(format!("status: {status}"))),
+    }
 }

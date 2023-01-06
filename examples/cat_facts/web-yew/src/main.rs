@@ -110,7 +110,7 @@ impl Component for HelloWorld {
                             uuid,
                             Outcome::Http(HttpResponse {
                                 status: 200,
-                                body: bytes,
+                                body: Some(bytes),
                             }),
                         ));
                     });

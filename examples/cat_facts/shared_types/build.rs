@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crux_core::{typegen::TypeGen, Request};
-use crux_http::{HttpRequest, HttpResponse};
+use crux_http::{HttpError, HttpRequest, HttpResponse};
 use crux_kv::{KeyValueOperation, KeyValueOutput};
 use crux_platform::PlatformResponse;
 use crux_time::TimeResponse;
@@ -33,12 +33,16 @@ fn register_types(gen: &mut TypeGen) -> Result<()> {
     gen.register_type::<Request<Effect>>()?;
 
     gen.register_type::<Effect>()?;
-    gen.register_type::<HttpRequest>()?;
-    gen.register_type::<KeyValueOperation>()?;
-
     gen.register_type::<Event>()?;
+
+    gen.register_type::<HttpRequest>()?;
     gen.register_type::<HttpResponse>()?;
+    gen.register_type::<HttpError>()?;
+    gen.register_type::<Result<HttpResponse, HttpError>>()?;
+
+    gen.register_type::<KeyValueOperation>()?;
     gen.register_type::<KeyValueOutput>()?;
+
     gen.register_type::<TimeResponse>()?;
 
     gen.register_type::<PlatformEvent>()?;

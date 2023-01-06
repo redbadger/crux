@@ -1,6 +1,6 @@
 mod shared {
 
-    use crux_http::Http;
+    use crux_http::{Http, HttpError, HttpResponse};
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
@@ -11,12 +11,12 @@ mod shared {
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
     pub enum Event {
         Get,
-        Set(String),
+        Set(Result<HttpResponse, HttpError>),
     }
 
     #[derive(Default, Serialize, Deserialize)]
     pub struct Model {
-        pub body: String,
+        pub body: Vec<u8>,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -35,17 +35,20 @@ mod shared {
             match event {
                 Event::Get => {
                     caps.http
-                        .get_json(Url::parse("http://example.com").unwrap(), Event::Set);
+                        .get(Url::parse("http://example.com").unwrap(), Event::Set);
                 }
-                Event::Set(body) => {
-                    model.body = body;
+                Event::Set(Ok(HttpResponse { body, status: _ })) => {
+                    if let Some(body) = body {
+                        model.body = body;
+                    }
                 }
+                Event::Set(Err(_)) => {}
             }
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
             ViewModel {
-                result: format!("Body: {}", model.body),
+                result: format!("Body: {}", String::from_utf8_lossy(&model.body)),
             }
         }
     }
@@ -56,10 +59,11 @@ mod shared {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
-    use crux_http::{HttpRequest, HttpResponse};
+    use crux_http::{HttpError, HttpRequest, HttpResponse};
 
     #[test]
     fn with_tester() {
@@ -76,13 +80,14 @@ mod tests {
             })
         );
 
-        let update = update.effects[0].resolve(&HttpResponse {
+        let http_response = Ok::<_, HttpError>(HttpResponse {
             status: 200,
-            body: serde_json::to_vec("hello").unwrap(),
+            body: Some(serde_json::to_vec("hello").unwrap()),
         });
+        let update = update.effects[0].resolve(&http_response);
 
         let actual = update.events;
-        let expected = vec![Event::Set("hello".to_string())];
+        let expected = vec![Event::Set(http_response)];
         assert_eq!(actual, expected);
     }
 }

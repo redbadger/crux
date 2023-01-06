@@ -18,7 +18,7 @@ interface Message {
 interface Response {
   kind: "response";
   uuid: number[];
-  outcome: types.HttpResponse;
+  outcome: types.Result;
 }
 
 type State = {
@@ -90,7 +90,9 @@ const Home: NextPage = () => {
           respond({
             kind: "response",
             uuid,
-            outcome: new types.HttpResponse(res.status, response_bytes),
+            outcome: new types.ResultVariantOk(
+              new types.HttpResponse(res.status, response_bytes)
+            ),
           });
           break;
         default:

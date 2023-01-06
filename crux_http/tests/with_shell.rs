@@ -1,6 +1,6 @@
 mod shared {
     use crux_core::render::Render;
-    use crux_http::{Http, HttpResponse};
+    use crux_http::{Http, HttpError, HttpResponse};
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
@@ -11,16 +11,14 @@ mod shared {
     #[derive(Serialize, Deserialize)]
     pub enum Event {
         Get,
-        GetJson,
-        Set(HttpResponse),
-        SetJson(String),
+        Post,
+        Set(Result<HttpResponse, HttpError>),
     }
 
     #[derive(Default, Serialize, Deserialize)]
     pub struct Model {
         pub status: u16,
         pub body: Vec<u8>,
-        pub json_body: String,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -41,29 +39,25 @@ mod shared {
                     caps.http
                         .get(Url::parse("http://example.com").unwrap(), Event::Set);
                 }
-                Event::GetJson => {
+                Event::Post => {
                     caps.http
-                        .get_json(Url::parse("http://example.com").unwrap(), Event::SetJson);
+                        .post(Url::parse("http://example.com").unwrap(), Event::Set);
                 }
-                Event::Set(response) => {
-                    model.status = response.status;
-                    model.body = response.body;
+                Event::Set(Ok(HttpResponse { body, status })) => {
+                    model.status = status;
+                    model.body = body.unwrap_or_default();
                     caps.render.render()
                 }
-                Event::SetJson(body) => {
-                    model.json_body = body;
-                    caps.render.render()
-                }
+                Event::Set(Err(_)) => caps.render.render(),
             }
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
             ViewModel {
                 result: format!(
-                    "Status: {}, Body: {}, Json Body: {}",
+                    "Status: {}, Body: {}",
                     model.status,
                     String::from_utf8_lossy(&model.body),
-                    &model.json_body
                 ),
             }
         }
@@ -80,11 +74,11 @@ mod shell {
     use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
-    use crux_http::{HttpRequest, HttpResponse};
+    use crux_http::{HttpError, HttpRequest, HttpResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Http(HttpResponse),
+        Http(Result<HttpResponse, HttpError>),
     }
 
     enum CoreMessage {
@@ -122,10 +116,10 @@ mod shell {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
-                            Outcome::Http(HttpResponse {
+                            Outcome::Http(Ok(HttpResponse {
                                 status: 200,
-                                body: "\"Hello\"".as_bytes().to_owned(),
-                            }),
+                                body: Some("\"Hello\"".as_bytes().to_owned()),
+                            })),
                         ));
                     }
                 }
@@ -137,6 +131,7 @@ mod shell {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::{
         shared::{Effect, Event},
@@ -147,7 +142,7 @@ mod tests {
     use crux_http::HttpRequest;
 
     #[test]
-    pub fn test_http() -> Result<()> {
+    pub fn test_get() -> Result<()> {
         let (received, view) = run(Event::Get)?;
         assert_eq!(
             received,
@@ -159,24 +154,24 @@ mod tests {
                 Effect::Render(RenderOperation)
             ]
         );
-        assert_eq!(view.result, "Status: 200, Body: \"Hello\", Json Body: ");
+        assert_eq!(view.result, "Status: 200, Body: \"Hello\"");
         Ok(())
     }
 
     #[test]
-    pub fn test_http_json() -> Result<()> {
-        let (received, view) = run(Event::GetJson)?;
+    pub fn test_post() -> Result<()> {
+        let (received, view) = run(Event::Post)?;
         assert_eq!(
             received,
             vec![
                 Effect::Http(HttpRequest {
-                    method: "GET".to_string(),
+                    method: "POST".to_string(),
                     url: "http://example.com/".to_string()
                 }),
                 Effect::Render(RenderOperation)
             ]
         );
-        assert_eq!(view.result, "Status: 0, Body: , Json Body: Hello");
+        assert_eq!(view.result, "Status: 200, Body: \"Hello\"");
         Ok(())
     }
 }

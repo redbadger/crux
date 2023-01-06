@@ -1,7 +1,7 @@
+use anyhow::Result;
 use clap::Parser;
-use eyre::{bail, eyre, Result};
 use shared::{
-    http::{HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse},
     Effect, Event, Request, ViewModel,
 };
 use std::{collections::VecDeque, str::FromStr, time::Duration};
@@ -30,7 +30,7 @@ impl From<Command> for CoreMessage {
 }
 
 pub enum Outcome {
-    Http(HttpResponse),
+    Http(Result<HttpResponse, HttpError>),
 }
 
 #[derive(Parser)]
@@ -68,8 +68,8 @@ async fn main() -> Result<()> {
                 Effect::Http(HttpRequest { method, url }) => {
                     let method = Method::from_str(&method).expect("unknown http method");
                     let url = Url::parse(&url)?;
-                    let response = http(method, &url).await?;
 
+                    let response = http(method, &url).await;
                     queue.push_back(CoreMessage::Response(uuid, Outcome::Http(response)));
                 }
             }
@@ -82,24 +82,35 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn http(method: Method, url: &Url) -> Result<HttpResponse> {
+async fn http(method: Method, url: &Url) -> Result<HttpResponse, HttpError> {
+    let error = |error| HttpError {
+        method: method.to_string(),
+        url: url.to_string(),
+        error,
+    };
+
     let client: Client = Config::new()
         .set_timeout(Some(Duration::from_secs(5)))
-        .try_into()?;
+        .try_into()
+        .map_err(|e| error(format!("{e}")))?;
 
     let mut response = client
         .request(method, url)
         .await
-        .map_err(|e| eyre!("{method} {url}: error {e}"))?;
+        .map_err(|e| error(format!("{e}")))?;
 
     let status = response.status().into();
 
-    if let 200..=299 = status {
-        response.body_bytes().await.map_or_else(
-            |e| bail!("{method} {url}: error {e}"),
-            |body| Ok(HttpResponse { status, body }),
-        )
-    } else {
-        bail!("{method} {url}: status {status}");
+    match status {
+        200..=299 => response.body_bytes().await.map_or_else(
+            |e| Err(error(format!("{e}"))),
+            |body| {
+                Ok(HttpResponse {
+                    status,
+                    body: Some(body),
+                })
+            },
+        ),
+        status => Err(error(format!("status: {status}"))),
     }
 }

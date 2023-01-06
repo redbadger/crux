@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
                             uuid,
                             Outcome::Http(HttpResponse {
                                 status: 200,
-                                body: bytes,
+                                body: Some(bytes),
                             }),
                         ));
                     }

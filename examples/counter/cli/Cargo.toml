@@ -9,7 +9,7 @@ keywords.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-eyre = "0.6.8"
+anyhow.workspace = true
 async-std = { version = "1.12.0", features = ["std", "attributes"] }
 bcs = "0.1.4"
 clap = { version = "4.0.32", features = ["derive"] }

@@ -48,11 +48,11 @@ where
     Ev: 'static,
 {
     /// Send an effect request to the shell, expecting an output. The
-    /// provided `operation` describes the effect input in a serialisable fashion,
+    /// provided `operation` describes the effect input in a serializable fashion,
     /// and must implement the [`Operation`](crate::capability::Operation) trait to declare the expected
     /// output type.
     ///
-    /// `request_from_shell` is returns a future of the output, which can be
+    /// `request_from_shell` returns a future of the output, which can be
     /// `await`ed. You should only call this method inside an async task
     /// created with [`CapabilityContext::spawn`](crate::capability::CapabilityContext::spawn).
     pub fn request_from_shell(&self, operation: Op) -> EffectFuture<Op::Output> {

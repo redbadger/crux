@@ -546,10 +546,10 @@ dependencies = [
 name = "cli"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-std",
  "bcs",
  "clap 4.0.32",
- "eyre",
  "serde",
  "shared",
  "surf",
@@ -683,6 +683,7 @@ dependencies = [
  "derive_more",
  "serde",
  "serde_json",
+ "thiserror",
  "url",
 ]
 
@@ -948,16 +949,6 @@ name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
-
-[[package]]
-name = "eyre"
-version = "0.6.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c2b6b5a29c02cdc822728b7d7b8ae1bab3e3b05d44522770ddd49722eeac7eb"
-dependencies = [
- "indenter",
- "once_cell",
-]
 
 [[package]]
 name = "fastrand"
@@ -1602,12 +1593,6 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "indenter"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
