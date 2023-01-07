@@ -1,9 +1,8 @@
-use anyhow::Result;
 use gloo_net::http;
 use yew::prelude::*;
 
 use shared::{
-    http::{HttpError, HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse, HttpResult},
     Effect, Event, Request, ViewModel,
 };
 
@@ -16,7 +15,7 @@ enum CoreMessage {
 }
 
 pub enum Outcome {
-    Http(Result<HttpResponse, HttpError>),
+    Http(HttpResult),
 }
 
 impl Component for RootComponent {
@@ -105,7 +104,7 @@ fn main() {
     yew::Renderer::<RootComponent>::new().render();
 }
 
-async fn http(method: http::Method, url: &str) -> Result<HttpResponse, HttpError> {
+async fn http(method: http::Method, url: &str) -> HttpResult {
     let error = |error| HttpError {
         method: method.to_string(),
         url: url.to_string(),

@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use crux_core::render::Render;
-use crux_http::{Http, HttpError, HttpResponse};
+use crux_http::{Http, HttpError, HttpResponse, HttpResult};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -98,7 +98,7 @@ impl From<&Model> for ViewModel {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Event {
     Get,
-    Set(Result<HttpResponse, HttpError>),
+    Set(HttpResult),
     Increment,
     Decrement,
 }
@@ -110,7 +110,7 @@ pub struct Capabilities {
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
-pub struct Counter {
+struct Counter {
     value: i32,
     updated_at: i64,
 }
@@ -118,9 +118,9 @@ pub struct Counter {
 #[cfg(test)]
 mod tests {
     use super::{App, Event, Model};
-    use crate::{Counter, Effect};
+    use crate::{app::Counter, Effect};
     use crux_core::{render::RenderOperation, testing::AppTester};
-    use crux_http::{HttpError, HttpRequest, HttpResponse};
+    use crux_http::{HttpRequest, HttpResponse, HttpResult};
 
     #[test]
     fn get_counter() {
@@ -143,7 +143,7 @@ mod tests {
             })
             .unwrap(),
         );
-        let update = update.effects[0].resolve(&Ok::<_, HttpError>(HttpResponse {
+        let update = update.effects[0].resolve(&HttpResult::Ok(HttpResponse {
             status: 200,
             body: body.clone(),
         }));
@@ -210,7 +210,7 @@ mod tests {
         });
         assert_eq!(actual, expected);
 
-        let update = update.effects[1].resolve(&Ok::<_, HttpError>(HttpResponse {
+        let update = update.effects[1].resolve(&HttpResult::Ok(HttpResponse {
             status: 200,
             body: Some(
                 serde_json::to_vec(&Counter {
@@ -260,7 +260,7 @@ mod tests {
         });
         assert_eq!(actual, expected);
 
-        let update = update.effects[1].resolve(&Ok::<_, HttpError>(HttpResponse {
+        let update = update.effects[1].resolve(&HttpResult::Ok(HttpResponse {
             status: 200,
             body: Some(
                 serde_json::to_vec(&Counter {

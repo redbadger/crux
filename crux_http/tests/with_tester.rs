@@ -1,6 +1,6 @@
 mod shared {
 
-    use crux_http::{Http, HttpError, HttpResponse};
+    use crux_http::{Http, HttpResponse, HttpResult};
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
@@ -11,7 +11,7 @@ mod shared {
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
     pub enum Event {
         Get,
-        Set(Result<HttpResponse, HttpError>),
+        Set(HttpResult),
     }
 
     #[derive(Default, Serialize, Deserialize)]
@@ -63,7 +63,7 @@ mod shared {
 mod tests {
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
-    use crux_http::{HttpError, HttpRequest, HttpResponse};
+    use crux_http::{HttpRequest, HttpResponse, HttpResult};
 
     #[test]
     fn with_tester() {
@@ -80,7 +80,7 @@ mod tests {
             })
         );
 
-        let http_response = Ok::<_, HttpError>(HttpResponse {
+        let http_response = HttpResult::Ok(HttpResponse {
             status: 200,
             body: Some(serde_json::to_vec("hello").unwrap()),
         });

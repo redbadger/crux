@@ -50,8 +50,10 @@ pub struct HttpResponse {
     pub body: Option<Vec<u8>>, // TODO support headers
 }
 
+pub type HttpResult = Result<HttpResponse, HttpError>;
+
 impl Operation for HttpRequest {
-    type Output = Result<HttpResponse, HttpError>;
+    type Output = HttpResult;
 }
 
 #[derive(Error, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -81,7 +83,7 @@ where
     pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(Result<HttpResponse, HttpError>) -> Ev + Send + 'static,
+        F: Fn(HttpResult) -> Ev + Send + 'static,
     {
         self.send(HttpMethod::Get, url, callback)
     }
@@ -92,7 +94,7 @@ where
     pub fn post<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(Result<HttpResponse, HttpError>) -> Ev + Send + 'static,
+        F: Fn(HttpResult) -> Ev + Send + 'static,
     {
         self.send(HttpMethod::Post, url, callback)
     }
@@ -104,7 +106,7 @@ where
     pub fn send<F>(&self, method: HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
-        F: Fn(Result<HttpResponse, HttpError>) -> Ev + Send + 'static,
+        F: Fn(HttpResult) -> Ev + Send + 'static,
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {

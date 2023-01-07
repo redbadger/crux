@@ -6,7 +6,7 @@ use async_std::{
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use shared::{
-    http::{HttpError, HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse, HttpResult},
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
@@ -34,7 +34,7 @@ enum Command {
 pub enum Outcome {
     Platform(PlatformResponse),
     Time(TimeResponse),
-    Http(Result<HttpResponse, HttpError>),
+    Http(HttpResult),
     KeyValue(KeyValueOutput),
 }
 
@@ -155,7 +155,7 @@ async fn read_state(_key: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-async fn http(method: Method, url: &Url) -> Result<HttpResponse, HttpError> {
+async fn http(method: Method, url: &Url) -> HttpResult {
     let error = |error| HttpError {
         method: method.to_string(),
         url: url.to_string(),

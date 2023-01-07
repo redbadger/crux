@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use shared::{
-    http::{HttpError, HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse, HttpResult},
     Effect, Event, Request, ViewModel,
 };
 use std::{collections::VecDeque, str::FromStr, time::Duration};
@@ -30,7 +30,7 @@ impl From<Command> for CoreMessage {
 }
 
 pub enum Outcome {
-    Http(Result<HttpResponse, HttpError>),
+    Http(HttpResult),
 }
 
 #[derive(Parser)]
@@ -82,7 +82,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn http(method: Method, url: &Url) -> Result<HttpResponse, HttpError> {
+async fn http(method: Method, url: &Url) -> HttpResult {
     let error = |error| HttpError {
         method: method.to_string(),
         url: url.to_string(),

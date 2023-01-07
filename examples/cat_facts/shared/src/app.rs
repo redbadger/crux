@@ -5,7 +5,7 @@ use url::Url;
 
 pub use crux_core::App;
 use crux_core::{render::Render, Capability};
-use crux_http::{Http, HttpError, HttpResponse};
+use crux_http::{Http, HttpResponse, HttpResult};
 use crux_kv::{KeyValue, KeyValueOutput};
 use crux_macros::Effect;
 use crux_platform::Platform;
@@ -67,8 +67,8 @@ pub enum Event {
     Fetch,
     Restore,                  // restore state
     SetState(KeyValueOutput), // receive the data to restore state with
-    SetFact(Result<HttpResponse, HttpError>),
-    SetImage(Result<HttpResponse, HttpError>),
+    SetFact(HttpResult),
+    SetImage(HttpResult),
     CurrentTime(TimeResponse),
 }
 
@@ -255,7 +255,7 @@ mod tests {
 
         let body = Some(serde_json::to_vec(&a_fact).unwrap());
 
-        let update = update.effects[0].resolve(&Ok::<_, HttpError>(HttpResponse {
+        let update = update.effects[0].resolve(&HttpResult::Ok(HttpResponse {
             status: 200,
             body: body.clone(),
         }));

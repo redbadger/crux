@@ -1,6 +1,6 @@
 mod shared {
     use crux_core::render::Render;
-    use crux_http::{Http, HttpError, HttpResponse};
+    use crux_http::{Http, HttpResponse, HttpResult};
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
@@ -12,7 +12,7 @@ mod shared {
     pub enum Event {
         Get,
         Post,
-        Set(Result<HttpResponse, HttpError>),
+        Set(HttpResult),
     }
 
     #[derive(Default, Serialize, Deserialize)]
@@ -74,11 +74,11 @@ mod shell {
     use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
-    use crux_http::{HttpError, HttpRequest, HttpResponse};
+    use crux_http::{HttpRequest, HttpResponse, HttpResult};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Http(Result<HttpResponse, HttpError>),
+        Http(HttpResult),
     }
 
     enum CoreMessage {

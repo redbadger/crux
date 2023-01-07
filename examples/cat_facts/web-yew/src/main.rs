@@ -6,7 +6,7 @@ use woothee::parser::Parser;
 use yew::prelude::*;
 
 use shared::{
-    http::{HttpError, HttpRequest, HttpResponse},
+    http::{HttpError, HttpRequest, HttpResponse, HttpResult},
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
@@ -44,7 +44,7 @@ enum CoreMessage {
 pub enum Outcome {
     Platform(PlatformResponse),
     Time(TimeResponse),
-    Http(Result<HttpResponse, HttpError>),
+    Http(HttpResult),
     KeyValue(KeyValueOutput),
 }
 
@@ -174,7 +174,7 @@ fn main() {
     yew::Renderer::<HelloWorld>::new().render();
 }
 
-async fn http(method: http::Method, url: &str) -> Result<HttpResponse, HttpError> {
+async fn http(method: http::Method, url: &str) -> HttpResult {
     let error = |error| HttpError {
         method: method.to_string(),
         url: url.to_string(),
