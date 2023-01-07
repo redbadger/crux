@@ -30,3 +30,12 @@ impl From<serde_json::Error> for Error {
         }
     }
 }
+
+impl From<url::ParseError> for Error {
+    fn from(e: url::ParseError) -> Self {
+        Error {
+            message: e.to_string(),
+            code: None,
+        }
+    }
+}

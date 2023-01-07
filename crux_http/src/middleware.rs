@@ -58,10 +58,9 @@ use std::sync::Arc;
 
 use crate::{Client, Request, ResponseAsync, Result};
 
-// TODO: Later
-// mod redirect;
+mod redirect;
 
-// pub use redirect::Redirect;
+pub use redirect::Redirect;
 
 use async_trait::async_trait;
 use futures_util::future::BoxFuture;
