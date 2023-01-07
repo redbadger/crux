@@ -319,6 +319,28 @@ impl<Body> Index<&str> for Response<Body> {
     }
 }
 
+impl<Body> PartialEq for Response<Body>
+where
+    Body: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.version == other.version
+            && self.status == other.status
+            && self.headers.iter().zip(other.headers.iter()).all(
+                |((lhs_name, lhs_values), (rhs_name, rhs_values))| {
+                    lhs_name == rhs_name
+                        && lhs_values
+                            .iter()
+                            .zip(rhs_values.iter())
+                            .all(|(lhs, rhs)| lhs == rhs)
+                },
+            )
+            && self.body == other.body
+    }
+}
+
+impl<Body> Eq for Response<Body> where Body: Eq {}
+
 mod header_serde {
     use crate::http::{self, Headers};
     use http::headers::HeaderName;

@@ -64,7 +64,7 @@ where
         }
     }
 
-    pub fn send_<F>(&self, req: impl Into<Request>, callback: F) {
+    pub fn send_<F>(&self, _req: impl Into<Request>, _callback: F) {
         // Surprisingly hard to impl since I put the send func on RequestBuilder
         // and not request :(
         todo!()
