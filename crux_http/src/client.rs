@@ -1,8 +1,5 @@
-use std::convert::TryFrom;
 use std::fmt;
 use std::sync::Arc;
-
-use async_trait::async_trait;
 
 use crate::http::{Method, Url};
 use crate::middleware::{Middleware, Next};

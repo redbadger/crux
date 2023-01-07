@@ -1,7 +1,7 @@
 use crate::http::{
     self,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-    Body, Error, Mime, StatusCode, Version,
+    Body, Mime, StatusCode, Version,
 };
 
 use futures_util::io::AsyncRead;

@@ -9,13 +9,9 @@ use crate::{
 };
 use crate::{Client, Error, Request, Response, ResponseAsync, Result};
 
-use futures_util::future::BoxFuture;
 use http_types::convert::DeserializeOwned;
 use serde::Serialize;
 
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use std::{fmt, marker::PhantomData};
 
 /// Request Builder
@@ -287,7 +283,7 @@ where
     where
         T: DeserializeOwned + 'static,
     {
-        let expectation = Box::new(ExpectJson::<T>::default());
+        let expectation = Box::<ExpectJson<T>>::default();
         RequestBuilder {
             req: self.req,
             cap_or_client: self.cap_or_client,

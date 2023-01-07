@@ -5,10 +5,7 @@
 //! This is still work in progress and large parts of HTTP are not yet supported.
 // #![warn(missing_docs)]
 
-use crux_core::{
-    capability::{CapabilityContext, Operation},
-    Capability,
-};
+use crux_core::{capability::CapabilityContext, Capability};
 use http::Method;
 use url::Url;
 
@@ -67,7 +64,9 @@ where
         }
     }
 
-    pub fn send_<F>(req: impl Into<Request>, callback: F) {
+    pub fn send_<F>(&self, req: impl Into<Request>, callback: F) {
+        // Surprisingly hard to impl since I put the send func on RequestBuilder
+        // and not request :(
         todo!()
     }
 

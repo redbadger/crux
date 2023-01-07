@@ -1,17 +1,7 @@
-use crate::http::{
-    self,
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-    Body, Error, Mime, StatusCode, Version,
-};
-
-use futures_util::io::AsyncRead;
-use serde::de::DeserializeOwned;
+use crate::http::Error;
 
 use std::fmt;
 use std::io;
-use std::ops::Index;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 /// An error occurred while decoding a response body to a string.
 ///

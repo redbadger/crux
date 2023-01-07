@@ -17,7 +17,7 @@ impl ResponseExpectation for ExpectBytes {
     type Body = Vec<u8>;
 
     fn decode(&self, resp: crate::Response<Vec<u8>>) -> Result<Response<Vec<u8>>> {
-        return Ok(resp);
+        Ok(resp)
     }
 }
 

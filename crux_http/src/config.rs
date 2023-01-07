@@ -1,7 +1,6 @@
 //! Configuration for `HttpClient`s.
 
-use std::sync::Arc;
-use std::{collections::HashMap, fmt::Debug, time::Duration};
+use std::{collections::HashMap, fmt::Debug};
 
 use http_types::headers::{HeaderName, HeaderValues, ToHeaderValues};
 

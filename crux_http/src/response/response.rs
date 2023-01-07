@@ -2,18 +2,14 @@ use super::decode::decode_body;
 use crate::http::{
     self,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-    Error, Mime, StatusCode, Version,
+    Mime, StatusCode, Version,
 };
 
-use futures_util::io::AsyncRead;
 use http::{headers::CONTENT_TYPE, Headers};
 use serde::de::DeserializeOwned;
 
 use std::fmt;
-use std::io;
 use std::ops::Index;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
@@ -197,7 +193,7 @@ impl Response<Vec<u8>> {
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
         self.body
             .take()
-            .ok_or(crate::Error::new(Some(self.status()), "Body had no bytes"))
+            .ok_or_else(|| crate::Error::new(Some(self.status()), "Body had no bytes"))
     }
 
     /// Reads the entire response body into a string.

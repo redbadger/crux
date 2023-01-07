@@ -1,7 +1,5 @@
 //! The protocol for communicating with the shell
 
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};

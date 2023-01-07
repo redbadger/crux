@@ -3,7 +3,7 @@ use crate::http::{
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
     Body, Method, Mime, Url,
 };
-use crate::{middleware::Middleware, RequestBuilder};
+use crate::middleware::Middleware;
 
 use serde::Serialize;
 
