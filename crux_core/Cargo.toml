@@ -1,35 +1,37 @@
 [package]
 name = "crux_core"
 description = "Cross-platform app development in Rust"
-authors = ["Red Badger Consulting Limited"]
-repository = "https://github.com/redbadger/crux/"
-version = "0.1.1"
-edition = "2021"
+version = "0.2.0"
 readme = "README.md"
-license = "Apache-2.0"
-keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-anyhow = "1.0.66"
-bcs = "0.1.4"
-crossbeam-channel = "0.5"
+anyhow.workspace = true
+bcs.workspace = true
+crossbeam-channel = "0.5.6"
 derive_more = "0.99.17"
-futures = "0.3"
-serde = { version = "1.0.148", features = ["derive"] }
-serde_json = "1.0.89"
+futures = "0.3.25"
+serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0.91"
 serde-generate = { version = "0.24.0", optional = true }
 serde-reflection = { version = "0.3.6", optional = true }
-thiserror = "1.0.37"
-uniffi = "0.21.0"
-uniffi_macros = "0.21.0"
-uuid = { version = "1.2.1", features = ["v4", "wasm-bindgen", "js"] }
+thiserror = "1.0.38"
+uniffi = "0.22.0"
+uniffi_macros = "0.22.0"
+uuid = { version = "1.2.2", features = ["v4", "wasm-bindgen", "js"] }
 wasm-bindgen = "0.2.83"
 
 [dev-dependencies]
 assert_matches = "1.5"
+crux_macros = { version = "0.1", path = "../crux_macros" }
+serde = { version = "1.0.152", features = ["derive"] }
 static_assertions = "1.1"
 
 [features]

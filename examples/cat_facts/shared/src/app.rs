@@ -7,6 +7,7 @@ pub use crux_core::App;
 use crux_core::{render::Render, Capability};
 use crux_http::{Http, HttpResponse};
 use crux_kv::{KeyValue, KeyValueOutput};
+use crux_macros::Effect;
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
@@ -16,7 +17,7 @@ const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
 
-#[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
     fact: String,
     length: i32,
@@ -56,7 +57,7 @@ pub struct ViewModel {
     pub platform: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Event {
     None,
     GetPlatform,
@@ -76,6 +77,8 @@ pub struct CatFacts {
     platform: platform::Platform,
 }
 
+#[derive(Effect)]
+#[effect(app = "CatFacts")]
 pub struct CatFactCapabilities {
     pub http: Http<Event>,
     pub key_value: KeyValue<Event>,
@@ -142,8 +145,8 @@ impl App for CatFacts {
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-
                 caps.key_value.write("state", bytes, |_| Event::None);
+
                 caps.time.get(Event::CurrentTime);
             }
             Event::SetImage(Ok(mut response)) => {
@@ -151,8 +154,8 @@ impl App for CatFacts {
                 model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-
                 caps.key_value.write("state", bytes, |_| Event::None);
+
                 caps.render.render();
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
@@ -161,8 +164,8 @@ impl App for CatFacts {
             Event::CurrentTime(iso_time) => {
                 model.time = Some(iso_time.0);
                 let bytes = serde_json::to_vec(&model).unwrap();
-
                 caps.key_value.write("state", bytes, |_| Event::None);
+
                 caps.render.render();
             }
             Event::Restore => {
@@ -196,5 +199,64 @@ impl App for CatFacts {
             fact,
             image: model.cat_image.clone(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crux_core::testing::AppTester;
+    use crux_http::HttpRequest;
+
+    use crate::Effect;
+
+    use super::*;
+
+    #[test]
+    fn fetch_sends_some_requests() {
+        let app = AppTester::<CatFacts, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::Fetch, &mut model);
+
+        assert_eq!(
+            update.effects[0],
+            Effect::Http(HttpRequest {
+                method: "GET".into(),
+                url: FACT_API_URL.into()
+            })
+        );
+        assert_eq!(
+            update.effects[1],
+            Effect::Http(HttpRequest {
+                method: "GET".into(),
+                url: IMAGE_API_URL.into()
+            })
+        );
+    }
+
+    #[test]
+    fn fact_response_results_in_set_fact() {
+        let app = AppTester::<CatFacts, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::Fetch, &mut model);
+
+        assert_eq!(
+            update.effects[0],
+            Effect::Http(HttpRequest {
+                method: "GET".into(),
+                url: FACT_API_URL.into()
+            })
+        );
+        let a_fact = CatFact {
+            fact: "cats are good".to_string(),
+            length: 13,
+        };
+
+        let update = update.effects[0].resolve(&HttpResponse {
+            status: 200,
+            body: serde_json::to_vec(&a_fact).unwrap(),
+        });
+        assert_eq!(update.events, vec![Event::SetFact(a_fact)])
     }
 }

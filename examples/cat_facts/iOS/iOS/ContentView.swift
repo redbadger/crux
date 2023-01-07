@@ -54,11 +54,11 @@ class Model: ObservableObject {
 
         for req in reqs {
             switch req.effect {
-            case .render: view = try! ViewModel.bcsDeserialize(input: iOS.view())
+            case .render(_): view = try! ViewModel.bcsDeserialize(input: iOS.view())
             case let .http(r): httpGet(uuid: req.uuid, url: r.url)
-            case .time:
+            case .time(_):
                 update(msg: .response(req.uuid, .time(TimeResponse(value: Date().ISO8601Format()))))
-            case .platform:
+            case .platform(_):
                 update(msg: .response(req.uuid, .platform(PlatformResponse(value: get_platform()))))
             case .keyValue(.read):
                 update(msg: .response(req.uuid, .key_value(KeyValueOutput.read(.none))))

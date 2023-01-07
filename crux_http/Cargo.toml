@@ -1,23 +1,26 @@
 [package]
 name = "crux_http"
 description = "HTTP capability for use with crux_core"
-authors = ["Red Badger Consulting Limited"]
-repository = "https://github.com/redbadger/crux/"
 version = "0.1.0"
-edition = "2021"
 readme = "README.md"
-license = "Apache-2.0"
-keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
 
 [dependencies]
-anyhow = "1.0.66"
+anyhow.workspace = true
 async-trait = "0.1.59"
-bcs = "0.1.4"
-crux_core = { version = "0.1", path = "../crux_core" }
+bcs.workspace = true
+crux_core = { version = "0.2", path = "../crux_core" }
 derive_more = "0.99.17"
 futures-util = "0.3"
 http-types = { version = "2.12", no-default-features = true }
-pin-project-lite = "0.2"
-serde = { version = "1.0.148", features = ["derive"] }
-serde_json = "1.0.89"
+pin-project-lite = "0.2.9"
+serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0.91"
 url = "2.3.1"
+
+[dev-dependencies]
+crux_macros = { version = "0.1", path = "../crux_macros" }

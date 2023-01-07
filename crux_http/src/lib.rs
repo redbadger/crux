@@ -1,7 +1,9 @@
+//! A HTTP client for use with Crux
+//!
+//! `crux_http` allows Crux apps to make HTTP requests by asking the Shell to perform them.
+//!
+//! This is still work in progress and large parts of HTTP are not yet supported.
 // #![warn(missing_docs)]
-//! TODO mod docs
-//!
-//!
 
 use crux_core::{
     capability::{CapabilityContext, Operation},
@@ -39,6 +41,7 @@ use client::Client;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// The Http capability API.
 pub struct Http<Ev> {
     context: CapabilityContext<protocol::HttpRequest, Ev>,
     client: Client,
@@ -75,7 +78,7 @@ where
     pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap(), self.clone())
     }
-    pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn post_(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
     }
     pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
@@ -100,6 +103,9 @@ where
         RequestBuilder::new(method, url, self.clone())
     }
 
+    /// Instruct the Shell to perform a HTTP GET request to the provided URL
+    /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
+    /// will be dispatched to the app's `update` function.
     pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
@@ -108,6 +114,11 @@ where
         self.send(protocol::HttpMethod::Get, url, callback)
     }
 
+    /// Instruct the Shell to perform a HTTP GET request to the provided `url`, expecting
+    /// a JSON response.
+    ///
+    /// When finished, the response will be deserialized into type `T`, wrapped
+    /// in an event using `callback` and dispatched to the app's `update function.
     pub fn get_json<T, F>(&self, url: Url, callback: F)
     where
         T: serde::de::DeserializeOwned,
@@ -128,6 +139,35 @@ where
         });
     }
 
+    /// Instruct the Shell to perform a HTTP POST request to the provided `url`, expecting
+    /// a JSON response.
+    ///
+    /// When finished, the response will be deserialized into type `T`, wrapped
+    /// in an event using `callback` and dispatched to the app's `update function.
+    pub fn post<Res, F>(&self, url: Url, callback: F)
+    where
+        Res: serde::de::DeserializeOwned,
+        F: Fn(Res) -> Ev + Send + Clone + 'static,
+    {
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let request = HttpRequest {
+                method: protocol::HttpMethod::Post.to_string(),
+                url: url.to_string(),
+            };
+            let resp = ctx.request_from_shell(request).await;
+
+            let data = serde_json::from_slice::<Res>(&resp.body)
+                .expect("TODO: do something sensible here");
+
+            ctx.update_app(callback(data))
+        });
+    }
+
+    /// Instruct the Shell to perform a HTTP request with the provided `method` to the provided `url`.
+    ///
+    /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
+    /// will be dispatched to the app's `update` function.
     pub fn send<F>(&self, method: protocol::HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
@@ -147,6 +187,7 @@ where
 }
 
 impl<Ef> Capability<Ef> for Http<Ef> {
+    type Operation = HttpRequest;
     type MappedSelf<MappedEv> = Http<MappedEv>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

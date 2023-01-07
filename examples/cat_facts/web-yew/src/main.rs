@@ -86,13 +86,15 @@ impl Component for HelloWorld {
 
         let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
 
-        let should_render = reqs.iter().any(|req| matches!(req.effect, Effect::Render));
+        let should_render = reqs
+            .iter()
+            .any(|req| matches!(req.effect, Effect::Render(_)));
 
         reqs.into_iter().for_each(|req| {
             let Request { uuid, effect } = req;
             match effect {
-                Effect::Render => {}
-                Effect::Time => {
+                Effect::Render(_) => {}
+                Effect::Time(_) => {
                     link.send_message(CoreMessage::Response(
                         uuid,
                         Outcome::Time(TimeResponse(time_get().unwrap())),
@@ -113,7 +115,7 @@ impl Component for HelloWorld {
                         ));
                     });
                 }
-                Effect::Platform => {
+                Effect::Platform(_) => {
                     link.send_message(CoreMessage::Response(
                         uuid,
                         Outcome::Platform(PlatformResponse(

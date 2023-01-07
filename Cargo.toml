@@ -3,6 +3,19 @@ members = [
   "crux_core",
   "crux_http",
   "crux_kv",
+  "crux_macros",
   "crux_platform",
   "crux_time"
 ]
+
+[workspace.package]
+authors = ["Red Badger Consulting Limited"]
+edition = "2021"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+
+[workspace.dependencies]
+anyhow = "1.0.68"
+bcs = "0.1.4"
+serde = "1.0.152"

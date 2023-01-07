@@ -1,14 +1,15 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
-    use crux_http::{Http, HttpRequest, HttpResponse};
+    use crux_core::render::Render;
+    use crux_http::{Http, HttpResponse};
+    use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
     use url::Url;
 
     #[derive(Default)]
-    pub(crate) struct MyApp;
+    pub(crate) struct App;
 
     #[derive(Serialize, Deserialize)]
-    pub enum MyEvent {
+    pub enum Event {
         Get,
         GetJson,
         Set(HttpResponse),
@@ -16,40 +17,40 @@ mod shared {
     }
 
     #[derive(Default, Serialize, Deserialize)]
-    pub struct MyModel {
+    pub struct Model {
         pub status: u16,
         pub body: Vec<u8>,
         pub json_body: String,
     }
 
     #[derive(Serialize, Deserialize, Default)]
-    pub struct MyViewModel {
+    pub struct ViewModel {
         pub result: String,
     }
 
-    impl App for MyApp {
-        type Event = MyEvent;
-        type Model = MyModel;
-        type ViewModel = MyViewModel;
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = Model;
+        type ViewModel = ViewModel;
 
-        type Capabilities = MyCapabilities;
+        type Capabilities = Capabilities;
 
-        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
             match event {
-                MyEvent::Get => {
+                Event::Get => {
                     caps.http
-                        .get(Url::parse("http://example.com").unwrap(), MyEvent::Set);
+                        .get(Url::parse("http://example.com").unwrap(), Event::Set);
                 }
-                MyEvent::GetJson => {
+                Event::GetJson => {
                     caps.http
-                        .get_json(Url::parse("http://example.com").unwrap(), MyEvent::SetJson);
+                        .get_json(Url::parse("http://example.com").unwrap(), Event::SetJson);
                 }
-                MyEvent::Set(response) => {
+                Event::Set(response) => {
                     model.status = response.status;
                     model.body = response.body;
                     caps.render.render()
                 }
-                MyEvent::SetJson(body) => {
+                Event::SetJson(body) => {
                     model.json_body = body;
                     caps.render.render()
                 }
@@ -57,7 +58,7 @@ mod shared {
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
-            MyViewModel {
+            ViewModel {
                 result: format!(
                     "Status: {}, Body: {}, Json Body: {}",
                     model.status,
@@ -68,29 +69,15 @@ mod shared {
         }
     }
 
-    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-    pub enum MyEffect {
-        Http(HttpRequest),
-        Render,
-    }
-
-    pub(crate) struct MyCapabilities {
-        pub http: Http<MyEvent>,
-        pub render: Render<MyEvent>,
-    }
-
-    impl WithContext<MyApp, MyEffect> for MyCapabilities {
-        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
-            MyCapabilities {
-                http: Http::new(context.with_effect(MyEffect::Http)),
-                render: Render::new(context.with_effect(|_| MyEffect::Render)),
-            }
-        }
+    #[derive(Effect)]
+    pub(crate) struct Capabilities {
+        pub http: Http<Event>,
+        pub render: Render<Event>,
     }
 }
 
 mod shell {
-    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
     use crux_http::{HttpRequest, HttpResponse};
@@ -101,12 +88,12 @@ mod shell {
     }
 
     enum CoreMessage {
-        Message(MyEvent),
+        Message(Event),
         Response(Vec<u8>, Outcome),
     }
 
-    pub fn run(event: MyEvent) -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyApp> = Core::default();
+    pub fn run(event: Event) -> Result<(Vec<Effect>, ViewModel)> {
+        let core: Core<Effect, App> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Message(event));
@@ -126,13 +113,12 @@ mod shell {
                 ),
                 _ => vec![],
             };
-            let reqs: Vec<Request<MyEffect>> = bcs::from_bytes(&reqs)?;
+            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
-            for req in reqs {
-                let Request { uuid, effect } = req;
+            for Request { uuid, effect } in reqs {
                 match effect {
-                    MyEffect::Render => received.push(effect.clone()),
-                    MyEffect::Http(HttpRequest { .. }) => {
+                    Effect::Render(_) => received.push(effect.clone()),
+                    Effect::Http(HttpRequest { .. }) => {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
@@ -146,30 +132,31 @@ mod shell {
             }
         }
 
-        let view = bcs::from_bytes::<MyViewModel>(&core.view())?;
+        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
         Ok((received, view))
     }
 }
 
 mod tests {
     use crate::{
-        shared::{MyEffect, MyEvent},
+        shared::{Effect, Event},
         shell::run,
     };
     use anyhow::Result;
+    use crux_core::render::RenderOperation;
     use crux_http::HttpRequest;
 
     #[test]
     pub fn test_http() -> Result<()> {
-        let (received, view) = run(MyEvent::Get)?;
+        let (received, view) = run(Event::Get)?;
         assert_eq!(
             received,
             vec![
-                MyEffect::Http(HttpRequest {
+                Effect::Http(HttpRequest {
                     method: "GET".to_string(),
                     url: "http://example.com/".to_string()
                 }),
-                MyEffect::Render
+                Effect::Render(RenderOperation)
             ]
         );
         assert_eq!(view.result, "Status: 200, Body: \"Hello\", Json Body: ");
@@ -178,15 +165,15 @@ mod tests {
 
     #[test]
     pub fn test_http_json() -> Result<()> {
-        let (received, view) = run(MyEvent::GetJson)?;
+        let (received, view) = run(Event::GetJson)?;
         assert_eq!(
             received,
             vec![
-                MyEffect::Http(HttpRequest {
+                Effect::Http(HttpRequest {
                     method: "GET".to_string(),
                     url: "http://example.com/".to_string()
                 }),
-                MyEffect::Render
+                Effect::Render(RenderOperation)
             ]
         );
         assert_eq!(view.result, "Status: 0, Body: , Json Body: Hello");

@@ -1,37 +1,38 @@
 mod shared {
-    use crux_core::{capability::CapabilityContext, render::Render, App, WithContext};
+    use crux_core::render::Render;
+    use crux_macros::Effect;
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
-    pub struct MyApp;
+    pub struct App;
 
     #[derive(Serialize, Deserialize)]
-    pub enum MyEvent {
+    pub enum Event {
         PlatformGet,
         PlatformSet(PlatformResponse),
     }
 
     #[derive(Default, Serialize, Deserialize)]
-    pub struct MyModel {
+    pub struct Model {
         pub platform: String,
     }
 
     #[derive(Serialize, Deserialize, Default)]
-    pub struct MyViewModel {
+    pub struct ViewModel {
         pub platform: String,
     }
 
-    impl App for MyApp {
-        type Event = MyEvent;
-        type Model = MyModel;
-        type ViewModel = MyViewModel;
-        type Capabilities = MyCapabilities;
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = Model;
+        type ViewModel = ViewModel;
+        type Capabilities = Capabilities;
 
-        fn update(&self, event: MyEvent, model: &mut MyModel, caps: &MyCapabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
             match event {
-                MyEvent::PlatformGet => caps.platform.get(MyEvent::PlatformSet),
-                MyEvent::PlatformSet(platform) => {
+                Event::PlatformGet => caps.platform.get(Event::PlatformSet),
+                Event::PlatformSet(platform) => {
                     model.platform = platform.0;
                     caps.render.render()
                 }
@@ -39,35 +40,21 @@ mod shared {
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
-            MyViewModel {
+            ViewModel {
                 platform: model.platform.clone(),
             }
         }
     }
 
-    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-    pub enum MyEffect {
-        Platform,
-        Render,
-    }
-
-    pub struct MyCapabilities {
-        pub platform: Platform<MyEvent>,
-        pub render: Render<MyEvent>,
-    }
-
-    impl WithContext<MyApp, MyEffect> for MyCapabilities {
-        fn new_with_context(context: CapabilityContext<MyEffect, MyEvent>) -> MyCapabilities {
-            MyCapabilities {
-                platform: Platform::new(context.with_effect(|_| MyEffect::Platform)),
-                render: Render::new(context.with_effect(|_| MyEffect::Render)),
-            }
-        }
+    #[derive(Effect)]
+    pub struct Capabilities {
+        pub platform: Platform<Event>,
+        pub render: Render<Event>,
     }
 }
 
 mod shell {
-    use super::shared::{MyApp, MyEffect, MyEvent, MyViewModel};
+    use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
     use crux_platform::PlatformResponse;
@@ -78,15 +65,15 @@ mod shell {
     }
 
     enum CoreMessage {
-        Message(MyEvent),
+        Message(Event),
         Response(Vec<u8>, Outcome),
     }
 
-    pub fn run() -> Result<(Vec<MyEffect>, MyViewModel)> {
-        let core: Core<MyEffect, MyApp> = Core::default();
+    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
+        let core: Core<Effect, App> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-        queue.push_back(CoreMessage::Message(MyEvent::PlatformGet));
+        queue.push_back(CoreMessage::Message(Event::PlatformGet));
 
         let mut received = vec![];
 
@@ -103,13 +90,12 @@ mod shell {
                 ),
                 _ => vec![],
             };
-            let reqs: Vec<Request<MyEffect>> = bcs::from_bytes(&reqs)?;
+            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
-            for req in reqs {
-                let Request { uuid, effect } = req;
+            for Request { uuid, effect } in reqs {
                 match effect {
-                    MyEffect::Render => received.push(effect),
-                    MyEffect::Platform => {
+                    Effect::Render(_) => received.push(effect),
+                    Effect::Platform(_) => {
                         received.push(effect);
                         queue.push_back(CoreMessage::Response(
                             uuid,
@@ -120,19 +106,27 @@ mod shell {
             }
         }
 
-        let view = bcs::from_bytes::<MyViewModel>(&core.view())?;
+        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
         Ok((received, view))
     }
 }
 
 mod tests {
-    use crate::{shared::MyEffect, shell::run};
+    use crate::{shared::Effect, shell::run};
     use anyhow::Result;
+    use crux_core::render::RenderOperation;
+    use crux_platform::PlatformRequest;
 
     #[test]
     pub fn test_platform() -> Result<()> {
         let (received, view) = run()?;
-        assert_eq!(received, vec![MyEffect::Platform, MyEffect::Render]);
+        assert_eq!(
+            received,
+            vec![
+                Effect::Platform(PlatformRequest),
+                Effect::Render(RenderOperation)
+            ]
+        );
         assert_eq!(view.platform, "test shell");
         Ok(())
     }
