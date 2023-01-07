@@ -9,7 +9,6 @@ use crux_core::{capability::CapabilityContext, Capability};
 use http::Method;
 use url::Url;
 
-mod client;
 mod config;
 mod error;
 mod expect;
@@ -17,6 +16,7 @@ mod request;
 mod request_builder;
 mod response;
 
+pub mod client;
 pub mod middleware;
 pub mod protocol;
 
@@ -88,7 +88,7 @@ where
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) {
-    /// caps.http.get_("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// caps.http.get("https://httpbin.org/get").send(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn get(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
@@ -138,7 +138,7 @@ where
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) {
-    /// caps.http.post_("https://httpbin.org/post").send(Event::ReceiveResponse)
+    /// caps.http.post("https://httpbin.org/post").send(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {

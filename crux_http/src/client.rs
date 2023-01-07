@@ -16,16 +16,20 @@ use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
 /// ```no_run
 /// use futures_util::future::BoxFuture;
 /// use crux_http::middleware::{Next, Middleware};
-/// use crux_http::{Client, Request, RequestBuilder, Response, Result};
+/// use crux_http::{client::Client, Request, RequestBuilder, ResponseAsync, Result};
 /// use std::time;
 /// use std::sync::Arc;
 ///
 /// // Fetches an authorization token prior to making a request
-/// fn fetch_auth<'a>(mut req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<Response>> {
+/// fn fetch_auth<'a>(mut req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>> {
 ///     Box::pin(async move {
-///         let auth_token = client.get("https://httpbin.org/get").middleware_send().await?;
+///         let auth_token = client.get("https://httpbin.org/get")
+///             .middleware_send()
+///             .await?
+///             .body_string()
+///             .await?;
 ///         req.append_header("Authorization", format!("Bearer {auth_token}"));
-///         next.run(req, client).await?;
+///         next.run(req, client).await
 ///     })
 /// }
 /// ```
@@ -84,18 +88,6 @@ impl Client {
     /// See the [middleware] submodule for more information on middleware.
     ///
     /// [middleware]: ../middleware/index.html
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let req = crux_http::get("https://httpbin.org/get");
-    /// let client = crux_http::client()
-    ///     .with(crux_http::middleware::Redirect::default());
-    /// let res = client.send(req).await?;
-    /// # Ok(()) }
-    /// ```
     pub(crate) fn with(mut self, middleware: impl Middleware) -> Self {
         let m = Arc::get_mut(&mut self.middleware)
             .expect("Registering middleware is not possible after the Client has been used");

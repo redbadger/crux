@@ -60,13 +60,15 @@ impl Redirect {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> surf::Result<()> {
-    /// let req = surf::get("https://httpbin.org/redirect/2");
-    /// let client = surf::client().with(surf::middleware::Redirect::new(5));
-    /// let mut res = client.send(req).await?;
-    /// dbg!(res.body_string().await?);
-    /// # Ok(()) }
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    ///
+    /// caps.http
+    ///     .get("https://httpbin.org/redirect/2")
+    ///     .middleware(crux_http::middleware::Redirect::default())
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn new(attempts: u8) -> Self {
         Redirect { attempts }

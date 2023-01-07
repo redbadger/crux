@@ -3,7 +3,7 @@
 //! # Examples
 //! ```no_run
 //! use crux_http::middleware::{Next, Middleware};
-//! use crux_http::{Client, Request, Response, Result};
+//! use crux_http::{client::Client, Request, ResponseAsync, Result};
 //! use std::time;
 //! use std::sync::Arc;
 //!
@@ -11,14 +11,14 @@
 //! #[derive(Debug)]
 //! pub struct Logger;
 //!
-//! #[crux_http::utils::async_trait]
+//! #[async_trait::async_trait]
 //! impl Middleware for Logger {
 //!     async fn handle(
 //!         &self,
 //!         req: Request,
 //!         client: Client,
 //!         next: Next<'_>,
-//!     ) -> Result<Response> {
+//!     ) -> Result<ResponseAsync> {
 //!         println!("sending request to {}", req.url());
 //!         let now = time::Instant::now();
 //!         let res = next.run(req, client).await?;
@@ -33,11 +33,11 @@
 //! ```no_run
 //! use futures_util::future::BoxFuture;
 //! use crux_http::middleware::{Next, Middleware};
-//! use crux_http::{Client, Request, Response, Result};
+//! use crux_http::{client::Client, Request, ResponseAsync, Result};
 //! use std::time;
 //! use std::sync::Arc;
 //!
-//! fn logger<'a>(req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<Response>> {
+//! fn logger<'a>(req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>> {
 //!     Box::pin(async move {
 //!         println!("sending request to {}", req.url());
 //!         let now = time::Instant::now();
@@ -46,12 +46,6 @@
 //!         Ok(res)
 //!     })
 //! }
-//! #
-//! # #[async_std::main]
-//! # async fn main() -> Result<()> {
-//! #     crux_http::client().with(logger);
-//! #     Ok(())
-//! # }
 //! ```
 
 use std::sync::Arc;
