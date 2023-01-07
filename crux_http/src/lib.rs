@@ -86,7 +86,6 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # #[derive(crux_macros::Effect)]
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) {
     /// caps.http.get_("https://httpbin.org/get").send(Event::ReceiveResponse)
@@ -107,6 +106,16 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.head("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap(), self.clone())
     }
@@ -122,6 +131,16 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.post_("https://httpbin.org/post").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn post_(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
     }
@@ -137,6 +156,16 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.put("https://httpbin.org/post").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap(), self.clone())
     }
@@ -152,6 +181,16 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.delete("https://httpbin.org/post").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap(), self.clone())
     }
@@ -167,6 +206,16 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.connect("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap(), self.clone())
     }
@@ -182,6 +231,16 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.options("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap(), self.clone())
     }
@@ -197,6 +256,16 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.trace("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap(), self.clone())
     }
