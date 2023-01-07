@@ -17,40 +17,23 @@ use std::{fmt, marker::PhantomData};
 /// Request Builder
 ///
 /// Provides an ergonomic way to chain the creation of a request.
-/// This is generally accessed as the return value from `crux_http::{method}()`,
-/// however [`Request::builder`](crate::Request::builder) is also provided.
+/// This is generally accessed as the return value from `Http::{method}()`.
 ///
 /// # Examples
 ///
-/// ```rust
-/// use crux_http::http::{Method, mime::HTML, Url};
-/// # #[async_std::main]
-/// # async fn main() -> crux_http::Result<()> {
-/// let mut request = crux_http::post("https://httpbin.org/post")
+/// ```no_run
+/// use crux_http::http::{mime::HTML};
+/// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+/// # struct Capabilities { http: crux_http::Http<Event> }
+/// # fn update(caps: &Capabilities) {
+/// caps.http
+///     .post("https://httpbin.org/post")
 ///     .body("<html>hi</html>")
 ///     .header("custom-header", "value")
 ///     .content_type(HTML)
-///     .build();
-///
-/// assert_eq!(request.take_body().into_string().await.unwrap(), "<html>hi</html>");
-/// assert_eq!(request.method(), Method::Post);
-/// assert_eq!(request.url(), &Url::parse("https://httpbin.org/post")?);
-/// assert_eq!(request["custom-header"], "value");
-/// assert_eq!(request["content-type"], "text/html;charset=utf-8");
-/// # Ok(())
+///     .send(Event::ReceiveResponse)
 /// # }
 /// ```
-///
-/// ```rust
-/// use crux_http::http::{Method, Url};
-/// # #[async_std::main]
-/// # async fn main() -> crux_http::Result<()> {
-/// let url = Url::parse("https://httpbin.org/post")?;
-/// let request = crux_http::Request::builder(Method::Post, url).build();
-/// # Ok(())
-/// # }
-/// ```
-
 #[must_use]
 pub struct RequestBuilder<Event, ExpectBody = Vec<u8>> {
     /// Holds the state of the request.
@@ -102,9 +85,16 @@ where
     ///
     /// # Examples
     ///
-    /// ```
-    /// let req = crux_http::get("https://httpbin.org/get").header("header-name", "header-value").build();
-    /// assert_eq!(req["header-name"], "header-value");
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http
+    ///     .get("https://httpbin.org/get")
+    ///     .body("<html>hi</html>")
+    ///     .header("header-name", "header-value")
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
         self.req.as_mut().unwrap().insert_header(key, value);
@@ -115,10 +105,16 @@ where
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// # use crux_http::http::mime;
-    /// let req = crux_http::post("https://httpbin.org/post").content_type(mime::HTML).build();
-    /// assert_eq!(req["content-type"], "text/html;charset=utf-8");
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http
+    ///     .get("https://httpbin.org/get")
+    ///     .content_type(mime::HTML)
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn content_type(mut self, content_type: impl Into<Mime>) -> Self {
         self.req
@@ -135,13 +131,17 @@ where
     ///
     /// # Examples
     ///
-    /// ```
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
     /// use serde_json::json;
-    /// let mut req = crux_http::post("https://httpbin.org/post").body(json!({ "any": "Into<Body>"})).build();
-    /// assert_eq!(req.take_body().into_string().await.unwrap(), "{\"any\":\"Into<Body>\"}");
-    /// # Ok(())
+    /// use crux_http::http::mime;
+    /// caps.http
+    ///     .post("https://httpbin.org/post")
+    ///     .body(json!({"any": "Into<Body>"}))
+    ///     .content_type(mime::HTML)
+    ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn body(mut self, body: impl Into<Body>) -> Self {
@@ -163,18 +163,21 @@ where
     ///
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
     /// #[derive(Deserialize, Serialize)]
     /// struct Ip {
     ///     ip: String
     /// }
     ///
-    /// let uri = "https://httpbin.org/post";
     /// let data = &Ip { ip: "129.0.0.1".into() };
-    /// let res = crux_http::post(uri).body_json(data)?.await?;
-    /// assert_eq!(res.status(), 200);
-    /// # Ok(()) }
+    /// caps.http
+    ///     .post("https://httpbin.org/post")
+    ///     .body_json(data)
+    ///     .expect("could not serialize body")
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
         Ok(self.body(Body::from_json(json)?))
@@ -189,13 +192,14 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let uri = "https://httpbin.org/post";
-    /// let data = "hello world".to_string();
-    /// let res = crux_http::post(uri).body_string(data).await?;
-    /// assert_eq!(res.status(), 200);
-    /// # Ok(()) }
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http
+    ///     .post("https://httpbin.org/post")
+    ///     .body_string("hello_world".to_string())
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn body_string(self, string: String) -> Self {
         self.body(Body::from_string(string))
@@ -210,13 +214,14 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let uri = "https://httpbin.org/post";
-    /// let data = b"hello world".to_owned();
-    /// let res = crux_http::post(uri).body_bytes(data).await?;
-    /// assert_eq!(res.status(), 200);
-    /// # Ok(()) }
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http
+    ///     .post("https://httpbin.org/post")
+    ///     .body_bytes(b"hello_world".to_owned())
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn body_bytes(self, bytes: impl AsRef<[u8]>) -> Self {
         self.body(Body::from(bytes.as_ref()))
@@ -228,18 +233,21 @@ where
     ///
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
     ///     page: u32
     /// }
     ///
     /// let query = Index { page: 2 };
-    /// let mut req = crux_http::get("https://httpbin.org/get").query(&query)?.build();
-    /// assert_eq!(req.url().query(), Some("page=2"));
-    /// assert_eq!(req.url().as_str(), "https://httpbin.org/get?page=2");
-    /// # Ok(()) }
+    /// caps.http
+    ///     .post("https://httpbin.org/post")
+    ///     .query(&query)
+    ///     .expect("could not serialize query string")
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn query(mut self, query: &impl Serialize) -> std::result::Result<Self, Error> {
         self.req.as_mut().unwrap().set_query(query)?;
@@ -261,12 +269,15 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    /// let res = crux_http::get("https://httpbin.org/get")
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    ///
+    /// caps.http
+    ///     .get("https://httpbin.org/get")
     ///     .middleware(crux_http::middleware::Redirect::default())
-    ///     .await?;
-    /// # Ok(()) }
+    ///     .send(Event::ReceiveResponse)
+    /// # }
     /// ```
     pub fn middleware(mut self, middleware: impl Middleware) -> Self {
         self.req.as_mut().unwrap().middleware(middleware);
@@ -278,7 +289,33 @@ where
         self.req.unwrap()
     }
 
-    // TODO: Ideally this would only be allowed where Event != ()
+    /// Decode a `T` from a JSON response body prior to dispatching it to the apps `update`
+    /// function
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use serde::{Deserialize, Serialize};
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// #[derive(Deserialize)]
+    /// struct Response {
+    ///     slideshow: Slideshow
+    /// }
+    ///
+    /// #[derive(Deserialize)]
+    /// struct Slideshow {
+    ///     author: String
+    /// }
+    ///
+    /// enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Slideshow>>) }
+    ///
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http
+    ///     .post("https://httpbin.org/json")
+    ///     .expect_json::<Slideshow>()
+    ///     .send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn expect_json<T>(self) -> RequestBuilder<Event, T>
     where
         T: DeserializeOwned + 'static,
@@ -291,8 +328,6 @@ where
             expectation,
         }
     }
-
-    // TODO: Ideally this would only be allowed where Event != ()
 
     /// Sends the constructed `Request` and returns its result as an update `Event`
     ///

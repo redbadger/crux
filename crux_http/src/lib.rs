@@ -13,11 +13,11 @@ mod client;
 mod config;
 mod error;
 mod expect;
-mod middleware;
 mod request;
 mod request_builder;
 mod response;
 
+pub mod middleware;
 pub mod protocol;
 
 // TODO: Think about this Result re-export.
@@ -91,7 +91,7 @@ where
     /// caps.http.get_("https://httpbin.org/get").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn get_(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn get(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -141,7 +141,7 @@ where
     /// caps.http.post_("https://httpbin.org/post").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn post_(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -284,94 +284,16 @@ where
     pub fn patch(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform an HTTP request with the provided `method` and `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
     pub fn request(&self, method: http::Method, url: Url) -> RequestBuilder<Ev> {
         RequestBuilder::new(method, url, self.clone())
-    }
-
-    /// Instruct the Shell to perform a HTTP GET request to the provided URL
-    /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
-    /// will be dispatched to the app's `update` function.
-    #[deprecated]
-    pub fn get<F>(&self, url: Url, callback: F)
-    where
-        Ev: 'static,
-        F: Fn(protocol::HttpResponse) -> Ev + Send + 'static,
-    {
-        self.send(protocol::HttpMethod::Get, url, callback)
-    }
-
-    /// Instruct the Shell to perform a HTTP GET request to the provided `url`, expecting
-    /// a JSON response.
-    ///
-    /// When finished, the response will be deserialized into type `T`, wrapped
-    /// in an event using `callback` and dispatched to the app's `update function.
-    #[deprecated]
-    pub fn get_json<T, F>(&self, url: Url, callback: F)
-    where
-        T: serde::de::DeserializeOwned,
-        F: Fn(T) -> Ev + Send + Clone + 'static,
-    {
-        let ctx = self.context.clone();
-        self.context.spawn(async move {
-            let request = protocol::HttpRequest {
-                method: protocol::HttpMethod::Get.to_string(),
-                url: url.to_string(),
-            };
-            let resp = ctx.request_from_shell(request).await;
-
-            let data =
-                serde_json::from_slice::<T>(&resp.body).expect("TODO: do something sensible here");
-
-            ctx.update_app(callback(data))
-        });
-    }
-
-    /// Instruct the Shell to perform a HTTP POST request to the provided `url`, expecting
-    /// a JSON response.
-    ///
-    /// When finished, the response will be deserialized into type `T`, wrapped
-    /// in an event using `callback` and dispatched to the app's `update function.
-    #[deprecated]
-    pub fn post<Res, F>(&self, url: Url, callback: F)
-    where
-        Res: serde::de::DeserializeOwned,
-        F: Fn(Res) -> Ev + Send + Clone + 'static,
-    {
-        let ctx = self.context.clone();
-        self.context.spawn(async move {
-            let request = HttpRequest {
-                method: protocol::HttpMethod::Post.to_string(),
-                url: url.to_string(),
-            };
-            let resp = ctx.request_from_shell(request).await;
-
-            let data = serde_json::from_slice::<Res>(&resp.body)
-                .expect("TODO: do something sensible here");
-
-            ctx.update_app(callback(data))
-        });
-    }
-
-    /// Instruct the Shell to perform a HTTP request with the provided `method` to the provided `url`.
-    ///
-    /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
-    /// will be dispatched to the app's `update` function.
-    #[deprecated]
-    pub fn send<F>(&self, method: protocol::HttpMethod, url: Url, callback: F)
-    where
-        Ev: 'static,
-        F: Fn(protocol::HttpResponse) -> Ev + Send + 'static,
-    {
-        let ctx = self.context.clone();
-        self.context.spawn(async move {
-            let request = protocol::HttpRequest {
-                method: method.to_string(),
-                url: url.to_string(),
-            };
-            let resp = ctx.request_from_shell(request).await;
-
-            ctx.update_app(callback(resp))
-        });
     }
 }
 
