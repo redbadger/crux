@@ -6,20 +6,28 @@ use crate::middleware::{Middleware, Next};
 use crate::protocol::EffectSender;
 use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
 
-/// An HTTP client, capable of sending `Request`s and running a middleware stack.
+/// An HTTP client, capable of sending `Request`s
 ///
-/// Can be optionally set with a base url.
+/// Users should only interact with this type from middlewares - normal crux code should
+/// make use of the `Http` capability type instead.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// # #[async_std::main]
-/// # async fn main() -> crux_http::Result<()> {
-/// let client = crux_http::Client::new();
-/// let res1 = client.recv_string(crux_http::get("https://httpbin.org/get"));
-/// let res2 = client.recv_string(crux_http::get("https://httpbin.org/get"));
-/// let (str1, str2) = futures_util::future::try_join(res1, res2).await?;
-/// # Ok(()) }
+/// use futures_util::future::BoxFuture;
+/// use crux_http::middleware::{Next, Middleware};
+/// use crux_http::{Client, Request, RequestBuilder, Response, Result};
+/// use std::time;
+/// use std::sync::Arc;
+///
+/// // Fetches an authorization token prior to making a request
+/// fn fetch_auth<'a>(mut req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<Response>> {
+///     Box::pin(async move {
+///         let auth_token = client.get("https://httpbin.org/get").middleware_send().await?;
+///         req.append_header("Authorization", format!("Bearer {auth_token}"));
+///         next.run(req, client).await?;
+///     })
+/// }
 /// ```
 pub struct Client {
     config: Config,
@@ -88,7 +96,7 @@ impl Client {
     /// let res = client.send(req).await?;
     /// # Ok(()) }
     /// ```
-    pub fn with(mut self, middleware: impl Middleware) -> Self {
+    pub(crate) fn with(mut self, middleware: impl Middleware) -> Self {
         let m = Arc::get_mut(&mut self.middleware)
             .expect("Registering middleware is not possible after the Client has been used");
         m.push(Arc::new(middleware));
@@ -96,19 +104,6 @@ impl Client {
     }
 
     /// Send a `Request` using this client.
-    ///
-    /// Client middleware is run before per-request middleware.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let req = crux_http::get("https://httpbin.org/get");
-    /// let client = crux_http::client();
-    /// let res = client.send(req).await?;
-    /// # Ok(()) }
-    /// ```
     pub async fn send(&self, req: impl Into<Request>) -> Result<ResponseAsync> {
         let mut req: Request = req.into();
         let middleware = self.middleware.clone();
@@ -143,57 +138,18 @@ impl Client {
     }
 
     /// Submit a `Request` and get the response body as bytes.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let req = crux_http::get("https://httpbin.org/get");
-    /// let bytes = crux_http::client().recv_bytes(req).await?;
-    /// assert!(bytes.len() > 0);
-    /// # Ok(()) }
-    /// ```
     pub async fn recv_bytes(&self, req: impl Into<Request>) -> Result<Vec<u8>> {
         let mut res = self.send(req.into()).await?;
         res.body_bytes().await
     }
 
     /// Submit a `Request` and get the response body as a string.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let req = crux_http::get("https://httpbin.org/get");
-    /// let string = crux_http::client().recv_string(req).await?;
-    /// assert!(string.len() > 0);
-    /// # Ok(()) }
-    /// ```
     pub async fn recv_string(&self, req: impl Into<Request>) -> Result<String> {
         let mut res = self.send(req.into()).await?;
         res.body_string().await
     }
 
     /// Submit a `Request` and decode the response body from json into a struct.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// #[derive(Deserialize, Serialize)]
-    /// struct Ip {
-    ///     ip: String
-    /// }
-    ///
-    /// let req = crux_http::get("https://api.ipify.org?format=json");
-    /// let Ip { ip } = crux_http::client().recv_json(req).await?;
-    /// assert!(ip.len() > 10);
-    /// # Ok(()) }
-    /// ```
     pub async fn recv_json<T: serde::de::DeserializeOwned>(
         &self,
         req: impl Into<Request>,
@@ -211,22 +167,6 @@ impl Client {
     ///
     /// If the body cannot be interpreted as valid json for the target type `T`,
     /// an `Err` is returned.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// #[derive(Deserialize, Serialize)]
-    /// struct Body {
-    ///     apples: u32
-    /// }
-    ///
-    /// let req = crux_http::get("https://api.example.com/v1/response");
-    /// let Body { apples } = crux_http::client().recv_form(req).await?;
-    /// # Ok(()) }
-    /// ```
     pub async fn recv_form<T: serde::de::DeserializeOwned>(
         &self,
         req: impl Into<Request>,
@@ -244,16 +184,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.get("https://httpbin.org/get").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn get(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Get, self.url(uri), self.clone())
     }
@@ -267,16 +197,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.head("https://httpbin.org/head").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn head(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Head, self.url(uri), self.clone())
     }
@@ -290,16 +210,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.post("https://httpbin.org/post").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn post(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Post, self.url(uri), self.clone())
     }
@@ -313,16 +223,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.put("https://httpbin.org/put").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn put(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Put, self.url(uri), self.clone())
     }
@@ -336,16 +236,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.delete("https://httpbin.org/delete").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn delete(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Delete, self.url(uri), self.clone())
     }
@@ -359,16 +249,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.connect("https://httpbin.org/connect").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn connect(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Connect, self.url(uri), self.clone())
     }
@@ -382,16 +262,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.options("https://httpbin.org/options").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn options(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Options, self.url(uri), self.clone())
     }
@@ -405,16 +275,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.trace("https://httpbin.org/trace").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn trace(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Trace, self.url(uri), self.clone())
     }
@@ -428,16 +288,6 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let client = crux_http::client();
-    /// let string = client.patch("https://httpbin.org/patch").recv_string().await?;
-    /// # Ok(()) }
-    /// ```
     pub fn patch(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(Method::Patch, self.url(uri), self.clone())
     }
@@ -451,39 +301,8 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// use http_types::Method;
-    /// let client = crux_http::client();
-    /// let req = client.request(Method::Get, "http://httpbin.org/get");
-    /// let res = client.send(req).await?;
-    /// # Ok(()) }
-    /// ```
     pub fn request(&self, verb: Method, uri: impl AsRef<str>) -> RequestBuilder<()> {
         RequestBuilder::new_for_middleware(verb, self.url(uri), self.clone())
-    }
-
-    /// Sets the base URL for this client. All request URLs will be relative to this URL.
-    ///
-    /// Note: a trailing slash is significant.
-    /// Without it, the last path component is considered to be a “file” name
-    /// to be removed to get at the “directory” that is used as the base.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # use http_types::Url;
-    /// # fn main() -> http_types::Result<()> { async_std::task::block_on(async {
-    /// let mut client = crux_http::client();
-    /// client.set_base_url(Url::parse("http://example.com/api/v1/")?);
-    /// client.get("posts.json").recv_json().await?; /// http://example.com/api/v1/posts.json
-    /// # Ok(()) }) }
-    /// ```
-    #[deprecated(since = "6.5.0", note = "Please use `Config` instead")]
-    pub fn set_base_url(&mut self, base: Url) {
-        self.config.base_url = Some(base);
     }
 
     /// Get the current configuration.

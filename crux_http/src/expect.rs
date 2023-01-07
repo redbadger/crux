@@ -10,7 +10,6 @@ pub trait ResponseExpectation {
     fn decode(&self, resp: crate::Response<Vec<u8>>) -> Result<Response<Self::Body>>;
 }
 
-// TODO: A nice API for these...
 pub struct ExpectBytes;
 
 impl ResponseExpectation for ExpectBytes {

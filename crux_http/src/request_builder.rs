@@ -293,7 +293,11 @@ where
     }
 
     // TODO: Ideally this would only be allowed where Event != ()
+
     /// Sends the constructed `Request` and returns its result as an update `Event`
+    ///
+    /// When finished, the response will wrapped in an event using `make_event` and
+    /// dispatched to the app's `update function.
     pub fn send<F>(self, make_event: F)
     where
         F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,

@@ -70,31 +70,148 @@ where
         todo!()
     }
 
-    // TODO: document all of these.
+    /// Instruct the Shell to perform a HTTP GET request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[derive(crux_macros::Effect)]
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http.get_("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # }
+    /// ```
     pub fn get_(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP HEAD request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP POST request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn post_(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP PUT request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP DELETE request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP CONNECT request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP OPTIONS request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP TRACE request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap(), self.clone())
     }
+
+    /// Instruct the Shell to perform a HTTP PATCH request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on `RequestBuilder`
+    /// and then sent with `RequestBuilder::send`
+    ///
+    /// When finished, the response will be wrapped in an event and dispatched to
+    /// the app's `update function.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
     pub fn patch(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
         RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap(), self.clone())
     }
@@ -105,6 +222,7 @@ where
     /// Instruct the Shell to perform a HTTP GET request to the provided URL
     /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
     /// will be dispatched to the app's `update` function.
+    #[deprecated]
     pub fn get<F>(&self, url: Url, callback: F)
     where
         Ev: 'static,
@@ -118,6 +236,7 @@ where
     ///
     /// When finished, the response will be deserialized into type `T`, wrapped
     /// in an event using `callback` and dispatched to the app's `update function.
+    #[deprecated]
     pub fn get_json<T, F>(&self, url: Url, callback: F)
     where
         T: serde::de::DeserializeOwned,
@@ -143,6 +262,7 @@ where
     ///
     /// When finished, the response will be deserialized into type `T`, wrapped
     /// in an event using `callback` and dispatched to the app's `update function.
+    #[deprecated]
     pub fn post<Res, F>(&self, url: Url, callback: F)
     where
         Res: serde::de::DeserializeOwned,
@@ -167,6 +287,7 @@ where
     ///
     /// When finished, a `HttpResponse` wrapped in the event returned by `callback`
     /// will be dispatched to the app's `update` function.
+    #[deprecated]
     pub fn send<F>(&self, method: protocol::HttpMethod, url: Url, callback: F)
     where
         Ev: 'static,
