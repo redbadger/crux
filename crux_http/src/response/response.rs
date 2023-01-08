@@ -1,4 +1,4 @@
-use super::decode::decode_body;
+use super::{decode::decode_body, new_headers};
 use crate::http::{
     self,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
@@ -171,6 +171,17 @@ impl<Body> Response<Body> {
 }
 
 impl Response<Vec<u8>> {
+    pub(crate) fn new_with_status(status: http::StatusCode) -> Self {
+        let headers = new_headers();
+
+        Response {
+            status,
+            headers,
+            version: Some(http::Version::Http1_1),
+            body: None,
+        }
+    }
+
     /// Reads the entire request body into a byte buffer.
     ///
     /// This method can be called after the body has already been read, but will
@@ -226,7 +237,7 @@ impl Response<Vec<u8>> {
     /// let string: String = res.body_string().await?;
     /// # Ok(()) }
     /// ```
-    pub async fn body_string(&mut self) -> crate::Result<String> {
+    pub fn body_string(&mut self) -> crate::Result<String> {
         let bytes = self.body_bytes()?;
 
         let mime = self.content_type();
@@ -342,7 +353,10 @@ where
 impl<Body> Eq for Response<Body> where Body: Eq {}
 
 mod header_serde {
-    use crate::http::{self, Headers};
+    use crate::{
+        http::{self, Headers},
+        response::new_headers,
+    };
     use http::headers::HeaderName;
     use serde::{de::Error, Deserializer, Serializer};
 
@@ -364,11 +378,7 @@ mod header_serde {
     {
         let strs = <Vec<(String, Vec<String>)> as serde::Deserialize>::deserialize(deserializer)?;
 
-        // http-types doesn't seem to let you construct a Headers, very annoying.
-        // So here's a horrible hack to do it.
-        let mut headers: Headers = http::Request::new(http::Method::Get, "thisisveryannoying.com")
-            .as_ref()
-            .clone();
+        let mut headers = new_headers();
 
         for (name, values) in strs {
             let name = HeaderName::from_string(name).map_err(D::Error::custom)?;

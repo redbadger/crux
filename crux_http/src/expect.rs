@@ -20,6 +20,18 @@ impl ResponseExpectation for ExpectBytes {
     }
 }
 
+#[derive(Default)]
+pub struct ExpectString;
+
+impl ResponseExpectation for ExpectString {
+    type Body = String;
+
+    fn decode(&self, mut resp: crate::Response<Vec<u8>>) -> Result<Response<String>> {
+        let body = resp.body_string()?;
+        Ok(resp.with_body(body))
+    }
+}
+
 pub struct ExpectJson<T> {
     phantom: PhantomData<fn() -> T>,
 }

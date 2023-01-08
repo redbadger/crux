@@ -19,12 +19,18 @@ impl crux_core::App for App {
     fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match msg {
             Event::Get => {
-                caps.http.get_json(Url::parse(API_URL).unwrap(), Event::Set);
+                caps.http
+                    .get(API_URL)
+                    .expect_json::<Counter>()
+                    .send(Event::Set);
             }
-            Event::Set(counter) => {
-                model.count = counter;
+            Event::Set(Ok(mut counter)) => {
+                model.count = counter.take_body().unwrap();
                 model.confirmed = Some(true);
                 caps.render.render();
+            }
+            Event::Set(Err(_)) => {
+                panic!("Oh no something went wrong");
             }
             Event::Increment => {
                 // optimistic update
@@ -34,8 +40,8 @@ impl crux_core::App for App {
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
-                let url = base.join("/inc");
-                caps.http.post(url.unwrap(), Event::Set)
+                let url = base.join("/inc").unwrap();
+                caps.http.post(url.as_str()).expect_json().send(Event::Set);
             }
             Event::Decrement => {
                 // optimistic update
@@ -45,8 +51,8 @@ impl crux_core::App for App {
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
-                let url = base.join("/dec");
-                caps.http.post(url.unwrap(), Event::Set)
+                let url = base.join("/dec").unwrap();
+                caps.http.post(url.as_str()).expect_json().send(Event::Set);
             }
         }
     }
@@ -87,7 +93,7 @@ impl From<&Model> for ViewModel {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Event {
     Get,
-    Set(Counter),
+    Set(crux_http::Result<crux_http::Response<Counter>>),
     Increment,
     Decrement,
 }
@@ -109,7 +115,7 @@ mod tests {
     use super::{App, Event, Model};
     use crate::{Counter, Effect};
     use crux_core::{render::RenderOperation, testing::AppTester};
-    use crux_http::{HttpRequest, HttpResponse};
+    use crux_http::{testing::ResponseBuilder, HttpRequest, HttpResponse};
 
     #[test]
     fn get_counter() {
@@ -135,10 +141,7 @@ mod tests {
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set(Counter {
-            value: 1,
-            updated_at: 1,
-        })];
+        let expected = vec![Event::new_set(1, 1)];
         assert_eq!(actual, expected);
     }
 
@@ -147,13 +150,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(
-            Event::Set(Counter {
-                value: 1,
-                updated_at: 1,
-            }),
-            &mut model,
-        );
+        let update = app.update(Event::new_set(1, 1), &mut model);
 
         let actual = &update.effects[0];
         let expected = &Effect::Render(RenderOperation);
@@ -204,10 +201,7 @@ mod tests {
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set(Counter {
-            value: 1,
-            updated_at: 1,
-        })];
+        let expected = vec![Event::new_set(1, 1)];
         assert_eq!(actual, expected);
     }
 
@@ -247,10 +241,17 @@ mod tests {
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set(Counter {
-            value: -1,
-            updated_at: 1,
-        })];
+        let expected = vec![Event::new_set(-1, 1)];
         assert_eq!(actual, expected);
+    }
+
+    impl Event {
+        fn new_set(value: isize, updated_at: i64) -> Event {
+            let response = ResponseBuilder::ok()
+                .with_body(Counter { value, updated_at })
+                .build();
+
+            Event::Set(Ok(response))
+        }
     }
 }

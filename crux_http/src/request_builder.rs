@@ -1,4 +1,4 @@
-use crate::expect::{ExpectBytes, ExpectJson};
+use crate::expect::{ExpectBytes, ExpectJson, ExpectString};
 use crate::middleware::Middleware;
 use crate::{
     expect::ResponseExpectation,
@@ -274,7 +274,7 @@ where
     /// # fn update(caps: &Capabilities) {
     ///
     /// caps.http
-    ///     .get("https://httpbin.org/get")
+    ///     .get("https://httpbin.org/redirect/2")
     ///     .middleware(crux_http::middleware::Redirect::default())
     ///     .send(Event::ReceiveResponse)
     /// # }
@@ -287,6 +287,32 @@ where
     /// Return the constructed `Request`.
     pub fn build(self) -> Request {
         self.req.unwrap()
+    }
+
+    /// Decode a String from the response body prior to dispatching it to the apps `update`
+    /// function
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
+    ///
+    /// # fn update(caps: &Capabilities) {
+    /// caps.http
+    ///     .post("https://httpbin.org/json")
+    ///     .expect_string()
+    ///     .send(Event::ReceiveResponse)
+    /// # }
+    /// ```
+    pub fn expect_string(self) -> RequestBuilder<Event, String> {
+        let expectation = Box::<ExpectString>::default();
+        RequestBuilder {
+            req: self.req,
+            cap_or_client: self.cap_or_client,
+            phantom: PhantomData,
+            expectation,
+        }
     }
 
     /// Decode a `T` from a JSON response body prior to dispatching it to the apps `update`

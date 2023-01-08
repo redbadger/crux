@@ -1,9 +1,8 @@
 mod shared {
     use crux_core::render::Render;
-    use crux_http::{Http, HttpResponse};
+    use crux_http::Http;
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
-    use url::Url;
 
     #[derive(Default)]
     pub(crate) struct App;
@@ -12,8 +11,8 @@ mod shared {
     pub enum Event {
         Get,
         GetJson,
-        Set(HttpResponse),
-        SetJson(String),
+        Set(crux_http::Result<crux_http::Response<Vec<u8>>>),
+        SetJson(crux_http::Result<crux_http::Response<String>>),
     }
 
     #[derive(Default, Serialize, Deserialize)]
@@ -38,20 +37,22 @@ mod shared {
         fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
             match event {
                 Event::Get => {
-                    caps.http
-                        .get(Url::parse("http://example.com").unwrap(), Event::Set);
+                    caps.http.get("http://example.com").send(Event::Set);
                 }
                 Event::GetJson => {
                     caps.http
-                        .get_json(Url::parse("http://example.com").unwrap(), Event::SetJson);
+                        .get("http://example.com")
+                        .expect_json::<String>()
+                        .send(Event::SetJson);
                 }
                 Event::Set(response) => {
-                    model.status = response.status;
-                    model.body = response.body;
+                    let mut response = response.unwrap();
+                    model.status = response.status().into();
+                    model.body = response.take_body().unwrap();
                     caps.render.render()
                 }
-                Event::SetJson(body) => {
-                    model.json_body = body;
+                Event::SetJson(response) => {
+                    model.json_body = response.unwrap().take_body().unwrap();
                     caps.render.render()
                 }
             }

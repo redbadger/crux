@@ -3,7 +3,6 @@ mod shared {
     use crux_http::Http;
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
-    use url::Url;
 
     #[derive(Default)]
     pub(crate) struct App;
@@ -11,7 +10,7 @@ mod shared {
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
     pub enum Event {
         Get,
-        Set(String),
+        Set(crux_http::Result<crux_http::Response<String>>),
     }
 
     #[derive(Default, Serialize, Deserialize)]
@@ -35,10 +34,12 @@ mod shared {
             match event {
                 Event::Get => {
                     caps.http
-                        .get_json(Url::parse("http://example.com").unwrap(), Event::Set);
+                        .get("http://example.com")
+                        .expect_string()
+                        .send(Event::Set);
                 }
                 Event::Set(body) => {
-                    model.body = body;
+                    model.body = body.unwrap().take_body().unwrap();
                 }
             }
         }
@@ -57,6 +58,8 @@ mod shared {
 }
 
 mod tests {
+    use assert_matches::assert_matches;
+
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
     use crux_http::{HttpRequest, HttpResponse};
@@ -82,7 +85,8 @@ mod tests {
         });
 
         let actual = update.events;
-        let expected = vec![Event::Set("hello".to_string())];
-        assert_eq!(actual, expected);
+        assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
+            assert_eq!(*response.body().unwrap(), "hello".to_string())
+        })
     }
 }

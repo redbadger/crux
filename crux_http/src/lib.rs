@@ -19,6 +19,7 @@ mod response;
 pub mod client;
 pub mod middleware;
 pub mod protocol;
+pub mod testing;
 
 // TODO: Think about this Result re-export.
 pub use http_types::{self as http};

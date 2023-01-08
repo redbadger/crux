@@ -1,11 +1,10 @@
 pub mod platform;
 
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 pub use crux_core::App;
 use crux_core::{render::Render, Capability};
-use crux_http::{Http, HttpResponse};
+use crux_http::Http;
 use crux_kv::{KeyValue, KeyValueOutput};
 use crux_macros::Effect;
 use crux_platform::Platform;
@@ -129,12 +128,12 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 caps.http
-                    .get_(FACT_API_URL)
+                    .get(FACT_API_URL)
                     .expect_json::<CatFact>()
                     .send(Event::SetFact);
 
                 caps.http
-                    .get_(FACT_API_URL)
+                    .get(IMAGE_API_URL)
                     .expect_json::<CatImage>()
                     .send(Event::SetImage);
 
