@@ -66,7 +66,9 @@ pub enum Event {
     Fetch,
     Restore,                  // restore state
     SetState(KeyValueOutput), // receive the data to restore state with
+    #[serde(skip)]
     SetFact(crux_http::Result<crux_http::Response<CatFact>>),
+    #[serde(skip)]
     SetImage(crux_http::Result<crux_http::Response<CatImage>>),
     CurrentTime(TimeResponse),
 }
