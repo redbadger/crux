@@ -40,12 +40,9 @@ impl<Body> Response<Body> {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let res = crux_http::get("https://httpbin.org/get").await?;
+    /// ```
+    /// # let res = crux_http::testing::ResponseBuilder::ok().build();
     /// assert_eq!(res.status(), 200);
-    /// # Ok(()) }
     /// ```
     pub fn status(&self) -> StatusCode {
         self.status
@@ -55,14 +52,10 @@ impl<Body> Response<Body> {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// ```
+    /// # let res = crux_http::testing::ResponseBuilder::ok().build();
     /// use crux_http::http::Version;
-    ///
-    /// let res = crux_http::get("https://httpbin.org/get").await?;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
-    /// # Ok(()) }
     /// ```
     pub fn version(&self) -> Option<Version> {
         self.version
@@ -73,11 +66,10 @@ impl<Body> Response<Body> {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let res = crux_http::get("https://httpbin.org/get").await?;
+    /// # let res = crux_http::testing::ResponseBuilder::ok()
+    /// #   .header("Content-Length", "1")
+    /// #   .build();
     /// assert!(res.header("Content-Length").is_some());
-    /// # Ok(()) }
     /// ```
     pub fn header(&self, name: impl Into<HeaderName>) -> Option<&HeaderValues> {
         self.headers.get(name)
@@ -140,13 +132,12 @@ impl<Body> Response<Body> {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// ```
+    /// # let res = crux_http::testing::ResponseBuilder::ok()
+    /// #   .header("Content-Type", "application/json")
+    /// #   .build();
     /// use crux_http::http::mime;
-    /// let res = crux_http::get("https://httpbin.org/json").await?;
     /// assert_eq!(res.content_type(), Some(mime::JSON));
-    /// # Ok(()) }
     /// ```
     pub fn content_type(&self) -> Option<Mime> {
         self.header(CONTENT_TYPE)?.last().as_str().parse().ok()
@@ -194,11 +185,13 @@ impl Response<Vec<u8>> {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let mut res = crux_http::get("https://httpbin.org/get").await?;
-    /// let bytes: Vec<u8> = res.body_bytes().await?;
+    /// ```
+    /// # fn main() -> crux_http::Result<()> {
+    /// # let mut res = crux_http::testing::ResponseBuilder::ok()
+    /// #   .header("Content-Type", "application/json")
+    /// #   .with_body(vec![0u8, 1])
+    /// #   .build();
+    /// let bytes: Vec<u8> = res.body_bytes()?;
     /// # Ok(()) }
     /// ```
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
@@ -230,11 +223,14 @@ impl Response<Vec<u8>> {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let mut res = crux_http::get("https://httpbin.org/get").await?;
-    /// let string: String = res.body_string().await?;
+    /// ```
+    /// # fn main() -> crux_http::Result<()> {
+    /// # let mut res = crux_http::testing::ResponseBuilder::ok()
+    /// #   .header("Content-Type", "application/json")
+    /// #   .with_body("hello".to_string().into_bytes())
+    /// #   .build();
+    /// let string: String = res.body_string()?;
+    /// assert_eq!(string, "hello");
     /// # Ok(()) }
     /// ```
     pub fn body_string(&mut self) -> crate::Result<String> {
@@ -260,17 +256,20 @@ impl Response<Vec<u8>> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// # fn main() -> crux_http::Result<()> {
+    /// # let mut res = crux_http::testing::ResponseBuilder::ok()
+    /// #   .header("Content-Type", "application/json")
+    /// #   .with_body("{\"ip\": \"127.0.0.1\"}".to_string().into_bytes())
+    /// #   .build();
     /// #[derive(Deserialize, Serialize)]
     /// struct Ip {
     ///     ip: String
     /// }
     ///
-    /// let mut res = crux_http::get("https://api.ipify.org?format=json").await?;
-    /// let Ip { ip } = res.body_json().await?;
+    /// let Ip { ip } = res.body_json()?;
+    /// assert_eq!(ip, "127.0.0.1");
     /// # Ok(()) }
     /// ```
     pub fn body_json<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
