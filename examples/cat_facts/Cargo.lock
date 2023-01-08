@@ -631,7 +631,6 @@ dependencies = [
  "async-trait",
  "bcs",
  "crux_core",
- "derive_more",
  "futures-util",
  "http-types",
  "pin-project-lite",

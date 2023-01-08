@@ -5,31 +5,7 @@
 //! This module defines the protocol for crux_http to communicate with the shell.
 
 use async_trait::async_trait;
-use derive_more::Display;
 use serde::{Deserialize, Serialize};
-
-// TODO: this can go in the bin.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Display)]
-pub enum HttpMethod {
-    #[display(fmt = "GET")]
-    Get,
-    #[display(fmt = "HEAD")]
-    Head,
-    #[display(fmt = "POST")]
-    Post,
-    #[display(fmt = "PUT")]
-    Put,
-    #[display(fmt = "DELETE")]
-    Delete,
-    #[display(fmt = "CONNECT")]
-    Connect,
-    #[display(fmt = "OPTIONS")]
-    Options,
-    #[display(fmt = "TRACE")]
-    Trace,
-    #[display(fmt = "PATCH")]
-    Patch,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpRequest {

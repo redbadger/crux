@@ -14,7 +14,6 @@ anyhow.workspace = true
 async-trait = "0.1.59"
 bcs.workspace = true
 crux_core = { version = "0.2", path = "../crux_core" }
-derive_more = "0.99.17"
 futures-util = "0.3"
 http-types = { version = "2.12", no-default-features = true }
 pin-project-lite = "0.2.9"

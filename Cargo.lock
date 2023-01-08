@@ -444,7 +444,6 @@ dependencies = [
  "bcs",
  "crux_core",
  "crux_macros",
- "derive_more",
  "futures-test",
  "futures-util",
  "http-types",

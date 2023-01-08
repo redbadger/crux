@@ -68,8 +68,6 @@ impl fmt::Debug for Client {
     }
 }
 
-// TODO: Config might be absolutely useless, look into that...
-
 impl Client {
     pub(crate) fn new<Sender>(sender: Sender) -> Self
     where
