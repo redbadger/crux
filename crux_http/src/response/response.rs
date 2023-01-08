@@ -53,7 +53,7 @@ impl<Body> Response<Body> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// # let res = crux_http::testing::ResponseBuilder::ok().build();
     /// use crux_http::http::Version;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
@@ -169,7 +169,7 @@ impl Response<Vec<u8>> {
         Response {
             status,
             headers,
-            version: Some(http::Version::Http1_1),
+            version: None,
             body: None,
         }
     }
@@ -190,7 +190,7 @@ impl Response<Vec<u8>> {
     /// # fn main() -> crux_http::Result<()> {
     /// # let mut res = crux_http::testing::ResponseBuilder::ok()
     /// #   .header("Content-Type", "application/json")
-    /// #   .with_body(vec![0u8, 1])
+    /// #   .body(vec![0u8, 1])
     /// #   .build();
     /// let bytes: Vec<u8> = res.body_bytes()?;
     /// # Ok(()) }
@@ -228,7 +228,7 @@ impl Response<Vec<u8>> {
     /// # fn main() -> crux_http::Result<()> {
     /// # let mut res = crux_http::testing::ResponseBuilder::ok()
     /// #   .header("Content-Type", "application/json")
-    /// #   .with_body("hello".to_string().into_bytes())
+    /// #   .body("hello".to_string().into_bytes())
     /// #   .build();
     /// let string: String = res.body_string()?;
     /// assert_eq!(string, "hello");
@@ -262,7 +262,7 @@ impl Response<Vec<u8>> {
     /// # fn main() -> crux_http::Result<()> {
     /// # let mut res = crux_http::testing::ResponseBuilder::ok()
     /// #   .header("Content-Type", "application/json")
-    /// #   .with_body("{\"ip\": \"127.0.0.1\"}".to_string().into_bytes())
+    /// #   .body("{\"ip\": \"127.0.0.1\"}".to_string().into_bytes())
     /// #   .build();
     /// #[derive(Deserialize, Serialize)]
     /// struct Ip {

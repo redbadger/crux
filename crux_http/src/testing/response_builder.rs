@@ -22,7 +22,7 @@ impl ResponseBuilder<Vec<u8>> {
 
 impl<Body> ResponseBuilder<Body> {
     /// Sets the body of the Response
-    pub fn with_body<NewBody>(self, body: NewBody) -> ResponseBuilder<NewBody> {
+    pub fn body<NewBody>(self, body: NewBody) -> ResponseBuilder<NewBody> {
         let response = self.response.with_body(body);
         ResponseBuilder { response }
     }

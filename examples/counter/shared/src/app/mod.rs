@@ -252,7 +252,7 @@ mod tests {
     impl Event {
         fn new_set(value: isize, updated_at: i64) -> Event {
             let response = ResponseBuilder::ok()
-                .with_body(Counter { value, updated_at })
+                .body(Counter { value, updated_at })
                 .build();
 
             Event::Set(Ok(response))
