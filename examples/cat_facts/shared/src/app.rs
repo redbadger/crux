@@ -206,7 +206,10 @@ impl App for CatFacts {
 #[cfg(test)]
 mod tests {
     use crux_core::testing::AppTester;
-    use crux_http::HttpRequest;
+    use crux_http::{
+        protocol::{HttpRequest, HttpResponse},
+        testing::ResponseBuilder,
+    };
 
     use crate::Effect;
 
@@ -258,6 +261,7 @@ mod tests {
             status: 200,
             body: serde_json::to_vec(&a_fact).unwrap(),
         });
-        assert_eq!(update.events, vec![Event::SetFact(a_fact)])
+        let expected_response = ResponseBuilder::ok().with_body(a_fact).build();
+        assert_eq!(update.events, vec![Event::SetFact(Ok(expected_response))])
     }
 }
