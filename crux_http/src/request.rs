@@ -29,13 +29,12 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
-    /// use crux_core::http::{Url, Method};
+    /// ```
+    /// fn main() -> crux_http::Result<()> {
+    /// use crux_http::http::{Url, Method};
     ///
     /// let url = Url::parse("https://httpbin.org/get")?;
-    /// let req = crux_core::Request::new(Method::Get, url);
+    /// let req = crux_http::Request::new(Method::Get, url);
     /// # Ok(()) }
     /// ```
     pub fn new(method: Method, url: Url) -> Self {
@@ -50,16 +49,17 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
+    /// # enum Event {}
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
     ///     page: u32
     /// }
     ///
-    /// let req = crux_core::get("https://httpbin.org/get?page=2").build();
+    /// let req = caps.http.get("https://httpbin.org/get?page=2").build();
     /// let Index { page } = req.query()?;
     /// assert_eq!(page, 2);
     /// # Ok(()) }
@@ -72,17 +72,18 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
+    /// # enum Event {}
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
     ///     page: u32
     /// }
     ///
     /// let query = Index { page: 2 };
-    /// let mut req = crux_core::get("https://httpbin.org/get").build();
+    /// let mut req = caps.http.get("https://httpbin.org/get").build();
     /// req.set_query(&query)?;
     /// assert_eq!(req.url().query(), Some("page=2"));
     /// assert_eq!(req.url().as_str(), "https://httpbin.org/get?page=2");
@@ -96,10 +97,11 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
-    /// let mut req = crux_core::get("https://httpbin.org/get").build();
+    /// ```
+    /// # enum Event {}
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
+    /// let mut req = caps.http.get("https://httpbin.org/get").build();
     /// req.set_header("X-Requested-With", "surf");
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
@@ -164,10 +166,11 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
-    /// let mut req = crux_core::get("https://httpbin.org/get").build();
+    /// ```
+    /// # enum Event {}
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
+    /// let mut req = caps.http.get("https://httpbin.org/get").build();
     /// req.set_header("X-Requested-With", "surf");
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
@@ -191,11 +194,12 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
-    /// let req = crux_core::get("https://httpbin.org/get").build();
-    /// assert_eq!(req.method(), crux_core::http::Method::Get);
+    /// ```
+    /// # enum Event {}
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
+    /// let req = caps.http.get("https://httpbin.org/get").build();
+    /// assert_eq!(req.method(), crux_http::http::Method::Get);
     /// # Ok(()) }
     /// ```
     pub fn method(&self) -> Method {
@@ -206,11 +210,12 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_core::Result<()> {
-    /// use crux_core::http::Url;
-    /// let req = crux_core::get("https://httpbin.org/get").build();
+    /// ```
+    /// # enum Event {}
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
+    /// use crux_http::http::Url;
+    /// let req = caps.http.get("https://httpbin.org/get").build();
     /// assert_eq!(req.url(), &Url::parse("https://httpbin.org/get")?);
     /// # Ok(()) }
     /// ```
@@ -355,9 +360,13 @@ impl Request {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// let mut req = crux_core::get("https://httpbin.org/get").build();
-    /// req.middleware(crux_core::middleware::Redirect::default());
+    /// ```
+    /// # enum Event {}
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
+    /// let mut req = caps.http.get("https://httpbin.org/get").build();
+    /// req.middleware(crux_http::middleware::Redirect::default());
+    /// # Ok(()) }
     /// ```
     pub fn middleware(&mut self, middleware: impl Middleware) {
         if self.middleware.is_none() {
@@ -397,7 +406,7 @@ impl AsMut<http::Request> for Request {
 }
 
 impl From<http::Request> for Request {
-    /// Converts an `http::Request` to a `crux_core::Request`.
+    /// Converts an `http::Request` to a `crux_http::Request`.
     fn from(req: http::Request) -> Self {
         Self {
             req,
@@ -408,7 +417,7 @@ impl From<http::Request> for Request {
 
 #[allow(clippy::from_over_into)]
 impl Into<http::Request> for Request {
-    /// Converts a `crux_core::Request` to an `http::Request`.
+    /// Converts a `crux_http::Request` to an `http::Request`.
     fn into(self) -> http::Request {
         self.req
     }
