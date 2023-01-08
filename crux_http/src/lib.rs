@@ -61,12 +61,6 @@ where
         }
     }
 
-    pub fn send_<F>(&self, _req: impl Into<Request>, _callback: F) {
-        // Surprisingly hard to impl since I put the send func on RequestBuilder
-        // and not request :(
-        todo!()
-    }
-
     /// Instruct the Shell to perform a HTTP GET request to the provided `url`.
     ///
     /// The request can be configured via associated functions on `RequestBuilder`
