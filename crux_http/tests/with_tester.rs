@@ -86,7 +86,7 @@ mod tests {
 
         let actual = update.events;
         assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
-            assert_eq!(*response.body().unwrap(), "hello".to_string())
+            assert_eq!(*response.body().unwrap(), "\"hello\"".to_string())
         })
     }
 }

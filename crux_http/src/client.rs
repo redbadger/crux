@@ -82,6 +82,9 @@ impl Client {
         }
     }
 
+    // This is currently dead code because there's no easy way to configure a client.
+    // TODO: fix that in some future PR
+    #[allow(dead_code)]
     /// Push middleware onto the middleware stack.
     ///
     /// See the [middleware] submodule for more information on middleware.
@@ -312,18 +315,29 @@ impl Client {
 
 #[cfg(test)]
 mod client_tests {
-    use std::convert::TryInto;
-
     use super::Client;
-    use super::Config;
-    use crate::Url;
+    use crate::protocol::{HttpRequest, HttpResponse};
+    use crate::testing::FakeShell;
 
-    // #[test]
-    // fn base_url() {
-    //     let base_url = Url::parse("http://example.com/api/v1/").unwrap();
+    #[futures_test::test]
+    async fn an_http_get() {
+        let mut shell = FakeShell::default();
+        shell.provide_response(HttpResponse {
+            status: 200,
+            body: "Hello World!".to_string().into_bytes(),
+        });
 
-    //     let client: Client = Config::new().set_base_url(base_url).try_into().unwrap();
-    //     let url = client.url("posts.json");
-    //     assert_eq!(url.as_str(), "http://example.com/api/v1/posts.json");
-    // }
+        let client = Client::new(shell.clone());
+
+        let mut response = client.get("https://example.com").await.unwrap();
+        assert_eq!(response.body_string().await.unwrap(), "Hello World!");
+
+        assert_eq!(
+            shell.take_requests_received(),
+            vec![HttpRequest {
+                method: "GET".into(),
+                url: "https://example.com/".into()
+            }]
+        )
+    }
 }
