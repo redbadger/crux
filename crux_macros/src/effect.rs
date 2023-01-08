@@ -100,8 +100,8 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
 fn split_event_type(ty: &Type) -> (Ident, Type) {
     match ty {
         Type::Path(p) if p.qself.is_none() => {
-            // Get the first segment of the path (there should be only one)
-            let path_segment = p.path.segments.first().unwrap();
+            // Get the last segment of the path where the generic parameter should be
+            let path_segment = p.path.segments.last().unwrap();
             let t1 = &path_segment.ident;
             let type_params = &path_segment.arguments;
 
@@ -166,7 +166,7 @@ mod tests {
             #[derive(Effect)]
             #[effect(name = "MyEffect", app = "MyApp")]
             pub struct MyCapabilities {
-                pub http: Http<MyEvent>,
+                pub http: crux_http::Http<MyEvent>,
                 pub key_value: KeyValue<MyEvent>,
                 pub platform: Platform<MyEvent>,
                 pub render: Render<MyEvent>,
