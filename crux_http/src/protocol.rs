@@ -1,4 +1,8 @@
 //! The protocol for communicating with the shell
+//!
+//! Crux capabilities don't interface with the outside world themselves, they carry
+//! out all their operations by exchanging messages with the platform specific shell.
+//! This module defines the protocol for crux_http to communicate with the shell.
 
 use async_trait::async_trait;
 use derive_more::Display;

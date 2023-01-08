@@ -81,7 +81,7 @@ mod shell {
     use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
     use crux_core::{Core, Request};
-    use crux_http::{HttpRequest, HttpResponse};
+    use crux_http::protocol::{HttpRequest, HttpResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
@@ -145,7 +145,7 @@ mod tests {
     };
     use anyhow::Result;
     use crux_core::render::RenderOperation;
-    use crux_http::HttpRequest;
+    use crux_http::protocol::HttpRequest;
 
     #[test]
     pub fn test_http() -> Result<()> {

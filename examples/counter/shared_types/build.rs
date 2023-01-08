@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crux_core::{typegen::TypeGen, Request};
-use crux_http::{HttpRequest, HttpResponse};
+use crux_http::protocol::{HttpRequest, HttpResponse};
 use shared::{Effect, Event, ViewModel};
 use std::path::PathBuf;
 

@@ -62,7 +62,7 @@ mod tests {
 
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
-    use crux_http::{HttpRequest, HttpResponse};
+    use crux_http::protocol::{HttpRequest, HttpResponse};
 
     #[test]
     fn with_tester() {

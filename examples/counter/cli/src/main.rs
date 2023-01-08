@@ -1,7 +1,7 @@
 use clap::Parser;
 use eyre::{bail, eyre, Result};
 use shared::{
-    http::{HttpRequest, HttpResponse},
+    http::protocol::{HttpRequest, HttpResponse},
     Effect, Event, Request, ViewModel,
 };
 use std::{collections::VecDeque, str::FromStr, time::Duration};

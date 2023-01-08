@@ -5,7 +5,7 @@ use std::{
 
 use async_trait::async_trait;
 
-use crate::{protocol::EffectSender, HttpRequest, HttpResponse};
+use crate::protocol::{EffectSender, HttpRequest, HttpResponse};
 
 /// FakeShell implements EffectSender for use in our internal tests.
 #[derive(Clone, Default)]

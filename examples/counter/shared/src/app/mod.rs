@@ -115,7 +115,10 @@ mod tests {
     use super::{App, Event, Model};
     use crate::{Counter, Effect};
     use crux_core::{render::RenderOperation, testing::AppTester};
-    use crux_http::{testing::ResponseBuilder, HttpRequest, HttpResponse};
+    use crux_http::{
+        protocol::{HttpRequest, HttpResponse},
+        testing::ResponseBuilder,
+    };
 
     #[test]
     fn get_counter() {

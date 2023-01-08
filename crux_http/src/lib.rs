@@ -21,7 +21,6 @@ pub mod middleware;
 pub mod protocol;
 pub mod testing;
 
-// TODO: Think about this Result re-export.
 pub use http_types::{self as http};
 
 pub use self::{
@@ -31,9 +30,6 @@ pub use self::{
     request_builder::RequestBuilder,
     response::{Response, ResponseAsync},
 };
-
-// TODO: These are definitely temporary
-pub use self::{protocol::HttpRequest, protocol::HttpResponse};
 
 use client::Client;
 
@@ -299,7 +295,7 @@ where
 }
 
 impl<Ef> Capability<Ef> for Http<Ef> {
-    type Operation = HttpRequest;
+    type Operation = protocol::HttpRequest;
     type MappedSelf<MappedEv> = Http<MappedEv>;
 
     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>

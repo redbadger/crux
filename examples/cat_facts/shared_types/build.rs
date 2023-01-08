@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crux_core::{typegen::TypeGen, Request};
-use crux_http::{HttpRequest, HttpResponse};
+use crux_http::protocol::{HttpRequest, HttpResponse};
 use crux_kv::{KeyValueOperation, KeyValueOutput};
 use crux_platform::PlatformResponse;
 use crux_time::TimeResponse;
