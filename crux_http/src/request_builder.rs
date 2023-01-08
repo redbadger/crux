@@ -9,6 +9,7 @@ use crate::{
 };
 use crate::{Client, Error, Request, Response, ResponseAsync, Result};
 
+use futures_util::future::BoxFuture;
 use http_types::convert::DeserializeOwned;
 use serde::Serialize;
 
@@ -392,15 +393,19 @@ where
     }
 }
 
-impl RequestBuilder<()> {
-    /// A send function for middlewares to use that bypasses the usual "we must return an event"
-    /// stuff.
-    pub async fn middleware_send(self) -> Result<ResponseAsync> {
-        let CapOrClient::Client(client) = self.cap_or_client else {
-            panic!("Called RequestBuilder::middleware_send in a non-middleware context");
-        };
+impl std::future::IntoFuture for RequestBuilder<()> {
+    type Output = Result<ResponseAsync>;
 
-        client.send(self.req.unwrap()).await
+    type IntoFuture = BoxFuture<'static, Result<ResponseAsync>>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(async move {
+            let CapOrClient::Client(client) = self.cap_or_client else {
+                panic!("Tried to await a RequestBuilder in a non-middleware context");
+            };
+
+            client.send(self.req.unwrap()).await
+        })
     }
 }
 

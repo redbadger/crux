@@ -24,7 +24,6 @@ use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
 /// fn fetch_auth<'a>(mut req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>> {
 ///     Box::pin(async move {
 ///         let auth_token = client.get("https://httpbin.org/get")
-///             .middleware_send()
 ///             .await?
 ///             .body_string()
 ///             .await?;

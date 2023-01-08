@@ -11,6 +11,7 @@ use serde::de::DeserializeOwned;
 use std::fmt;
 use std::ops::Index;
 
+/// An HTTP Response that will be passed to in a message to an apps update function
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
     version: Option<http::Version>,

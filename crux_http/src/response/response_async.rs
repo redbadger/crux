@@ -16,6 +16,10 @@ use std::task::{Context, Poll};
 use super::decode::decode_body;
 
 pin_project_lite::pin_project! {
+    /// An HTTP response that exposes async methods, for use inside middleware.
+    ///
+    /// If you're not writing middleware you'll never need to interact with
+    /// this type and can probably ignore it.
     pub struct ResponseAsync {
         #[pin]
         res: crate::http::Response,
@@ -33,9 +37,9 @@ impl ResponseAsync {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let res = crux_http::get("https://httpbin.org/get").await?;
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
+    /// let res = client.get("https://httpbin.org/get").await?;
     /// assert_eq!(res.status(), 200);
     /// # Ok(()) }
     /// ```
@@ -48,11 +52,11 @@ impl ResponseAsync {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
     /// use crux_http::http::Version;
     ///
-    /// let res = crux_http::get("https://httpbin.org/get").await?;
+    /// let res = client.get("https://httpbin.org/get").await?;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
     /// # Ok(()) }
     /// ```
@@ -65,9 +69,9 @@ impl ResponseAsync {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let res = crux_http::get("https://httpbin.org/get").await?;
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
+    /// let res = client.get("https://httpbin.org/get").await?;
     /// assert!(res.header("Content-Length").is_some());
     /// # Ok(()) }
     /// ```
@@ -144,10 +148,10 @@ impl ResponseAsync {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
     /// use crux_http::http::mime;
-    /// let res = crux_http::get("https://httpbin.org/json").await?;
+    /// let res = client.get("https://httpbin.org/json").await?;
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// # Ok(()) }
     /// ```
@@ -206,9 +210,9 @@ impl ResponseAsync {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let mut res = crux_http::get("https://httpbin.org/get").await?;
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
+    /// let mut res = client.get("https://httpbin.org/get").await?;
     /// let bytes: Vec<u8> = res.body_bytes().await?;
     /// # Ok(()) }
     /// ```
@@ -240,9 +244,9 @@ impl ResponseAsync {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
-    /// let mut res = crux_http::get("https://httpbin.org/get").await?;
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
+    /// let mut res = client.get("https://httpbin.org/get").await?;
     /// let string: String = res.body_string().await?;
     /// # Ok(()) }
     /// ```
@@ -270,14 +274,14 @@ impl ResponseAsync {
     ///
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
     /// #[derive(Deserialize, Serialize)]
     /// struct Ip {
     ///     ip: String
     /// }
     ///
-    /// let mut res = crux_http::get("https://api.ipify.org?format=json").await?;
+    /// let mut res = client.get("https://api.ipify.org?format=json").await?;
     /// let Ip { ip } = res.body_json().await?;
     /// # Ok(()) }
     /// ```
@@ -300,14 +304,14 @@ impl ResponseAsync {
     ///
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
-    /// # #[async_std::main]
-    /// # async fn main() -> crux_http::Result<()> {
+    /// # use crux_http::client::Client;
+    /// # async fn middleware(client: Client) -> crux_http::Result<()> {
     /// #[derive(Deserialize, Serialize)]
     /// struct Body {
     ///     apples: u32
     /// }
     ///
-    /// let mut res = crux_http::get("https://api.example.com/v1/response").await?;
+    /// let mut res = client.get("https://api.example.com/v1/response").await?;
     /// let Body { apples } = res.body_form().await?;
     /// # Ok(()) }
     /// ```
