@@ -16,9 +16,7 @@ public abstract class Event {
             case 5: return Fetch.load(deserializer);
             case 6: return Restore.load(deserializer);
             case 7: return SetState.load(deserializer);
-            case 8: return SetFact.load(deserializer);
-            case 9: return SetImage.load(deserializer);
-            case 10: return CurrentTime.load(deserializer);
+            case 8: return CurrentTime.load(deserializer);
             default: throw new com.novi.serde.DeserializationError("Unknown variant index for Event: " + index);
         }
     }
@@ -367,104 +365,6 @@ public abstract class Event {
         }
     }
 
-    public static final class SetFact extends Event {
-        public final CatFact value;
-
-        public SetFact(CatFact value) {
-            java.util.Objects.requireNonNull(value, "value must not be null");
-            this.value = value;
-        }
-
-        public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
-            serializer.increase_container_depth();
-            serializer.serialize_variant_index(8);
-            value.serialize(serializer);
-            serializer.decrease_container_depth();
-        }
-
-        static SetFact load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
-            deserializer.increase_container_depth();
-            Builder builder = new Builder();
-            builder.value = CatFact.deserialize(deserializer);
-            deserializer.decrease_container_depth();
-            return builder.build();
-        }
-
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null) return false;
-            if (getClass() != obj.getClass()) return false;
-            SetFact other = (SetFact) obj;
-            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
-            return true;
-        }
-
-        public int hashCode() {
-            int value = 7;
-            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
-            return value;
-        }
-
-        public static final class Builder {
-            public CatFact value;
-
-            public SetFact build() {
-                return new SetFact(
-                    value
-                );
-            }
-        }
-    }
-
-    public static final class SetImage extends Event {
-        public final HttpResponse value;
-
-        public SetImage(HttpResponse value) {
-            java.util.Objects.requireNonNull(value, "value must not be null");
-            this.value = value;
-        }
-
-        public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
-            serializer.increase_container_depth();
-            serializer.serialize_variant_index(9);
-            value.serialize(serializer);
-            serializer.decrease_container_depth();
-        }
-
-        static SetImage load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
-            deserializer.increase_container_depth();
-            Builder builder = new Builder();
-            builder.value = HttpResponse.deserialize(deserializer);
-            deserializer.decrease_container_depth();
-            return builder.build();
-        }
-
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null) return false;
-            if (getClass() != obj.getClass()) return false;
-            SetImage other = (SetImage) obj;
-            if (!java.util.Objects.equals(this.value, other.value)) { return false; }
-            return true;
-        }
-
-        public int hashCode() {
-            int value = 7;
-            value = 31 * value + (this.value != null ? this.value.hashCode() : 0);
-            return value;
-        }
-
-        public static final class Builder {
-            public HttpResponse value;
-
-            public SetImage build() {
-                return new SetImage(
-                    value
-                );
-            }
-        }
-    }
-
     public static final class CurrentTime extends Event {
         public final TimeResponse value;
 
@@ -475,7 +375,7 @@ public abstract class Event {
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
             serializer.increase_container_depth();
-            serializer.serialize_variant_index(10);
+            serializer.serialize_variant_index(8);
             value.serialize(serializer);
             serializer.decrease_container_depth();
         }

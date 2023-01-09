@@ -3,7 +3,7 @@ use gloo_net::http;
 use yew::prelude::*;
 
 use shared::{
-    http::{HttpRequest, HttpResponse},
+    http::protocol::{HttpRequest, HttpResponse},
     Effect, Event, Request, ViewModel,
 };
 

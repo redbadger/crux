@@ -4,6 +4,8 @@ This crate contains the `Http` capability, which can be used to ask the Shell to
 
 For an example of how to use the capability, see the [integration test](./tests/with_shell.rs).
 
+The code for this was largely copied from [`surf`](https://github.com/http-rs/surf) with some modifications made to fit into the crux paradigm.
+
 ## About Crux Capabilities
 
 Crux capabilities teach Crux how to interact with the shell when performing side effects. They do the following:

@@ -6,7 +6,7 @@ use async_std::{
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use shared::{
-    http::{HttpRequest, HttpResponse},
+    http::protocol::{HttpRequest, HttpResponse},
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,

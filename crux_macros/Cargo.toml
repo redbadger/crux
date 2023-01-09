@@ -19,5 +19,5 @@ quote = "1.0.23"
 syn = "1.0.107"
 
 [dev-dependencies]
-insta = "1.24"
+insta = "1.26"
 prettyplease = "0.1"

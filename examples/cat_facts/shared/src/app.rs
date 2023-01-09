@@ -1,11 +1,10 @@
 pub mod platform;
 
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 pub use crux_core::App;
 use crux_core::{render::Render, Capability};
-use crux_http::{Http, HttpResponse};
+use crux_http::Http;
 use crux_kv::{KeyValue, KeyValueOutput};
 use crux_macros::Effect;
 use crux_platform::Platform;
@@ -67,8 +66,10 @@ pub enum Event {
     Fetch,
     Restore,                  // restore state
     SetState(KeyValueOutput), // receive the data to restore state with
-    SetFact(CatFact),
-    SetImage(HttpResponse),
+    #[serde(skip)]
+    SetFact(crux_http::Result<crux_http::Response<CatFact>>),
+    #[serde(skip)]
+    SetImage(crux_http::Result<crux_http::Response<CatImage>>),
     CurrentTime(TimeResponse),
 }
 
@@ -129,33 +130,40 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 caps.http
-                    .get_json(Url::parse(FACT_API_URL).unwrap(), Event::SetFact);
+                    .get(FACT_API_URL)
+                    .expect_json::<CatFact>()
+                    .send(Event::SetFact);
+
                 caps.http
-                    .get(Url::parse(IMAGE_API_URL).unwrap(), Event::SetImage);
+                    .get(IMAGE_API_URL)
+                    .expect_json::<CatImage>()
+                    .send(Event::SetImage);
+
                 caps.render.render();
             }
-            Event::SetFact(fact) => {
+            Event::SetFact(Ok(mut response)) => {
                 // TODO check status
-                model.cat_fact = Some(fact);
+                model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.write("state", bytes, |_| Event::None);
 
                 caps.time.get(Event::CurrentTime);
             }
-            Event::CurrentTime(iso_time) => {
-                model.time = Some(iso_time.0);
+            Event::SetImage(Ok(mut response)) => {
+                // TODO check status
+                model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.write("state", bytes, |_| Event::None);
 
                 caps.render.render();
             }
-            Event::SetImage(HttpResponse { body, status: _ }) => {
-                // TODO check status
-                let Ok(image) = serde_json::from_slice::<CatImage>(&body) else { return };
-                model.cat_image = Some(image);
-
+            Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
+                // TODO: Display an error or something?
+            }
+            Event::CurrentTime(iso_time) => {
+                model.time = Some(iso_time.0);
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.write("state", bytes, |_| Event::None);
 
@@ -198,7 +206,10 @@ impl App for CatFacts {
 #[cfg(test)]
 mod tests {
     use crux_core::testing::AppTester;
-    use crux_http::HttpRequest;
+    use crux_http::{
+        protocol::{HttpRequest, HttpResponse},
+        testing::ResponseBuilder,
+    };
 
     use crate::Effect;
 
@@ -250,6 +261,7 @@ mod tests {
             status: 200,
             body: serde_json::to_vec(&a_fact).unwrap(),
         });
-        assert_eq!(update.events, vec![Event::SetFact(a_fact)])
+        let expected_response = ResponseBuilder::ok().body(a_fact).build();
+        assert_eq!(update.events, vec![Event::SetFact(Ok(expected_response))])
     }
 }
