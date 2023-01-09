@@ -11,7 +11,7 @@ keywords.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-trait = "0.1.59"
+async-trait = "0.1.61"
 bcs.workspace = true
 crux_core = { version = "0.2", path = "../crux_core" }
 futures-util = "0.3"
