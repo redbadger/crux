@@ -79,7 +79,7 @@ There's a fair bit going on, so lets look at all of it one by one:
 
 Like the `Hello` struct, the `impl` is generic over `E`, the effect, and `C`, the capabilities. The effect type needs to support cloning and serialisation. The trait bound on `C` says that this app requires the capabilities provided to include the `Render` capability. This may seem quite awkward at first but will become important as a form of dependency injection when we start [composing](./composing.md) apps from reusable modules.
 
-The trait has three associated types. The `Event` type describes the possible actions this app can perform. For now its's a unit type. The `Model` describes the internal state of the app, also a unit type for now, as there is no state to hold. The `ViewModel` describes the user interface to display.
+The trait has four associated types. The `Event` type describes the possible actions this app can perform. For now its's a unit type. The `Model` describes the internal state of the app, also a unit type for now, as there is no state to hold. The `ViewModel` describes the user interface to display.  The `Capabilities` type lets us control what capaiblities the core has access to.
 
 The `update` function is the heart of the app. It responds to events by (optionally) updating the state and requesting some effects by returning `Command`s. The `Command` type bundles an effect with a message that the app should be sent when the effect is complete, but unfortunately for us, the `Render` effect does not return anything, which makes it a bad example to demonstrate the distinction between `Command` and `Effect`. We'll see a better one shortly.
 
