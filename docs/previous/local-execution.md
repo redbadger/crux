@@ -10,7 +10,7 @@
    aarch64-apple-ios-sim
    aarch64-linux-android
    wasm32-unknown-unknown
-   ```
+   x86_64-apple-ios
 
 1. Install the `uniffi-bindgen` binary ...
 
