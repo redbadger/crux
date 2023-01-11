@@ -48,6 +48,11 @@ where
         self.app.update(event, model, &self.capabilities);
         self.context.updates()
     }
+
+    /// Run the app's `view` function with a model state
+    pub fn view(&self, model: &mut App::Model) -> App::ViewModel {
+        self.app.view(model)
+    }
 }
 
 impl<App, Ef> Default for AppTester<App, Ef>
