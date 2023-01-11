@@ -21,19 +21,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import com.redbadger.crux_core.shared.*
-import com.redbadger.crux_core.shared_types.Msg
-import com.redbadger.crux_core.shared_types.PlatformMsg
-import com.redbadger.crux_core.shared_types.Request as Req
-import com.redbadger.crux_core.shared_types.Requests
-import com.redbadger.crux_core.shared_types.RequestBody as ReqBody
-import com.redbadger.crux_core.shared_types.Response as Res
-import com.redbadger.crux_core.shared_types.ResponseBody as ResBody
-import com.redbadger.crux_core.shared_types.ViewModel as MyViewModel
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.*
+import com.redbadger.catfacts.shared.*
+import com.redbadger.catfacts.shared_types.*
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -41,7 +30,13 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Url
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 import kotlin.jvm.optionals.getOrNull
+import com.redbadger.catfacts.shared_types.Request as Req
+import com.redbadger.catfacts.shared_types.ViewModel as MyViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,10 +70,16 @@ interface HttpGetService {
     }
 }
 
-sealed class CoreMessage {
-    data class Message(val msg: Msg) : CoreMessage()
+sealed class Outcome {
+    data class Platform(val res: PlatformResponse) : Outcome()
+    data class Time(val res: TimeResponse) : Outcome()
+    data class Http(val res: HttpResponse) : Outcome()
+    data class KeyValue(val res: KeyValueOutput) : Outcome()
+}
 
-    data class Response(val res: Res) : CoreMessage()
+sealed class CoreMessage {
+    data class Message(val event: Event) : CoreMessage()
+    data class Response(val uuid: List<UByte>, val outcome: Outcome) : CoreMessage()
 }
 
 class Model : ViewModel() {
@@ -86,8 +87,8 @@ class Model : ViewModel() {
         private set
 
     init {
-        update(CoreMessage.Message(Msg.Get()))
-        update(CoreMessage.Message(Msg.Platform(PlatformMsg.Get())))
+        update(CoreMessage.Message(Event.Get()))
+        update(CoreMessage.Message(Event.GetPlatform()))
     }
 
     private fun httpGet(url: String, uuid: List<Byte>) {
@@ -99,7 +100,12 @@ class Model : ViewModel() {
                     response: Response<ResponseBody?>?
                 ) {
                     response?.body()?.bytes()?.toList()?.let { bytes ->
-                        update(CoreMessage.Response(Res(uuid, ResBody.Http(bytes))))
+                        update(
+                            CoreMessage.Response(
+                                uuid.toByteArray().toUByteArray().toList(),
+                                Outcome.Http(HttpResponse(response.code().toShort(), bytes))
+                            )
+                        )
                     }
                 }
 
@@ -111,45 +117,66 @@ class Model : ViewModel() {
     fun update(msg: CoreMessage) {
         val requests: List<Req> =
             when (msg) {
-                is CoreMessage.Message -> {
-                    Requests.bcsDeserialize(
-                        message(msg.msg.bcsSerialize().toUByteArray().toList()).toUByteArray()
-                            .toByteArray()
-                    )
-                }
-                is CoreMessage.Response -> {
-                    Requests.bcsDeserialize(
-                        response(msg.res.bcsSerialize().toUByteArray().toList()).toUByteArray()
-                            .toByteArray()
-                    )
-                }
+                is CoreMessage.Message -> Requests.bcsDeserialize(
+                    message(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                        .toByteArray()
+                )
+                is CoreMessage.Response -> Requests.bcsDeserialize(
+                    response(
+                        msg.uuid.toList(), when (msg.outcome) {
+                            is Outcome.Platform -> msg.outcome.res.bcsSerialize()
+                            is Outcome.Time -> msg.outcome.res.bcsSerialize()
+                            is Outcome.Http -> msg.outcome.res.bcsSerialize()
+                            is Outcome.KeyValue -> msg.outcome.res.bcsSerialize()
+                        }.toUByteArray().toList()
+                    ).toUByteArray()
+                        .toByteArray()
+                )
             }
 
-        for (req in requests) {
-            when (val body = req.body) {
-                is ReqBody.Render -> {
-                    this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
-                }
-                is ReqBody.Http -> {
-                    httpGet(body.value, req.uuid)
-                }
-                is ReqBody.Time -> {
-                    val isoTime =
-                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+        for (req in requests) when (val effect =     req.effect) {
+            is Effect.Render -> {
+                this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
+            }
+            is Effect.Http -> {
+                httpGet(effect.value.url, req.uuid)
+            }
+            is Effect.Time -> {
+                val isoTime =
+                    ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
-                    update(CoreMessage.Response(Res(req.uuid, ResBody.Time(isoTime))))
-                }
-                is ReqBody.Platform -> {
-                    val platform = getPlatform()
+                update(
+                    CoreMessage.Response(
+                        req.uuid.toByteArray().toUByteArray().toList(), Outcome.Time(
+                            TimeResponse(isoTime)
+                        )
+                    )
+                )
+            }
+            is Effect.Platform -> {
+                val platform = getPlatform()
 
-                    update(CoreMessage.Response(Res(req.uuid, ResBody.Platform(platform))))
-                }
-                is ReqBody.KVRead -> {
-                    update(CoreMessage.Response(Res(req.uuid, ResBody.KVRead(null))))
-                }
-                is ReqBody.KVWrite -> {
-                    update(CoreMessage.Response(Res(req.uuid, ResBody.KVWrite(false))))
-                }
+                update(
+                    CoreMessage.Response(
+                        req.uuid.toByteArray().toUByteArray().toList(), Outcome.Platform(
+                            PlatformResponse(platform)
+                        )
+                    )
+                )
+            }
+            is Effect.KeyValue -> when (effect.value) {
+                is KeyValueOperation.Read -> update(
+                    CoreMessage.Response(
+                        req.uuid.toByteArray().toUByteArray().toList(),
+                        Outcome.KeyValue(KeyValueOutput.Read(null))
+                    )
+                )
+                is KeyValueOperation.Write -> update(
+                    CoreMessage.Response(
+                        req.uuid.toByteArray().toUByteArray().toList(),
+                        Outcome.KeyValue(KeyValueOutput.Write(false)),
+                    )
+                )
             }
         }
     }
@@ -187,21 +214,21 @@ fun CatFacts(model: Model = viewModel()) {
         Text(text = model.view.fact, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { model.update(CoreMessage.Message(Msg.Clear())) },
+                onClick = { model.update(CoreMessage.Message(Event.Clear())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                onClick = { model.update(CoreMessage.Message(Msg.Get())) },
+                onClick = { model.update(CoreMessage.Message(Event.Get())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) { Text(text = "Get", color = Color.White) }
             Button(
-                onClick = { model.update(CoreMessage.Message(Msg.Fetch())) },
+                onClick = { model.update(CoreMessage.Message(Event.Fetch())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary

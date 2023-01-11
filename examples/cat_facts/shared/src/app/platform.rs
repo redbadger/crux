@@ -1,40 +1,43 @@
-use crux_core::{platform, App, Command};
+use crux_core::{render::Render, App};
+use crux_platform::{Platform as PlatformCap, PlatformResponse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
-pub struct Platform;
+pub struct Platform {}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Model {
     pub platform: String,
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum PlatformMsg {
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum PlatformEvent {
     Get,
-    Set(String),
+    Set(PlatformResponse),
+}
+
+pub struct PlatformCapabilities {
+    pub platform: PlatformCap<PlatformEvent>,
+    pub render: Render<PlatformEvent>,
 }
 
 impl App for Platform {
-    type Message = PlatformMsg;
+    type Event = PlatformEvent;
     type Model = Model;
     type ViewModel = Model;
+    type Capabilities = PlatformCapabilities;
 
-    fn update(
-        &self,
-        msg: <Self as App>::Message,
-        model: &mut <Self as App>::Model,
-    ) -> Vec<Command<PlatformMsg>> {
+    fn update(&self, msg: PlatformEvent, model: &mut Model, caps: &PlatformCapabilities) {
         match msg {
-            PlatformMsg::Get => vec![platform::get(Box::new(PlatformMsg::Set))],
-            PlatformMsg::Set(platform) => {
-                model.platform = platform;
-                vec![Command::render()]
+            PlatformEvent::Get => caps.platform.get(PlatformEvent::Set),
+            PlatformEvent::Set(platform) => {
+                model.platform = platform.0;
+                caps.render.render()
             }
         }
     }
 
-    fn view(&self, model: &<Self as App>::Model) -> <Self as App>::ViewModel {
+    fn view(&self, model: &Model) -> Model {
         Model {
             platform: model.platform.clone(),
         }

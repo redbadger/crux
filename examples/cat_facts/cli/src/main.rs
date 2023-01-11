@@ -5,23 +5,36 @@ use async_std::{
 };
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use shared::*;
+use shared::{
+    http::protocol::{HttpRequest, HttpResponse},
+    key_value::{KeyValueOperation, KeyValueOutput},
+    platform::PlatformResponse,
+    time::TimeResponse,
+    Effect, Event, Request, ViewModel,
+};
 use std::{collections::VecDeque, time::SystemTime};
 
 enum CoreMessage {
-    Message(Msg),
-    Response(Response),
+    Message(Event),
+    Response(Vec<u8>, Outcome),
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Clone)]
 enum Command {
     Clear,
     Get,
     Fetch,
 }
 
+pub enum Outcome {
+    Platform(PlatformResponse),
+    Time(TimeResponse),
+    Http(HttpResponse),
+    KeyValue(KeyValueOutput),
+}
+
 /// Simple program to greet a person
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[command(subcommand)]
@@ -34,70 +47,88 @@ async fn main() -> Result<()> {
 
     let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-    queue.push_back(CoreMessage::Message(Msg::Restore));
+    queue.push_back(CoreMessage::Message(Event::Restore));
+    queue.push_back(CoreMessage::Message(Event::GetPlatform));
 
     while !queue.is_empty() {
         let msg = queue.pop_front();
 
         let reqs = match msg {
             Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m)?),
-            Some(CoreMessage::Response(r)) => shared::response(&bcs::to_bytes(&r)?),
+            Some(CoreMessage::Response(uuid, output)) => shared::response(
+                &uuid,
+                &match output {
+                    Outcome::Platform(x) => bcs::to_bytes(&x)?,
+                    Outcome::Time(x) => bcs::to_bytes(&x)?,
+                    Outcome::Http(x) => bcs::to_bytes(&x)?,
+                    Outcome::KeyValue(x) => bcs::to_bytes(&x)?,
+                },
+            ),
             _ => vec![],
         };
-        let reqs: Vec<Request> = bcs::from_bytes(&reqs)?;
+        let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
         for req in reqs {
-            let Request { uuid, body } = req;
-            match body {
-                RequestBody::Render => (),
-                RequestBody::Time => {
+            let Request { uuid, effect } = req;
+            match effect {
+                Effect::Render(_) => (),
+                Effect::Time(_) => {
                     let now: DateTime<Utc> = SystemTime::now().into();
                     let iso_time = now.to_rfc3339();
 
-                    queue.push_back(CoreMessage::Response(Response {
-                        body: ResponseBody::Time(iso_time),
+                    queue.push_back(CoreMessage::Response(
                         uuid,
-                    }));
+                        Outcome::Time(TimeResponse(iso_time)),
+                    ));
                 }
-                RequestBody::Http(url) => match surf::get(&url).recv_bytes().await {
+                Effect::Http(HttpRequest { url, .. }) => match surf::get(&url).recv_bytes().await {
                     Ok(bytes) => {
-                        queue.push_back(CoreMessage::Response(Response {
-                            body: ResponseBody::Http(bytes),
+                        queue.push_back(CoreMessage::Response(
                             uuid,
-                        }));
+                            Outcome::Http(HttpResponse {
+                                status: 200,
+                                body: bytes,
+                            }),
+                        ));
                     }
                     Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
                 },
-                RequestBody::Platform => {}
-                RequestBody::KVRead(key) => {
-                    let bytes = read_state(&key).await.ok();
+                Effect::Platform(_) => queue.push_back(CoreMessage::Response(
+                    uuid,
+                    Outcome::Platform(PlatformResponse("cli".to_string())),
+                )),
+                Effect::KeyValue(request) => match request {
+                    KeyValueOperation::Read(key) => {
+                        let bytes = read_state(&key).await.ok();
 
-                    let initial_msg = match &args.cmd {
-                        Command::Clear => CoreMessage::Message(Msg::Clear),
-                        Command::Get => CoreMessage::Message(Msg::Get),
-                        Command::Fetch => CoreMessage::Message(Msg::Fetch),
-                    };
+                        let initial_msg = match &args.cmd {
+                            Command::Clear => CoreMessage::Message(Event::Clear),
+                            Command::Get => CoreMessage::Message(Event::Get),
+                            Command::Fetch => CoreMessage::Message(Event::Fetch),
+                        };
 
-                    queue.push_back(CoreMessage::Response(Response {
-                        body: ResponseBody::KVRead(bytes),
-                        uuid,
-                    }));
-                    queue.push_back(initial_msg);
-                }
-                RequestBody::KVWrite(key, val) => {
-                    let success = write_state(&key, &val).await.is_ok();
+                        queue.push_back(CoreMessage::Response(
+                            uuid,
+                            Outcome::KeyValue(KeyValueOutput::Read(bytes)),
+                        ));
+                        queue.push_back(initial_msg);
+                    }
+                    KeyValueOperation::Write(key, value) => {
+                        let success = write_state(&key, &value).await.is_ok();
 
-                    queue.push_back(CoreMessage::Response(Response {
-                        body: ResponseBody::KVWrite(success),
-                        uuid,
-                    }));
-                }
+                        queue.push_back(CoreMessage::Response(
+                            uuid,
+                            Outcome::KeyValue(KeyValueOutput::Write(success)),
+                        ));
+                    }
+                },
             }
         }
     }
 
-    let view = shared::view();
-    println!("{}", bcs::from_bytes::<ViewModel>(&view)?.fact);
+    let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
+    println!("platform: {}", view.platform);
+    println!("{}", view.fact);
 
     Ok(())
 }

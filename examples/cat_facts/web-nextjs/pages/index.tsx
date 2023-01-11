@@ -16,12 +16,17 @@ type Action = Message | Response;
 
 interface Message {
   kind: "message";
-  message: types.Msg;
+  message: types.Event;
 }
 
 interface Response {
   kind: "response";
-  response: types.Response;
+  uuid: number[];
+  outcome:
+    | types.PlatformResponse
+    | types.TimeResponse
+    | types.HttpResponse
+    | types.KeyValueOutput;
 }
 
 type State = {
@@ -63,8 +68,11 @@ const Home: NextPage = () => {
 
   const respond = (action: Response) => {
     const serializer = new bcs.BcsSerializer();
-    action.response.serialize(serializer);
-    const moreRequests = sendResponse(serializer.getBytes());
+    action.outcome.serialize(serializer);
+    const moreRequests = sendResponse(
+      new Uint8Array(action.uuid),
+      serializer.getBytes()
+    );
     handleRequests(moreRequests);
   };
 
@@ -72,8 +80,8 @@ const Home: NextPage = () => {
     let requests = deserializeRequests(bytes);
 
     for (const request of requests) {
-      switch (request.body.constructor) {
-        case types.RequestBodyVariantRender:
+      switch (request.effect.constructor) {
+        case types.EffectVariantRender:
           let bytes = view();
           let viewDeserializer = new bcs.BcsDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
@@ -86,33 +94,27 @@ const Home: NextPage = () => {
           });
 
           break;
-        case types.RequestBodyVariantTime:
+        case types.EffectVariantTime:
           respond({
             kind: "response",
-            response: new types.Response(
-              request.uuid,
-              new types.ResponseBodyVariantTime(new Date().toISOString())
-            ),
+            uuid: request.uuid,
+            outcome: new types.TimeResponse(new Date().toISOString()),
           });
 
           break;
-        case types.RequestBodyVariantPlatform:
+        case types.EffectVariantPlatform:
           respond({
             kind: "response",
-            response: new types.Response(
-              request.uuid,
-              new types.ResponseBodyVariantPlatform(
-                new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
-              )
+            uuid: request.uuid,
+            outcome: new types.PlatformResponse(
+              new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
             ),
           });
           break;
-        case types.RequestBodyVariantKVRead:
+        case types.EffectVariantKeyValue:
           break;
-        case types.RequestBodyVariantKVWrite:
-          break;
-        case types.RequestBodyVariantHttp:
-          const url = (request.body as types.RequestBodyVariantHttp).value;
+        case types.EffectVariantHttp:
+          const { url } = (request.effect as types.EffectVariantHttp).value;
 
           const resp = await fetch(url);
           const body = await resp.arrayBuffer();
@@ -120,10 +122,8 @@ const Home: NextPage = () => {
 
           respond({
             kind: "response",
-            response: new types.Response(
-              request.uuid,
-              new types.ResponseBodyVariantHttp(response_bytes)
-            ),
+            uuid: request.uuid,
+            outcome: new types.HttpResponse(resp.status, response_bytes),
           });
           break;
         default:
@@ -138,11 +138,11 @@ const Home: NextPage = () => {
       // Initial messages
       dispatch({
         kind: "message",
-        message: new types.MsgVariantGetPlatform(),
+        message: new types.EventVariantGetPlatform(),
       });
       dispatch({
         kind: "message",
-        message: new types.MsgVariantGet(),
+        message: new types.EventVariantGet(),
       });
     }
 
@@ -178,7 +178,7 @@ const Home: NextPage = () => {
             onClick={() =>
               dispatch({
                 kind: "message",
-                message: new types.MsgVariantClear(),
+                message: new types.EventVariantClear(),
               })
             }
           >
@@ -189,7 +189,7 @@ const Home: NextPage = () => {
             onClick={() =>
               dispatch({
                 kind: "message",
-                message: new types.MsgVariantGet(),
+                message: new types.EventVariantGet(),
               })
             }
           >
@@ -200,7 +200,7 @@ const Home: NextPage = () => {
             onClick={() =>
               dispatch({
                 kind: "message",
-                message: new types.MsgVariantFetch(),
+                message: new types.EventVariantFetch(),
               })
             }
           >

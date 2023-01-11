@@ -1,9 +1,15 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request, RequestBody, Response, ResponseBody};
-use shared::{platform, Msg, ViewModel};
+use crux_core::{typegen::TypeGen, Request};
+use crux_http::protocol::{HttpRequest, HttpResponse};
+use crux_kv::{KeyValueOperation, KeyValueOutput};
+use crux_platform::PlatformResponse;
+use crux_time::TimeResponse;
+use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
 use std::path::PathBuf;
 
 fn main() {
+    println!("cargo:rerun-if-changed=../shared");
+
     let mut gen = TypeGen::new();
 
     register_types(&mut gen).expect("type registration failed");
@@ -14,7 +20,7 @@ fn main() {
         .expect("swift type gen failed");
 
     gen.java(
-        "com.redbadger.crux_core.shared_types",
+        "com.redbadger.catfacts.shared_types",
         output_root.join("java"),
     )
     .expect("java type gen failed");
@@ -24,12 +30,20 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Msg>()?;
-    gen.register_type::<platform::PlatformMsg>()?;
+    gen.register_type::<Request<Effect>>()?;
+
+    gen.register_type::<Effect>()?;
+    gen.register_type::<HttpRequest>()?;
+    gen.register_type::<KeyValueOperation>()?;
+
+    gen.register_type::<Event>()?;
+    gen.register_type::<HttpResponse>()?;
+    gen.register_type::<KeyValueOutput>()?;
+    gen.register_type::<TimeResponse>()?;
+
+    gen.register_type::<PlatformEvent>()?;
+    gen.register_type::<PlatformResponse>()?;
+
     gen.register_type::<ViewModel>()?;
-    gen.register_type::<Request>()?;
-    gen.register_type::<RequestBody>()?;
-    gen.register_type::<Response>()?;
-    gen.register_type::<ResponseBody>()?;
     Ok(())
 }

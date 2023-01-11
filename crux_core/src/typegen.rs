@@ -17,23 +17,46 @@
 //! * Create a `build.rs` in your `shared_types` library, that looks something like this:
 //!
 //! ```rust
-//! let mut gen = TypeGen::new();
+//! use anyhow::Result;
+//! use crux_core::{typegen::TypeGen, Request};
+//! use crux_http::{HttpRequest, HttpResponse};
+//! use shared::{Effect, Event, ViewModel};
+//! use std::path::PathBuf;
 //!
-//! gen.register_type::<Message>()?;
-//! gen.register_type::<ViewModel>()?;
-//! gen.register_type::<Request>()?;
-//! gen.register_type::<RequestBody>()?;
-//! gen.register_type::<Response>()?;
-//! gen.register_type::<ResponseBody>()?;
+//! fn main() {
+//!     println!("cargo:rerun-if-changed=../shared");
 //!
-//! gen.swift("shared_types", output_root.join("swift"))?;
+//!     let mut gen = TypeGen::new();
 //!
-//! gen.java(
-//!     "com.redbadger.crux_core.shared_types",
-//!     output_root.join("java"),
-//! )?;
+//!     register_types(&mut gen).expect("type registration failed");
 //!
-//! gen.typescript("shared_types", output_root.join("typescript"))?;
+//!     let output_root = PathBuf::from("./generated");
+//!
+//!     gen.swift("shared_types", output_root.join("swift"))
+//!         .expect("swift type gen failed");
+//!
+//!     gen.java(
+//!         "com.redbadger.catfacts.shared_types",
+//!         output_root.join("java"),
+//!     )
+//!     .expect("java type gen failed");
+//!
+//!     gen.typescript("shared_types", output_root.join("typescript"))
+//!         .expect("typescript type gen failed");
+//! }
+//!
+//! fn register_types(gen: &mut TypeGen) -> Result<()> {
+//!     gen.register_type::<Request<Effect>>()?;
+//!
+//!     gen.register_type::<Effect>()?;
+//!     gen.register_type::<HttpRequest>()?;
+//!
+//!     gen.register_type::<Event>()?;
+//!     gen.register_type::<HttpResponse>()?;
+//!
+//!     gen.register_type::<ViewModel>()?;
+//!     Ok(())
+//! }
 //! ```
 
 use anyhow::{anyhow, bail, Result};
@@ -74,12 +97,10 @@ impl TypeGen {
     /// For each of the types that you want to share with the Shell, call this method:
     /// e.g.
     /// ```rust
-    /// gen.register_type::<Message>()?;
+    /// gen.register_type::<Request<Effect>>()?;
+    /// gen.register_type::<Effect>()?;
+    /// gen.register_type::<Event>()?;
     /// gen.register_type::<ViewModel>()?;
-    /// gen.register_type::<Request>()?;
-    /// gen.register_type::<RequestBody>()?;
-    /// gen.register_type::<Response>()?;
-    /// gen.register_type::<ResponseBody>()?;
     /// ```
     pub fn register_type<'de, T>(&mut self) -> Result<()>
     where
@@ -161,16 +182,19 @@ impl TypeGen {
         let generator = serde_generate::java::CodeGenerator::new(&config);
         generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
 
-        let extensions_dir =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/java");
-
         let package_path = package_name.replace('.', "/");
-        fs::copy(
-            extensions_dir.join(&package_path).join("Requests.java"),
+
+        let requests = format!(
+            "package {package_name};\n\n{}",
+            include_str!("../typegen_extensions/java/Requests.java")
+        );
+
+        fs::write(
             path.as_ref()
                 .to_path_buf()
-                .join(&package_path)
+                .join(package_path)
                 .join("Requests.java"),
+            requests,
         )?;
 
         Ok(())

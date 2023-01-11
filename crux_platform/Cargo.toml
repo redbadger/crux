@@ -1,0 +1,19 @@
+[package]
+name = "crux_platform"
+description = "Platform capability for use with crux_core"
+version = "0.1.0"
+readme = "README.md"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bcs.workspace = true
+crux_core = { version = "0.2", path = "../crux_core" }
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+crux_macros = { version = "0.1", path = "../crux_macros" }

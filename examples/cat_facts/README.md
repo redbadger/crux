@@ -1,5 +1,7 @@
 ## Run the Cat Facts Example Locally
 
+Note: Whilst this example _does_ work, the API that it uses is not under our control and can be flaky, so your mileage may vary. I would look at the [Counter](../counter/README.md) example first.
+
 ### Rust
 
 1. Make sure you have the following rust targets installed (e.g. `rustup target add <target-name>`). Note there is a `rust-toolchain.toml` in the root directory, so you should be able to just `rustup target list --installed` (in or below the root directory) and the targets should be installed if they are not already present.
@@ -10,6 +12,7 @@
    aarch64-apple-ios-sim
    aarch64-linux-android
    wasm32-unknown-unknown
+   x86_64-apple-ios
    ```
 
 1. Install the `uniffi-bindgen` binary ...
