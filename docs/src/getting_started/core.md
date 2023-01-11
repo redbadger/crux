@@ -54,12 +54,15 @@ These are the steps to set up the two crates forming the shared core – the cor
    [dependencies]
    uniffi = "0.21.0"
    uniffi_macros = "0.21.0"
+   wasm-bindgen = "0.2.83"
+   lazy_static = "1.4.0"
+   crux_core = "0.2.0"
+   serde = { version = "1.0.147", features = ["derive"] }
+   bincode = "1.3.3"
 
    [build-dependencies]
    uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }
    ```
-
-   > _FIXME:_ update the above to include the framework crate. For now, you will have to copy it into your codebase or fetch from GitHub.
 
 1. Create `./shared/src/shared.udl`
 
@@ -83,27 +86,24 @@ These are the steps to set up the two crates forming the shared core – the cor
    omit_argument_labels = true
    ```
 
-1. Create `./shared/build.rs`]
-
-   ```rust
-   fn main() {
-       uniffi_build::generate_scaffolding("./src/shared.udl").unwrap();
-   }
-   ```
-
 1. Include the scaffolding in `./shared/src/lib.rs`
 
    ```rust
-    use lazy_static::lazy_static;
-
-    use wasm_bindgen::prelude::wasm_bindgen;
     pub mod app;
+
+    use lazy_static::lazy_static;
+    use wasm_bindgen::prelude::wasm_bindgen;
+
+    use crux_core::Core;
+    pub use crux_core::Request;
+    pub use crux_http as http;
+
     pub use app::*;
 
     uniffi_macros::include_scaffolding!("shared");
 
     lazy_static! {
-        static ref CORE: AppCore<CatFacts> = Default::default();
+        static ref CORE: Core<Effect, App> = Core::new::<Capabilities>();
     }
 
     # [wasm_bindgen]
@@ -112,8 +112,8 @@ These are the steps to set up the two crates forming the shared core – the cor
     }
 
     # [wasm_bindgen]
-    pub fn response(data: &[u8]) -> Vec<u8> {
-        CORE.response(data)
+    pub fn response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
+        CORE.response(uuid, data)
     }
 
     # [wasm_bindgen]
@@ -122,56 +122,71 @@ These are the steps to set up the two crates forming the shared core – the cor
     }
    ```
 
-1. Create a basic app implementation in `./shared/src/app.rs`
+2. Create a basic app implementation in `./shared/src/app.rs`
 
    ```rust
-   pub use rmm::*;
+   use crux_core::render::Render;
+   use crux_macros::Effect;
    use serde::{Deserialize, Serialize};
-
-   pub struct Model {
-       count: u8
-   }
-
-   # [derive(Serialize, Deserialize, Default)]
-   pub struct ViewModel {
-       pub count: u8,
-   }
-
-   # [derive(Serialize, Deserialize)]
-   pub enum Message {
-       Increment(u8),
-       Decrement(u8),
-   }
-
-   impl App for CatFacts {
-       type Message = Message;
+   
+   #[derive(Default)]
+   pub struct App;
+   
+   impl crux_core::App for App {
        type Model = Model;
+       type Event = Event;
        type ViewModel = ViewModel;
-
-       fn update(&self, msg: Message, model: &mut Model) -> Vec<Command<Message>> {
+       type Capabilities = Capabilities;
+   
+       fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
            match msg {
-               Message::Increment(n) => {
-                   model.count += n;
-
-                   vec![Command::Render]
+               Event::Increment => {
+                   model.count += 1;
+                   caps.render.render();
                },
-               Message::Decrement(n) => {
-                   model.count -= n;
-
-                   vec![Command::Render]
-               },
+               Event::Decrement => {
+                   model.count -= 1;
+                   caps.render.render();
+               }
            }
        }
-
-       fn view(&self, model: &Model) -> ViewModel {
-           ViewModel {
-               count: model.count
+   
+       fn view(&self, model: &Self::Model) -> Self::ViewModel {
+           model.into()
+       }
+   }
+   
+   #[derive(Default)]
+   pub struct Model {
+       count: isize,
+   }
+   
+   #[derive(Serialize, Deserialize)]
+   pub struct ViewModel {
+       pub text: String,
+   }
+   
+   impl From<&Model> for ViewModel {
+       fn from(model: &Model) -> Self {
+           Self {
+               text: model.count.value.to_string() + &suffix,
            }
        }
+   }
+   
+   #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+   pub enum Event {
+       Increment,
+       Decrement,
+   }
+   
+   #[derive(Effect)]
+   pub struct Capabilities {
+       pub render: Render<Event>,
    }
    ```
 
-1. Make sure everything builds OK
+3. Make sure everything builds OK
 
    ```sh
    cargo build
@@ -181,12 +196,14 @@ These are the steps to set up the two crates forming the shared core – the cor
 
 This crate serves as the container for type generation for the foreign languages.
 
-1. Copy over the [shared_types](https://github.com/redbadger/rmm/tree/docs/shared_types/) folder from the example.
+1. Copy over the [shared_types](https://github.com/redbadger/crux/tree/master/examples/counter/shared_types) folder from the counter example.
 
-1. Edit the `build.rs` file and make sure to list your specific `Model`, `ViewModel` and `Message` types.
+1. Edit the `build.rs` file and make sure to only list types you need.
 
 1. Make sure everything builds and foreign types get generated into the `generated` folder.
-
+   
    ```sh
    cargo build -vv
    ```
+
+You should now be ready to set up [iOS](ios.md), [Android](android.md), [web](web_react.md), or [WebAssembly](web_yew.md) specific builds.
