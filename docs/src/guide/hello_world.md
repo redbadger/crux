@@ -103,8 +103,8 @@ That's a working hello world done, lets try it. For now we'll do it from tests. 
 ```rust
 #[cfg(test)]
 mod tests {
-    use crux_core::{Core, Command};
     use super::*;
+    use crux_core::{render::RenderOperation, testing::AppTester};
 
     #[test]
     fn hello_says_hello_world() {
