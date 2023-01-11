@@ -1,7 +1,6 @@
-use serde::{Deserialize, Serialize};
-
 use crux_core::{render::Render, App};
 use crux_macros::Effect;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub enum Event {
@@ -47,9 +46,8 @@ pub struct Capabilities {
 
 #[cfg(test)]
 mod test {
-    use crux_core::{render::RenderOperation, testing::AppTester};
-
     use super::*;
+    use crux_core::{render::RenderOperation, testing::AppTester};
 
     #[test]
     fn renders() {
