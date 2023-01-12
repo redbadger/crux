@@ -1,6 +1,7 @@
 # Summary
 
 [Overview](./overview.md)
+
 [Motivation](./motivation.md)
 
 # Getting Started
@@ -25,5 +26,5 @@
 1. [FFI interface](./internals/uniffi.md)
    1. [Core API](./internals/core_api.md)
    1. [Type generation](./internals/typegen.md)
-1. [Serialisation](./internals/serialisation.md)
+1. [Serialization](./internals/serialization.md)
 1. [Continuations](./internals/continuations.md)

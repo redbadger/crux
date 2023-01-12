@@ -2,195 +2,91 @@
 
 These are the steps to set up the two crates forming the shared core – the core itself, and the shared types crate which does type generation for the foreign languages.
 
-> _SHARP EDGE WARNING_: Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from the example project.
+> _SHARP EDGE WARNING_: Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from one of the [example projects](https://github.com/redbadger/crux/tree/master/examples).
 
 ## Install the tools
 
-1. Make sure you have the following rust targets installed (e.g. `rustup target add <target-name>`)
+This is an example of a [`rust-toolchain.toml`](https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file) file, which you can add at the root of your repo. It should ensure that the correct rust channel and compile targets are installed automatically for you when you use any rust tooling within the repo.
 
-   ```txt
-   aarch64-apple-darwin
-   aarch64-apple-ios
-   aarch64-apple-ios-sim
-   aarch64-linux-android
-   wasm32-unknown-unknown
-   x86_64-apple-ios
-   ```
+<!--- includes fail when indented see https://github.com/rust-lang/mdBook/pull/1718 --->
 
-1. Install the `uniffi-bindgen` binary ...
+```toml
+{{#include ../../../rust-toolchain.toml}}
+```
 
-   ```sh
-   cargo install uniffi_bindgen
-   ```
+Install the `uniffi-bindgen` binary. This is used during the builds (in xcode and android studio) to ensure we generate the FFI (Foreign Function Interface) bindings.
+(The version you install should match that of the `uniffi` dependencies in your `Cargo.toml` files.)
+
+```sh
+cargo install uniffi_bindgen
+```
 
 ## Create the core crate
 
-1. Create a new rust library ...
+### The shared library
 
-   ```sh
-   cargo new --lib shared
-   ```
+The first library to create is the one that will be shared across all platforms, containing the _behavior_ of the app. You can call it whatever you like, but we have chosen the name `shared` here.
+You can create the shared rust library, like this:
 
-1. Edit `./Cargo.toml` to add the new library to the Cargo workspace
+```sh
+cargo new --lib shared
+```
 
-   ```toml
-   [workspace]
-   members = ["shared"]
-   ```
+### The workspace and library manifests
 
-1. Edit `./shared/Cargo.toml`
+We'll be adding a bunch of other folders into the monorepo, so we are choosing to use Cargo Workspaces. Edit the workspace `/Cargo.toml` file, at the monorepo root, to add the new library to our workspace. It should look something like this (the `package` and `dependencies` fields are just examples):
 
-   Note that the crate type:
+```toml
+{{#include ../../../examples/hello_world/Cargo.toml}}
+```
 
-   1. `"lib"` is the default rust library when linking into a rust binary, e.g. in the `web-yew` variant
-   2. `"staticlib"` is a static library (`libshared.a`) for including in the Swift iOS app variant
-   3. `"cdylib"` is a c-abi dynamic library (`libshared.so`) for use with JNA when included in the Kotlin Android app variant
+The library's manifest, at `/shared/Cargo.toml`, should look something like this (although the `path` fields on the crux deps are for the [examples in the Crux repo](https://github.com/redbadger/crux/tree/master/examples) and so you will probably not need them):
 
-   ```toml
-   [lib]
-   crate-type = ["lib", "staticlib", "cdylib"]
-   name = "shared"
+```toml
+{{#include ../../../examples/hello_world/shared/Cargo.toml}}
+```
 
-   [dependencies]
-   uniffi = "0.21.0"
-   uniffi_macros = "0.21.0"
-   wasm-bindgen = "0.2.83"
-   lazy_static = "1.4.0"
-   crux_core = "0.2.0"
-   serde = { version = "1.0.147", features = ["derive"] }
-   bincode = "1.3.3"
+Note that the `crate-type`
 
-   [build-dependencies]
-   uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }
-   ```
+- `"lib"` is the default rust library when linking into a rust binary, e.g. in the `web-yew`, or `cli`, variant
+- `"staticlib"` is a static library (`libshared.a`) for including in the Swift iOS app variant
+- `"cdylib"` is a c-abi dynamic library (`libshared.so`) for use with JNA when included in the Kotlin Android app variant
 
-1. Create `./shared/src/shared.udl`
+### FFI bindings
 
-   ```txt
-   namespace shared {
-     sequence<u8> message([ByRef] sequence<u8> msg);
-     sequence<u8> response([ByRef] sequence<u8> res);
-     sequence<u8> view();
-   };
-   ```
+We will need an interface definition file for the FFI bindings. Uniffi has its own file format (similar to WebIDL) that has a `.udl` extension. You can create one here `/shared/src/shared.udl`, like this:
 
-1. Create `./shared/uniffi.toml`
+```txt
+{{#include ../../../examples/counter/shared/src/shared.udl}}
+```
 
-   ```toml
-   [bindings.kotlin]
-   package_name = "com.redbadger.rmm.shared"
-   cdylib_name = "shared"
+There are also a few additional parameters to tell Uniffi how to create bindings for Kotlin and Swift. They live in the file `/shared/uniffi.toml`, like this (feel free to adjust accordingly):
 
-   [bindings.swift]
-   cdylib_name = "shared_ffi"
-   omit_argument_labels = true
-   ```
+```toml
+{{#include ../../../examples/counter/shared/uniffi.toml}}
+```
 
-1. Include the scaffolding in `./shared/src/lib.rs`
+### Scaffolding
 
-   ```rust
-    pub mod app;
+Soon we will have macros and/or code-gen to help with this, but for now, we need some scaffolding in `/shared/src/lib.rs`. You'll notice that we are re-exporting the `Request` type and the capabilities we want to use in our native Shells, as well as our public types from the shared library.
 
-    use lazy_static::lazy_static;
-    use wasm_bindgen::prelude::wasm_bindgen;
+```rust
+{{#include ../../../examples/counter/shared/src/lib.rs}}
+```
 
-    use crux_core::Core;
-    pub use crux_core::Request;
-    pub use crux_http as http;
+### The app
 
-    pub use app::*;
+Now we are in a position to create a basic app in `/shared/src/app.rs`. This is from the [simple Counter example](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/counter.rs) (which also has tests, although we're not showing them here):
 
-    uniffi_macros::include_scaffolding!("shared");
+```rust
+{{#include ../../../examples/hello_world/shared/src/counter.rs:1:45}}
+```
 
-    lazy_static! {
-        static ref CORE: Core<Effect, App> = Core::new::<Capabilities>();
-    }
+Make sure everything builds OK
 
-    # [wasm_bindgen]
-    pub fn message(data: &[u8]) -> Vec<u8> {
-        CORE.message(data)
-    }
-
-    # [wasm_bindgen]
-    pub fn response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
-        CORE.response(uuid, data)
-    }
-
-    # [wasm_bindgen]
-    pub fn view() -> Vec<u8> {
-        CORE.view()
-    }
-   ```
-
-2. Create a basic app implementation in `./shared/src/app.rs`
-
-   ```rust
-   use crux_core::render::Render;
-   use crux_macros::Effect;
-   use serde::{Deserialize, Serialize};
-   
-   #[derive(Default)]
-   pub struct App;
-   
-   impl crux_core::App for App {
-       type Model = Model;
-       type Event = Event;
-       type ViewModel = ViewModel;
-       type Capabilities = Capabilities;
-   
-       fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
-           match msg {
-               Event::Increment => {
-                   model.count += 1;
-                   caps.render.render();
-               },
-               Event::Decrement => {
-                   model.count -= 1;
-                   caps.render.render();
-               }
-           }
-       }
-   
-       fn view(&self, model: &Self::Model) -> Self::ViewModel {
-           model.into()
-       }
-   }
-   
-   #[derive(Default)]
-   pub struct Model {
-       count: isize,
-   }
-   
-   #[derive(Serialize, Deserialize)]
-   pub struct ViewModel {
-       pub text: String,
-   }
-   
-   impl From<&Model> for ViewModel {
-       fn from(model: &Model) -> Self {
-           Self {
-               text: model.count.value.to_string() + &suffix,
-           }
-       }
-   }
-   
-   #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-   pub enum Event {
-       Increment,
-       Decrement,
-   }
-   
-   #[derive(Effect)]
-   pub struct Capabilities {
-       pub render: Render<Event>,
-   }
-   ```
-
-3. Make sure everything builds OK
-
-   ```sh
-   cargo build
-   ```
+```sh
+cargo build
+```
 
 ## Create the shared types crate
 
@@ -201,7 +97,7 @@ This crate serves as the container for type generation for the foreign languages
 1. Edit the `build.rs` file and make sure to only list types you need.
 
 1. Make sure everything builds and foreign types get generated into the `generated` folder.
-   
+
    ```sh
    cargo build -vv
    ```
