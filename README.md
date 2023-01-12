@@ -134,4 +134,4 @@ Refer to [examples/counter](./examples/counter/README.md) README
 
 ## How to Start Your Own New Project
 
-Refer to the [new project](./docs/new-project.md) README
+Refer to the [new project](./docs/previous/new-project.md) README
