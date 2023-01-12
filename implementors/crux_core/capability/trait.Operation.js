@@ -1,0 +1,7 @@
+(function() {var implementors = {
+"crux_core":[],
+"crux_http":[["impl <a class=\"trait\" href=\"crux_core/capability/trait.Operation.html\" title=\"trait crux_core::capability::Operation\">Operation</a> for <a class=\"struct\" href=\"crux_http/protocol/struct.HttpRequest.html\" title=\"struct crux_http::protocol::HttpRequest\">HttpRequest</a>"]],
+"crux_kv":[["impl <a class=\"trait\" href=\"crux_core/capability/trait.Operation.html\" title=\"trait crux_core::capability::Operation\">Operation</a> for <a class=\"enum\" href=\"crux_kv/enum.KeyValueOperation.html\" title=\"enum crux_kv::KeyValueOperation\">KeyValueOperation</a>"]],
+"crux_platform":[["impl Operation for <a class=\"struct\" href=\"crux_platform/struct.PlatformRequest.html\" title=\"struct crux_platform::PlatformRequest\">PlatformRequest</a>"]],
+"crux_time":[["impl <a class=\"trait\" href=\"crux_core/capability/trait.Operation.html\" title=\"trait crux_core::capability::Operation\">Operation</a> for <a class=\"struct\" href=\"crux_time/struct.TimeRequest.html\" title=\"struct crux_time::TimeRequest\">TimeRequest</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

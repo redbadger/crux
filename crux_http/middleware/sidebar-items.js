@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["Next","The remainder of a middleware chain, including the endpoint."],["Redirect","A middleware which attempts to follow HTTP redirects."]],"trait":[["Middleware","Middleware that wraps around remaining middleware chain."]]};

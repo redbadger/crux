@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["AppTester","AppTester is a simplified execution environment for Crux apps for use in tests."],["TestEffect",""],["Update","Update test helper holds the result of running an app update using [`AppTester::update`]."]]};

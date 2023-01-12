@@ -1,0 +1,812 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crux_core/src/capability.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>capability.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../crux_core/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Capabilities provide a user-friendly API to request side-effects from the shell.
+//!
+//! Typically, capabilities provide I/O and host API access. Capabilities are external to the
+//! core Crux library. Some are part of the Crux core distribution, others are expected to be built by the
+//! community. Apps can also build single-use capabilities where necessary.
+//!
+//! # Example use
+//!
+//! A typical use of a capability would look like the following:
+//!
+//! ```rust,ignore
+//! fn update(&amp;self, event: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+//!     match event {
+//!         //...
+//!         Event::Increment =&gt; {
+//!             model.count += 1;
+//!             caps.render.render(); // Render capability
+//!
+//!             let base = Url::parse(API_URL).unwrap();
+//!             let url = base.join(&quot;/inc&quot;);
+//!             caps.http.post(url.unwrap(), Event::Set) // HTTP client capability
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! Capabilities don&#39;t _perform_ side-effects themselves, they request them from the Shell. As a consequence
+//! the capability calls within the `update` function **only queue up the requests**. The side-effects themselves
+//! are performed concurrently and don&#39;t block the update function.
+//!
+//! In order to use a capability, the app needs to include it in its `Capabilities` associated type and `WithContext`
+//! trait implementation (which can be provided by the `Effect` macro from the `crux_macros` crate). For example:
+//!
+//! ```rust
+//! mod root {
+//!
+//! // An app module which can be reused in different apps
+//! mod my_app {
+//!     use crux_core::{capability::CapabilityContext, App, render::Render};
+//!     use crux_macros::Effect;
+//!     use serde::{Serialize, Deserialize};
+//!
+//!     #[derive(Default)]
+//!     pub struct MyApp;
+//!     pub struct Event;
+//!
+//!     // The `Effect` derive macro generates an `Effect` type that is used by the
+//!     // Shell to dispatch side-effect requests to the right capability implementation
+//!     // (and, in some languages, checking that all necessary capabilities are implemented)
+//!     #[derive(Effect)]
+//!     #[effect(app = &quot;MyApp&quot;)]
+//!     pub struct Capabilities {
+//!         pub render: Render&lt;Event&gt;
+//!     }
+//!
+//!     impl App for MyApp {
+//!         type Model = ();
+//!         type Event = Event;
+//!         type ViewModel = ();
+//!         type Capabilities = Capabilities;
+//!
+//!         fn update(&amp;self, event: Event, model: &amp;mut (), caps: &amp;Capabilities) {
+//!             caps.render.render();
+//!         }
+//!
+//!         fn view(&amp;self, model: &amp;()) {
+//!             ()
+//!         }
+//!     }
+//! }
+//! }
+//! ```
+//!
+//! # Implementing a capability
+//!
+//! Capabilities provide an interface to request side-effects. The interface has asynchronous semantics
+//! with a form of callback. A typical capability call can look like this:
+//!
+//! ```rust,ignore
+//! caps.ducks.get_in_a_row(10, Event::RowOfDucks)
+//! ```
+//!
+//! The call above translates into &quot;Get 10 ducks in a row and return them to me using the `RowOfDucks` event&quot;.
+//! The capability&#39;s job is to translate this request into a serializable message and instruct the Shell to
+//! do the duck herding and when it receives the ducks back, wrap them in the requested event and return it
+//! to the app.
+//!
+//! We will refer to `get_in_row` in the above call as an _operation_, the `10` is an _input_, and the
+//! `Event::RowOfDucks` is an event constructor - a function, which eventually receives the row of ducks
+//! and returns a variant of the `Event` enum. Conveniently, enum tuple variants can be used as functions,
+//! and so that will be the typical use.
+//!
+//! This is what the capability implementation could look like:
+//!
+//! ```rust
+//! use crux_core::{
+//!     capability::{CapabilityContext, Operation},
+//!     Capability,
+//! };
+//! use serde::{Serialize, Deserialize};
+//!
+//! // A duck
+//! #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+//! struct Duck;
+//!
+//! // Operations that can be requested from the Shell
+//! #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+//! enum DuckOperation {
+//!     GetInARow(usize)
+//! }
+//!
+//! // Respective outputs for those operations
+//! #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+//! enum DuckOutput {
+//!     GetInRow(Vec&lt;Duck&gt;)
+//! }
+//!
+//! // Link the input and output type
+//! impl Operation for DuckOperation {
+//!     type Output = DuckOutput;
+//! }
+//!
+//! // The capability. Context will provide the interface to the rest of the system.
+//! struct Ducks&lt;Event&gt; {
+//!     context: CapabilityContext&lt;DuckOperation, Event&gt;
+//! };
+//!
+//! impl&lt;Event&gt; Ducks&lt;Event&gt; {
+//!     pub fn new(context: CapabilityContext&lt;DuckOperation, Event&gt;) -&gt; Self {
+//!         Self { context }
+//!     }
+//!
+//!     pub fn get_in_a_row&lt;F&gt;(&amp;self, number_of_ducks: usize, event: F)
+//!     where
+//!         Event: &#39;static,
+//!         F: Fn(Vec&lt;Duck&gt;) -&gt; Event + Send + &#39;static,
+//!     {
+//!         let ctx = self.context.clone();
+//!         // Start a shell interaction
+//!         self.context.spawn(async move {
+//!             // Instruct Shell to get ducks in a row and await the ducks
+//!             let ducks = ctx.request_from_shell(DuckOperation::GetInARow(number_of_ducks)).await;
+//!
+//!             // Unwrap the ducks and wrap them in the requested event
+//!             // This will always succeed, as long as the Shell implementation is correct
+//!             // and doesn&#39;t send the wrong output type back
+//!             if let DuckOutput::GetInRow(ducks) = ducks {
+//!                 // Queue an app update with the ducks event
+//!                 ctx.update_app(event(ducks));
+//!             }
+//!         })
+//!    }
+//! }
+//! ```
+//!
+//! The `self.context.spawn` API allows a multi-step transaction with the Shell to be performed by a capability
+//! without involving the app, until the exchange has completed. During the exchange, one or more events can
+//! be emitted (allowing a subscription or streaming like capability to be built).
+//!
+//! For Shell requests that have no output, you can use [`CapabilityContext::notify_shell`].
+//!
+//! `DuckOperation` and `DuckOutput` show how the set of operations can be extended. In simple capabilities,
+//! with a single operation, these can be structs, or simpler types. For example, the HTTP capability works directly with
+//! `HttpRequest` and `HttpResponse`.
+
+</span><span class="kw">use </span>std::sync::Arc;
+
+<span class="kw">use </span>futures::Future;
+
+<span class="kw">use crate</span>::{channels::Sender, Step};
+
+<span class="doccomment">/// Operation trait links together input and output of a side-effect.
+///
+/// You implement `Operation` on the payload sent by the capability to the shell using [`CapabilityContext::request_from_shell`].
+///
+/// For example (from `crux_http`):
+///
+/// ```rust,ignore
+/// impl Operation for HttpRequest {
+///     type Output = HttpResponse;
+/// }
+/// ```
+</span><span class="kw">pub trait </span>Operation: serde::Serialize + Send + <span class="lifetime">&#39;static </span>{
+    <span class="doccomment">/// `Output` assigns the type this request results in.
+    </span><span class="kw">type </span>Output: serde::de::DeserializeOwned + Send + <span class="lifetime">&#39;static</span>;
+}
+
+<span class="doccomment">/// Implement `Capability` for your capability. This will allow
+/// mapping events when composing apps from submodules.
+///
+/// In the future this implementation will likely be provided by a derive macro.
+///
+/// Example:
+///
+/// ```rust,ignore
+/// impl&lt;Ev&gt; Capability&lt;Ev&gt; for Http&lt;Ev&gt; {
+///     type MappedSelf&lt;MappedEv&gt; = Http&lt;MappedEv&gt;;
+///
+///     fn map_event&lt;F, NewEvent&gt;(&amp;self, f: F) -&gt; Self::MappedSelf&lt;NewEvent&gt;
+///     where
+///         F: Fn(NewEvent) -&gt; Ef + Send + Sync + Copy + &#39;static,
+///         Ev: &#39;static,
+///         NewEvent: &#39;static,
+///     {
+///         Http::new(self.context.map_event(f))
+///     }
+/// }
+/// ```
+</span><span class="kw">pub trait </span>Capability&lt;Ev&gt; {
+    <span class="kw">type </span>Operation: Operation;
+
+    <span class="kw">type </span>MappedSelf&lt;MappedEv&gt;;
+
+    <span class="kw">fn </span>map_event&lt;F, NewEvent&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, f: F) -&gt; <span class="self">Self</span>::MappedSelf&lt;NewEvent&gt;
+    <span class="kw">where
+        </span>F: Fn(NewEvent) -&gt; Ev + Send + Sync + Copy + <span class="lifetime">&#39;static</span>,
+        Ev: <span class="lifetime">&#39;static</span>,
+        NewEvent: <span class="lifetime">&#39;static</span>;
+}
+
+<span class="doccomment">/// Allows Crux to construct app&#39;s set of required capabilities, providing context
+/// they can then use to request effects and dispatch events.
+///
+/// `new_with_context` is called by Crux and should return an instance of the app&#39;s `Capabilities` type with
+/// all capabilities constructed with context passed in. Use `Context::with_effect` to
+/// create an appropriate context instance with the effect constructor which should
+/// wrap the requested operations.
+///
+/// Note that this implementation can be generated by the derive macro `Effect` (in the `crux_macros` crate).
+///
+/// ```rust,ignore
+/// impl crux_core::WithContext&lt;App, Effect&gt; for Capabilities {
+///     fn new_with_context(context: CapabilityContext&lt;Effect, Event&gt;) -&gt; Capabilities {
+///         Capabilities {
+///             http: Http::new(context.with_effect(Effect::Http)),
+///             render: Render::new(context.with_effect(|_| Effect::Render)),
+///         }
+///     }
+/// }
+/// ```
+</span><span class="kw">pub trait </span>WithContext&lt;App, Ef&gt;
+<span class="kw">where
+    </span>App: <span class="kw">crate</span>::App,
+{
+    <span class="kw">fn </span>new_with_context(context: CapabilityContext&lt;Ef, App::Event&gt;) -&gt; App::Capabilities;
+}
+
+<span class="doccomment">/// An interface for capabilities to interact with the app and the shell.
+///
+/// To use [`update_app`](CapabilityContext::update_app), [`notify_shell`](CapabilityContext::notify_shell)
+/// or [`request_from_shell`](CapabilityContext::request_from_shell), spawn a task first.
+///
+/// For example (from `crux_time`)
+///
+/// ```rust,ignore
+/// pub fn get&lt;F&gt;(&amp;self, callback: F)
+/// where
+///     F: Fn(TimeResponse) -&gt; Ev + Send + Sync + &#39;static,
+/// {
+///     let ctx = self.context.clone();
+///     self.context.spawn(async move {
+///         let response = ctx.request_from_shell(TimeRequest).await;
+///
+///         ctx.update_app(callback(response));
+///     });
+/// }
+/// ```
+///
+</span><span class="kw">pub struct </span>CapabilityContext&lt;Ef, Event&gt; {
+    inner: std::sync::Arc&lt;ContextInner&lt;Ef, Event&gt;&gt;,
+}
+
+<span class="kw">struct </span>ContextInner&lt;Ef, Event&gt; {
+    steps: Sender&lt;Step&lt;Ef&gt;&gt;,
+    events: Sender&lt;Event&gt;,
+    spawner: <span class="kw">crate</span>::executor::Spawner,
+}
+
+<span class="kw">impl</span>&lt;Ef, Ev&gt; Clone <span class="kw">for </span>CapabilityContext&lt;Ef, Ev&gt; {
+    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            inner: Arc::clone(<span class="kw-2">&amp;</span><span class="self">self</span>.inner),
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;T, Ev&gt; CapabilityContext&lt;T, Ev&gt;
+<span class="kw">where
+    </span>T: Send + <span class="lifetime">&#39;static</span>,
+    Ev: <span class="lifetime">&#39;static</span>,
+{
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        steps: Sender&lt;Step&lt;T&gt;&gt;,
+        events: Sender&lt;Ev&gt;,
+        spawner: <span class="kw">crate</span>::executor::Spawner,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>inner = Arc::new(ContextInner {
+            steps,
+            events,
+            spawner,
+        });
+
+        CapabilityContext { inner }
+    }
+
+    <span class="doccomment">/// Spawn a task to do the asynchronous work. Within the task, async code
+    /// can be used to interact with the Shell and the App.
+    </span><span class="kw">pub fn </span>spawn(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw">impl </span>Future&lt;Output = ()&gt; + <span class="lifetime">&#39;static </span>+ Send) {
+        <span class="self">self</span>.inner.spawner.spawn(f);
+    }
+
+    <span class="doccomment">/// Send an effect request to the shell in a fire and forget fashion. The
+    /// provided `operation` does not expect anything to be returned back.
+    </span><span class="kw">pub async fn </span>notify_shell(<span class="kw-2">&amp;</span><span class="self">self</span>, operation: T) {
+        <span class="comment">// This function might look like it doesn&#39;t need to be async but
+        // it&#39;s important that it is.  It forces all capabilities to
+        // spawn onto the executor which keeps the ordering of effects
+        // consistent with their function calls.
+        </span><span class="self">self</span>.inner.steps.send(Step::once(operation));
+    }
+
+    <span class="doccomment">/// Send an event to the app. The event will be processed a the next
+    /// run of the update loop. You can call `update_app` several times,
+    /// the events will be queued up and processed sequentially after your
+    /// async task either `await`s or finishes.
+    </span><span class="kw">pub fn </span>update_app(<span class="kw-2">&amp;</span><span class="self">self</span>, event: Ev) {
+        <span class="self">self</span>.inner.events.send(event);
+    }
+
+    <span class="doccomment">/// Construct a CapabilityContext with a specific effect wrapper. The
+    /// `func` argument will typically be an enum variant constructor, but
+    /// can be any function taking the capability&#39;s operation type and returning
+    /// the effect type.
+    ///
+    /// This will likely only be called from the implementation of [`WithContext`]
+    /// for the app&#39;s `Capabilities` type.
+    </span><span class="kw">pub fn </span>with_effect&lt;OtherT, F&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, func: F) -&gt; CapabilityContext&lt;OtherT, Ev&gt;
+    <span class="kw">where
+        </span>F: Fn(OtherT) -&gt; T + Sync + Send + Copy + <span class="lifetime">&#39;static</span>,
+        OtherT: <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">let </span>inner = Arc::new(ContextInner {
+            steps: <span class="self">self</span>.inner.steps.map_effect(func),
+            events: <span class="self">self</span>.inner.events.clone(),
+            spawner: <span class="self">self</span>.inner.spawner.clone(),
+        });
+
+        CapabilityContext { inner }
+    }
+
+    <span class="doccomment">/// Transform the CapabilityContext into one which uses the provided function to
+    /// map each event dispatched with `update_app` to a different event type.
+    ///
+    /// This is useful when composing apps from modules to wrap a submodule&#39;s
+    /// event type with a specific variant of the parent module&#39;s event, so it can
+    /// be forwarded to the submodule when received.
+    ///
+    /// In a typical case you would implement `From` on the submodule&#39;s `Capabilities` type
+    ///
+    /// ```rust,ignore
+    /// impl From&lt;&amp;ParentModuleCapabilities&gt; for SubmoduleCapabilities {
+    ///     fn from(incoming: &amp;ParentModuleCapabilities) -&gt; Self {
+    ///         SubmoduleCapabilities {
+    ///             some_capability: incoming.some_capability.map_event(Event::Submodule),
+    ///             render: incoming.render.map_event(Event::Submodule),
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// in the parent module&#39;s `update` function, you can then call `.into()` on the
+    /// capabilities, before passing them down to the submodule.
+    </span><span class="kw">pub fn </span>map_event&lt;NewEv, F&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, func: F) -&gt; CapabilityContext&lt;T, NewEv&gt;
+    <span class="kw">where
+        </span>F: Fn(NewEv) -&gt; Ev + Sync + Send + <span class="lifetime">&#39;static</span>,
+        NewEv: <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">let </span>inner = Arc::new(ContextInner {
+            steps: <span class="self">self</span>.inner.steps.clone(),
+            events: <span class="self">self</span>.inner.events.map_input(func),
+            spawner: <span class="self">self</span>.inner.spawner.clone(),
+        });
+
+        CapabilityContext { inner }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>send_step(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Step&lt;T&gt;) {
+        <span class="self">self</span>.inner.steps.send(step);
+    }
+}
+
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>static_assertions::assert_impl_all;
+
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">enum </span>Effect {}
+
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">enum </span>Event {}
+
+    <span class="macro">assert_impl_all!</span>(CapabilityContext&lt;Effect, Event&gt;: Send, Sync);
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="crux_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

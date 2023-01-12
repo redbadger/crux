@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["Client","An HTTP client, capable of sending `Request`s"]]};

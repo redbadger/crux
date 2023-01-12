@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Cross-platform app development in Rust"><meta name="keywords" content="rust, rustlang, rust-lang, crux_core"><title>crux_core - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../normalize.css"><link rel="stylesheet" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../ayu.css" disabled><link rel="stylesheet" href="../dark.css" disabled><link rel="stylesheet" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script defer src="../crates.js"></script><script defer src="../main.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../crux_core/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div></a><h2></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../crux_core/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div></a><h2 class="location"><a href="#">Crate crux_core</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.2.0</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn">Crate <a class="mod" href="#">crux_core</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/crux_core/lib.rs.html#1-331">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Cross-platform app development in Rust</p>
+<p>Crux helps you share your app’s business logic and behavior across mobile (iOS and Android) and web,
+as a single, reusable core built with Rust.</p>
+<p>Unlike React Native, the user interface layer is built natively, with modern declarative UI frameworks
+such as Swift UI, Jetpack Compose and React/Vue or a WASM based framework on the web.</p>
+<p>The UI layer is as thin as it can be, and all other work is done by the shared core.
+The interface with the core has static type checking across languages.</p>
+<h3 id="getting-started"><a href="#getting-started">Getting Started</a></h3>
+<p>Crux applications are split into two parts: a Core written in Rust and a Shell written in the platform
+native language (e.g. Swift or Kotlin).
+The Core architecture is based on <a href="https://guide.elm-lang.org/architecture/">Elm architecture</a>.</p>
+<p>Quick glossary of terms to help you follow the example:</p>
+<ul>
+<li>
+<p>Core - the shared core written in Rust</p>
+</li>
+<li>
+<p>Shell - the native side of the app on each platform handling UI and executing side effects</p>
+</li>
+<li>
+<p>App - the main module of the core containing the application logic, especially model changes
+and side-effects triggered by events. App can be composed from modules, each resembling a smaller, simpler app.</p>
+</li>
+<li>
+<p>Event - main input for the core, typically triggered by user interaction in the UI</p>
+</li>
+<li>
+<p>Model - data structure (typically tree-like) holding the entire application state</p>
+</li>
+<li>
+<p>View model - data structure describing the current state of the user interface</p>
+</li>
+<li>
+<p>Effect - A side-effect the core can request from the shell. This is typically a form of I/O or similar
+interaction with the host platform. Updating the UI is considered an effect.</p>
+</li>
+<li>
+<p>Capability - A user-friendly API used to request effects and provide events that should be dispatched
+when the effect is completed. For example, a HTTP client is a capability.</p>
+</li>
+</ul>
+<p>Below is a minimal example of a Crux-based application Core:</p>
+
+<div class="example-wrap ignore"><div class='tooltip'>ⓘ</div><pre class="rust rust-example-rendered"><code><span class="comment">// src/app.rs
+
+</span><span class="kw">use </span>serde::{Serialize, Deserialize};
+<span class="kw">use </span>crux_core::{App, render::Render};
+
+<span class="comment">// Model describing the application state
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">struct </span>Model {
+    count: isize,
+}
+
+<span class="comment">// Event describing the actions that can be taken
+</span><span class="attribute">#[derive(Serialize, Deserialize)]
+</span><span class="kw">enum </span>Event {
+    Increment,
+    Decrement,
+    Reset,
+}
+
+<span class="comment">// Capabilities listing the side effects the Core
+// will use to request side effects from the Shell
+</span><span class="attribute">#[derive(Effect)]
+</span><span class="kw">pub struct </span>Capabilities {
+    <span class="kw">pub </span>render: Render&lt;Event&gt;
+}
+
+<span class="kw">impl </span>App <span class="kw">for </span>Hello {
+    <span class="comment">// Use the above Message as message
+    </span><span class="kw">type </span>Event = Event;
+    <span class="comment">// Use the above Model as model
+    </span><span class="kw">type </span>Model = Model;
+    <span class="kw">type </span>ViewModel = String;
+    <span class="comment">// Use the above Capabilities
+    </span><span class="kw">type </span>Capabilities = Capabilities;
+
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;</span><span class="self">self</span>, event: Event, model: <span class="kw-2">&amp;mut </span>Model, caps: <span class="kw-2">&amp;</span>Capabilities) {
+        <span class="kw">match </span>event {
+            Event::Increment =&gt; model.count += <span class="number">1</span>,
+            Event::Decrement =&gt; model.count -= <span class="number">1</span>,
+            Event::Reset =&gt; model.count = <span class="number">0</span>,
+        };
+
+        <span class="comment">// Request a UI update
+        </span>caps.render.render()
+    }
+
+    <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, model: <span class="kw-2">&amp;</span>Model) -&gt; <span class="self">self</span>::ViewModel {
+        <span class="macro">format!</span>(<span class="string">&quot;Count is: {}&quot;</span>, model.count)
+    }
+}</code></pre></div>
+<h3 id="integrating-with-a-shell"><a href="#integrating-with-a-shell">Integrating with a Shell</a></h3>
+<p>To use the application in a user interface shell, you need to expose the core interface for FFI.
+This “plumbing” will likely be simplified with macros in the next version of Crux.</p>
+
+<div class="example-wrap ignore"><div class='tooltip'>ⓘ</div><pre class="rust rust-example-rendered"><code><span class="comment">// src/lib.rs
+</span><span class="kw">pub mod </span>app;
+
+<span class="kw">use </span>lazy_static::lazy_static;
+<span class="kw">use </span>wasm_bindgen::prelude::wasm_bindgen;
+
+<span class="kw">pub use </span>crux_core::Request;
+<span class="kw">use </span>crux_core::Core;
+
+<span class="kw">pub use </span>app::<span class="kw-2">*</span>;
+
+<span class="macro">uniffi_macros::include_scaffolding!</span>(<span class="string">&quot;hello&quot;</span>);
+
+<span class="macro">lazy_static! </span>{
+    <span class="kw">static </span><span class="kw-2">ref </span>CORE: Core&lt;Effect, App&gt; = Core::new::&lt;Capabilities&gt;();
+}
+
+<span class="attribute">#[wasm_bindgen]
+</span><span class="kw">pub fn </span>message(data: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
+    CORE.message(data)
+}
+
+<span class="attribute">#[wasm_bindgen]
+</span><span class="kw">pub fn </span>response(uuid: <span class="kw-2">&amp;</span>[u8], data: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
+    CORE.response(uuid, data)
+}
+
+<span class="attribute">#[wasm_bindgen]
+</span><span class="kw">pub fn </span>view() -&gt; Vec&lt;u8&gt; {
+    CORE.view()
+}</code></pre></div>
+<p>You will also need a <code>hello.udl</code> file describing the foreign function interface:</p>
+
+<div class="example-wrap ignore"><div class='tooltip'>ⓘ</div><pre class="rust rust-example-rendered"><code><span class="comment">// src/hello.udl
+</span>namespace hello {
+  sequence&lt;u8&gt; message([ByRef] sequence&lt;u8&gt; msg);
+  sequence&lt;u8&gt; response([ByRef] sequence&lt;u8&gt; res);
+  sequence&lt;u8&gt; view();
+};</code></pre></div>
+<p>Finally, you will need to set up the type generation for the <code>Model</code>, <code>Message</code> and <code>ViewModel</code> types.
+See [typegen] for details.</p>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><div class="item-table"><div class="item-row"><div class="item-left import-item" id="reexport.Capability"><code>pub use capability::<a class="trait" href="capability/trait.Capability.html" title="trait crux_core::capability::Capability">Capability</a>;</code></div></div><div class="item-row"><div class="item-left import-item" id="reexport.WithContext"><code>pub use capability::<a class="trait" href="capability/trait.WithContext.html" title="trait crux_core::capability::WithContext">WithContext</a>;</code></div></div></div><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="capability/index.html" title="crux_core::capability mod">capability</a></div><div class="item-right docblock-short">Capabilities provide a user-friendly API to request side-effects from the shell.</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="render/index.html" title="crux_core::render mod">render</a></div><div class="item-right docblock-short">Built-in capability used to notify the Shell that a UI update is necessary.</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="testing/index.html" title="crux_core::testing mod">testing</a></div><div class="item-right docblock-short">Testing support for unit testing Crux apps.</div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Core.html" title="crux_core::Core struct">Core</a></div><div class="item-right docblock-short">The Crux core. Create an instance of this type with your effect type, and your app type as type parameters</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Request.html" title="crux_core::Request struct">Request</a></div><div class="item-right docblock-short">Request for a side-effect passed from the Core to the Shell. The <code>uuid</code> links
+the <code>Request</code> with the corresponding call to <a href="struct.Core.html#method.response" title="Core::response"><code>Core::response</code></a> to pass the data back
+to the <a href="trait.App.html#tymethod.update" title="App::update"><code>App::update</code></a> function (wrapped in the event provided to the capability originating the effect).</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.App.html" title="crux_core::App trait">App</a></div><div class="item-right docblock-short">Implement <a href="trait.App.html" title="App">App</a> on your type to make it into a Crux app. Use your type implementing <a href="trait.App.html" title="App">App</a>
+as the type argument to <a href="struct.Core.html" title="Core">Core</a>.</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="crux_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>
