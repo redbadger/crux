@@ -15,7 +15,7 @@ pub struct Hello;
 
 We need to implement `Default` so that Crux can construct the app for us.
 
-To turn it into an app, we need to implement the `App` trait from the `crux_core` crate. 
+To turn it into an app, we need to implement the `App` trait from the `crux_core` crate.
 
 ```rust
 use crux_core::App;
@@ -36,7 +36,7 @@ One of the key design choices in Crux is that the Core is free of side-effects (
 
 This makes the core portable between platforms, and, importantly, really easy to test. It also separates the intent, the "functional" requirements, from the implementation of the side-effects and the "non-functional" requirements (NFRs). For example, your application knows it wants to store data in a SQL database, but it doesn't need to know or care whether that database is local or remote. That decision can even change as the application evolves, and be different on each platform. If you want to understand this better before we carry on, you can read a lot more about how side-effects work in Crux in the chapter on [capabilities](./capabilities.md).
 
-To _ask_ the Shell for side effects, it will need to know what side effects it needs to handle, so we will need to declare them (as an enum). _Effects_ are simply messages describing what should happen, and for more complex side-effects (e.g. HTTP), they would be too unwieldy to create by hand, so to help us create them,  Crux provides _capabilities_ - reusable libraries which give us a nice API for requesting side-effects. We'll look at them in a lot more detail later.
+To _ask_ the Shell for side effects, it will need to know what side effects it needs to handle, so we will need to declare them (as an enum). _Effects_ are simply messages describing what should happen, and for more complex side-effects (e.g. HTTP), they would be too unwieldy to create by hand, so to help us create them, Crux provides _capabilities_ - reusable libraries which give us a nice API for requesting side-effects. We'll look at them in a lot more detail later.
 
 Let's start with the basics:
 
@@ -79,7 +79,9 @@ pub struct Capabilities {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum Event;
+pub enum Event {
+    None, // we can't instantiate an empty enum, so let's have a dummy variant for now
+}
 
 #[derive(Default)]
 pub struct Hello;
@@ -119,7 +121,7 @@ impl App for Hello {
     }
 
     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-        "Hello World!".to_string()
+        "Hello World".to_string()
     }
 }
 ```
@@ -146,7 +148,7 @@ mod tests {
         let mut model = Model::default();
 
         // Call 'update' and request effects
-        let update = hello.update((), &mut model);
+        let update = hello.update(Event::None, &mut model);
 
         // Check update asked us to `Render`
         assert_eq!(update.effects[0], Effect::Render(RenderOperation));
