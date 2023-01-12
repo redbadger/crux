@@ -10,12 +10,18 @@ pub enum Event {
 #[derive(Default)]
 pub struct Model;
 
+#[derive(Effect)]
+#[effect(app = "Hello")]
+pub struct Capabilities {
+    render: Render<Event>,
+}
+
 #[derive(Default)]
 pub struct Hello;
 
 impl App for Hello {
-    type Model = Model;
     type Event = Event;
+    type Model = Model;
     type ViewModel = String;
     type Capabilities = Capabilities;
 
@@ -26,12 +32,6 @@ impl App for Hello {
     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
         "Hello World".to_string()
     }
-}
-
-#[derive(Effect)]
-#[effect(app = "Hello")]
-pub struct Capabilities {
-    render: Render<Event>,
 }
 
 #[cfg(test)]

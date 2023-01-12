@@ -14,12 +14,18 @@ pub struct Model {
     count: isize,
 }
 
+#[derive(Effect)]
+#[effect(app = "Hello")]
+pub struct Capabilities {
+    render: Render<Event>,
+}
+
 #[derive(Default)]
 pub struct Hello;
 
 impl App for Hello {
-    type Model = Model;
     type Event = Event;
+    type Model = Model;
     type ViewModel = String;
     type Capabilities = Capabilities;
 
@@ -36,12 +42,6 @@ impl App for Hello {
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         format!("Count is: {}", model.count)
     }
-}
-
-#[derive(Effect)]
-#[effect(app = "Hello")]
-pub struct Capabilities {
-    render: Render<Event>,
 }
 
 #[cfg(test)]

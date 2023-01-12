@@ -169,10 +169,10 @@ pub use capability::{Capability, WithContext};
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
 pub trait App: Default {
-    /// Model, typically a `struct` defines the internal state of the application
-    type Model: Default;
     /// Event, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event: Send + 'static;
+    /// Model, typically a `struct` defines the internal state of the application
+    type Model: Default;
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
