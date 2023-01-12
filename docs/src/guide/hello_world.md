@@ -151,12 +151,13 @@ mod tests {
         let update = hello.update(Event::None, &mut model);
 
         // Check update asked us to `Render`
-        assert_eq!(update.effects[0], Effect::Render(RenderOperation));
-
-        let actual_view = hello.view(&mut model);
-        let expected_view = "Hello World".to_string();
+        let actual_effect = &update.effects[0];
+        let expected_effect = &Effect::Render(RenderOperation);
+        assert_eq!(actual_effect, expected_effect);
 
         // Make sure the view matches our expectations
+        let actual_view = &hello.view(&mut model);
+        let expected_view = "Hello World";
         assert_eq!(actual_view, expected_view);
     }
 }
@@ -240,7 +241,10 @@ mod test {
 
         let update = app.update(Event::Reset, &mut model);
 
-        assert_eq!(update.effects[0], Effect::Render(RenderOperation));
+        // Check update asked us to `Render`
+        let actual_effect = &update.effects[0];
+        let expected_effect = &Effect::Render(RenderOperation);
+        assert_eq!(actual_effect, expected_effect);
     }
 
     #[test]
@@ -250,7 +254,6 @@ mod test {
 
         let actual_view = app.view(&mut model);
         let expected_view = "Count is: 0";
-
         assert_eq!(actual_view, expected_view);
     }
 
@@ -263,7 +266,6 @@ mod test {
 
         let actual_view = app.view(&mut model);
         let expected_view = "Count is: 1";
-
         assert_eq!(actual_view, expected_view);
     }
 
@@ -276,7 +278,6 @@ mod test {
 
         let actual_view = app.view(&mut model);
         let expected_view = "Count is: -1";
-
         assert_eq!(actual_view, expected_view);
     }
 
@@ -290,7 +291,6 @@ mod test {
 
         let actual_view = app.view(&mut model);
         let expected_view = "Count is: 0";
-
         assert_eq!(actual_view, expected_view);
     }
 
@@ -307,7 +307,6 @@ mod test {
 
         let actual_view = app.view(&mut model);
         let expected_view = "Count is: 1";
-
         assert_eq!(actual_view, expected_view);
     }
 }
