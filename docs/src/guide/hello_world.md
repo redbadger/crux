@@ -126,7 +126,7 @@ impl App for Hello {
 }
 ```
 
-The `update` function is the heart of the app. It responds to events by (optionally) updating the state and requesting some effects by using the capabilitie's APIs.
+The `update` function is the heart of the app. It responds to events by (optionally) updating the state and requesting some effects by using the capability's APIs.
 
 All our `update` function does is ignore all its arguments and ask the Shell to render the screen. It's a hello world after all.
 
@@ -314,7 +314,7 @@ mod test {
 
 Hopefully those all pass. We are now sure that when we build an actual UI for this, it will _work_, and we'll be able to focus on making it looking delightful.
 
-In more complicated cases, it might be helful to inspect the `model` directly. It's up to you to make the call of which one is more appropriate, in some sense it's the difference between black-box and white-box testing, so you should probably be doing both to get the confidence you need that your app is working.
+In more complicated cases, it might be helpful to inspect the `model` directly. It's up to you to make the call of which one is more appropriate, in some sense it's the difference between black-box and white-box testing, so you should probably be doing both to get the confidence you need that your app is working.
 
 ## Remote API
 
@@ -322,20 +322,20 @@ Before we dive into the thinking behind the architecture, let's add one more fea
 
 We'll add a simple integration with a counter API we've prepared at <https://crux-counter.fly.dev>. All it does is count up an down like our local counter. It supports three requests
 
-* `GET /` returns the current count
-* `POST /inc` increments the counter
-* `POST /dec` decrements the counter
+- `GET /` returns the current count
+- `POST /inc` increments the counter
+- `POST /dec` decrements the counter
 
 All three API calls return the state of the counter in JSON, which looks something like this
 
 ```json
 {
-    "value": 34,
-    "updated_at": 1673265904973
+  "value": 34,
+  "updated_at": 1673265904973
 }
 ```
 
-We can represent that with a struct and use Serde for the serialisation, and we'll need to update the model as well. We'll also update the count optimistically and keep track of when the server confirmed it (there are other ways the model these semantics, but let's keep it straightforward for now).
+We can represent that with a struct and use Serde for the serialization, and we'll need to update the model as well. We'll also update the count optimistically and keep track of when the server confirmed it (there are other ways to model these semantics, but let's keep it straightforward for now).
 
 ```rust
 #[derive(Default)]
@@ -368,12 +368,12 @@ fn view(&self, model: &Self::Model) -> Self::ViewModel {
         Some(false) => " (pending)".to_string(),
         None => "Loading...".to_string(),
     };
-    
+
     format!("{}{}", model.count.value.to_string(), &suffix)
 }
 ```
 
-You can see that the view function caters to three states - not knowing the count, having set a count but not having it confirmed, and having the count confirmed by the server. 
+You can see that the view function caters to three states - not knowing the count, having set a count but not having it confirmed, and having the count confirmed by the server.
 
 In a real-world app, it's likely that this information would be captured in a struct rather than converted to string inside the core, so that the UI can decide how to present it. The date formatting, however, is an example of something you may want to do consistently across all platforms and keep inside the Core. When making these choices, think about who's decisions they are, and do they need to be consistent across platforms or flexible. You will no doubt get a number of those calls wrong, but that's ok, the type system is here to help you refactor later and update the shells to work with the changes.
 
@@ -414,7 +414,7 @@ fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabil
 }
 ```
 
-To request the respective HTTP calls, we'll use [`crux_http`](https://github.com/redbadger/crux/tree/master/crux_http) the built-in HTTP client. Since this is the first capability we're using, some things won't be immediately clear, but we should get ther by the end of this chapter.
+To request the respective HTTP calls, we'll use [`crux_http`](https://github.com/redbadger/crux/tree/master/crux_http) the built-in HTTP client. Since this is the first capability we're using, some things won't be immediately clear, but we should get there by the end of this chapter.
 
 The first thing to know is that the HTTP responses will be sent back to the update function as an event. That's what the `Event::Set` is for. The `Event` type looks as follows:
 
@@ -429,7 +429,7 @@ pub enum Event {
 }
 ```
 
-We decorate the `Set` variant with `#[serde(skip)]` for two reasons: one, there's a technical limitation stopping us easily serialising `crux_http::Response`, and two, there's no reason - that variant should never be sent by the Shell across the FFI boundary, which is the reason for the need to serialise in the first place, in a way, it is private to the Core.
+We decorate the `Set` variant with `#[serde(skip)]` for two reasons: one, there's currently a technical limitation stopping us easily serializing `crux_http::Response`, and two, there's no reason that variant should never be sent by the Shell across the FFI boundary, which is the reason for the need to serialize in the first place — in a way, it is private to the Core.
 
 Finally, let's get rid of those TODOs. We'll need to add crux_http in the `Capabilities` type, so that the `update` function has access to it:
 
@@ -443,7 +443,7 @@ pub struct Capabilities {
 }
 ```
 
-This may seem like needless boilerplate, but it allows us to only use the capabilities we need and, more importantly, allow capabilities to be built by anyone. Later on, we'll also see that Crux apps [compose](composing.md), and rely on each app's `Capabilities` type to declare its needs, make sure the necessary capabilities exist in the parent app.
+This may seem like needless boilerplate, but it allows us to only use the capabilities we need and, more importantly, allow capabilities to be built by anyone. Later on, we'll also see that Crux apps [compose](composing.md), relying on each app's `Capabilities` type to declare its needs, and making sure the necessary capabilities exist in the parent app.
 
 We can now implement those TODOs, so lets do it.
 
@@ -495,9 +495,9 @@ fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabil
 
 ```
 
-There's a few things of note. The first one is that the `.send` API at the end of each chain of calls to `crux_http` expects a function that wraps its argument (a `Result` of a http response) in a variant of `Event`. Fortunately, enum variants create just such a function, and we can use it. The way to read the call is "Send a get request, parse the response as JSON and then call me again with `Event::Set` carrying the result". 
+There's a few things of note. The first one is that the `.send` API at the end of each chain of calls to `crux_http` expects a function that wraps its argument (a `Result` of a http response) in a variant of `Event`. Fortunately, enum tuple variants create just such a function, and we can use it. The way to read the call is "Send a get request, parse the response as JSON, which should be deserialized as a `Counter`, and then call me again with `Event::Set` carrying the result".
 
-The other thing of note is that the capability calls don't block. They queue up requests to send to the shell and execution continues immediately. The requests will be sent in the order they were queued and the asynchronous execution is the job of the shell. 
+The other thing of note is that the capability calls don't block. They queue up requests to send to the shell and execution continues immediately. The requests will be sent in the order they were queued and the asynchronous execution is the job of the shell.
 
 You can find the the complete example, including the shell implementations [in the Crux repo](https://github.com/redbadger/crux/blob/master/examples/counter/). It's interesting to take a closer look at the unit tests
 
@@ -551,6 +551,6 @@ fn set_counter() {
 }
 ```
 
-You can see how easy it is to check that the app is requesting the right side effects, with the right arguments, and even test a chain of interactions and make sure the behavior is correct, all without mocking or stubbing anything or worrying about `async` code. 
+You can see how easy it is to check that the app is requesting the right side effects, with the right arguments, and even test a chain of interactions and make sure the behavior is correct, all without mocking or stubbing anything or worrying about `async` code.
 
 In the next chapter, we can put the example into perspective and discuss the architecture it follows, inspired by Elm.
