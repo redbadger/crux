@@ -10,6 +10,11 @@ pub enum Event {
 #[derive(Default)]
 pub struct Model;
 
+#[derive(Serialize, Deserialize)]
+pub struct ViewModel {
+    data: String,
+}
+
 #[derive(Effect)]
 #[effect(app = "Hello")]
 pub struct Capabilities {
@@ -22,7 +27,7 @@ pub struct Hello;
 impl App for Hello {
     type Event = Event;
     type Model = Model;
-    type ViewModel = String;
+    type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
     fn update(&self, _event: Self::Event, _model: &mut Self::Model, caps: &Self::Capabilities) {
@@ -30,7 +35,9 @@ impl App for Hello {
     }
 
     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-        "Hello World".to_string()
+        ViewModel {
+            data: "Hello World".to_string(),
+        }
     }
 }
 
@@ -53,7 +60,7 @@ mod tests {
         assert_eq!(actual_effect, expected_effect);
 
         // Make sure the view matches our expectations
-        let actual_view = &hello.view(&mut model);
+        let actual_view = &hello.view(&mut model).data;
         let expected_view = "Hello World";
         assert_eq!(actual_view, expected_view);
     }
