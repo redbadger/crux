@@ -95,7 +95,7 @@ Okay, that took a little bit of effort, but with this short detour out of the wa
 
 We now have almost all the building blocks to implement the `App` trait. We're just missing two simple types. First, a `Model` to keep our app's state, it makes sense to make that a struct. It needs to implement `Default`, which gives us an opportunity to set up any initial state the app might need. Second, we need a `ViewModel`, which is a representation of what the user should see on screen. It might be tempting to represent the state and the view with the same type, but in more complicated cases it will be too constraining, and probably non-obvious what data are for internal bookkeeping and what should end up on screen, so Crux separates the concepts. Nothing stops you using the same type for both `Model` and `ViewModel` if your app is simple enough.
 
-We'll start with a unit struct for model and a simple `String` for the view model.
+We'll start with a few simple types for events, model and view model.
 
 Now we can finally implement the trait with its two methods, `update` and `view`.
 
@@ -104,16 +104,32 @@ use crux_core::{render::Render, App};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize)]
+pub enum Event {
+    None,
+}
+
 #[derive(Default)]
 pub struct Model;
 
 #[derive(Serialize, Deserialize)]
-pub enum Event;
+pub struct ViewModel {
+    data: String,
+}
+
+#[derive(Effect)]
+#[effect(app = "Hello")]
+pub struct Capabilities {
+    render: Render<Event>,
+}
+
+#[derive(Default)]
+pub struct Hello;
 
 impl App for Hello {
     type Event = Event;
     type Model = Model;
-    type ViewModel = String;
+    type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
     fn update(&self, _event: Self::Event, _model: &mut Self::Model, caps: &Self::Capabilities) {
@@ -121,7 +137,9 @@ impl App for Hello {
     }
 
     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-        "Hello World".to_string()
+        ViewModel {
+            data: "Hello World".to_string(),
+        }
     }
 }
 ```
@@ -130,7 +148,7 @@ The `update` function is the heart of the app. It responds to events by (optiona
 
 All our `update` function does is ignore all its arguments and ask the Shell to render the screen. It's a hello world after all.
 
-The `view` function returns the representation of what we want the Shell to show on screen. And true to form, it returns `"Hello World!"`.
+The `view` function returns the representation of what we want the Shell to show on screen. And true to form, it returns an instance of the `ViewModel` struct containing `Hello World!`.
 
 That's a working hello world done, lets try it. As we said at the beginning, for now we'll do it from tests. It may sound like a concession, but in fact, this is the intended way for apps to be developed with Crux - from inside out, with unit tests, focusing on behavior first and presentation later, roughly corresponding to doing the user experience first, then the visual design.
 
@@ -192,6 +210,15 @@ impl App for Hello {
 }
 ```
 
+We'll also need a simple `ViewModel` struct to hold the data that the Shell will render.
+
+```rust
+#[derive(Serialize, Deserialize)]
+pub struct ViewModel {
+    count: String,
+}
+```
+
 Great. All that's left is adding the behaviour. That's where `Event` comes in:
 
 ```rust
@@ -206,11 +233,10 @@ enum Event {
 The event type covers all the possible events the app can respond to. "Will that not get massive really quickly??" I hear you ask. Don't worry about that, there is [a nice way to make this scale](./composing.md) and get reuse as well. Let's carry on. We need to actually handle those messages.
 
 ```rust
-
 impl App for Hello {
-    type Model = Model;
     type Event = Event;
-    type ViewModel = String;
+    type Model = Model;
+    type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
@@ -223,6 +249,12 @@ impl App for Hello {
         caps.render.render();
     }
 
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        ViewModel {
+            count: format!("Count is: {}", model.count),
+        }
+    }
+}
 // ...
 ```
 

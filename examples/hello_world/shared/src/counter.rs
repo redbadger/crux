@@ -14,6 +14,11 @@ pub struct Model {
     count: isize,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ViewModel {
+    count: String,
+}
+
 #[derive(Effect)]
 #[effect(app = "Hello")]
 pub struct Capabilities {
@@ -26,7 +31,7 @@ pub struct Hello;
 impl App for Hello {
     type Event = Event;
     type Model = Model;
-    type ViewModel = String;
+    type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
@@ -40,7 +45,9 @@ impl App for Hello {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        format!("Count is: {}", model.count)
+        ViewModel {
+            count: format!("Count is: {}", model.count),
+        }
     }
 }
 
@@ -67,7 +74,7 @@ mod test {
         let app = AppTester::<Hello, _>::default();
         let mut model = Model::default();
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&mut model).count;
         let expected_view = "Count is: 0";
         assert_eq!(actual_view, expected_view);
     }
@@ -79,7 +86,7 @@ mod test {
 
         app.update(Event::Increment, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&mut model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
     }
@@ -91,7 +98,7 @@ mod test {
 
         app.update(Event::Decrement, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&mut model).count;
         let expected_view = "Count is: -1";
         assert_eq!(actual_view, expected_view);
     }
@@ -104,7 +111,7 @@ mod test {
         app.update(Event::Increment, &mut model);
         app.update(Event::Reset, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&mut model).count;
         let expected_view = "Count is: 0";
         assert_eq!(actual_view, expected_view);
     }
@@ -120,7 +127,7 @@ mod test {
         app.update(Event::Increment, &mut model);
         app.update(Event::Increment, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&mut model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
     }

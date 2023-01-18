@@ -8,6 +8,13 @@ crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
 [dependencies]
-crux_core = { path = "../../../crux_core" }
-crux_macros = { path = "../../../crux_macros" }
+crux_core = { version = "0.2", path = "../../../crux_core" }
+crux_macros = { version = "0.1", path = "../../../crux_macros" }
 serde = { workspace = true, features = ["derive"] }
+lazy_static = "1.4.0"
+uniffi = "0.22.0"
+uniffi_macros = "0.22.0"
+wasm-bindgen = "0.2.83"
+
+[build-dependencies]
+uniffi_build = { version = "0.22.0", features = ["builtin-bindgen"] }
