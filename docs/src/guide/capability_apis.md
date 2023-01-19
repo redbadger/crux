@@ -123,7 +123,10 @@ We now also need an output type:
 
 ```rust
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct DelayOutput(Option<usize>)
+pub enum DelayOutput {
+    Random(usize),
+    TimeUp
+}
 ```
 
 And that changes the `Operation` trait implementation:
@@ -133,8 +136,6 @@ impl Operation for DelayOperation {
     type Output = DelayOutput;
 }
 ```
-
-The output type could also be an enum, but in this case a tuple srtuct wrapping an `Option` is enough.
 
 The updated implementation looks like the following:
 
@@ -163,7 +164,10 @@ where
         self.context.spawn(async move {
             let response = ctx.request_from_shell(DelayOperation::GetRandom(min, max)).await
 
-            let millis = response.0.expect("Expected a random number");
+            let millis = match response {
+                Random(m) => m,
+                _ => panic!("Expected a random number")
+            }
             ctx.request_from_shell(DelayOperation::Delay(millis)).await
 
             ctx.update_app(event(millis));
