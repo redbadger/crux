@@ -1,8 +1,8 @@
-# iOS with Swift
+# iOS with Swift and SwiftUI
 
-We want to make setting up xCode to work with Crux really easy. We want to simplify and automate this as much as possible, but at the moment there is some manual configuration to do.
+We want to make setting up xCode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do.
 
-This only needs doing once, so we hope it's not too much trouble, but in the future, we intend to provide some tooling to help with these set up activities. If you know of any better ways than those we describe below (e.g. how to do xCode project configuration form the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+> This only needs doing once, so we hope it's not too much trouble, but in the future, we intend to provide some tooling to help with these set up activities. If you know of any better ways than those we describe below (e.g. how to do xCode project configuration from the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
 
 ## Create an iOS App
 
@@ -150,7 +150,9 @@ In `File -> Add Files to iOS`, add `/shared_types/generated/swift/shared_types.s
 
 ## Create some UI and run in the Simulator
 
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of UI for iOS in the Crux repository. The simplest is the Hello World example, but this deliberately does not have an iOS example.
+### Hello World counter example
+
+There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of UI for iOS in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have an iOS example.
 
 Edit `ContentView.swift` to look like this:
 
