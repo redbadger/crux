@@ -164,10 +164,9 @@ where
         self.context.spawn(async move {
             let response = ctx.request_from_shell(DelayOperation::GetRandom(min, max)).await
 
-            let millis = match response {
-                Random(m) => m,
-                _ => panic!("Expected a random number")
-            }
+            let DelayOutput::Random(millis) = response else {
+                panic!("Expected a random number")
+            };
             ctx.request_from_shell(DelayOperation::Delay(millis)).await
 
             ctx.update_app(event(millis));
