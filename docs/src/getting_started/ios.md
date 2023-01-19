@@ -1,4 +1,4 @@
-# iOS with Swift and SwiftUI
+# iOS — Swift and SwiftUI
 
 We want to make setting up xCode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do.
 
