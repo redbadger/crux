@@ -77,6 +77,28 @@ The implementation of the method has a little bit of boilerplate to enable us to
 
 You can see we use two APIs to orchestrate the interaction. First `request_from_shell` sends the delay operation we made earlier to the Shell. This call returns a future, which we can `.await`. Once done, we use the other API `update_app` to dispatch the event we were given. At the `.await`, the task will be suspended, Crux will pass the operation to the Shell wrapped in the `Effect` type we talked about in the last chapter and the Shell will use it's native APIs to wait for the given duration, and eventually respond. This will wake our task up again and we can continue working.
 
+> 🚨 _SHARP EDGE WARNING_: There is one more thing we need to do, which will likely be reduced to a derive macro in future versions of Crux. We need to implement the `Capability` trait.
+
+```rust
+impl<Ef> Capability<Ef> for Delay<Ef> {
+    type Operation = DelayOperation;
+    type MappedSelf<MappedEv> = Delay<MappedEv>;
+
+    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    where
+        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
+        Ef: 'static,
+        NewEvent: 'static,
+    {
+        Delay::new(self.context.map_event(f))
+    }
+}
+```
+
+What on earth is that for, you ask? This allows you to derive an instance of the `Delay` capability from an existing one and adapt it to a different `Event` type. Yes, we know, don't read that sentence again. This will be useful to allow composing Crux apps from smaller Crux apps to automatically wrap the child events in the parent events.
+
+We will cover this in depth in the chapter about [Composable applications](./composing.md).
+
 ## Random delays
 
 To make the example more contrived, but also more educational, we'll add the random delay ability. This will
@@ -191,25 +213,3 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capab
 ```
 
 That is essentially it for the capabilities. You can check out the complete context API [in the docs](https://docs.rs/crux_core/latest/crux_core/capability/struct.CapabilityContext.html).
-
-> 🚨 _SHARP EDGE WARNING_: There is one more thing we need to do, which will likely be reduced to a derive macro in future versions of Crux. We need to implement the `Capability` trait.
-
-```rust
-impl<Ef> Capability<Ef> for Delay<Ef> {
-    type Operation = DelayOperation;
-    type MappedSelf<MappedEv> = Delay<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        Delay::new(self.context.map_event(f))
-    }
-}
-```
-
-What on earth is that for, you ask? This allows you to derive an instance of the `Delay` capability from an existing one and adapt it to a different `Event` type. Yes, we know, don't read that sentence again. This will be useful to allow composing Crux apps from smaller Crux apps to automatically wrap the child events in the parent events. 
-
-We will cover this in depth in the chapter about [Composable applications](./composing.md).
