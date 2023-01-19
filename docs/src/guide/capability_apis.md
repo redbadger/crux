@@ -69,7 +69,7 @@ where
 }
 ```
 
-There's a fair bit going on. The capability is generic over an event type `Ev` and holds on to a `CapabilitContext`. The constructor will be called by Crux when starting an application that uses this capability.
+There's a fair bit going on. The capability is generic over an event type `Ev` and holds on to a `CapabilityContext`. The constructor will be called by Crux when starting an application that uses this capability.
 
 The `milliseconds` method is our capability's public API. It takes the delay in milliseconds and the event to send back. In this case, we don't expect any payload to return, so we take the `Ev` type directly. We'll shortly see what an event with data looks like as well.
 
