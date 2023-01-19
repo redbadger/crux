@@ -2,7 +2,7 @@
 
 These are the steps to set up the two crates forming the shared core – the core itself, and the shared types crate which does type generation for the foreign languages.
 
-> _SHARP EDGE WARNING_: Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from one of the [example projects](https://github.com/redbadger/crux/tree/master/examples).
+> 🚨 _SHARP EDGE WARNING_: Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from one of the [example projects](https://github.com/redbadger/crux/tree/master/examples)
 
 ## Install the tools
 
