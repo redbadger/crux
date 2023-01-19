@@ -12,7 +12,7 @@ In fact, let's start with that.
 
 ## Basic delay capability
 
-The first job of our capability will be to pause for a given number of milliseconds and then send an event to the app. 
+The first job of our capability will be to pause for a given number of milliseconds and then send an event to the app.
 
 There's a number of types and traits we will need to implement to make the capability work with the rest of Crux, so let's quickly go over them berfore we start. We will need
 
