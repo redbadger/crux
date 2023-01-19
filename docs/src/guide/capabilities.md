@@ -94,7 +94,7 @@ fn Event::Set(crux_http::Result<crux_http::Response<Counter>) -> Event
 
 Looks a lot like a callback, doesn't it. Yep. With the difference that the result is an `Event`. Generally, you should be able to completely ignore this detail and just use your variant names and the code should read pretty clearly: "When done, send me `Event::Set`".
 
-The other nuance to be aware of is that the capability calls return immediately. This should hopefully be relatively obvious by now, but all that's happening is effects are getting queued up to be requested from the Shell. In a way, capability calls are implicitly asynchronous (but you can't await them). It's perhaps easier to think about a capability call as a kind of `return` statement (or even better, a `yield` statement), which you can call within your update function, and which adds an effect to the batch that is sent to the shell for execution.
+The other nuance to be aware of is that the capability calls return immediately. This should hopefully be relatively obvious by now, but all that's happening is effects are getting queued up to be requested from the Shell. In a way, capability calls are implicitly asynchronous (but you can't await them).
 
 That's generally all there is to it. What you'll notice is that most capabilities have essentially request/response semantics - you use their APIs, and provide an event you want back, and eventually your update function will get called with that event. Most capabilities take inputs for their effect, and return output in their outcomes, but some capabilities don't do one or either of those things. Render is an example of a capability which doesn't take payload and never calls back. You'll likely see all the different variations in Crux apps.
 
