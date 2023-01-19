@@ -414,8 +414,8 @@ We now have everything in place to update the `update` function. Let's start wit
 That gives us the following update function, with some placeholders:
 
 ```rust
-fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
-    match msg {
+fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    match event {
         Event::Get => {
             // TODO "GET /"
         }
@@ -484,8 +484,8 @@ const API_URL: &str = "https://crux-counter.fly.dev";
 
 ...
 
-fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
-        match msg {
+fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+        match event {
             Event::Get => {
                 caps.http
                     .get(API_URL)
