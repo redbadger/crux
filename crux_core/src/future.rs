@@ -62,9 +62,18 @@ where
             send_step: None,
         }));
 
-        let callback_shared_state = Arc::clone(&shared_state);
+        // Our callback holds a weak pointer to avoid circular references
+        // from shared_state -> send_step -> step -> shared_state
+        let callback_shared_state = Arc::downgrade(&shared_state);
+
         let step = Step::resolves_once(operation, move |bytes| {
-            let mut shared_state = callback_shared_state.lock().unwrap();
+            let Some(shared_state) = callback_shared_state.upgrade() else {
+                // The EffectFuture was dropped before we were called, so just
+                // do nothing.
+                return;
+            };
+
+            let mut shared_state = shared_state.lock().unwrap();
             shared_state.result = Some(bcs::from_bytes(bytes).unwrap());
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake()
