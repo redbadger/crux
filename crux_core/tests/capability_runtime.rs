@@ -167,7 +167,7 @@ mod tests {
             let Request { uuid, effect } = requests.pop_front().unwrap();
 
             match effect {
-                Effect::Crawler(Fetch { id }) => {
+                Effect::Crawler(Fetch { id: _id }) => {
                     let output = if counter < 30 {
                         vec![counter, counter + 1, counter + 2]
                     } else {
