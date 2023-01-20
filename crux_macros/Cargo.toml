@@ -8,6 +8,7 @@ edition = "2021"
 readme = "README.md"
 license = "Apache-2.0"
 keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+rust-version.workspace = true
 
 [lib]
 proc-macro = true
