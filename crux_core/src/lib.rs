@@ -168,6 +168,7 @@ use steps::{Step, StepRegistry};
 pub use self::{
     capability::{Capability, WithContext},
     future::ShellRequest,
+    stream::ShellStream,
 };
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
