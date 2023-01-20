@@ -151,6 +151,7 @@ mod executor;
 mod future;
 pub mod render;
 mod steps;
+mod stream;
 pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
@@ -164,7 +165,11 @@ use channels::Receiver;
 use executor::QueuingExecutor;
 use steps::{Step, StepRegistry};
 
-pub use capability::{Capability, WithContext};
+pub use self::{
+    capability::{Capability, WithContext},
+    future::ShellRequest,
+    stream::ShellStream,
+};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].

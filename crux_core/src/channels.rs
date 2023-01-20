@@ -20,6 +20,10 @@ pub struct Receiver<T> {
 }
 
 impl<T> Receiver<T> {
+    /// Receives a message if any are waiting.
+    ///
+    /// Panics if the receiver has disconnected, so shouldn't be used if
+    /// that's possible.
     pub fn receive(&self) -> Option<T> {
         match self.inner.try_recv() {
             Ok(inner) => Some(inner),
@@ -30,6 +34,19 @@ impl<T> Receiver<T> {
                 // fix that if we get complaints
                 panic!("Receiver was disconnected.")
             }
+        }
+    }
+
+    /// Receives a message if any are waiting.
+    /// Returns the error branch if the sender has disconnected.
+    ///
+    /// This API isn't that nice, but isn't intended for public consumption
+    /// so whatevs.
+    pub fn try_receive(&self) -> Result<Option<T>, ()> {
+        match self.inner.try_recv() {
+            Ok(inner) => Ok(Some(inner)),
+            Err(crossbeam_channel::TryRecvError::Empty) => Ok(None),
+            Err(crossbeam_channel::TryRecvError::Disconnected) => Err(()),
         }
     }
 

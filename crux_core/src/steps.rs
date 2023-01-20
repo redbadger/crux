@@ -1,29 +1,48 @@
-use crate::Request;
-use std::{collections::HashMap, fmt, sync::Mutex};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt,
+    sync::Mutex,
+};
+
 use uuid::Uuid;
+
+use crate::Request;
 
 pub(crate) struct Step<T> {
     pub(crate) payload: T, // T is an Operation first, then Effect once mapped
     pub(crate) resolve: Option<Resolve>,
 }
 
-pub(crate) type Resolve = Box<dyn FnOnce(&[u8]) + Send>;
+pub(crate) enum Resolve {
+    Once(Box<dyn FnOnce(&[u8]) + Send>),
+    Many(Box<dyn Fn(&[u8]) -> Result<(), ()> + Send>),
+}
 
 impl<T> Step<T> {
-    pub fn new<F>(payload: T, resume: F) -> Self
-    where
-        F: Fn(&[u8]) + Send + 'static,
-    {
-        Self {
-            payload,
-            resolve: Some(Box::new(resume)),
-        }
-    }
-
-    pub fn once(payload: T) -> Self {
+    pub fn resolves_never(payload: T) -> Self {
         Self {
             payload,
             resolve: None,
+        }
+    }
+
+    pub fn resolves_once<F>(payload: T, resume: F) -> Self
+    where
+        F: FnOnce(&[u8]) + Send + 'static,
+    {
+        Self {
+            payload,
+            resolve: Some(Resolve::Once(Box::new(resume))),
+        }
+    }
+
+    pub fn resolves_many_times<F>(payload: T, resume: F) -> Self
+    where
+        F: Fn(&[u8]) -> Result<(), ()> + Send + 'static,
+    {
+        Self {
+            payload,
+            resolve: Some(Resolve::Many(Box::new(resume))),
         }
     }
 
@@ -51,13 +70,13 @@ where
     }
 }
 
-struct Store(HashMap<[u8; 16], Resolve>);
+type Store = HashMap<[u8; 16], Resolve>;
 
 pub(crate) struct StepRegistry(Mutex<Store>);
 
 impl Default for StepRegistry {
     fn default() -> Self {
-        Self(Mutex::new(Store(HashMap::new())))
+        Self(Mutex::new(Store::new()))
     }
 }
 
@@ -74,7 +93,6 @@ impl StepRegistry {
             self.0
                 .lock()
                 .expect("Step Mutex poisoned.")
-                .0
                 .insert(uuid, resolve);
         }
 
@@ -85,14 +103,38 @@ impl StepRegistry {
     }
 
     pub(crate) fn resume(&self, uuid: &[u8], body: &[u8]) {
-        let resolve = self
-            .0
-            .lock()
-            .expect("Step Mutex poisoned.")
-            .0
-            .remove(uuid)
-            .unwrap_or_else(|| panic!("Step with UUID {uuid:?} not found."));
+        let mut registry_lock = self.0.lock().expect("Step Mutex poisoned");
 
-        resolve(body);
+        let entry = {
+            let mut uuid_buf = [0; 16];
+            uuid_buf.copy_from_slice(uuid);
+
+            registry_lock.entry(uuid_buf)
+        };
+
+        let Entry::Occupied(entry) = entry else {
+            panic!("Step with UUID {uuid:?} not found.");
+        };
+
+        match entry.get() {
+            Resolve::Once(_) => {
+                let Resolve::Once(resolve) = entry.remove() else {
+                    unreachable!()
+                };
+                drop(registry_lock);
+                resolve(body)
+            }
+            Resolve::Many(resolve) => {
+                match resolve(body) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        // The associated task has ended so clean up our state.
+                        // We _probably_ want a way to let the shell know about this...
+                        // But I'm going to postpone figuring out how to do that.
+                        entry.remove();
+                    }
+                }
+            }
+        }
     }
 }

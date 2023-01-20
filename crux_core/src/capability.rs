@@ -316,7 +316,7 @@ where
         // it's important that it is.  It forces all capabilities to
         // spawn onto the executor which keeps the ordering of effects
         // consistent with their function calls.
-        self.inner.steps.send(Step::once(operation));
+        self.inner.steps.send(Step::resolves_never(operation));
     }
 
     /// Send an event to the app. The event will be processed a the next
