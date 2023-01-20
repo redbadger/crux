@@ -68,7 +68,7 @@ where
 
         let step = Step::resolves_once(operation, move |bytes| {
             let Some(shared_state) = callback_shared_state.upgrade() else {
-                // The EffectFuture was dropped before we were called, so just
+                // The ShellRequest was dropped before we were called, so just
                 // do nothing.
                 return;
             };
