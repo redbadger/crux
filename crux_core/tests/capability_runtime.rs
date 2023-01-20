@@ -144,6 +144,7 @@ mod tests {
     use std::collections::VecDeque;
 
     use crux_core::{Core, Request};
+    use rand::prelude::*;
 
     use super::app::{Capabilities, Effect, Event, MyApp};
     use super::capability::Fetch;
@@ -180,9 +181,13 @@ mod tests {
 
                     let reqs: Vec<Request<Effect>> =
                         bcs::from_bytes(&core.response(&uuid, &output)).unwrap();
+
                     for r in reqs {
                         requests.push_back(r)
                     }
+
+                    // Simulate network timing
+                    requests.make_contiguous().shuffle(&mut rand::thread_rng());
                 }
                 Effect::Render(_) => {
                     let view: Vec<usize> = bcs::from_bytes(&core.view()).unwrap();

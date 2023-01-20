@@ -307,6 +307,7 @@ dependencies = [
  "crux_macros",
  "derive_more",
  "futures",
+ "rand 0.8.5",
  "serde",
  "serde-generate",
  "serde-reflection",
