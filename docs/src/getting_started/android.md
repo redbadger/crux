@@ -233,3 +233,125 @@ Android/shared/src/main/java/com/example/counter
 ### Hello World counter example
 
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of UI for Android in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have an Android example.
+
+Edit `/Android/app/src/main/java/com/example/android/MainActivity.kt` to look like this:
+
+```kotlin
+@file:OptIn(ExperimentalUnsignedTypes::class)
+package com.example.android
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.counter.shared.*
+import com.example.counter.shared_types.*
+import com.example.android.ui.theme.AndroidTheme
+import com.example.counter.shared_types.Request as Req
+import com.example.counter.shared_types.ViewModel as MyViewModel
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            AndroidTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    View()
+                }
+            }
+        }
+    }
+}
+
+sealed class CoreMessage {
+    data class Message(val event: Event) : CoreMessage()
+}
+
+class Model : ViewModel() {
+    var view: MyViewModel by mutableStateOf(MyViewModel(""))
+        private set
+
+    init {
+        update(CoreMessage.Message(Event.Reset()))
+    }
+
+    fun update(msg: CoreMessage) {
+        val requests: List<Req> =
+            when (msg) {
+                is CoreMessage.Message -> Requests.bcsDeserialize(
+                    message(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                        .toByteArray()
+                )
+            }
+
+        for (req in requests) when (req.effect) {
+            is Effect.Render -> {
+                this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray());
+            }
+        }
+    }
+}
+
+@Composable
+fun View(model: Model = viewModel()) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(10.dp),
+    ) {
+        Text(text = model.view.count, modifier = Modifier.padding(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = { model.update(CoreMessage.Message(Event.Reset())) },
+                colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) { Text(text = "Reset", color = Color.White) }
+            Button(
+                onClick = { model.update(CoreMessage.Message(Event.Increment())) },
+                colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) { Text(text = "Increment", color = Color.White) }
+            Button(
+                onClick = { model.update(CoreMessage.Message(Event.Decrement())) },
+                colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) { Text(text = "Decrement", color = Color.White) }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    AndroidTheme {
+        View()
+    }
+}
+```
+
+You should then be able to run the app in the simulator, and it should look like this:
+
+<img alt="hello world app" src="./hello_world_android.webp"  width="300">

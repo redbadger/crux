@@ -261,4 +261,4 @@ struct iOSApp: App {
 
 You should then be able to run the app in the simulator, and it should look like this:
 
-<img alt="hello world app" src="./hello_world.webp"  width="300">
+<img alt="hello world app" src="./hello_world_ios.webp"  width="300">
