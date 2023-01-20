@@ -301,6 +301,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "assert_matches",
+ "async-channel",
  "bcs",
  "crossbeam-channel",
  "crux_macros",
