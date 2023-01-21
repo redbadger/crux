@@ -64,6 +64,12 @@ Merge the following into the **app**'s `build.gradle` (`/Android/app/build.gradl
 
 ```groovy
 android {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+        }
+    }
+
     packagingOptions {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
@@ -75,32 +81,35 @@ android {
 
 dependencies {
     // our shared library
-     implementation project(path: ':shared')
+    implementation project(path: ':shared')
 
-    def lifecycle_version = "2.5.1"
+    def composeBom = platform('androidx.compose:compose-bom:2022.10.00')
+    implementation composeBom
+    androidTestImplementation composeBom
 
-    // ViewModel
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
-    // ViewModel utilities for Compose
-    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycle_version"
+    implementation("androidx.compose.material3:material3")
+
+    // Android Studio Preview support
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // UI Tests
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Optional - Integration with activities
     implementation("androidx.activity:activity-compose:1.6.1")
+    // Optional - Integration with ViewModels
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1")
+    // Optional - Integration with LiveData
+    implementation("androidx.compose.runtime:runtime-livedata")
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
 
-    implementation 'androidx.core:core-ktx:1.7.0'
-
-    implementation "androidx.compose.ui:ui:$compose_version"
-    implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
-    implementation 'androidx.compose.material3:material3:1.0.0-alpha02'
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
-    debugImplementation "androidx.compose.ui:ui-tooling:$compose_version"
-    debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_version"
+    implementation('com.diem:client-sdk-java:1.0.5') {
+        exclude group: 'org.bouncycastle', module: 'bcprov-jdk15to18'
+    }
 }
 ```
 
@@ -256,11 +265,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.counter.shared.*
-import com.example.counter.shared_types.*
 import com.example.android.ui.theme.AndroidTheme
+import com.example.counter.shared.message
+import com.example.counter.shared.view
+import com.example.counter.shared_types.Effect
+import com.example.counter.shared_types.Event
+import com.example.counter.shared_types.Requests
 import com.example.counter.shared_types.Request as Req
 import com.example.counter.shared_types.ViewModel as MyViewModel
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -293,15 +306,17 @@ class Model : ViewModel() {
     fun update(msg: CoreMessage) {
         val requests: List<Req> =
             when (msg) {
-                is CoreMessage.Message -> Requests.bcsDeserialize(
-                    message(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
-                        .toByteArray()
-                )
+                is CoreMessage.Message -> {
+                    Requests.bcsDeserialize(
+                        message(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                            .toByteArray()
+                    )
+                }
             }
 
         for (req in requests) when (req.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray());
+                this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
             }
         }
     }
@@ -316,7 +331,7 @@ fun View(model: Model = viewModel()) {
             .fillMaxSize()
             .padding(10.dp),
     ) {
-        Text(text = model.view.count, modifier = Modifier.padding(10.dp))
+        Text(text = model.view.count.toString(), modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = { model.update(CoreMessage.Message(Event.Reset())) },
