@@ -2,7 +2,7 @@
 
 These are the steps to set up Android Studio to build and run a simple Android app that calls into a shared core.
 
-> 🚨 _SHARP EDGE WARNING_: We want to make setting up Android Studio to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below (e.g. how to do Xcode project configuration from the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+> 🚨 _SHARP EDGE WARNING_: We want to make setting up Android Studio to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below, please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
 
 ## Create an Android App
 
