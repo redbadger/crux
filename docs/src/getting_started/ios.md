@@ -1,12 +1,12 @@
 # iOS — Swift and SwiftUI
 
-We want to make setting up xCode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do.
+These are the steps to set up Xcode to build and run a simple iOS app that calls into a shared core.
 
-> This only needs doing once, so we hope it's not too much trouble, but in the future, we intend to provide some tooling to help with these set up activities. If you know of any better ways than those we describe below (e.g. how to do xCode project configuration from the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+> _SHARP EDGE WARNING_: We want to make setting up Xcode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below (e.g. how to do Xcode project configuration from the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
 
 ## Create an iOS App
 
-The first thing we need to do is create a new iOS app in xCode.
+The first thing we need to do is create a new iOS app in Xcode.
 
 Let's call the app "iOS" and select "SwiftUI" for the interface and "Swift" for the language. If you choose to create the app in the root folder then your repo's directory structure might now look something like this (some files elided):
 
@@ -89,7 +89,7 @@ shared.swift  sharedFFI.h  sharedFFI.modulemap
 
 When we build our iOS app, we also want to build the Rust core as a static library so that it can be linked into the binary that we're going to ship. We do this with Cargo, specifying the relevant target.
 
-Create a group called `bin` in your xCode project and add a shell script (called something like `rust_build.sh`) to it (don't forget to tick the box to ensure it targets our iOS app), with the following contents:
+Create a group called `bin` in your Xcode project and add a shell script (called something like `rust_build.sh`) to it (don't forget to tick the box to ensure it targets our iOS app), with the following contents:
 
 ```bash
 {{#include ../../../scripts/ios_build.sh}}
@@ -108,7 +108,7 @@ You can drag this build phase up a bit (e.g. before "Compile Sources"), and test
 
 ## Link the Rust shared library into our iOS binary
 
-Now that we have successfully compiled the share Rust library, we need to link it into the iOS binary. We need to tell xCode where to find the relevant static library based on which build configuration we have built for (`Debug` or `Release`).
+Now that we have successfully compiled the share Rust library, we need to link it into the iOS binary. We need to tell Xcode where to find the relevant static library based on which build configuration we have built for (`Debug` or `Release`).
 
 This is a little convoluted, but this may be the easiest way to do this:
 

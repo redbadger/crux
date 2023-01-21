@@ -4,7 +4,7 @@
 
 (Adapted for UniFFI from [this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/) by Jan-Erik Rediger, with thanks)
 
-1. Open xCode and create a new iOS app (e.g. called `iOS` with organization `com.redbadger`)
+1. Open Xcode and create a new iOS app (e.g. called `iOS` with organization `com.redbadger`)
 
 1. Add a build rule to process files that match the pattern `*.udl` with the following script.
    This will use UniFFI to create the Swift bindings and the C headers in a `generated` directory.
