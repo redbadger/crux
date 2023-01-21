@@ -22,7 +22,7 @@ There's a number of types and traits we will need to implement to make the capab
 
 Let's start with the payload:
 
-```rust
+```rust,noplayground
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct DelayOperation {
     millis: usize
@@ -33,7 +33,7 @@ The request is just a named type holding onto a number. It will need to cross th
 
 We will need our request to implement the `Operation` trait, which links it with the type of the response we expect back. In our case we expect a response, but there is no data, so we'll use the unit type.
 
-```rust
+```rust,noplayground
 use crux_core::capability::Operation;
 
 impl Operation for DelayOperation {
@@ -43,14 +43,14 @@ impl Operation for DelayOperation {
 
 Now we can implement the capability:
 
-```rust
+```rust,noplayground
 use crux_core::capability::CapabilityContext;
 
 struct Delay<Ev> {
     context: CapabilityContext<DelayOperation, Ev>,
 }
 
-impl<Ev> Delay<Ev> 
+impl<Ev> Delay<Ev>
 where
     Ev: 'static,
 {
@@ -79,7 +79,7 @@ You can see we use two APIs to orchestrate the interaction. First `request_from_
 
 > 🚨 _SHARP EDGE WARNING_: There is one more thing we need to do, which will likely be reduced to a derive macro in future versions of Crux. We need to implement the `Capability` trait.
 
-```rust
+```rust,noplayground
 impl<Ef> Capability<Ef> for Delay<Ef> {
     type Operation = DelayOperation;
     type MappedSelf<MappedEv> = Delay<MappedEv>;
@@ -111,7 +111,7 @@ First off, we need to add the new operation in. Here we have a choice, we can ad
 
 Since we have multiple operations now, let's make our operation an enum
 
-```rust
+```rust,noplayground
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum DelayOperation {
     GetRandom(usize, usize),
@@ -121,7 +121,7 @@ pub enum DelayOperation {
 
 We now also need an output type:
 
-```rust
+```rust,noplayground
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum DelayOutput {
     Random(usize),
@@ -131,7 +131,7 @@ pub enum DelayOutput {
 
 And that changes the `Operation` trait implementation:
 
-```rust
+```rust,noplayground
 impl Operation for DelayOperation {
     type Output = DelayOutput;
 }
@@ -139,8 +139,8 @@ impl Operation for DelayOperation {
 
 The updated implementation looks like the following:
 
-```rust
-impl<Ev> Delay<Ev> 
+```rust,noplayground
+impl<Ev> Delay<Ev>
 where
     Ev: 'static,
 {
@@ -158,7 +158,7 @@ where
     }
 
     pub random<F>(&self, min: usize, max: usize, event: F)
-    where F: Fn(usize) -> Ev 
+    where F: Fn(usize) -> Ev
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
@@ -177,7 +177,7 @@ where
 
 In the new API, the event handling is a little different from the original. Because the event has a payload, we don't simply take an `Ev`, we need a function that returns `Ev`, if given the random number. Seems cumbersome but you'll see using it in the `update` function of our app is quite natural:
 
-```rust
+```rust,noplayground
 fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
             //

@@ -70,7 +70,7 @@ There are also a few additional parameters to tell Uniffi how to create bindings
 
 Soon we will have macros and/or code-gen to help with this, but for now, we need some scaffolding in `/shared/src/lib.rs`. You'll notice that we are re-exporting the `Request` type and the capabilities we want to use in our native Shells, as well as our public types from the shared library.
 
-```rust
+```rust,noplayground
 {{#include ../../../examples/counter/shared/src/lib.rs}}
 ```
 
@@ -78,7 +78,7 @@ Soon we will have macros and/or code-gen to help with this, but for now, we need
 
 Now we are in a position to create a basic app in `/shared/src/app.rs`. This is from the [simple Counter example](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/counter.rs) (which also has tests, although we're not showing them here):
 
-```rust
+```rust,noplayground
 {{#include ../../../examples/hello_world/shared/src/counter.rs:1:45}}
 ```
 

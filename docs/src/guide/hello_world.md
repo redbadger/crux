@@ -8,7 +8,7 @@ If you want to follow along, you should start by following the [Shared core and 
 
 To start with, we need a `struct` to be the root of our app.
 
-```rust
+```rust,noplayground
 #[derive(Default)]
 pub struct Hello;
 ```
@@ -17,7 +17,7 @@ We need to implement `Default` so that Crux can construct the app for us.
 
 To turn it into an app, we need to implement the `App` trait from the `crux_core` crate.
 
-```rust
+```rust,noplayground
 use crux_core::App;
 
 #[derive(Default)]
@@ -40,7 +40,7 @@ To _ask_ the Shell for side effects, it will need to know what side effects it n
 
 Let's start with the basics:
 
-```rust
+```rust,noplayground
 use crux_core::render::Render;
 
 pub struct Capabilities {
@@ -52,7 +52,7 @@ As you can see, for now, we will use a single capability, `Render`, which is bui
 
 That means the core can produce a single `Effect`. It will soon be more than one, so we'll wrap it in an enum to give ourselves space. The `Effect` enum corresponds one to one to the `Capabilities` we're using, and rather than typing it (and its associated trait implementations) by hand and open ourselves to unnecessary mistakes, we can use the `Effect` derive macro from the `crux_macros` crate.
 
-```rust
+```rust,noplayground
 use crux_core::{render::Render};
 use crux_macros::Effect;
 
@@ -67,7 +67,7 @@ Other than the `derive` itself, we also need to link the effect to our app. We'l
 
 You probably also noticed the `Event` type which capabilities are generic over, because they need to know the type which defines messages they can send back to the app. The same type is also used by the Shell to forward any user interactions to the Core, and in order to pass across the FFI boundary, it needs to be serializable. The resulting code will end up looking like this:
 
-```rust
+```rust,noplayground
 use crux_core::{render::Render, App};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
@@ -99,7 +99,7 @@ We'll start with a few simple types for events, model and view model.
 
 Now we can finally implement the trait with its two methods, `update` and `view`.
 
-```rust
+```rust,noplayground
 use crux_core::{render::Render, App};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
@@ -154,7 +154,7 @@ That's a working hello world done, lets try it. As we said at the beginning, for
 
 Here's our test:
 
-```rust
+```rust,noplayground
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,7 +187,7 @@ It is a fairly underwhelming test, but it should pass (check with `cargo test`).
 
 Let's make things more interesting and add some behaviour. We'll teach the app to count up and down. First, we'll need a model, which represents the state. We could just make our model a number, but we'll go with a struct instead, so that we can easily add more state later.
 
-```rust
+```rust,noplayground
 #[derive(Default)]
 struct Model {
     count: isize,
@@ -196,7 +196,7 @@ struct Model {
 
 We need `Default` implemented to define the initial state. For now we derive it, as our state is quite simple. We also update the app to show the current count:
 
-```rust
+```rust,noplayground
 impl App for Hello {
 // ...
 
@@ -212,7 +212,7 @@ impl App for Hello {
 
 We'll also need a simple `ViewModel` struct to hold the data that the Shell will render.
 
-```rust
+```rust,noplayground
 #[derive(Serialize, Deserialize)]
 pub struct ViewModel {
     count: String,
@@ -221,7 +221,7 @@ pub struct ViewModel {
 
 Great. All that's left is adding the behaviour. That's where `Event` comes in:
 
-```rust
+```rust,noplayground
 #[derive(Serialize, Deserialize)]
 enum Event {
     Increment,
@@ -232,7 +232,7 @@ enum Event {
 
 The event type covers all the possible events the app can respond to. "Will that not get massive really quickly??" I hear you ask. Don't worry about that, there is [a nice way to make this scale](./composing.md) and get reuse as well. Let's carry on. We need to actually handle those messages.
 
-```rust
+```rust,noplayground
 impl App for Hello {
     type Event = Event;
     type Model = Model;
@@ -260,7 +260,7 @@ impl App for Hello {
 
 Pretty straightforward, we just do what we're told, update the state, and then tell the Shell to render. Lets update the tests to check everything works as expected.
 
-```rust
+```rust,noplayground
 #[cfg(test)]
 mod test {
     use super::*;
@@ -369,7 +369,7 @@ All three API calls return the state of the counter in JSON, which looks somethi
 
 We can represent that with a struct and use Serde for the serialization, and we'll need to update the model as well. We'll also update the count optimistically and keep track of when the server confirmed it (there are other ways to model these semantics, but let's keep it straightforward for now).
 
-```rust
+```rust,noplayground
 #[derive(Default)]
 pub struct Model {
     count: Counter,
@@ -385,7 +385,7 @@ pub struct Counter {
 
 We also need to update the view function to display the new data. To work with the date, we'll use `chrono`
 
-```rust
+```rust,noplayground
 use chrono::{DateTime, NaiveDateTime, Utc};
 
 ...
@@ -413,7 +413,7 @@ We now have everything in place to update the `update` function. Let's start wit
 
 That gives us the following update function, with some placeholders:
 
-```rust
+```rust,noplayground
 fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
     match event {
         Event::Get => {
@@ -450,7 +450,7 @@ To request the respective HTTP calls, we'll use [`crux_http`](https://github.com
 
 The first thing to know is that the HTTP responses will be sent back to the update function as an event. That's what the `Event::Set` is for. The `Event` type looks as follows:
 
-```rust
+```rust,noplayground
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Event {
     Get,
@@ -465,7 +465,7 @@ We decorate the `Set` variant with `#[serde(skip)]` for two reasons: one, there'
 
 Finally, let's get rid of those TODOs. We'll need to add crux_http in the `Capabilities` type, so that the `update` function has access to it:
 
-```rust
+```rust,noplayground
 use crux_http::Http;
 
 #[derive(Effect)]
@@ -479,7 +479,7 @@ This may seem like needless boilerplate, but it allows us to only use the capabi
 
 We can now implement those TODOs, so lets do it.
 
-```rust
+```rust,noplayground
 const API_URL: &str = "https://crux-counter.fly.dev";
 
 ...
@@ -533,7 +533,7 @@ The other thing of note is that the capability calls don't block. They queue up 
 
 You can find the the complete example, including the shell implementations [in the Crux repo](https://github.com/redbadger/crux/blob/master/examples/counter/). It's interesting to take a closer look at the unit tests
 
-```rust
+```rust,noplayground
 #[test]
 fn get_counter() {
     let app = AppTester::<App, _>::default();

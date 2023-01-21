@@ -75,7 +75,7 @@
 
 1. Create [`./shared/build.rs`](../shared/build.rs) ...
 
-   ```rust
+   ```rust,noplayground
    fn main() {
        uniffi_build::generate_scaffolding("./src/shared.udl").unwrap();
    }
@@ -83,7 +83,7 @@
 
 1. Include the scaffolding in [`./shared/src/lib.rs`](../shared/src/lib.rs), and change types from `usize` to `u32` ...
 
-   ```rust
+   ```rust,noplayground
    uniffi_macros::include_scaffolding!("shared");
 
    pub fn add(left: u32, right: u32) -> u32 {

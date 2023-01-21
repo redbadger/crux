@@ -29,11 +29,11 @@ At the moment the Shell implementation is up to you, but we think in the future 
 
 ## Using Capabilities
 
-Okay, time to get practical. We'll look at what it takes (and why) to use a capability, and in the next couple of chapters, we'll continue to build one and implementing the Shell side of it.
+Okay, time to get practical. We'll look at what it takes (and why) to use a capability, and in the next couple of chapters, we'll continue to build one and implement the Shell side of it.
 
 Firstly, we need to have access to an instance of the capability in our `update` function. Recall that the function signature is:
 
-```rust
+```rust,noplayground
 fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities)
 ```
 
@@ -45,7 +45,7 @@ In order to enable all that, Crux needs to be in charge of creating the instance
 
 Notice that the type of the argument is `Self::Capabilities` – you own the type. This is to allow you to declare which capabilities you want to use in your app. That type will most likely be a struct looking like the following:
 
-```rust
+```rust,noplayground
 #[derive(Effect)]
 pub struct Capabilities {
     pub http: Http<Event>,
@@ -59,7 +59,7 @@ The latter generates an `Effect` enum for you, used as the payload of the messag
 
 The `Event` type argument enables the "shell side" of these capabilities to send you your specific events back as the _outcome_ of their work. Typically, you'd probably set up an `Event` variant specifically for the individual uses of each capability, like this:
 
-```rust
+```rust,noplayground
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Event {
     Hello,
@@ -72,7 +72,7 @@ In a real app, you'd likely have more than one interaction with a HTTP server, a
 
 That's it for linking the capability into our app, now we can use it in the `update` function:
 
-```rust
+```rust,noplayground
     fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match msg {
             Event::Get => {
@@ -88,7 +88,7 @@ That's it for linking the capability into our app, now we can use it in the `upd
 
 You can see the use of the `Event::Set` variant we just discussed. `Event::Set` is technically a function with this signature:
 
-```rust
+```rust,noplayground
 fn Event::Set(crux_http::Result<crux_http::Response<Counter>) -> Event
 ```
 
