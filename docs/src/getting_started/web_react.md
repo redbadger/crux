@@ -1,3 +1,3 @@
-# Web with React and TypeScript
+# Web — React and TypeScript
 
 TO DO.
