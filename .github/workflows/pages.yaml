@@ -33,7 +33,7 @@ jobs:
         run: mdbook build
 
       - name: Move outputs
-        run: mkdir ./public && mv ./target/doc /public/ && mv ./docs/book ./public/
+        run: mkdir ./public && mv ./target/doc ./public/ && mv ./docs/book ./public/
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@364c31d33bb99327c77b3a5438a83a357a6729ad # v3.4.0
