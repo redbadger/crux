@@ -1,32 +1,43 @@
-name: mdbook
+name: pages
 on:
   push:
     branches:
       - master
 
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTFLAGS: "-D warnings"
+  RUSTUP_MAX_RETRIES: 10
+
 jobs:
-  mdbook:
+  rustdoc:
     if: github.repository == 'redbadger/crux'
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+
     steps:
       - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v1
+      - uses: dtolnay/rust-toolchain@1.66.0
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: "latest"
 
+      - name: Build Documentation
+        run: cargo doc --all --no-deps
+
       - name: Build book
         working-directory: docs
         run: mdbook build
 
-      - name: Deploy Book
+      - name: Move outputs
+        run: mkdir ./public && mv ./target/doc /public/ && mv ./docs/book ./public/
+
+      - name: Deploy
         uses: peaceiris/actions-gh-pages@364c31d33bb99327c77b3a5438a83a357a6729ad # v3.4.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: ./docs/book
-          destination_dir: book
           force_orphan: true
