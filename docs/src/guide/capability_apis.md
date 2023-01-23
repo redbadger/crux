@@ -54,11 +54,11 @@ impl<Ev> Delay<Ev>
 where
     Ev: 'static,
 {
-    pub new(context: CapabilityContext<DelayOperation, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<DelayOperation, Ev>) -> Self {
         Self { context }
     }
 
-    pub milliseconds(&self, millis: usize, event: Ev) {
+    pub fn milliseconds(&self, millis: usize, event: Ev) {
         let ctx = self.context.clone();
         self.context.spawn(async move {
             ctx.request_from_shell(DelayOperation { millis }).await
@@ -144,11 +144,11 @@ impl<Ev> Delay<Ev>
 where
     Ev: 'static,
 {
-    pub new(context: CapabilityContext<DelayOperation, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<DelayOperation, Ev>) -> Self {
         Self { context }
     }
 
-    pub milliseconds(&self, millis: usize, event: Ev) {
+    pub fn milliseconds(&self, millis: usize, event: Ev) {
         let ctx = self.context.clone();
         self.context.spawn(async move {
             ctx.request_from_shell(DelayOperation::Delay(millis)).await // Changed
@@ -157,7 +157,7 @@ where
         });
     }
 
-    pub random<F>(&self, min: usize, max: usize, event: F)
+    pub fn random<F>(&self, min: usize, max: usize, event: F)
     where F: Fn(usize) -> Ev
     {
         let ctx = self.context.clone();
