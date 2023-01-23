@@ -93,10 +93,10 @@ impl From<&Model> for ViewModel {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Event {
     Get,
-    #[serde(skip)]
-    Set(crux_http::Result<crux_http::Response<Counter>>),
     Increment,
     Decrement,
+    #[serde(skip)]
+    Set(crux_http::Result<crux_http::Response<Counter>>),
 }
 
 #[derive(Effect)]
