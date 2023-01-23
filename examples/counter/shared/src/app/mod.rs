@@ -8,6 +8,58 @@ use url::Url;
 const API_URL: &str = "https://crux-counter.fly.dev";
 
 #[derive(Default)]
+pub struct Model {
+    count: Counter,
+    confirmed: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ViewModel {
+    pub text: String,
+}
+
+impl From<&Model> for ViewModel {
+    fn from(model: &Model) -> Self {
+        let updated_at = DateTime::<Utc>::from_utc(
+            NaiveDateTime::from_timestamp_millis(model.count.updated_at).unwrap(),
+            Utc,
+        );
+        let suffix = match model.confirmed {
+            Some(true) => format!(" ({})", updated_at),
+            Some(false) => " (pending)".to_string(),
+            None => "".to_string(),
+        };
+        Self {
+            text: model.count.value.to_string() + &suffix,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum Event {
+    // events from the shell
+    Get,
+    Increment,
+    Decrement,
+
+    // events local to the core
+    #[serde(skip)]
+    Set(crux_http::Result<crux_http::Response<Counter>>),
+}
+
+#[derive(Effect)]
+pub struct Capabilities {
+    pub http: Http<Event>,
+    pub render: Render<Event>,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
+pub struct Counter {
+    value: isize,
+    updated_at: i64,
+}
+
+#[derive(Default)]
 pub struct App;
 
 impl crux_core::App for App {
@@ -60,55 +112,6 @@ impl crux_core::App for App {
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         model.into()
     }
-}
-
-#[derive(Default)]
-pub struct Model {
-    count: Counter,
-    confirmed: Option<bool>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ViewModel {
-    pub text: String,
-}
-
-impl From<&Model> for ViewModel {
-    fn from(model: &Model) -> Self {
-        let updated_at = DateTime::<Utc>::from_utc(
-            NaiveDateTime::from_timestamp_millis(model.count.updated_at).unwrap(),
-            Utc,
-        );
-        let suffix = match model.confirmed {
-            Some(true) => format!(" ({})", updated_at),
-            Some(false) => " (pending)".to_string(),
-            None => "".to_string(),
-        };
-        Self {
-            text: model.count.value.to_string() + &suffix,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum Event {
-    Get,
-    Increment,
-    Decrement,
-    #[serde(skip)]
-    Set(crux_http::Result<crux_http::Response<Counter>>),
-}
-
-#[derive(Effect)]
-pub struct Capabilities {
-    pub http: Http<Event>,
-    pub render: Render<Event>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
-pub struct Counter {
-    value: isize,
-    updated_at: i64,
 }
 
 #[cfg(test)]

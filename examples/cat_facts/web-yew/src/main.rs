@@ -101,18 +101,20 @@ impl Component for HelloWorld {
                     ));
                 }
                 Effect::Http(HttpRequest { url, .. }) => {
-                    let link = link.clone();
+                    wasm_bindgen_futures::spawn_local({
+                        let link = link.clone();
 
-                    wasm_bindgen_futures::spawn_local(async move {
-                        let bytes = http_get(&url).await.unwrap_or_default();
+                        async move {
+                            let bytes = http_get(&url).await.unwrap_or_default();
 
-                        link.send_message(CoreMessage::Response(
-                            uuid,
-                            Outcome::Http(HttpResponse {
-                                status: 200,
-                                body: bytes,
-                            }),
-                        ));
+                            link.send_message(CoreMessage::Response(
+                                uuid,
+                                Outcome::Http(HttpResponse {
+                                    status: 200,
+                                    body: bytes,
+                                }),
+                            ));
+                        }
                     });
                 }
                 Effect::Platform(_) => {

@@ -68,14 +68,16 @@ impl Component for RootComponent {
                         _ => panic!("not yet handling this method"),
                     };
 
-                    let link = link.clone();
+                    wasm_bindgen_futures::spawn_local({
+                        let link = link.clone();
 
-                    wasm_bindgen_futures::spawn_local(async move {
-                        if let Ok(body) = http(&url, method).await {
-                            link.send_message(CoreMessage::Response(
-                                uuid,
-                                Outcome::Http(HttpResponse { status: 200, body }), // TODO: handle status
-                            ));
+                        async move {
+                            if let Ok(body) = http(&url, method).await {
+                                link.send_message(CoreMessage::Response(
+                                    uuid,
+                                    Outcome::Http(HttpResponse { status: 200, body }), // TODO: handle status
+                                ));
+                            }
                         }
                     });
                 }

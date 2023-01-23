@@ -58,12 +58,15 @@ pub struct ViewModel {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Event {
+    // events from the shell
     None,
     Clear,
     Get,
     Fetch,
     GetPlatform,
     Restore, // restore state
+
+    // events local to the core
     Platform(PlatformEvent),
     SetState(KeyValueOutput), // receive the data to restore state with
     CurrentTime(TimeResponse),
