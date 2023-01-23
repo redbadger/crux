@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bcs::{from_bytes, to_bytes};
 use gloo_net::http;
 use yew::prelude::*;
 
@@ -44,16 +45,16 @@ impl Component for RootComponent {
         let link = ctx.link();
 
         let reqs = match msg {
-            CoreMessage::Message(event) => shared::message(&bcs::to_bytes(&event).unwrap()),
+            CoreMessage::Message(event) => shared::message(&to_bytes(&event).unwrap()),
             CoreMessage::Response(uuid, outcome) => shared::response(
                 &uuid,
                 &match outcome {
-                    Outcome::Http(x) => bcs::to_bytes(&x).unwrap(),
+                    Outcome::Http(x) => to_bytes(&x).unwrap(),
                 },
             ),
         };
 
-        let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
+        let reqs: Vec<Request<Effect>> = from_bytes(&reqs).unwrap();
 
         let mut should_render = false;
 
@@ -87,7 +88,7 @@ impl Component for RootComponent {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
         let view = shared::view();
-        let view: ViewModel = bcs::from_bytes(&view).unwrap();
+        let view: ViewModel = from_bytes(&view).unwrap();
 
         html! {
             <>

@@ -59,18 +59,18 @@ pub struct ViewModel {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Event {
     None,
-    GetPlatform,
-    Platform(PlatformEvent),
     Clear,
     Get,
     Fetch,
-    Restore,                  // restore state
+    GetPlatform,
+    Restore, // restore state
+    Platform(PlatformEvent),
     SetState(KeyValueOutput), // receive the data to restore state with
+    CurrentTime(TimeResponse),
     #[serde(skip)]
     SetFact(crux_http::Result<crux_http::Response<CatFact>>),
     #[serde(skip)]
     SetImage(crux_http::Result<crux_http::Response<CatImage>>),
-    CurrentTime(TimeResponse),
 }
 
 #[derive(Default)]
