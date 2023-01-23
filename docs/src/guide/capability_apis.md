@@ -14,10 +14,10 @@ In fact, let's start with that.
 
 The first job of our capability will be to pause for a given number of milliseconds and then send an event to the app.
 
-There's a number of types and traits we will need to implement to make the capability work with the rest of Crux, so let's quickly go over them berfore we start. We will need
+There's a number of types and traits we will need to implement to make the capability work with the rest of Crux, so let's quickly go over them before we start. We will need
 
 - The capability itself, able to hold on to the context used to interact with Crux
-- The payload type for the effect, holding the nuber of milliseconds requested
+- The payload type for the effect, holding the number of milliseconds requested
 - Implementation of the `Capability` trait
 
 Let's start with the payload:
@@ -73,7 +73,7 @@ There's a fair bit going on. The capability is generic over an event type `Ev` a
 
 The `milliseconds` method is our capability's public API. It takes the delay in milliseconds and the event to send back. In this case, we don't expect any payload to return, so we take the `Ev` type directly. We'll shortly see what an event with data looks like as well.
 
-The implementation of the method has a little bit of boilerplate to enable us to use `async` code. First we clone the context to be able to use it in the async block. Then we use the context to spawn an `asyc move` code block in which we'll be able to use `async`/`await`. This bit of code will be the same in every part of your capability that needs to interact with the Shell.
+The implementation of the method has a little bit of boilerplate to enable us to use `async` code. First we clone the context to be able to use it in the async block. Then we use the context to spawn an `async move` code block in which we'll be able to use `async`/`await`. This bit of code will be the same in every part of your capability that needs to interact with the Shell.
 
 You can see we use two APIs to orchestrate the interaction. First `request_from_shell` sends the delay operation we made earlier to the Shell. This call returns a future, which we can `.await`. Once done, we use the other API `update_app` to dispatch the event we were given. At the `.await`, the task will be suspended, Crux will pass the operation to the Shell wrapped in the `Effect` type we talked about in the last chapter and the Shell will use it's native APIs to wait for the given duration, and eventually respond. This will wake our task up again and we can continue working.
 
