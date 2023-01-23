@@ -13,9 +13,12 @@ pub(crate) struct Step<T> {
     pub(crate) resolve: Option<Resolve>,
 }
 
+type OnceFn = dyn FnOnce(&[u8]) + Send;
+type ManyFn = dyn Fn(&[u8]) -> Result<(), ()> + Send;
+
 pub(crate) enum Resolve {
-    Once(Box<dyn FnOnce(&[u8]) + Send>),
-    Many(Box<dyn Fn(&[u8]) -> Result<(), ()> + Send>),
+    Once(Box<OnceFn>),
+    Many(Box<ManyFn>),
 }
 
 impl<T> Step<T> {
