@@ -41,11 +41,13 @@ where
     where
         F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        let ctx = self.context.clone();
-        self.context.spawn(async move {
-            let response = ctx.request_from_shell(TimeRequest).await;
+        self.context.spawn({
+            let context = self.context.clone();
+            async move {
+                let response = context.request_from_shell(TimeRequest).await;
 
-            ctx.update_app(callback(response));
+                context.update_app(callback(response));
+            }
         });
     }
 }

@@ -66,14 +66,16 @@ where
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
-        let ctx = self.context.clone();
-        let key = key.to_string();
-        self.context.spawn(async move {
-            let resp = ctx
-                .request_from_shell(KeyValueOperation::Write(key, value))
-                .await;
+        self.context.spawn({
+            let context = self.context.clone();
+            let key = key.to_string();
+            async move {
+                let resp = context
+                    .request_from_shell(KeyValueOperation::Write(key, value))
+                    .await;
 
-            ctx.update_app(make_event(resp))
+                context.update_app(make_event(resp))
+            }
         });
     }
 }
