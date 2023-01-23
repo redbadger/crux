@@ -61,7 +61,7 @@ where
     pub fn milliseconds(&self, millis: usize, event: Ev) {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            ctx.request_from_shell(DelayOperation { millis }).await
+            ctx.request_from_shell(DelayOperation { millis }).await;
 
             ctx.update_app(event);
         });
@@ -151,7 +151,7 @@ where
     pub fn milliseconds(&self, millis: usize, event: Ev) {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            ctx.request_from_shell(DelayOperation::Delay(millis)).await // Changed
+            ctx.request_from_shell(DelayOperation::Delay(millis)).await; // Changed
 
             ctx.update_app(event);
         });
@@ -162,12 +162,12 @@ where
     {
         let ctx = self.context.clone();
         self.context.spawn(async move {
-            let response = ctx.request_from_shell(DelayOperation::GetRandom(min, max)).await
+            let response = ctx.request_from_shell(DelayOperation::GetRandom(min, max)).await;
 
             let DelayOutput::Random(millis) = response else {
                 panic!("Expected a random number")
             };
-            ctx.request_from_shell(DelayOperation::Delay(millis)).await
+            ctx.request_from_shell(DelayOperation::Delay(millis)).await;
 
             ctx.update_app(event(millis));
         });
