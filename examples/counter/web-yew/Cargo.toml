@@ -11,7 +11,7 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 bcs = "0.1.4"
-gloo-net = { version = "0.2.5", features = ["http"] }
+gloo-net = { version = "0.2.6", features = ["http"] }
 shared = { path = "../shared" }
 wasm-bindgen-futures = "0.4.33"
 yew = { version = "0.20.0", features = ["csr"] }
