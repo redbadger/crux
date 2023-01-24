@@ -142,18 +142,16 @@ async fn sse(uuid: &[u8], url: &str, link: &Scope<RootComponent>) -> Result<()> 
         .await?
         .body()
     {
-        let reader_value = body.get_reader();
-        let reader: ReadableStreamDefaultReader = reader_value.dyn_into().unwrap();
+        let reader = body.get_reader();
+        let reader: ReadableStreamDefaultReader = reader.dyn_into().unwrap();
         loop {
-            let result_value = JsFuture::from(reader.read()).await.unwrap();
-            let result: Object = result_value.dyn_into().unwrap();
-            let chunk_value = js_sys::Reflect::get(&result, &JsValue::from_str("value")).unwrap();
-            let chunk_array: Uint8Array = chunk_value.dyn_into().unwrap();
-            let chunk = chunk_array.to_vec();
-            let response = SseResponse::Raw(chunk);
+            let result = JsFuture::from(reader.read()).await.unwrap();
+            let result: Object = result.dyn_into().unwrap();
+            let chunk = js_sys::Reflect::get(&result, &JsValue::from_str("value")).unwrap();
+            let chunk: Uint8Array = chunk.dyn_into().unwrap();
             link.send_message(CoreMessage::Response(
                 uuid.to_vec(),
-                Outcome::Sse(Some(response)),
+                Outcome::Sse(Some(SseResponse::Raw(chunk.to_vec()))),
             ));
         }
     }
