@@ -19,6 +19,7 @@ derive_more = "0.99.17"
 lazy_static = "1.4.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.91"
+sse = { path = "../sse" }
 thiserror = "1.0.38"
 uniffi = "0.22.0"
 uniffi_macros = "0.22.0"

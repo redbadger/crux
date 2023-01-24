@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crux_core::Core;
 pub use crux_core::Request;
 pub use crux_http as http;
+pub use sse;
 
 pub use app::*;
 

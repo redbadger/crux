@@ -1,5 +1,5 @@
 [workspace]
-members = ["cli", "server", "shared", "shared_types", "web-yew"]
+members = ["cli", "server", "shared", "shared_types", "sse", "web-yew"]
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]

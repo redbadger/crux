@@ -70,6 +70,7 @@ where
 
             let mut shared_state = shared_state.lock().unwrap();
 
+            println!("streams bytes: {bytes:?}");
             sender.send(bcs::from_bytes(bytes).unwrap());
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake();

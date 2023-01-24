@@ -3,6 +3,7 @@ use crux_core::render::Render;
 use crux_http::Http;
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
+use sse::{ServerSentEvents, SseResponse};
 use url::Url;
 
 const API_URL: &str = "https://crux-counter.fly.dev";
@@ -11,11 +12,13 @@ const API_URL: &str = "https://crux-counter.fly.dev";
 pub struct Model {
     count: Counter,
     confirmed: Option<bool>,
+    events: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ViewModel {
     pub text: String,
+    pub events: String,
 }
 
 impl From<&Model> for ViewModel {
@@ -31,6 +34,7 @@ impl From<&Model> for ViewModel {
         };
         Self {
             text: model.count.value.to_string() + &suffix,
+            events: model.events.join(", "),
         }
     }
 }
@@ -41,16 +45,19 @@ pub enum Event {
     Get,
     Increment,
     Decrement,
+    GetServerEvents,
 
     // events local to the core
     #[serde(skip)]
     Set(crux_http::Result<crux_http::Response<Counter>>),
+    SetServerEvents(sse::SseResponse),
 }
 
 #[derive(Effect)]
 pub struct Capabilities {
     pub http: Http<Event>,
     pub render: Render<Event>,
+    pub sse: ServerSentEvents<Event>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
@@ -106,6 +113,18 @@ impl crux_core::App for App {
                 let url = base.join("/dec").unwrap();
                 caps.http.post(url.as_str()).expect_json().send(Event::Set);
             }
+            Event::GetServerEvents => {
+                let base = Url::parse(API_URL).unwrap();
+                let url = base.join("/sse").unwrap();
+                caps.sse.get(url.as_str(), Event::SetServerEvents);
+            }
+            Event::SetServerEvents(res) => {
+                println!("decoded: {res:?}");
+                let SseResponse::Decoded(msg) = res else {
+                    panic!("should be decoded already");
+                };
+                model.events.push(msg);
+            }
         }
     }
 
@@ -123,6 +142,7 @@ mod tests {
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
     };
+    use sse::SseRequest;
 
     #[test]
     fn get_counter() {
@@ -250,6 +270,30 @@ mod tests {
         let actual = update.events;
         let expected = vec![Event::new_set(-1, 1)];
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn get_sse() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::GetServerEvents, &mut model);
+
+        let actual = &update.effects[0];
+        let expected = &Effect::ServerSentEvents(SseRequest {
+            url: "https://crux-counter.fly.dev/sse".to_string(),
+        });
+        assert_eq!(actual, expected);
+
+        // let data = "Hello";
+
+        // let update = update.effects[0].resolve(&SseResponse::Raw(data.as_bytes().to_vec()));
+
+        // let actual = update.events;
+        // let expected = vec![Event::SetServerEvents(SseResponse::Decoded(format!(
+        //     "data:{data}"
+        // )))];
+        // assert_eq!(actual, expected);
     }
 
     impl Event {

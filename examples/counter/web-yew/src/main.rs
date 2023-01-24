@@ -81,6 +81,7 @@ impl Component for RootComponent {
                         }
                     });
                 }
+                Effect::ServerSentEvents(_) => {}
             }
         }
 
