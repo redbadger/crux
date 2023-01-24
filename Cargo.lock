@@ -301,11 +301,13 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "assert_matches",
+ "async-channel",
  "bcs",
  "crossbeam-channel",
  "crux_macros",
  "derive_more",
  "futures",
+ "rand 0.8.5",
  "serde",
  "serde-generate",
  "serde-reflection",
