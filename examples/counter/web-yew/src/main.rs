@@ -23,7 +23,7 @@ enum CoreMessage {
 
 pub enum Outcome {
     Http(HttpResponse),
-    Sse(Option<SseResponse>),
+    Sse(SseResponse),
 }
 
 impl Component for RootComponent {
@@ -151,7 +151,7 @@ async fn sse(uuid: &[u8], url: &str, link: &Scope<RootComponent>) -> Result<()> 
             let chunk: Uint8Array = chunk.dyn_into().unwrap();
             link.send_message(CoreMessage::Response(
                 uuid.to_vec(),
-                Outcome::Sse(Some(SseResponse::Raw(chunk.to_vec()))),
+                Outcome::Sse(SseResponse::Chunk(chunk.to_vec())),
             ));
         }
     }

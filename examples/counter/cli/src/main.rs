@@ -37,7 +37,7 @@ impl From<Command> for CoreMessage {
 
 pub enum Outcome {
     Http(HttpResponse),
-    Sse(Option<SseResponse>),
+    Sse(SseResponse),
 }
 
 #[derive(Parser)]
@@ -141,13 +141,18 @@ async fn get_sse(uuid: &[u8], url: &Url, tx: &Sender<CoreMessage>) -> Result<()>
     loop {
         match body.read(&mut buf).await {
             Ok(n) if n == 0 => {
-                tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(None)))
-                    .unwrap();
+                tx.send(CoreMessage::Response(
+                    uuid.to_vec(),
+                    Outcome::Sse(SseResponse::Done),
+                ))
+                .unwrap();
             }
             Ok(n) => {
-                let response = Some(SseResponse::Raw(buf[0..n].to_vec()));
-                tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(response)))
-                    .unwrap();
+                tx.send(CoreMessage::Response(
+                    uuid.to_vec(),
+                    Outcome::Sse(SseResponse::Chunk(buf[0..n].to_vec())),
+                ))
+                .unwrap();
             }
             Err(e) => {
                 eprintln!("failed to read from http response; err = {:?}", e);

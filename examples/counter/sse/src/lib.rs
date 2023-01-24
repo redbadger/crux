@@ -15,12 +15,12 @@ pub struct SseRequest {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum SseResponse {
-    Raw(Vec<u8>),
-    Decoded(String),
+    Chunk(Vec<u8>),
+    Done,
 }
 
 impl Operation for SseRequest {
-    type Output = Option<SseResponse>;
+    type Output = SseResponse;
 }
 
 pub struct ServerSentEvents<Ev> {
@@ -37,7 +37,7 @@ where
 
     pub fn get<F>(&self, url: &str, event: F)
     where
-        F: Fn(SseResponse) -> Ev + Clone + Send + 'static,
+        F: Fn(String) -> Ev + Clone + Send + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -50,11 +50,11 @@ where
                     let event = event.clone();
 
                     match maybe_response {
-                        Some(SseResponse::Raw(data)) => {
+                        SseResponse::Chunk(data) => {
                             let mut reader = decode(Cursor::new(data));
                             while let Some(Ok(Event::Message(msg))) = reader.next().await {
                                 let data = String::from_utf8(msg.data().to_owned()).unwrap();
-                                context.update_app(event(SseResponse::Decoded(data)));
+                                context.update_app(event(data));
                             }
                         }
                         _ => break,
