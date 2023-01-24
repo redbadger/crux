@@ -12,13 +12,11 @@ const API_URL: &str = "https://crux-counter.fly.dev";
 pub struct Model {
     count: Counter,
     confirmed: Option<bool>,
-    last_event: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ViewModel {
     pub text: String,
-    pub last_event: String,
 }
 
 impl From<&Model> for ViewModel {
@@ -34,7 +32,6 @@ impl From<&Model> for ViewModel {
         };
         Self {
             text: model.count.value.to_string() + &suffix,
-            last_event: model.last_event.clone(),
         }
     }
 }
@@ -122,7 +119,8 @@ impl crux_core::App for App {
                 let SseResponse::Decoded(msg) = res else {
                     panic!("should be decoded already");
                 };
-                model.last_event = msg;
+                model.count = serde_json::from_str(&msg).unwrap();
+                model.confirmed = Some(true);
                 caps.render.render();
             }
         }
@@ -291,10 +289,10 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let data = "Hello".to_string();
+        let data = r#"{"value":1,"updated_at":1}"#.to_string();
 
         let update = app.update(
-            Event::SetServerEvents(SseResponse::Decoded(data.clone())),
+            Event::SetServerEvents(SseResponse::Decoded(data)),
             &mut model,
         );
         let actual = &update.effects[0];
@@ -302,8 +300,12 @@ mod tests {
 
         assert_eq!(actual, expected);
 
-        let actual = model.last_event;
-        let expected = data;
+        let actual = model.count.value;
+        let expected = 1;
+        assert_eq!(actual, expected);
+
+        let actual = model.confirmed;
+        let expected = Some(true);
         assert_eq!(actual, expected);
     }
 
