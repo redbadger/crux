@@ -1,22 +1,17 @@
 use anyhow::Result;
 use bcs::{from_bytes, to_bytes};
 use gloo_net::http;
-use yew::prelude::*;
+use js_sys::{Object, Uint8Array};
+use wasm_bindgen::{JsCast, JsValue};
+use wasm_bindgen_futures::JsFuture;
+use web_sys::ReadableStreamDefaultReader;
+use yew::{html::Scope, prelude::*};
 
 use shared::{
     http::protocol::{HttpRequest, HttpResponse},
+    sse::{SseRequest, SseResponse},
     Effect, Event, Request, ViewModel,
 };
-
-async fn http(url: &str, method: http::Method) -> Result<Vec<u8>> {
-    let bytes = http::Request::new(url)
-        .method(method)
-        .send()
-        .await?
-        .binary()
-        .await?;
-    Ok(bytes)
-}
 
 #[derive(Default)]
 struct RootComponent;
@@ -28,6 +23,7 @@ enum CoreMessage {
 
 pub enum Outcome {
     Http(HttpResponse),
+    Sse(Option<SseResponse>),
 }
 
 impl Component for RootComponent {
@@ -37,6 +33,7 @@ impl Component for RootComponent {
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
         link.send_message(CoreMessage::Message(Event::Get));
+        link.send_message(CoreMessage::Message(Event::GetServerEvents));
 
         Self::default()
     }
@@ -50,6 +47,7 @@ impl Component for RootComponent {
                 &uuid,
                 &match outcome {
                     Outcome::Http(x) => to_bytes(&x).unwrap(),
+                    Outcome::Sse(x) => to_bytes(&x).unwrap(),
                 },
             ),
         };
@@ -81,7 +79,15 @@ impl Component for RootComponent {
                         }
                     });
                 }
-                Effect::ServerSentEvents(_) => {}
+                Effect::ServerSentEvents(SseRequest { url }) => {
+                    wasm_bindgen_futures::spawn_local({
+                        let link = link.clone();
+
+                        async move {
+                            sse(&uuid, &url, &link).await.unwrap();
+                        }
+                    });
+                }
             }
         }
 
@@ -117,6 +123,41 @@ impl Component for RootComponent {
             </>
         }
     }
+}
+
+async fn http(url: &str, method: http::Method) -> Result<Vec<u8>> {
+    let bytes = http::Request::new(url)
+        .method(method)
+        .send()
+        .await?
+        .binary()
+        .await?;
+    Ok(bytes)
+}
+
+async fn sse(uuid: &[u8], url: &str, link: &Scope<RootComponent>) -> Result<()> {
+    if let Some(body) = http::Request::new(url)
+        .method(http::Method::GET)
+        .send()
+        .await?
+        .body()
+    {
+        let reader_value = body.get_reader();
+        let reader: ReadableStreamDefaultReader = reader_value.dyn_into().unwrap();
+        loop {
+            let result_value = JsFuture::from(reader.read()).await.unwrap();
+            let result: Object = result_value.dyn_into().unwrap();
+            let chunk_value = js_sys::Reflect::get(&result, &JsValue::from_str("value")).unwrap();
+            let chunk_array: Uint8Array = chunk_value.dyn_into().unwrap();
+            let chunk = chunk_array.to_vec();
+            let response = SseResponse::Raw(chunk);
+            link.send_message(CoreMessage::Response(
+                uuid.to_vec(),
+                Outcome::Sse(Some(response)),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn main() {

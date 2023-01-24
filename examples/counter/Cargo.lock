@@ -3536,8 +3536,11 @@ dependencies = [
  "anyhow",
  "bcs",
  "gloo-net",
+ "js-sys",
  "shared",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
  "yew",
 ]
 

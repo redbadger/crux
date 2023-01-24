@@ -1,4 +1,5 @@
 use async_std::io::ReadExt;
+use bcs::{from_bytes, to_bytes};
 use clap::Parser;
 use crossbeam_channel::Sender;
 use eyre::{bail, eyre, Result};
@@ -48,6 +49,7 @@ struct Args {
 
 #[async_std::main]
 async fn main() -> Result<()> {
+    println!("^c to exit");
     let (tx, rx) = crossbeam_channel::unbounded::<CoreMessage>();
 
     let cmd = Args::parse().cmd;
@@ -56,21 +58,21 @@ async fn main() -> Result<()> {
     let handle = async_task_group::group(|group| async move {
         while let Ok(msg) = rx.recv() {
             let reqs = match msg {
-                CoreMessage::Message(m) => shared::message(&bcs::to_bytes(&m).unwrap()),
+                CoreMessage::Message(m) => shared::message(&to_bytes(&m).unwrap()),
                 CoreMessage::Response(uuid, output) => shared::response(
                     &uuid,
                     &match output {
-                        Outcome::Http(x) => bcs::to_bytes(&x).unwrap(),
-                        Outcome::Sse(x) => bcs::to_bytes(&x).unwrap(),
+                        Outcome::Http(x) => to_bytes(&x).unwrap(),
+                        Outcome::Sse(x) => to_bytes(&x).unwrap(),
                     },
                 ),
             };
-            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs).unwrap();
+            let reqs: Vec<Request<Effect>> = from_bytes(&reqs).unwrap();
 
             for Request { uuid, effect } in reqs {
                 match effect {
                     Effect::Render(_) => {
-                        let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
+                        let view = from_bytes::<ViewModel>(&shared::view())?;
                         println!("{view:?}");
                     }
                     Effect::Http(HttpRequest { method, url }) => {
@@ -85,7 +87,7 @@ async fn main() -> Result<()> {
                         group.spawn({
                             let url = Url::parse(&url).unwrap();
                             let tx = tx.clone();
-                            async move { get(&uuid, &url, &tx).await }
+                            async move { get_sse(&uuid, &url, &tx).await }
                         });
                     }
                 }
@@ -121,7 +123,7 @@ async fn http(method: Method, url: &Url) -> Result<HttpResponse> {
     }
 }
 
-async fn get(uuid: &[u8], url: &Url, tx: &Sender<CoreMessage>) -> Result<()> {
+async fn get_sse(uuid: &[u8], url: &Url, tx: &Sender<CoreMessage>) -> Result<()> {
     let mut response = surf::get(url)
         .await
         .map_err(|e| eyre!("get {url}: error {e}"))?;
