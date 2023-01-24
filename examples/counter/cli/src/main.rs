@@ -36,7 +36,7 @@ impl From<Command> for CoreMessage {
 
 pub enum Outcome {
     Http(HttpResponse),
-    Sse(SseResponse),
+    Sse(Option<SseResponse>),
 }
 
 #[derive(Parser)]
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
     tx.send(cmd.into()).unwrap();
 
     let handle = async_task_group::group(|group| async move {
-        'outer: while let Ok(msg) = rx.recv() {
+        while let Ok(msg) = rx.recv() {
             let reqs = match msg {
                 CoreMessage::Message(m) => shared::message(&bcs::to_bytes(&m).unwrap()),
                 CoreMessage::Response(uuid, output) => shared::response(
@@ -69,7 +69,10 @@ async fn main() -> Result<()> {
 
             for Request { uuid, effect } in reqs {
                 match effect {
-                    Effect::Render(_) => break 'outer,
+                    Effect::Render(_) => {
+                        let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
+                        println!("{view:?}");
+                    }
                     Effect::Http(HttpRequest { method, url }) => {
                         let method = Method::from_str(&method).expect("unknown http method");
                         let url = Url::parse(&url).unwrap();
@@ -92,9 +95,6 @@ async fn main() -> Result<()> {
     });
 
     handle.await.unwrap();
-
-    let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
-    println!("{}", view.text);
 
     Ok(())
 }
@@ -138,10 +138,12 @@ async fn get(uuid: &[u8], url: &Url, tx: &Sender<CoreMessage>) -> Result<()> {
     let mut buf = [0; 1024];
     loop {
         match body.read(&mut buf).await {
-            Ok(n) if n == 0 => break,
+            Ok(n) if n == 0 => {
+                tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(None)))
+                    .unwrap();
+            }
             Ok(n) => {
-                let response = SseResponse::Raw(buf[0..n].to_vec());
-                println!("response {response:?}");
+                let response = Some(SseResponse::Raw(buf[0..n].to_vec()));
                 tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(response)))
                     .unwrap();
             }

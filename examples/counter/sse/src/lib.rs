@@ -42,12 +42,13 @@ where
         self.context.spawn({
             let context = self.context.clone();
             let url = url.to_string();
+
             async move {
                 let mut stream = context.stream_from_shell(SseRequest { url });
-                println!("hey");
+
                 while let Some(maybe_response) = stream.next().await {
-                    println!("maybe_response: {maybe_response:?}");
                     let event = event.clone();
+
                     match maybe_response {
                         Some(SseResponse::Raw(data)) => {
                             let mut reader = decode(Cursor::new(data));

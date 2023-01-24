@@ -12,13 +12,13 @@ const API_URL: &str = "https://crux-counter.fly.dev";
 pub struct Model {
     count: Counter,
     confirmed: Option<bool>,
-    events: Vec<String>,
+    last_event: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ViewModel {
     pub text: String,
-    pub events: String,
+    pub last_event: String,
 }
 
 impl From<&Model> for ViewModel {
@@ -34,7 +34,7 @@ impl From<&Model> for ViewModel {
         };
         Self {
             text: model.count.value.to_string() + &suffix,
-            events: model.events.join(", "),
+            last_event: model.last_event.clone(),
         }
     }
 }
@@ -119,11 +119,11 @@ impl crux_core::App for App {
                 caps.sse.get(url.as_str(), Event::SetServerEvents);
             }
             Event::SetServerEvents(res) => {
-                println!("decoded: {res:?}");
                 let SseResponse::Decoded(msg) = res else {
                     panic!("should be decoded already");
                 };
-                model.events.push(msg);
+                model.last_event = msg;
+                caps.render.render();
             }
         }
     }
@@ -142,7 +142,7 @@ mod tests {
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
     };
-    use sse::SseRequest;
+    use sse::{SseRequest, SseResponse};
 
     #[test]
     fn get_counter() {
@@ -284,16 +284,27 @@ mod tests {
             url: "https://crux-counter.fly.dev/sse".to_string(),
         });
         assert_eq!(actual, expected);
+    }
 
-        // let data = "Hello";
+    #[test]
+    fn set_sse() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
 
-        // let update = update.effects[0].resolve(&SseResponse::Raw(data.as_bytes().to_vec()));
+        let data = "Hello".to_string();
 
-        // let actual = update.events;
-        // let expected = vec![Event::SetServerEvents(SseResponse::Decoded(format!(
-        //     "data:{data}"
-        // )))];
-        // assert_eq!(actual, expected);
+        let update = app.update(
+            Event::SetServerEvents(SseResponse::Decoded(data.clone())),
+            &mut model,
+        );
+        let actual = &update.effects[0];
+        let expected = &Effect::Render(RenderOperation);
+
+        assert_eq!(actual, expected);
+
+        let actual = model.last_event;
+        let expected = data;
+        assert_eq!(actual, expected);
     }
 
     impl Event {
