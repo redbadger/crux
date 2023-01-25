@@ -1,4 +1,5 @@
 pub mod app;
+pub mod capabilities;
 
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -6,9 +7,9 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crux_core::Core;
 pub use crux_core::Request;
 pub use crux_http as http;
-pub use sse;
 
 pub use app::*;
+pub use capabilities::sse;
 
 // TODO hide this plumbing
 

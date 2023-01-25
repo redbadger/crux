@@ -1,7 +1,7 @@
 use async_sse::{decode, Event};
 use async_std::io::Cursor;
 use futures::StreamExt;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crux_core::{
     capability::{CapabilityContext, Operation},
@@ -35,9 +35,10 @@ where
         Self { context }
     }
 
-    pub fn get<F>(&self, url: &str, make_event: F)
+    pub fn get_json<F, T>(&self, url: &str, make_event: F)
     where
-        F: Fn(Vec<u8>) -> Ev + Clone + Send + 'static,
+        F: Fn(T) -> Ev + Clone + Send + 'static,
+        T: DeserializeOwned,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -55,7 +56,8 @@ where
 
                             while let Some(sse_event) = reader.next().await {
                                 if let Ok(Event::Message(msg)) = sse_event {
-                                    context.update_app(make_event(msg.data().to_vec()));
+                                    let t: T = serde_json::from_slice(msg.data()).unwrap();
+                                    context.update_app(make_event(t));
                                 }
                             }
                         }

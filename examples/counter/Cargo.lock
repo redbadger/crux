@@ -2492,9 +2492,9 @@ dependencies = [
 
 [[package]]
 name = "serde_bytes"
-version = "0.11.7"
+version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfc50e8183eeeb6178dcb167ae34a8051d63535023ae38b5d8d12beae193d37b"
+checksum = "718dc5fff5b36f99093fc49b280cfc96ce6fc824317783bff5a1fed0c7a64819"
 dependencies = [
  "serde",
 ]
@@ -2634,6 +2634,8 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-sse",
+ "async-std",
  "bcs",
  "bincode",
  "chrono",
@@ -2641,10 +2643,10 @@ dependencies = [
  "crux_http",
  "crux_macros",
  "derive_more",
+ "futures",
  "lazy_static",
  "serde",
  "serde_json",
- "sse",
  "thiserror",
  "uniffi",
  "uniffi_build",
@@ -2741,18 +2743,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75adad84ee84b521fb2cca2d4fd0f1dab1d8d026bda3c5bea4ca63b5f9f9293c"
 dependencies = [
  "lock_api",
-]
-
-[[package]]
-name = "sse"
-version = "0.1.0"
-dependencies = [
- "async-sse",
- "async-std",
- "crux_core",
- "crux_macros",
- "futures",
- "serde",
 ]
 
 [[package]]

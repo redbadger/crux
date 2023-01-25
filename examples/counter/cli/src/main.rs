@@ -30,7 +30,7 @@ impl From<Command> for CoreMessage {
             Command::Get => CoreMessage::Message(Event::Get),
             Command::Inc => CoreMessage::Message(Event::Increment),
             Command::Dec => CoreMessage::Message(Event::Decrement),
-            Command::Watch => CoreMessage::Message(Event::GetServerEvents),
+            Command::Watch => CoreMessage::Message(Event::StartWatch),
         }
     }
 }

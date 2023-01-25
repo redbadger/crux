@@ -1,9 +1,9 @@
+use crate::capabilities::sse::ServerSentEvents;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
-use sse::ServerSentEvents;
 use url::Url;
 
 const API_URL: &str = "https://crux-counter.fly.dev";
@@ -42,12 +42,12 @@ pub enum Event {
     Get,
     Increment,
     Decrement,
-    GetServerEvents,
+    StartWatch,
 
     // events local to the core
     #[serde(skip)]
     Set(crux_http::Result<crux_http::Response<Counter>>),
-    SetServerEvents(Vec<u8>),
+    WatchUpdate(Counter),
 }
 
 #[derive(Effect)]
@@ -110,13 +110,13 @@ impl crux_core::App for App {
                 let url = base.join("/dec").unwrap();
                 caps.http.post(url.as_str()).expect_json().send(Event::Set);
             }
-            Event::GetServerEvents => {
+            Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
-                caps.sse.get(url.as_str(), Event::SetServerEvents);
+                caps.sse.get_json(url.as_str(), Event::WatchUpdate);
             }
-            Event::SetServerEvents(sse_event) => {
-                model.count = serde_json::from_slice(&sse_event).unwrap();
+            Event::WatchUpdate(count) => {
+                model.count = count;
                 model.confirmed = Some(true);
                 caps.render.render();
             }
@@ -131,13 +131,13 @@ impl crux_core::App for App {
 #[cfg(test)]
 mod tests {
     use super::{App, Event, Model};
+    use crate::capabilities::sse::SseRequest;
     use crate::{Counter, Effect};
     use crux_core::{render::RenderOperation, testing::AppTester};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
     };
-    use sse::SseRequest;
 
     #[test]
     fn get_counter() {
@@ -272,7 +272,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::GetServerEvents, &mut model);
+        let update = app.update(Event::StartWatch, &mut model);
 
         let actual = &update.effects[0];
         let expected = &Effect::ServerSentEvents(SseRequest {
@@ -286,7 +286,11 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let event = Event::SetServerEvents(r#"{"value":1,"updated_at":1}"#.as_bytes().to_vec());
+        let count = Counter {
+            value: 1,
+            updated_at: 1,
+        };
+        let event = Event::WatchUpdate(count);
 
         let update = app.update(event, &mut model);
         let actual = &update.effects[0];
