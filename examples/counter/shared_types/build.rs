@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crux_core::{typegen::TypeGen, Request};
 use crux_http::protocol::{HttpRequest, HttpResponse};
-use shared::{Effect, Event, ViewModel};
+use shared::{sse::SseResponse, Effect, Event, ViewModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -31,6 +31,7 @@ fn register_types(gen: &mut TypeGen) -> Result<()> {
 
     gen.register_type::<Event>()?;
     gen.register_type::<HttpResponse>()?;
+    gen.register_type::<SseResponse>()?;
 
     gen.register_type::<ViewModel>()?;
     Ok(())

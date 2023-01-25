@@ -3,6 +3,7 @@ use async_std::{
     fs::{File, OpenOptions},
     io::{ReadExt, WriteExt},
 };
+use bcs::{from_bytes, to_bytes};
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use shared::{
@@ -54,19 +55,19 @@ async fn main() -> Result<()> {
         let msg = queue.pop_front();
 
         let reqs = match msg {
-            Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m)?),
+            Some(CoreMessage::Message(m)) => shared::message(&to_bytes(&m)?),
             Some(CoreMessage::Response(uuid, output)) => shared::response(
                 &uuid,
                 &match output {
-                    Outcome::Platform(x) => bcs::to_bytes(&x)?,
-                    Outcome::Time(x) => bcs::to_bytes(&x)?,
-                    Outcome::Http(x) => bcs::to_bytes(&x)?,
-                    Outcome::KeyValue(x) => bcs::to_bytes(&x)?,
+                    Outcome::Platform(x) => to_bytes(&x)?,
+                    Outcome::Time(x) => to_bytes(&x)?,
+                    Outcome::Http(x) => to_bytes(&x)?,
+                    Outcome::KeyValue(x) => to_bytes(&x)?,
                 },
             ),
             _ => vec![],
         };
-        let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
+        let reqs: Vec<Request<Effect>> = from_bytes(&reqs)?;
 
         for req in reqs {
             let Request { uuid, effect } = req;
@@ -126,7 +127,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
+    let view = from_bytes::<ViewModel>(&shared::view())?;
     println!("platform: {}", view.platform);
     println!("{}", view.fact);
 

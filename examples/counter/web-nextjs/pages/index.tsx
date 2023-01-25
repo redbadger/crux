@@ -18,7 +18,10 @@ interface Message {
 interface Response {
   kind: "response";
   uuid: number[];
-  outcome: types.HttpResponse;
+  outcome:
+    | types.HttpResponse
+    | types.SseResponseVariantChunk
+    | types.SseResponseVariantDone;
 }
 
 type State = {
@@ -80,7 +83,7 @@ const Home: NextPage = () => {
           });
 
           break;
-        case types.EffectVariantHttp:
+        case types.EffectVariantHttp: {
           const { method, url } = (effect as types.EffectVariantHttp).value;
           const req = new Request(url, { method });
           const res = await fetch(req);
@@ -93,6 +96,32 @@ const Home: NextPage = () => {
             outcome: new types.HttpResponse(res.status, response_bytes),
           });
           break;
+        }
+        case types.EffectVariantServerSentEvents: {
+          const { url } = (effect as types.EffectVariantServerSentEvents).value;
+          const req = new Request(url);
+          const res = await fetch(req);
+          const reader = await res.body.getReader();
+          try {
+            while (true) {
+              const { done, value: chunk } = await reader.read();
+              respond({
+                kind: "response",
+                uuid,
+                outcome: done
+                  ? new types.SseResponseVariantDone()
+                  : new types.SseResponseVariantChunk(Array.from(chunk)),
+              });
+              if (done) {
+                break;
+              }
+            }
+          } finally {
+            reader.releaseLock();
+          }
+
+          break;
+        }
         default:
       }
     }
@@ -102,10 +131,14 @@ const Home: NextPage = () => {
     async function loadCore() {
       await init_core();
 
-      // Initial message
+      // Initial messages
       dispatch({
         kind: "message",
         message: new types.EventVariantGet(),
+      });
+      dispatch({
+        kind: "message",
+        message: new types.EventVariantStartWatch(),
       });
     }
 

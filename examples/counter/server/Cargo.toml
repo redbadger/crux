@@ -9,7 +9,7 @@ keywords.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-axum = { version = "0.6.3", features = ["headers"] }
+axum = { version = "0.6.4", features = ["headers"] }
 futures = "0.3.25"
 futures-signals = "0.3.31"
 serde = { workspace = true, features = ["derive"] }

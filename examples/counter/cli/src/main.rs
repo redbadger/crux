@@ -1,10 +1,14 @@
+use async_std::io::ReadExt;
+use bcs::{from_bytes, to_bytes};
 use clap::Parser;
+use crossbeam_channel::Sender;
 use eyre::{bail, eyre, Result};
 use shared::{
     http::protocol::{HttpRequest, HttpResponse},
+    sse::{SseRequest, SseResponse},
     Effect, Event, Request, ViewModel,
 };
-use std::{collections::VecDeque, str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
 use surf::{http::Method, Client, Config, Url};
 
 enum CoreMessage {
@@ -17,6 +21,7 @@ enum Command {
     Get,
     Inc,
     Dec,
+    Watch,
 }
 
 impl From<Command> for CoreMessage {
@@ -25,12 +30,14 @@ impl From<Command> for CoreMessage {
             Command::Get => CoreMessage::Message(Event::Get),
             Command::Inc => CoreMessage::Message(Event::Increment),
             Command::Dec => CoreMessage::Message(Event::Decrement),
+            Command::Watch => CoreMessage::Message(Event::StartWatch),
         }
     }
 }
 
 pub enum Outcome {
     Http(HttpResponse),
+    Sse(SseResponse),
 }
 
 #[derive(Parser)]
@@ -42,64 +49,116 @@ struct Args {
 
 #[async_std::main]
 async fn main() -> Result<()> {
-    let mut queue: VecDeque<CoreMessage> = VecDeque::new();
+    let (tx, rx) = crossbeam_channel::unbounded::<CoreMessage>();
 
     let cmd = Args::parse().cmd;
-    queue.push_back(cmd.into());
 
-    while !queue.is_empty() {
-        let msg = queue.pop_front();
+    let watching = matches!(cmd, Command::Watch);
+    if watching {
+        println!("^C to exit");
+    }
 
-        let reqs = match msg {
-            Some(CoreMessage::Message(m)) => shared::message(&bcs::to_bytes(&m)?),
-            Some(CoreMessage::Response(uuid, output)) => shared::response(
-                &uuid,
-                &match output {
-                    Outcome::Http(x) => bcs::to_bytes(&x)?,
-                },
-            ),
-            _ => vec![],
-        };
-        let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
+    tx.send(cmd.into()).unwrap();
 
-        for Request { uuid, effect } in reqs {
-            match effect {
-                Effect::Render(_) => (),
-                Effect::Http(HttpRequest { method, url }) => {
-                    let method = Method::from_str(&method).expect("unknown http method");
-                    let url = Url::parse(&url)?;
-                    let response = http(method, &url).await?;
+    let handle = async_task_group::group(|group| async move {
+        'outer: while let Ok(msg) = rx.recv() {
+            let reqs = match msg {
+                CoreMessage::Message(m) => shared::message(&to_bytes(&m).unwrap()),
+                CoreMessage::Response(uuid, output) => shared::response(
+                    &uuid,
+                    &match output {
+                        Outcome::Http(x) => to_bytes(&x).unwrap(),
+                        Outcome::Sse(x) => to_bytes(&x).unwrap(),
+                    },
+                ),
+            };
+            let reqs: Vec<Request<Effect>> = from_bytes(&reqs).unwrap();
 
-                    queue.push_back(CoreMessage::Response(uuid, Outcome::Http(response)));
+            for Request { uuid, effect } in reqs {
+                match effect {
+                    Effect::Render(_) => {
+                        let view = from_bytes::<ViewModel>(&shared::view())?;
+                        if !view.text.contains("pending") {
+                            println!("{}", view.text);
+                            if !watching {
+                                break 'outer;
+                            }
+                        }
+                    }
+                    Effect::Http(HttpRequest { method, url }) => {
+                        group.spawn({
+                            let method = Method::from_str(&method).expect("unknown http method");
+                            let url = Url::parse(&url).unwrap();
+
+                            http(uuid, method, url, tx.clone())
+                        });
+                    }
+                    Effect::ServerSentEvents(SseRequest { url }) => {
+                        group.spawn({
+                            let url = Url::parse(&url).unwrap();
+
+                            sse(uuid, url, tx.clone())
+                        });
+                    }
                 }
             }
         }
-    }
+        Ok(group)
+    });
 
-    let view = bcs::from_bytes::<ViewModel>(&shared::view())?;
-    println!("{}", view.text);
+    handle.await.unwrap();
 
     Ok(())
 }
 
-async fn http(method: Method, url: &Url) -> Result<HttpResponse> {
+async fn http(uuid: Vec<u8>, method: Method, url: Url, tx: Sender<CoreMessage>) -> Result<()> {
     let client: Client = Config::new()
         .set_timeout(Some(Duration::from_secs(5)))
         .try_into()?;
 
     let mut response = client
-        .request(method, url)
+        .request(method, &url)
         .await
         .map_err(|e| eyre!("{method} {url}: error {e}"))?;
 
     let status = response.status().into();
 
-    if let 200..=299 = status {
-        response.body_bytes().await.map_or_else(
-            |e| bail!("{method} {url}: error {e}"),
-            |body| Ok(HttpResponse { status, body }),
-        )
+    match status {
+        200..=299 => match response.body_bytes().await {
+            Ok(body) => {
+                tx.send(CoreMessage::Response(
+                    uuid.to_vec(),
+                    Outcome::Http(HttpResponse { status, body }),
+                ))?;
+            }
+            Err(e) => bail!("{method} {url}: error {e}"),
+        },
+        _ => bail!("{method} {url}: status {status}"),
+    };
+    Ok(())
+}
+
+async fn sse(uuid: Vec<u8>, url: Url, tx: Sender<CoreMessage>) -> Result<()> {
+    let mut response = surf::get(&url)
+        .await
+        .map_err(|e| eyre!("get {url}: error {e}"))?;
+
+    let status = response.status().into();
+
+    let body = if let 200..=299 = status {
+        response.take_body()
     } else {
-        bail!("{method} {url}: status {status}");
+        bail!("get {url}: status {status}");
+    };
+
+    let mut body = body.into_reader();
+    let mut buf = [0; 1024];
+    loop {
+        let response = match body.read(&mut buf).await {
+            Ok(n) if n == 0 => SseResponse::Done,
+            Ok(n) => SseResponse::Chunk(buf[0..n].to_vec()),
+            Err(e) => bail!("failed to read from http response; err = {:?}", e),
+        };
+        tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(response)))?;
     }
 }

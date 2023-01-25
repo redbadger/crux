@@ -1,3 +1,4 @@
+use crate::capabilities::sse::ServerSentEvents;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
@@ -13,7 +14,7 @@ pub struct Model {
     confirmed: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ViewModel {
     pub text: String,
 }
@@ -41,16 +42,19 @@ pub enum Event {
     Get,
     Increment,
     Decrement,
+    StartWatch,
 
     // events local to the core
     #[serde(skip)]
     Set(crux_http::Result<crux_http::Response<Counter>>),
+    WatchUpdate(Counter),
 }
 
 #[derive(Effect)]
 pub struct Capabilities {
     pub http: Http<Event>,
     pub render: Render<Event>,
+    pub sse: ServerSentEvents<Event>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
@@ -106,6 +110,16 @@ impl crux_core::App for App {
                 let url = base.join("/dec").unwrap();
                 caps.http.post(url.as_str()).expect_json().send(Event::Set);
             }
+            Event::StartWatch => {
+                let base = Url::parse(API_URL).unwrap();
+                let url = base.join("/sse").unwrap();
+                caps.sse.get_json(url.as_str(), Event::WatchUpdate);
+            }
+            Event::WatchUpdate(count) => {
+                model.count = count;
+                model.confirmed = Some(true);
+                caps.render.render();
+            }
         }
     }
 
@@ -117,6 +131,7 @@ impl crux_core::App for App {
 #[cfg(test)]
 mod tests {
     use super::{App, Event, Model};
+    use crate::capabilities::sse::SseRequest;
     use crate::{Counter, Effect};
     use crux_core::{render::RenderOperation, testing::AppTester};
     use crux_http::{
@@ -249,6 +264,46 @@ mod tests {
 
         let actual = update.events;
         let expected = vec![Event::new_set(-1, 1)];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn get_sse() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::StartWatch, &mut model);
+
+        let actual = &update.effects[0];
+        let expected = &Effect::ServerSentEvents(SseRequest {
+            url: "https://crux-counter.fly.dev/sse".to_string(),
+        });
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn set_sse() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let count = Counter {
+            value: 1,
+            updated_at: 1,
+        };
+        let event = Event::WatchUpdate(count);
+
+        let update = app.update(event, &mut model);
+        let actual = &update.effects[0];
+        let expected = &Effect::Render(RenderOperation);
+
+        assert_eq!(actual, expected);
+
+        let actual = model.count.value;
+        let expected = 1;
+        assert_eq!(actual, expected);
+
+        let actual = model.confirmed;
+        let expected = Some(true);
         assert_eq!(actual, expected);
     }
 

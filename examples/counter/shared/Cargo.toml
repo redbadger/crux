@@ -10,12 +10,15 @@ name = "shared"
 
 [dependencies]
 anyhow.workspace = true
+async-sse = "5.1.0"
+async-std = "1.12.0"
 bincode = "1.3.3"
 chrono = "0.4.23"
 crux_core = { version = "0.2", path = "../../../crux_core" }
 crux_http = { version = "0.1", path = "../../../crux_http" }
 crux_macros = { version = "0.1", path = "../../../crux_macros" }
 derive_more = "0.99.17"
+futures = "0.3.25"
 lazy_static = "1.4.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.91"
@@ -25,6 +28,9 @@ uniffi_macros = "0.22.0"
 url = "2.3.1"
 uuid = { version = "1.2.2", features = ["v4", "wasm-bindgen", "js"] }
 wasm-bindgen = "0.2.83"
+
+[dev-dependencies]
+bcs = "0.1.4"
 
 [build-dependencies]
 uniffi_build = { version = "0.22.0", features = ["builtin-bindgen"] }
