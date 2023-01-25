@@ -177,7 +177,7 @@ class Model: ObservableObject {
 
         switch msg {
         case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: iOS.message(try! m.bcsSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: iOS.processEvent(try! m.bcsSerialize()))
         }
 
         for req in reqs {

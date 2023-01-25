@@ -12,7 +12,7 @@ use std::{str::FromStr, time::Duration};
 use surf::{http::Method, Client, Config, Url};
 
 enum CoreMessage {
-    Message(Event),
+    Event(Event),
     Response(Vec<u8>, Outcome),
 }
 
@@ -27,10 +27,10 @@ enum Command {
 impl From<Command> for CoreMessage {
     fn from(cmd: Command) -> Self {
         match cmd {
-            Command::Get => CoreMessage::Message(Event::Get),
-            Command::Inc => CoreMessage::Message(Event::Increment),
-            Command::Dec => CoreMessage::Message(Event::Decrement),
-            Command::Watch => CoreMessage::Message(Event::StartWatch),
+            Command::Get => CoreMessage::Event(Event::Get),
+            Command::Inc => CoreMessage::Event(Event::Increment),
+            Command::Dec => CoreMessage::Event(Event::Decrement),
+            Command::Watch => CoreMessage::Event(Event::StartWatch),
         }
     }
 }
@@ -63,8 +63,8 @@ async fn main() -> Result<()> {
     let handle = async_task_group::group(|group| async move {
         'outer: while let Ok(msg) = rx.recv() {
             let reqs = match msg {
-                CoreMessage::Message(m) => shared::message(&to_bytes(&m).unwrap()),
-                CoreMessage::Response(uuid, output) => shared::response(
+                CoreMessage::Event(m) => shared::process_event(&to_bytes(&m).unwrap()),
+                CoreMessage::Response(uuid, output) => shared::handle_response(
                     &uuid,
                     &match output {
                         Outcome::Http(x) => to_bytes(&x).unwrap(),

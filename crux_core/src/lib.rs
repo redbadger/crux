@@ -66,9 +66,9 @@
 //! }
 //!
 //! impl App for Hello {
-//!     // Use the above Message as message
+//!     // Use the above Event
 //!     type Event = Event;
-//!     // Use the above Model as model
+//!     // Use the above Model
 //!     type Model = Model;
 //!     type ViewModel = String;
 //!     // Use the above Capabilities
@@ -115,13 +115,13 @@
 //! }
 //!
 //! #[wasm_bindgen]
-//! pub fn message(data: &[u8]) -> Vec<u8> {
-//!     CORE.message(data)
+//! pub fn process_event(data: &[u8]) -> Vec<u8> {
+//!     CORE.process_event(data)
 //! }
 //!
 //! #[wasm_bindgen]
-//! pub fn response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
-//!     CORE.response(uuid, data)
+//! pub fn handle_response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
+//!     CORE.handle_response(uuid, data)
 //! }
 //!
 //! #[wasm_bindgen]
@@ -135,8 +135,8 @@
 //! ```ignore
 //! // src/hello.udl
 //! namespace hello {
-//!   sequence<u8> message([ByRef] sequence<u8> msg);
-//!   sequence<u8> response([ByRef] sequence<u8> res);
+//!   sequence<u8> process_event([ByRef] sequence<u8> msg);
+//!   sequence<u8> handle_response([ByRef] sequence<u8> res);
 //!   sequence<u8> view();
 //! };
 //! ```
@@ -248,11 +248,11 @@ where
         }
     }
 
-    /// Receive a message from the shell.
+    /// Receive an event from the shell.
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
-    pub fn message<'de>(&self, event: &'de [u8]) -> Vec<u8>
+    pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
@@ -263,7 +263,7 @@ where
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
+    pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {

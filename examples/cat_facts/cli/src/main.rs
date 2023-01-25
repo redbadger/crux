@@ -16,7 +16,7 @@ use shared::{
 use std::{collections::VecDeque, time::SystemTime};
 
 enum CoreMessage {
-    Message(Event),
+    Event(Event),
     Response(Vec<u8>, Outcome),
 }
 
@@ -48,15 +48,15 @@ async fn main() -> Result<()> {
 
     let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-    queue.push_back(CoreMessage::Message(Event::Restore));
-    queue.push_back(CoreMessage::Message(Event::GetPlatform));
+    queue.push_back(CoreMessage::Event(Event::Restore));
+    queue.push_back(CoreMessage::Event(Event::GetPlatform));
 
     while !queue.is_empty() {
         let msg = queue.pop_front();
 
         let reqs = match msg {
-            Some(CoreMessage::Message(m)) => shared::message(&to_bytes(&m)?),
-            Some(CoreMessage::Response(uuid, output)) => shared::response(
+            Some(CoreMessage::Event(m)) => shared::process_event(&to_bytes(&m)?),
+            Some(CoreMessage::Response(uuid, output)) => shared::handle_response(
                 &uuid,
                 &match output {
                     Outcome::Platform(x) => to_bytes(&x)?,
@@ -103,9 +103,9 @@ async fn main() -> Result<()> {
                         let bytes = read_state(&key).await.ok();
 
                         let initial_msg = match &args.cmd {
-                            Command::Clear => CoreMessage::Message(Event::Clear),
-                            Command::Get => CoreMessage::Message(Event::Get),
-                            Command::Fetch => CoreMessage::Message(Event::Fetch),
+                            Command::Clear => CoreMessage::Event(Event::Clear),
+                            Command::Get => CoreMessage::Event(Event::Get),
+                            Command::Fetch => CoreMessage::Event(Event::Fetch),
                         };
 
                         queue.push_back(CoreMessage::Response(

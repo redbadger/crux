@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,8 +24,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import com.redbadger.catfacts.shared.*
+import com.redbadger.catfacts.shared.handleResponse
+import com.redbadger.catfacts.shared.processEvent
+import com.redbadger.catfacts.shared.view
 import com.redbadger.catfacts.shared_types.*
+import com.redbadger.catfacts.shared_types.Event.*
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -35,6 +41,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
+import com.redbadger.catfacts.shared_types.Event as Evt
 import com.redbadger.catfacts.shared_types.Request as Req
 import com.redbadger.catfacts.shared_types.ViewModel as MyViewModel
 
@@ -78,7 +85,7 @@ sealed class Outcome {
 }
 
 sealed class CoreMessage {
-    data class Message(val event: Event) : CoreMessage()
+    data class Event(val event: Evt) : CoreMessage()
     data class Response(val uuid: List<UByte>, val outcome: Outcome) : CoreMessage()
 }
 
@@ -87,8 +94,8 @@ class Model : ViewModel() {
         private set
 
     init {
-        update(CoreMessage.Message(Event.Get()))
-        update(CoreMessage.Message(Event.GetPlatform()))
+        update(CoreMessage.Event(Get()))
+        update(CoreMessage.Event(GetPlatform()))
     }
 
     private fun httpGet(url: String, uuid: List<Byte>) {
@@ -117,12 +124,12 @@ class Model : ViewModel() {
     fun update(msg: CoreMessage) {
         val requests: List<Req> =
             when (msg) {
-                is CoreMessage.Message -> Requests.bcsDeserialize(
-                    message(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                is CoreMessage.Event -> Requests.bcsDeserialize(
+                    processEvent(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
                         .toByteArray()
                 )
                 is CoreMessage.Response -> Requests.bcsDeserialize(
-                    response(
+                    handleResponse(
                         msg.uuid.toList(), when (msg.outcome) {
                             is Outcome.Platform -> msg.outcome.res.bcsSerialize()
                             is Outcome.Time -> msg.outcome.res.bcsSerialize()
@@ -134,7 +141,7 @@ class Model : ViewModel() {
                 )
             }
 
-        for (req in requests) when (val effect =     req.effect) {
+        for (req in requests) when (val effect = req.effect) {
             is Effect.Render -> {
                 this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
             }
@@ -214,21 +221,21 @@ fun CatFacts(model: Model = viewModel()) {
         Text(text = model.view.fact, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { model.update(CoreMessage.Message(Event.Clear())) },
+                onClick = { model.update(CoreMessage.Event(Clear())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                onClick = { model.update(CoreMessage.Message(Event.Get())) },
+                onClick = { model.update(CoreMessage.Event(Get())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) { Text(text = "Get", color = Color.White) }
             Button(
-                onClick = { model.update(CoreMessage.Message(Event.Fetch())) },
+                onClick = { model.update(CoreMessage.Event(Fetch())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary

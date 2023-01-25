@@ -17,7 +17,7 @@ use shared::{
 struct RootComponent;
 
 enum CoreMessage {
-    Message(Event),
+    Event(Event),
     Response(Vec<u8>, Outcome),
 }
 
@@ -32,8 +32,8 @@ impl Component for RootComponent {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(CoreMessage::Message(Event::Get));
-        link.send_message(CoreMessage::Message(Event::StartWatch));
+        link.send_message(CoreMessage::Event(Event::Get));
+        link.send_message(CoreMessage::Event(Event::StartWatch));
 
         Self::default()
     }
@@ -42,8 +42,8 @@ impl Component for RootComponent {
         let link = ctx.link();
 
         let reqs = match msg {
-            CoreMessage::Message(event) => shared::message(&to_bytes(&event).unwrap()),
-            CoreMessage::Response(uuid, outcome) => shared::response(
+            CoreMessage::Event(event) => shared::process_event(&to_bytes(&event).unwrap()),
+            CoreMessage::Response(uuid, outcome) => shared::handle_response(
                 &uuid,
                 &match outcome {
                     Outcome::Http(x) => to_bytes(&x).unwrap(),
@@ -105,11 +105,11 @@ impl Component for RootComponent {
                     <p class="is-size-5">{&view.text}</p>
                     <div class="buttons section is-centered">
                         <button class="button is-primary is-warning"
-                            onclick={link.callback(|_| CoreMessage::Message(Event::Decrement))}>
+                            onclick={link.callback(|_| CoreMessage::Event(Event::Decrement))}>
                             {"Decrement"}
                         </button>
                         <button class="button is-primary is-danger"
-                            onclick={link.callback(|_| CoreMessage::Message(Event::Increment))}>
+                            onclick={link.callback(|_| CoreMessage::Event(Event::Increment))}>
                             {"Increment"}
                         </button>
                     </div>

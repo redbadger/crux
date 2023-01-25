@@ -4,19 +4,17 @@ import { useEffect, useState } from "react";
 import UAParser from "ua-parser-js";
 
 import init_core, {
-  message as sendMessage,
-  response as sendResponse,
+  process_event as sendEvent,
+  handle_response as sendResponse,
   view,
 } from "../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 import { Optional } from "shared_types/serde/mod";
 
-type Action = Message | Response;
-
-interface Message {
-  kind: "message";
-  message: types.Event;
+interface Event {
+  kind: "event";
+  event: types.Event;
 }
 
 interface Response {
@@ -59,10 +57,10 @@ function deserializeRequests(bytes: Uint8Array) {
 const Home: NextPage = () => {
   const [state, setState] = useState(initialState);
 
-  const dispatch = (action: Message) => {
+  const dispatch = (action: Event) => {
     const serializer = new bcs.BcsSerializer();
-    action.message.serialize(serializer);
-    const requests = sendMessage(serializer.getBytes());
+    action.event.serialize(serializer);
+    const requests = sendEvent(serializer.getBytes());
     handleRequests(requests);
   };
 
@@ -135,14 +133,14 @@ const Home: NextPage = () => {
     async function loadCore() {
       await init_core();
 
-      // Initial messages
+      // Initial events
       dispatch({
-        kind: "message",
-        message: new types.EventVariantGetPlatform(),
+        kind: "event",
+        event: new types.EventVariantGetPlatform(),
       });
       dispatch({
-        kind: "message",
-        message: new types.EventVariantGet(),
+        kind: "event",
+        event: new types.EventVariantGet(),
       });
     }
 
@@ -177,8 +175,8 @@ const Home: NextPage = () => {
             className="button is-primary is-danger"
             onClick={() =>
               dispatch({
-                kind: "message",
-                message: new types.EventVariantClear(),
+                kind: "event",
+                event: new types.EventVariantClear(),
               })
             }
           >
@@ -188,8 +186,8 @@ const Home: NextPage = () => {
             className="button is-primary is-success"
             onClick={() =>
               dispatch({
-                kind: "message",
-                message: new types.EventVariantGet(),
+                kind: "event",
+                event: new types.EventVariantGet(),
               })
             }
           >
@@ -199,8 +197,8 @@ const Home: NextPage = () => {
             className="button is-primary is-warning"
             onClick={() =>
               dispatch({
-                kind: "message",
-                message: new types.EventVariantFetch(),
+                kind: "event",
+                event: new types.EventVariantFetch(),
               })
             }
           >

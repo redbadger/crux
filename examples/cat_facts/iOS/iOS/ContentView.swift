@@ -13,7 +13,7 @@ enum Outcome {
 }
 
 enum Message {
-    case message(Event)
+    case event(Event)
     case response([UInt8], Outcome)
 }
 
@@ -22,8 +22,8 @@ class Model: ObservableObject {
     @Published var view = ViewModel(fact: "", image: .none, platform: "")
 
     init() {
-        update(msg: .message(.get))
-        update(msg: .message(.getPlatform))
+        update(msg: .event(.get))
+        update(msg: .event(.getPlatform))
     }
 
     private func httpGet(uuid: [UInt8], url: String) {
@@ -37,10 +37,10 @@ class Model: ObservableObject {
         let reqs: [Request]
 
         switch msg {
-        case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: iOS.message(try! m.bcsSerialize()))
+        case let .event(m):
+            reqs = try! [Request].bcsDeserialize(input: iOS.processEvent(try! m.bcsSerialize()))
         case let .response(uuid, outcome):
-            reqs = try! [Request].bcsDeserialize(input: iOS.response(uuid, { switch outcome {
+            reqs = try! [Request].bcsDeserialize(input: iOS.handleResponse(uuid, { switch outcome {
             case let .platform(x):
                 return try! x.bcsSerialize()
             case let .time(x):
@@ -121,13 +121,13 @@ struct ContentView: View {
             Text(model.view.fact).padding()
             HStack {
                 ActionButton(label: "Clear", color: .red) {
-                    model.update(msg: .message(.clear))
+                    model.update(msg: .event(.clear))
                 }
                 ActionButton(label: "Get", color: .green) {
-                    model.update(msg: .message(.get))
+                    model.update(msg: .event(.get))
                 }
                 ActionButton(label: "Fetch", color: .yellow) {
-                    model.update(msg: .message(.fetch))
+                    model.update(msg: .event(.fetch))
                 }
             }
         }

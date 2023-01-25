@@ -80,7 +80,7 @@ mod shell {
     }
 
     enum CoreMessage {
-        Message(Event),
+        Event(Event),
         Response(Vec<u8>, Outcome),
     }
 
@@ -88,7 +88,7 @@ mod shell {
         let core: Core<Effect, App> = Core::default();
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
-        queue.push_back(CoreMessage::Message(Event::Write));
+        queue.push_back(CoreMessage::Event(Event::Write));
 
         let mut received = vec![];
         let mut kv_store = HashMap::new();
@@ -97,8 +97,8 @@ mod shell {
             let msg = queue.pop_front();
 
             let reqs = match msg {
-                Some(CoreMessage::Message(m)) => core.message(&bcs::to_bytes(&m)?),
-                Some(CoreMessage::Response(uuid, output)) => core.response(
+                Some(CoreMessage::Event(m)) => core.process_event(&bcs::to_bytes(&m)?),
+                Some(CoreMessage::Response(uuid, output)) => core.handle_response(
                     &uuid,
                     &match output {
                         Outcome::KeyValue(x) => bcs::to_bytes(&x)?,
@@ -122,7 +122,7 @@ mod shell {
                         ));
 
                         // now trigger a read
-                        queue.push_back(CoreMessage::Message(Event::Read));
+                        queue.push_back(CoreMessage::Event(Event::Read));
                     }
                     Effect::KeyValue(KeyValueOperation::Read(ref k)) => {
                         received.push(effect.clone());
