@@ -32,7 +32,6 @@ impl Component for RootComponent {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(CoreMessage::Event(Event::Get));
         link.send_message(CoreMessage::Event(Event::StartWatch));
 
         Self::default()

@@ -18,7 +18,6 @@ class Model: ObservableObject {
     @Published var view = ViewModel(text: "")
 
     init() {
-        update(msg: .event(.get))
         update(msg: .event(.startWatch))
     }
 
@@ -41,7 +40,7 @@ class Model: ObservableObject {
             let (asyncBytes, response) = try! await URLSession.shared.bytes(for: req)
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode) else {
-                // TOD: handle error
+                // TODO: handle error
                 return
             }
 
