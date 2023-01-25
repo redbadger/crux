@@ -21,7 +21,7 @@ enum Command {
     Get,
     Inc,
     Dec,
-    Events,
+    Watch,
 }
 
 impl From<Command> for CoreMessage {
@@ -30,7 +30,7 @@ impl From<Command> for CoreMessage {
             Command::Get => CoreMessage::Message(Event::Get),
             Command::Inc => CoreMessage::Message(Event::Increment),
             Command::Dec => CoreMessage::Message(Event::Decrement),
-            Command::Events => CoreMessage::Message(Event::GetServerEvents),
+            Command::Watch => CoreMessage::Message(Event::GetServerEvents),
         }
     }
 }
@@ -49,14 +49,19 @@ struct Args {
 
 #[async_std::main]
 async fn main() -> Result<()> {
-    println!("^c to exit");
     let (tx, rx) = crossbeam_channel::unbounded::<CoreMessage>();
 
     let cmd = Args::parse().cmd;
+
+    let watching = matches!(cmd, Command::Watch);
+    if watching {
+        println!("^C to exit");
+    }
+
     tx.send(cmd.into()).unwrap();
 
     let handle = async_task_group::group(|group| async move {
-        while let Ok(msg) = rx.recv() {
+        'outer: while let Ok(msg) = rx.recv() {
             let reqs = match msg {
                 CoreMessage::Message(m) => shared::message(&to_bytes(&m).unwrap()),
                 CoreMessage::Response(uuid, output) => shared::response(
@@ -73,22 +78,26 @@ async fn main() -> Result<()> {
                 match effect {
                     Effect::Render(_) => {
                         let view = from_bytes::<ViewModel>(&shared::view())?;
-                        println!("{view:?}");
+                        if !view.text.contains("pending") {
+                            println!("{}", view.text);
+                            if !watching {
+                                break 'outer;
+                            }
+                        }
                     }
                     Effect::Http(HttpRequest { method, url }) => {
-                        let method = Method::from_str(&method).expect("unknown http method");
-                        let url = Url::parse(&url).unwrap();
+                        group.spawn({
+                            let method = Method::from_str(&method).expect("unknown http method");
+                            let url = Url::parse(&url).unwrap();
 
-                        let response = http(method, &url).await.unwrap();
-
-                        tx.send(CoreMessage::Response(uuid, Outcome::Http(response)))
-                            .unwrap();
+                            http(uuid, method, url, tx.clone())
+                        });
                     }
                     Effect::ServerSentEvents(SseRequest { url }) => {
                         group.spawn({
                             let url = Url::parse(&url).unwrap();
 
-                            get_sse(uuid, url, tx.clone())
+                            sse(uuid, url, tx.clone())
                         });
                     }
                 }
@@ -102,29 +111,34 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn http(method: Method, url: &Url) -> Result<HttpResponse> {
+async fn http(uuid: Vec<u8>, method: Method, url: Url, tx: Sender<CoreMessage>) -> Result<()> {
     let client: Client = Config::new()
         .set_timeout(Some(Duration::from_secs(5)))
         .try_into()?;
 
     let mut response = client
-        .request(method, url)
+        .request(method, &url)
         .await
         .map_err(|e| eyre!("{method} {url}: error {e}"))?;
 
     let status = response.status().into();
 
-    if let 200..=299 = status {
-        response.body_bytes().await.map_or_else(
-            |e| bail!("{method} {url}: error {e}"),
-            |body| Ok(HttpResponse { status, body }),
-        )
-    } else {
-        bail!("{method} {url}: status {status}");
-    }
+    match status {
+        200..=299 => match response.body_bytes().await {
+            Ok(body) => {
+                tx.send(CoreMessage::Response(
+                    uuid.to_vec(),
+                    Outcome::Http(HttpResponse { status, body }),
+                ))?;
+            }
+            Err(e) => bail!("{method} {url}: error {e}"),
+        },
+        _ => bail!("{method} {url}: status {status}"),
+    };
+    Ok(())
 }
 
-async fn get_sse(uuid: Vec<u8>, url: Url, tx: Sender<CoreMessage>) -> Result<()> {
+async fn sse(uuid: Vec<u8>, url: Url, tx: Sender<CoreMessage>) -> Result<()> {
     let mut response = surf::get(&url)
         .await
         .map_err(|e| eyre!("get {url}: error {e}"))?;
@@ -145,7 +159,6 @@ async fn get_sse(uuid: Vec<u8>, url: Url, tx: Sender<CoreMessage>) -> Result<()>
             Ok(n) => SseResponse::Chunk(buf[0..n].to_vec()),
             Err(e) => bail!("failed to read from http response; err = {:?}", e),
         };
-        tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(response)))
-            .expect("sending response to channel");
+        tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(response)))?;
     }
 }
