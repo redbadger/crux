@@ -18,7 +18,10 @@ interface Message {
 interface Response {
   kind: "response";
   uuid: number[];
-  outcome: types.HttpResponse | types.SseResponseVariantChunk;
+  outcome:
+    | types.HttpResponse
+    | types.SseResponseVariantChunk
+    | types.SseResponseVariantDone;
 }
 
 type State = {
@@ -102,12 +105,16 @@ const Home: NextPage = () => {
           try {
             while (true) {
               const { done, value: chunk } = await reader.read();
-              if (done) break;
               respond({
                 kind: "response",
                 uuid,
-                outcome: new types.SseResponseVariantChunk(Array.from(chunk)),
+                outcome: done
+                  ? new types.SseResponseVariantDone()
+                  : new types.SseResponseVariantChunk(Array.from(chunk)),
               });
+              if (done) {
+                break;
+              }
             }
           } finally {
             reader.releaseLock();
@@ -131,7 +138,7 @@ const Home: NextPage = () => {
       });
       dispatch({
         kind: "message",
-        message: new types.EventVariantGetServerEvents(),
+        message: new types.EventVariantStartWatch(),
       });
     }
 

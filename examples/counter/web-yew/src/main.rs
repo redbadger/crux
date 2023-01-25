@@ -60,22 +60,16 @@ impl Component for RootComponent {
             match effect {
                 Effect::Render(_) => should_render = true,
                 Effect::Http(HttpRequest { url, method }) => {
-                    let method = match method.as_str() {
-                        "GET" => http::Method::GET,
-                        "POST" => http::Method::POST,
-                        _ => panic!("not yet handling this method"),
-                    };
-
                     wasm_bindgen_futures::spawn_local({
+                        let method = match method.as_str() {
+                            "GET" => http::Method::GET,
+                            "POST" => http::Method::POST,
+                            _ => panic!("not yet handling this method"),
+                        };
                         let link = link.clone();
 
                         async move {
-                            if let Ok(body) = http(&url, method).await {
-                                link.send_message(CoreMessage::Response(
-                                    uuid,
-                                    Outcome::Http(HttpResponse { status: 200, body }), // TODO: handle status
-                                ));
-                            }
+                            http(&uuid, &url, method, &link).await.unwrap();
                         }
                     });
                 }
@@ -125,23 +119,28 @@ impl Component for RootComponent {
     }
 }
 
-async fn http(url: &str, method: http::Method) -> Result<Vec<u8>> {
-    let bytes = http::Request::new(url)
-        .method(method)
-        .send()
-        .await?
-        .binary()
-        .await?;
-    Ok(bytes)
+async fn http(
+    uuid: &[u8],
+    url: &str,
+    method: http::Method,
+    link: &Scope<RootComponent>,
+) -> Result<()> {
+    let response = http::Request::new(url).method(method).send().await?;
+    let body = response.binary().await?;
+    link.send_message(CoreMessage::Response(
+        uuid.to_vec(),
+        Outcome::Http(HttpResponse {
+            status: response.status(),
+            body,
+        }),
+    ));
+
+    Ok(())
 }
 
 async fn sse(uuid: &[u8], url: &str, link: &Scope<RootComponent>) -> Result<()> {
-    if let Some(body) = http::Request::new(url)
-        .method(http::Method::GET)
-        .send()
-        .await?
-        .body()
-    {
+    let response = http::Request::new(url).method(http::Method::GET).send();
+    if let Some(body) = response.await?.body() {
         let reader = body.get_reader();
         let reader: ReadableStreamDefaultReader = reader.dyn_into().unwrap();
         loop {
