@@ -35,9 +35,9 @@ where
         Self { context }
     }
 
-    pub fn get<F>(&self, url: &str, event: F)
+    pub fn get<F>(&self, url: &str, make_event: F)
     where
-        F: Fn(String) -> Ev + Clone + Send + 'static,
+        F: Fn(Vec<u8>) -> Ev + Clone + Send + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -46,18 +46,20 @@ where
             async move {
                 let mut stream = context.stream_from_shell(SseRequest { url });
 
-                while let Some(maybe_response) = stream.next().await {
-                    let event = event.clone();
+                while let Some(response) = stream.next().await {
+                    let make_event = make_event.clone();
 
-                    match maybe_response {
+                    match response {
                         SseResponse::Chunk(data) => {
                             let mut reader = decode(Cursor::new(data));
-                            while let Some(Ok(Event::Message(msg))) = reader.next().await {
-                                let data = String::from_utf8(msg.data().to_owned()).unwrap();
-                                context.update_app(event(data));
+
+                            while let Some(sse_event) = reader.next().await {
+                                if let Ok(Event::Message(msg)) = sse_event {
+                                    context.update_app(make_event(msg.data().to_vec()));
+                                }
                             }
                         }
-                        _ => break,
+                        SseResponse::Done => break,
                     }
                 }
             }

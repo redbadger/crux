@@ -78,6 +78,7 @@ async fn main() -> Result<()> {
                     Effect::Http(HttpRequest { method, url }) => {
                         let method = Method::from_str(&method).expect("unknown http method");
                         let url = Url::parse(&url).unwrap();
+
                         let response = http(method, &url).await.unwrap();
 
                         tx.send(CoreMessage::Response(uuid, Outcome::Http(response)))
@@ -86,8 +87,8 @@ async fn main() -> Result<()> {
                     Effect::ServerSentEvents(SseRequest { url }) => {
                         group.spawn({
                             let url = Url::parse(&url).unwrap();
-                            let tx = tx.clone();
-                            async move { get_sse(&uuid, &url, &tx).await }
+
+                            get_sse(uuid, url, tx.clone())
                         });
                     }
                 }
@@ -123,8 +124,8 @@ async fn http(method: Method, url: &Url) -> Result<HttpResponse> {
     }
 }
 
-async fn get_sse(uuid: &[u8], url: &Url, tx: &Sender<CoreMessage>) -> Result<()> {
-    let mut response = surf::get(url)
+async fn get_sse(uuid: Vec<u8>, url: Url, tx: Sender<CoreMessage>) -> Result<()> {
+    let mut response = surf::get(&url)
         .await
         .map_err(|e| eyre!("get {url}: error {e}"))?;
 
@@ -139,27 +140,12 @@ async fn get_sse(uuid: &[u8], url: &Url, tx: &Sender<CoreMessage>) -> Result<()>
     let mut body = body.into_reader();
     let mut buf = [0; 1024];
     loop {
-        match body.read(&mut buf).await {
-            Ok(n) if n == 0 => {
-                tx.send(CoreMessage::Response(
-                    uuid.to_vec(),
-                    Outcome::Sse(SseResponse::Done),
-                ))
-                .unwrap();
-            }
-            Ok(n) => {
-                tx.send(CoreMessage::Response(
-                    uuid.to_vec(),
-                    Outcome::Sse(SseResponse::Chunk(buf[0..n].to_vec())),
-                ))
-                .unwrap();
-            }
-            Err(e) => {
-                eprintln!("failed to read from http response; err = {:?}", e);
-                break;
-            }
+        let response = match body.read(&mut buf).await {
+            Ok(n) if n == 0 => SseResponse::Done,
+            Ok(n) => SseResponse::Chunk(buf[0..n].to_vec()),
+            Err(e) => bail!("failed to read from http response; err = {:?}", e),
         };
+        tx.send(CoreMessage::Response(uuid.to_vec(), Outcome::Sse(response)))
+            .expect("sending response to channel");
     }
-
-    Ok(())
 }

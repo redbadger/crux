@@ -47,7 +47,7 @@ pub enum Event {
     // events local to the core
     #[serde(skip)]
     Set(crux_http::Result<crux_http::Response<Counter>>),
-    SetServerEvents(String),
+    SetServerEvents(Vec<u8>),
 }
 
 #[derive(Effect)]
@@ -115,8 +115,8 @@ impl crux_core::App for App {
                 let url = base.join("/sse").unwrap();
                 caps.sse.get(url.as_str(), Event::SetServerEvents);
             }
-            Event::SetServerEvents(res) => {
-                model.count = serde_json::from_str(&res).unwrap();
+            Event::SetServerEvents(sse_event) => {
+                model.count = serde_json::from_slice(&sse_event).unwrap();
                 model.confirmed = Some(true);
                 caps.render.render();
             }
@@ -286,9 +286,9 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let data = r#"{"value":1,"updated_at":1}"#.to_string();
+        let event = Event::SetServerEvents(r#"{"value":1,"updated_at":1}"#.as_bytes().to_vec());
 
-        let update = app.update(Event::SetServerEvents(data), &mut model);
+        let update = app.update(event, &mut model);
         let actual = &update.effects[0];
         let expected = &Effect::Render(RenderOperation);
 
