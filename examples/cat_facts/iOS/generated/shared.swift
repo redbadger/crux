@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_302d_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_15a9_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_302d_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_15a9_rustbuffer_free(self, $0) }
     }
 }
 
@@ -353,13 +353,13 @@ fileprivate struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
     }
 }
 
-public func `message`(_ `msg`: [UInt8])  -> [UInt8] {
+public func `processEvent`(_ `msg`: [UInt8])  -> [UInt8] {
     return try! FfiConverterSequenceUInt8.lift(
         try!
     
     rustCall() {
     
-    shared_302d_message(
+    shared_15a9_process_event(
         FfiConverterSequenceUInt8.lower(`msg`), $0)
 }
     )
@@ -367,13 +367,13 @@ public func `message`(_ `msg`: [UInt8])  -> [UInt8] {
 
 
 
-public func `response`(_ `uuid`: [UInt8], _ `res`: [UInt8])  -> [UInt8] {
+public func `handleResponse`(_ `uuid`: [UInt8], _ `res`: [UInt8])  -> [UInt8] {
     return try! FfiConverterSequenceUInt8.lift(
         try!
     
     rustCall() {
     
-    shared_302d_response(
+    shared_15a9_handle_response(
         FfiConverterSequenceUInt8.lower(`uuid`), 
         FfiConverterSequenceUInt8.lower(`res`), $0)
 }
@@ -388,7 +388,7 @@ public func `view`()  -> [UInt8] {
     
     rustCall() {
     
-    shared_302d_view($0)
+    shared_15a9_view($0)
 }
     )
 }

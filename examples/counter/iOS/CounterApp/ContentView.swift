@@ -6,7 +6,7 @@ enum Outcome {
 }
 
 enum Message {
-    case message(Event)
+    case event(Event)
     case response([UInt8], Outcome)
 }
 
@@ -15,7 +15,7 @@ class Model: ObservableObject {
     @Published var view = ViewModel(text: "")
 
     init() {
-        update(msg: .message(.get))
+        update(msg: .event(.get))
     }
 
     private func httpRequest(uuid: [UInt8], method: String, url: String) {
@@ -31,10 +31,10 @@ class Model: ObservableObject {
         let reqs: [Request]
 
         switch msg {
-        case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: CounterApp.message(try! m.bcsSerialize()))
+        case let .event(m):
+            reqs = try! [Request].bcsDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
         case let .response(uuid, outcome):
-            reqs = try! [Request].bcsDeserialize(input: CounterApp.response(uuid, { switch outcome {
+            reqs = try! [Request].bcsDeserialize(input: CounterApp.handleResponse(uuid, { switch outcome {
             case let .http(x):
                 return try! x.bcsSerialize()
             }}()))
@@ -44,6 +44,7 @@ class Model: ObservableObject {
             switch req.effect {
             case .render(_): view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
             case let .http(r): httpRequest(uuid: req.uuid, method: r.method, url: r.url)
+            case .serverSentEvents(_): ()
             }
         }
     }
@@ -84,10 +85,10 @@ struct ContentView: View {
             Text(String(model.view.text)).padding()
             HStack {
                 ActionButton(label: "Decrement", color: .yellow) {
-                    model.update(msg: .message(.decrement))
+                    model.update(msg: .event(.decrement))
                 }
                 ActionButton(label: "Increment", color: .red) {
-                    model.update(msg: .message(.increment))
+                    model.update(msg: .event(.increment))
                 }
             }
         }

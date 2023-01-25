@@ -70,8 +70,8 @@ The core has a concept of Capabilities — reusable interfaces for common side-e
 
 This means the core interface is simple:
 
-- `message: Event -> Vec<Request>` - processes a user interaction event and potentially responds with capability requests. This is the API for the _driving_ side in the above diagram.
-- `response: (uuid, SomeResponse) -> Vec<Request>` - handles the response from the capability and potentially follows up with further requests. This is the API for the _driven_ side in the above diagram.
+- `process_event: Event -> Vec<Request>` - processes a user interaction event and potentially responds with capability requests. This is the API for the _driving_ side in the above diagram.
+- `handle_response: (uuid, SomeResponse) -> Vec<Request>` - handles the response from the capability and potentially follows up with further requests. This is the API for the _driven_ side in the above diagram.
 - `view: () -> ViewModel` - provides the shell with the current data for displaying user interface
 
 Updating the user interface is considered a side-effect and is provided by the built-in `Render` capability.
@@ -106,7 +106,7 @@ A typical message exchange cycle may look like this:
 
 1. User interaction occurs in the Shell, which results in an event
 1. The Shell handles this event by constructing an `Event`
-1. The Shell calls the Core's `message` function passing the `Event` as an argument
+1. The Shell calls the Core's `process_event` function passing the `Event` as an argument
 1. The Core performs the required processing, updating both its inner state and the view model
 1. The Core returns one or more `Request` messages to the Shell
 
@@ -124,7 +124,7 @@ In more complex cases however, the Core may well return multiple `Request`s; eac
 - Whatever else you can think of...
 
 Many of these side-effecting-inducing tasks are asynchronous.
-The Shell is responsible for passing responses back to the core, which may respond with further requests.
+The Shell is responsible for passing responses back to the core (to the `handle_response` function), which may respond with further requests.
 
 This exchange continues until the core stops requesting further side-effects (typically the last side-effect requested would be `Render`).
 

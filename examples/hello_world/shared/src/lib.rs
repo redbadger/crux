@@ -18,13 +18,13 @@ lazy_static! {
 }
 
 #[wasm_bindgen]
-pub fn message(data: &[u8]) -> Vec<u8> {
-    CORE.message(data)
+pub fn process_event(data: &[u8]) -> Vec<u8> {
+    CORE.process_event(data)
 }
 
 #[wasm_bindgen]
-pub fn response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
-    CORE.response(uuid, data)
+pub fn handle_response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
+    CORE.handle_response(uuid, data)
 }
 
 #[wasm_bindgen]

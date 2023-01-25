@@ -45,7 +45,7 @@ fn platform_get() -> Result<String> {
 struct HelloWorld;
 
 enum CoreMessage {
-    Message(Event),
+    Event(Event),
     Response(Vec<u8>, Outcome),
 }
 
@@ -62,8 +62,8 @@ impl Component for HelloWorld {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(CoreMessage::Message(Event::Get));
-        link.send_message(CoreMessage::Message(Event::GetPlatform));
+        link.send_message(CoreMessage::Event(Event::Get));
+        link.send_message(CoreMessage::Event(Event::GetPlatform));
 
         Self::default()
     }
@@ -72,8 +72,8 @@ impl Component for HelloWorld {
         let link = ctx.link();
 
         let reqs = match msg {
-            CoreMessage::Message(event) => shared::message(&bcs::to_bytes(&event).unwrap()),
-            CoreMessage::Response(uuid, outcome) => shared::response(
+            CoreMessage::Event(event) => shared::process_event(&bcs::to_bytes(&event).unwrap()),
+            CoreMessage::Response(uuid, outcome) => shared::handle_response(
                 &uuid,
                 &match outcome {
                     Outcome::Platform(x) => bcs::to_bytes(&x).unwrap(),
@@ -164,15 +164,15 @@ impl Component for HelloWorld {
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| CoreMessage::Message(Event::Clear))}>
+                        onclick={link.callback(|_| CoreMessage::Event(Event::Clear))}>
                         {"Clear"}
                     </button>
                     <button class="button is-primary is-success"
-                        onclick={link.callback(|_| CoreMessage::Message(Event::Get))}>
+                        onclick={link.callback(|_| CoreMessage::Event(Event::Get))}>
                         {"Get"}
                     </button>
                     <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| CoreMessage::Message(Event::Fetch))}>
+                        onclick={link.callback(|_| CoreMessage::Event(Event::Fetch))}>
                         {"Fetch"}
                     </button>
                 </div>

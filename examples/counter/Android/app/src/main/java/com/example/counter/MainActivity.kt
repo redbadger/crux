@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
+
 package com.example.counter
 
 import android.os.Bundle
@@ -18,12 +19,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.counter.shared.*
-import com.example.counter.shared_types.*
+import com.example.counter.shared.handleResponse
+import com.example.counter.shared.processEvent
+import com.example.counter.shared.view
+import com.example.counter.shared_types.Effect
+import com.example.counter.shared_types.Event
+import com.example.counter.shared_types.HttpResponse
+import com.example.counter.shared_types.Requests
 import com.example.counter.ui.theme.CounterTheme
 import okhttp3.*
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import com.example.counter.shared_types.Event as Evt
 import com.example.counter.shared_types.Request as Req
 import com.example.counter.shared_types.ViewModel as MyViewModel
 
@@ -49,7 +56,7 @@ sealed class Outcome {
 }
 
 sealed class CoreMessage {
-    data class Message(val event: Event) : CoreMessage()
+    data class Event(val event: Evt) : CoreMessage()
     data class Response(val uuid: List<UByte>, val outcome: Outcome) : CoreMessage()
 }
 
@@ -59,18 +66,18 @@ class Model : ViewModel() {
     private val client = OkHttpClient()
 
     init {
-        update(CoreMessage.Message(Event.Get()))
+        update(CoreMessage.Event(Event.Get()))
     }
 
     fun update(msg: CoreMessage) {
         val requests: List<Req> =
             when (msg) {
-                is CoreMessage.Message -> Requests.bcsDeserialize(
-                    message(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                is CoreMessage.Event -> Requests.bcsDeserialize(
+                    processEvent(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
                         .toByteArray()
                 )
                 is CoreMessage.Response -> Requests.bcsDeserialize(
-                    response(
+                    handleResponse(
                         msg.uuid.toList(), when (msg.outcome) {
                             is Outcome.Http -> msg.outcome.res.bcsSerialize()
                         }.toUByteArray().toList()
@@ -86,12 +93,12 @@ class Model : ViewModel() {
             is Effect.Http -> {
                 httpRequest(effect.value.method, effect.value.url, req.uuid)
             }
-
+            is Effect.ServerSentEvents -> {}
         }
     }
 
     private fun httpRequest(method: String, url: String, uuid: List<Byte>) {
-        var builder = Request.Builder().url(url);
+        var builder = Request.Builder().url(url)
         if (method == "POST") {
             builder = builder.method(method, byteArrayOf(0).toRequestBody(null, 0, 0))
 
@@ -139,14 +146,14 @@ fun View(model: Model = viewModel()) {
         Text(text = model.view.text, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { model.update(CoreMessage.Message(Event.Decrement())) },
+                onClick = { model.update(CoreMessage.Event(Event.Decrement())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(44F, 1F, 0.77F)
                 )
             ) { Text(text = "Decrement", color = Color.DarkGray) }
             Button(
-                onClick = { model.update(CoreMessage.Message(Event.Increment())) },
+                onClick = { model.update(CoreMessage.Event(Event.Increment())) },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(348F, 0.86F, 0.61F)
