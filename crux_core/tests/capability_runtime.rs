@@ -155,7 +155,7 @@ mod tests {
 
         let event_bytes = bcs::to_bytes(&Event::Fetch).unwrap();
 
-        let requests = core.message(&event_bytes);
+        let requests = core.process_event(&event_bytes);
 
         let mut requests: VecDeque<Request<Effect>> = bcs::from_bytes::<Vec<_>>(&requests)
             .unwrap()
@@ -180,7 +180,7 @@ mod tests {
                     let output = bcs::to_bytes(&output).unwrap();
 
                     let reqs: Vec<Request<Effect>> =
-                        bcs::from_bytes(&core.response(&uuid, &output)).unwrap();
+                        bcs::from_bytes(&core.handle_response(&uuid, &output)).unwrap();
 
                     for r in reqs {
                         requests.push_back(r)
