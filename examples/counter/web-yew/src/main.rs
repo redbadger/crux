@@ -1,10 +1,6 @@
 use anyhow::Result;
 use bcs::{from_bytes, to_bytes};
 use gloo_net::http;
-use js_sys::{Object, Uint8Array};
-use wasm_bindgen::{JsCast, JsValue};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::ReadableStreamDefaultReader;
 use yew::{html::Scope, prelude::*};
 
 use shared::{
@@ -138,21 +134,26 @@ async fn http(
 }
 
 async fn sse(uuid: &[u8], url: &str, link: &Scope<RootComponent>) -> Result<()> {
-    let response = http::Request::new(url).method(http::Method::GET).send();
-    if let Some(body) = response.await?.body() {
-        let reader = body.get_reader();
-        let reader: ReadableStreamDefaultReader = reader.dyn_into().unwrap();
-        loop {
-            let result = JsFuture::from(reader.read()).await.unwrap();
-            let result: Object = result.dyn_into().unwrap();
-            let chunk = js_sys::Reflect::get(&result, &JsValue::from_str("value")).unwrap();
-            let chunk: Uint8Array = chunk.dyn_into().unwrap();
-            link.send_message(CoreMessage::Response(
-                uuid.to_vec(),
-                Outcome::Sse(SseResponse::Chunk(chunk.to_vec())),
-            ));
-        }
+    use futures_util::StreamExt;
+    use js_sys::Uint8Array;
+    use wasm_bindgen::{prelude::*, JsCast};
+    use wasm_streams::ReadableStream;
+
+    let response = http::Request::new(url).send().await?;
+
+    let raw_body = response.body().unwrap_throw();
+    let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());
+
+    let mut stream = body.into_stream();
+
+    while let Some(Ok(chunk)) = stream.next().await {
+        let chunk: Uint8Array = chunk.dyn_into().unwrap();
+        link.send_message(CoreMessage::Response(
+            uuid.to_vec(),
+            Outcome::Sse(SseResponse::Chunk(chunk.to_vec())),
+        ));
     }
+
     Ok(())
 }
 

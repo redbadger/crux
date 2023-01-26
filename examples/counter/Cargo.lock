@@ -3510,6 +3510,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c38c045535d93ec4f0b4defec448e4291638ee608530863b1e2ba115d4fff7f"
 
 [[package]]
+name = "wasm-streams"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4609d447824375f43e1ffbc051b50ad8f4b3ae8219680c94452ea05eb240ac7"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3525,12 +3538,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bcs",
+ "futures-util",
  "gloo-net",
  "js-sys",
  "shared",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "web-sys",
+ "wasm-streams",
  "yew",
 ]
 
