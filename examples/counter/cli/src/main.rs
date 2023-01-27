@@ -123,17 +123,14 @@ async fn http(uuid: Vec<u8>, method: Method, url: Url, tx: Sender<CoreMessage>) 
 
     let status = response.status().into();
 
-    match status {
-        200..=299 => match response.body_bytes().await {
-            Ok(body) => {
-                tx.send(CoreMessage::Response(
-                    uuid.to_vec(),
-                    Outcome::Http(HttpResponse { status, body }),
-                ))?;
-            }
-            Err(e) => bail!("{method} {url}: error {e}"),
-        },
-        _ => bail!("{method} {url}: status {status}"),
+    match response.body_bytes().await {
+        Ok(body) => {
+            tx.send(CoreMessage::Response(
+                uuid.to_vec(),
+                Outcome::Http(HttpResponse { status, body }),
+            ))?;
+        }
+        Err(e) => bail!("{method} {url}: error {e}"),
     };
     Ok(())
 }
