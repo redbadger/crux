@@ -17,6 +17,7 @@ pub struct Model {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ViewModel {
     pub text: String,
+    pub confirmed: bool,
 }
 
 impl From<&Model> for ViewModel {
@@ -32,6 +33,7 @@ impl From<&Model> for ViewModel {
         };
         Self {
             text: model.count.value.to_string() + &suffix,
+            confirmed: model.confirmed.unwrap_or(false),
         }
     }
 }

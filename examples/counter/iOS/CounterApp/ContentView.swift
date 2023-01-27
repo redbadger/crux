@@ -15,7 +15,7 @@ enum Message {
 
 @MainActor
 class Model: ObservableObject {
-    @Published var view = ViewModel(text: "")
+    @Published var view = ViewModel(text: "", confirmed: false)
 
     init() {
         update(msg: .event(.startWatch))
@@ -105,12 +105,14 @@ struct ActionButton: View {
 
 struct ContentView: View {
     @ObservedObject var model: Model
-
+    
     var body: some View {
         VStack {
             Text("Crux Counter Example").font(.headline)
             Text("Rust Core, Swift Shell (SwiftUI)").padding()
-            Text(String(model.view.text)).padding()
+            Text(String(model.view.text))
+                .foregroundColor( model.view.confirmed ? Color.black : Color.gray)
+                .padding()
             HStack {
                 ActionButton(label: "Decrement", color: .yellow) {
                     model.update(msg: .event(.decrement))
