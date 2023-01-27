@@ -594,6 +594,7 @@ dependencies = [
  "clap 4.1.4",
  "crossbeam-channel",
  "eyre",
+ "futures",
  "serde",
  "shared",
  "surf",
