@@ -26,13 +26,15 @@ import com.example.counter.shared_types.Requests
 import com.example.counter.shared_types.SseResponse
 import com.example.counter.shared_types.SseResponse.Chunk
 import com.example.counter.ui.theme.CounterTheme
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.utils.io.*
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.launch
-import okhttp3.*
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
-import java.util.concurrent.TimeUnit
 import com.example.counter.shared_types.Event as Evt
 import com.example.counter.shared_types.Request as Req
 import com.example.counter.shared_types.ViewModel as MyViewModel
@@ -64,13 +66,22 @@ sealed class CoreMessage {
 class Model : ViewModel() {
     var view: MyViewModel by mutableStateOf(MyViewModel(""))
         private set
-    private val client = OkHttpClient()
+    private val httpClient = HttpClient(CIO)
+    private val sseClient = HttpClient(CIO) {
+        engine {
+            endpoint {
+                pipelineMaxSize = 20
+                keepAliveTime = 5000
+                connectTimeout = 5000
+                connectAttempts = 5
+                requestTimeout = 0
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {
-            kotlin.run {
-                update(CoreMessage.Event(Evt.StartWatch()))
-            }
+            update(CoreMessage.Event(Evt.StartWatch()))
         }
     }
 
@@ -105,100 +116,49 @@ class Model : ViewModel() {
 
         for (req in requests) when (val effect = req.effect) {
             is Effect.Render -> {
-                println("render")
                 this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
             }
-            is Effect.Http -> http(req.uuid, effect.value.method, effect.value.url)
+            is Effect.Http -> http(req.uuid, HttpMethod(effect.value.method), effect.value.url)
             is Effect.ServerSentEvents -> {
-                sse(effect.value.url) { event ->
-                    println("in callback")
-                    update(
-                        CoreMessage.Response(
-                            req.uuid.toByteArray().toUByteArray().toList(),
-                            Outcome.Sse(event)
+                viewModelScope.launch {
+                    sse(effect.value.url) { event ->
+                        update(
+                            CoreMessage.Response(
+                                req.uuid.toByteArray().toUByteArray().toList(),
+                                Outcome.Sse(event)
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
     }
 
 
-    private fun http(uuid: List<Byte>, method: String, url: String) {
-        var builder = Request.Builder().url(url)
-        if (method == "POST") {
-            builder = builder.method(method, byteArrayOf(0).toRequestBody(null, 0, 0))
+    private suspend fun http(uuid: List<Byte>, method: HttpMethod, url: String) {
+        val response = httpClient.request(url) {
+            this.method = method
         }
-        val request = builder.build()
-
-        client.newCall(request)
-            .enqueue(
-                object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        e.printStackTrace()
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        response.use {
-                            if (!response.isSuccessful)
-                                throw IOException("Unexpected code $response")
-
-                            response.body!!.bytes().toList().let { bytes ->
-                                viewModelScope.launch {
-                                    update(
-                                        CoreMessage.Response(
-                                            uuid.toByteArray().toUByteArray().toList(),
-                                            Outcome.Http(
-                                                HttpResponse(
-                                                    response.code.toShort(),
-                                                    bytes
-                                                )
-                                            )
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+        val bytes: ByteArray = response.body()
+        update(
+            CoreMessage.Response(
+                uuid.toByteArray().toUByteArray().toList(),
+                Outcome.Http(HttpResponse(response.status.value.toShort(), bytes.toList()))
             )
+        )
     }
 
     private suspend fun sse(url: String, callback: suspend (SseResponse) -> Unit) {
-        val sseClient: OkHttpClient =
-            client.newBuilder().readTimeout(0, TimeUnit.SECONDS).build()
-
-        val request = Request.Builder().url(url).build()
-        sseClient
-            .newCall(request)
-            .enqueue(
-                object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        e.printStackTrace()
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        response.use {
-                            if (!response.isSuccessful)
-                                throw IOException("Unexpected code $response")
-                            val reader =
-                                BufferedReader(InputStreamReader(response.body!!.byteStream()))
-                            var line: String
-                            while (reader.readLine().also { line = it } != null) {
-                                line += "\n\n"
-                                viewModelScope.launch {
-                                    callback(Chunk(line.toByteArray().toList()))
-                                }
-                            }
-                        }
-                    }
-                }
-            )
+        sseClient.prepareGet(url).execute { response ->
+            val channel = response.bodyAsChannel()
+            while (!channel.isClosedForRead) {
+                var chunk = channel.readUTF8Line() ?: break
+                chunk += "\n\n"
+                callback(Chunk(chunk.toByteArray().toList()))
+            }
+        }
     }
 }
-
-
-
 
 
 @Composable
