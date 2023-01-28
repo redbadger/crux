@@ -66,18 +66,8 @@ sealed class CoreMessage {
 class Model : ViewModel() {
     var view: MyViewModel by mutableStateOf(MyViewModel(""))
         private set
+
     private val httpClient = HttpClient(CIO)
-    private val sseClient = HttpClient(CIO) {
-        engine {
-            endpoint {
-                pipelineMaxSize = 20
-                keepAliveTime = 5000
-                connectTimeout = 5000
-                connectAttempts = 5
-                requestTimeout = 0
-            }
-        }
-    }
 
     init {
         viewModelScope.launch {
@@ -99,18 +89,10 @@ class Model : ViewModel() {
                         handleResponse(
                             msg.uuid.toList(),
                             when (msg.outcome) {
-                                is Outcome.Http ->
-                                    msg.outcome.res
-                                        .bcsSerialize()
-                                is Outcome.Sse ->
-                                    msg.outcome.res
-                                        .bcsSerialize()
-                            }
-                                .toUByteArray()
-                                .toList()
-                        )
-                            .toUByteArray()
-                            .toByteArray()
+                                is Outcome.Http -> msg.outcome.res.bcsSerialize()
+                                is Outcome.Sse -> msg.outcome.res.bcsSerialize()
+                            }.toUByteArray().toList()
+                        ).toUByteArray().toByteArray()
                     )
             }
 
@@ -149,7 +131,17 @@ class Model : ViewModel() {
     }
 
     private suspend fun sse(url: String, callback: suspend (SseResponse) -> Unit) {
-        sseClient.prepareGet(url).execute { response ->
+        val client = HttpClient(CIO) {
+            engine {
+                endpoint {
+                    keepAliveTime = 5000
+                    connectTimeout = 5000
+                    connectAttempts = 5
+                    requestTimeout = 0
+                }
+            }
+        }
+        client.prepareGet(url).execute { response ->
             val channel = response.bodyAsChannel()
             while (!channel.isClosedForRead) {
                 var chunk = channel.readUTF8Line() ?: break
