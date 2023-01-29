@@ -13,12 +13,6 @@
    x86_64-apple-ios
    ```
 
-1. Install the `uniffi-bindgen` binary ...
-
-   ```sh
-   cargo install uniffi_bindgen
-   ```
-
 1. Create a new rust library ...
 
    ```sh
