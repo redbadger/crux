@@ -73,7 +73,7 @@ dependencies {
     implementation project(path: ':shared')
     implementation "androidx.compose.material:material-icons-extended:$compose_version"
 
-    implementation 'com.squareup.retrofit2:retrofit:2.1.0'
+    implementation "io.ktor:ktor-client-cio:$ktor_version"
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
