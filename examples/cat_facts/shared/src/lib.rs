@@ -14,7 +14,7 @@ pub use app::*;
 
 // TODO hide this plumbing
 
-uniffi_macros::include_scaffolding!("shared");
+uniffi::include_scaffolding!("shared");
 
 lazy_static! {
     static ref CORE: Core<Effect, CatFacts> = Core::new::<CatFactCapabilities>();

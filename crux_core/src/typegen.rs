@@ -152,7 +152,7 @@ impl TypeGen {
             .to_path_buf()
             .join(format!("{module_name}.swift"));
         let mut output = File::create(path)?;
-        write!(output, "{}", out)?;
+        write!(output, "{out}")?;
 
         Ok(())
     }
@@ -243,7 +243,7 @@ impl TypeGen {
         fs::create_dir_all(types_dir)?;
 
         let mut output = File::create(output_dir.join(format!("types/{module_name}.ts")))?;
-        write!(output, "{}", out)?;
+        write!(output, "{out}")?;
 
         // Install dependencies
         std::process::Command::new("pnpm")

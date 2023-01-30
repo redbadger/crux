@@ -15,10 +15,10 @@ Let's call the app "iOS" and select "SwiftUI" for the interface and "Swift" for 
 ├── Cargo.lock
 ├── Cargo.toml
 ├── iOS
-│  ├── HelloWorld
+│  ├── iOS
 │  │  ├── ContentView.swift
-│  │  └── HelloWorldApp.swift
-│  └── HelloWorld.xcodeproj
+│  │  └── iOSApp.swift
+│  └── iOS.xcodeproj
 │     └── project.pbxproj
 ├── shared
 │  ├── build.rs
@@ -42,28 +42,25 @@ We want UniFFI to create the Swift bindings and the C headers for our shared lib
 
 To achieve this, we'll associate a script with files that match the pattern `*.udl` (this will catch the interface definition file we created earlier), and then add our `shared.udl` file to the project.
 
-Note that the script assumes we installed Uniffi with `cargo install uniffi`, as described earlier.
+Note that our shared library generates the `uniffi-bindgen` binary (as explained on the page ["Shared core and types"](./core.md)) that the script relies on, so make sure you have built it already, using `cargo build`.
 
 In "Build Rules", add a rule to process files that match the pattern `*.udl` with the following script (and also uncheck "Run once per architecture").
 
 ```bash
 # Skip during indexing phase in XCode 13+
-if [ "$ACTION" == "indexbuild" ]; then
+if [ $ACTION == "indexbuild" ]; then
    echo "Not building *.udl files during indexing."
    exit 0
 fi
 
 # Skip for preview builds
-if [ "$ENABLE_PREVIEWS" = "YES" ]; then
+if [ "${ENABLE_PREVIEWS}" = "YES" ]; then
    echo "Not building *.udl files during preview builds."
    exit 0
 fi
 
-# `swiftformat` is used by uniffi_bindgen, so update PATH if it was installed with homebrew
-export PATH=${PATH}:/opt/homebrew/bin
-
-cd "$INPUT_FILE_DIR/.."
-"$HOME/.cargo/bin/uniffi-bindgen" generate "src/$INPUT_FILE_NAME" --language swift --out-dir "$PROJECT_DIR/generated"
+# note, for now, run a cargo build manually to ensure the binary exists for this step
+cd "$INPUT_FILE_DIR"/.. && "$PROJECT_DIR/../target/debug/uniffi-bindgen" generate src/"$INPUT_FILE_NAME" --language swift --out-dir "$PROJECT_DIR/generated"
 ```
 
 We'll need to add the following as output files:

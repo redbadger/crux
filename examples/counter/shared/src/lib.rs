@@ -13,7 +13,7 @@ pub use capabilities::sse;
 
 // TODO hide this plumbing
 
-uniffi_macros::include_scaffolding!("shared");
+uniffi::include_scaffolding!("shared");
 
 lazy_static! {
     static ref CORE: Core<Effect, App> = Core::new::<Capabilities>();
