@@ -88,7 +88,8 @@ fn main_loop(msg: CoreMessage, tx: Weak<Sender<CoreMessage>>) -> Result<(), eyre
     for Request { uuid, effect } in reqs {
         match effect {
             Effect::Render(_) => {
-                let text = from_bytes::<ViewModel>(&shared::view())?.text;
+                let view = from_bytes::<ViewModel>(&shared::view())?;
+                let text = view.text;
 
                 if !text.contains("pending") {
                     println!("{text}");

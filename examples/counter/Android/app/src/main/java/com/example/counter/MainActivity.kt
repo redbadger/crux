@@ -58,7 +58,7 @@ sealed class CoreMessage {
 }
 
 class Model : ViewModel() {
-    var view: MyViewModel by mutableStateOf(MyViewModel(""))
+    var view: MyViewModel by mutableStateOf(MyViewModel("", false))
         private set
 
     private val httpClient = HttpClient(CIO)
@@ -142,7 +142,7 @@ fun View(model: Model = viewModel()) {
     ) {
         Text(text = "Crux Counter Example", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
         Text(text = "Rust Core, Kotlin Shell (Jetpack Compose)", modifier = Modifier.padding(10.dp))
-        Text(text = model.view.text, modifier = Modifier.padding(10.dp))
+        Text(text = model.view.text, color = if(model.view.confirmed) { Color.Black } else { Color.Gray }, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Evt.Decrement())) } },

@@ -3,15 +3,19 @@ package com.example.counter.shared_types;
 
 public final class ViewModel {
     public final String text;
+    public final Boolean confirmed;
 
-    public ViewModel(String text) {
+    public ViewModel(String text, Boolean confirmed) {
         java.util.Objects.requireNonNull(text, "text must not be null");
+        java.util.Objects.requireNonNull(confirmed, "confirmed must not be null");
         this.text = text;
+        this.confirmed = confirmed;
     }
 
     public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
         serializer.increase_container_depth();
         serializer.serialize_str(text);
+        serializer.serialize_bool(confirmed);
         serializer.decrease_container_depth();
     }
 
@@ -25,6 +29,7 @@ public final class ViewModel {
         deserializer.increase_container_depth();
         Builder builder = new Builder();
         builder.text = deserializer.deserialize_str();
+        builder.confirmed = deserializer.deserialize_bool();
         deserializer.decrease_container_depth();
         return builder.build();
     }
@@ -47,21 +52,25 @@ public final class ViewModel {
         if (getClass() != obj.getClass()) return false;
         ViewModel other = (ViewModel) obj;
         if (!java.util.Objects.equals(this.text, other.text)) { return false; }
+        if (!java.util.Objects.equals(this.confirmed, other.confirmed)) { return false; }
         return true;
     }
 
     public int hashCode() {
         int value = 7;
         value = 31 * value + (this.text != null ? this.text.hashCode() : 0);
+        value = 31 * value + (this.confirmed != null ? this.confirmed.hashCode() : 0);
         return value;
     }
 
     public static final class Builder {
         public String text;
+        public Boolean confirmed;
 
         public ViewModel build() {
             return new ViewModel(
-                text
+                text,
+                confirmed
             );
         }
     }
