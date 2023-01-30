@@ -211,7 +211,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"${PROJECT_DIR}\"/../shared\nbash \"${PROJECT_DIR}/bin/compile-library.sh\" shared \"$build_variant\"\n";
+			shellScript = "cd \"${PROJECT_DIR}\"/../shared\nbash \"${PROJECT_DIR}/bin/compile-library.sh\" shared\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -373,8 +373,6 @@
 				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = generated/sharedFFI.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				build_variant = "";
-				"build_variant[arch=*]" = debug;
 			};
 			name = Debug;
 		};
@@ -407,8 +405,6 @@
 				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = generated/sharedFFI.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				build_variant = "";
-				"build_variant[arch=*]" = release;
 			};
 			name = Release;
 		};
