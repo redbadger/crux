@@ -1,13 +1,12 @@
 # Crux Counter Example
 
-The Crux Counter example is possibly the simplest example of a multi-platform application that calls a cloud-hosted API.
+The Crux Counter example is a simple multi-platform application that calls a cloud-hosted API.
 
-It makes HTTP requests to a shared global counter hosted at [https://crux-counter.fly.dev](https://crux-counter.fly.dev), retrieving (via `GET`) and incrementing or decrementing (via `POST`) the counter value.
+It makes HTTP requests to a shared global counter hosted at [https://crux-counter.fly.dev](https://crux-counter.fly.dev), incrementing or decrementing the counter value.
 
-Notes:
+The [server](./server/) also has an endpoint for Server Sent Events ([https://crux-counter.fly.dev/sse](https://crux-counter.fly.dev/sse)), which signals when changes are made to the global counter value — so that when you update the counter in one client, all the other clients will update too.
 
-1. The HTTP capability used in this example is embryonic. A newer more fully featured HTTP capability is being worked on in [this PR](https://github.com/redbadger/crux/pull/30). When that PR is merged, we'll update this example accordingly.
-1. The [server](./server/) also has an endpoint for Server Sent Events ([https://crux-counter.fly.dev/sse](https://crux-counter.fly.dev/sse)), which signals when changes are made to the global counter value. We want to incorporate this into this example, so that when you update the counter in one client, all the other clients will update too. This depends on the HTTP capability being able to support subscriptions, which in turn needs the above PR to be merged.
+We have included an example of a [Server Sent Events capability](./shared/src/capabilities/sse.rs), which uses the core's ability to stream responses from the shell.
 
 ![screenshots](./counter.webp)
 

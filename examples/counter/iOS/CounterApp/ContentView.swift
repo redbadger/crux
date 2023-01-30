@@ -3,11 +3,14 @@ import SwiftUI
 
 enum Outcome {
     case http(HttpResponse)
+    case sse(SseResponse)
 }
+
+typealias Uuid = [UInt8]
 
 enum Message {
     case event(Event)
-    case response([UInt8], Outcome)
+    case response(Uuid, Outcome)
 }
 
 @MainActor
@@ -15,15 +18,36 @@ class Model: ObservableObject {
     @Published var view = ViewModel(text: "")
 
     init() {
-        update(msg: .event(.get))
+        update(msg: .event(.startWatch))
     }
 
-    private func httpRequest(uuid: [UInt8], method: String, url: String) {
+    private func http(uuid: Uuid, method: String, url: String) {
         var req = URLRequest(url: URL(string: url)!)
         req.httpMethod = method
         Task {
-            let (data, _) = try! await URLSession.shared.data(for: req)
-            self.update(msg: .response(uuid, .http(HttpResponse(status: 200, body: [UInt8](data)))))
+            let (data, response) = try! await URLSession.shared.data(for: req)
+            if let httpResponse = response as? HTTPURLResponse {
+                let status = UInt16(httpResponse.statusCode)
+                let body = [UInt8](data)
+                self.update(msg: .response(uuid, .http(HttpResponse(status: status, body: body))))
+            }
+        }
+    }
+
+    private func sse(uuid: Uuid, url: String) {
+        let req = URLRequest(url: URL(string: url)!)
+        Task {
+            let (asyncBytes, response) = try! await URLSession.shared.bytes(for: req)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                // TODO: handle error
+                return
+            }
+
+            for try await line in asyncBytes.lines {
+                let line = line + "\n\n"
+                self.update(msg: .response(uuid, .sse(.chunk([UInt8](line.utf8)))))
+            }
         }
     }
 
@@ -34,17 +58,21 @@ class Model: ObservableObject {
         case let .event(m):
             reqs = try! [Request].bcsDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
         case let .response(uuid, outcome):
-            reqs = try! [Request].bcsDeserialize(input: CounterApp.handleResponse(uuid, { switch outcome {
-            case let .http(x):
-                return try! x.bcsSerialize()
-            }}()))
+            reqs = try! [Request].bcsDeserialize(input: CounterApp.handleResponse(uuid, {
+                switch outcome {
+                case let .http(x):
+                    return try! x.bcsSerialize()
+                case let .sse(x):
+                    return try! x.bcsSerialize()
+                }
+            }()))
         }
 
         for req in reqs {
             switch req.effect {
-            case .render(_): view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
-            case let .http(r): httpRequest(uuid: req.uuid, method: r.method, url: r.url)
-            case .serverSentEvents(_): ()
+            case .render: view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
+            case let .http(r): http(uuid: req.uuid, method: r.method, url: r.url)
+            case let .serverSentEvents(r): sse(uuid: req.uuid, url: r.url)
             }
         }
     }

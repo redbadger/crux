@@ -144,12 +144,9 @@ async fn http(method: Method, url: Url) -> Result<HttpResponse> {
 
     let status = response.status().into();
 
-    match status {
-        200..=299 => match response.body_bytes().await {
-            Ok(body) => Ok(HttpResponse { status, body }),
-            Err(e) => bail!("{method} {url}: error {e}"),
-        },
-        _ => bail!("{method} {url}: status {status}"),
+    match response.body_bytes().await {
+        Ok(body) => Ok(HttpResponse { status, body }),
+        Err(e) => bail!("{method} {url}: error {e}"),
     }
 }
 

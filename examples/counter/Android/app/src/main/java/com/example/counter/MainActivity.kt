@@ -7,10 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,22 +15,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.counter.shared.handleResponse
 import com.example.counter.shared.processEvent
 import com.example.counter.shared.view
 import com.example.counter.shared_types.Effect
-import com.example.counter.shared_types.Event
 import com.example.counter.shared_types.HttpResponse
 import com.example.counter.shared_types.Requests
+import com.example.counter.shared_types.SseResponse
 import com.example.counter.ui.theme.CounterTheme
-import okhttp3.*
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.http.*
+import kotlinx.coroutines.launch
 import com.example.counter.shared_types.Event as Evt
 import com.example.counter.shared_types.Request as Req
 import com.example.counter.shared_types.ViewModel as MyViewModel
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,9 +41,7 @@ class MainActivity : ComponentActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
-                ) {
-                    View()
-                }
+                ) { View() }
             }
         }
     }
@@ -53,6 +49,7 @@ class MainActivity : ComponentActivity() {
 
 sealed class Outcome {
     data class Http(val res: HttpResponse) : Outcome()
+    data class Sse(val res: SseResponse) : Outcome()
 }
 
 sealed class CoreMessage {
@@ -63,27 +60,44 @@ sealed class CoreMessage {
 class Model : ViewModel() {
     var view: MyViewModel by mutableStateOf(MyViewModel(""))
         private set
-    private val client = OkHttpClient()
 
-    init {
-        update(CoreMessage.Event(Event.Get()))
+    private val httpClient = HttpClient(CIO)
+    private val sseClient = HttpClient(CIO) {
+        engine {
+            endpoint {
+                keepAliveTime = 5000
+                connectTimeout = 5000
+                connectAttempts = 5
+                requestTimeout = 0
+            }
+        }
     }
 
-    fun update(msg: CoreMessage) {
+    init {
+        viewModelScope.launch {
+            update(CoreMessage.Event(Evt.StartWatch()))
+        }
+    }
+
+    suspend fun update(msg: CoreMessage) {
         val requests: List<Req> =
             when (msg) {
-                is CoreMessage.Event -> Requests.bcsDeserialize(
-                    processEvent(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
-                        .toByteArray()
-                )
-                is CoreMessage.Response -> Requests.bcsDeserialize(
-                    handleResponse(
-                        msg.uuid.toList(), when (msg.outcome) {
-                            is Outcome.Http -> msg.outcome.res.bcsSerialize()
-                        }.toUByteArray().toList()
-                    ).toUByteArray()
-                        .toByteArray()
-                )
+                is CoreMessage.Event ->
+                    Requests.bcsDeserialize(
+                        processEvent(msg.event.bcsSerialize().toUByteArray().toList())
+                            .toUByteArray()
+                            .toByteArray()
+                    )
+                is CoreMessage.Response ->
+                    Requests.bcsDeserialize(
+                        handleResponse(
+                            msg.uuid.toList(),
+                            when (msg.outcome) {
+                                is Outcome.Http -> msg.outcome.res.bcsSerialize()
+                                is Outcome.Sse -> msg.outcome.res.bcsSerialize()
+                            }.toUByteArray().toList()
+                        ).toUByteArray().toByteArray()
+                    )
             }
 
         for (req in requests) when (val effect = req.effect) {
@@ -91,49 +105,34 @@ class Model : ViewModel() {
                 this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
             }
             is Effect.Http -> {
-                httpRequest(effect.value.method, effect.value.url, req.uuid)
+                val response = http(httpClient, HttpMethod(effect.value.method), effect.value.url)
+                update(
+                    CoreMessage.Response(
+                        req.uuid.toByteArray().toUByteArray().toList(),
+                        Outcome.Http(response)
+                    )
+                )
             }
-            is Effect.ServerSentEvents -> {}
-        }
-    }
-
-    private fun httpRequest(method: String, url: String, uuid: List<Byte>) {
-        var builder = Request.Builder().url(url)
-        if (method == "POST") {
-            builder = builder.method(method, byteArrayOf(0).toRequestBody(null, 0, 0))
-
-        }
-        val request = builder.build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
-
-                    for ((name, value) in response.headers) {
-                        println("$name: $value")
-                    }
-
-                    response.body!!.bytes().toList().let { bytes ->
+            is Effect.ServerSentEvents -> {
+                viewModelScope.launch {
+                    sse(sseClient, effect.value.url) { event ->
                         update(
                             CoreMessage.Response(
-                                uuid.toByteArray().toUByteArray().toList(),
-                                Outcome.Http(HttpResponse(response.code.toShort(), bytes))
+                                req.uuid.toByteArray().toUByteArray().toList(),
+                                Outcome.Sse(event)
                             )
                         )
                     }
                 }
             }
-        })
+        }
     }
 }
 
+
 @Composable
 fun View(model: Model = viewModel()) {
+    val coroutineScope = rememberCoroutineScope()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -146,14 +145,11 @@ fun View(model: Model = viewModel()) {
         Text(text = model.view.text, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { model.update(CoreMessage.Event(Event.Decrement())) },
-                colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color.hsl(44F, 1F, 0.77F)
-                )
+                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Evt.Decrement())) } },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.hsl(44F, 1F, 0.77F))
             ) { Text(text = "Decrement", color = Color.DarkGray) }
             Button(
-                onClick = { model.update(CoreMessage.Event(Event.Increment())) },
+                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Evt.Increment())) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(348F, 0.86F, 0.61F)
@@ -166,7 +162,5 @@ fun View(model: Model = viewModel()) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    CounterTheme {
-        View()
-    }
+    CounterTheme { View() }
 }

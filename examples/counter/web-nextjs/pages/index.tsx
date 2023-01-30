@@ -131,11 +131,7 @@ const Home: NextPage = () => {
     async function loadCore() {
       await init_core();
 
-      // Initial events
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantGet(),
-      });
+      // Initial event
       dispatch({
         kind: "event",
         event: new types.EventVariantStartWatch(),

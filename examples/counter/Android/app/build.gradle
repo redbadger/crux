@@ -23,7 +23,10 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles {
+                getDefaultProguardFile('proguard-android-optimize.txt')
+                'proguard-rules.pro'
+            }
         }
     }
     compileOptions {
@@ -52,7 +55,6 @@ dependencies {
     androidTestImplementation composeBom
 
     implementation("androidx.compose.material3:material3")
-    implementation("io.coil-kt:coil-compose:2.0.0-rc01")
 
     // Android Studio Preview support
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -63,7 +65,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Optional - Integration with activities
-    implementation("androidx.activity:activity-compose:1.5.1")
+    implementation("androidx.activity:activity-compose:1.6.1")
     // Optional - Integration with ViewModels
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1")
     // Optional - Integration with LiveData
@@ -71,9 +73,8 @@ dependencies {
 
 
     implementation project(path: ':shared')
-    implementation "androidx.compose.material:material-icons-extended:$compose_version"
 
-    implementation "com.squareup.okhttp3:okhttp:4.10.0"
+    implementation "io.ktor:ktor-client-cio:2.2.2"
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
