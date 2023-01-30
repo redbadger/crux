@@ -23,7 +23,10 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles {
+                getDefaultProguardFile('proguard-android-optimize.txt')
+                'proguard-rules.pro'
+            }
         }
     }
     compileOptions {
@@ -73,7 +76,7 @@ dependencies {
     implementation project(path: ':shared')
     implementation "androidx.compose.material:material-icons-extended:$compose_version"
 
-    implementation "io.ktor:ktor-client-cio:$ktor_version"
+    implementation "io.ktor:ktor-client-cio:2.2.2"
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'

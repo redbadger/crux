@@ -28,9 +28,7 @@ import com.redbadger.catfacts.shared.view
 import com.redbadger.catfacts.shared_types.*
 import com.redbadger.catfacts.shared_types.Event.*
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.launch
 import java.time.ZoneOffset
@@ -110,7 +108,14 @@ class Model : ViewModel() {
                 this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
             }
             is Effect.Http -> {
-                http(req.uuid, HttpMethod.Get, effect.value.url)
+                val response = http(httpClient, HttpMethod.Get, effect.value.url)
+
+                update(
+                    CoreMessage.Response(
+                        req.uuid.toByteArray().toUByteArray().toList(),
+                        Outcome.Http(response)
+                    )
+                )
             }
             is Effect.Time -> {
                 val isoTime =
@@ -151,25 +156,6 @@ class Model : ViewModel() {
             }
         }
     }
-
-    private suspend fun http(uuid: List<Byte>, method: HttpMethod, url: String) {
-        val response = httpClient.request(url) {
-            this.method = method
-        }
-        val bytes: ByteArray = response.body()
-        update(
-            CoreMessage.Response(
-                uuid.toByteArray().toUByteArray().toList(),
-                Outcome.Http(
-                    HttpResponse(
-                        response.status.value.toShort(),
-                        bytes.toList()
-                    )
-                )
-            )
-        )
-    }
-
 }
 
 @OptIn(ExperimentalStdlibApi::class)
@@ -212,7 +198,7 @@ fun CatFacts(model: Model = viewModel()) {
                 )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                onClick = {coroutineScope.launch { model.update(CoreMessage.Event(Get())) } },
+                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Get())) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary

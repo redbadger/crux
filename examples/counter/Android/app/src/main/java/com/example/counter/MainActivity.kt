@@ -24,16 +24,10 @@ import com.example.counter.shared_types.Effect
 import com.example.counter.shared_types.HttpResponse
 import com.example.counter.shared_types.Requests
 import com.example.counter.shared_types.SseResponse
-import com.example.counter.shared_types.SseResponse.Chunk
 import com.example.counter.ui.theme.CounterTheme
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.core.*
 import kotlinx.coroutines.launch
 import com.example.counter.shared_types.Event as Evt
 import com.example.counter.shared_types.Request as Req
@@ -68,6 +62,16 @@ class Model : ViewModel() {
         private set
 
     private val httpClient = HttpClient(CIO)
+    private val sseClient = HttpClient(CIO) {
+        engine {
+            endpoint {
+                keepAliveTime = 5000
+                connectTimeout = 5000
+                connectAttempts = 5
+                requestTimeout = 0
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -100,10 +104,18 @@ class Model : ViewModel() {
             is Effect.Render -> {
                 this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
             }
-            is Effect.Http -> http(req.uuid, HttpMethod(effect.value.method), effect.value.url)
+            is Effect.Http -> {
+                val response = http(httpClient, HttpMethod(effect.value.method), effect.value.url)
+                update(
+                    CoreMessage.Response(
+                        req.uuid.toByteArray().toUByteArray().toList(),
+                        Outcome.Http(response)
+                    )
+                )
+            }
             is Effect.ServerSentEvents -> {
                 viewModelScope.launch {
-                    sse(effect.value.url) { event ->
+                    sse(sseClient, effect.value.url) { event ->
                         update(
                             CoreMessage.Response(
                                 req.uuid.toByteArray().toUByteArray().toList(),
@@ -112,41 +124,6 @@ class Model : ViewModel() {
                         )
                     }
                 }
-            }
-        }
-    }
-
-
-    private suspend fun http(uuid: List<Byte>, method: HttpMethod, url: String) {
-        val response = httpClient.request(url) {
-            this.method = method
-        }
-        val bytes: ByteArray = response.body()
-        update(
-            CoreMessage.Response(
-                uuid.toByteArray().toUByteArray().toList(),
-                Outcome.Http(HttpResponse(response.status.value.toShort(), bytes.toList()))
-            )
-        )
-    }
-
-    private suspend fun sse(url: String, callback: suspend (SseResponse) -> Unit) {
-        val client = HttpClient(CIO) {
-            engine {
-                endpoint {
-                    keepAliveTime = 5000
-                    connectTimeout = 5000
-                    connectAttempts = 5
-                    requestTimeout = 0
-                }
-            }
-        }
-        client.prepareGet(url).execute { response ->
-            val channel = response.bodyAsChannel()
-            while (!channel.isClosedForRead) {
-                var chunk = channel.readUTF8Line() ?: break
-                chunk += "\n\n"
-                callback(Chunk(chunk.toByteArray().toList()))
             }
         }
     }
