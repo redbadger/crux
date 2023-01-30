@@ -26,7 +26,7 @@ impl From<&Model> for ViewModel {
             Utc,
         );
         let suffix = match model.confirmed {
-            Some(true) => format!(" ({})", updated_at),
+            Some(true) => format!(" ({updated_at})"),
             Some(false) => " (pending)".to_string(),
             None => "".to_string(),
         };

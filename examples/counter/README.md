@@ -23,22 +23,6 @@ We have included an example of a [Server Sent Events capability](./shared/src/ca
    x86_64-apple-ios
    ```
 
-1. Install the `uniffi-bindgen` binary (Note: it's important the version number matches that specified in the Cargo.toml manifests) ...
-
-   ```sh
-   cargo install uniffi_bindgen
-   ```
-
-   > ### MacOS Users
-   >
-   > Running the above command might fail with the error:
-   >
-   > ```
-   > xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun
-   > ```
-   >
-   > If this happens, then you need to install the [Command Line Tools For Xcode](https://developer.apple.com/download/all/).
-
 1. Make sure the core builds
 
    ```sh
@@ -83,12 +67,22 @@ open CounterApp.xcodeproj
 
 You should be able to press "Play" to start the app in the simulator.
 
+### Notes:
+
+- You may encounter this error:
+
+  ```
+  xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun
+  ```
+
+  If this happens, then you need to install the [Command Line Tools For Xcode](https://developer.apple.com/download/all/).
+
 ## Android
 
 Open the `Android` folder in [Android Studio](https://developer.android.com/studio/).
 If the build is successful, you should be able to press "Play" to start the app in the simulator.
 
-Notes:
+### Notes:
 
 - The Android Studio build might fail for a couple of known reasons:
   - A `linker-wrapper.sh` script failure<br>Ensure you have Python installed and your `PATH`

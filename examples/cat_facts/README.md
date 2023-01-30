@@ -15,12 +15,6 @@ Note: Whilst this example _does_ work, the API that it uses is not under our con
    x86_64-apple-ios
    ```
 
-1. Install the `uniffi-bindgen` binary ...
-
-   ```sh
-   cargo install uniffi_bindgen
-   ```
-
 1. Make sure the core builds
 
    ```sh
