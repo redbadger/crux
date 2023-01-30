@@ -42,7 +42,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_15a9_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_shared_2a51_rustbuffer_alloc(size, status).also {
                 if (it.data == null) {
                     throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
                 }
@@ -50,7 +50,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_shared_15a9_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_shared_2a51_rustbuffer_free(buf, status)
         }
     }
 
@@ -262,37 +262,37 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun shared_15a9_process_event(
+    fun shared_2a51_process_event(
         `msg`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun shared_15a9_handle_response(
+    fun shared_2a51_handle_response(
         `uuid`: RustBuffer.ByValue,
         `res`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun shared_15a9_view(
+    fun shared_2a51_view(
         _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_15a9_rustbuffer_alloc(
+    fun ffi_shared_2a51_rustbuffer_alloc(
         `size`: Int,
         _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_15a9_rustbuffer_from_bytes(
+    fun ffi_shared_2a51_rustbuffer_from_bytes(
         `bytes`: ForeignBytes.ByValue,
         _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_15a9_rustbuffer_free(
+    fun ffi_shared_2a51_rustbuffer_free(
         `buf`: RustBuffer.ByValue,
         _uniffi_out_err: RustCallStatus,
     ): Unit
 
-    fun ffi_shared_15a9_rustbuffer_reserve(
+    fun ffi_shared_2a51_rustbuffer_reserve(
         `buf`: RustBuffer.ByValue,
         `additional`: Int,
         _uniffi_out_err: RustCallStatus,
@@ -392,7 +392,7 @@ public object FfiConverterSequenceUByte : FfiConverterRustBuffer<List<UByte>> {
 fun `processEvent`(`msg`: List<UByte>): List<UByte> {
     return FfiConverterSequenceUByte.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_15a9_process_event(FfiConverterSequenceUByte.lower(`msg`), _status)
+            _UniFFILib.INSTANCE.shared_2a51_process_event(FfiConverterSequenceUByte.lower(`msg`), _status)
         },
     )
 }
@@ -400,7 +400,7 @@ fun `processEvent`(`msg`: List<UByte>): List<UByte> {
 fun `handleResponse`(`uuid`: List<UByte>, `res`: List<UByte>): List<UByte> {
     return FfiConverterSequenceUByte.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_15a9_handle_response(FfiConverterSequenceUByte.lower(`uuid`), FfiConverterSequenceUByte.lower(`res`), _status)
+            _UniFFILib.INSTANCE.shared_2a51_handle_response(FfiConverterSequenceUByte.lower(`uuid`), FfiConverterSequenceUByte.lower(`res`), _status)
         },
     )
 }
@@ -408,7 +408,7 @@ fun `handleResponse`(`uuid`: List<UByte>, `res`: List<UByte>): List<UByte> {
 fun `view`(): List<UByte> {
     return FfiConverterSequenceUByte.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.shared_15a9_view(_status)
+            _UniFFILib.INSTANCE.shared_2a51_view(_status)
         },
     )
 }

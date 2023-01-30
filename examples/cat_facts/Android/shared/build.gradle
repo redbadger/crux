@@ -76,7 +76,7 @@ task bindGen(type: Exec) {
     commandLine(
             "sh", "-c",
             """\
-            \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
+            target/debug/uniffi-bindgen generate shared/src/shared.udl \
             --language kotlin \
             --out-dir $outDir
             """

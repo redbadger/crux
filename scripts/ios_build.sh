@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [ "$#" -ne 1 ]; then
-  echo "Usage (note: only call inside xcode!):"
+  echo "Usage (note: only call inside XCode!):"
   echo "$0 <FFI_TARGET>"
   exit 1
 fi

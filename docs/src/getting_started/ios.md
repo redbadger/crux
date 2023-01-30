@@ -15,10 +15,10 @@ Let's call the app "iOS" and select "SwiftUI" for the interface and "Swift" for 
 ├── Cargo.lock
 ├── Cargo.toml
 ├── iOS
-│  ├── HelloWorld
+│  ├── iOS
 │  │  ├── ContentView.swift
-│  │  └── HelloWorldApp.swift
-│  └── HelloWorld.xcodeproj
+│  │  └── iOSApp.swift
+│  └── iOS.xcodeproj
 │     └── project.pbxproj
 ├── shared
 │  ├── build.rs
@@ -42,7 +42,7 @@ We want UniFFI to create the Swift bindings and the C headers for our shared lib
 
 To achieve this, we'll associate a script with files that match the pattern `*.udl` (this will catch the interface definition file we created earlier), and then add our `shared.udl` file to the project.
 
-Note that the script assumes we installed Uniffi with `cargo install uniffi`, as described earlier.
+Note that our shared library generates the `uniffi-bindgen` binary (as explained on the page ["Shared core and types"](./core.md)) that the script relies on, so make sure you have built it already, using `cargo build`.
 
 In "Build Rules", add a rule to process files that match the pattern `*.udl` with the following script (and also uncheck "Run once per architecture").
 

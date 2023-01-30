@@ -14,13 +14,6 @@ This is an example of a [`rust-toolchain.toml`](https://rust-lang.github.io/rust
 {{#include ../../../rust-toolchain.toml}}
 ```
 
-Install the `uniffi-bindgen` binary. This is used during the builds (in xcode and android studio) to ensure we generate the FFI (Foreign Function Interface) bindings.
-(The version you install should match that of the `uniffi` dependencies in your `Cargo.toml` files.)
-
-```sh
-cargo install uniffi_bindgen
-```
-
 ## Create the core crate
 
 ### The shared library
@@ -40,19 +33,47 @@ We'll be adding a bunch of other folders into the monorepo, so we are choosing t
 {{#include ../../../examples/hello_world/Cargo.toml}}
 ```
 
-The library's manifest, at `/shared/Cargo.toml`, should look something like this (although the `path` fields on the crux deps are for the [examples in the Crux repo](https://github.com/redbadger/crux/tree/master/examples) and so you will probably not need them):
+The library's manifest, at `/shared/Cargo.toml`, should look something like the following, but there are a few things to note:
+
+- the `crate-type`
+  - `lib` is the default rust library when linking into a rust binary, e.g. in the `web-yew`, or `cli`, variant
+  - `staticlib` is a static library (`libshared.a`) for including in the Swift iOS app variant
+  - `cdylib` is a C-ABI dynamic library (`libshared.so`) for use with JNA when included in the Kotlin Android app variant
+- the `path` fields on the crux dependencies are for the [examples in the Crux repo](https://github.com/redbadger/crux/tree/master/examples) and so you will probably not need them
+- the uniffi dependencies and `uniffi-bindgen` target should make sense after you read the next section
 
 ```toml
 {{#include ../../../examples/hello_world/shared/Cargo.toml}}
 ```
 
-Note that the `crate-type`
-
-- `"lib"` is the default rust library when linking into a rust binary, e.g. in the `web-yew`, or `cli`, variant
-- `"staticlib"` is a static library (`libshared.a`) for including in the Swift iOS app variant
-- `"cdylib"` is a c-abi dynamic library (`libshared.so`) for use with JNA when included in the Kotlin Android app variant
-
 ### FFI bindings
+
+Crux uses Mozilla's [Uniffi](https://mozilla.github.io/uniffi-rs/) to generate the FFI bindings for iOS and Android.
+
+#### Generating the `uniffi-bindgen` CLI tool
+
+Since Mozilla released version `0.23.0` of Uniffi, we need to also generate the binary that generates these bindings. This avoids the possibility of getting a version mismatch between a separately installed binary and the crate's Uniffi version. You can read more about it [here](https://mozilla.github.io/uniffi-rs/tutorial/foreign_language_bindings.html).
+
+Generating the binary is simple, we just add the following to our crate, in a file called `/shared/src/bin/uniffi-bindgen.rs`.
+
+```rust
+{{#include ../../../examples/hello_world/shared/src/bin/uniffi-bindgen.rs}}
+```
+
+And then we can build it with cargo.
+
+```sh
+cargo run -p shared --bin uniffi-bindgen
+
+# or
+
+cargo build
+./target/debug/uniffi-bindgen
+```
+
+The `uniffi-bindgen` executable will be used during the build in XCode and in Android Studio (see the following pages).
+
+#### The interface definitions
 
 We will need an interface definition file for the FFI bindings. Uniffi has its own file format (similar to WebIDL) that has a `.udl` extension. You can create one here `/shared/src/shared.udl`, like this:
 

@@ -186,16 +186,16 @@ afterEvaluate {
 }
 
 task bindGen(type: Exec) {
-   def outDir = "${projectDir}/src/main/java"
-   workingDir "../../"
-   commandLine(
+    def outDir = "${projectDir}/src/main/java"
+    workingDir "../../"
+    commandLine(
             "sh", "-c",
             """\
-            \$HOME/.cargo/bin/uniffi-bindgen generate shared/src/shared.udl \
+            target/debug/uniffi-bindgen generate shared/src/shared.udl \
             --language kotlin \
             --out-dir $outDir
             """
-   )
+    )
 }
 
 task typesGen(type: Exec) {
