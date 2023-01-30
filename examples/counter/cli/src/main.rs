@@ -91,7 +91,7 @@ fn main_loop(msg: CoreMessage, tx: Weak<Sender<CoreMessage>>) -> Result<(), eyre
                 let text = from_bytes::<ViewModel>(&shared::view())?.text;
 
                 if !text.contains("pending") {
-                    println!("{}", text);
+                    println!("{text}");
                 }
             }
             Effect::Http(HttpRequest { method, url }) => {
