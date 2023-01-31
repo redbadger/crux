@@ -134,7 +134,7 @@ This is a little convoluted, but this may be the easiest way to do this:
 
 ## Add the `Serde` package
 
-In order to serialize data across the "bridge" we need to add the "Serde" package to our project. You can do this with `File -> Add Packages` and search for "Serde".
+In order to serialize data across the "bridge" we need to add the [`Serde` package](https://github.com/starcoin-sdk/Serde.swift) to our project. You can do this with `File -> Add Packages` and search for "Serde" or "github.com/starcoin-sdk/Serde.swift".
 
 ## Add the bridging header
 
