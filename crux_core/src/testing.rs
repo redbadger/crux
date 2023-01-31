@@ -50,7 +50,7 @@ where
     }
 
     /// Run the app's `view` function with a model state
-    pub fn view(&self, model: &mut App::Model) -> App::ViewModel {
+    pub fn view(&self, model: &App::Model) -> App::ViewModel {
         self.app.view(model)
     }
 }
