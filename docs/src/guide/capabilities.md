@@ -17,7 +17,7 @@ Different platforms may support different ways, for example a biometric authenti
 
 Because Capabilities can own the "language" used to express intent, and the interface to request the execution of the effect, your Crux application code can be portable onto any platform capable of executing the effect in some way. Clearly, the number of different effects we can think of, and platforms we can target is enormous, and Crux doesn't want to force you to implement the entire portfolio of them on every platform. That's why Capabilities are delivered as separate modules, typically in crates, and apps can declare which ones they need. The Shell implementations need to know how to handle all requests from those capabilities, but can choose to provide only stub implementations where appropriate. For example the [Cat Facts example](https://github.com/redbadger/crux/tree/master/examples/cat_facts), uses a key-value store capability for persisting the model after every interaction, which is crucial to make the CLI shell work statefully, but the other shells generally ignore the key-value requests, because state persistence across app launches is not crucial for them. The app itself (the Core) has no idea which is the case.
 
-In some cases, it may also make sense to implement an app-specific capability, for effects specific to your domain, which don't have a common implementation across platforms (e.g. registering a local user). Crux does not stop you from bundling a number of capabilities alongside your apps (i.e. they don't _have to_ come from a crate). On the other hand, it might make sense to build a capability on top of existing lower-level capability, for example a CRDT capability may use a general pub/sub capability as transport, or a specific protocol to speak to your synchronization server (e.g. over HTTP).
+In some cases, it may also make sense to implement an app-specific capability, for effects specific to your domain, which don't have a common implementation across platforms (e.g. registering a local user). Crux does not stop you from bundling a number of capabilities alongside your apps (i.e. they don't _have to_ come from a crate). On the other hand, it might make sense to build a capability on top of an existing lower-level capability, for example a CRDT capability may use a general pub/sub capability as transport, or a specific protocol to speak to your synchronization server (e.g. over HTTP).
 
 There are clearly numerous scenarios, and the best rule of thumb we can think of is "focus on the intent". Provide an API to describe the intent of side-effects and then either pass the intent straight to the shell, or translate it to a sequence of more concrete intents for the Shell to execute. And keep in mind that the more complex the intent sent to the shell, the more complex the implementation on each platform. The translation between high-level intent and low level building blocks is why Capabilities exist.
 
@@ -43,7 +43,7 @@ Firstly, capabilities need to be able to send a message to the shell, more preci
 
 In order to enable all that, Crux needs to be in charge of creating the instance of the capabilities to provide context to them, which they use to do the things we just listed. We'll see the details of this in the next chapter.
 
-Notice that the type of the argument is `Self::Capabilities` – you own the type. This is to allow you to declare which capabilities you want to use in your app. That type will most likely be a struct looking like the following:
+Notice that the type of the argument is `Self::Capabilities` — you own the type. This is to allow you to declare which capabilities you want to use in your app. That type will most likely be a struct looking like the following:
 
 ```rust,noplayground
 #[derive(Effect)]
@@ -53,7 +53,7 @@ pub struct Capabilities {
 }
 ```
 
-Those two types come from `crux_core` and `crux_http`. Two things are suspicious about the above - the `Event` type, which describes your app's events and the `#[derive(Effect)]` derive macro.
+Those two types come from `crux_core` and `crux_http`. Two things are suspicious about the above — the `Event` type, which describes your app's events and the `#[derive(Effect)]` derive macro.
 
 The latter generates an `Effect` enum for you, used as the payload of the messages to the Shell. It is one of the things you will need to expose via the FFI boundary. It's the type the Shell will use to understand what is being requested from it, and it mirrors the `Capabilities` struct: for each field, there is a tuple variant in the Effect enum, with the respective capability's _request_ as payload, i.e. the data describing what's being asked of the Shell.
 
@@ -96,6 +96,6 @@ Looks a lot like a callback, doesn't it. Yep. With the difference that the resul
 
 The other nuance to be aware of is that the capability calls return immediately. This should hopefully be relatively obvious by now, but all that's happening is effects are getting queued up to be requested from the Shell. In a way, capability calls are implicitly asynchronous (but you can't await them).
 
-That's generally all there is to it. What you'll notice is that most capabilities have essentially request/response semantics - you use their APIs, and provide an event you want back, and eventually your update function will get called with that event. Most capabilities take inputs for their effect, and return output in their outcomes, but some capabilities don't do one or either of those things. Render is an example of a capability which doesn't take payload and never calls back. You'll likely see all the different variations in Crux apps.
+That's generally all there is to it. What you'll notice is that most capabilities have essentially request/response semantics — you use their APIs, and provide an event you want back, and eventually your update function will get called with that event. Most capabilities take inputs for their effect, and return output in their outcomes, but some capabilities don't do one or either of those things. Render is an example of a capability which doesn't take payload and never calls back. You'll likely see all the different variations in Crux apps.
 
 Now that we know how to use capabilities, we're ready to look at building our own ones. You may never need to do that, or it might be one of the first hurdles you'll come across (and if we're honest, given how young Crux is, it's more likely the latter). Either way, it's what we'll do in the next chapter.

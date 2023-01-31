@@ -18,7 +18,7 @@ use crate::http::{self, headers, StatusCode, Url};
 use crate::middleware::{Middleware, Next, Request};
 use crate::{Client, ResponseAsync, Result};
 
-// List of acceptible 300-series redirect codes.
+// List of acceptable 300-series redirect codes.
 const REDIRECT_CODES: &[StatusCode] = &[
     StatusCode::MovedPermanently,
     StatusCode::Found,
