@@ -60,7 +60,7 @@ mod tests {
         assert_eq!(actual_effect, expected_effect);
 
         // Make sure the view matches our expectations
-        let actual_view = &hello.view(&mut model).data;
+        let actual_view = &hello.view(&model).data;
         let expected_view = "Hello World";
         assert_eq!(actual_view, expected_view);
     }

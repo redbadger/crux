@@ -72,9 +72,9 @@ mod test {
     #[test]
     fn shows_initial_count() {
         let app = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
+        let model = Model::default();
 
-        let actual_view = app.view(&mut model).count;
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 0";
         assert_eq!(actual_view, expected_view);
     }
@@ -86,7 +86,7 @@ mod test {
 
         app.update(Event::Increment, &mut model);
 
-        let actual_view = app.view(&mut model).count;
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
     }
@@ -98,7 +98,7 @@ mod test {
 
         app.update(Event::Decrement, &mut model);
 
-        let actual_view = app.view(&mut model).count;
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: -1";
         assert_eq!(actual_view, expected_view);
     }
@@ -111,7 +111,7 @@ mod test {
         app.update(Event::Increment, &mut model);
         app.update(Event::Reset, &mut model);
 
-        let actual_view = app.view(&mut model).count;
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 0";
         assert_eq!(actual_view, expected_view);
     }
@@ -127,7 +127,7 @@ mod test {
         app.update(Event::Increment, &mut model);
         app.update(Event::Increment, &mut model);
 
-        let actual_view = app.view(&mut model).count;
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
     }
