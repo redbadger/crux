@@ -5,7 +5,7 @@ use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
-struct NoteEditor;
+pub struct NoteEditor;
 
 #[derive(Serialize, Deserialize)]
 pub enum Event {
@@ -17,7 +17,7 @@ pub enum Event {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-enum TextCursor {
+pub enum TextCursor {
     Position(usize),
     Selection(Range<usize>),
 }
@@ -29,14 +29,14 @@ impl Default for TextCursor {
 }
 
 #[derive(Default)]
-struct Model {
+pub struct Model {
     text: String,
     cursor: TextCursor,
 }
 
 // Same as Model for now, but may change
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-struct ViewModel {
+pub struct ViewModel {
     text: String,
     cursor: TextCursor,
 }
@@ -52,7 +52,7 @@ impl From<&Model> for ViewModel {
 
 #[derive(Effect)]
 #[effect(app = "NoteEditor")]
-struct Capabilities {
+pub struct Capabilities {
     render: Render<Event>,
 }
 

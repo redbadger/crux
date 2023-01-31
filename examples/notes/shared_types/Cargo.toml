@@ -1,0 +1,18 @@
+[package]
+name = "shared_types"
+version = "0.1.0"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[build-dependencies]
+anyhow.workspace = true
+crux_core = { path = "../../../crux_core", features = ["typegen"] }
+shared = { path = "../shared" }

@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared"]
+members = ["shared", "shared_types"]
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
