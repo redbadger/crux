@@ -98,30 +98,24 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
 }
 
 fn split_on_generic(ty: &Type) -> (Type, Ident, Type) {
+    let ty = ty.clone();
     match ty {
-        Type::Path(p) if p.qself.is_none() => {
+        Type::Path(mut path) if path.qself.is_none() => {
             // Get the last segment of the path where the generic parameter should be
-            let segments = p.path.segments.iter().collect::<Vec<_>>();
 
-            let Some((last, elements)) = segments.split_last() else {
-                panic!("type has no segments");
-            };
-
-            let t1_ident = &last.ident;
-            let t1 = quote!(#(#elements::)*#t1_ident);
-            let t1 = Type::from_string(&t1.to_string()).unwrap();
-
-            let type_params = &last.arguments;
+            let last = path.path.segments.last_mut().expect("type has no segments");
+            let type_name = last.ident.clone();
+            let type_params = std::mem::take(&mut last.arguments);
 
             // It should have only one angle-bracketed param
             let generic_arg = match type_params {
-                PathArguments::AngleBracketed(params) => params.args.first(),
+                PathArguments::AngleBracketed(params) => params.args.first().cloned(),
                 _ => None,
             };
 
             // This argument must be a type
             match generic_arg {
-                Some(GenericArgument::Type(t2)) => Some((t1, t1_ident.clone(), t2.clone())),
+                Some(GenericArgument::Type(t2)) => Some((Type::Path(path), type_name, t2)),
                 _ => None,
             }
         }
@@ -206,7 +200,6 @@ mod tests {
         let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 
         let actual = quote!(#input);
-        dbg!(actual.to_string());
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
         #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
