@@ -96,11 +96,9 @@ mod capability {
 }
 
 mod app {
-    use crux_core::{render::Render, App};
+    use crux_core::App;
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
-
-    use super::capability::Crawler;
 
     #[derive(Serialize, Deserialize)]
     pub enum Event {
