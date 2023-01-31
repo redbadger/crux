@@ -23,7 +23,7 @@ impl ToTokens for EffectStructReceiver {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
 
-        let name = match self.name {
+        let effect_name = match self.name {
             Some(ref name) => quote!(#name),
             None => {
                 let x = Type::from_string("Effect").unwrap();
@@ -46,12 +46,12 @@ impl ToTokens for EffectStructReceiver {
             .expect("Should never be enum")
             .fields;
 
-        let fields: BTreeMap<Ident, (Ident, Type)> = fields
+        let fields: BTreeMap<Ident, (Type, Ident, Type)> = fields
             .iter()
-            .map(|f| (f.ident.clone().unwrap(), split_event_type(&f.ty)))
+            .map(|f| (f.ident.clone().unwrap(), split_on_generic(&f.ty)))
             .collect();
 
-        let events: Vec<_> = fields.values().map(|(_, t)| t).collect();
+        let events: Vec<_> = fields.values().map(|(_, _, t)| t).collect();
         if !events
             .windows(2)
             .all(|win| win[0].to_token_stream().to_string() == win[1].to_token_stream().to_string())
@@ -61,22 +61,22 @@ impl ToTokens for EffectStructReceiver {
         let event = events.first().expect("Capabilities struct has no fields");
 
         let (variants, fields): (Vec<_>, Vec<_>) = fields.iter()
-            .map(|(field_name, (variant, event))| {
+            .map(|(field_name, (ty, variant, event))| {
                 (
-                    quote! { #variant(<#variant<#event> as ::crux_core::capability::Capability<#event>>::Operation) },
-                    quote! { #field_name: #variant::new(context.with_effect(#name::#variant)) },
+                    quote! { #variant(<#ty<#event> as ::crux_core::capability::Capability<#event>>::Operation) },
+                    quote! { #field_name: #ty::new(context.with_effect(#effect_name::#variant)) },
                 )
             })
             .unzip();
 
         tokens.extend(quote! {
             #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
-            pub enum #name {
+            pub enum #effect_name {
                 #(#variants ,)*
             }
 
-            impl ::crux_core::WithContext<#app, #name> for #ident {
-                fn new_with_context(context: ::crux_core::capability::CapabilityContext<#name, #event>) -> #ident {
+            impl ::crux_core::WithContext<#app, #effect_name> for #ident {
+                fn new_with_context(context: ::crux_core::capability::CapabilityContext<#effect_name, #event>) -> #ident {
                     #ident {
                         #(#fields ,)*
                     }
@@ -97,13 +97,21 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
     quote!(#input)
 }
 
-fn split_event_type(ty: &Type) -> (Ident, Type) {
+fn split_on_generic(ty: &Type) -> (Type, Ident, Type) {
     match ty {
         Type::Path(p) if p.qself.is_none() => {
             // Get the last segment of the path where the generic parameter should be
-            let path_segment = p.path.segments.last().unwrap();
-            let t1 = &path_segment.ident;
-            let type_params = &path_segment.arguments;
+            let segments = p.path.segments.iter().collect::<Vec<_>>();
+
+            let Some((last, elements)) = segments.split_last() else {
+                panic!("type has no segments");
+            };
+
+            let t1_ident = &last.ident;
+            let t1 = quote!(#(#elements::)*#t1_ident);
+            let t1 = Type::from_string(&t1.to_string()).unwrap();
+
+            let type_params = &last.arguments;
 
             // It should have only one angle-bracketed param
             let generic_arg = match type_params {
@@ -113,7 +121,7 @@ fn split_event_type(ty: &Type) -> (Ident, Type) {
 
             // This argument must be a type
             match generic_arg {
-                Some(GenericArgument::Type(t2)) => Some((t1.clone(), t2.clone())),
+                Some(GenericArgument::Type(t2)) => Some((t1, t1_ident.clone(), t2.clone())),
                 _ => None,
             }
         }
@@ -124,11 +132,13 @@ fn split_event_type(ty: &Type) -> (Ident, Type) {
 
 #[cfg(test)]
 mod tests {
-    use darling::{FromDeriveInput, ToTokens};
+    use darling::{FromDeriveInput, FromMeta, ToTokens};
     use quote::quote;
-    use syn::parse_str;
+    use syn::{parse_str, Type};
 
     use crate::effect::EffectStructReceiver;
+
+    use super::split_on_generic;
 
     #[test]
     fn defaults() {
@@ -161,6 +171,25 @@ mod tests {
     }
 
     #[test]
+    fn split_event_types_preserves_path() {
+        let ty = Type::from_string("crux_core::render::Render<Event>").unwrap();
+
+        let (actual_type, actual_ident, actual_event) = split_on_generic(&ty);
+
+        assert_eq!(
+            quote!(#actual_type).to_string(),
+            quote!(crux_core::render::Render).to_string()
+        );
+
+        assert_eq!(
+            quote!(#actual_ident).to_string(),
+            quote!(Render).to_string()
+        );
+
+        assert_eq!(quote!(#actual_event).to_string(), quote!(Event).to_string());
+    }
+
+    #[test]
     fn full() {
         let input = r#"
             #[derive(Effect)]
@@ -177,11 +206,16 @@ mod tests {
         let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 
         let actual = quote!(#input);
+        dbg!(actual.to_string());
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
         #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
         pub enum MyEffect {
-            Http(<Http<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
+            Http(
+                <crux_http::Http<
+                    MyEvent,
+                > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            ),
             KeyValue(
                 <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
             ),
@@ -196,7 +230,7 @@ mod tests {
                 context: ::crux_core::capability::CapabilityContext<MyEffect, MyEvent>,
             ) -> MyCapabilities {
                 MyCapabilities {
-                    http: Http::new(context.with_effect(MyEffect::Http)),
+                    http: crux_http::Http::new(context.with_effect(MyEffect::Http)),
                     key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
                     platform: Platform::new(context.with_effect(MyEffect::Platform)),
                     render: Render::new(context.with_effect(MyEffect::Render)),
