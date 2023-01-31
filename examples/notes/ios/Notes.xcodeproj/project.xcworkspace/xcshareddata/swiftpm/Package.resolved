@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "serde.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/starcoin-sdk/Serde.swift",
+      "state" : {
+        "branch" : "main",
+        "revision" : "cfb9ceac93f175b5600946032d11c68545ce3d62"
+      }
+    }
+  ],
+  "version" : 2
+}
