@@ -2,7 +2,13 @@
 
 These are the steps to set up and run a simple TypeScript Web app that calls into a shared core.
 
-> There are many frameworks available for writing Web applications with JavaScript/TypeScript. We've chosen [React](https://reactjs.org/) with [Next.js](https://nextjs.org/) for this walk-through because it is simple and popular. However, a similar setup would work for other frameworks.
+```admonish
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+```
+
+```admonish info
+There are many frameworks available for writing Web applications with JavaScript/TypeScript. We've chosen [React](https://reactjs.org/) with [Next.js](https://nextjs.org/) for this walk-through because it is simple and popular. However, a similar setup would work for other frameworks.
+```
 
 ## Create a Next.js App
 
@@ -130,7 +136,11 @@ pnpm add ../shared_types/generated/typescript
 
 ### Hello World counter example
 
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Web UI for Next.js in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have a Next.js example.
+```admonish example
+There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Next.js apps in the Crux repository.
+
+However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world) — it only has `shared` and `shared_types` libraries, which will work with the following example code.
+```
 
 Edit `web-nextjs/src/pages/index.tsx` to look like this:
 
@@ -298,6 +308,8 @@ We can build our app, and serve it for the browser, in one simple step.
 pnpm dev
 ```
 
+```admonish success
 Your app should look like this:
 
-<img alt="hello world app" src="./hello_world_nextjs.webp"  width="300">
+<p align="center"><img alt="hello world app" src="./hello_world_nextjs.webp"  width="300"></p>
+```

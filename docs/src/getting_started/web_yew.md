@@ -2,7 +2,13 @@
 
 These are the steps to set up and run a simple Rust Web app that calls into a shared core.
 
-> There are many frameworks available for writing Web applications in Rust. We've chosen [Yew](https://yew.rs/) for this walk-through because it is arguably the most mature. However, a similar setup would work for any framework that compiles to WebAssembly.
+```admonish
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+```
+
+```admonish info
+There are many frameworks available for writing Web applications in Rust. We've chosen [Yew](https://yew.rs/) for this walk-through because it is arguably the most mature. However, a similar setup would work for any framework that compiles to WebAssembly.
+```
 
 ## Create a Yew App
 
@@ -54,7 +60,11 @@ We'll also need a file called `index.html`, to serve our app.
 
 ### Hello World counter example
 
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of UI for Yew in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have a Yew example.
+```admonish example
+There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Yew apps in the Crux repository.
+
+However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world) — it only has `shared` and `shared_types` libraries, which will work with the following example code.
+```
 
 Edit `src/main.rs` to look like this:
 
@@ -141,6 +151,8 @@ We can build our app, serve it and open it in our browser, in one simple step.
 trunk serve --open
 ```
 
+```admonish success
 Your app should look like this:
 
-<img alt="hello world app" src="./hello_world_yew.webp"  width="300">
+<p align="center"><img alt="hello world app" src="./hello_world_yew.webp"  width="300"></p>
+```

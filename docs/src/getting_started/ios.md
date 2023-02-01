@@ -2,7 +2,13 @@
 
 These are the steps to set up Xcode to build and run a simple iOS app that calls into a shared core.
 
-> 🚨 _SHARP EDGE WARNING_: We want to make setting up Xcode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below (e.g. how to do Xcode project configuration from the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+```admonish
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+```
+
+```admonish warning title="Sharp edge"
+We want to make setting up Xcode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below (e.g. how to do Xcode project configuration from the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+```
 
 ## Create an iOS App
 
@@ -149,7 +155,11 @@ In `File -> Add Files to iOS`, add `/shared_types/generated/swift/shared_types.s
 
 ### Hello World counter example
 
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of UI for iOS in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have an iOS example.
+```admonish example
+There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of iOS apps in the Crux repository.
+
+However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world) — it only has `shared` and `shared_types` libraries, which will work with the following example code.
+```
 
 Edit `ContentView.swift` to look like this:
 
@@ -256,6 +266,8 @@ struct iOSApp: App {
 }
 ```
 
+```admonish success
 You should then be able to run the app in the simulator, and it should look like this:
 
-<img alt="hello world app" src="./hello_world_ios.webp"  width="300">
+<p align="center"><img alt="hello world app" src="./hello_world_ios.webp"  width="300"></p>
+```
