@@ -150,7 +150,7 @@ const Home: NextPage = () => {
   return (
     <div className="container">
       <Head>
-        <title>Cat Facts - NextJS</title>
+        <title>Cat Facts - Next.js</title>
       </Head>
 
       <main>

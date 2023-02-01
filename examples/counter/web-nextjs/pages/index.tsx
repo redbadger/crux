@@ -144,7 +144,7 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>Crux Counter Example - NextJS</title>
+        <title>Crux Counter Example - Next.js</title>
       </Head>
 
       <main>
@@ -152,7 +152,7 @@ const Home: NextPage = () => {
           <p className="title">Crux Counter Example</p>
         </section>
         <section className="section has-text-centered">
-          <p className="is-size-5">Rust Core, TypeScript Shell (NextJS)</p>
+          <p className="is-size-5">Rust Core, TypeScript Shell (Next.js)</p>
         </section>
         <section className="container has-text-centered">
           <p className="is-size-5">{state.text}</p>

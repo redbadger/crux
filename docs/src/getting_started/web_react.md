@@ -1,14 +1,14 @@
-# Web — TypeScript and React (NextJS)
+# Web — TypeScript and React (Next.js)
 
 These are the steps to set up and run a simple TypeScript Web app that calls into a shared core.
 
-> There are many frameworks available for writing Web applications with JavaScript/TypeScript. We've chosen [React](https://reactjs.org/) with [NextJS](https://nextjs.org/) for this walk-through because it is simple and popular. However, a similar setup would work for other frameworks.
+> There are many frameworks available for writing Web applications with JavaScript/TypeScript. We've chosen [React](https://reactjs.org/) with [Next.js](https://nextjs.org/) for this walk-through because it is simple and popular. However, a similar setup would work for other frameworks.
 
-## Create a NextJS App
+## Create a Next.js App
 
 For this walk-through, we'll use the [`pnpm`](https://pnpm.io/) package manager for no reason other than we like it the most!
 
-Let's create a simple NextJS app for TypeScript, using `pnpx` (from `pnpm`). You can accept all the defaults.
+Let's create a simple Next.js app for TypeScript, using `pnpx` (from `pnpm`). You can accept all the defaults.
 
 ```sh
 pnpx create-next-app@latest web-nextjs --ts --use-pnpm
@@ -34,7 +34,7 @@ brew install wasm-pack
 curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
-But we won't call `wasm-pack` directly. Instead we'll use a NextJS plugin to do this for us. That way the shared library will be compiled to WebAssembly when we build our app using `pnpm`.
+But we won't call `wasm-pack` directly. Instead we'll use a Next.js plugin to do this for us. That way the shared library will be compiled to WebAssembly when we build our app using `pnpm`.
 
 Add the `wasm-pack-plugin` to our project:
 
@@ -42,7 +42,7 @@ Add the `wasm-pack-plugin` to our project:
 pnpm install --save-dev @wasm-tool/wasm-pack-plugin
 ```
 
-We'll need to configure NextJS to call the plugin by editing `web-nextjs/next.config.js` to look like this:
+We'll need to configure Next.js to call the plugin by editing `web-nextjs/next.config.js` to look like this:
 
 ```javascript
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
@@ -130,7 +130,7 @@ pnpm add ../shared_types/generated/typescript
 
 ### Hello World counter example
 
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Web UI for NextJS in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have a NextJS example.
+There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Web UI for Next.js in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have a Next.js example.
 
 Edit `web-nextjs/src/pages/index.tsx` to look like this:
 
@@ -217,7 +217,7 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>NextJS Example</title>
+        <title>Next.js Example</title>
       </Head>
 
       <main>
