@@ -58,7 +58,7 @@ There are several [examples](https://github.com/redbadger/crux/tree/master/examp
 
 Edit `src/main.rs` to look like this:
 
-```rust
+```rust,noplayground
 use bcs::{from_bytes, to_bytes};
 use yew::prelude::*;
 
