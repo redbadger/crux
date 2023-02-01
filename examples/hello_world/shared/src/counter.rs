@@ -16,7 +16,7 @@ pub struct Model {
 
 #[derive(Serialize, Deserialize)]
 pub struct ViewModel {
-    count: String,
+    pub count: String,
 }
 
 #[derive(Effect)]

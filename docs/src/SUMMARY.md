@@ -9,8 +9,8 @@
 1. [Shared core and types](./getting_started/core.md)
 1. [iOS — Swift and SwiftUI](./getting_started/ios.md)
 1. [Android — Kotlin and Jetpack Compose](./getting_started/android.md)
-1. [Web — React and TypeScript](./getting_started/web_react.md)
-1. [Web — Yew](./getting_started/web_yew.md)
+1. [Web — TypeScript and React (NextJS)](./getting_started/web_react.md)
+1. [Web — Rust and Yew](./getting_started/web_yew.md)
 
 # Development Guide
 
