@@ -1,4 +1,4 @@
-# Web — Yew
+# Web — Rust and Yew
 
 These are the steps to set up and run a simple Rust Web app that calls into a shared core.
 
