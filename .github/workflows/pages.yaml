@@ -2,7 +2,7 @@ name: pages
 on:
   push:
     branches:
-      - master
+      - docs-callouts
 
 env:
   CARGO_INCREMENTAL: 0
@@ -21,9 +21,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.66.0
 
       - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
+        uses: jontze/action-mdbook@v2
         with:
-          mdbook-version: "latest"
+          use-admonish: true
 
       - name: Build Documentation
         run: cargo doc --all --no-deps
