@@ -2,7 +2,9 @@
 
 These are the steps to set up the two crates forming the shared core – the core itself, and the shared types crate which does type generation for the foreign languages.
 
-> 🚨 _SHARP EDGE WARNING_: Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from one of the [example projects](https://github.com/redbadger/crux/tree/master/examples)
+```admonish warning title="Sharp edge"
+Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from one of the [example projects](https://github.com/redbadger/crux/tree/master/examples).
+```
 
 ## Install the tools
 
@@ -123,4 +125,6 @@ This crate serves as the container for type generation for the foreign languages
    cargo build -vv
    ```
 
+```admonish success
 You should now be ready to set up [iOS](ios.md), [Android](android.md), [web](web_react.md), or [WebAssembly](web_yew.md) specific builds.
+```

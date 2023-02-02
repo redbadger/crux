@@ -2,7 +2,13 @@
 
 These are the steps to set up Android Studio to build and run a simple Android app that calls into a shared core.
 
-> 🚨 _SHARP EDGE WARNING_: We want to make setting up Android Studio to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below, please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+```admonish
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+```
+
+```admonish warning title="Sharp edge"
+We want to make setting up Android Studio to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below, please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+```
 
 ## Create an Android App
 
@@ -58,7 +64,9 @@ For more information on how to add an Android library see <https://developer.and
 
 We can now add this library as a _dependency_ of our app.
 
-> Don't just copy and paste the groovy snippets on this page — instead, ensure that each section has (at least) the contents shown.
+```admonish tip
+Don't just copy and paste the groovy snippets on this page — instead, ensure that each section has (at least) the contents shown.
+```
 
 Merge the following into the **app**'s `build.gradle` (`/Android/app/build.gradle`).
 
@@ -125,7 +133,9 @@ We'll use the following tools to incorporate our Rust shared library into the An
 
 Let's get started.
 
-> Don't just copy and paste the groovy snippets on this page — instead, ensure that each section has (at least) the contents shown.
+```admonish tip
+Don't just copy and paste the groovy snippets on this page — instead, ensure that each section has (at least) the contents shown.
+```
 
 Merge the following into the **project**'s `build.gradle` (`/Android/build.gradle`).
 
@@ -140,8 +150,6 @@ plugins {
     id "org.mozilla.rust-android-gradle.rust-android" version "0.9.3"
 }
 ```
-
-> Don't just copy and paste the groovy snippets on this page — instead, ensure that each section has (at least) the contents shown.
 
 Merge the following into the **library**'s `build.gradle` (`/Android/shared/build.gradle`).
 
@@ -212,7 +220,9 @@ task typesGen(type: Exec) {
 
 ```
 
-> When you have edited the gradle files, don't forget to click "sync now".
+```admonish tip
+When you have edited the gradle files, don't forget to click "sync now".
+```
 
 If you now build your project you should see the shared library object file, and the shared types, in the right places.
 
@@ -241,7 +251,11 @@ Android/shared/src/main/java/com/example/counter
 
 ### Hello World counter example
 
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of UI for Android in the Crux repository. The simplest is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), but this deliberately does not have an Android example.
+```admonish example
+There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Android apps in the Crux repository.
+
+However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world) — it only has `shared` and `shared_types` libraries, which will work with the following example code.
+```
 
 Edit `/Android/app/src/main/java/com/example/android/MainActivity.kt` to look like this:
 
@@ -367,6 +381,8 @@ fun DefaultPreview() {
 }
 ```
 
+```admonish success
 You should then be able to run the app in the simulator, and it should look like this:
 
-<img alt="hello world app" src="./hello_world_android.webp"  width="300">
+<p align="center"><img alt="hello world app" src="./hello_world_android.webp"  width="300"></p>
+```

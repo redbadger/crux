@@ -1,3 +1,5 @@
 # Type generation
 
-TO DO.
+```admonish info
+Coming soon.
+```

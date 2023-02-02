@@ -77,7 +77,9 @@ The implementation of the method has a little bit of boilerplate to enable us to
 
 You can see we use two APIs to orchestrate the interaction. First `request_from_shell` sends the delay operation we made earlier to the Shell. This call returns a future, which we can `.await`. Once done, we use the other API `update_app` to dispatch the event we were given. At the `.await`, the task will be suspended, Crux will pass the operation to the Shell wrapped in the `Effect` type we talked about in the last chapter and the Shell will use it's native APIs to wait for the given duration, and eventually respond. This will wake our task up again and we can continue working.
 
-> 🚨 _SHARP EDGE WARNING_: There is one more thing we need to do, which will likely be reduced to a derive macro in future versions of Crux. We need to implement the `Capability` trait.
+```admonish warning title="Sharp edge"
+There is one more thing we need to do, which will likely be reduced to a derive macro in future versions of Crux. We need to implement the `Capability` trait.
+```
 
 ```rust,noplayground
 impl<Ef> Capability<Ef> for Delay<Ef> {

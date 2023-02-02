@@ -21,9 +21,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.66.0
 
       - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
+        uses: jontze/action-mdbook@v2
         with:
-          mdbook-version: "latest"
+          token: ${{secrets.GITHUB_TOKEN}}
+          use-admonish: true
 
       - name: Build Documentation
         run: cargo doc --all --no-deps
