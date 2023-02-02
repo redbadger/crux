@@ -23,6 +23,7 @@ jobs:
       - name: Setup mdBook
         uses: jontze/action-mdbook@v2
         with:
+          token: ${{secrets.GITHUB_TOKEN}}
           use-admonish: true
 
       - name: Build Documentation
