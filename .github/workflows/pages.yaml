@@ -2,7 +2,7 @@ name: pages
 on:
   push:
     branches:
-      - docs-callouts
+      - master
 
 env:
   CARGO_INCREMENTAL: 0
