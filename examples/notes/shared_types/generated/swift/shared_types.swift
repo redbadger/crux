@@ -44,6 +44,7 @@ indirect public enum Effect: Hashable {
 
 indirect public enum Event: Hashable {
     case insert(String)
+    case replace(UInt64, UInt64, String)
     case moveCursor(UInt64)
     case select(UInt64, UInt64)
     case backspace
@@ -55,17 +56,22 @@ indirect public enum Event: Hashable {
         case .insert(let x):
             try serializer.serialize_variant_index(value: 0)
             try serializer.serialize_str(value: x)
-        case .moveCursor(let x):
+        case .replace(let x0, let x1, let x2):
             try serializer.serialize_variant_index(value: 1)
+            try serializer.serialize_u64(value: x0)
+            try serializer.serialize_u64(value: x1)
+            try serializer.serialize_str(value: x2)
+        case .moveCursor(let x):
+            try serializer.serialize_variant_index(value: 2)
             try serializer.serialize_u64(value: x)
         case .select(let x0, let x1):
-            try serializer.serialize_variant_index(value: 2)
+            try serializer.serialize_variant_index(value: 3)
             try serializer.serialize_u64(value: x0)
             try serializer.serialize_u64(value: x1)
         case .backspace:
-            try serializer.serialize_variant_index(value: 3)
-        case .delete:
             try serializer.serialize_variant_index(value: 4)
+        case .delete:
+            try serializer.serialize_variant_index(value: 5)
         }
         try serializer.decrease_container_depth()
     }
@@ -85,18 +91,24 @@ indirect public enum Event: Hashable {
             try deserializer.decrease_container_depth()
             return .insert(x)
         case 1:
+            let x0 = try deserializer.deserialize_u64()
+            let x1 = try deserializer.deserialize_u64()
+            let x2 = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .replace(x0, x1, x2)
+        case 2:
             let x = try deserializer.deserialize_u64()
             try deserializer.decrease_container_depth()
             return .moveCursor(x)
-        case 2:
+        case 3:
             let x0 = try deserializer.deserialize_u64()
             let x1 = try deserializer.deserialize_u64()
             try deserializer.decrease_container_depth()
             return .select(x0, x1)
-        case 3:
+        case 4:
             try deserializer.decrease_container_depth()
             return .backspace
-        case 4:
+        case 5:
             try deserializer.decrease_container_depth()
             return .delete
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for Event: \(index)")

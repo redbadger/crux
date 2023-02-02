@@ -10,6 +10,7 @@ pub struct NoteEditor;
 #[derive(Serialize, Deserialize)]
 pub enum Event {
     Insert(String),
+    Replace(usize, usize, String),
     MoveCursor(usize),
     Select(usize, usize),
     Backspace,
@@ -79,6 +80,17 @@ impl App for NoteEditor {
 
                 model.text.insert_str(idx, &text);
                 model.cursor = TextCursor::Position(idx + len);
+            }
+            Event::Replace(from, to, text) => {
+                let idx = from + text.len();
+
+                if from == to {
+                    model.text.insert_str(from, &text)
+                } else {
+                    model.text.replace_range(from..to, &text);
+                }
+
+                model.cursor = TextCursor::Position(idx);
             }
             Event::MoveCursor(idx) => {
                 model.cursor = TextCursor::Position(idx);
@@ -220,6 +232,51 @@ mod tests {
 
         assert_eq!(model.text, "helter skelter".to_string());
         assert_eq!(model.cursor, TextCursor::Position(14));
+
+        assert!(
+            update.effects.iter().any(|e| e == &expected_effect),
+            "didn't render"
+        );
+    }
+
+    #[test]
+    fn replaces_range_and_renders() {
+        let app = AppTester::<NoteEditor, _>::default();
+
+        let mut model = Model {
+            text: "hello".to_string(),
+            cursor: TextCursor::Position(3),
+        };
+
+        let update = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model);
+        let expected_effect = Effect::Render(RenderOperation);
+
+        assert_eq!(model.text, "hi, yo".to_string());
+        assert_eq!(model.cursor, TextCursor::Position(5));
+
+        assert!(
+            update.effects.iter().any(|e| e == &expected_effect),
+            "didn't render"
+        );
+    }
+
+    #[test]
+    fn replaces_empty_range_and_renders() {
+        let app = AppTester::<NoteEditor, _>::default();
+
+        let mut model = Model {
+            text: "hello".to_string(),
+            cursor: TextCursor::Position(3),
+        };
+
+        let update = app.update(
+            Event::Replace(1, 1, "ey, just saying h".to_string()),
+            &mut model,
+        );
+        let expected_effect = Effect::Render(RenderOperation);
+
+        assert_eq!(model.text, "hey, just saying hello".to_string());
+        assert_eq!(model.cursor, TextCursor::Position(18));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
