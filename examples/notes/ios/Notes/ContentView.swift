@@ -64,6 +64,10 @@ class Core: ObservableObject {
             switch req.effect {
             case .render(_):
                 view = try! ViewModel.bcsDeserialize(input: Notes.view())
+            case let .pubSub(.publish(bytes)):
+                print(["Publish", bytes.count, "bytes"])
+            case .pubSub(.subscribe):
+                print("Subscribe")
             }
         }
     }

@@ -2,13 +2,17 @@ import Serde
 
 
 indirect public enum Effect: Hashable {
+    case pubSub(PubSubOperation)
     case render(RenderOperation)
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
         switch self {
-        case .render(let x):
+        case .pubSub(let x):
             try serializer.serialize_variant_index(value: 0)
+            try x.serialize(serializer: serializer)
+        case .render(let x):
+            try serializer.serialize_variant_index(value: 1)
             try x.serialize(serializer: serializer)
         }
         try serializer.decrease_container_depth()
@@ -25,6 +29,10 @@ indirect public enum Effect: Hashable {
         try deserializer.increase_container_depth()
         switch index {
         case 0:
+            let x = try PubSubOperation.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .pubSub(x)
+        case 1:
             let x = try RenderOperation.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .render(x)
@@ -43,35 +51,43 @@ indirect public enum Effect: Hashable {
 }
 
 indirect public enum Event: Hashable {
+    case load([UInt8])
     case insert(String)
     case replace(UInt64, UInt64, String)
     case moveCursor(UInt64)
     case select(UInt64, UInt64)
     case backspace
     case delete
+    case receiveChanges([UInt8])
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
         switch self {
-        case .insert(let x):
+        case .load(let x):
             try serializer.serialize_variant_index(value: 0)
+            try serialize_vector_u8(value: x, serializer: serializer)
+        case .insert(let x):
+            try serializer.serialize_variant_index(value: 1)
             try serializer.serialize_str(value: x)
         case .replace(let x0, let x1, let x2):
-            try serializer.serialize_variant_index(value: 1)
+            try serializer.serialize_variant_index(value: 2)
             try serializer.serialize_u64(value: x0)
             try serializer.serialize_u64(value: x1)
             try serializer.serialize_str(value: x2)
         case .moveCursor(let x):
-            try serializer.serialize_variant_index(value: 2)
+            try serializer.serialize_variant_index(value: 3)
             try serializer.serialize_u64(value: x)
         case .select(let x0, let x1):
-            try serializer.serialize_variant_index(value: 3)
+            try serializer.serialize_variant_index(value: 4)
             try serializer.serialize_u64(value: x0)
             try serializer.serialize_u64(value: x1)
         case .backspace:
-            try serializer.serialize_variant_index(value: 4)
-        case .delete:
             try serializer.serialize_variant_index(value: 5)
+        case .delete:
+            try serializer.serialize_variant_index(value: 6)
+        case .receiveChanges(let x):
+            try serializer.serialize_variant_index(value: 7)
+            try serialize_vector_u8(value: x, serializer: serializer)
         }
         try serializer.decrease_container_depth()
     }
@@ -87,35 +103,90 @@ indirect public enum Event: Hashable {
         try deserializer.increase_container_depth()
         switch index {
         case 0:
+            let x = try deserialize_vector_u8(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .load(x)
+        case 1:
             let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .insert(x)
-        case 1:
+        case 2:
             let x0 = try deserializer.deserialize_u64()
             let x1 = try deserializer.deserialize_u64()
             let x2 = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .replace(x0, x1, x2)
-        case 2:
+        case 3:
             let x = try deserializer.deserialize_u64()
             try deserializer.decrease_container_depth()
             return .moveCursor(x)
-        case 3:
+        case 4:
             let x0 = try deserializer.deserialize_u64()
             let x1 = try deserializer.deserialize_u64()
             try deserializer.decrease_container_depth()
             return .select(x0, x1)
-        case 4:
-            try deserializer.decrease_container_depth()
-            return .backspace
         case 5:
             try deserializer.decrease_container_depth()
+            return .backspace
+        case 6:
+            try deserializer.decrease_container_depth()
             return .delete
+        case 7:
+            let x = try deserialize_vector_u8(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .receiveChanges(x)
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for Event: \(index)")
         }
     }
 
     public static func bcsDeserialize(input: [UInt8]) throws -> Event {
+        let deserializer = BcsDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+indirect public enum PubSubOperation: Hashable {
+    case publish([UInt8])
+    case subscribe
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .publish(let x):
+            try serializer.serialize_variant_index(value: 0)
+            try serialize_vector_u8(value: x, serializer: serializer)
+        case .subscribe:
+            try serializer.serialize_variant_index(value: 1)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bcsSerialize() throws -> [UInt8] {
+        let serializer = BcsSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> PubSubOperation {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            let x = try deserialize_vector_u8(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .publish(x)
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .subscribe
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for PubSubOperation: \(index)")
+        }
+    }
+
+    public static func bcsDeserialize(input: [UInt8]) throws -> PubSubOperation {
         let deserializer = BcsDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
