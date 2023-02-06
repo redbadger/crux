@@ -420,65 +420,107 @@ mod editing_tests {
 
 #[cfg(test)]
 mod sync_tests {
-    use automerge::{transaction::Transactable, Automerge, ObjType};
-    use crux_core::testing::AppTester;
+    use std::collections::VecDeque;
+
+    use crux_core::testing::{AppTester, TestEffect};
 
     use crate::capabilities::pub_sub::PubSubOperation;
 
     use super::*;
 
+    struct Peer {
+        app: AppTester<NoteEditor, Effect>,
+        model: Model,
+        subscription: Option<TestEffect<Effect, Event>>,
+        edits: VecDeque<Vec<u8>>,
+    }
+
+    // A jig to make testing sync a bit easier
+
+    impl Peer {
+        fn new() -> Self {
+            let app = AppTester::<_, _>::default();
+            let model = Default::default();
+
+            Self {
+                app,
+                model,
+                subscription: None,
+                edits: VecDeque::new(),
+            }
+        }
+
+        // Update, picking out and keeping PubSub effects
+        fn update(&mut self, event: Event) -> (Vec<Effect>, Vec<Event>) {
+            let update = self.app.update(event, &mut self.model);
+
+            let events = update.events;
+            let mut effects = Vec::new();
+
+            for effect in update.effects {
+                match effect.as_ref() {
+                    Effect::PubSub(PubSubOperation::Subscribe) => {
+                        self.subscription = Some(effect);
+                    }
+                    Effect::PubSub(PubSubOperation::Publish(bytes)) => {
+                        self.edits.push_back(bytes.clone());
+                    }
+                    ef => effects.push(ef.clone()),
+                }
+            }
+
+            (effects, events)
+        }
+
+        fn view(&self) -> ViewModel {
+            self.app.view(&self.model)
+        }
+
+        fn send_edits(&mut self, edits: &[Vec<u8>]) -> (Vec<Effect>, Vec<Event>) {
+            let subscription = self.subscription.as_ref().expect("to have a subscription");
+
+            let mut effects = Vec::new();
+            let mut events = Vec::new();
+
+            let evs = edits
+                .iter()
+                .flat_map(|ed| subscription.resolve(ed).events)
+                .collect::<Vec<_>>();
+
+            for event in evs {
+                let (mut eff, mut ev) = self.update(event);
+
+                effects.append(&mut eff);
+                events.append(&mut ev);
+            }
+
+            (effects, events)
+        }
+    }
+
+    fn make_alice_and_bob() -> (Peer, Peer) {
+        let note = Note::new().save();
+
+        let mut alice = Peer::new();
+        let mut bob = Peer::new();
+
+        alice.update(Event::Load(note.clone()));
+        bob.update(Event::Load(note));
+
+        (alice, bob)
+    }
+
     #[test]
     fn a_single_change_sync() {
-        // need a common starting point
-        let mut doc = Automerge::new();
+        let (mut alice, mut bob) = make_alice_and_bob();
 
-        doc.transact(|t| t.put_object(automerge::ROOT, "body", ObjType::Text))
-            .expect("to create a document");
+        alice.update(Event::Insert("Hello".to_string()));
+        let edits = alice.edits.drain(0..).collect::<Vec<_>>();
 
-        let doc = doc.save();
+        bob.send_edits(edits.as_ref());
 
-        let alice = AppTester::<NoteEditor, _>::default();
-        let mut alice_model = Default::default();
-
-        let reqs = alice
-            .update(Event::Load(doc.clone()), &mut alice_model)
-            .effects;
-        reqs.iter()
-            .find(|r| matches!(r.as_ref(), Effect::PubSub(PubSubOperation::Subscribe)))
-            .expect("Alice didn't subscribe for updates");
-
-        let bob = AppTester::<NoteEditor, _>::default();
-        let mut bob_model = Default::default();
-
-        let reqs = bob.update(Event::Load(doc), &mut bob_model).effects;
-        let bob_sub = reqs
-            .iter()
-            .find(|r| matches!(r.as_ref(), Effect::PubSub(PubSubOperation::Subscribe)))
-            .expect("Bob didn't subscribe for updates");
-
-        // Done wiring up
-
-        let update = alice.update(Event::Insert("Hello".to_string()), &mut alice_model);
-        update
-            .effects
-            .iter()
-            .filter_map(|eff| match eff.as_ref() {
-                Effect::PubSub(PubSubOperation::Publish(it)) => Some(it),
-                _ => None,
-            })
-            .for_each(|bytes| {
-                // Forward the published changes to Bob
-                let evts = bob_sub.resolve(bytes).events;
-
-                for evt in evts {
-                    bob.update(evt, &mut bob_model);
-                }
-            });
-
-        // Both should end up with the same doc
-
-        let alice_view = alice.view(&alice_model);
-        let bob_view = bob.view(&bob_model);
+        let alice_view = alice.view();
+        let bob_view = bob.view();
 
         assert_eq!(alice_view.text, bob_view.text);
     }
