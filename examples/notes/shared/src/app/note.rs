@@ -1,4 +1,6 @@
-use automerge::{transaction::Transactable, Automerge, Change, ObjId, ObjType, ReadDoc, ROOT};
+use automerge::{
+    transaction::Transactable, Automerge, Change, ObjId, ObjType, OpObserver, ReadDoc, ROOT,
+};
 
 pub struct Note {
     document: Automerge,
@@ -55,6 +57,8 @@ impl Note {
     pub fn splice_text(&mut self, pos: usize, del: usize, text: &str) -> Change {
         let body = self.body();
 
+        println!("Splice {pos} {del} '{text}'");
+
         self.document
             .transact(|tx| tx.splice_text(body, pos, del, text))
             .expect("to splice the body text");
@@ -71,12 +75,106 @@ impl Note {
             .expect("to apply changes")
     }
 
+    pub fn apply_changes_with(
+        &mut self,
+        changes: impl IntoIterator<Item = Change>,
+        edit_observer: &mut impl EditObserver,
+    ) {
+        let mut observer = Observer { edit_observer };
+
+        self.document
+            .apply_changes_with(changes, Some(&mut observer))
+            .expect("to apply changes")
+    }
+
     fn body(&self) -> ObjId {
         self.document
             .get(ROOT, "body")
             .expect("to get")
             .expect("to find body")
             .1
+    }
+}
+
+pub trait EditObserver {
+    fn body_insert(&mut self, loc: usize, len: usize, text: &str);
+    fn body_remove(&mut self, loc: usize, len: usize);
+}
+
+struct Observer<'a> {
+    edit_observer: &'a mut dyn EditObserver,
+}
+
+impl<'a> OpObserver for Observer<'a> {
+    fn insert<R: automerge::ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: automerge::ObjId,
+        _index: usize,
+        _tagged_value: (automerge::Value<'_>, automerge::ObjId),
+    ) {
+        // not interested
+    }
+
+    fn splice_text<R: automerge::ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: automerge::ObjId,
+        index: usize,
+        value: &str,
+    ) {
+        self.edit_observer.body_insert(index, value.len(), value);
+    }
+
+    fn put<R: automerge::ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: automerge::ObjId,
+        _prop: automerge::Prop,
+        _tagged_value: (automerge::Value<'_>, automerge::ObjId),
+        _conflict: bool,
+    ) {
+        // not interested
+    }
+
+    fn expose<R: automerge::ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: automerge::ObjId,
+        _prop: automerge::Prop,
+        _tagged_value: (automerge::Value<'_>, automerge::ObjId),
+        _conflict: bool,
+    ) {
+        // not interested
+    }
+
+    fn increment<R: automerge::ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: automerge::ObjId,
+        _prop: automerge::Prop,
+        _tagged_value: (i64, automerge::ObjId),
+    ) {
+        // not interested
+    }
+
+    fn delete_map<R: automerge::ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: automerge::ObjId,
+        _key: &str,
+    ) {
+        // not interested
+    }
+
+    fn delete_seq<R: automerge::ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: automerge::ObjId,
+        index: usize,
+        num: usize,
+    ) {
+        self.edit_observer.body_remove(index, num);
     }
 }
 

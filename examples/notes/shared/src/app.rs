@@ -11,6 +11,8 @@ use crate::capabilities::pub_sub::PubSub;
 
 pub use note::Note;
 
+use self::note::EditObserver;
+
 #[derive(Default)]
 pub struct NoteEditor;
 
@@ -147,8 +149,12 @@ impl App for NoteEditor {
             }
             Event::ReceiveChanges(bytes) => {
                 let change = Change::from_bytes(bytes).expect("a valid change");
+                let mut observer = CursorObserver {
+                    cursor: model.cursor.clone(),
+                };
 
-                model.note.apply_changes([change])
+                model.note.apply_changes_with([change], &mut observer);
+                model.cursor = observer.cursor;
             }
         }
 
@@ -157,6 +163,53 @@ impl App for NoteEditor {
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         model.into()
+    }
+}
+
+struct CursorObserver {
+    cursor: TextCursor,
+}
+
+impl EditObserver for CursorObserver {
+    fn body_insert(&mut self, loc: usize, len: usize, _text: &str) {
+        self.update_cursor(loc, len as isize);
+    }
+
+    fn body_remove(&mut self, loc: usize, len: usize) {
+        self.update_cursor(loc, -(len as isize));
+    }
+}
+
+impl CursorObserver {
+    fn update_cursor(&mut self, loc: usize, delta: isize) {
+        self.cursor = match &self.cursor {
+            TextCursor::Position(position) => {
+                let pos = *position as isize;
+
+                if loc < *position {
+                    TextCursor::Position((pos + delta) as usize)
+                } else {
+                    self.cursor.clone()
+                }
+            }
+            TextCursor::Selection(range) => {
+                let (start, end) = (range.start as isize, range.end as isize);
+
+                match range {
+                    _ if loc < range.start => {
+                        let new_range = ((start + delta) as usize)..((end + delta) as usize);
+
+                        TextCursor::Selection(new_range)
+                    }
+                    _ if loc >= range.start && loc < range.end => {
+                        let new_range = range.start..((end + delta) as usize);
+
+                        TextCursor::Selection(new_range)
+                    }
+                    _ => self.cursor.clone(),
+                }
+            }
+        };
     }
 }
 
@@ -511,7 +564,7 @@ mod sync_tests {
     }
 
     #[test]
-    fn a_single_change_sync() {
+    fn one_way_sync() {
         let (mut alice, mut bob) = make_alice_and_bob();
 
         alice.update(Event::Insert("Hello".to_string()));
@@ -522,6 +575,171 @@ mod sync_tests {
         let alice_view = alice.view();
         let bob_view = bob.view();
 
+        assert_eq!(alice_view.text, bob_view.text);
+    }
+
+    #[test]
+    fn two_way_sync() {
+        let (mut alice, mut bob) = make_alice_and_bob();
+
+        alice.update(Event::Insert("world".to_string()));
+        let edits = alice.edits.drain(0..).collect::<Vec<_>>();
+
+        bob.send_edits(edits.as_ref());
+
+        // Alice's inserts should go in front of Bob's cursor
+        // so we break the ambiguity of same cursor position
+        // as quickly as possible
+        bob.update(Event::Insert("Hello ".to_string()));
+        let edits = bob.edits.drain(0..).collect::<Vec<_>>();
+
+        alice.send_edits(edits.as_ref());
+
+        let alice_view = alice.view();
+        let bob_view = bob.view();
+
+        assert_eq!(alice_view.text, "Hello world".to_string());
+        assert_eq!(alice_view.text, bob_view.text);
+    }
+
+    #[test]
+    fn receiving_own_edits() {
+        let (mut alice, mut bob) = make_alice_and_bob();
+
+        alice.update(Event::Insert("world".to_string()));
+        let edits = alice.edits.drain(0..).collect::<Vec<_>>();
+
+        bob.send_edits(edits.as_ref());
+        alice.send_edits(edits.as_ref());
+
+        // Alice's inserts should go in front of Bob's cursor
+        // so we break the ambiguity of same cursor position
+        // as quickly as possible
+        bob.update(Event::Insert("Hello ".to_string()));
+        let edits = bob.edits.drain(0..).collect::<Vec<_>>();
+
+        alice.send_edits(edits.as_ref());
+        bob.send_edits(edits.as_ref());
+
+        let alice_view = alice.view();
+        let bob_view = bob.view();
+
+        assert_eq!(alice_view.text, "Hello world".to_string());
+        assert_eq!(alice_view.text, bob_view.text);
+    }
+
+    #[test]
+    fn remote_insert_behind_cursor() {
+        let (mut alice, mut bob) = make_alice_and_bob();
+
+        alice.update(Event::Insert("world".to_string()));
+        let edits = alice.edits.drain(0..).collect::<Vec<_>>();
+        bob.send_edits(edits.as_ref());
+
+        // Alice's inserts should go in front of Bob's cursor
+        // so we break the ambiguity of same cursor position
+        // as quickly as possible
+        bob.update(Event::Insert("Hello ".to_string()));
+        let edits = bob.edits.drain(0..).collect::<Vec<_>>();
+        alice.send_edits(edits.as_ref());
+
+        // Alice's cursor position should stay
+        // at the end of the text where she last inserted
+        alice.update(Event::Insert("!".to_string()));
+        let edits = alice.edits.drain(0..).collect::<Vec<_>>();
+        bob.send_edits(edits.as_ref());
+
+        // So should bob's
+        bob.update(Event::Insert("dear ".to_string()));
+        let edits = bob.edits.drain(0..).collect::<Vec<_>>();
+        alice.send_edits(edits.as_ref());
+
+        let alice_view = alice.view();
+        let bob_view = bob.view();
+
+        assert_eq!(alice_view.text, "Hello dear world!".to_string());
+        assert_eq!(alice_view.text, bob_view.text);
+    }
+
+    #[test]
+    fn concurrent_conflicting_edits() {
+        let (mut alice, mut bob) = make_alice_and_bob();
+
+        alice.update(Event::Insert("Hel".to_string()));
+        alice.update(Event::Insert("lo ".to_string()));
+
+        bob.update(Event::Insert("world.".to_string()));
+        bob.update(Event::Replace(5, 6, "!".to_string()));
+
+        let alice_edits = alice.edits.drain(0..).collect::<Vec<_>>();
+        let bob_edits = bob.edits.drain(0..).collect::<Vec<_>>();
+
+        bob.send_edits(alice_edits.as_ref());
+        alice.send_edits(bob_edits.as_ref());
+
+        let alice_view = alice.view();
+        let bob_view = bob.view();
+
+        // Cannot assert on the result here, it's a conflicting change
+        assert_eq!(alice_view.text, bob_view.text);
+    }
+
+    #[test]
+    fn concurrent_clean_edits() {
+        let (mut alice, mut bob) = make_alice_and_bob();
+
+        alice.update(Event::Insert("hel".to_string()));
+        alice.update(Event::Insert("lo ".to_string()));
+
+        let alice_edits = alice.edits.drain(0..).collect::<Vec<_>>();
+        bob.send_edits(alice_edits.as_ref());
+
+        alice.update(Event::Replace(0, 1, "H".to_string()));
+
+        bob.update(Event::MoveCursor(6));
+        bob.update(Event::Insert("world.".to_string()));
+        bob.update(Event::Backspace);
+        bob.update(Event::Insert("!".to_string()));
+
+        let alice_edits = alice.edits.drain(0..).collect::<Vec<_>>();
+        let bob_edits = bob.edits.drain(0..).collect::<Vec<_>>();
+
+        bob.send_edits(alice_edits.as_ref());
+        alice.send_edits(bob_edits.as_ref());
+
+        let alice_view = alice.view();
+        let bob_view = bob.view();
+
+        assert_eq!(alice_view.text, "Hello world!".to_string());
+        assert_eq!(alice_view.text, bob_view.text);
+    }
+
+    #[test]
+    fn remote_delete_moves_cursor() {
+        let (mut alice, mut bob) = make_alice_and_bob();
+
+        alice.update(Event::Insert("hel".to_string()));
+        alice.update(Event::Insert("lo ".to_string()));
+
+        let alice_edits = alice.edits.drain(0..).collect::<Vec<_>>();
+        bob.send_edits(alice_edits.as_ref());
+
+        bob.update(Event::Replace(6, 6, "world".to_string()));
+        bob.update(Event::Replace(0, 1, "H".to_string()));
+        let bob_edits = bob.edits.drain(0..).collect::<Vec<_>>();
+
+        alice.send_edits(bob_edits.as_ref());
+
+        // Alice's cursor should still be right after 'hello '
+        alice.update(Event::Insert("dear ".to_string()));
+        let alice_edits = alice.edits.drain(0..).collect::<Vec<_>>();
+
+        bob.send_edits(alice_edits.as_ref());
+
+        let alice_view = alice.view();
+        let bob_view = bob.view();
+
+        assert_eq!(alice_view.text, "Hello dear world".to_string());
         assert_eq!(alice_view.text, bob_view.text);
     }
 }
