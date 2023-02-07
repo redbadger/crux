@@ -1,20 +1,29 @@
+mod note;
+
 use std::ops::Range;
 
+use automerge::Change;
 use crux_core::{render::Render, App};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
+use crate::capabilities::pub_sub::PubSub;
+
+pub use note::Note;
+
 #[derive(Default)]
 pub struct NoteEditor;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Event {
+    Load(Vec<u8>),
     Insert(String),
     Replace(usize, usize, String),
     MoveCursor(usize),
     Select(usize, usize),
     Backspace,
     Delete,
+    ReceiveChanges(Vec<u8>),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -31,7 +40,7 @@ impl Default for TextCursor {
 
 #[derive(Default)]
 pub struct Model {
-    text: String,
+    note: Note,
     cursor: TextCursor,
 }
 
@@ -45,7 +54,7 @@ pub struct ViewModel {
 impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
         ViewModel {
-            text: model.text.clone(),
+            text: model.note.text(),
             cursor: model.cursor.clone(),
         }
     }
@@ -55,6 +64,7 @@ impl From<&Model> for ViewModel {
 #[effect(app = "NoteEditor")]
 pub struct Capabilities {
     render: Render<Event>,
+    pub_sub: PubSub<Event>,
 }
 
 impl App for NoteEditor {
@@ -67,30 +77,31 @@ impl App for NoteEditor {
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
             Event::Insert(text) => {
-                let len = text.len();
-
-                let idx = match &model.cursor {
-                    TextCursor::Position(idx) => *idx,
+                let mut change = match &model.cursor {
+                    TextCursor::Position(idx) => model.note.splice_text(*idx, 0, &text),
                     TextCursor::Selection(range) => {
-                        model.text.replace_range(range.clone(), "");
-
-                        range.start
+                        model
+                            .note
+                            .splice_text(range.start, range.end - range.start, &text)
                     }
                 };
 
-                model.text.insert_str(idx, &text);
+                caps.pub_sub.publish(change.bytes().to_vec());
+
+                let len = text.len();
+                let idx = match &model.cursor {
+                    TextCursor::Position(idx) => *idx,
+                    TextCursor::Selection(range) => range.start,
+                };
                 model.cursor = TextCursor::Position(idx + len);
             }
             Event::Replace(from, to, text) => {
                 let idx = from + text.len();
-
-                if from == to {
-                    model.text.insert_str(from, &text)
-                } else {
-                    model.text.replace_range(from..to, &text);
-                }
-
                 model.cursor = TextCursor::Position(idx);
+
+                let mut change = model.note.splice_text(from, to - from, &text);
+
+                caps.pub_sub.publish(change.bytes().to_vec());
             }
             Event::MoveCursor(idx) => {
                 model.cursor = TextCursor::Position(idx);
@@ -99,7 +110,7 @@ impl App for NoteEditor {
                 model.cursor = TextCursor::Selection(from..to);
             }
             Event::Backspace | Event::Delete => {
-                let new_index = match &model.cursor {
+                let (new_index, mut change) = match &model.cursor {
                     TextCursor::Position(idx) => {
                         let idx = *idx;
                         let (remove, new_idx) = match event {
@@ -108,18 +119,36 @@ impl App for NoteEditor {
                             _ => unreachable!(),
                         };
 
-                        model.text.replace_range(remove, "");
+                        let change =
+                            model
+                                .note
+                                .splice_text(remove.start, remove.end - remove.start, "");
 
-                        new_idx
+                        (new_idx, change)
                     }
                     TextCursor::Selection(range) => {
-                        model.text.replace_range(range.clone(), "");
+                        let change =
+                            model
+                                .note
+                                .splice_text(range.start, range.end - range.start, "");
 
-                        range.start
+                        (range.start, change)
                     }
                 };
 
                 model.cursor = TextCursor::Position(new_index);
+
+                caps.pub_sub.publish(change.bytes().to_vec());
+            }
+            Event::Load(bytes) => {
+                model.note = Note::load(&bytes);
+
+                caps.pub_sub.subscribe(Event::ReceiveChanges);
+            }
+            Event::ReceiveChanges(bytes) => {
+                let change = Change::from_bytes(bytes).expect("a valid change");
+
+                model.note.apply_changes([change])
             }
         }
 
@@ -132,7 +161,7 @@ impl App for NoteEditor {
 }
 
 #[cfg(test)]
-mod tests {
+mod editing_tests {
     use crux_core::{render::RenderOperation, testing::AppTester};
 
     use super::*;
@@ -142,7 +171,7 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(2),
         };
         let actual = app.view(&model);
@@ -160,15 +189,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(3),
         };
 
         let update = app.update(Event::MoveCursor(5), &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "hello".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(5));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "hello".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(5));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -181,15 +212,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(3),
         };
 
         let update = app.update(Event::Select(2, 5), &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "hello".to_string());
-        assert_eq!(model.cursor, TextCursor::Selection(2..5));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "hello".to_string());
+        assert_eq!(view.cursor, TextCursor::Selection(2..5));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -202,15 +235,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(3),
         };
 
         let update = app.update(Event::Insert("l to the ".to_string()), &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "hell to the lo".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(12));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "hell to the lo".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(12));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -223,15 +258,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Selection(3..5),
         };
 
         let update = app.update(Event::Insert("ter skelter".to_string()), &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "helter skelter".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(14));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "helter skelter".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(14));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -244,15 +281,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(3),
         };
 
         let update = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "hi, yo".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(5));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "hi, yo".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(5));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -265,7 +304,7 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(3),
         };
 
@@ -275,8 +314,10 @@ mod tests {
         );
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "hey, just saying hello".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(18));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "hey, just saying hello".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(18));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -289,15 +330,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(2),
         };
 
         let update = app.update(Event::Backspace, &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "hllo".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(1));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "hllo".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(1));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -310,15 +353,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Position(2),
         };
 
         let update = app.update(Event::Delete, &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "helo".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(2));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "helo".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(2));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -331,15 +376,17 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Selection(2..4),
         };
 
         let update = app.update(Event::Delete, &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "heo".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(2));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "heo".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(2));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
@@ -352,19 +399,87 @@ mod tests {
         let app = AppTester::<NoteEditor, _>::default();
 
         let mut model = Model {
-            text: "hello".to_string(),
+            note: Note::with_text("hello"),
             cursor: TextCursor::Selection(2..4),
         };
 
         let update = app.update(Event::Backspace, &mut model);
         let expected_effect = Effect::Render(RenderOperation);
 
-        assert_eq!(model.text, "heo".to_string());
-        assert_eq!(model.cursor, TextCursor::Position(2));
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "heo".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(2));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
             "didn't render"
         );
+    }
+}
+
+#[cfg(test)]
+mod sync_tests {
+    use automerge::{transaction::Transactable, Automerge, ObjType};
+    use crux_core::testing::AppTester;
+
+    use crate::capabilities::pub_sub::PubSubOperation;
+
+    use super::*;
+
+    #[test]
+    fn a_single_change_sync() {
+        // need a common starting point
+        let mut doc = Automerge::new();
+
+        doc.transact(|t| t.put_object(automerge::ROOT, "body", ObjType::Text))
+            .expect("to create a document");
+
+        let doc = doc.save();
+
+        let alice = AppTester::<NoteEditor, _>::default();
+        let mut alice_model = Default::default();
+
+        let reqs = alice
+            .update(Event::Load(doc.clone()), &mut alice_model)
+            .effects;
+        reqs.iter()
+            .find(|r| matches!(r.as_ref(), Effect::PubSub(PubSubOperation::Subscribe)))
+            .expect("Alice didn't subscribe for updates");
+
+        let bob = AppTester::<NoteEditor, _>::default();
+        let mut bob_model = Default::default();
+
+        let reqs = bob.update(Event::Load(doc), &mut bob_model).effects;
+        let bob_sub = reqs
+            .iter()
+            .find(|r| matches!(r.as_ref(), Effect::PubSub(PubSubOperation::Subscribe)))
+            .expect("Bob didn't subscribe for updates");
+
+        // Done wiring up
+
+        let update = alice.update(Event::Insert("Hello".to_string()), &mut alice_model);
+        update
+            .effects
+            .iter()
+            .filter_map(|eff| match eff.as_ref() {
+                Effect::PubSub(PubSubOperation::Publish(it)) => Some(it),
+                _ => None,
+            })
+            .for_each(|bytes| {
+                // Forward the published changes to Bob
+                let evts = bob_sub.resolve(bytes).events;
+
+                for evt in evts {
+                    bob.update(evt, &mut bob_model);
+                }
+            });
+
+        // Both should end up with the same doc
+
+        let alice_view = alice.view(&alice_model);
+        let bob_view = bob.view(&bob_model);
+
+        assert_eq!(alice_view.text, bob_view.text);
     }
 }
