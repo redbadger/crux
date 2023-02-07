@@ -36,6 +36,10 @@ impl Note {
         note
     }
 
+    pub fn save(&mut self) -> Vec<u8> {
+        self.document.save()
+    }
+
     pub fn load(bytes: &[u8]) -> Self {
         let document = Automerge::load(bytes).expect("to load document");
 
