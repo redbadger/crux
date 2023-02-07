@@ -1,4 +1,6 @@
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
+const WindiCSSWebpackPlugin = require("windicss-webpack-plugin");
+
 const path = require("path");
 
 // see https://github.com/wasm-tool/wasm-pack-plugin/issues/112
@@ -18,6 +20,8 @@ const nextConfig = {
       );
       loaded = true;
     }
+
+    nextConfig.plugins.push(new WindiCSSWebpackPlugin());
 
     return nextConfig;
   },
