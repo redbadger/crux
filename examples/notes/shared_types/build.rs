@@ -19,9 +19,9 @@ fn main() {
     //
     // gen.java("com.example.counter.shared_types", output_root.join("java"))
     //     .expect("java type gen failed");
-    //
-    // gen.typescript("shared_types", output_root.join("typescript"))
-    //     .expect("typescript type gen failed");
+
+    gen.typescript("shared_types", output_root.join("typescript"))
+        .expect("typescript type gen failed");
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
