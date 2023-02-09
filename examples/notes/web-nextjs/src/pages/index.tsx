@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Navbar from "../components/Navbar/Navbar";
 import Textarea, {
@@ -8,19 +8,40 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import init_core, { process_event as sendEvent, view } from "../../shared/core";
+import init_core, {
+  process_event as sendEvent,
+  handle_response as sendResponse,
+  view,
+} from "../../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 
+// An automerge document that everyone starts with
+const INITIAL_DOC = [
+  133, 111, 74, 131, 22, 133, 108, 231, 0, 110, 1, 16, 105, 153, 47, 106, 29,
+  169, 76, 82, 190, 222, 177, 130, 73, 131, 194, 44, 1, 11, 30, 11, 118, 113,
+  127, 84, 123, 136, 33, 133, 182, 224, 41, 19, 143, 111, 203, 237, 90, 225, 18,
+  35, 241, 161, 210, 92, 168, 24, 119, 178, 174, 6, 1, 2, 3, 2, 19, 2, 35, 2,
+  64, 2, 86, 2, 7, 21, 6, 33, 2, 35, 2, 52, 1, 66, 2, 86, 2, 128, 1, 2, 127, 0,
+  127, 1, 127, 1, 127, 0, 127, 0, 127, 7, 127, 4, 98, 111, 100, 121, 127, 0,
+  127, 1, 1, 127, 4, 127, 0, 127, 0, 0,
+];
+
 interface CoreEvent {
   kind: "event" | "response";
-  event: types.Event;
+  event?: types.Event;
+  response?: any;
 }
 
 type State = {
   text: string;
   selectionStart: number;
   selectionEnd: number;
+};
+
+type SyncMessage = {
+  kind: "change" | "reset";
+  data?: number[];
 };
 
 const initialState: State = { text: "", selectionStart: 0, selectionEnd: 0 };
@@ -43,17 +64,34 @@ function deserializeRequests(bytes: Uint8Array) {
 const Home: NextPage = () => {
   const [state, setState] = useState<State>(initialState);
 
+  // TODO the state and channel handling should probably get
+  // packaged up as a custom hook or something
+
+  const subscriptionId = useRef<number[] | null>(null);
+  const channel = useRef(new BroadcastChannel("crux-note"));
+
   const dispatch = (action: CoreEvent) => {
     const serializer = new bcs.BcsSerializer();
-    action.event.serialize(serializer);
-    const requests = sendEvent(serializer.getBytes());
-    handleRequests(requests);
+
+    if (action.kind == "event") {
+      action.event?.serialize(serializer);
+      const requests = sendEvent(serializer.getBytes());
+      handleRequests(requests);
+    } else {
+      if (subscriptionId.current == null) return; // core has not subscribed
+
+      action.response?.serialize(serializer);
+      let uuid = Uint8Array.from(subscriptionId.current);
+
+      const requests = sendResponse(uuid, serializer.getBytes());
+      handleRequests(requests);
+    }
   };
 
   const handleRequests = async (bytes: Uint8Array) => {
     let requests = deserializeRequests(bytes);
 
-    for (const { uuid: _, effect } of requests) {
+    for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
         case types.EffectVariantRender:
           let bytes = view();
@@ -92,23 +130,74 @@ const Home: NextPage = () => {
 
           switch (op.constructor) {
             case types.PubSubOperationVariantPublish:
-              console.log("Publish", op);
+              let publish = op as types.PubSubOperationVariantPublish;
+              let message: SyncMessage = {
+                kind: "change",
+                data: publish.value,
+              };
+
+              channel.current.postMessage(message);
+
               break;
             case types.PubSubOperationVariantSubscribe:
-              console.log("Subscribe", op);
+              subscriptionId.current = uuid;
+
               break;
           }
       }
     }
   };
 
+  const onMessage = (event: MessageEvent<SyncMessage>) => {
+    let message = event.data;
+
+    // One of the peers reset, load the initial document
+    if (message.kind == "reset") {
+      dispatch({
+        kind: "event",
+        event: new types.EventVariantLoad(INITIAL_DOC),
+      });
+
+      return;
+    } else if (message.kind == "change" && message.data != null) {
+      let data = message.data;
+
+      // Pass data into the core
+      dispatch({
+        kind: "response",
+        response: new types.Message(message.data),
+      });
+    }
+  };
+
   useEffect(() => {
     async function loadCore() {
       await init_core();
+
+      // Subscribe to the BroadcastChannel
+      channel.current.onmessage = onMessage;
+
+      // Load the document
+      dispatch({
+        kind: "event",
+        event: new types.EventVariantLoad(INITIAL_DOC),
+      });
+
+      // Ask all peers to reset
+      let message: SyncMessage = {
+        kind: "reset",
+      };
+      channel.current.postMessage(message);
     }
 
     loadCore();
+
+    return () => {
+      channel.current.onmessage = null;
+    };
   }, []);
+
+  // Event handlers
 
   const onChange = ({ start, end, text }: ChangeEvent): void => {
     dispatch({
