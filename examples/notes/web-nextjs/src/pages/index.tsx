@@ -13,13 +13,17 @@ import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 
 interface CoreEvent {
-  kind: "event";
+  kind: "event" | "response";
   event: types.Event;
 }
 
-type State = {};
+type State = {
+  text: string;
+  selectionStart: number;
+  selectionEnd: number;
+};
 
-const initialState: State = {};
+const initialState: State = { text: "", selectionStart: 0, selectionEnd: 0 };
 
 function deserializeRequests(bytes: Uint8Array) {
   let deserializer = new bcs.BcsDeserializer(bytes);
@@ -37,7 +41,7 @@ function deserializeRequests(bytes: Uint8Array) {
 }
 
 const Home: NextPage = () => {
-  const [state, setState] = useState(initialState);
+  const [state, setState] = useState<State>(initialState);
 
   const dispatch = (action: CoreEvent) => {
     const serializer = new bcs.BcsSerializer();
@@ -56,9 +60,44 @@ const Home: NextPage = () => {
           let viewDeserializer = new bcs.BcsDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
 
-          setState({});
+          var selectionStart = 0;
+          var selectionEnd = 0;
+
+          switch (viewModel.cursor.constructor) {
+            case types.TextCursorVariantPosition:
+              let cursorP = viewModel.cursor as types.TextCursorVariantPosition;
+
+              selectionStart = Number(cursorP.value);
+              selectionEnd = Number(cursorP.value);
+              break;
+            case types.TextCursorVariantSelection:
+              let cursorS =
+                viewModel.cursor as types.TextCursorVariantSelection;
+
+              selectionStart = Number(cursorS.value.start);
+              selectionEnd = Number(cursorS.value.end);
+              break;
+          }
+
+          setState({
+            text: viewModel.text,
+            selectionStart: selectionStart,
+            selectionEnd: selectionEnd,
+          });
 
           break;
+        case types.EffectVariantPubSub:
+          let op: types.PubSubOperation = (effect as types.EffectVariantPubSub)
+            .value;
+
+          switch (op.constructor) {
+            case types.PubSubOperationVariantPublish:
+              console.log("Publish", op);
+              break;
+            case types.PubSubOperationVariantSubscribe:
+              console.log("Subscribe", op);
+              break;
+          }
       }
     }
   };
@@ -66,38 +105,25 @@ const Home: NextPage = () => {
   useEffect(() => {
     async function loadCore() {
       await init_core();
-
-      // Initial event
-      // dispatch({
-      //   kind: "event",
-      //   event: TODO
-      // });
     }
 
     loadCore();
   }, []);
 
-  const [inputLog, updateLog] = useState<string[]>([]);
-  const [value, setValue] = useState<string>("Hello");
-
-  const log = (line: string): void => {
-    updateLog([line, ...inputLog]);
-  };
-
   const onChange = ({ start, end, text }: ChangeEvent): void => {
-    let chars = value.split("");
-    chars.splice(start, end - start, text);
-
-    log(
-      `Splice (+: ${text.length} -: ${start - end})
-      (${start}..${end}) = "${text}"`
-    );
-
-    setValue(chars.join(""));
+    dispatch({
+      kind: "event",
+      event: new types.EventVariantReplace(BigInt(start), BigInt(end), text),
+    });
   };
 
   const onSelect = ({ start, end }: SelectEvent): void => {
-    log(`onSelect ${start}..${end}`);
+    let event =
+      start == end
+        ? new types.EventVariantMoveCursor(BigInt(end))
+        : new types.EventVariantSelect(BigInt(start), BigInt(end));
+
+    dispatch({ kind: "event", event: event });
   };
 
   return (
@@ -112,17 +138,12 @@ const Home: NextPage = () => {
           <div className="flex-grow basis-1 flex flex-col bg-slate-200 ">
             <Textarea
               className="p-3 flex-grow resize-none w-full focus:outline-none"
+              selectionStart={state.selectionStart}
+              selectionEnd={state.selectionEnd}
               onSelect={onSelect}
               onChange={onChange}
-              value={value}
+              value={state.text}
             />
-          </div>
-          <div className="flex-grow basis-1 overflow-scroll">
-            <div className=" p-3 text-sm font-mono bg-slate-100 ">
-              {inputLog.map((line) => (
-                <p className="font-mono">{line}</p>
-              ))}
-            </div>
           </div>
         </main>
       </div>
