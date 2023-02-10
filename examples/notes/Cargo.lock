@@ -992,6 +992,7 @@ dependencies = [
  "lazy_static",
  "serde",
  "uniffi",
+ "wasm-bindgen",
 ]
 
 [[package]]
