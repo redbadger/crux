@@ -1,6 +1,9 @@
 use anyhow::Result;
 use crux_core::{typegen::TypeGen, Request};
-use shared::{capabilities::pub_sub::PubSubOperation, Effect, Event, TextCursor, ViewModel};
+use shared::{
+    capabilities::pub_sub::{Message, PubSubOperation},
+    Effect, Event, TextCursor, ViewModel,
+};
 use std::path::PathBuf;
 
 fn main() {
@@ -29,6 +32,7 @@ fn register_types(gen: &mut TypeGen) -> Result<()> {
     gen.register_type::<Effect>()?;
 
     gen.register_type::<PubSubOperation>()?;
+    gen.register_type::<Message>()?;
 
     gen.register_type::<Event>()?;
     gen.register_type::<TextCursor>()?;

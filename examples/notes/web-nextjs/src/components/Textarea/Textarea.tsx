@@ -19,6 +19,8 @@ export type ChangeEvent = {
 
 interface TextareaProps {
   value: string;
+  selectionStart: number;
+  selectionEnd: number;
   onSelect: (selection: SelectEvent) => void;
   onChange: (change: ChangeEvent) => void;
   className: string;
@@ -26,6 +28,8 @@ interface TextareaProps {
 
 const Textarea: FC<TextareaProps> = ({
   value,
+  selectionStart,
+  selectionEnd,
   onSelect,
   onChange,
   className,
@@ -33,8 +37,11 @@ const Textarea: FC<TextareaProps> = ({
   const taRef = useRef(null);
   useEffect(() => {
     if (taRef.current == null) return;
+    let ta: HTMLInputElement = taRef.current;
 
-    let ta: HTMLElement = taRef.current;
+    ta.selectionStart = selectionStart;
+    ta.selectionEnd = selectionEnd;
+
     ta.addEventListener("beforeinput", onBeforeInput);
     ta.addEventListener("input", onInput);
 
@@ -54,9 +61,12 @@ const Textarea: FC<TextareaProps> = ({
     if (event.target == null) return;
     let target = event.target as HTMLInputElement;
 
+    // This may become quite painful.
+    let text = event.data ?? (event.inputType == "insertLineBreak" ? "\n" : "");
+
     beforeEdit.current.selectionEnd = target.selectionEnd ?? 0;
     beforeEdit.current.length = target.value.length;
-    beforeEdit.current.text = event.data ?? "";
+    beforeEdit.current.text = text;
   };
 
   const onInput = (event: Event): any => {
@@ -73,7 +83,7 @@ const Textarea: FC<TextareaProps> = ({
     onChange({ start, end, text });
   };
 
-  const nativeOnSelect = (event: SyntheticEvent) => {
+  const localOnSelect = (event: SyntheticEvent) => {
     if (event.target == null) return;
     let target = event.target as HTMLInputElement;
 
@@ -90,7 +100,8 @@ const Textarea: FC<TextareaProps> = ({
     <textarea
       className={className}
       ref={taRef}
-      onSelect={nativeOnSelect}
+      onSelect={localOnSelect}
+      onChange={() => {}}
       value={value}
     />
   );
