@@ -3,12 +3,16 @@ import Head from "next/head";
 import { useEffect, useState } from "react";
 
 import Navbar from "../components/Navbar/Navbar";
+import Textarea, {
+  ChangeEvent,
+  SelectEvent,
+} from "../components/Textarea/Textarea";
 
 import init_core, { process_event as sendEvent, view } from "../../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 
-interface Event {
+interface CoreEvent {
   kind: "event";
   event: types.Event;
 }
@@ -35,7 +39,7 @@ function deserializeRequests(bytes: Uint8Array) {
 const Home: NextPage = () => {
   const [state, setState] = useState(initialState);
 
-  const dispatch = (action: Event) => {
+  const dispatch = (action: CoreEvent) => {
     const serializer = new bcs.BcsSerializer();
     action.event.serialize(serializer);
     const requests = sendEvent(serializer.getBytes());
@@ -73,6 +77,29 @@ const Home: NextPage = () => {
     loadCore();
   }, []);
 
+  const [inputLog, updateLog] = useState<string[]>([]);
+  const [value, setValue] = useState<string>("Hello");
+
+  const log = (line: string): void => {
+    updateLog([line, ...inputLog]);
+  };
+
+  const onChange = ({ start, end, text }: ChangeEvent): void => {
+    let chars = value.split("");
+    chars.splice(start, end - start, text);
+
+    log(
+      `Splice (+: ${text.length} -: ${start - end})
+      (${start}..${end}) = "${text}"`
+    );
+
+    setValue(chars.join(""));
+  };
+
+  const onSelect = ({ start, end }: SelectEvent): void => {
+    log(`onSelect ${start}..${end}`);
+  };
+
   return (
     <>
       <Head>
@@ -81,10 +108,22 @@ const Home: NextPage = () => {
 
       <div className="min-h-screen flex flex-col">
         <Navbar title="A note" />
-        <main className="flex-grow flex bg-slate-200 ">
-          <textarea className="p-3 flex-grow border-none focus:outline-none">
-            Hello
-          </textarea>
+        <main className="flex-grow flex flex-col bg-slate-100 ">
+          <div className="flex-grow basis-1 flex flex-col bg-slate-200 ">
+            <Textarea
+              className="p-3 flex-grow resize-none w-full focus:outline-none"
+              onSelect={onSelect}
+              onChange={onChange}
+              value={value}
+            />
+          </div>
+          <div className="flex-grow basis-1 overflow-scroll">
+            <div className=" p-3 text-sm font-mono bg-slate-100 ">
+              {inputLog.map((line) => (
+                <p className="font-mono">{line}</p>
+              ))}
+            </div>
+          </div>
         </main>
       </div>
     </>
