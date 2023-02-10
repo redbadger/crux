@@ -1,7 +1,7 @@
 //! A basic Key-Value store for use with Crux
 //!
-//! `crux_kv` allows Crux apps to store and retrieve abirtrary data by asking the Shell to
-//! persist the data using platform native capabilitis (e.g. disk or web localStorage)
+//! `crux_kv` allows Crux apps to store and retrieve arbitrary data by asking the Shell to
+//! persist the data using platform native capabilities (e.g. disk or web localStorage)
 //!
 //! This is still work in progress and extremely basic.
 use crux_core::{
@@ -59,7 +59,7 @@ where
     }
 
     /// Set `key` to be the provided `value`. Typically the bytes would be
-    /// a value serialised/deserialised by the app.
+    /// a value serialized/deserialized by the app.
     ///
     /// Will dispatch the event with a `KeyValueOutput::Write(bool)` as payload
     pub fn write<F>(&self, key: &str, value: Vec<u8>, make_event: F)
