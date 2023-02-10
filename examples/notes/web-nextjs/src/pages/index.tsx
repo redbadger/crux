@@ -2,6 +2,8 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useState } from "react";
 
+import Navbar from "../components/Navbar/Navbar";
+
 import init_core, { process_event as sendEvent, view } from "../../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
@@ -77,11 +79,14 @@ const Home: NextPage = () => {
         <title>Notes</title>
       </Head>
 
-      <main>
-        <section className="main">
-          <p>Scaffolding for Notes</p>
-        </section>
-      </main>
+      <div className="min-h-screen flex flex-col">
+        <Navbar title="A note" />
+        <main className="flex-grow flex bg-slate-200 ">
+          <textarea className="p-3 flex-grow border-none focus:outline-none">
+            Hello
+          </textarea>
+        </main>
+      </div>
     </>
   );
 };
