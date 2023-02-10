@@ -84,11 +84,16 @@ mod test {
         let app = AppTester::<Hello, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Increment, &mut model);
+        let update = app.update(Event::Increment, &mut model);
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
+
+        // Check update asked us to `Render`
+        let actual_effect = &update.effects[0];
+        let expected_effect = &Effect::Render(RenderOperation);
+        assert_eq!(actual_effect, expected_effect);
     }
 
     #[test]
@@ -96,11 +101,16 @@ mod test {
         let app = AppTester::<Hello, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Decrement, &mut model);
+        let update = app.update(Event::Decrement, &mut model);
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: -1";
         assert_eq!(actual_view, expected_view);
+
+        // Check update asked us to `Render`
+        let actual_effect = &update.effects[0];
+        let expected_effect = &Effect::Render(RenderOperation);
+        assert_eq!(actual_effect, expected_effect);
     }
 
     #[test]

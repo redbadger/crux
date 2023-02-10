@@ -60,7 +60,7 @@
 //! ```
 
 use anyhow::{anyhow, bail, Result};
-use serde_generate::test_utils::Runtime;
+use serde_generate::Encoding;
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -128,7 +128,7 @@ impl TypeGen {
 
         let mut source = Vec::new();
         let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
-            .with_encodings(vec![serde_generate::Encoding::Bcs]);
+            .with_encodings(vec![Encoding::Bcs]);
 
         let generator = serde_generate::swift::CodeGenerator::new(&config);
         let registry = match &self.state {
@@ -172,7 +172,7 @@ impl TypeGen {
         fs::create_dir_all(&path)?;
 
         let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
-            .with_encodings(vec![serde_generate::Encoding::Bcs]);
+            .with_encodings(vec![Encoding::Bcs]);
 
         let registry = match &self.state {
             State::Registry(registry) => registry,
@@ -229,10 +229,9 @@ impl TypeGen {
             _ => panic!("registry creation failed"),
         };
 
-        let runtime = Runtime::Bcs;
         let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
             .with_serialization(true)
-            .with_encodings(vec![runtime.into()]);
+            .with_encodings(vec![Encoding::Bcs]);
 
         let generator = serde_generate::typescript::CodeGenerator::new(&config);
         generator.output(&mut source, registry)?;

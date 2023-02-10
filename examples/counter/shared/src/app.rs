@@ -77,10 +77,7 @@ impl crux_core::App for App {
     fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match msg {
             Event::Get => {
-                caps.http
-                    .get(API_URL)
-                    .expect_json::<Counter>()
-                    .send(Event::Set);
+                caps.http.get(API_URL).expect_json().send(Event::Set);
             }
             Event::Set(Ok(mut counter)) => {
                 model.count = counter.take_body().unwrap();

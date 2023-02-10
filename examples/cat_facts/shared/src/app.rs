@@ -134,12 +134,12 @@ impl App for CatFacts {
 
                 caps.http
                     .get(FACT_API_URL)
-                    .expect_json::<CatFact>()
+                    .expect_json()
                     .send(Event::SetFact);
 
                 caps.http
                     .get(IMAGE_API_URL)
-                    .expect_json::<CatImage>()
+                    .expect_json()
                     .send(Event::SetImage);
 
                 caps.render.render();
