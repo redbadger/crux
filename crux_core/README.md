@@ -15,19 +15,20 @@ The UI layer is as thin as it can be, and all other work is done by the shared c
 
 # Getting Started
 
+- Read the [book](https://redbadger.github.io/crux)
 - Follow the [readme in the project's repository on Github](https://github.com/redbadger/crux).
 - Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/)
 
 # Architectural Overview
 
-![Architecture](./architecture.png)
+![Architecture](./architecture.svg)
 
 The fundamental architectural concept is the strict separation of pure computational tasks from tasks that cause side effects.
 This is similar to the way [Elm](https://guide.elm-lang.org/architecture/) works.
 
 ### Side-effect-free core
 
-In the above diagram, the inner "Cross-platform Rust core" is compiled and linked to the shell on each platform as a library:
+In the above diagram, the inner "Core" is compiled and linked to the outer "Shell" on each platform as a library:
 
 - On iOS as a native static library
 - On Android as a dynamic library using [Java Native Access](https://github.com/java-native-access/jna)

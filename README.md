@@ -13,16 +13,18 @@ The UI layer is as thin as it can be, and all other work is done by the shared c
 
 > Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). The master branch should always be working well though, and we will try to keep the examples and documentation up to date as we go. The API hasn't settled yet, so beware! :-)
 
+This readme describes at a high level how Crux works, but you can find more details in the [book](https://redbadger.github.io/crux).
+
 # Architectural Overview
 
-![Architecture](./crux_core/architecture.png)
+![Architecture](./crux_core/architecture.svg)
 
 The fundamental architectural concept is the strict separation of pure computational tasks from tasks that cause side effects.
 This is similar to the way [Elm](https://guide.elm-lang.org/architecture/) works.
 
 ### Side-effect-free core
 
-In the above diagram, the inner "Cross-platform Rust core" is compiled and linked to the shell on each platform as a library:
+In the above diagram, the inner "Core" is compiled and linked to the outer "Shell" on each platform as a library:
 
 - On iOS as a native static library
 - On Android as a dynamic library using [Java Native Access](https://github.com/java-native-access/jna)
@@ -55,7 +57,7 @@ The job of the `update` function is to process an `Event`, update the model acco
 
 ### Application Shell
 
-The enclosing "Platform native shell" is written using the language appropriate for the platform, and acts as the runtime environment within which all the non-pure tasks are performed.
+The enclosing platform native "Shell" is written using the language appropriate for the platform, and acts as the runtime environment within which all the non-pure tasks are performed.
 From the perspective of the core, the shell is the platform on which the core runs.
 
 ## Communication Between the Application Shell and the Core
