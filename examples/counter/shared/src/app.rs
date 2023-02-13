@@ -20,24 +20,6 @@ pub struct ViewModel {
     pub confirmed: bool,
 }
 
-impl From<&Model> for ViewModel {
-    fn from(model: &Model) -> Self {
-        let updated_at = DateTime::<Utc>::from_utc(
-            NaiveDateTime::from_timestamp_millis(model.count.updated_at).unwrap(),
-            Utc,
-        );
-        let suffix = match model.confirmed {
-            Some(true) => format!(" ({updated_at})"),
-            Some(false) => " (pending)".to_string(),
-            None => "".to_string(),
-        };
-        Self {
-            text: model.count.value.to_string() + &suffix,
-            confirmed: model.confirmed.unwrap_or(false),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Event {
     // events from the shell
@@ -123,7 +105,21 @@ impl crux_core::App for App {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        model.into()
+        let updated_at = DateTime::<Utc>::from_utc(
+            NaiveDateTime::from_timestamp_millis(model.count.updated_at).unwrap(),
+            Utc,
+        ); // .format("updated at %H:%M:%S");
+
+        let suffix = match model.confirmed {
+            Some(true) => format!(" ({updated_at})"),
+            Some(false) => " (pending)".to_string(),
+            None => "".to_string(),
+        };
+
+        Self::ViewModel {
+            text: model.count.value.to_string() + &suffix,
+            confirmed: model.confirmed.unwrap_or(false),
+        }
     }
 }
 
