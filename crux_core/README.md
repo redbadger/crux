@@ -21,7 +21,7 @@ The UI layer is as thin as it can be, and all other work is done by the shared c
 
 # Architectural Overview
 
-![Architecture](./architecture.svg)
+![Logical architecture](./architecture.svg)
 
 The fundamental architectural concept is the strict separation of pure computational tasks from tasks that cause side effects.
 This is similar to the way [Elm](https://guide.elm-lang.org/architecture/) works.

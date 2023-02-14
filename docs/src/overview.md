@@ -21,7 +21,7 @@ Crux is open source on [Github](https://github.com/redbadger/crux). A good way t
 
 ## Design overview
 
-![Architecture](./architecture.svg)
+![Logical architecture](./architecture.svg)
 
 The architecture is event-driven, based on [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html). The Core holds the majority of state, which is updated in response to events happening in the Shell. The interface between the Core and the Shell is messaged based.
 

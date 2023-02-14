@@ -10,7 +10,7 @@ The Elm architecture is the simplest way of modeling this pattern in code. User 
 
 What we're missing is for the app to be able to respond to events from the outside world by changing the outside world. While the app can run computations and keep state, in this simplistic model, it can't read or write files, draw on screen, connect to APIs over the network, etc. It can't perform side-effects. Conceptually, we need to extend the update function to not only mutate the model, but also to emit some side-effects (or just "effects" for short).
 
-![Logical architecture](../architecture.png)
+![Logical architecture](../architecture.svg)
 
 _TODO a better picture focusing on the update function_
 

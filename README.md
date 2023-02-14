@@ -17,7 +17,7 @@ This readme describes at a high level how Crux works, but you can find more deta
 
 # Architectural Overview
 
-![Architecture](./crux_core/architecture.svg)
+![Logical architecture](./crux_core/architecture.svg)
 
 The fundamental architectural concept is the strict separation of pure computational tasks from tasks that cause side effects.
 This is similar to the way [Elm](https://guide.elm-lang.org/architecture/) works.
