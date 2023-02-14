@@ -54,6 +54,10 @@ impl Note {
             .expect("document to have body")
     }
 
+    pub fn length(&self) -> usize {
+        self.document.length(self.body())
+    }
+
     pub fn splice_text(&mut self, pos: usize, del: usize, text: &str) -> Change {
         let body = self.body();
 
