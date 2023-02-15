@@ -7,11 +7,11 @@
 
 Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web, as a single, reusable core built with Rust.
 
-Unlike React Native, the user interface layer is built natively, with modern declarative UI frameworks such as Swift UI, Jetpack Compose and React/Vue or a WASM based framework on the web.
+Unlike [React Native](https://reactnative.dev/), but like [Kotlin Multi-platform Mobile](https://kotlinlang.org/lp/mobile/), the user interface layer is built natively, with modern declarative UI frameworks such as [SwiftUI](https://developer.apple.com/xcode/swiftui/), [Jetpack Compose](https://developer.android.com/jetpack/compose) and [React](https://reactjs.org/)/[Vue](https://vuejs.org/) or a Wasm based framework (like [Yew](https://yew.rs/)) on the web.
 
 The UI layer is as thin as it can be, and all other work is done by the shared core. The interface with the core has static type checking across languages.
 
-> Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). The master branch should always be working well though, and we will try to keep the examples and documentation up to date as we go. The API hasn't settled yet, so beware! :-)
+> Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). However, the master branch should always be working well, and we will try to keep the examples and documentation up to date as we go. We _do_ think that the API has now settled, so have a play! :-)
 
 This readme describes at a high level how Crux works, but you can find more details in the [book](https://redbadger.github.io/crux).
 
@@ -38,8 +38,8 @@ All it can do is perform pure calculations and keep internal state.
 
 Following the Elm architecture, the core defines the key component types within the application:
 
-- `Model` — describes the internal state of the application
 - `Event` — an `enum` describing the events which the core can handle
+- `Model` — describes the internal state of the application
 - `ViewModel` — represents information that should be displayed to the user
 
 The former two are tied together by the `update` function, familiar from Elm, Redux or other event sourcing architectures, which currently has this type signature:
@@ -68,7 +68,7 @@ To perform any task that creates a side-effect (such as an HTTP call or random n
 
 The core has a concept of Capabilities — reusable interfaces for common side-effects with request/response semantics. There are already a few embryonic Capability crates ([Http](./crux_http/), [KeyValue](./crux_kv/), [Time](./crux_time/), [Platform](./crux_platform/), and the builtin [Render](./crux_core//src//render.rs)) — and you can write your own if you need/want to.
 
-![crux](./docs//src/crux.png)
+![crux](./docs/src/crux.png)
 
 This means the core interface is simple:
 
@@ -84,7 +84,7 @@ This design means the core can be tested very easily, without any mocking and st
 
 The Foreign Function Interface allowing the shell to call the above functions is provided by Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/) on a mobile device, or in the browser, by [wasm-pack](https://rustwasm.github.io/wasm-pack/).
 
-In order to both send more complex data than UniFFI currently supports, and enforce the message passing semantics, all messages are serialized, sent across the boundary, then deserialized using [serde_generate](https://docs.rs/serde-generate/latest/serde_generate/) which also provides type generation for the foreign (non-Rust) languages.
+In order to both send more complex data than UniFFI currently supports, and enforce the message passing semantics, all messages are serialized, sent across the boundary, then deserialized using [serde-generate](https://docs.rs/serde-generate/latest/serde_generate/) which also provides type generation for the foreign (non-Rust) languages.
 
 This means that changes to types in the core, especially the `Event` and `Request` types, propagate out into the shell implementations and cause type errors where appropriate (such as an exhaustive match on an enum check).
 

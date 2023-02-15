@@ -1,7 +1,7 @@
 [package]
 name = "crux_time"
 description = "Time capability for use with crux_core"
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
 authors.workspace = true
 repository.workspace = true
@@ -13,7 +13,7 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 bcs.workspace = true
-crux_core = { path = "../crux_core", version = "0.2" }
+crux_core = { version = "0.3", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]

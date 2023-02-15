@@ -7,11 +7,11 @@
 
 Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web, as a single, reusable core built with Rust.
 
-Unlike React Native, the user interface layer is built natively, with modern declarative UI frameworks such as Swift UI, Jetpack Compose and React/Vue or a WASM based framework on the web.
+Unlike [React Native](https://reactnative.dev/), but like [Kotlin Multi-platform Mobile](https://kotlinlang.org/lp/mobile/), the user interface layer is built natively, with modern declarative UI frameworks such as [SwiftUI](https://developer.apple.com/xcode/swiftui/), [Jetpack Compose](https://developer.android.com/jetpack/compose) and [React](https://reactjs.org/)/[Vue](https://vuejs.org/) or a Wasm based framework (like [Yew](https://yew.rs/)) on the web.
 
 The UI layer is as thin as it can be, and all other work is done by the shared core. The interface with the core has static type checking across languages.
 
-> Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). The master branch should always be working well though, and we will try to keep the examples and documentation up to date as we go. The API hasn't settled yet, so beware! :-)
+> Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). However, the master branch should always be working well, and we will try to keep the examples and documentation up to date as we go. We _do_ think that the API has now settled, so have a play! :-)
 
 # Getting Started
 
@@ -36,14 +36,13 @@ In the above diagram, the inner "Core" is compiled and linked to the outer "Shel
 
 In fact, because WebAssembly (Wasm) is one of the compilation targets, the core _must_ remain side-effect free, due to the sandboxed nature of the Wasm runtime environment.
 
-As such, the core is completely isolated and secure against software supply-chain attacks, as it has
-no access to any external APIs.
+As such, the core is completely isolated and secure against software supply-chain attacks, as it has no access to any external APIs.
 All it can do is perform pure calculations and keep internal state.
 
 Following the Elm architecture, the core defines the key component types within the application:
 
-- `Model` — describes the internal state of the application
 - `Event` — an `enum` describing the events which the core can handle
+- `Model` — describes the internal state of the application
 - `ViewModel` — represents information that should be displayed to the user
 
 The former two are tied together by the `update` function, familiar from Elm, Redux or other event sourcing architectures, which currently has this type signature:

@@ -313,9 +313,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "axum"
-version = "0.6.4"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5694b64066a2459918d8074c2ce0d5a88f409431994c2356617c8ae0c4721fc"
+checksum = "4e246206a63c9830e118d12c894f56a82033da1a2361f5544deeee3df85c99d9"
 dependencies = [
  "async-trait",
  "axum-core",
@@ -715,7 +715,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "bcs",
@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -749,7 +749,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -779,7 +779,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1570,9 +1570,9 @@ checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
 name = "hyper"
-version = "0.14.23"
+version = "0.14.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "034711faac9d2166cb1baf1a2fb0b60b1f277f8492fd72176c17f3515e1abd3c"
+checksum = "5e011372fa0b68db8350aa7a248930ecc7839bf46d8485577d69f117a75f164c"
 dependencies = [
  "bytes 1.4.0",
  "futures-channel",
