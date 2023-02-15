@@ -27,6 +27,8 @@ const INITIAL_DOC = [
   127, 1, 1, 127, 4, 127, 0, 127, 0, 0,
 ];
 
+const LOG_EDITS = false;
+
 interface CoreEvent {
   kind: "event" | "response";
   event?: types.Event;
@@ -200,6 +202,8 @@ const Home: NextPage = () => {
   // Event handlers
 
   const onChange = ({ start, end, text }: ChangeEvent): void => {
+    log(`onChange ${start} ${end} "${text}"`);
+
     dispatch({
       kind: "event",
       event: new types.EventVariantReplace(BigInt(start), BigInt(end), text),
@@ -207,12 +211,19 @@ const Home: NextPage = () => {
   };
 
   const onSelect = ({ start, end }: SelectEvent): void => {
+    log(`onSelect ${start} ${end}`);
+
     let event =
       start == end
         ? new types.EventVariantMoveCursor(BigInt(end))
         : new types.EventVariantSelect(BigInt(start), BigInt(end));
 
     dispatch({ kind: "event", event: event });
+  };
+
+  const [inputLog, updateLog] = useState<string[]>([]);
+  const log = (line: string): void => {
+    updateLog((log) => [line, ...log.slice(0, 100)]);
   };
 
   return (
@@ -234,6 +245,15 @@ const Home: NextPage = () => {
               value={state.text}
             />
           </div>
+          {LOG_EDITS ? (
+            <div className="flex-grow basis-1 overflow-scroll">
+              <div className=" p-3 text-sm font-mono bg-slate-100 ">
+                {inputLog.map((line) => (
+                  <p className="font-mono">{line}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </main>
       </div>
     </>

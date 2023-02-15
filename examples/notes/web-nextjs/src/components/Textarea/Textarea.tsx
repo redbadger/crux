@@ -26,6 +26,18 @@ interface TextareaProps {
   className: string;
 }
 
+// We need to monitor these for performance. If this becomes a problem
+// the codepoint offset <-> byte offset conversion can be done in the
+// core and exposed in the interface
+
+function ucToBytes(value: string, index: number): number {
+  return Array.from(value).slice(0, index).join("").length;
+}
+
+function bytesToUc(value: string, index: number): number {
+  return Array.from(value.substring(0, index)).length;
+}
+
 const Textarea: FC<TextareaProps> = ({
   value,
   selectionStart,
@@ -39,8 +51,10 @@ const Textarea: FC<TextareaProps> = ({
     if (taRef.current == null) return;
     let ta: HTMLInputElement = taRef.current;
 
-    ta.selectionStart = selectionStart;
-    ta.selectionEnd = selectionEnd;
+    // Convert selection start and end to byte offsets
+
+    ta.selectionStart = ucToBytes(value, selectionStart);
+    ta.selectionEnd = ucToBytes(value, selectionEnd);
 
     ta.addEventListener("beforeinput", onBeforeInput);
     ta.addEventListener("input", onInput);
@@ -80,7 +94,11 @@ const Textarea: FC<TextareaProps> = ({
     let removed = text.length - length + beforeEdit.current.length;
     let start = end - removed;
 
-    onChange({ start, end, text });
+    onChange({
+      start: bytesToUc(value, start),
+      end: bytesToUc(value, end),
+      text,
+    });
   };
 
   const localOnSelect = (event: SyntheticEvent) => {
@@ -93,7 +111,7 @@ const Textarea: FC<TextareaProps> = ({
     beforeEdit.current.selectionEnd = end;
     beforeEdit.current.length = target.value.length;
 
-    onSelect({ start, end });
+    onSelect({ start: bytesToUc(value, start), end: bytesToUc(value, end) });
   };
 
   return (

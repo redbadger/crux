@@ -90,7 +90,7 @@ impl App for NoteEditor {
 
                 caps.pub_sub.publish(change.bytes().to_vec());
 
-                let len = text.len();
+                let len = text.chars().count();
                 let idx = match &model.cursor {
                     TextCursor::Position(idx) => *idx,
                     TextCursor::Selection(range) => range.start,
@@ -98,7 +98,7 @@ impl App for NoteEditor {
                 model.cursor = TextCursor::Position(idx + len);
             }
             Event::Replace(from, to, text) => {
-                let idx = from + text.len();
+                let idx = from + text.chars().count();
                 model.cursor = TextCursor::Position(idx);
 
                 let mut change = model.note.splice_text(from, to - from, &text);
@@ -463,6 +463,31 @@ mod editing_tests {
 
         assert_eq!(view.text, "heo".to_string());
         assert_eq!(view.cursor, TextCursor::Position(2));
+
+        assert!(
+            update.effects.iter().any(|e| e == &expected_effect),
+            "didn't render"
+        );
+    }
+
+    #[test]
+    fn handles_emoji() {
+        let app = AppTester::<NoteEditor, _>::default();
+
+        let mut model = Model {
+            // the emoji has a skintone modifier, which is a separate unicode character
+            note: Note::with_text("Hello 🙌🏻 world."),
+            cursor: TextCursor::Selection(3..12),
+        };
+
+        // Replace the ' w' after the emoji
+        let update = app.update(Event::Replace(8, 10, "🥳🙌🏻 w".to_string()), &mut model);
+        let expected_effect = Effect::Render(RenderOperation);
+
+        let view = app.view(&model);
+
+        assert_eq!(view.text, "Hello 🙌🏻🥳🙌🏻 world.".to_string());
+        assert_eq!(view.cursor, TextCursor::Position(13));
 
         assert!(
             update.effects.iter().any(|e| e == &expected_effect),
