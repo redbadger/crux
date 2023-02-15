@@ -1,7 +1,12 @@
 use anyhow::Result;
 use crux_core::{typegen::TypeGen, Request};
+
 use shared::{
-    capabilities::pub_sub::{Message, PubSubOperation},
+    capabilities::{
+        pub_sub::{Message, PubSubOperation},
+        timer::{TimerOperation, TimerOutput},
+        KeyValueOperation, KeyValueOutput,
+    },
     Effect, Event, TextCursor, ViewModel,
 };
 use std::path::PathBuf;
@@ -33,6 +38,12 @@ fn register_types(gen: &mut TypeGen) -> Result<()> {
 
     gen.register_type::<PubSubOperation>()?;
     gen.register_type::<Message>()?;
+
+    gen.register_type::<TimerOperation>()?;
+    gen.register_type::<TimerOutput>()?;
+
+    gen.register_type::<KeyValueOperation>()?;
+    gen.register_type::<KeyValueOutput>()?;
 
     gen.register_type::<Event>()?;
     gen.register_type::<TextCursor>()?;

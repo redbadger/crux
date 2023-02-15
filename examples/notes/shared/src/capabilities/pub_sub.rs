@@ -1,4 +1,3 @@
-
 use crux_core::capability::{Capability, CapabilityContext, Operation};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};

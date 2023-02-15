@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use automerge::Change;
 use crux_core::{render::Render, App};
+use crux_kv::{KeyValue, KeyValueOutput};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +30,8 @@ pub enum Event {
     Backspace,
     Delete,
     ReceiveChanges(Vec<u8>),
-    Timer(TimerOutput),
+    EditTimer(TimerOutput),
+    KeyValue(KeyValueOutput),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -59,7 +61,7 @@ impl EditTimer {
         self.current_id = None;
 
         println!("Starting timer {}", self.next_id);
-        timer.start(self.next_id, EDIT_TIMER, Event::Timer);
+        timer.start(self.next_id, EDIT_TIMER, Event::EditTimer);
     }
 
     fn was_created(&mut self, id: u64) {
@@ -103,6 +105,7 @@ pub struct Capabilities {
     timer: Timer<Event>,
     render: Render<Event>,
     pub_sub: PubSub<Event>,
+    key_value: KeyValue<Event>,
 }
 
 const EDIT_TIMER: usize = 1000;
@@ -197,14 +200,19 @@ impl App for NoteEditor {
                 model.note.apply_changes_with([change], &mut observer);
                 model.cursor = observer.cursor;
             }
-            Event::Timer(TimerOutput::Created { id }) => {
+            Event::EditTimer(TimerOutput::Created { id }) => {
                 model.edit_timer.was_created(id);
             }
-            Event::Timer(TimerOutput::Finished { id }) => {
+            Event::EditTimer(TimerOutput::Finished { id }) => {
                 model.edit_timer.finished(id);
 
-                // TODO save the note
+                caps.key_value
+                    .write("note", model.note.save(), Event::KeyValue);
             }
+            Event::KeyValue(KeyValueOutput::Write(_written)) => {
+                // FIXME assuming successful write
+            }
+            Event::KeyValue(_) => unimplemented!(),
         }
 
         caps.render.render();
@@ -265,6 +273,7 @@ impl CursorObserver {
 #[cfg(test)]
 mod editing_tests {
     use crux_core::{render::RenderOperation, testing::AppTester};
+    use crux_kv::KeyValueOperation;
 
     use crate::capabilities::timer::{TimerOperation, TimerOutput};
 
@@ -665,6 +674,38 @@ mod editing_tests {
         println!("Third id: {third_id}, second id: {second_id}");
 
         assert_ne!(third_id, second_id);
+    }
+
+    #[test]
+    fn saves_document_when_typing_stops() {
+        let app = AppTester::<NoteEditor, _>::default();
+
+        let mut model = Model {
+            note: Note::with_text("hello"),
+            cursor: TextCursor::Position(5),
+            edit_timer: EditTimer {
+                current_id: Some(1),
+                next_id: 2,
+            },
+        };
+
+        // An edit should trigger a timer
+        let update = app.update(
+            Event::EditTimer(TimerOutput::Finished { id: 1 }),
+            &mut model,
+        );
+        let write_effect = update
+            .effects
+            .iter()
+            .find(|e| matches!(e.as_ref(), Effect::KeyValue(KeyValueOperation::Write(_, _))))
+            .expect("a key value write");
+
+        if let Effect::KeyValue(KeyValueOperation::Write(key, value)) = write_effect.as_ref() {
+            assert_eq!(key, &"note".to_string());
+            assert_eq!(value, &model.note.save());
+        } else {
+            unreachable!();
+        }
     }
 }
 
