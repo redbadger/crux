@@ -319,7 +319,7 @@ where
         self.inner.steps.send(Step::resolves_never(operation));
     }
 
-    /// Send an event to the app. The event will be processed a the next
+    /// Send an event to the app. The event will be processed on the next
     /// run of the update loop. You can call `update_app` several times,
     /// the events will be queued up and processed sequentially after your
     /// async task either `await`s or finishes.
