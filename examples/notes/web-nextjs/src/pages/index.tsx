@@ -1,6 +1,13 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useEffect, useRef, useState } from "react";
+import {
+  Dispatch,
+  MutableRefObject,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import Navbar from "../components/Navbar/Navbar";
 import Textarea, {
@@ -15,6 +22,7 @@ import init_core, {
 } from "../../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
+import { Seq } from "shared_types/serde/types";
 
 // An automerge document that everyone starts with
 const INITIAL_DOC = [
@@ -32,8 +40,13 @@ const LOG_EDITS = false;
 interface CoreEvent {
   kind: "event" | "response";
   event?: types.Event;
-  response?: any;
+  response?: Response;
 }
+
+type Response = {
+  uuid: number[];
+  data: any;
+};
 
 type State = {
   text: string;
@@ -44,6 +57,10 @@ type State = {
 type SyncMessage = {
   kind: "change" | "reset";
   data?: number[];
+};
+
+type Timers = {
+  [key: number]: number;
 };
 
 const initialState: State = { text: "", selectionStart: 0, selectionEnd: 0 };
@@ -63,8 +80,123 @@ function deserializeRequests(bytes: Uint8Array) {
   return requests;
 }
 
+function cursorToSelection(cursor: types.TextCursor): {
+  selectionStart: number;
+  selectionEnd: number;
+} {
+  var selectionStart = 0;
+  var selectionEnd = 0;
+
+  switch (cursor.constructor) {
+    case types.TextCursorVariantPosition:
+      let cursorP = cursor as types.TextCursorVariantPosition;
+
+      selectionStart = Number(cursorP.value);
+      selectionEnd = Number(cursorP.value);
+      break;
+    case types.TextCursorVariantSelection:
+      let cursorS = cursor as types.TextCursorVariantSelection;
+
+      selectionStart = Number(cursorS.value.start);
+      selectionEnd = Number(cursorS.value.end);
+      break;
+  }
+
+  return { selectionStart, selectionEnd };
+}
+
+// Crux Effects
+
+function render(setState: (state: State) => void) {
+  let bytes = view();
+  let viewDeserializer = new bcs.BcsDeserializer(bytes);
+  let viewModel = types.ViewModel.deserialize(viewDeserializer);
+
+  var { selectionStart, selectionEnd } = cursorToSelection(viewModel.cursor);
+
+  setState({
+    text: viewModel.text,
+    selectionStart: selectionStart,
+    selectionEnd: selectionEnd,
+  });
+}
+
+function timer(
+  timerOp: types.TimerOperation,
+  updateTimers: Dispatch<SetStateAction<Timers>>, // Might not be the best idea
+  dispatch: (action: CoreEvent) => void,
+  uuid: Seq<number>
+) {
+  switch (timerOp.constructor) {
+    case types.TimerOperationVariantStart:
+      let { id: startId, millis } = timerOp as types.TimerOperationVariantStart;
+
+      let handle = window.setTimeout(() => {
+        // Drop the timer
+        updateTimers((ts) => {
+          let { [Number(startId)]: _, ...rest } = ts;
+
+          return rest;
+        });
+
+        dispatch({
+          kind: "response",
+          response: {
+            uuid,
+            data: new types.TimerOutputVariantFinished(startId),
+          },
+        });
+      }, Number(millis));
+      updateTimers((ts) => ({ [Number(startId)]: handle, ...ts }));
+
+      dispatch({
+        kind: "response",
+        response: {
+          uuid,
+          data: new types.TimerOutputVariantCreated(startId),
+        },
+      });
+
+      break;
+    case types.TimerOperationVariantCancel:
+      let { id: cancelId } = timerOp as types.TimerOperationVariantCancel;
+
+      updateTimers((ts) => {
+        let { [Number(cancelId)]: handle, ...rest } = ts;
+        window.clearTimeout(handle);
+
+        return rest;
+      });
+  }
+}
+
+function pubSub(
+  pubSubOp: types.PubSubOperation,
+  channel: MutableRefObject<BroadcastChannel>,
+  subscriptionId: MutableRefObject<number[] | null>,
+  uuid: Seq<number>
+) {
+  switch (pubSubOp.constructor) {
+    case types.PubSubOperationVariantPublish:
+      let publish = pubSubOp as types.PubSubOperationVariantPublish;
+      let message: SyncMessage = {
+        kind: "change",
+        data: publish.value,
+      };
+
+      channel.current.postMessage(message);
+
+      break;
+    case types.PubSubOperationVariantSubscribe:
+      subscriptionId.current = uuid;
+
+      break;
+  }
+}
+
 const Home: NextPage = () => {
   const [state, setState] = useState<State>(initialState);
+  const [timers, updateTimers] = useState<Timers>({});
 
   // TODO the state and channel handling should probably get
   // packaged up as a custom hook or something
@@ -80,10 +212,10 @@ const Home: NextPage = () => {
       const requests = sendEvent(serializer.getBytes());
       handleRequests(requests);
     } else {
-      if (subscriptionId.current == null) return; // core has not subscribed
+      if (action.response == null) return;
 
-      action.response?.serialize(serializer);
-      let uuid = Uint8Array.from(subscriptionId.current);
+      action.response?.data.serialize(serializer);
+      let uuid = Uint8Array.from(action.response?.uuid);
 
       const requests = sendResponse(uuid, serializer.getBytes());
       handleRequests(requests);
@@ -96,56 +228,23 @@ const Home: NextPage = () => {
     for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
         case types.EffectVariantRender:
-          let bytes = view();
-          let viewDeserializer = new bcs.BcsDeserializer(bytes);
-          let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-          var selectionStart = 0;
-          var selectionEnd = 0;
-
-          switch (viewModel.cursor.constructor) {
-            case types.TextCursorVariantPosition:
-              let cursorP = viewModel.cursor as types.TextCursorVariantPosition;
-
-              selectionStart = Number(cursorP.value);
-              selectionEnd = Number(cursorP.value);
-              break;
-            case types.TextCursorVariantSelection:
-              let cursorS =
-                viewModel.cursor as types.TextCursorVariantSelection;
-
-              selectionStart = Number(cursorS.value.start);
-              selectionEnd = Number(cursorS.value.end);
-              break;
-          }
-
-          setState({
-            text: viewModel.text,
-            selectionStart: selectionStart,
-            selectionEnd: selectionEnd,
-          });
+          render(setState);
 
           break;
         case types.EffectVariantPubSub:
-          let op: types.PubSubOperation = (effect as types.EffectVariantPubSub)
-            .value;
+          let pubSubOp = (effect as types.EffectVariantPubSub).value;
 
-          switch (op.constructor) {
-            case types.PubSubOperationVariantPublish:
-              let publish = op as types.PubSubOperationVariantPublish;
-              let message: SyncMessage = {
-                kind: "change",
-                data: publish.value,
-              };
+          pubSub(pubSubOp, channel, subscriptionId, uuid);
+          break;
+        case types.EffectVariantTimer:
+          let timerOp = (effect as types.EffectVariantTimer).value;
 
-              channel.current.postMessage(message);
+          timer(timerOp, updateTimers, dispatch, uuid);
+          break;
+        case types.EffectVariantKeyValue:
+          let keyValueOp = (effect as types.EffectVariantKeyValue).value;
 
-              break;
-            case types.PubSubOperationVariantSubscribe:
-              subscriptionId.current = uuid;
-
-              break;
-          }
+          break;
       }
     }
   };
@@ -162,12 +261,16 @@ const Home: NextPage = () => {
 
       return;
     } else if (message.kind == "change" && message.data != null) {
+      if (subscriptionId.current == null) return;
       let data = message.data;
 
       // Pass data into the core
       dispatch({
         kind: "response",
-        response: new types.Message(message.data),
+        response: {
+          uuid: subscriptionId.current,
+          data: new types.Message(message.data),
+        },
       });
     }
   };
