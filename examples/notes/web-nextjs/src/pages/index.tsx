@@ -194,6 +194,49 @@ function pubSub(
   }
 }
 
+function keyValue(
+  keyValueOp: types.KeyValueOperation,
+  dispatch: (action: CoreEvent) => void,
+  uuid: Seq<number>
+) {
+  switch (keyValueOp.constructor) {
+    case types.KeyValueOperationVariantRead:
+      const { value: readKey } =
+        keyValueOp as types.KeyValueOperationVariantRead;
+
+      let data = window.localStorage.getItem(readKey);
+      data = data == null ? data : JSON.parse(data);
+
+      dispatch({
+        kind: "response",
+        response: {
+          uuid,
+          data: new types.KeyValueOutputVariantRead(null),
+        },
+      });
+
+      break;
+    case types.KeyValueOperationVariantWrite:
+      const { field0: writeKey, field1: writeValue } =
+        keyValueOp as types.KeyValueOperationVariantWrite;
+
+      console.log(`Saving document (${writeValue.length} bytes)`);
+
+      // FIXME JSON is not exactly a space efficient format
+      window.localStorage.setItem(writeKey, JSON.stringify(writeValue));
+
+      dispatch({
+        kind: "response",
+        response: {
+          uuid,
+          data: new types.KeyValueOutputVariantWrite(true),
+        },
+      });
+
+      break;
+  }
+}
+
 const Home: NextPage = () => {
   const [state, setState] = useState<State>(initialState);
   const [timers, updateTimers] = useState<Timers>({});
@@ -232,17 +275,19 @@ const Home: NextPage = () => {
 
           break;
         case types.EffectVariantPubSub:
-          let pubSubOp = (effect as types.EffectVariantPubSub).value;
+          const pubSubOp = (effect as types.EffectVariantPubSub).value;
 
           pubSub(pubSubOp, channel, subscriptionId, uuid);
           break;
         case types.EffectVariantTimer:
-          let timerOp = (effect as types.EffectVariantTimer).value;
+          const timerOp = (effect as types.EffectVariantTimer).value;
 
           timer(timerOp, updateTimers, dispatch, uuid);
           break;
         case types.EffectVariantKeyValue:
-          let keyValueOp = (effect as types.EffectVariantKeyValue).value;
+          const keyValueOp = (effect as types.EffectVariantKeyValue).value;
+
+          keyValue(keyValueOp, dispatch, uuid);
 
           break;
       }
