@@ -287,6 +287,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_kv"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "bcs",
+ "crux_core",
+ "serde",
+]
+
+[[package]]
 name = "crux_macros"
 version = "0.1.0"
 dependencies = [
@@ -987,6 +997,7 @@ dependencies = [
  "automerge",
  "bincode",
  "crux_core",
+ "crux_kv",
  "crux_macros",
  "futures",
  "lazy_static",
