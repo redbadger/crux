@@ -24,17 +24,6 @@ import * as types from "shared_types/types/shared_types";
 import * as bcs from "shared_types/bcs/mod";
 import { Seq } from "shared_types/serde/types";
 
-// An automerge document that everyone starts with
-const INITIAL_DOC = [
-  133, 111, 74, 131, 22, 133, 108, 231, 0, 110, 1, 16, 105, 153, 47, 106, 29,
-  169, 76, 82, 190, 222, 177, 130, 73, 131, 194, 44, 1, 11, 30, 11, 118, 113,
-  127, 84, 123, 136, 33, 133, 182, 224, 41, 19, 143, 111, 203, 237, 90, 225, 18,
-  35, 241, 161, 210, 92, 168, 24, 119, 178, 174, 6, 1, 2, 3, 2, 19, 2, 35, 2,
-  64, 2, 86, 2, 7, 21, 6, 33, 2, 35, 2, 52, 1, 66, 2, 86, 2, 128, 1, 2, 127, 0,
-  127, 1, 127, 1, 127, 0, 127, 0, 127, 7, 127, 4, 98, 111, 100, 121, 127, 0,
-  127, 1, 1, 127, 4, 127, 0, 127, 0, 0,
-];
-
 const LOG_EDITS = false;
 
 interface CoreEvent {
@@ -205,13 +194,15 @@ function keyValue(
         keyValueOp as types.KeyValueOperationVariantRead;
 
       let data = window.localStorage.getItem(readKey);
-      data = data == null ? data : JSON.parse(data);
+      let bytes: number[] | null = data == null ? data : JSON.parse(data);
+
+      console.log(`Loaded document (${bytes?.length} bytes)`);
 
       dispatch({
         kind: "response",
         response: {
           uuid,
-          data: new types.KeyValueOutputVariantRead(null),
+          data: new types.KeyValueOutputVariantRead(bytes),
         },
       });
 
@@ -239,7 +230,7 @@ function keyValue(
 
 const Home: NextPage = () => {
   const [state, setState] = useState<State>(initialState);
-  const [timers, updateTimers] = useState<Timers>({});
+  const [_, updateTimers] = useState<Timers>({});
 
   // TODO the state and channel handling should probably get
   // packaged up as a custom hook or something
@@ -269,6 +260,8 @@ const Home: NextPage = () => {
     let requests = deserializeRequests(bytes);
 
     for (const { uuid, effect } of requests) {
+      console.log("Handling effect", effect);
+
       switch (effect.constructor) {
         case types.EffectVariantRender:
           render(setState);
@@ -288,7 +281,6 @@ const Home: NextPage = () => {
           const keyValueOp = (effect as types.EffectVariantKeyValue).value;
 
           keyValue(keyValueOp, dispatch, uuid);
-
           break;
       }
     }
@@ -299,10 +291,7 @@ const Home: NextPage = () => {
 
     // One of the peers reset, load the initial document
     if (message.kind == "reset") {
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantLoad(INITIAL_DOC),
-      });
+      // Don't need to do anything...?
 
       return;
     } else if (message.kind == "change" && message.data != null) {
@@ -327,10 +316,10 @@ const Home: NextPage = () => {
       // Subscribe to the BroadcastChannel
       channel.current.onmessage = onMessage;
 
-      // Load the document
+      // Open the document
       dispatch({
         kind: "event",
-        event: new types.EventVariantLoad(INITIAL_DOC),
+        event: new types.EventVariantOpen(),
       });
 
       // Ask all peers to reset

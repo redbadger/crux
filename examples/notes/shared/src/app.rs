@@ -22,7 +22,7 @@ pub struct NoteEditor;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Event {
-    Load(Vec<u8>),
+    Open,
     Insert(String),
     Replace(usize, usize, String),
     MoveCursor(usize),
@@ -31,7 +31,8 @@ pub enum Event {
     Delete,
     ReceiveChanges(Vec<u8>),
     EditTimer(TimerOutput),
-    KeyValue(KeyValueOutput),
+    Written(KeyValueOutput),
+    Load(KeyValueOutput),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -138,6 +139,8 @@ impl App for NoteEditor {
                     TextCursor::Selection(range) => range.start,
                 };
                 model.cursor = TextCursor::Position(idx + len);
+
+                caps.render.render();
             }
             Event::Replace(from, to, text) => {
                 let idx = from + text.chars().count();
@@ -147,12 +150,18 @@ impl App for NoteEditor {
 
                 caps.pub_sub.publish(change.bytes().to_vec());
                 model.edit_timer.start(&caps.timer);
+
+                caps.render.render();
             }
             Event::MoveCursor(idx) => {
                 model.cursor = TextCursor::Position(idx);
+
+                caps.render.render();
             }
             Event::Select(from, to) => {
                 model.cursor = TextCursor::Selection(from..to);
+
+                caps.render.render();
             }
             Event::Backspace | Event::Delete => {
                 let (new_index, mut change) = match &model.cursor {
@@ -185,11 +194,8 @@ impl App for NoteEditor {
 
                 caps.pub_sub.publish(change.bytes().to_vec());
                 model.edit_timer.start(&caps.timer);
-            }
-            Event::Load(bytes) => {
-                model.note = Note::load(&bytes);
 
-                caps.pub_sub.subscribe(Event::ReceiveChanges);
+                caps.render.render();
             }
             Event::ReceiveChanges(bytes) => {
                 let change = Change::from_bytes(bytes).expect("a valid change");
@@ -199,6 +205,8 @@ impl App for NoteEditor {
 
                 model.note.apply_changes_with([change], &mut observer);
                 model.cursor = observer.cursor;
+
+                caps.render.render();
             }
             Event::EditTimer(TimerOutput::Created { id }) => {
                 model.edit_timer.was_created(id);
@@ -207,15 +215,29 @@ impl App for NoteEditor {
                 model.edit_timer.finished(id);
 
                 caps.key_value
-                    .write("note", model.note.save(), Event::KeyValue);
+                    .write("note", model.note.save(), Event::Written);
             }
-            Event::KeyValue(KeyValueOutput::Write(_written)) => {
+            Event::Written(_) => {
                 // FIXME assuming successful write
             }
-            Event::KeyValue(_) => unimplemented!(),
-        }
+            Event::Open => caps.key_value.read("note", Event::Load),
+            Event::Load(KeyValueOutput::Read(Some(data))) => {
+                model.note = Note::load(&data);
 
-        caps.render.render();
+                caps.pub_sub.subscribe(Event::ReceiveChanges);
+                caps.render.render();
+            }
+            Event::Load(KeyValueOutput::Read(None)) => {
+                model.note = Note::new();
+
+                caps.key_value
+                    .write("note", model.note.save(), Event::Written);
+                caps.pub_sub.subscribe(Event::ReceiveChanges);
+
+                caps.render.render();
+            }
+            Event::Load(KeyValueOutput::Write(_)) => unreachable!(),
+        }
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -273,9 +295,6 @@ impl CursorObserver {
 #[cfg(test)]
 mod editing_tests {
     use crux_core::{render::RenderOperation, testing::AppTester};
-    use crux_kv::KeyValueOperation;
-
-    use crate::capabilities::timer::{TimerOperation, TimerOutput};
 
     use super::*;
 
@@ -566,6 +585,99 @@ mod editing_tests {
             "didn't render"
         );
     }
+}
+
+#[cfg(test)]
+mod save_load_tests {
+    use crux_core::testing::AppTester;
+    use crux_kv::KeyValueOperation;
+
+    use crate::capabilities::timer::{TimerOperation, TimerOutput};
+
+    use super::*;
+
+    #[test]
+    fn opens_a_document() {
+        let app = AppTester::<NoteEditor, _>::default();
+        let mut note = Note::with_text("LOADED");
+
+        let mut model = Model {
+            note: Note::with_text("hello"),
+            cursor: TextCursor::Selection(2..4),
+            ..Default::default()
+        };
+
+        // this will eventually take a document ID
+        let update = app.update(Event::Open, &mut model);
+        let key_value_effs = update
+            .effects
+            .iter()
+            .filter(|e| matches!(e.as_ref(), Effect::KeyValue(_op)))
+            .collect::<Vec<_>>();
+
+        assert_eq!(key_value_effs.len(), 1);
+        assert!(
+            matches!(key_value_effs[0].as_ref(), Effect::KeyValue(KeyValueOperation::Read(key)) if key == &"note".to_string()),
+            "Expected a read with key 'note', got {:?}",
+            key_value_effs[0].as_ref()
+        );
+
+        // Read was successful
+        let update = key_value_effs[0].resolve(&KeyValueOutput::Read(Some(note.save())));
+        assert_eq!(update.events.len(), 1);
+
+        for e in update.events {
+            let update = app.update(e, &mut model);
+            let renders = update
+                .effects
+                .iter()
+                .any(|e| matches!(e.as_ref(), Effect::Render(_)));
+
+            assert!(renders)
+        }
+
+        assert_eq!(app.view(&model).text, "LOADED");
+    }
+
+    #[test]
+    fn creates_a_document_if_it_cant_open_one() {
+        let app = AppTester::<NoteEditor, _>::default();
+
+        let mut model = Model {
+            note: Note::with_text("hello"),
+            cursor: TextCursor::Selection(2..4),
+            ..Default::default()
+        };
+
+        // this will eventually take a document ID
+        let update = app.update(Event::Open, &mut model);
+        let key_value_effs = update
+            .effects
+            .iter()
+            .filter(|e| matches!(e.as_ref(), Effect::KeyValue(_op)))
+            .collect::<Vec<_>>();
+
+        assert_eq!(key_value_effs.len(), 1);
+        assert!(
+            matches!(key_value_effs[0].as_ref(), Effect::KeyValue(KeyValueOperation::Read(key)) if key == &"note".to_string()),
+            "Expected a read with key 'note', got {:?}",
+            key_value_effs[0].as_ref()
+        );
+
+        // Read was unsuccsessful
+        let update = key_value_effs[0].resolve(&KeyValueOutput::Read(None));
+        assert_eq!(update.events.len(), 1);
+
+        for e in update.events {
+            let update = app.update(e, &mut model);
+            let saves = update
+                .effects
+                .iter()
+                .any(|e| matches!(e.as_ref(), Effect::KeyValue(KeyValueOperation::Write(key, _)) if key == &"note".to_string()));
+
+            assert!(saves)
+        }
+    }
 
     #[test]
     fn starts_a_timer_after_an_edit() {
@@ -795,8 +907,8 @@ mod sync_tests {
         let mut alice = Peer::new();
         let mut bob = Peer::new();
 
-        alice.update(Event::Load(note.clone()));
-        bob.update(Event::Load(note));
+        alice.update(Event::Load(KeyValueOutput::Read(Some(note.clone()))));
+        bob.update(Event::Load(KeyValueOutput::Read(Some(note))));
 
         (alice, bob)
     }
