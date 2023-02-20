@@ -15,6 +15,18 @@ The shell only has two responsibilities:
 
 We'll look at these separately. But first let's remind ourselves of how we interact with the core (now would be a good time to read [Shared core and types](../getting_started/core.md) if you haven't already).
 
+## The message protocol
+
+The interface is message based, and uses serialisation to pass data back and forth. The core exports the types for all the data so that it can be used and created on the shell side with safety.
+
+An `Event` can be passed in directly, as-is. Processing of `Effect`s is a little more complicated, because the core neds to be able to pair the outcomes of the effects with the original capability call, so it can return them to the right caller. To do that, effects are wrapped in a `Request`, which tags them with a UUID. To respond, the same UUID needs to be passed back in. 
+
+Requests from the core are emitted serialsed, and need to be deserialised first. Both events and effect outputs need to be serialised before being passed back to the core.
+
+```admonish warning title="Sharp edge"
+It is likely that this will become an implementation detail and instead, Crux will provide a more ergonomic Shell side API for the interaction, hiding both the UUID pairing and the serialisation (and allowing us to iterate on the FFI implementation which, we think, could work better).
+```
+
 ## The core interface
 
 There are only three touch-points with the core.
@@ -27,9 +39,9 @@ pub fn view() -> Vec<u8> { todo!() }
 
 The `process_event` function takes a serialized `Event` (from a UI interaction) and returns a serialized vector of `Request`s that the shell can dispatch to the relevant capability's shell-side code (see the section below on how the shell handles capabilities).
 
-The `handle_response` function is identical to `process_event` except that it also takes a `uuid`, which ties the `Event` (for example containing an HTTP response) being submitted with it's original request.
+The `handle_response` function, used to return capability output back into the core, is similar to `process_event` except that it also takes a `uuid`, which ties the output (for example a HTTP response) being submitted with it's original `Effect` which started it (and the corresponding request which the core wrapped it in).
 
-The `view` function simply retrieves the serialized view model (to which the UI is bound) and is called by the shell after it receives a `Render` request. The view model is literally a projection of the app's state.
+The `view` function simply retrieves the serialized view model (to which the UI is bound) and is called by the shell after it receives a `Render` request. The view model is a projection of the app's state – it reflects what information the Core wants displayed on screen.
 
 You're probably thinking, "Whoa! I just see slices and vectors of bytes, where's the type safety?". Well, the answer is that we also generate all the types that pass through the bridge, for each language, along with serialization and deserialization helpers. This is done by the `serde-generate` crate (see the section on [Create the shared types crate](../getting_started/core.md#create-the-shared-types-crate)).
 
@@ -156,7 +168,7 @@ Notice that the first thing we do is create a CoroutineScope that is scoped to t
 
 We want the shell to be as thin as possible, so we need to write as little platform-specific code as we can because this work has to be duplicated for each platform.
 
-In general, the more domain-aligned our capabilities are, the more code we'll write. When our capabilities are generic we get to write the least amount of shell code to support them. Getting the balance right can be tricky to start with. Obviously the `Http` capability is very generic, but a CMS capability, for instance, might well be much more specific.
+In general, the more domain-aligned our capabilities are, the more code we'll write. When our capabilities are generic, and closer to the technical end of the spectrum, we get to write the least amount of shell code to support them. Getting the balance right can be tricky, and the right answer might be different depending on context. Obviously the `Http` capability is very generic, but a CMS capability, for instance, might well be much more specific.
 
 The shell-side code for the `Http` capability can be very small. A (very) naive implementation for Android might look like this:
 
