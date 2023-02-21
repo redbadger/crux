@@ -17,14 +17,14 @@ We'll look at these separately. But first let's remind ourselves of how we inter
 
 ## The message protocol
 
-The interface is message based, and uses serialisation to pass data back and forth. The core exports the types for all the data so that it can be used and created on the shell side with safety.
+The interface is message based, and uses serialization to pass data back and forth. The core exports the types for all the data so that it can be used and created on the shell side with safety.
 
-An `Event` can be passed in directly, as-is. Processing of `Effect`s is a little more complicated, because the core neds to be able to pair the outcomes of the effects with the original capability call, so it can return them to the right caller. To do that, effects are wrapped in a `Request`, which tags them with a UUID. To respond, the same UUID needs to be passed back in. 
+An `Event` can be passed in directly, as-is. Processing of `Effect`s is a little more complicated, because the core needs to be able to pair the outcomes of the effects with the original capability call, so it can return them to the right caller. To do that, effects are wrapped in a `Request`, which tags them with a UUID. To respond, the same UUID needs to be passed back in.
 
-Requests from the core are emitted serialsed, and need to be deserialised first. Both events and effect outputs need to be serialised before being passed back to the core.
+Requests from the core are emitted serialized, and need to be deserialized first. Both events and effect outputs need to be serialized before being passed back to the core.
 
 ```admonish warning title="Sharp edge"
-It is likely that this will become an implementation detail and instead, Crux will provide a more ergonomic Shell side API for the interaction, hiding both the UUID pairing and the serialisation (and allowing us to iterate on the FFI implementation which, we think, could work better).
+It is likely that this will become an implementation detail and instead, Crux will provide a more ergonomic shell-side API for the interaction, hiding both the UUID pairing and the serialization (and allowing us to iterate on the FFI implementation which, we think, could work better).
 ```
 
 ## The core interface
