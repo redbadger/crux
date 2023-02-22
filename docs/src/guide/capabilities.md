@@ -23,7 +23,7 @@ There are clearly numerous scenarios, and the best rule of thumb we can think of
 
 ## The Core and the Shell
 
-As we've already covered, the capabilities effectively straddle the FFI boundary between the Core and the Shell. On the Core side they mediate between the FFI boundary and the application code. On the Shell side the requests produced by the capability need to be actually executed and fulfilled. Each capability therefore extends the Core/Shell interface with a set of defined (and type checked) messages, in a way that allows Crux to leverage exhaustive pattern matching on the native side to ensure all necessary capabilities required by the Core are implemented.
+As we've already covered, the capabilities effectively straddle the FFI boundary between the Core and the Shell. On the Core side they mediate between the FFI boundary and the application code. On the shell-side the requests produced by the capability need to be actually executed and fulfilled. Each capability therefore extends the Core/Shell interface with a set of defined (and type checked) messages, in a way that allows Crux to leverage exhaustive pattern matching on the native side to ensure all necessary capabilities required by the Core are implemented.
 
 At the moment the Shell implementation is up to you, but we think in the future it's likely that capability crates will come with platform native code as well, making building both the Core and the Shells easier, and allow you to focus on application behaviour in the Core and look and feel in the Shell.
 
