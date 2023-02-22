@@ -4,7 +4,7 @@ use gloo_net::http;
 use yew::{html::Scope, prelude::*};
 
 use shared::{
-    http::protocol::{HttpRequest, HttpResponse},
+    http::protocol::{HttpHeader, HttpRequest, HttpResponse},
     sse::{SseRequest, SseResponse},
     Effect, Event, Request, ViewModel,
 };
@@ -54,7 +54,11 @@ impl Component for RootComponent {
         for Request { uuid, effect } in reqs {
             match effect {
                 Effect::Render(_) => should_render = true,
-                Effect::Http(HttpRequest { url, method }) => {
+                Effect::Http(HttpRequest {
+                    url,
+                    method,
+                    headers,
+                }) => {
                     wasm_bindgen_futures::spawn_local({
                         let method = match method.as_str() {
                             "GET" => http::Method::GET,
@@ -64,7 +68,7 @@ impl Component for RootComponent {
                         let link = link.clone();
 
                         async move {
-                            http(&uuid, &url, method, &link).await.unwrap();
+                            http(&uuid, &url, method, &headers, &link).await.unwrap();
                         }
                     });
                 }
@@ -118,9 +122,16 @@ async fn http(
     uuid: &[u8],
     url: &str,
     method: http::Method,
+    headers: &[HttpHeader],
     link: &Scope<RootComponent>,
 ) -> Result<()> {
-    let response = http::Request::new(url).method(method).send().await?;
+    let mut request = http::Request::new(url).method(method);
+
+    for header in headers {
+        request = request.header(&header.name, &header.value);
+    }
+
+    let response = request.send().await?;
     let body = response.binary().await?;
     link.send_message(CoreMessage::Response(
         uuid.to_vec(),

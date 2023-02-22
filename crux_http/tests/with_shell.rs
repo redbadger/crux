@@ -155,7 +155,8 @@ mod tests {
             vec![
                 Effect::Http(HttpRequest {
                     method: "GET".to_string(),
-                    url: "http://example.com/".to_string()
+                    url: "http://example.com/".to_string(),
+                    headers: vec![]
                 }),
                 Effect::Render(RenderOperation)
             ]
@@ -172,7 +173,8 @@ mod tests {
             vec![
                 Effect::Http(HttpRequest {
                     method: "GET".to_string(),
-                    url: "http://example.com/".to_string()
+                    url: "http://example.com/".to_string(),
+                    headers: vec![]
                 }),
                 Effect::Render(RenderOperation)
             ]

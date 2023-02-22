@@ -84,8 +84,12 @@ const Home: NextPage = () => {
 
           break;
         case types.EffectVariantHttp: {
-          const { method, url } = (effect as types.EffectVariantHttp).value;
-          const req = new Request(url, { method });
+          const { method, url, headers } = (effect as types.EffectVariantHttp)
+            .value;
+          const req = new Request(url, {
+            method,
+            headers: headers.map((header) => [header.name, header.value]),
+          });
           const res = await fetch(req);
           const body = await res.arrayBuffer();
           const response_bytes = Array.from(new Uint8Array(body));

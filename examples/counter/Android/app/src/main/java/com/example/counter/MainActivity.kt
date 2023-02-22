@@ -105,7 +105,7 @@ class Model : ViewModel() {
                 this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
             }
             is Effect.Http -> {
-                val response = http(httpClient, HttpMethod(effect.value.method), effect.value.url)
+                val response = http(httpClient, HttpMethod(effect.value.method), effect.value.url, effect.value.headers)
                 update(
                     CoreMessage.Response(
                         req.uuid.toByteArray().toUByteArray().toList(),

@@ -145,6 +145,7 @@ mod tests {
         let expected = &Effect::Http(HttpRequest {
             method: "GET".to_string(),
             url: "https://crux-counter.fly.dev/".to_string(),
+            headers: vec![],
         });
         assert_eq!(actual, expected);
 
@@ -205,6 +206,7 @@ mod tests {
         let expected = &Effect::Http(HttpRequest {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/inc".to_string(),
+            headers: vec![],
         });
         assert_eq!(actual, expected);
 
@@ -245,6 +247,7 @@ mod tests {
         let expected = &Effect::Http(HttpRequest {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/dec".to_string(),
+            headers: vec![],
         });
         assert_eq!(actual, expected);
 
