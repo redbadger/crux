@@ -6,7 +6,7 @@ use bcs::{from_bytes, to_bytes};
 use clap::Parser;
 use eyre::{bail, eyre, Result};
 use shared::{
-    http::protocol::{HttpRequest, HttpResponse},
+    http::protocol::{HttpHeader, HttpRequest, HttpResponse},
     sse::{SseRequest, SseResponse},
     Effect, Event, Request, ViewModel,
 };
@@ -95,14 +95,18 @@ fn main_loop(msg: CoreMessage, tx: Weak<Sender<CoreMessage>>) -> Result<(), eyre
                     println!("{text}");
                 }
             }
-            Effect::Http(HttpRequest { method, url }) => {
+            Effect::Http(HttpRequest {
+                method,
+                url,
+                headers,
+            }) => {
                 let method = Method::from_str(&method).expect("unknown http method");
                 let url = Url::parse(&url)?;
 
                 async_std::task::spawn({
                     let tx = tx.upgrade().unwrap();
                     async move {
-                        let response = http(method, url).await.unwrap();
+                        let response = http(method, url, &headers).await.unwrap();
                         let outcome = Outcome::Http(response);
                         let message = CoreMessage::Response(uuid.clone(), outcome);
 
@@ -133,13 +137,18 @@ fn main_loop(msg: CoreMessage, tx: Weak<Sender<CoreMessage>>) -> Result<(), eyre
     Ok(())
 }
 
-async fn http(method: Method, url: Url) -> Result<HttpResponse> {
+async fn http(method: Method, url: Url, headers: &[HttpHeader]) -> Result<HttpResponse> {
     let client: Client = Config::new()
         .set_timeout(Some(Duration::from_secs(5)))
         .try_into()?;
 
-    let mut response = client
-        .request(method, &url)
+    let mut request = client.request(method, &url);
+
+    for header in headers {
+        request = request.header(header.name.as_str(), &header.value);
+    }
+
+    let mut response = request
         .await
         .map_err(|e| eyre!("{method} {url}: error {e}"))?;
 

@@ -229,14 +229,16 @@ mod tests {
             update.effects[0],
             Effect::Http(HttpRequest {
                 method: "GET".into(),
-                url: FACT_API_URL.into()
+                url: FACT_API_URL.into(),
+                headers: vec![]
             })
         );
         assert_eq!(
             update.effects[1],
             Effect::Http(HttpRequest {
                 method: "GET".into(),
-                url: IMAGE_API_URL.into()
+                url: IMAGE_API_URL.into(),
+                headers: vec![]
             })
         );
     }
@@ -252,7 +254,8 @@ mod tests {
             update.effects[0],
             Effect::Http(HttpRequest {
                 method: "GET".into(),
-                url: FACT_API_URL.into()
+                url: FACT_API_URL.into(),
+                headers: vec![]
             })
         );
         let a_fact = CatFact {

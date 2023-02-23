@@ -334,7 +334,8 @@ mod client_tests {
             shell.take_requests_received(),
             vec![HttpRequest {
                 method: "GET".into(),
-                url: "https://example.com/".into()
+                url: "https://example.com/".into(),
+                headers: vec![]
             }]
         )
     }

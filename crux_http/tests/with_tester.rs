@@ -35,6 +35,7 @@ mod shared {
                 Event::Get => {
                     caps.http
                         .get("http://example.com")
+                        .header("Authorization", "secret-token")
                         .expect_string()
                         .send(Event::Set);
                 }
@@ -62,7 +63,7 @@ mod tests {
 
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
-    use crux_http::protocol::{HttpRequest, HttpResponse};
+    use crux_http::protocol::{HttpHeader, HttpRequest, HttpResponse};
 
     #[test]
     fn with_tester() {
@@ -75,7 +76,11 @@ mod tests {
             update.effects[0],
             Effect::Http(HttpRequest {
                 method: "GET".to_string(),
-                url: "http://example.com/".to_string()
+                url: "http://example.com/".to_string(),
+                headers: vec![HttpHeader {
+                    name: "authorization".to_string(),
+                    value: "secret-token".to_string()
+                }]
             })
         );
 

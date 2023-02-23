@@ -8,10 +8,16 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct HttpHeader {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpRequest {
     pub method: String,
     pub url: String,
-    // TODO support headers
+    pub headers: Vec<HttpHeader>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -44,6 +50,15 @@ impl From<crate::Request> for HttpRequest {
         HttpRequest {
             method: req.method().to_string(),
             url: req.url().to_string(),
+            headers: req
+                .iter()
+                .flat_map(|(name, values)| {
+                    values.iter().map(|value| HttpHeader {
+                        name: name.to_string(),
+                        value: value.to_string(),
+                    })
+                })
+                .collect(),
         }
     }
 }

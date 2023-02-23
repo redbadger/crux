@@ -21,9 +21,14 @@ class Model: ObservableObject {
         update(msg: .event(.startWatch))
     }
 
-    private func http(uuid: Uuid, method: String, url: String) {
+    private func http(uuid: Uuid, method: String, url: String, headers: [HttpHeader]) {
         var req = URLRequest(url: URL(string: url)!)
         req.httpMethod = method
+
+        for header in headers {
+            req.addValue(header.value, forHTTPHeaderField: header.name)
+        }
+
         Task {
             let (data, response) = try! await URLSession.shared.data(for: req)
             if let httpResponse = response as? HTTPURLResponse {
@@ -71,7 +76,7 @@ class Model: ObservableObject {
         for req in reqs {
             switch req.effect {
             case .render: view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
-            case let .http(r): http(uuid: req.uuid, method: r.method, url: r.url)
+            case let .http(r): http(uuid: req.uuid, method: r.method, url: r.url, headers: r.headers)
             case let .serverSentEvents(r): sse(uuid: req.uuid, url: r.url)
             }
         }
