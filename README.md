@@ -15,6 +15,8 @@ The UI layer is as thin as it can be, and all other work is done by the shared c
 
 This readme describes at a high level how Crux works, but you can find more details in the [book](https://redbadger.github.io/crux).
 
+You can also join the friendly conversation on our [Zulip channel](https://crux-community.zulipchat.com).
+
 # Architectural Overview
 
 ![Logical architecture](./crux_core/architecture.svg)
@@ -137,3 +139,22 @@ Refer to [examples/counter](./examples/counter/README.md) README
 ## How to Start Your Own New Project
 
 Refer to the [Getting Started](https://redbadger.github.io/crux/getting_started/core.html) section of the tutorials.
+
+---
+## Sponsors
+
+Crux is kindly sponsored by the following organizations. Your help is kindly appreciated.
+
+---
+### Red Badger Consulting Limited
+<img src="./docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
+
+[Red Badger](https://red-badger.com/) is the digital product consultancy trusted by blue chips and global brands. Our product design and technical pedigree allow us to craft high-impact digital products customers want. We use modern engineering approaches to deliver sustainable change. And embed digital capabilities to power continuous innovation.
+
+---
+
+### Zulip
+
+<img src="./docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
+
+[Zulip](https://zulip.com/) is an open-source modern team chat app designed to keep both live and asynchronous conversations organized.

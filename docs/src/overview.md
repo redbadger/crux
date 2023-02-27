@@ -17,6 +17,8 @@ There are two places to find API documentation: the latest published version on 
 - **crux_http** - HTTP client capability: [latest release](https://docs.rs/crux_http/latest/crux_http/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_http/)
 
 Crux is open source on [Github](https://github.com/redbadger/crux). A good way to learn Crux is to explore the code, play with the [examples](https://github.com/redbadger/crux/tree/master/examples), and raise issues or pull requests. We'd love you to get involved.
+
+You can also join the friendly conversation on our [Zulip channel](https://crux-community.zulipchat.com).
 ```
 
 ## Design overview
