@@ -143,7 +143,7 @@ Refer to the [Getting Started](https://redbadger.github.io/crux/getting_started/
 ---
 ## Sponsors
 
-Crux is kindly sponsored by the following organizations. Your help is kindly appreciated.
+Crux is kindly sponsored by the following organizations. Your help is very much appreciated.
 
 ---
 ### Red Badger Consulting Limited
@@ -158,3 +158,7 @@ Crux is kindly sponsored by the following organizations. Your help is kindly app
 <img src="./docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
 
 [Zulip](https://zulip.com/) is an open-source modern team chat app designed to keep both live and asynchronous conversations organized.
+
+Zulip sponsor Crux by providing our [Zulip server](https://crux-community.zulipchat.com) — thank you Zulip!
+
+---
