@@ -12,14 +12,14 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-trait = "0.1.64"
+async-trait = "0.1.66"
 bcs.workspace = true
 crux_core = { version = "0.3", path = "../crux_core" }
 futures-util = "0.3"
 http-types = { version = "2.12", default-features = false, features = ["fs"] }
 pin-project-lite = "0.2.9"
 serde = { workspace = true, features = ["derive"] }
-serde_json = "1.0.93"
+serde_json = "1.0.94"
 url = "2.3.1"
 
 [dev-dependencies]
