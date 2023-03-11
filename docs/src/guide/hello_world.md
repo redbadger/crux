@@ -461,7 +461,7 @@ pub enum Event {
 }
 ```
 
-We decorate the `Set` variant with `#[serde(skip)]` for two reasons: one, there's currently a technical limitation stopping us easily serializing `crux_http::Response`, and two, there's no reason that variant should never be sent by the Shell across the FFI boundary, which is the reason for the need to serialize in the first place — in a way, it is private to the Core.
+We decorate the `Set` variant with `#[serde(skip)]` for two reasons: one, there's currently a technical limitation stopping us easily serializing `crux_http::Response`, and two, there's no reason that variant should ever be sent by the Shell across the FFI boundary, which is the reason for the need to serialize in the first place — in a way, it is private to the Core.
 
 Finally, let's get rid of those TODOs. We'll need to add crux_http in the `Capabilities` type, so that the `update` function has access to it:
 
