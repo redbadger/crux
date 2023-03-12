@@ -43,6 +43,9 @@
 //!
 //!     gen.typescript("shared_types", output_root.join("typescript"))
 //!         .expect("typescript type gen failed");
+//!
+//!     gen.dart("shared_types", output_root.join("dart"))
+//!         .expect("dart type gen failed");
 //! }
 //!
 //! fn register_types(gen: &mut TypeGen) -> Result<()> {
@@ -60,7 +63,9 @@
 //! ```
 
 use anyhow::{anyhow, bail, Result};
-use serde_generate::Encoding;
+use serde_generate::{
+    dart, java, swift, typescript, CodeGeneratorConfig, Encoding, SourceInstaller,
+};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -127,10 +132,10 @@ impl TypeGen {
         fs::create_dir_all(&path)?;
 
         let mut source = Vec::new();
-        let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
-            .with_encodings(vec![Encoding::Bcs]);
+        let config =
+            CodeGeneratorConfig::new("shared".to_string()).with_encodings(vec![Encoding::Bcs]);
 
-        let generator = serde_generate::swift::CodeGenerator::new(&config);
+        let generator = swift::CodeGenerator::new(&config);
         let registry = match &self.state {
             State::Registry(registry) => registry,
             _ => panic!("registry creation failed"),
@@ -171,15 +176,15 @@ impl TypeGen {
 
         fs::create_dir_all(&path)?;
 
-        let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
-            .with_encodings(vec![Encoding::Bcs]);
+        let config =
+            CodeGeneratorConfig::new(package_name.to_string()).with_encodings(vec![Encoding::Bcs]);
 
         let registry = match &self.state {
             State::Registry(registry) => registry,
             _ => panic!("registry creation failed"),
         };
 
-        let generator = serde_generate::java::CodeGenerator::new(&config);
+        let generator = java::CodeGenerator::new(&config);
         generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
 
         let package_path = package_name.replace('.', "/");
@@ -229,11 +234,11 @@ impl TypeGen {
             _ => panic!("registry creation failed"),
         };
 
-        let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
+        let config = CodeGeneratorConfig::new(module_name.to_string())
             .with_serialization(true)
             .with_encodings(vec![Encoding::Bcs]);
 
-        let generator = serde_generate::typescript::CodeGenerator::new(&config);
+        let generator = typescript::CodeGenerator::new(&config);
         generator.output(&mut source, registry)?;
         // FIXME fix import paths in generated code which assume running on Deno
         let out = String::from_utf8_lossy(&source).replace(".ts'", "'");
@@ -259,6 +264,36 @@ impl TypeGen {
             .arg("--build")
             .status()
             .expect("Could tsc --build");
+
+        Ok(())
+    }
+
+    /// Generates types for Dart
+    /// e.g.
+    /// ```rust
+    /// gen.dart("shared_types", output_root.join("dart"))
+    ///     .expect("dart type gen failed");
+    /// ```
+    pub fn dart(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
+        self.ensure_registry()?;
+
+        fs::create_dir_all(&path)?;
+
+        let config = CodeGeneratorConfig::new(module_name.to_string())
+            .with_encodings(vec![Encoding::Bcs])
+            .with_c_style_enums(true);
+
+        let registry = match &self.state {
+            State::Registry(registry) => registry,
+            _ => panic!("registry creation failed"),
+        };
+
+        let output_dir = path.as_ref().to_path_buf();
+
+        let installer = dart::Installer::new(output_dir);
+        installer.install_module(&config, registry).unwrap();
+        installer.install_serde_runtime().unwrap();
+        installer.install_bcs_runtime().unwrap();
 
         Ok(())
     }
