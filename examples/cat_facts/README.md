@@ -2,9 +2,9 @@
 
 Note: Whilst this example _does_ work, the API that it uses is not under our control and can be flaky, so your mileage may vary. I would look at the [Counter](../counter/README.md) example first.
 
-### Rust
+### Notes:
 
-1. Make sure you have the following rust targets installed (e.g. `rustup target add <target-name>`). Note there is a `rust-toolchain.toml` in the root directory, so you should be able to just `rustup target list --installed` (in or below the root directory) and the targets should be installed if they are not already present.
+1. Please make sure you have the following rust targets installed (there is a [`rust-toolchain.toml`](../../rust-toolchain.toml) in the root directory of this repo, so you should be able to type `rustup target list --installed`, in or below the root directory, and these targets will be installed if they are not already present).
 
    ```txt
    aarch64-apple-darwin
@@ -15,19 +15,21 @@ Note: Whilst this example _does_ work, the API that it uses is not under our con
    x86_64-apple-ios
    ```
 
+2. This example currently depends on the `pnpm` package manager when generating types for TypeScript. We are currently revisiting the type generation for foreign types and so this requirement will probably go, but for now, please [install `pnpm`](https://pnpm.io/installation).
+
+### Rust
+
 1. Make sure the core builds
 
    ```sh
-   cd shared
-   cargo build
+   cargo build --package shared
    # => Finished dev [unoptimized + debuginfo] target(s) in 1.40s
    ```
 
-1. Generate the shared types for your client applications
+2. Generate the shared types for your client applications
 
    ```sh
-   cd shared_types
-   cargo build
+   cargo build --package shared_types
    ```
 
 ### Yew web app
