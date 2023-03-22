@@ -13,7 +13,7 @@ The UI layer is as thin as it can be, and all other work is done by the shared c
 
 > Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). However, the master branch should always be working well, and we will try to keep the examples and documentation up to date as we go. We _do_ think that the API has now settled, so have a play! :-)
 
-This readme describes at a high level how Crux works, but you can find more details in the [book](https://redbadger.github.io/crux).
+This readme describes at a high level how Crux works, but you can find more details in the [book](https://redbadger.github.io/crux). Or watch the [introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g&t=5s) at the recent [Rust Nation 2023](https://www.rustnationuk.com/) conference in London.
 
 You can also join the friendly conversation on our [Zulip channel](https://crux-community.zulipchat.com).
 
