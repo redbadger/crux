@@ -31,6 +31,7 @@ pub enum Event {
     // events local to the core
     #[serde(skip)]
     Set(crux_http::Result<crux_http::Response<Counter>>),
+    #[serde(skip)]
     WatchUpdate(Counter),
 }
 

@@ -35,4 +35,5 @@ bcs = "0.1.5"
 uniffi = { version = "0.23.0", features = ["cli"] }
 
 [build-dependencies]
+rustdoc-json = "0.8.2"
 uniffi = { version = "0.23.0", features = ["build"] }
