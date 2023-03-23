@@ -100,19 +100,6 @@ where
     }
 }
 
-impl<NewEf> Sender<crate::Step<NewEf>>
-where
-    NewEf: 'static,
-{
-    pub fn map_effect<Ef, F>(&self, func: F) -> Sender<crate::Step<Ef>>
-    where
-        F: Fn(Ef) -> NewEf + Sync + Send + Copy + 'static,
-        Ef: 'static,
-    {
-        self.map_input::<crate::Step<_>, _>(move |step| step.map_effect(func))
-    }
-}
-
 trait SenderInner<T> {
     fn send(&self, t: T);
 }

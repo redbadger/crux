@@ -222,7 +222,7 @@ pub trait Capability<Ev> {
 /// they can then use to request effects and dispatch events.
 ///
 /// `new_with_context` is called by Crux and should return an instance of the app's `Capabilities` type with
-/// all capabilities constructed with context passed in. Use `Context::with_effect` to
+/// all capabilities constructed with context passed in. Use `Context::specialise` to
 /// create an appropriate context instance with the effect constructor which should
 /// wrap the requested operations.
 ///
@@ -232,8 +232,8 @@ pub trait Capability<Ev> {
 /// impl crux_core::WithContext<App, Effect> for Capabilities {
 ///     fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
 ///         Capabilities {
-///             http: Http::new(context.with_effect(Effect::Http)),
-///             render: Render::new(context.with_effect(|_| Effect::Render)),
+///             http: Http::new(context.specialise(Effect::Http)),
+///             render: Render::new(context.specialise(|_| Effect::Render)),
 ///         }
 ///     }
 /// }
@@ -242,7 +242,7 @@ pub trait WithContext<App, Ef>
 where
     App: crate::App,
 {
-    fn new_with_context(context: CapabilityContext<Ef, App::Event>) -> App::Capabilities;
+    fn new_with_context(context: ProtoContext<Ef, App::Event>) -> App::Capabilities;
 }
 
 /// An interface for capabilities to interact with the app and the shell.
@@ -266,17 +266,32 @@ where
 /// }
 /// ```
 ///
-pub struct CapabilityContext<Ef, Event> {
-    inner: std::sync::Arc<ContextInner<Ef, Event>>,
+pub struct CapabilityContext<Op, Event>
+where
+    Op: Operation,
+{
+    inner: std::sync::Arc<ContextInner<Op, Event>>,
 }
 
-struct ContextInner<Ef, Event> {
-    steps: Sender<Step<Ef>>,
-    events: Sender<Event>,
+struct ContextInner<Op, Event>
+where
+    Op: Operation,
+{
+    shell_channel: Sender<Step<Op>>,
+    app_channel: Sender<Event>,
     spawner: crate::executor::Spawner,
 }
 
-impl<Ef, Ev> Clone for CapabilityContext<Ef, Ev> {
+pub struct ProtoContext<E, Event> {
+    shell_channel: Sender<E>,
+    app_channel: Sender<Event>,
+    spawner: crate::executor::Spawner,
+}
+
+impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
+where
+    Op: Operation,
+{
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
@@ -284,19 +299,58 @@ impl<Ef, Ev> Clone for CapabilityContext<Ef, Ev> {
     }
 }
 
-impl<T, Ev> CapabilityContext<T, Ev>
+impl<E, Ev> ProtoContext<E, Ev>
 where
-    T: Send + 'static,
+    Ev: 'static,
+    E: 'static,
+{
+    pub(crate) fn new(
+        steps: Sender<E>,
+        events: Sender<Ev>,
+        spawner: crate::executor::Spawner,
+    ) -> Self {
+        Self {
+            shell_channel: steps,
+            app_channel: events,
+            spawner,
+        }
+    }
+
+    /// Specialise the CapabilityContext to a specific capability, wrapping its operations into
+    /// an Effect `Ef`. The `func` argument will typically be an Effect variant constructor, but
+    /// can be any function taking the capability's operation type and returning
+    /// the effect type.
+    ///
+    /// This will likely only be called from the implementation of [`WithContext`]
+    /// for the app's `Capabilities` type.
+    pub fn specialise<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
+    where
+        F: Fn(Step<Op>) -> E + Sync + Send + Copy + 'static,
+        Op: Operation,
+    {
+        let inner = Arc::new(ContextInner {
+            shell_channel: self.shell_channel.map_input(func),
+            app_channel: self.app_channel.clone(),
+            spawner: self.spawner.clone(),
+        });
+
+        CapabilityContext { inner }
+    }
+}
+
+impl<Op, Ev> CapabilityContext<Op, Ev>
+where
+    Op: Operation,
     Ev: 'static,
 {
     pub(crate) fn new(
-        steps: Sender<Step<T>>,
+        steps: Sender<Step<Op>>,
         events: Sender<Ev>,
         spawner: crate::executor::Spawner,
     ) -> Self {
         let inner = Arc::new(ContextInner {
-            steps,
-            events,
+            shell_channel: steps,
+            app_channel: events,
             spawner,
         });
 
@@ -311,12 +365,14 @@ where
 
     /// Send an effect request to the shell in a fire and forget fashion. The
     /// provided `operation` does not expect anything to be returned back.
-    pub async fn notify_shell(&self, operation: T) {
+    pub async fn notify_shell(&self, operation: Op) {
         // This function might look like it doesn't need to be async but
         // it's important that it is.  It forces all capabilities to
         // spawn onto the executor which keeps the ordering of effects
         // consistent with their function calls.
-        self.inner.steps.send(Step::resolves_never(operation));
+        self.inner
+            .shell_channel
+            .send(Step::resolves_never(operation));
     }
 
     /// Send an event to the app. The event will be processed on the next
@@ -324,28 +380,7 @@ where
     /// the events will be queued up and processed sequentially after your
     /// async task either `await`s or finishes.
     pub fn update_app(&self, event: Ev) {
-        self.inner.events.send(event);
-    }
-
-    /// Construct a CapabilityContext with a specific effect wrapper. The
-    /// `func` argument will typically be an enum variant constructor, but
-    /// can be any function taking the capability's operation type and returning
-    /// the effect type.
-    ///
-    /// This will likely only be called from the implementation of [`WithContext`]
-    /// for the app's `Capabilities` type.
-    pub fn with_effect<OtherT, F>(&self, func: F) -> CapabilityContext<OtherT, Ev>
-    where
-        F: Fn(OtherT) -> T + Sync + Send + Copy + 'static,
-        OtherT: 'static,
-    {
-        let inner = Arc::new(ContextInner {
-            steps: self.inner.steps.map_effect(func),
-            events: self.inner.events.clone(),
-            spawner: self.inner.spawner.clone(),
-        });
-
-        CapabilityContext { inner }
+        self.inner.app_channel.send(event);
     }
 
     /// Transform the CapabilityContext into one which uses the provided function to
@@ -370,22 +405,22 @@ where
     ///
     /// in the parent module's `update` function, you can then call `.into()` on the
     /// capabilities, before passing them down to the submodule.
-    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<T, NewEv>
+    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Op, NewEv>
     where
         F: Fn(NewEv) -> Ev + Sync + Send + 'static,
         NewEv: 'static,
     {
         let inner = Arc::new(ContextInner {
-            steps: self.inner.steps.clone(),
-            events: self.inner.events.map_input(func),
+            shell_channel: self.inner.shell_channel.clone(),
+            app_channel: self.inner.app_channel.map_input(func),
             spawner: self.inner.spawner.clone(),
         });
 
         CapabilityContext { inner }
     }
 
-    pub(crate) fn send_step(&self, step: Step<T>) {
-        self.inner.steps.send(step);
+    pub(crate) fn send_step(&self, step: Step<Op>) {
+        self.inner.shell_channel.send(step);
     }
 }
 
@@ -401,5 +436,5 @@ mod tests {
     #[allow(dead_code)]
     enum Event {}
 
-    assert_impl_all!(CapabilityContext<Effect, Event>: Send, Sync);
+    assert_impl_all!(ProtoContext<Effect, Event>: Send, Sync);
 }

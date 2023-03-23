@@ -1,143 +1,110 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    fmt,
-    sync::Mutex,
-};
+use std::fmt::{self, Debug};
 
-use uuid::Uuid;
+use crate::capability::Operation;
 
-use crate::Request;
+type ResolveOnce<Out> = Box<dyn FnOnce(Out) + Send>;
+type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 
-pub(crate) struct Step<T> {
-    pub(crate) payload: T, // T is an Operation first, then Effect once mapped
-    pub(crate) resolve: Option<Resolve>,
-}
-
-type OnceFn = dyn FnOnce(&[u8]) + Send;
-type ManyFn = dyn Fn(&[u8]) -> Result<(), ()> + Send;
-
-pub(crate) enum Resolve {
-    Once(Box<OnceFn>),
-    Many(Box<ManyFn>),
-}
-
-impl<T> Step<T> {
-    pub fn resolves_never(payload: T) -> Self {
-        Self {
-            payload,
-            resolve: None,
-        }
-    }
-
-    pub fn resolves_once<F>(payload: T, resume: F) -> Self
-    where
-        F: FnOnce(&[u8]) + Send + 'static,
-    {
-        Self {
-            payload,
-            resolve: Some(Resolve::Once(Box::new(resume))),
-        }
-    }
-
-    pub fn resolves_many_times<F>(payload: T, resume: F) -> Self
-    where
-        F: Fn(&[u8]) -> Result<(), ()> + Send + 'static,
-    {
-        Self {
-            payload,
-            resolve: Some(Resolve::Many(Box::new(resume))),
-        }
-    }
-
-    pub fn map_effect<Ef, F>(self, f: F) -> Step<Ef>
-    where
-        F: Fn(T) -> Ef + Sync + Send + Copy + 'static,
-        T: 'static,
-        Ef: 'static,
-    {
-        Step {
-            payload: f(self.payload),
-            resolve: self.resolve,
-        }
-    }
-}
-
-impl<T> fmt::Debug for Step<T>
+#[derive(Debug)]
+pub enum Step<Op>
 where
-    T: fmt::Debug,
+    Op: Operation,
+{
+    Never(StepNever<Op>),
+    Once(StepOnce<Op>),
+    Many(StepMany<Op>),
+}
+
+impl<Op> Step<Op>
+where
+    Op: Operation,
+{
+    pub(crate) fn resolves_never(payload: Op) -> Self {
+        Self::Never(StepNever { payload })
+    }
+
+    pub(crate) fn resolves_once<F>(payload: Op, resolve: F) -> Self
+    where
+        F: FnOnce(Op::Output) + Send + 'static,
+    {
+        Self::Once(StepOnce {
+            payload,
+            callback: Box::new(resolve),
+        })
+    }
+
+    pub(crate) fn resolves_many_times<F>(payload: Op, advance: F) -> Self
+    where
+        F: Fn(Op::Output) -> Result<(), ()> + Send + 'static,
+    {
+        Self::Many(StepMany {
+            payload,
+            callback: Box::new(advance),
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct StepNever<Op>
+where
+    Op: Operation,
+{
+    pub payload: Op,
+}
+
+pub struct StepOnce<Op>
+where
+    Op: Operation,
+{
+    pub payload: Op,
+    callback: ResolveOnce<Op::Output>,
+}
+
+impl<Op> StepOnce<Op>
+where
+    Op: Operation,
+{
+    pub fn resolve(self, output: Op::Output) {
+        (self.callback)(output);
+    }
+}
+
+pub struct StepMany<Op>
+where
+    Op: Operation,
+{
+    payload: Op,
+    callback: ResolveMany<Op::Output>,
+}
+
+impl<Op> StepMany<Op>
+where
+    Op: Operation,
+{
+    // TODO should this be called something else to be more explicit?
+    pub fn resolve(&self, output: Op::Output) -> Result<(), ()> {
+        (self.callback)(output)
+    }
+}
+
+impl<Op> fmt::Debug for StepOnce<Op>
+where
+    Op: Operation + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Step")
+        f.debug_struct("StepOnce")
             .field("payload", &self.payload)
             .finish_non_exhaustive()
     }
 }
 
-type Store = HashMap<[u8; 16], Resolve>;
-
-pub(crate) struct StepRegistry(Mutex<Store>);
-
-impl Default for StepRegistry {
-    fn default() -> Self {
-        Self(Mutex::new(Store::new()))
-    }
-}
-
-impl StepRegistry {
-    pub(crate) fn register<Ef>(&self, step: Step<Ef>) -> Request<Ef> {
-        let Step {
-            payload: effect,
-            resolve,
-        } = step;
-
-        let uuid = *Uuid::new_v4().as_bytes();
-
-        if let Some(resolve) = resolve {
-            self.0
-                .lock()
-                .expect("Step Mutex poisoned.")
-                .insert(uuid, resolve);
-        }
-
-        Request {
-            uuid: uuid.to_vec(),
-            effect,
-        }
-    }
-
-    pub(crate) fn resume(&self, uuid: &[u8], body: &[u8]) {
-        let mut registry_lock = self.0.lock().expect("Step Mutex poisoned");
-
-        let entry = {
-            let mut uuid_buf = [0; 16];
-            uuid_buf.copy_from_slice(uuid);
-
-            registry_lock.entry(uuid_buf)
-        };
-
-        let Entry::Occupied(entry) = entry else {
-            panic!("Step with UUID {uuid:?} not found.");
-        };
-
-        match entry.get() {
-            Resolve::Once(_) => {
-                let Resolve::Once(resolve) = entry.remove() else {
-                    unreachable!()
-                };
-                drop(registry_lock);
-                resolve(body)
-            }
-            Resolve::Many(resolve) => {
-                match resolve(body) {
-                    Ok(_) => {}
-                    Err(_) => {
-                        // The associated task has ended so clean up our state.
-                        // We _probably_ want a way to let the shell know about this...
-                        // But I'm going to postpone figuring out how to do that.
-                        entry.remove();
-                    }
-                }
-            }
-        }
+impl<Op> fmt::Debug for StepMany<Op>
+where
+    Op: Operation + Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StepOnce")
+            .field("payload", &self.payload)
+            .finish_non_exhaustive()
     }
 }

@@ -150,7 +150,7 @@ mod channels;
 mod executor;
 mod future;
 pub mod render;
-mod steps;
+pub mod steps;
 mod stream;
 pub mod testing;
 #[cfg(feature = "typegen")]
@@ -160,10 +160,10 @@ use std::sync::RwLock;
 
 use serde::{Deserialize, Serialize};
 
-use capability::CapabilityContext;
+use capability::{Operation, ProtoContext};
 use channels::Receiver;
 use executor::QueuingExecutor;
-use steps::{Step, StepRegistry};
+pub use steps::Step;
 
 pub use self::{
     capability::{Capability, WithContext},
@@ -199,23 +199,23 @@ pub trait App: Default {
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
+
 /// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
 pub struct Core<Ef, A>
 where
     A: App,
 {
     model: RwLock<A::Model>,
-    step_registry: StepRegistry,
     executor: QueuingExecutor,
     capabilities: A::Capabilities,
-    steps: Receiver<Step<Ef>>,
+    steps: Receiver<Ef>,
     capability_events: Receiver<A::Event>,
     app: A,
 }
 
 impl<Ef, A> Core<Ef, A>
 where
-    Ef: Serialize + Send + 'static,
+    Ef: Send + 'static,
     A: App,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
@@ -235,11 +235,10 @@ where
         let (step_sender, step_receiver) = crate::channels::channel();
         let (event_sender, event_receiver) = crate::channels::channel();
         let (executor, spawner) = executor::executor_and_spawner();
-        let capability_context = CapabilityContext::new(step_sender, event_sender, spawner);
+        let capability_context = ProtoContext::new(step_sender, event_sender, spawner);
 
         Self {
             model: Default::default(),
-            step_registry: Default::default(),
             executor,
             app: Default::default(),
             capabilities: Capabilities::new_with_context(capability_context),
@@ -248,53 +247,30 @@ where
         }
     }
 
-    /// Receive an event from the shell.
-    ///
-    /// The `event` is serialized and will be deserialized by the core before it's passed
-    /// to your app.
-    pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
-    where
-        <A as App>::Event: Deserialize<'de>,
-    {
-        self.process(None, event)
+    pub fn process_event(&self, event: <A as App>::Event) -> Vec<Ef> {
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+
+        self.app.update(event, &mut model, &self.capabilities);
+
+        self.process()
     }
 
-    /// Receive a response to a capability request from the shell.
-    ///
-    /// The `output` is serialized capability output. It will be deserialized by the core.
-    /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
+    pub fn resolve_step<Op>(&self, step: Step<Op>, result: Op::Output) -> Vec<Ef>
     where
-        <A as App>::Event: Deserialize<'de>,
+        Op: Operation,
     {
-        self.process(Some(uuid), output)
-    }
-
-    /// Get the current state of the app's view model (serialized).
-    pub fn view(&self) -> Vec<u8> {
-        let value = {
-            let model = self.model.read().expect("Model RwLock was poisoned.");
-            self.app.view(&model)
+        match step {
+            Step::Once(step) => step.resolve(result),
+            Step::Many(step) => {
+                let _ = step.resolve(result);
+            }
+            Step::Never(_) => panic!("Cannot resolve a Never step"), // FIXME this should be made impossible
         };
 
-        bcs::to_bytes(&value).expect("View model serialization failed.")
+        self.process()
     }
 
-    fn process<'de>(&self, uuid: Option<&[u8]>, data: &'de [u8]) -> Vec<u8>
-    where
-        <A as App>::Event: Deserialize<'de>,
-    {
-        match uuid {
-            None => {
-                let shell_event = bcs::from_bytes(data).expect("Message deserialization failed.");
-                let mut model = self.model.write().expect("Model RwLock was poisoned.");
-                self.app.update(shell_event, &mut model, &self.capabilities);
-            }
-            Some(uuid) => {
-                self.step_registry.resume(uuid, data);
-            }
-        }
-
+    pub(crate) fn process(&self) -> Vec<Ef> {
         self.executor.run_all();
 
         while let Some(capability_event) = self.capability_events.receive() {
@@ -305,13 +281,17 @@ where
             self.executor.run_all();
         }
 
-        let requests = self
-            .steps
-            .drain()
-            .map(|c| self.step_registry.register(c))
-            .collect::<Vec<_>>();
+        self.steps.drain().collect()
+    }
 
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+    /// Get the current state of the app's view model (serialized).
+    pub fn view(&self) -> Vec<u8> {
+        let value = {
+            let model = self.model.read().expect("Model RwLock was poisoned.");
+            self.app.view(&model)
+        };
+
+        bcs::to_bytes(&value).expect("View model serialization failed.")
     }
 }
 

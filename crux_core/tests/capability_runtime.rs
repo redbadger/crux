@@ -141,7 +141,8 @@ mod app {
 mod tests {
     use std::collections::VecDeque;
 
-    use crux_core::{Core, Request};
+    use crux_core::steps::StepOnce;
+    use crux_core::{Core, Step};
     use rand::prelude::*;
 
     use super::app::{Capabilities, Effect, Event, MyApp};
@@ -151,22 +152,20 @@ mod tests {
     fn fetches_a_tree() {
         let core: Core<Effect, MyApp> = Core::new::<Capabilities>();
 
-        let event_bytes = bcs::to_bytes(&Event::Fetch).unwrap();
-
-        let requests = core.process_event(&event_bytes);
-
-        let mut requests: VecDeque<Request<Effect>> = bcs::from_bytes::<Vec<_>>(&requests)
-            .unwrap()
-            .into_iter()
-            .collect();
+        let mut effects: VecDeque<Effect> = core.process_event(Event::Fetch).into();
 
         let mut counter: usize = 1;
 
-        while !requests.is_empty() {
-            let Request { uuid, effect } = requests.pop_front().unwrap();
+        while !effects.is_empty() {
+            let effect = effects.pop_front().unwrap();
 
             match effect {
-                Effect::Crawler(Fetch { id: _id }) => {
+                Effect::Crawler(
+                    step @ Step::Once(StepOnce {
+                        payload: Fetch { .. },
+                        ..
+                    }),
+                ) => {
                     let output = if counter < 30 {
                         vec![counter, counter + 1, counter + 2]
                     } else {
@@ -175,17 +174,14 @@ mod tests {
 
                     counter += 3;
 
-                    let output = bcs::to_bytes(&output).unwrap();
+                    let effs: Vec<Effect> = core.resolve_step(step, output);
 
-                    let reqs: Vec<Request<Effect>> =
-                        bcs::from_bytes(&core.handle_response(&uuid, &output)).unwrap();
-
-                    for r in reqs {
-                        requests.push_back(r)
+                    for e in effs {
+                        effects.push_back(e)
                     }
 
                     // Simulate network timing
-                    requests.make_contiguous().shuffle(&mut rand::thread_rng());
+                    effects.make_contiguous().shuffle(&mut rand::thread_rng());
                 }
                 Effect::Render(_) => {
                     let view: Vec<usize> = bcs::from_bytes(&core.view()).unwrap();
@@ -194,6 +190,9 @@ mod tests {
                     assert_eq!(view, expected);
 
                     return;
+                }
+                _ => {
+                    unreachable!("Don't care lol")
                 }
             }
         }

@@ -66,7 +66,7 @@ where
         // from shared_state -> send_step -> step -> shared_state
         let callback_shared_state = Arc::downgrade(&shared_state);
 
-        let step = Step::resolves_once(operation, move |bytes| {
+        let step = Step::resolves_once(operation, move |result| {
             let Some(shared_state) = callback_shared_state.upgrade() else {
                 // The ShellRequest was dropped before we were called, so just
                 // do nothing.
@@ -74,7 +74,7 @@ where
             };
 
             let mut shared_state = shared_state.lock().unwrap();
-            shared_state.result = Some(bcs::from_bytes(bytes).unwrap());
+            shared_state.result = Some(result);
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake()
             }
@@ -97,7 +97,7 @@ mod tests {
         capability::{CapabilityContext, Operation},
         channels::channel,
         executor::executor_and_spawner,
-        steps::Resolve,
+        steps::Step,
     };
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
@@ -140,10 +140,12 @@ mod tests {
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);
 
-        let Some(Resolve::Once(resolve)) = step.resolve else {
-            panic!("Expected a resolve once");
-        };
-        resolve(&[]);
+        assert_matches!(step, Step::Once(_));
+
+        if let Step::Once(step) = step {
+            step.resolve(());
+        }
+
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);
 

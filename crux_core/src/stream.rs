@@ -62,7 +62,7 @@ where
         // whenever the associated task ends.
         let callback_shared_state = Arc::downgrade(&shared_state);
 
-        let step = Step::resolves_many_times(operation, move |bytes| {
+        let step = Step::resolves_many_times(operation, move |result| {
             let Some(shared_state) = callback_shared_state.upgrade() else {
                 // Let the StepRegistry know that the associated task has finished.
                 return Err(());
@@ -70,7 +70,7 @@ where
 
             let mut shared_state = shared_state.lock().unwrap();
 
-            sender.send(bcs::from_bytes(bytes).unwrap());
+            sender.send(result);
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake();
             }
@@ -96,7 +96,7 @@ mod tests {
         capability::{CapabilityContext, Operation},
         channels::channel,
         executor::executor_and_spawner,
-        steps::Resolve,
+        steps::Step,
     };
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
@@ -144,14 +144,17 @@ mod tests {
 
         executor.run_all();
         let step = steps.receive().expect("we should have a step here");
+
+        let step = &match step {
+            Step::Many(s) => s,
+            _ => panic!("expected a Step::ResolveMany"),
+        };
+
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);
 
-        let Some(Resolve::Many(resolve)) = step.resolve else {
-            panic!("Expected a resolve many");
-        };
-        // Resolve it once
-        resolve(&[0]).unwrap();
+        step.resolve(None).unwrap();
+
         executor.run_all();
 
         // We should have one event
@@ -160,9 +163,9 @@ mod tests {
         assert_matches!(events.receive(), None);
 
         // Resolve it a few more times and then finish.
-        resolve(&[0]).unwrap();
-        resolve(&[0]).unwrap();
-        resolve(&[1]).unwrap();
+        step.resolve(None).unwrap();
+        step.resolve(None).unwrap();
+        step.resolve(Some(Done)).unwrap();
         executor.run_all();
 
         // We should have three events
@@ -173,6 +176,7 @@ mod tests {
         assert_matches!(events.receive(), None);
 
         // The next resolve should error as we've terminated the task
-        resolve(&[0]).expect_err("resolving a finished task should error")
+        step.resolve(None)
+            .expect_err("resolving a finished task should error")
     }
 }
