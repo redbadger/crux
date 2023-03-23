@@ -1,12 +1,11 @@
 //! Testing support for unit testing Crux apps.
-use std::{fmt, rc::Rc};
+use std::rc::Rc;
 
 use crate::{
-    capability::CapabilityContext,
+    capability::ProtoContext,
     channels::Receiver,
     executor::{executor_and_spawner, QueuingExecutor},
-    steps::StepRegistry,
-    Request, Step, WithContext,
+    WithContext,
 };
 
 /// AppTester is a simplified execution environment for Crux apps for use in
@@ -30,10 +29,9 @@ where
 }
 
 struct AppContext<Ef, Ev> {
-    commands: Receiver<Step<Ef>>,
+    commands: Receiver<Ef>,
     events: Receiver<Ev>,
     executor: QueuingExecutor,
-    steps: StepRegistry,
 }
 
 impl<App, Ef> AppTester<App, Ef>
@@ -66,7 +64,7 @@ where
         let (command_sender, commands) = crate::channels::channel();
         let (event_sender, events) = crate::channels::channel();
         let (executor, spawner) = executor_and_spawner();
-        let capability_context = CapabilityContext::new(command_sender, event_sender, spawner);
+        let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
 
         Self {
             app: App::default(),
@@ -75,7 +73,6 @@ where
                 commands,
                 events,
                 executor,
-                steps: StepRegistry::default(),
             }),
         }
     }
@@ -93,18 +90,7 @@ where
 impl<Ef, Ev> AppContext<Ef, Ev> {
     pub fn updates(self: &Rc<Self>) -> Update<Ef, Ev> {
         self.executor.run_all();
-        let effects = self
-            .commands
-            .drain()
-            .map(|cmd| {
-                let request = self.steps.register(cmd);
-                TestEffect {
-                    request,
-                    context: Rc::clone(self),
-                }
-            })
-            .collect();
-
+        let effects = self.commands.drain().collect();
         let events = self.events.drain().collect();
 
         Update { effects, events }
@@ -115,51 +101,7 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
 #[derive(Debug)]
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run
-    pub effects: Vec<TestEffect<Ef, Ev>>,
+    pub effects: Vec<Ef>,
     /// Events dispatched from the update run
     pub events: Vec<Ev>,
-}
-
-pub struct TestEffect<Ef, Ev> {
-    request: Request<Ef>,
-    context: Rc<AppContext<Ef, Ev>>,
-}
-
-impl<Ef, Ev> TestEffect<Ef, Ev> {
-    pub fn resolve<T>(&self, result: &T) -> Update<Ef, Ev>
-    where
-        T: serde::ser::Serialize,
-    {
-        self.context.steps.resume(
-            self.request.uuid.as_slice(),
-            &bcs::to_bytes(result).unwrap(),
-        );
-        self.context.updates()
-    }
-}
-
-impl<Ef, Ev> AsRef<Ef> for TestEffect<Ef, Ev> {
-    fn as_ref(&self) -> &Ef {
-        &self.request.effect
-    }
-}
-
-impl<Ef, Ev> PartialEq<Ef> for TestEffect<Ef, Ev>
-where
-    Ef: PartialEq,
-{
-    fn eq(&self, other: &Ef) -> bool {
-        self.request.effect == *other
-    }
-}
-
-impl<Ef, Ev> fmt::Debug for TestEffect<Ef, Ev>
-where
-    Ef: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TestEffect")
-            .field("request", &self.request)
-            .finish()
-    }
 }
