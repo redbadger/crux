@@ -96,7 +96,7 @@ mod tests {
         capability::{CapabilityContext, Operation},
         channels::channel,
         executor::executor_and_spawner,
-        steps::Step,
+        steps::{Resolve, Step},
     };
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
@@ -143,12 +143,9 @@ mod tests {
         assert_matches!(events.receive(), None);
 
         executor.run_all();
-        let step = steps.receive().expect("we should have a step here");
+        let mut step = steps.receive().expect("we should have a step here");
 
-        let step = &match step {
-            Step::Many(s) => s,
-            _ => panic!("expected a Step::ResolveMany"),
-        };
+        assert_matches!(step, Step(_, Some(Resolve::Many(_))));
 
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);
@@ -177,6 +174,6 @@ mod tests {
 
         // The next resolve should error as we've terminated the task
         step.resolve(None)
-            .expect_err("resolving a finished task should error")
+            .expect_err("resolving a finished task should error");
     }
 }

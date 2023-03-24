@@ -80,12 +80,12 @@ mod shared {
 mod shell {
     use super::shared::{App, Effect, Event, ViewModel};
     use anyhow::Result;
-    use crux_core::{Core, Request};
+    use crux_core::{Core, Request, Step};
     use crux_http::protocol::{HttpRequest, HttpResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Http(HttpResponse),
+        Http(Step<HttpRequest>, HttpResponse),
     }
 
     enum CoreMessage {

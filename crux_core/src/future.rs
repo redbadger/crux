@@ -97,7 +97,7 @@ mod tests {
         capability::{CapabilityContext, Operation},
         channels::channel,
         executor::executor_and_spawner,
-        steps::Step,
+        steps::{Resolve, Step},
     };
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
@@ -136,15 +136,13 @@ mod tests {
         assert_matches!(events.receive(), None);
 
         executor.run_all();
-        let step = steps.receive().expect("we should have a step here");
+        let mut step = steps.receive().expect("we should have a step here");
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);
 
-        assert_matches!(step, Step::Once(_));
+        assert_matches!(step, Step(_, Some(Resolve::Once(_))));
 
-        if let Step::Once(step) = step {
-            step.resolve(());
-        }
+        step.resolve(()).expect("step should resolve");
 
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);

@@ -100,7 +100,7 @@ mod app {
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub enum Event {
         Fetch,
         Done(Vec<usize>),
@@ -141,8 +141,8 @@ mod app {
 mod tests {
     use std::collections::VecDeque;
 
-    use crux_core::steps::StepOnce;
-    use crux_core::{Core, Step};
+    use crux_core::steps::Step;
+    use crux_core::Core;
     use rand::prelude::*;
 
     use super::app::{Capabilities, Effect, Event, MyApp};
@@ -160,12 +160,7 @@ mod tests {
             let effect = effects.pop_front().unwrap();
 
             match effect {
-                Effect::Crawler(
-                    step @ Step::Once(StepOnce {
-                        payload: Fetch { .. },
-                        ..
-                    }),
-                ) => {
+                Effect::Crawler(mut step @ Step(Fetch { .. }, ..)) => {
                     let output = if counter < 30 {
                         vec![counter, counter + 1, counter + 2]
                     } else {
@@ -174,7 +169,7 @@ mod tests {
 
                     counter += 3;
 
-                    let effs: Vec<Effect> = core.resolve_step(step, output);
+                    let effs: Vec<Effect> = core.resolve_step(&mut step, output);
 
                     for e in effs {
                         effects.push_back(e)
@@ -184,15 +179,12 @@ mod tests {
                     effects.make_contiguous().shuffle(&mut rand::thread_rng());
                 }
                 Effect::Render(_) => {
-                    let view: Vec<usize> = bcs::from_bytes(&core.view()).unwrap();
+                    let view: Vec<usize> = core.view();
                     let expected: Vec<usize> = (0..=30).collect();
 
                     assert_eq!(view, expected);
 
                     return;
-                }
-                _ => {
-                    unreachable!("Don't care lol")
                 }
             }
         }
