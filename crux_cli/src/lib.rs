@@ -7,9 +7,13 @@ use anyhow::Result;
 pub use config::GlobalConfig;
 use manifest::Manifest;
 use rustdoc_cmd::RustdocCommand;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use trustfall_rustdoc::{load_rustdoc, VersionedCrate};
 
-pub fn produce_doc(manifest_path: impl AsRef<Path>, config: &mut GlobalConfig) -> Result<PathBuf> {
+pub fn parse_crate(
+    manifest_path: impl AsRef<Path>,
+    config: &mut GlobalConfig,
+) -> Result<VersionedCrate> {
     let manifest = Manifest::parse(manifest_path.as_ref().to_path_buf())?;
 
     let name = crate::manifest::get_package_name(&manifest)?;
@@ -26,5 +30,5 @@ pub fn produce_doc(manifest_path: impl AsRef<Path>, config: &mut GlobalConfig) -
         false,
     )?;
 
-    Ok(rustdoc_path)
+    load_rustdoc(&rustdoc_path)
 }

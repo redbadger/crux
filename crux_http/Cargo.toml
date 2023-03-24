@@ -12,7 +12,7 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-trait = "0.1.66"
+async-trait = "0.1.67"
 bcs.workspace = true
 crux_core = { version = "0.3", path = "../crux_core" }
 futures-util = "0.3"
