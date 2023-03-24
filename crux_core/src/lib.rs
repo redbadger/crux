@@ -156,7 +156,7 @@ pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-use std::sync::RwLock;
+use std::{fmt::Debug, sync::RwLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -255,17 +255,11 @@ where
         self.process()
     }
 
-    pub fn resolve_step<Op>(&self, step: Step<Op>, result: Op::Output) -> Vec<Ef>
+    pub fn resolve_step<Op>(&self, step: &mut Step<Op>, result: Op::Output) -> Vec<Ef>
     where
         Op: Operation,
     {
-        match step {
-            Step::Once(step) => step.resolve(result),
-            Step::Many(step) => {
-                let _ = step.resolve(result);
-            }
-            Step::Never(_) => panic!("Cannot resolve a Never step"), // FIXME this should be made impossible
-        };
+        let _ = step.resolve(result);
 
         self.process()
     }
@@ -285,13 +279,10 @@ where
     }
 
     /// Get the current state of the app's view model (serialized).
-    pub fn view(&self) -> Vec<u8> {
-        let value = {
-            let model = self.model.read().expect("Model RwLock was poisoned.");
-            self.app.view(&model)
-        };
+    pub fn view(&self) -> <A as App>::ViewModel {
+        let model = self.model.read().expect("Model RwLock was poisoned.");
 
-        bcs::to_bytes(&value).expect("View model serialization failed.")
+        self.app.view(&model)
     }
 }
 

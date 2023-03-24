@@ -1,18 +1,21 @@
 use std::fmt::{self, Debug};
+use thiserror::Error;
+
+use serde::Serialize;
 
 use crate::capability::Operation;
 
 type ResolveOnce<Out> = Box<dyn FnOnce(Out) + Send>;
 type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 
-#[derive(Debug)]
-pub enum Step<Op>
+#[derive(Serialize)]
+pub struct Step<Op>(pub Op, #[serde(skip)] pub Option<Resolve<Op::Output>>)
 where
-    Op: Operation,
-{
-    Never(StepNever<Op>),
-    Once(StepOnce<Op>),
-    Many(StepMany<Op>),
+    Op: Operation;
+
+pub enum Resolve<Out> {
+    Once(ResolveOnce<Out>),
+    Many(ResolveMany<Out>),
 }
 
 impl<Op> Step<Op>
@@ -20,91 +23,66 @@ where
     Op: Operation,
 {
     pub(crate) fn resolves_never(payload: Op) -> Self {
-        Self::Never(StepNever { payload })
+        Self(payload, None)
     }
 
     pub(crate) fn resolves_once<F>(payload: Op, resolve: F) -> Self
     where
         F: FnOnce(Op::Output) + Send + 'static,
     {
-        Self::Once(StepOnce {
-            payload,
-            callback: Box::new(resolve),
-        })
+        Self(payload, Some(Resolve::Once(Box::new(resolve))))
     }
 
-    pub(crate) fn resolves_many_times<F>(payload: Op, advance: F) -> Self
+    pub(crate) fn resolves_many_times<F>(payload: Op, resolve: F) -> Self
     where
         F: Fn(Op::Output) -> Result<(), ()> + Send + 'static,
     {
-        Self::Many(StepMany {
-            payload,
-            callback: Box::new(advance),
-        })
+        Self(payload, Some(Resolve::Many(Box::new(resolve))))
+    }
+
+    pub fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
+        match &self.1 {
+            None => Err(ResolveError::Never),
+            Some(Resolve::Once(_)) => {
+                let resolve = self.1.take(); // Turn the step into a "never"
+
+                if let Some(Resolve::Once(f)) = resolve {
+                    f(output);
+
+                    Ok(())
+                } else {
+                    unreachable!();
+                }
+            }
+            Some(Resolve::Many(f)) => f(output).map_err(|_| ResolveError::FinishedMany),
+        }
     }
 }
 
-#[derive(Debug)]
-pub struct StepNever<Op>
-where
-    Op: Operation,
-{
-    pub payload: Op,
+#[derive(Error, Debug)]
+pub enum ResolveError {
+    #[error("Attempted to resolve a step that is not expected to be resolved.")]
+    Never,
+    #[error("Attempted to resolve a step that has concluded.")]
+    FinishedMany,
 }
 
-pub struct StepOnce<Op>
-where
-    Op: Operation,
-{
-    pub payload: Op,
-    callback: ResolveOnce<Op::Output>,
-}
-
-impl<Op> StepOnce<Op>
-where
-    Op: Operation,
-{
-    pub fn resolve(self, output: Op::Output) {
-        (self.callback)(output);
-    }
-}
-
-pub struct StepMany<Op>
-where
-    Op: Operation,
-{
-    payload: Op,
-    callback: ResolveMany<Op::Output>,
-}
-
-impl<Op> StepMany<Op>
-where
-    Op: Operation,
-{
-    // TODO should this be called something else to be more explicit?
-    pub fn resolve(&self, output: Op::Output) -> Result<(), ()> {
-        (self.callback)(output)
-    }
-}
-
-impl<Op> fmt::Debug for StepOnce<Op>
+impl<Op> fmt::Debug for Step<Op>
 where
     Op: Operation + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("StepOnce")
-            .field("payload", &self.payload)
-            .finish_non_exhaustive()
+        f.debug_tuple("Step").field(&self.0).finish()
     }
 }
 
-impl<Op> fmt::Debug for StepMany<Op>
+impl<Op> PartialEq for Step<Op>
 where
-    Op: Operation + Debug,
+    Op: Operation,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("StepOnce")
-            .field("payload", &self.payload)
-            .finish_non_exhaustive()
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
+
+impl<Op> Eq for Step<Op> where Op: Operation {}
