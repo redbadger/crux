@@ -70,7 +70,7 @@ impl ToTokens for EffectStructReceiver {
             .unzip();
 
         tokens.extend(quote! {
-            #[derive(Debug)]
+            #[derive(Debug, Serialize, PartialEq, Eq)]
             pub enum #effect_name {
                 #(#variants ,)*
             }
@@ -148,7 +148,7 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Clone, ::serde::Serialize, Debug, PartialEq, Eq)]
         pub enum Effect {
             Render(
                 ::crux_core::steps::Step<
@@ -206,7 +206,7 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Clone, ::serde::Serialize, Debug, PartialEq, Eq)]
         pub enum MyEffect {
             Http(
                 ::crux_core::steps::Step<

@@ -180,7 +180,7 @@ use crate::{channels::Sender, Step};
 ///     type Output = HttpResponse;
 /// }
 /// ```
-pub trait Operation: serde::Serialize + Send + 'static {
+pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
     /// `Output` assigns the type this request results in.
     type Output: serde::de::DeserializeOwned + Send + 'static;
 }
