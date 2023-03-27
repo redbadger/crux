@@ -1,11 +1,13 @@
 //! Testing support for unit testing Crux apps.
 use std::rc::Rc;
 
+use anyhow::Result;
+
 use crate::{
-    capability::ProtoContext,
+    capability::{Operation, ProtoContext},
     channels::Receiver,
     executor::{executor_and_spawner, QueuingExecutor},
-    WithContext,
+    Step, WithContext,
 };
 
 /// AppTester is a simplified execution environment for Crux apps for use in
@@ -45,6 +47,16 @@ where
     pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
         self.app.update(event, model, &self.capabilities);
         self.context.updates()
+    }
+
+    pub fn resolve<Op: Operation>(
+        &self,
+        step: &mut Step<Op>,
+        value: Op::Output,
+    ) -> Result<Update<Ef, App::Event>> {
+        step.resolve(value)?;
+
+        Ok(self.context.updates())
     }
 
     /// Run the app's `view` function with a model state

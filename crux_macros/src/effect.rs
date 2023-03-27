@@ -70,7 +70,7 @@ impl ToTokens for EffectStructReceiver {
             .unzip();
 
         tokens.extend(quote! {
-            #[derive(Debug, Serialize, PartialEq, Eq)]
+            #[derive(::serde::Serialize, Debug, PartialEq, Eq)]
             pub enum #effect_name {
                 #(#variants ,)*
             }
@@ -148,7 +148,7 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Clone, ::serde::Serialize, Debug, PartialEq, Eq)]
+        #[derive(::serde::Serialize, Debug, PartialEq, Eq)]
         pub enum Effect {
             Render(
                 ::crux_core::steps::Step<
@@ -206,7 +206,7 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Clone, ::serde::Serialize, Debug, PartialEq, Eq)]
+        #[derive(::serde::Serialize, Debug, PartialEq, Eq)]
         pub enum MyEffect {
             Http(
                 ::crux_core::steps::Step<
@@ -216,13 +216,29 @@ mod tests {
                 >,
             ),
             KeyValue(
-                ::crux_core::steps::Step<<KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation>,
+                ::crux_core::steps::Step<
+                    <KeyValue<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
             ),
             Platform(
-                ::crux_core::steps::Step<<Platform<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation>,
+                ::crux_core::steps::Step<
+                    <Platform<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
             ),
-            Render(::crux_core::steps::Step<<Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation>),
-            Time(::crux_core::steps::Step<<Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation>),
+            Render(
+                ::crux_core::steps::Step<
+                    <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ),
+            Time(
+                ::crux_core::steps::Step<
+                    <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ),
         }
         impl ::crux_core::WithContext<MyApp, MyEffect> for MyCapabilities {
             fn new_with_context(

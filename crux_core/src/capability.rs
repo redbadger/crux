@@ -343,6 +343,7 @@ where
     Op: Operation,
     Ev: 'static,
 {
+    #[cfg(test)]
     pub(crate) fn new(
         steps: Sender<Step<Op>>,
         events: Sender<Ev>,
