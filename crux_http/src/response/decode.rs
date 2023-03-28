@@ -20,7 +20,7 @@ pub struct DecodeError {
 // because it can be many megabytes large. The actual content is not that interesting anyways
 // and can be accessed manually if it is required.
 impl fmt::Debug for DecodeError {
-    #[allow(missing_doc_code_examples)]
+    #[allow(rustdoc::missing_doc_code_examples)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DecodeError")
             .field("encoding", &self.encoding)
@@ -31,7 +31,7 @@ impl fmt::Debug for DecodeError {
 }
 
 impl fmt::Display for DecodeError {
-    #[allow(missing_doc_code_examples)]
+    #[allow(rustdoc::missing_doc_code_examples)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "could not decode body as {}", &self.encoding)
     }
