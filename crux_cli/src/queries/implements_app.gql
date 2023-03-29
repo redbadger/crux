@@ -2,20 +2,15 @@
 query {
   Crate {
     item {
-      ... on Enum {
-        enum_name: name @output
+      ... on ImplOwner {
+        # name @output
+        visibility_limit @filter(op: "=", value: ["$public"])
 
-        # set "variant_" prefix for outputs within
-        variant_: variant {
-          # discard all non-tuple enum variants
-          ... on TupleVariant {
-            name @output
-            docs @output
-
-            # override output prefixes by explicitly naming outputs
-            attrs @output(name: "attributes")
-          }
+        importable_path {
+          path @output
         }
+
+        # name @filter(op: "=", value: ["$app"]) @output
       }
     }
   }

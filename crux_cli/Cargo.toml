@@ -17,7 +17,7 @@ anyhow.workspace = true
 atty = "0.2.14"
 cargo_metadata = "0.15.3"
 cargo_toml = "0.15.2"
-clap = { version = "4.1.13", features = ["derive"] }
+clap = { version = "4.2.0", features = ["derive"] }
 clap-verbosity-flag = "2.0.0"
 log = "0.4.17"
 termcolor = "1.2.0"
