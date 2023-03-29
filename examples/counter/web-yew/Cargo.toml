@@ -11,7 +11,7 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 bcs = "0.1.5"
-futures-util = "0.3.26"
+futures-util = "0.3.27"
 gloo-net = { version = "0.2.6", features = ["http"] }
 js-sys = "0.3.61"
 shared = { path = "../shared" }

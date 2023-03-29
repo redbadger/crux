@@ -14,7 +14,7 @@ async-std = { version = "1.12.0", features = ["std", "attributes"] }
 async-task-group = "0.2.1"
 futures = "0.3"
 bcs = "0.1.5"
-clap = { version = "4.1.8", features = ["derive"] }
+clap = { version = "4.2.0", features = ["derive"] }
 crossbeam-channel = "0.5.7"
 eyre = "0.6.8"
 serde = { workspace = true, features = ["derive"] }
