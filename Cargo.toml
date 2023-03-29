@@ -20,4 +20,4 @@ rust-version = "1.66"
 [workspace.dependencies]
 anyhow = "1.0.70"
 bcs = "0.1.5"
-serde = "1.0.158"
+serde = "1.0.159"
