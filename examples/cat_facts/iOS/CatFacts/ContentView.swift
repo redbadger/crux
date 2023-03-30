@@ -38,9 +38,9 @@ class Model: ObservableObject {
 
         switch msg {
         case let .event(m):
-            reqs = try! [Request].bcsDeserialize(input: iOS.processEvent(try! m.bcsSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: CatFacts.processEvent(try! m.bcsSerialize()))
         case let .response(uuid, outcome):
-            reqs = try! [Request].bcsDeserialize(input: iOS.handleResponse(uuid, { switch outcome {
+            reqs = try! [Request].bcsDeserialize(input: CatFacts.handleResponse(uuid, { switch outcome {
             case let .platform(x):
                 return try! x.bcsSerialize()
             case let .time(x):
@@ -54,11 +54,11 @@ class Model: ObservableObject {
 
         for req in reqs {
             switch req.effect {
-            case .render(_): view = try! ViewModel.bcsDeserialize(input: iOS.view())
+            case .render: view = try! ViewModel.bcsDeserialize(input: CatFacts.view())
             case let .http(r): httpGet(uuid: req.uuid, url: r.url)
-            case .time(_):
+            case .time:
                 update(msg: .response(req.uuid, .time(TimeResponse(value: Date().ISO8601Format()))))
-            case .platform(_):
+            case .platform:
                 update(msg: .response(req.uuid, .platform(PlatformResponse(value: get_platform()))))
             case .keyValue(.read):
                 update(msg: .response(req.uuid, .key_value(KeyValueOutput.read(.none))))
