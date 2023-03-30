@@ -157,12 +157,12 @@ class Model: ObservableObject {
 
         switch msg {
         case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: iOS.processEvent(try! m.bcsSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
         }
 
         for req in reqs {
             switch req.effect {
-            case .render(_): view = try! ViewModel.bcsDeserialize(input: iOS.view())
+            case .render(_): view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
             }
         }
     }
@@ -224,13 +224,13 @@ struct ContentView_Previews: PreviewProvider {
 }
 ```
 
-And edit `iosApp.swift` to look like this:
+And edit `CounterAppApp.swift` to look like this:
 
 ```swift
 import SwiftUI
 
 @main
-struct iOSApp: App {
+struct CounterAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: Model())
