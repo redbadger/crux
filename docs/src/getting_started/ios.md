@@ -88,6 +88,12 @@ $ ls iOS/generated
 shared.swift  sharedFFI.h  sharedFFI.modulemap
 ```
 
+### Add the bridging header
+
+In "Build Settings", search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and Release.
+If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
+
+
 ## Compile our Rust shared library
 
 When we build our iOS app, we also want to build the Rust core as a static library so that it can be linked into the binary that we're going to ship.
@@ -110,18 +116,13 @@ Using Finder, drag the `shared/shared.xcodeproj` folder under the Xcode project 
 
 Then, in "Build Phases", add the static library to the "Link Binary with Libraries" section (you should be able to navigate to it under `Workspace -> shared -> libshared_static.a`)
 
-## Add the `Serde` package
-
-In order to serialize data across the "bridge" we need to add the [`Serde` package](https://github.com/starcoin-sdk/Serde.swift) to our project. You can do this with `File -> Add Packages` and search for "https://github.com/starcoin-sdk/Serde.swift".
-
-## Add the bridging header
-
-In "Build Settings", search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and Release.
-If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
-
 ## Add the Shared Types
 
 In `File -> Add Files to "CounterApp"`, add `/shared_types/generated/swift/shared_types.swift`.
+
+## Add the `Serde` package
+
+In order to serialize data across the "bridge" we need to add the [`Serde` package](https://github.com/starcoin-sdk/Serde.swift) to our project. You can do this with `File -> Add Packages` and search for "https://github.com/starcoin-sdk/Serde.swift".
 
 ## Create some UI and run in the Simulator, or on an iPhone
 
