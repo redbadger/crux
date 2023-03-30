@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  Notes
 //
-//  Created by Viktor Charypar on 31/01/2023.
+//  Created by Stuart Harris on 30/03/2023.
 //
 
 import SwiftUI
@@ -22,7 +22,7 @@ typealias Uuid = [UInt8]
 
 enum CoreEvent {
     case event(Event)
-    // TODO response
+    // TODO: response
 }
 
 class Core: ObservableObject {
@@ -62,12 +62,14 @@ class Core: ObservableObject {
 
         for req in requests {
             switch req.effect {
-            case .render(_):
+            case .render:
                 view = try! ViewModel.bcsDeserialize(input: Notes.view())
             case let .pubSub(.publish(bytes)):
                 print(["Publish", bytes.count, "bytes"])
             case .pubSub(.subscribe):
                 print("Subscribe")
+            case .keyValue(_): ()
+            case .timer(_): ()
             }
         }
     }
@@ -123,7 +125,7 @@ struct TextEditor: UIViewRepresentable {
         var onEdit: ((TextChange) -> Void)?
         private var changes: [TextChange] = []
 
-        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        func textView(_: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             let change = TextChange(range: range, replacementText: text)
 
             // Stage the change
@@ -132,7 +134,7 @@ struct TextEditor: UIViewRepresentable {
             return true
         }
 
-        func textViewDidChange(_ textView: UITextView) {
+        func textViewDidChange(_: UITextView) {
             // Commit changes
             for change in changes {
                 onEdit?(change)
@@ -157,7 +159,6 @@ extension TextEditor {
         return modified
     }
 }
-
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
