@@ -44,7 +44,8 @@ class Model: ObservableObject {
         Task {
             let (asyncBytes, response) = try! await URLSession.shared.bytes(for: req)
             guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
+                  (200 ... 299).contains(httpResponse.statusCode)
+            else {
                 // TODO: handle error
                 return
             }
@@ -110,13 +111,13 @@ struct ActionButton: View {
 
 struct ContentView: View {
     @ObservedObject var model: Model
-    
+
     var body: some View {
         VStack {
             Text("Crux Counter Example").font(.headline)
             Text("Rust Core, Swift Shell (SwiftUI)").padding()
             Text(String(model.view.text))
-                .foregroundColor( model.view.confirmed ? Color.black : Color.gray)
+                .foregroundColor(model.view.confirmed ? Color.black : Color.gray)
                 .padding()
             HStack {
                 ActionButton(label: "Decrement", color: .yellow) {

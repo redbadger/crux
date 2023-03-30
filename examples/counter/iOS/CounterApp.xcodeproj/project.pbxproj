@@ -7,19 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CC49939C29507FAB00225E0E /* Serde in Frameworks */ = {isa = PBXBuildFile; productRef = CC49939B29507FAB00225E0E /* Serde */; };
-		CC49939E29507FD300225E0E /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC49939D29507FD300225E0E /* shared_types.swift */; };
-		CC8A3A6729507C6800ED2D9F /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC8A3A6629507C6800ED2D9F /* CounterAppApp.swift */; };
-		CC8A3A6929507C6800ED2D9F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC8A3A6829507C6800ED2D9F /* ContentView.swift */; };
-		CC8A3A6B29507C6900ED2D9F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC8A3A6A29507C6900ED2D9F /* Assets.xcassets */; };
-		CC8A3A6E29507C6900ED2D9F /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC8A3A6D29507C6900ED2D9F /* Preview Assets.xcassets */; };
-		CC8A3A7829507E0D00ED2D9F /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CC8A3A7729507E0D00ED2D9F /* shared.udl */; };
-		CC8A3A7B29507E9A00ED2D9F /* sharedFFI.h in Headers */ = {isa = PBXBuildFile; fileRef = CC8A3A7A29507E9A00ED2D9F /* sharedFFI.h */; };
-		CC8A3A7E29507EC900ED2D9F /* libshared.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CC8A3A7D29507EC900ED2D9F /* libshared.a */; };
+		CC2C4F3629D598A600CF927F /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2C4F3529D598A600CF927F /* CounterAppApp.swift */; };
+		CC2C4F3829D598A600CF927F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2C4F3729D598A600CF927F /* ContentView.swift */; };
+		CC2C4F3A29D598A700CF927F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC2C4F3929D598A700CF927F /* Assets.xcassets */; };
+		CC2C4F3D29D598A700CF927F /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC2C4F3C29D598A700CF927F /* Preview Assets.xcassets */; };
+		CCF1A53729D5997600F159DF /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CCF1A53629D5997600F159DF /* shared.udl */; };
+		CCF1A54529D59AA800F159DF /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CCF1A53F29D599B800F159DF /* libshared_static.a */; };
+		CCF1A54829D59AC100F159DF /* Serde in Frameworks */ = {isa = PBXBuildFile; productRef = CCF1A54729D59AC100F159DF /* Serde */; };
+		CCF1A54A29D59B0100F159DF /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF1A54929D59B0100F159DF /* shared_types.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
-		CC8A3A7429507CA200ED2D9F /* PBXBuildRule */ = {
+		CCF1A53529D5992500F159DF /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
@@ -32,135 +31,154 @@
 				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h",
 			);
 			runOncePerArchitecture = 0;
-			script = "# Skip during indexing phase in XCode 13+\nif [ $ACTION == \"indexbuild\" ]; then\n   echo \"Not building *.udl files during indexing.\"\n   exit 0\nfi\n\n# Skip for preview builds\nif [ \"${ENABLE_PREVIEWS}\" = \"YES\" ]; then\n   echo \"Not building *.udl files during preview builds.\"\n   exit 0\nfi\n\ncd \"$INPUT_FILE_DIR\"/.. && \"$PROJECT_DIR/../target/debug/uniffi-bindgen\" generate src/\"$INPUT_FILE_NAME\" --language swift --out-dir \"$PROJECT_DIR/generated\"\n";
+			script = "# Skip during indexing phase in XCode 13+\nif [ $ACTION == \"indexbuild\" ]; then\n   echo \"Not building *.udl files during indexing.\"\n   exit 0\nfi\n\n# Skip for preview builds\nif [ \"${ENABLE_PREVIEWS}\" = \"YES\" ]; then\n   echo \"Not building *.udl files during preview builds.\"\n   exit 0\nfi\n\n# note, for now, run a cargo build manually to ensure the binary exists for this step\ncd \"$INPUT_FILE_DIR\"/.. && \"$PROJECT_DIR/../target/debug/uniffi-bindgen\" generate src/\"$INPUT_FILE_NAME\" --language swift --out-dir \"$PROJECT_DIR/generated\"\n";
 		};
 /* End PBXBuildRule section */
 
+/* Begin PBXContainerItemProxy section */
+		CCF1A53E29D599B800F159DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = CA6069A09261FB09138082B7;
+			remoteInfo = "shared-staticlib";
+		};
+		CCF1A54029D599B800F159DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = CA60ECB8EC0A10F7F7FCAC5B;
+			remoteInfo = "shared-cdylib";
+		};
+		CCF1A54229D599B800F159DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = CA60BEE814088109328FB0D5;
+			remoteInfo = "uniffi-bindgen-bin";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		CC49939D29507FD300225E0E /* shared_types.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared_types/generated/swift/shared_types.swift; sourceTree = "<group>"; };
-		CC8A3A6329507C6800ED2D9F /* CounterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CC8A3A6629507C6800ED2D9F /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
-		CC8A3A6829507C6800ED2D9F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		CC8A3A6A29507C6900ED2D9F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		CC8A3A6D29507C6900ED2D9F /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		CC8A3A7729507E0D00ED2D9F /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
-		CC8A3A7A29507E9A00ED2D9F /* sharedFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = sharedFFI.h; path = generated/sharedFFI.h; sourceTree = "<group>"; };
-		CC8A3A7D29507EC900ED2D9F /* libshared.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libshared.a; path = "../../target/aarch64-apple-ios-sim/debug/libshared.a"; sourceTree = "<group>"; };
+		CC2C4F3229D598A600CF927F /* CounterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC2C4F3529D598A600CF927F /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
+		CC2C4F3729D598A600CF927F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CC2C4F3929D598A700CF927F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CC2C4F3C29D598A700CF927F /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		CCF1A53629D5997600F159DF /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
+		CCF1A53829D599B700F159DF /* shared.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = shared.xcodeproj; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
+		CCF1A54929D59B0100F159DF /* shared_types.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared_types/generated/swift/shared_types.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		CC8A3A6029507C6800ED2D9F /* Frameworks */ = {
+		CC2C4F2F29D598A600CF927F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC49939C29507FAB00225E0E /* Serde in Frameworks */,
-				CC8A3A7E29507EC900ED2D9F /* libshared.a in Frameworks */,
+				CCF1A54829D59AC100F159DF /* Serde in Frameworks */,
+				CCF1A54529D59AA800F159DF /* libshared_static.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		CC8A3A5A29507C6800ED2D9F = {
+		CC2C4F2929D598A600CF927F = {
 			isa = PBXGroup;
 			children = (
-				CC49939D29507FD300225E0E /* shared_types.swift */,
-				CC8A3A7A29507E9A00ED2D9F /* sharedFFI.h */,
-				CC8A3A7729507E0D00ED2D9F /* shared.udl */,
-				CC8A3A6529507C6800ED2D9F /* CounterApp */,
-				CC8A3A6429507C6800ED2D9F /* Products */,
-				CC8A3A7C29507EC900ED2D9F /* Frameworks */,
+				CCF1A54929D59B0100F159DF /* shared_types.swift */,
+				CCF1A53829D599B700F159DF /* shared.xcodeproj */,
+				CCF1A53629D5997600F159DF /* shared.udl */,
+				CC2C4F3429D598A600CF927F /* CounterApp */,
+				CC2C4F3329D598A600CF927F /* Products */,
+				CCF1A54429D59AA800F159DF /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
-		CC8A3A6429507C6800ED2D9F /* Products */ = {
+		CC2C4F3329D598A600CF927F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CC8A3A6329507C6800ED2D9F /* CounterApp.app */,
+				CC2C4F3229D598A600CF927F /* CounterApp.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		CC8A3A6529507C6800ED2D9F /* CounterApp */ = {
+		CC2C4F3429D598A600CF927F /* CounterApp */ = {
 			isa = PBXGroup;
 			children = (
-				CC8A3A6629507C6800ED2D9F /* CounterAppApp.swift */,
-				CC8A3A6829507C6800ED2D9F /* ContentView.swift */,
-				CC8A3A6A29507C6900ED2D9F /* Assets.xcassets */,
-				CC8A3A6C29507C6900ED2D9F /* Preview Content */,
+				CC2C4F3529D598A600CF927F /* CounterAppApp.swift */,
+				CC2C4F3729D598A600CF927F /* ContentView.swift */,
+				CC2C4F3929D598A700CF927F /* Assets.xcassets */,
+				CC2C4F3B29D598A700CF927F /* Preview Content */,
 			);
 			path = CounterApp;
 			sourceTree = "<group>";
 		};
-		CC8A3A6C29507C6900ED2D9F /* Preview Content */ = {
+		CC2C4F3B29D598A700CF927F /* Preview Content */ = {
 			isa = PBXGroup;
 			children = (
-				CC8A3A6D29507C6900ED2D9F /* Preview Assets.xcassets */,
+				CC2C4F3C29D598A700CF927F /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
-		CC8A3A7C29507EC900ED2D9F /* Frameworks */ = {
+		CCF1A53929D599B700F159DF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CC8A3A7D29507EC900ED2D9F /* libshared.a */,
+				CCF1A53F29D599B800F159DF /* libshared_static.a */,
+				CCF1A54129D599B800F159DF /* shared.dylib */,
+				CCF1A54329D599B800F159DF /* uniffi-bindgen */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CCF1A54429D59AA800F159DF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
-/* Begin PBXHeadersBuildPhase section */
-		CC8A3A7929507E6F00ED2D9F /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				CC8A3A7B29507E9A00ED2D9F /* sharedFFI.h in Headers */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXHeadersBuildPhase section */
-
 /* Begin PBXNativeTarget section */
-		CC8A3A6229507C6800ED2D9F /* CounterApp */ = {
+		CC2C4F3129D598A600CF927F /* CounterApp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CC8A3A7129507C6900ED2D9F /* Build configuration list for PBXNativeTarget "CounterApp" */;
+			buildConfigurationList = CC2C4F4029D598A700CF927F /* Build configuration list for PBXNativeTarget "CounterApp" */;
 			buildPhases = (
-				CC8A3A7629507DD000ED2D9F /* Build Rust library */,
-				CC8A3A7929507E6F00ED2D9F /* Headers */,
-				CC8A3A5F29507C6800ED2D9F /* Sources */,
-				CC8A3A6029507C6800ED2D9F /* Frameworks */,
-				CC8A3A6129507C6800ED2D9F /* Resources */,
+				CC2C4F2E29D598A600CF927F /* Sources */,
+				CC2C4F2F29D598A600CF927F /* Frameworks */,
+				CC2C4F3029D598A600CF927F /* Resources */,
 			);
 			buildRules = (
-				CC8A3A7429507CA200ED2D9F /* PBXBuildRule */,
+				CCF1A53529D5992500F159DF /* PBXBuildRule */,
 			);
 			dependencies = (
 			);
 			name = CounterApp;
 			packageProductDependencies = (
-				CC49939B29507FAB00225E0E /* Serde */,
+				CCF1A54729D59AC100F159DF /* Serde */,
 			);
 			productName = CounterApp;
-			productReference = CC8A3A6329507C6800ED2D9F /* CounterApp.app */;
+			productReference = CC2C4F3229D598A600CF927F /* CounterApp.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		CC8A3A5B29507C6800ED2D9F /* Project object */ = {
+		CC2C4F2A29D598A600CF927F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1420;
 				LastUpgradeCheck = 1420;
 				TargetAttributes = {
-					CC8A3A6229507C6800ED2D9F = {
+					CC2C4F3129D598A600CF927F = {
 						CreatedOnToolsVersion = 14.2;
 					};
 				};
 			};
-			buildConfigurationList = CC8A3A5E29507C6800ED2D9F /* Build configuration list for PBXProject "CounterApp" */;
+			buildConfigurationList = CC2C4F2D29D598A600CF927F /* Build configuration list for PBXProject "CounterApp" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -168,69 +186,77 @@
 				en,
 				Base,
 			);
-			mainGroup = CC8A3A5A29507C6800ED2D9F;
+			mainGroup = CC2C4F2929D598A600CF927F;
 			packageReferences = (
-				CC49939A29507FAB00225E0E /* XCRemoteSwiftPackageReference "Serde" */,
+				CCF1A54629D59AC100F159DF /* XCRemoteSwiftPackageReference "Serde" */,
 			);
-			productRefGroup = CC8A3A6429507C6800ED2D9F /* Products */;
+			productRefGroup = CC2C4F3329D598A600CF927F /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = CCF1A53929D599B700F159DF /* Products */;
+					ProjectRef = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
-				CC8A3A6229507C6800ED2D9F /* CounterApp */,
+				CC2C4F3129D598A600CF927F /* CounterApp */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXReferenceProxy section */
+		CCF1A53F29D599B800F159DF /* libshared_static.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libshared_static.a;
+			remoteRef = CCF1A53E29D599B800F159DF /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		CCF1A54129D599B800F159DF /* shared.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = shared.dylib;
+			remoteRef = CCF1A54029D599B800F159DF /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		CCF1A54329D599B800F159DF /* uniffi-bindgen */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "uniffi-bindgen";
+			remoteRef = CCF1A54229D599B800F159DF /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
 /* Begin PBXResourcesBuildPhase section */
-		CC8A3A6129507C6800ED2D9F /* Resources */ = {
+		CC2C4F3029D598A600CF927F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC8A3A6E29507C6900ED2D9F /* Preview Assets.xcassets in Resources */,
-				CC8A3A6B29507C6900ED2D9F /* Assets.xcassets in Resources */,
+				CC2C4F3D29D598A700CF927F /* Preview Assets.xcassets in Resources */,
+				CC2C4F3A29D598A700CF927F /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		CC8A3A7629507DD000ED2D9F /* Build Rust library */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Build Rust library";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "cd \"${PROJECT_DIR}\"/../shared\nbash \"${PROJECT_DIR}/bin/compile-library.sh\" shared\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
-		CC8A3A5F29507C6800ED2D9F /* Sources */ = {
+		CC2C4F2E29D598A600CF927F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC49939E29507FD300225E0E /* shared_types.swift in Sources */,
-				CC8A3A7829507E0D00ED2D9F /* shared.udl in Sources */,
-				CC8A3A6929507C6800ED2D9F /* ContentView.swift in Sources */,
-				CC8A3A6729507C6800ED2D9F /* CounterAppApp.swift in Sources */,
+				CCF1A54A29D59B0100F159DF /* shared_types.swift in Sources */,
+				CCF1A53729D5997600F159DF /* shared.udl in Sources */,
+				CC2C4F3829D598A600CF927F /* ContentView.swift in Sources */,
+				CC2C4F3629D598A600CF927F /* CounterAppApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		CC8A3A6F29507C6900ED2D9F /* Debug */ = {
+		CC2C4F3E29D598A700CF927F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -290,7 +316,7 @@
 			};
 			name = Debug;
 		};
-		CC8A3A7029507C6900ED2D9F /* Release */ = {
+		CC2C4F3F29D598A700CF927F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -344,7 +370,7 @@
 			};
 			name = Release;
 		};
-		CC8A3A7229507C6900ED2D9F /* Debug */ = {
+		CC2C4F4129D598A700CF927F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -352,6 +378,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"CounterApp/Preview Content\"";
+				DEVELOPMENT_TEAM = E5DS2C9C62;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -363,20 +390,17 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios/debug";
-				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios-sim/debug";
-				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../target/x86_64-apple-ios/debug";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.redbadger.crux.CounterApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = generated/sharedFFI.h;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		CC8A3A7329507C6900ED2D9F /* Release */ = {
+		CC2C4F4229D598A700CF927F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -384,6 +408,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"CounterApp/Preview Content\"";
+				DEVELOPMENT_TEAM = E5DS2C9C62;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -395,14 +420,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios/release";
-				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios-sim/release";
-				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../target/x86_64-apple-ios/release";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.redbadger.crux.CounterApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = generated/sharedFFI.h;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -411,20 +433,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CC8A3A5E29507C6800ED2D9F /* Build configuration list for PBXProject "CounterApp" */ = {
+		CC2C4F2D29D598A600CF927F /* Build configuration list for PBXProject "CounterApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				CC8A3A6F29507C6900ED2D9F /* Debug */,
-				CC8A3A7029507C6900ED2D9F /* Release */,
+				CC2C4F3E29D598A700CF927F /* Debug */,
+				CC2C4F3F29D598A700CF927F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CC8A3A7129507C6900ED2D9F /* Build configuration list for PBXNativeTarget "CounterApp" */ = {
+		CC2C4F4029D598A700CF927F /* Build configuration list for PBXNativeTarget "CounterApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				CC8A3A7229507C6900ED2D9F /* Debug */,
-				CC8A3A7329507C6900ED2D9F /* Release */,
+				CC2C4F4129D598A700CF927F /* Debug */,
+				CC2C4F4229D598A700CF927F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -432,7 +454,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		CC49939A29507FAB00225E0E /* XCRemoteSwiftPackageReference "Serde" */ = {
+		CCF1A54629D59AC100F159DF /* XCRemoteSwiftPackageReference "Serde" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/starcoin-sdk/Serde.swift";
 			requirement = {
@@ -443,12 +465,12 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		CC49939B29507FAB00225E0E /* Serde */ = {
+		CCF1A54729D59AC100F159DF /* Serde */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = CC49939A29507FAB00225E0E /* XCRemoteSwiftPackageReference "Serde" */;
+			package = CCF1A54629D59AC100F159DF /* XCRemoteSwiftPackageReference "Serde" */;
 			productName = Serde;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = CC8A3A5B29507C6800ED2D9F /* Project object */;
+	rootObject = CC2C4F2A29D598A600CF927F /* Project object */;
 }
