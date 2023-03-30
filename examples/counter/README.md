@@ -67,7 +67,7 @@ cd iOS
 open CounterApp.xcodeproj
 ```
 
-You should be able to press "Play" to start the app in the simulator.
+You should be able to press "Play" to start the app in the simulator, or on an iPhone.
 
 ### Notes:
 
