@@ -145,8 +145,10 @@
 //! See [typegen] for details.
 //!
 
+pub mod bridge;
 pub mod capability;
 mod channels;
+mod effect;
 mod executor;
 mod future;
 pub mod render;
@@ -156,12 +158,14 @@ pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-use std::{fmt::Debug, sync::RwLock};
+use std::sync::RwLock;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
+pub use bridge::Bridge;
 use capability::{Operation, ProtoContext};
 use channels::Receiver;
+pub use effect::Effect;
 use executor::QueuingExecutor;
 pub use steps::Step;
 
@@ -215,7 +219,7 @@ where
 
 impl<Ef, A> Core<Ef, A>
 where
-    Ef: Send + 'static,
+    Ef: Effect,
     A: App,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
@@ -288,20 +292,11 @@ where
 
 impl<Ef, A> Default for Core<Ef, A>
 where
-    Ef: Serialize + Send + 'static,
+    Ef: Effect,
     A: App,
     A::Capabilities: WithContext<A, Ef>,
 {
     fn default() -> Self {
         Self::new::<A::Capabilities>()
     }
-}
-
-/// Request for a side-effect passed from the Core to the Shell. The `uuid` links
-/// the `Request` with the corresponding call to [`Core::response`] to pass the data back
-/// to the [`App::update`] function (wrapped in the event provided to the capability originating the effect).
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Request<Effect> {
-    pub uuid: Vec<u8>,
-    pub effect: Effect,
 }
