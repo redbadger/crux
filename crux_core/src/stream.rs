@@ -145,7 +145,7 @@ mod tests {
         executor.run_all();
         let mut step = steps.receive().expect("we should have a step here");
 
-        assert_matches!(step, Step(_, Some(Resolve::Many(_))));
+        assert_matches!(step, Step(_, Resolve::Many(_)));
 
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);
