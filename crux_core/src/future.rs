@@ -28,10 +28,13 @@ impl<T> Future for ShellRequest<T> {
     ) -> std::task::Poll<Self::Output> {
         let mut shared_state = self.shared_state.lock().unwrap();
 
+        // If there's still a step to send, take it and send it
         if let Some(send_step) = shared_state.send_step.take() {
             send_step();
         }
 
+        // If a result has been delivered, we're ready to continue
+        // Else we're pending with the waker from context
         match shared_state.result.take() {
             Some(result) => Poll::Ready(result),
             None => {
@@ -74,12 +77,16 @@ where
             };
 
             let mut shared_state = shared_state.lock().unwrap();
+
+            // Attach the result to the shared state of the future
             shared_state.result = Some(result);
+            // Signal the executor to wake the task holding this future
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake()
             }
         });
 
+        // Send the step on the next poll of the ShellRequest future
         let send_step_context = self.clone();
         let send_step = move || send_step_context.send_step(step);
 
@@ -140,7 +147,7 @@ mod tests {
         assert_matches!(steps.receive(), None);
         assert_matches!(events.receive(), None);
 
-        assert_matches!(step, Step(_, Some(Resolve::Once(_))));
+        assert_matches!(step, Step(_, Resolve::Once(_)));
 
         step.resolve(()).expect("step should resolve");
 
