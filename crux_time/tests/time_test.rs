@@ -55,12 +55,12 @@ mod shared {
 
 mod shell {
     use super::shared::{App, Effect, Event};
-    use crux_core::{Core, Step};
+    use crux_core::{Core, Request};
     use crux_time::{TimeRequest, TimeResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Time(Step<TimeRequest>, TimeResponse),
+        Time(Request<TimeRequest>, TimeResponse),
     }
 
     enum CoreMessage {
@@ -78,16 +78,16 @@ mod shell {
 
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Time(mut step, result))) => {
-                    core.resolve_step(&mut step, result)
+                Some(CoreMessage::Response(Outcome::Time(mut request, result))) => {
+                    core.resolve(&mut request, result)
                 }
                 _ => vec![],
             };
 
             for effect in effs {
-                if let Effect::Time(step) = effect {
+                if let Effect::Time(request) = effect {
                     queue.push_back(CoreMessage::Response(Outcome::Time(
-                        step,
+                        request,
                         TimeResponse("2022-12-01T01:47:12.746202562+00:00".to_string()),
                     )));
                 }

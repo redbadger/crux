@@ -6,8 +6,8 @@ use std::{
 use uuid::Uuid;
 
 use super::Request;
-use crate::bridge::step_serde::ResolveBytes;
-use crate::steps::ResolveError;
+use crate::bridge::request_serde::ResolveBytes;
+use crate::core::ResolveError;
 use crate::Effect;
 
 type Store<T> = HashMap<[u8; 16], T>;
@@ -50,7 +50,7 @@ impl ResolveRegistry {
         };
 
         let Entry::Occupied(mut entry) = entry else {
-            panic!("Step with UUID {uuid:?} not found.");
+            panic!("Request with UUID {uuid:?} not found.");
         };
 
         let resolve = entry.get_mut();

@@ -4,10 +4,10 @@ use std::rc::Rc;
 use anyhow::Result;
 
 use crate::{
-    capability::{Operation, ProtoContext},
-    channels::Receiver,
-    executor::{executor_and_spawner, QueuingExecutor},
-    Step, WithContext,
+    capability::{
+        channel::Receiver, executor_and_spawner, Operation, ProtoContext, QueuingExecutor,
+    },
+    Request, WithContext,
 };
 
 /// AppTester is a simplified execution environment for Crux apps for use in
@@ -51,10 +51,10 @@ where
 
     pub fn resolve<Op: Operation>(
         &self,
-        step: &mut Step<Op>,
+        request: &mut Request<Op>,
         value: Op::Output,
     ) -> Result<Update<Ef, App::Event>> {
-        step.resolve(value)?;
+        request.resolve(value)?;
 
         Ok(self.context.updates())
     }
@@ -73,8 +73,8 @@ where
     Ef: Send + 'static,
 {
     fn default() -> Self {
-        let (command_sender, commands) = crate::channels::channel();
-        let (event_sender, events) = crate::channels::channel();
+        let (command_sender, commands) = crate::capability::channel();
+        let (event_sender, events) = crate::capability::channel();
         let (executor, spawner) = executor_and_spawner();
         let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
 

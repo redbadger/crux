@@ -72,13 +72,13 @@ mod shared {
 
 mod shell {
     use super::shared::{App, Effect, Event};
-    use crux_core::{Core, Step};
+    use crux_core::{Core, Request};
     use crux_kv::{KeyValueOperation, KeyValueOutput};
     use std::collections::{HashMap, VecDeque};
 
     #[derive(Debug)]
     pub enum Outcome {
-        KeyValue(Step<KeyValueOperation>, KeyValueOutput),
+        KeyValue(Request<KeyValueOperation>, KeyValueOutput),
     }
 
     #[derive(Debug)]
@@ -99,8 +99,8 @@ mod shell {
 
             let effects = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::KeyValue(mut step, output))) => {
-                    core.resolve_step(&mut step, output)
+                Some(CoreMessage::Response(Outcome::KeyValue(mut request, output))) => {
+                    core.resolve(&mut request, output)
                 }
                 _ => vec![],
             };
@@ -108,29 +108,29 @@ mod shell {
             for effect in effects {
                 match effect {
                     Effect::Render(_) => (),
-                    Effect::KeyValue(step) => {
-                        match step {
-                            Step(KeyValueOperation::Write(ref k, ref v), ..) => {
+                    Effect::KeyValue(request) => {
+                        match request {
+                            Request(KeyValueOperation::Write(ref k, ref v), ..) => {
                                 // received.push(effect);
 
                                 // do work
                                 kv_store.insert(k.clone(), v.clone());
 
                                 queue.push_back(CoreMessage::Response(Outcome::KeyValue(
-                                    step,
+                                    request,
                                     KeyValueOutput::Write(true),
                                 )));
 
                                 // now trigger a read
                                 queue.push_back(CoreMessage::Event(Event::Read));
                             }
-                            Step(KeyValueOperation::Read(ref k), ..) => {
+                            Request(KeyValueOperation::Read(ref k), ..) => {
                                 // received.push(effect);
 
                                 // do work
                                 let v = kv_store.get(k).unwrap();
                                 queue.push_back(CoreMessage::Response(Outcome::KeyValue(
-                                    step,
+                                    request,
                                     KeyValueOutput::Read(Some(v.to_vec())),
                                 )));
                             }

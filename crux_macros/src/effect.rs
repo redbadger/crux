@@ -67,10 +67,10 @@ impl ToTokens for EffectStructReceiver {
         let mut match_arms = Vec::new();
 
         for (field_name, (capability, variant, event)) in fields.iter() {
-            variants.push(quote! { #variant(::crux_core::steps::Step<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
+            variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
             with_context_fields.push(quote! { #field_name: #capability::new(context.specialise(#effect_name::#variant)) });
             ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
-            match_arms.push(quote! { #effect_name::#variant(step) => step.serialize(#ffi_effect_name::#variant) });
+            match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
         }
 
         tokens.extend(quote! {
@@ -170,12 +170,12 @@ mod tests {
         #[derive(Debug)]
         pub enum Effect {
             Render(
-                ::crux_core::steps::Step<
+                ::crux_core::Request<
                     <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
                 >,
             ),
         }
-        #[derive(::serde::Serialize)]
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
         pub enum EffectFfi {
             Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
         }
@@ -183,7 +183,7 @@ mod tests {
             type Ffi = EffectFfi;
             fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
                 match self {
-                    Effect::Render(step) => step.serialize(EffectFfi::Render),
+                    Effect::Render(request) => request.serialize(EffectFfi::Render),
                 }
             }
         }
@@ -240,38 +240,38 @@ mod tests {
         #[derive(Debug)]
         pub enum MyEffect {
             Http(
-                ::crux_core::steps::Step<
+                ::crux_core::Request<
                     <crux_http::Http<
                         MyEvent,
                     > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             ),
             KeyValue(
-                ::crux_core::steps::Step<
+                ::crux_core::Request<
                     <KeyValue<
                         MyEvent,
                     > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             ),
             Platform(
-                ::crux_core::steps::Step<
+                ::crux_core::Request<
                     <Platform<
                         MyEvent,
                     > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             ),
             Render(
-                ::crux_core::steps::Step<
+                ::crux_core::Request<
                     <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             ),
             Time(
-                ::crux_core::steps::Step<
+                ::crux_core::Request<
                     <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             ),
         }
-        #[derive(::serde::Serialize)]
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
         pub enum MyEffectFfi {
             Http(
                 <crux_http::Http<
@@ -291,11 +291,11 @@ mod tests {
             type Ffi = MyEffectFfi;
             fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
                 match self {
-                    MyEffect::Http(step) => step.serialize(MyEffectFfi::Http),
-                    MyEffect::KeyValue(step) => step.serialize(MyEffectFfi::KeyValue),
-                    MyEffect::Platform(step) => step.serialize(MyEffectFfi::Platform),
-                    MyEffect::Render(step) => step.serialize(MyEffectFfi::Render),
-                    MyEffect::Time(step) => step.serialize(MyEffectFfi::Time),
+                    MyEffect::Http(request) => request.serialize(MyEffectFfi::Http),
+                    MyEffect::KeyValue(request) => request.serialize(MyEffectFfi::KeyValue),
+                    MyEffect::Platform(request) => request.serialize(MyEffectFfi::Platform),
+                    MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
+                    MyEffect::Time(request) => request.serialize(MyEffectFfi::Time),
                 }
             }
         }
