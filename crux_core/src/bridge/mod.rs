@@ -1,5 +1,5 @@
 mod registry;
-pub mod step_serde;
+mod step_serde;
 
 use serde::{Deserialize, Serialize};
 

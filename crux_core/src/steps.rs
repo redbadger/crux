@@ -43,17 +43,6 @@ where
     }
 }
 
-impl<Op> PartialEq for Step<Op>
-where
-    Op: Operation,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<Op> Eq for Step<Op> where Op: Operation {}
-
 type ResolveOnce<Out> = Box<dyn FnOnce(Out) + Send>;
 type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 
