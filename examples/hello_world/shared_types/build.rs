@@ -1,7 +1,9 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request};
-use shared::{Effect, Event, ViewModel};
+use crux_core::{bridge::Request, typegen::TypeGen};
+use shared::{EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
+
+type Effect = EffectFfi;
 
 fn main() {
     println!("cargo:rerun-if-changed=../shared");
