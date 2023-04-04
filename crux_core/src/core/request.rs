@@ -5,34 +5,47 @@ use crate::{
     core::resolve::{Resolve, ResolveError},
 };
 
-pub struct Request<Op>(pub Op, pub Resolve<Op::Output>)
+pub struct Request<Op>
 where
-    Op: Operation;
+    Op: Operation,
+{
+    pub operation: Op,
+    pub(crate) resolve: Resolve<Op::Output>,
+}
 
 impl<Op> Request<Op>
 where
     Op: Operation,
 {
-    pub(crate) fn resolves_never(payload: Op) -> Self {
-        Self(payload, Resolve::Never)
+    pub(crate) fn resolves_never(operation: Op) -> Self {
+        Self {
+            operation,
+            resolve: Resolve::Never,
+        }
     }
 
-    pub(crate) fn resolves_once<F>(payload: Op, resolve: F) -> Self
+    pub(crate) fn resolves_once<F>(operation: Op, resolve: F) -> Self
     where
         F: FnOnce(Op::Output) + Send + 'static,
     {
-        Self(payload, Resolve::Once(Box::new(resolve)))
+        Self {
+            operation,
+            resolve: Resolve::Once(Box::new(resolve)),
+        }
     }
 
-    pub(crate) fn resolves_many_times<F>(payload: Op, resolve: F) -> Self
+    pub(crate) fn resolves_many_times<F>(operation: Op, resolve: F) -> Self
     where
         F: Fn(Op::Output) -> Result<(), ()> + Send + 'static,
     {
-        Self(payload, Resolve::Many(Box::new(resolve)))
+        Self {
+            operation,
+            resolve: Resolve::Many(Box::new(resolve)),
+        }
     }
 
     pub(crate) fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
-        self.1.resolve(output)
+        self.resolve.resolve(output)
     }
 }
 
@@ -41,6 +54,6 @@ where
     Op: Operation + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Request").field(&self.0).finish()
+        f.debug_tuple("Request").field(&self.operation).finish()
     }
 }

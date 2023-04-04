@@ -70,7 +70,7 @@ mod tests {
     use assert_matches::assert_matches;
 
     use crate::shared::{App, Effect, Event, Model};
-    use crux_core::{testing::AppTester, Request};
+    use crux_core::testing::AppTester;
     use crux_http::protocol::{HttpHeader, HttpRequest, HttpResponse};
 
     #[test]
@@ -81,7 +81,7 @@ mod tests {
         let mut update = app.update(Event::Get, &mut model);
 
         let Effect::Http(mut request) = update.effects.pop().expect("to get an effect");
-        let Request(http_request, _) = &request;
+        let http_request = &request.operation;
 
         assert_eq!(
             *http_request,
