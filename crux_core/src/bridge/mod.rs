@@ -3,8 +3,10 @@ mod step_serde;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{App, Core, Effect};
+use crate::Effect;
+use crate::{App, Core};
 use registry::ResolveRegistry;
+pub use step_serde::ResolveBytes;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding call to [`Core::response`] to pass the data back
@@ -18,25 +20,32 @@ where
     pub effect: Eff::Ffi,
 }
 
-pub struct Bridge<'de, Eff, A>
+pub struct Bridge<Eff, A>
 where
     Eff: Effect,
     A: App,
 {
     core: Core<Eff, A>,
-    registry: ResolveRegistry<'de>,
+    registry: ResolveRegistry,
 }
 
-impl<'de, Eff, A> Bridge<'de, Eff, A>
+impl<Eff, A> Bridge<Eff, A>
 where
     Eff: Effect + Send + 'static,
     A: App,
 {
+    pub fn new(core: Core<Eff, A>) -> Self {
+        Self {
+            core,
+            registry: Default::default(),
+        }
+    }
+
     /// Receive an event from the shell.
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
-    pub fn process_event(&self, event: &'de [u8]) -> Vec<u8>
+    pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
@@ -47,14 +56,14 @@ where
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn handle_response(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
+    pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
         self.process(Some(uuid), output)
     }
 
-    fn process(&self, uuid: Option<&[u8]>, data: &'de [u8]) -> Vec<u8>
+    fn process<'de>(&self, uuid: Option<&[u8]>, data: &'de [u8]) -> Vec<u8>
     where
         <A as App>::Event: Deserialize<'de>,
     {
@@ -79,5 +88,9 @@ where
             .collect();
 
         bcs::to_bytes(&requests).expect("Request serialization failed.")
+    }
+
+    pub fn view(&self) -> Vec<u8> {
+        bcs::to_bytes(&self.core.view()).expect("View should serialize")
     }
 }
