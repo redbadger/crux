@@ -67,24 +67,6 @@ impl<Out> Resolve<Out> {
             }
         }
     }
-
-    pub(crate) fn map<F, Other>(self, func: F) -> Resolve<Other>
-    where
-        F: (Fn(Other) -> Out) + Send + Sync + 'static,
-        Out: 'static,
-    {
-        match self {
-            Resolve::Never => Resolve::Never,
-            Resolve::Once(resolve) => Resolve::Once(Box::new(move |other: Other| {
-                let out = func(other);
-                resolve(out)
-            })),
-            Resolve::Many(resolve) => Resolve::Many(Box::new(move |other: Other| {
-                let out = func(other);
-                resolve(out)
-            })),
-        }
-    }
 }
 
 #[derive(Error, Debug)]

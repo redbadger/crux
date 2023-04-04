@@ -6,22 +6,21 @@ use std::{
 use uuid::Uuid;
 
 use super::Request;
-use crate::{
-    steps::{Resolve, ResolveError},
-    Effect,
-};
+use crate::bridge::step_serde::ResolveBytes;
+use crate::steps::ResolveError;
+use crate::Effect;
 
 type Store<T> = HashMap<[u8; 16], T>;
 
-pub(crate) struct ResolveRegistry<'de>(Mutex<Store<Resolve<&'de [u8]>>>);
+pub(crate) struct ResolveRegistry(Mutex<Store<ResolveBytes>>);
 
-impl<'de> Default for ResolveRegistry<'de> {
+impl Default for ResolveRegistry {
     fn default() -> Self {
         Self(Mutex::new(Store::new()))
     }
 }
 
-impl<'de> ResolveRegistry<'de> {
+impl ResolveRegistry {
     pub(crate) fn register<Eff>(&self, effect: Eff) -> Request<Eff>
     where
         Eff: Effect,
@@ -40,7 +39,7 @@ impl<'de> ResolveRegistry<'de> {
         }
     }
 
-    pub(crate) fn resume(&self, uuid: &[u8], body: &'de [u8]) -> Result<(), ResolveError> {
+    pub(crate) fn resume(&self, uuid: &[u8], body: &[u8]) -> Result<(), ResolveError> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
         let entry = {
