@@ -109,8 +109,8 @@ mod shell {
                 match effect {
                     Effect::Render(_) => (),
                     Effect::KeyValue(request) => {
-                        match request {
-                            Request(KeyValueOperation::Write(ref k, ref v), ..) => {
+                        match request.operation {
+                            KeyValueOperation::Write(ref k, ref v) => {
                                 // received.push(effect);
 
                                 // do work
@@ -124,7 +124,7 @@ mod shell {
                                 // now trigger a read
                                 queue.push_back(CoreMessage::Event(Event::Read));
                             }
-                            Request(KeyValueOperation::Read(ref k), ..) => {
+                            KeyValueOperation::Read(ref k) => {
                                 // received.push(effect);
 
                                 // do work

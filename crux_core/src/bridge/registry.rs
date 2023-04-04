@@ -21,7 +21,7 @@ impl Default for ResolveRegistry {
 }
 
 impl ResolveRegistry {
-    pub(crate) fn register<Eff>(&self, effect: Eff) -> Request<Eff>
+    pub(crate) fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
     where
         Eff: Effect,
     {

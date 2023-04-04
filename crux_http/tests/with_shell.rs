@@ -115,7 +115,8 @@ mod shell {
                 match effect {
                     Effect::Render(_) => (),
                     Effect::Http(request) => {
-                        let Request(http_request, _) = &request;
+                        let http_request = &request.operation;
+
                         received.push(http_request.clone());
 
                         queue.push_back(CoreMessage::Response(Outcome::Http(
