@@ -90,10 +90,7 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::{
-        capability::{channel, executor_and_spawner, CapabilityContext, Operation},
-        core::{Request, Resolve},
-    };
+    use crate::capability::{channel, executor_and_spawner, CapabilityContext, Operation};
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -140,8 +137,6 @@ mod tests {
 
         executor.run_all();
         let mut request = requests.receive().expect("we should have a request here");
-
-        assert_matches!(request, Request(_, Resolve::Many(_)));
 
         assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);

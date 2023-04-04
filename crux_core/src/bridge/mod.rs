@@ -14,10 +14,10 @@ pub use request_serde::ResolveBytes;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request<Eff>
 where
-    Eff: Effect,
+    Eff: Serialize,
 {
     pub uuid: Vec<u8>,
-    pub effect: Eff::Ffi,
+    pub effect: Eff,
 }
 
 pub struct Bridge<Eff, A>

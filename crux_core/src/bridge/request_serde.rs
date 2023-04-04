@@ -43,12 +43,12 @@ where
     where
         F: Fn(Op) -> Eff,
     {
-        let Request(payload, resolve) = self;
+        let (operation, resolve) = (self.operation, self.resolve);
 
         let resolve =
             resolve.deserializing(|bytes| bcs::from_bytes(bytes).expect("Deserialization failed"));
 
-        (effect(payload), resolve)
+        (effect(operation), resolve)
     }
 }
 

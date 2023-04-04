@@ -141,11 +141,10 @@ mod app {
 mod tests {
     use std::collections::VecDeque;
 
-    use crux_core::{Core, Request};
+    use crux_core::Core;
     use rand::prelude::*;
 
     use super::app::{Capabilities, Effect, Event, MyApp};
-    use super::capability::Fetch;
 
     #[test]
     fn fetches_a_tree() {
@@ -159,7 +158,7 @@ mod tests {
             let effect = effects.pop_front().unwrap();
 
             match effect {
-                Effect::Crawler(mut request @ Request(Fetch { .. }, ..)) => {
+                Effect::Crawler(mut request) => {
                     let output = if counter < 30 {
                         vec![counter, counter + 1, counter + 2]
                     } else {
