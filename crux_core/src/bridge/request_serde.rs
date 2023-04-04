@@ -1,7 +1,7 @@
 use crate::{
     capability::Operation,
-    steps::{Resolve, ResolveError},
-    Step,
+    core::{Resolve, ResolveError},
+    Request,
 };
 
 // ResolveBytes is needed because lifetime elision doesn't work
@@ -35,7 +35,7 @@ impl ResolveBytes {
     }
 }
 
-impl<Op> Step<Op>
+impl<Op> Request<Op>
 where
     Op: Operation,
 {
@@ -43,7 +43,7 @@ where
     where
         F: Fn(Op) -> Eff,
     {
-        let Step(payload, resolve) = self;
+        let Request(payload, resolve) = self;
 
         let resolve =
             resolve.deserializing(|bytes| bcs::from_bytes(bytes).expect("Deserialization failed"));

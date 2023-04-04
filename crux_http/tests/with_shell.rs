@@ -80,12 +80,12 @@ mod shared {
 mod shell {
     use super::shared::{App, Effect, Event};
     use anyhow::Result;
-    use crux_core::{Core, Step};
+    use crux_core::{Core, Request};
     use crux_http::protocol::{HttpRequest, HttpResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Http(Step<HttpRequest>, HttpResponse),
+        Http(Request<HttpRequest>, HttpResponse),
     }
 
     enum CoreMessage {
@@ -105,8 +105,8 @@ mod shell {
 
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Http(mut step, response))) => {
-                    core.resolve_step(&mut step, response)
+                Some(CoreMessage::Response(Outcome::Http(mut req, response))) => {
+                    core.resolve(&mut req, response)
                 }
                 _ => vec![],
             };
@@ -114,12 +114,12 @@ mod shell {
             for effect in effs {
                 match effect {
                     Effect::Render(_) => (),
-                    Effect::Http(step) => {
-                        let Step(request, _) = &step;
-                        received.push(request.clone());
+                    Effect::Http(request) => {
+                        let Request(http_request, _) = &request;
+                        received.push(http_request.clone());
 
                         queue.push_back(CoreMessage::Response(Outcome::Http(
-                            step,
+                            request,
                             HttpResponse {
                                 status: 200,
                                 body: "\"Hello\"".as_bytes().to_owned(),

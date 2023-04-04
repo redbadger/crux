@@ -1,12 +1,12 @@
 mod registry;
-mod step_serde;
+mod request_serde;
 
 use serde::{Deserialize, Serialize};
 
 use crate::Effect;
 use crate::{App, Core};
 use registry::ResolveRegistry;
-pub use step_serde::ResolveBytes;
+pub use request_serde::ResolveBytes;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding call to [`Core::response`] to pass the data back

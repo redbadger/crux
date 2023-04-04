@@ -55,12 +55,12 @@ mod shared {
 
 mod shell {
     use super::shared::{App, Effect, Event};
-    use crux_core::{Core, Step};
+    use crux_core::{Core, Request};
     use crux_platform::{PlatformRequest, PlatformResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Platform(Step<PlatformRequest>, PlatformResponse),
+        Platform(Request<PlatformRequest>, PlatformResponse),
     }
 
     enum CoreMessage {
@@ -78,17 +78,17 @@ mod shell {
 
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Platform(mut step, outcome))) => {
-                    core.resolve_step(&mut step, outcome)
+                Some(CoreMessage::Response(Outcome::Platform(mut request, outcome))) => {
+                    core.resolve(&mut request, outcome)
                 }
 
                 _ => vec![],
             };
 
             for effect in effs {
-                if let Effect::Platform(step) = effect {
+                if let Effect::Platform(request) = effect {
                     queue.push_back(CoreMessage::Response(Outcome::Platform(
-                        step,
+                        request,
                         PlatformResponse("test shell".to_string()),
                     )));
                 }

@@ -70,7 +70,7 @@ mod tests {
     use assert_matches::assert_matches;
 
     use crate::shared::{App, Effect, Event, Model};
-    use crux_core::{testing::AppTester, Step};
+    use crux_core::{testing::AppTester, Request};
     use crux_http::protocol::{HttpHeader, HttpRequest, HttpResponse};
 
     #[test]
@@ -80,11 +80,11 @@ mod tests {
 
         let mut update = app.update(Event::Get, &mut model);
 
-        let Effect::Http(mut step) = update.effects.pop().expect("to get an effect");
-        let Step(request, _) = &step;
+        let Effect::Http(mut request) = update.effects.pop().expect("to get an effect");
+        let Request(http_request, _) = &request;
 
         assert_eq!(
-            *request,
+            *http_request,
             HttpRequest {
                 method: "GET".to_string(),
                 url: "http://example.com/".to_string(),
@@ -98,7 +98,7 @@ mod tests {
 
         let update = app
             .resolve(
-                &mut step,
+                &mut request,
                 HttpResponse {
                     status: 200,
                     body: serde_json::to_vec("hello").unwrap(),

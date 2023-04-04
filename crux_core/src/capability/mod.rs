@@ -163,11 +163,20 @@
 //! with a single operation, these can be structs, or simpler types. For example, the HTTP capability works directly with
 //! `HttpRequest` and `HttpResponse`.
 
-use std::sync::Arc;
+pub(crate) mod channel;
+
+mod executor;
+mod shell_request;
+mod shell_stream;
 
 use futures::Future;
+use std::sync::Arc;
 
-use crate::{channels::Sender, Step};
+pub(crate) use channel::channel;
+pub(crate) use executor::{executor_and_spawner, QueuingExecutor};
+
+use crate::Request;
+use channel::Sender;
 
 /// Operation trait links together input and output of a side-effect.
 ///
@@ -277,15 +286,15 @@ struct ContextInner<Op, Event>
 where
     Op: Operation,
 {
-    shell_channel: Sender<Step<Op>>,
+    shell_channel: Sender<Request<Op>>,
     app_channel: Sender<Event>,
-    spawner: crate::executor::Spawner,
+    spawner: executor::Spawner,
 }
 
 pub struct ProtoContext<Eff, Event> {
     shell_channel: Sender<Eff>,
     app_channel: Sender<Event>,
-    spawner: crate::executor::Spawner,
+    spawner: executor::Spawner,
 }
 
 impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
@@ -305,13 +314,13 @@ where
     Eff: 'static,
 {
     pub(crate) fn new(
-        steps: Sender<Eff>,
-        events: Sender<Ev>,
-        spawner: crate::executor::Spawner,
+        shell_channel: Sender<Eff>,
+        app_channel: Sender<Ev>,
+        spawner: executor::Spawner,
     ) -> Self {
         Self {
-            shell_channel: steps,
-            app_channel: events,
+            shell_channel,
+            app_channel,
             spawner,
         }
     }
@@ -325,7 +334,7 @@ where
     /// for the app's `Capabilities` type.
     pub fn specialise<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
     where
-        F: Fn(Step<Op>) -> Eff + Sync + Send + Copy + 'static,
+        F: Fn(Request<Op>) -> Eff + Sync + Send + Copy + 'static,
         Op: Operation,
     {
         CapabilityContext::new(
@@ -342,13 +351,13 @@ where
     Ev: 'static,
 {
     pub(crate) fn new(
-        steps: Sender<Step<Op>>,
-        events: Sender<Ev>,
-        spawner: crate::executor::Spawner,
+        shell_channel: Sender<Request<Op>>,
+        app_channel: Sender<Ev>,
+        spawner: executor::Spawner,
     ) -> Self {
         let inner = Arc::new(ContextInner {
-            shell_channel: steps,
-            app_channel: events,
+            shell_channel,
+            app_channel,
             spawner,
         });
 
@@ -370,7 +379,7 @@ where
         // consistent with their function calls.
         self.inner
             .shell_channel
-            .send(Step::resolves_never(operation));
+            .send(Request::resolves_never(operation));
     }
 
     /// Send an event to the app. The event will be processed on the next
@@ -415,8 +424,8 @@ where
         )
     }
 
-    pub(crate) fn send_step(&self, step: Step<Op>) {
-        self.inner.shell_channel.send(step);
+    pub(crate) fn send_request(&self, request: Request<Op>) {
+        self.inner.shell_channel.send(request);
     }
 }
 
