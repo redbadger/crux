@@ -282,8 +282,8 @@ where
     spawner: crate::executor::Spawner,
 }
 
-pub struct ProtoContext<E, Event> {
-    shell_channel: Sender<E>,
+pub struct ProtoContext<Eff, Event> {
+    shell_channel: Sender<Eff>,
     app_channel: Sender<Event>,
     spawner: crate::executor::Spawner,
 }
@@ -299,13 +299,13 @@ where
     }
 }
 
-impl<E, Ev> ProtoContext<E, Ev>
+impl<Eff, Ev> ProtoContext<Eff, Ev>
 where
     Ev: 'static,
-    E: 'static,
+    Eff: 'static,
 {
     pub(crate) fn new(
-        steps: Sender<E>,
+        steps: Sender<Eff>,
         events: Sender<Ev>,
         spawner: crate::executor::Spawner,
     ) -> Self {
@@ -325,16 +325,14 @@ where
     /// for the app's `Capabilities` type.
     pub fn specialise<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
     where
-        F: Fn(Step<Op>) -> E + Sync + Send + Copy + 'static,
+        F: Fn(Step<Op>) -> Eff + Sync + Send + Copy + 'static,
         Op: Operation,
     {
-        let inner = Arc::new(ContextInner {
-            shell_channel: self.shell_channel.map_input(func),
-            app_channel: self.app_channel.clone(),
-            spawner: self.spawner.clone(),
-        });
-
-        CapabilityContext { inner }
+        CapabilityContext::new(
+            self.shell_channel.map_input(func),
+            self.app_channel.clone(),
+            self.spawner.clone(),
+        )
     }
 }
 
@@ -343,7 +341,6 @@ where
     Op: Operation,
     Ev: 'static,
 {
-    #[cfg(test)]
     pub(crate) fn new(
         steps: Sender<Step<Op>>,
         events: Sender<Ev>,
@@ -411,13 +408,11 @@ where
         F: Fn(NewEv) -> Ev + Sync + Send + 'static,
         NewEv: 'static,
     {
-        let inner = Arc::new(ContextInner {
-            shell_channel: self.inner.shell_channel.clone(),
-            app_channel: self.inner.app_channel.map_input(func),
-            spawner: self.inner.spawner.clone(),
-        });
-
-        CapabilityContext { inner }
+        CapabilityContext::new(
+            self.inner.shell_channel.clone(),
+            self.inner.app_channel.map_input(func),
+            self.inner.spawner.clone(),
+        )
     }
 
     pub(crate) fn send_step(&self, step: Step<Op>) {
@@ -427,6 +422,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use serde::Serialize;
     use static_assertions::assert_impl_all;
 
     use super::*;
@@ -437,5 +433,13 @@ mod tests {
     #[allow(dead_code)]
     enum Event {}
 
+    #[derive(PartialEq, Serialize)]
+    struct Op {}
+
+    impl Operation for Op {
+        type Output = ();
+    }
+
     assert_impl_all!(ProtoContext<Effect, Event>: Send, Sync);
+    assert_impl_all!(CapabilityContext<Op, Event>: Send, Sync);
 }
