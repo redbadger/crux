@@ -156,9 +156,11 @@ mod core;
 
 use serde::Serialize;
 
-pub use self::capability::{Capability, WithContext};
-pub use crate::core::{Core, Effect, Request};
-pub use capabilities::*;
+pub use self::{
+    capabilities::*,
+    capability::{Capability, WithContext},
+    core::{Core, Effect, Request},
+};
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
 /// as the type argument to [Core].
