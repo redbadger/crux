@@ -1,8 +1,10 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request};
+use crux_core::{bridge::Request, typegen::TypeGen};
 use crux_http::protocol::{HttpRequest, HttpResponse};
-use shared::{sse::SseResponse, Effect, Event, ViewModel};
+use shared::{sse::SseResponse, EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
+
+type Effect = EffectFfi;
 
 fn main() {
     println!("cargo:rerun-if-changed=../shared");

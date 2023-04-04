@@ -147,14 +147,15 @@
 
 pub mod bridge;
 pub mod capability;
+pub mod render;
+pub mod steps;
+pub mod testing;
+
 mod channels;
 mod effect;
 mod executor;
 mod future;
-pub mod render;
-pub mod steps;
 mod stream;
-pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
@@ -162,12 +163,12 @@ use std::sync::RwLock;
 
 use serde::Serialize;
 
-pub use bridge::Bridge;
+pub use effect::Effect;
+pub use steps::Step;
+
 use capability::{Operation, ProtoContext};
 use channels::Receiver;
-pub use effect::Effect;
 use executor::QueuingExecutor;
-pub use steps::Step;
 
 pub use self::{
     capability::{Capability, WithContext},

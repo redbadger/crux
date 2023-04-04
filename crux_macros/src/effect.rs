@@ -79,7 +79,7 @@ impl ToTokens for EffectStructReceiver {
                 #(#variants ,)*
             }
 
-            #[derive(::serde::Serialize)]
+            #[derive(::serde::Serialize, ::serde::Deserialize)]
             pub enum #ffi_effect_name {
                 #(#ffi_variants ,)*
             }
@@ -87,7 +87,7 @@ impl ToTokens for EffectStructReceiver {
             impl ::crux_core::Effect for #effect_name {
                 type Ffi = #ffi_effect_name;
 
-                fn serialize<'out>(self) -> (Self::Ffi, crux_core::steps::Resolve<&'out [u8]>) {
+                fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
                     match self {
                         #(#match_arms ,)*
                     }
@@ -181,7 +181,7 @@ mod tests {
         }
         impl ::crux_core::Effect for Effect {
             type Ffi = EffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, crux_core::steps::Resolve<&'out [u8]>) {
+            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
                 match self {
                     Effect::Render(step) => step.serialize(EffectFfi::Render),
                 }
@@ -289,7 +289,7 @@ mod tests {
         }
         impl ::crux_core::Effect for MyEffect {
             type Ffi = MyEffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, crux_core::steps::Resolve<&'out [u8]>) {
+            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
                 match self {
                     MyEffect::Http(step) => step.serialize(MyEffectFfi::Http),
                     MyEffect::KeyValue(step) => step.serialize(MyEffectFfi::KeyValue),
