@@ -141,8 +141,7 @@ mod app {
 mod tests {
     use std::collections::VecDeque;
 
-    use crux_core::steps::Step;
-    use crux_core::Core;
+    use crux_core::{Core, Request};
     use rand::prelude::*;
 
     use super::app::{Capabilities, Effect, Event, MyApp};
@@ -160,7 +159,7 @@ mod tests {
             let effect = effects.pop_front().unwrap();
 
             match effect {
-                Effect::Crawler(mut step @ Step(Fetch { .. }, ..)) => {
+                Effect::Crawler(mut request @ Request(Fetch { .. }, ..)) => {
                     let output = if counter < 30 {
                         vec![counter, counter + 1, counter + 2]
                     } else {
@@ -169,7 +168,7 @@ mod tests {
 
                     counter += 3;
 
-                    let effs: Vec<Effect> = core.resolve_step(&mut step, output);
+                    let effs: Vec<Effect> = core.resolve(&mut request, output);
 
                     for e in effs {
                         effects.push_back(e)
