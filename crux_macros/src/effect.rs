@@ -25,17 +25,11 @@ impl ToTokens for EffectStructReceiver {
 
         let (effect_name, ffi_effect_name) = match self.name {
             Some(ref name) => {
-                let ef_name = name;
                 let ffi_ef_name = format_ident!("{}Ffi", name);
 
-                (quote!(#ef_name), quote!(#ffi_ef_name))
+                (quote!(#name), quote!(#ffi_ef_name))
             }
-            None => {
-                let ef_name = Type::from_string("Effect").unwrap();
-                let ffi_ef_name = Type::from_string("EffectFfi").unwrap();
-
-                (quote!(#ef_name), quote!(#ffi_ef_name))
-            }
+            None => (quote!(Effect), quote!(EffectFfi)),
         };
 
         let app = match self.app {
@@ -80,7 +74,7 @@ impl ToTokens for EffectStructReceiver {
         }
 
         tokens.extend(quote! {
-            #[derive(Debug, PartialEq, Eq)]
+            #[derive(Debug)]
             pub enum #effect_name {
                 #(#variants ,)*
             }
@@ -173,7 +167,7 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Debug, PartialEq, Eq)]
+        #[derive(Debug)]
         pub enum Effect {
             Render(
                 ::crux_core::steps::Step<
@@ -243,7 +237,7 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Debug, PartialEq, Eq)]
+        #[derive(Debug)]
         pub enum MyEffect {
             Http(
                 ::crux_core::steps::Step<
