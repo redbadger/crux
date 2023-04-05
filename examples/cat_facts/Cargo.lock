@@ -562,7 +562,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-std",
- "bcs",
  "chrono",
  "clap 4.2.0",
  "serde",
