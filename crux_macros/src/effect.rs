@@ -1,5 +1,5 @@
 use darling::{ast, util, FromDeriveInput, FromField, FromMeta, ToTokens};
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::BTreeMap;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
@@ -23,13 +23,14 @@ impl ToTokens for EffectStructReceiver {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
 
-        let (effect_name, ffi_effect_name) = match self.name {
+        let (effect_name, ffi_effect_name, ffi_effect_rename) = match self.name {
             Some(ref name) => {
                 let ffi_ef_name = format_ident!("{}Ffi", name);
+                let ffi_ef_rename = Literal::string(&name.to_string());
 
-                (quote!(#name), quote!(#ffi_ef_name))
+                (quote!(#name), quote!(#ffi_ef_name), quote!(#ffi_ef_rename))
             }
-            None => (quote!(Effect), quote!(EffectFfi)),
+            None => (quote!(Effect), quote!(EffectFfi), quote!("Effect")),
         };
 
         let app = match self.app {
@@ -80,6 +81,7 @@ impl ToTokens for EffectStructReceiver {
             }
 
             #[derive(::serde::Serialize, ::serde::Deserialize)]
+            #[serde(rename = #ffi_effect_rename)]
             pub enum #ffi_effect_name {
                 #(#ffi_variants ,)*
             }
@@ -176,6 +178,7 @@ mod tests {
             ),
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "Effect")]
         pub enum EffectFfi {
             Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
         }
@@ -272,6 +275,7 @@ mod tests {
             ),
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "MyEffect")]
         pub enum MyEffectFfi {
             Http(
                 <crux_http::Http<

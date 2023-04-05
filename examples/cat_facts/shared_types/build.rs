@@ -1,10 +1,10 @@
 use anyhow::Result;
-use crux_core::typegen::TypeGen;
+use crux_core::{bridge::Request, typegen::TypeGen};
 use crux_http::protocol::{HttpRequest, HttpResponse};
 use crux_kv::{KeyValueOperation, KeyValueOutput};
 use crux_platform::PlatformResponse;
 use crux_time::TimeResponse;
-use shared::{app::platform::PlatformEvent, EffectFfi, Event, Request, ViewModel};
+use shared::{app::platform::PlatformEvent, EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
 
 type Effect = EffectFfi;

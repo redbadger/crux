@@ -3052,7 +3052,6 @@ name = "web-yew"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bcs",
  "gloo-net",
  "js-sys",
  "shared",
