@@ -663,7 +663,6 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "async-task-group",
- "bcs",
  "clap 4.2.0",
  "crossbeam-channel",
  "eyre",
