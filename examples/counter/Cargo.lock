@@ -163,6 +163,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_let_bind"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26da9bc03539eda841c2042fd584ee3982b652606f40dc9e7a828817eae79275"
+
+[[package]]
 name = "async-attributes"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2844,6 +2850,7 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assert_let_bind",
  "async-sse",
  "async-std",
  "bcs",

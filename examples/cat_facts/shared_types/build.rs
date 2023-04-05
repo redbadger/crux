@@ -1,11 +1,13 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request};
+use crux_core::typegen::TypeGen;
 use crux_http::protocol::{HttpRequest, HttpResponse};
 use crux_kv::{KeyValueOperation, KeyValueOutput};
 use crux_platform::PlatformResponse;
 use crux_time::TimeResponse;
-use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
+use shared::{app::platform::PlatformEvent, EffectFfi, Event, Request, ViewModel};
 use std::path::PathBuf;
+
+type Effect = EffectFfi;
 
 fn main() {
     println!("cargo:rerun-if-changed=../shared");
