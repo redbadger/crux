@@ -30,6 +30,7 @@ wasm-bindgen = "0.2.84"
 
 [dev-dependencies]
 bcs = "0.1.5"
+assert_let_bind = "0.1.1"
 
 [target.uniffi-bindgen.dependencies]
 uniffi = { version = "0.23.0", features = ["cli"] }

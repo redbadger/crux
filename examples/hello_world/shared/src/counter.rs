@@ -54,7 +54,7 @@ impl App for Hello {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crux_core::{render::RenderOperation, testing::AppTester, Request};
+    use crux_core::testing::AppTester;
 
     #[test]
     fn renders() {
@@ -64,11 +64,7 @@ mod test {
         let update = app.update(Event::Reset, &mut model);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        match actual_effect {
-            Effect::Render(_) => assert!(true),
-            _ => assert!(false, "expected Render, got {:?}", actual_effect),
-        }
+        assert!(matches!(update.effects[0], Effect::Render(_)));
     }
 
     #[test]
@@ -93,11 +89,7 @@ mod test {
         assert_eq!(actual_view, expected_view);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        match actual_effect {
-            Effect::Render(_) => assert!(true),
-            _ => assert!(false, "expected Render, got {:?}", actual_effect),
-        }
+        assert!(matches!(update.effects[0], Effect::Render(_)));
     }
 
     #[test]
@@ -112,11 +104,7 @@ mod test {
         assert_eq!(actual_view, expected_view);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        match actual_effect {
-            Effect::Render(_) => assert!(true),
-            _ => assert!(false, "expected Render, got {:?}", actual_effect),
-        }
+        assert!(matches!(update.effects[0], Effect::Render(_)));
     }
 
     #[test]
