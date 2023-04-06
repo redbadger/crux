@@ -32,3 +32,6 @@ uniffi = { version = "0.23.0", features = ["cli"] }
 
 [build-dependencies]
 uniffi = { version = "0.23.0", features = ["build"] }
+
+[dev-dependencies]
+assert_let_bind = "0.1.1"

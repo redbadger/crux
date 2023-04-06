@@ -11,7 +11,7 @@ pub enum PubSubOperation {
 }
 
 #[derive(Deserialize)]
-pub struct Message(Vec<u8>);
+pub struct Message(pub Vec<u8>);
 
 impl Operation for PubSubOperation {
     type Output = Message;
