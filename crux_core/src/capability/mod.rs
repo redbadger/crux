@@ -231,7 +231,7 @@ pub trait Capability<Ev> {
 /// they can then use to request effects and dispatch events.
 ///
 /// `new_with_context` is called by Crux and should return an instance of the app's `Capabilities` type with
-/// all capabilities constructed with context passed in. Use `Context::specialise` to
+/// all capabilities constructed with context passed in. Use `Context::specialize` to
 /// create an appropriate context instance with the effect constructor which should
 /// wrap the requested operations.
 ///
@@ -241,8 +241,8 @@ pub trait Capability<Ev> {
 /// impl crux_core::WithContext<App, Effect> for Capabilities {
 ///     fn new_with_context(context: CapabilityContext<Effect, Event>) -> Capabilities {
 ///         Capabilities {
-///             http: Http::new(context.specialise(Effect::Http)),
-///             render: Render::new(context.specialise(|_| Effect::Render)),
+///             http: Http::new(context.specialize(Effect::Http)),
+///             render: Render::new(context.specialize(|_| Effect::Render)),
 ///         }
 ///     }
 /// }
@@ -325,14 +325,14 @@ where
         }
     }
 
-    /// Specialise the CapabilityContext to a specific capability, wrapping its operations into
+    /// Specialize the CapabilityContext to a specific capability, wrapping its operations into
     /// an Effect `Ef`. The `func` argument will typically be an Effect variant constructor, but
     /// can be any function taking the capability's operation type and returning
     /// the effect type.
     ///
     /// This will likely only be called from the implementation of [`WithContext`]
     /// for the app's `Capabilities` type.
-    pub fn specialise<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
+    pub fn specialize<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
     where
         F: Fn(Request<Op>) -> Eff + Sync + Send + Copy + 'static,
         Op: Operation,

@@ -40,7 +40,7 @@ where
     /// ```
     ///
     /// The core interface passes across messages serialized as bytes. These can be
-    /// deserialized in the Shell using the types generated using the [typegen] module.
+    /// deserialized in the Shell using the types generated using the [crate::typegen] module.
     pub fn new<Capabilities>() -> Self
     where
         Capabilities: WithContext<A, Ef>,

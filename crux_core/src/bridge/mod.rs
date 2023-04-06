@@ -9,7 +9,7 @@ use registry::ResolveRegistry;
 pub use request_serde::ResolveBytes;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
-/// the `Request` with the corresponding call to [`Core::response`] to pass the data back
+/// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
 /// to the [`App::update`] function (wrapped in the event provided to the capability originating the effect).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request<Eff>

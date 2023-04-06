@@ -5,7 +5,7 @@ use crate::{
 };
 
 // ResolveBytes is needed because lifetime elision doesn't work
-// Through generic type arguments. We can't create
+// through generic type arguments. We can't create
 // a ResolveRegistry of Resolve<&[u8]> without specifying an explicit lifetime.
 // If you see a better way around this, please open a PR.
 
