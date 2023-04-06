@@ -4,7 +4,6 @@ use crux_http::protocol::{HttpRequest, HttpResponse};
 use shared::{sse::SseResponse, EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
 
-
 fn main() {
     println!("cargo:rerun-if-changed=../shared");
 
