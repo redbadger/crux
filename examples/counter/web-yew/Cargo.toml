@@ -19,3 +19,4 @@ wasm-bindgen = "0.2.84"
 wasm-bindgen-futures = "0.4.34"
 wasm-streams = "0.3.0"
 yew = { version = "0.20.0", features = ["csr"] }
+futures = "0.3.28"
