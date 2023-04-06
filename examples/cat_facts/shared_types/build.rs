@@ -7,8 +7,6 @@ use crux_time::TimeResponse;
 use shared::{app::platform::PlatformEvent, EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
 
-type Effect = EffectFfi;
-
 fn main() {
     println!("cargo:rerun-if-changed=../shared");
 
@@ -32,9 +30,9 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<Effect>>()?;
+    gen.register_type::<Request<EffectFfi>>()?;
 
-    gen.register_type::<Effect>()?;
+    gen.register_type::<EffectFfi>()?;
     gen.register_type::<HttpRequest>()?;
     gen.register_type::<KeyValueOperation>()?;
 

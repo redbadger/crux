@@ -3,8 +3,6 @@ use crux_core::{bridge::Request, typegen::TypeGen};
 use shared::{EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
 
-type Effect = EffectFfi;
-
 fn main() {
     println!("cargo:rerun-if-changed=../shared");
 
@@ -25,8 +23,8 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<Effect>>()?;
-    gen.register_type::<Effect>()?;
+    gen.register_type::<Request<EffectFfi>>()?;
+    gen.register_type::<EffectFfi>()?;
     gen.register_type::<Event>()?;
     gen.register_type::<ViewModel>()?;
 
