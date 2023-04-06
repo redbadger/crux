@@ -69,7 +69,7 @@ impl ToTokens for EffectStructReceiver {
 
         for (field_name, (capability, variant, event)) in fields.iter() {
             variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
-            with_context_fields.push(quote! { #field_name: #capability::new(context.specialise(#effect_name::#variant)) });
+            with_context_fields.push(quote! { #field_name: #capability::new(context.specialize(#effect_name::#variant)) });
             ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
             match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
         }
@@ -195,7 +195,7 @@ mod tests {
                 context: ::crux_core::capability::ProtoContext<Effect, Event>,
             ) -> Capabilities {
                 Capabilities {
-                    render: Render::new(context.specialise(Effect::Render)),
+                    render: Render::new(context.specialize(Effect::Render)),
                 }
             }
         }
@@ -308,11 +308,11 @@ mod tests {
                 context: ::crux_core::capability::ProtoContext<MyEffect, MyEvent>,
             ) -> MyCapabilities {
                 MyCapabilities {
-                    http: crux_http::Http::new(context.specialise(MyEffect::Http)),
-                    key_value: KeyValue::new(context.specialise(MyEffect::KeyValue)),
-                    platform: Platform::new(context.specialise(MyEffect::Platform)),
-                    render: Render::new(context.specialise(MyEffect::Render)),
-                    time: Time::new(context.specialise(MyEffect::Time)),
+                    http: crux_http::Http::new(context.specialize(MyEffect::Http)),
+                    key_value: KeyValue::new(context.specialize(MyEffect::KeyValue)),
+                    platform: Platform::new(context.specialize(MyEffect::Platform)),
+                    render: Render::new(context.specialize(MyEffect::Render)),
+                    time: Time::new(context.specialize(MyEffect::Time)),
                 }
             }
         }
