@@ -80,58 +80,51 @@ mod shared {
 mod shell {
     use super::shared::{App, Effect, Event};
     use anyhow::Result;
-    use crux_core::{Core, Request};
+    use crux_core::Core;
     use crux_http::protocol::{HttpRequest, HttpResponse};
     use std::collections::VecDeque;
 
-    pub enum Outcome {
-        Http(Request<HttpRequest>, HttpResponse),
-    }
-
-    enum CoreMessage {
+    enum Task {
         Event(Event),
-        Response(Outcome),
+        Effect(Effect),
     }
 
     pub(crate) fn run(core: &Core<Effect, App>, event: Event) -> Result<Vec<HttpRequest>> {
-        let mut queue: VecDeque<CoreMessage> = VecDeque::new();
+        let mut queue: VecDeque<Task> = VecDeque::new();
 
-        queue.push_back(CoreMessage::Event(event));
+        queue.push_back(Task::Event(event));
 
         let mut received: Vec<HttpRequest> = vec![];
 
         while !queue.is_empty() {
-            let msg = queue.pop_front();
+            let task = queue.pop_front().expect("an event");
 
-            let effs = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Http(mut req, response))) => {
-                    core.resolve(&mut req, response)
+            match task {
+                Task::Event(event) => {
+                    enqueue_effects(&mut queue, core.process_event(event));
                 }
-                _ => vec![],
-            };
-
-            for effect in effs {
-                match effect {
+                Task::Effect(effect) => match effect {
                     Effect::Render(_) => (),
-                    Effect::Http(request) => {
+                    Effect::Http(mut request) => {
                         let http_request = &request.operation;
 
                         received.push(http_request.clone());
+                        let response = HttpResponse {
+                            status: 200,
+                            body: "\"Hello\"".as_bytes().to_owned(),
+                        };
 
-                        queue.push_back(CoreMessage::Response(Outcome::Http(
-                            request,
-                            HttpResponse {
-                                status: 200,
-                                body: "\"Hello\"".as_bytes().to_owned(),
-                            },
-                        )));
+                        enqueue_effects(&mut queue, core.resolve(&mut request, response));
                     }
-                }
-            }
+                },
+            };
         }
 
         Ok(received)
+    }
+
+    fn enqueue_effects(queue: &mut VecDeque<Task>, effects: Vec<Effect>) {
+        queue.append(&mut effects.into_iter().map(Task::Effect).collect())
     }
 }
 
