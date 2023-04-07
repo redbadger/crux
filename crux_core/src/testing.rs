@@ -126,6 +126,10 @@ pub struct Update<Ef, Ev> {
 /// # Example
 ///
 /// ```
+/// use crux_core::assert_effect;
+/// # enum Effect { Render(String) };
+/// # enum Event { None };
+/// # let update = crux_core::testing::Update { effects: vec!(Effect::Render("test".to_string())), events: vec!(Event::None) };
 /// assert_effect!(update, Effect::Render(_));
 /// ```
 #[macro_export]
