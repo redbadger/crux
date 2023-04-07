@@ -130,7 +130,7 @@ mod tests {
     use super::{App, Event, Model};
     use crate::capabilities::sse::SseRequest;
     use crate::{Counter, Effect};
-    use crux_core::testing::AppTester;
+    use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
@@ -175,7 +175,7 @@ mod tests {
 
         let update = app.update(Event::new_set(1, 1), &mut model);
 
-        assert!(matches!(&update.effects[0], Effect::Render(_)));
+        assert_effect!(update, Effect::Render(_));
 
         let actual = model.count.value;
         let expected = 1;
@@ -193,7 +193,7 @@ mod tests {
 
         let mut update = app.update(Event::Increment, &mut model);
 
-        assert!(matches!(&update.effects[0], Effect::Render(_)));
+        assert_effect!(update, Effect::Render(_));
 
         let actual = model.count.value;
         let expected = 1;
@@ -236,8 +236,7 @@ mod tests {
 
         let mut update = app.update(Event::Decrement, &mut model);
 
-        let actual = &update.effects[0];
-        assert!(matches!(actual, Effect::Render(_)));
+        assert_effect!(update, Effect::Render(_));
 
         let actual = model.count.value;
         let expected = -1;
@@ -301,7 +300,7 @@ mod tests {
 
         let update = app.update(event, &mut model);
 
-        assert_let!(Effect::Render(_), &update.effects[0]);
+        assert_effect!(update, Effect::Render(_));
 
         let actual = model.count.value;
         let expected = 1;

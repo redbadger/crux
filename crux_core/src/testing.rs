@@ -117,3 +117,20 @@ pub struct Update<Ef, Ev> {
     /// Events dispatched from the update run
     pub events: Vec<Ev>,
 }
+
+/// Panics if the pattern doesn't match an `Effect` from the specified `Update`
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// # Example
+///
+/// ```
+/// assert_effect!(update, Effect::Render(_));
+/// ```
+#[macro_export]
+macro_rules! assert_effect {
+    ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+        assert!($expression.effects.iter().any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
+    };
+}

@@ -294,7 +294,7 @@ impl CursorObserver {
 
 #[cfg(test)]
 mod editing_tests {
-    use crux_core::testing::AppTester;
+    use crux_core::{assert_effect, testing::AppTester};
 
     use super::*;
 
@@ -328,10 +328,7 @@ mod editing_tests {
         };
 
         let update = app.update(Event::MoveCursor(5), &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
@@ -350,10 +347,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Select(2, 5), &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "hello".to_string());
@@ -371,10 +366,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Insert("l to the ".to_string()), &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "hell to the lo".to_string());
@@ -392,10 +385,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Insert("ter skelter".to_string()), &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "helter skelter".to_string());
@@ -413,10 +404,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "hi, yo".to_string());
@@ -437,10 +426,8 @@ mod editing_tests {
             Event::Replace(1, 1, "ey, just saying h".to_string()),
             &mut model,
         );
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "hey, just saying hello".to_string());
@@ -458,10 +445,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Backspace, &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "hllo".to_string());
@@ -479,10 +464,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Delete, &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "helo".to_string());
@@ -500,10 +483,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Delete, &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "heo".to_string());
@@ -521,10 +502,8 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Backspace, &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "heo".to_string());
@@ -544,10 +523,8 @@ mod editing_tests {
 
         // Replace the ' w' after the emoji
         let update = app.update(Event::Replace(8, 10, "🥳🙌🏻 w".to_string()), &mut model);
-        assert!(update
-            .effects
-            .iter()
-            .any(|e| matches!(e, Effect::Render(_))));
+        assert_effect!(update, Effect::Render(_));
+
         let view = app.view(&model);
 
         assert_eq!(view.text, "Hello 🙌🏻🥳🙌🏻 world.".to_string());
@@ -558,7 +535,7 @@ mod editing_tests {
 #[cfg(test)]
 mod save_load_tests {
     use assert_let_bind::assert_let;
-    use crux_core::testing::AppTester;
+    use crux_core::{assert_effect, testing::AppTester};
     use crux_kv::KeyValueOperation;
 
     use crate::capabilities::timer::{TimerOperation, TimerOutput};
@@ -598,10 +575,7 @@ mod save_load_tests {
 
         for e in update.events {
             let update = app.update(e, &mut model);
-            assert!(update
-                .effects
-                .iter()
-                .any(|e| matches!(e, Effect::Render(_))));
+            assert_effect!(update, Effect::Render(_));
         }
 
         assert_eq!(app.view(&model).text, "LOADED");
@@ -630,7 +604,7 @@ mod save_load_tests {
         assert_let!(KeyValueOperation::Read(key), &request.operation);
         assert_eq!(key, &"note".to_string());
 
-        // Read was unsuccsessful
+        // Read was unsuccessful
         let update = app
             .resolve(request, KeyValueOutput::Read(None))
             .expect("should update");
@@ -873,7 +847,7 @@ mod sync_tests {
                 .flat_map(|ed| {
                     self.app
                         .resolve(subscription, Message(ed.clone()))
-                        .expect("shuld resolve")
+                        .expect("should resolve")
                         .events
                 })
                 .collect::<Vec<_>>();
