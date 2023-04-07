@@ -14,7 +14,7 @@ pub struct Model {
     confirmed: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,
