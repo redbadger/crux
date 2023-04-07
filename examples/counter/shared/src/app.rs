@@ -130,7 +130,7 @@ mod tests {
     use super::{App, Event, Model};
     use crate::capabilities::sse::SseRequest;
     use crate::{Counter, Effect};
-    use crux_core::{render::RenderOperation, testing::AppTester};
+    use crux_core::testing::AppTester;
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
@@ -175,12 +175,7 @@ mod tests {
 
         let update = app.update(Event::new_set(1, 1), &mut model);
 
-        let expected = RenderOperation;
-        if let Effect::Render(request) = &update.effects[0] {
-            assert_eq!(request.operation, expected);
-        } else {
-            panic!("expected a Render effect")
-        }
+        assert!(matches!(&update.effects[0], Effect::Render(_)));
 
         let actual = model.count.value;
         let expected = 1;
