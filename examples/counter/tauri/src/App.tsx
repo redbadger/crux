@@ -12,7 +12,6 @@ const initialState: State = {
 };
 
 function App() {
-  // TODO: populate
   const [state, setState] = useState(initialState);
 
   useEffect(() => {
