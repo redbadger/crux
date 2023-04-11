@@ -10,6 +10,7 @@ mod shared {
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
     pub enum Event {
         Get,
+        Post,
         Set(crux_http::Result<crux_http::Response<String>>),
     }
 
@@ -36,6 +37,13 @@ mod shared {
                     caps.http
                         .get("http://example.com")
                         .header("Authorization", "secret-token")
+                        .expect_string()
+                        .send(Event::Set);
+                }
+                Event::Post => {
+                    caps.http
+                        .post("http://example.com")
+                        .body_bytes("The Body".as_bytes())
                         .expect_string()
                         .send(Event::Set);
                 }
@@ -80,7 +88,8 @@ mod tests {
                 headers: vec![HttpHeader {
                     name: "authorization".to_string(),
                     value: "secret-token".to_string()
-                }]
+                }],
+                body: vec![],
             })
         );
 
@@ -92,6 +101,37 @@ mod tests {
         let actual = update.events;
         assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
             assert_eq!(*response.body().unwrap(), "\"hello\"".to_string())
+        })
+    }
+
+    #[test]
+    fn with_request_body() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::Post, &mut model);
+
+        assert_eq!(
+            update.effects[0],
+            Effect::Http(HttpRequest {
+                method: "POST".to_string(),
+                url: "http://example.com/".to_string(),
+                headers: vec![HttpHeader {
+                    name: "content-type".to_string(),
+                    value: "application/octet-stream".to_string()
+                }],
+                body: "The Body".as_bytes().to_vec(),
+            })
+        );
+
+        let update = update.effects[0].resolve(&HttpResponse {
+            status: 200,
+            body: serde_json::to_vec("The Body").unwrap(),
+        });
+
+        let actual = update.events;
+        assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
+            assert_eq!(*response.body().unwrap(), "\"The Body\"".to_string())
         })
     }
 }
