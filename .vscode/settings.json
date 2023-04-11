@@ -3,6 +3,7 @@
     "Cargo.toml",
     "examples/cat_facts/Cargo.toml",
     "examples/counter/Cargo.toml",
-    "examples/hello_world/Cargo.toml"
+    "examples/hello_world/Cargo.toml",
+    "examples/notes/Cargo.toml"
   ]
 }

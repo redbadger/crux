@@ -54,80 +54,62 @@ mod shared {
 }
 
 mod shell {
-    use super::shared::{App, Effect, Event, ViewModel};
-    use anyhow::Result;
+    use super::shared::{App, Effect, Event};
     use crux_core::{Core, Request};
-    use crux_platform::PlatformResponse;
+    use crux_platform::{PlatformRequest, PlatformResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Platform(PlatformResponse),
+        Platform(Request<PlatformRequest>, PlatformResponse),
     }
 
     enum CoreMessage {
         Event(Event),
-        Response(Vec<u8>, Outcome),
+        Response(Outcome),
     }
 
-    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
-        let core: Core<Effect, App> = Core::default();
+    pub fn run(core: &Core<Effect, App>) {
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Event(Event::PlatformGet));
 
-        let mut received = vec![];
-
         while !queue.is_empty() {
             let msg = queue.pop_front();
 
-            let reqs = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(&bcs::to_bytes(&m)?),
-                Some(CoreMessage::Response(uuid, output)) => core.handle_response(
-                    &uuid,
-                    &match output {
-                        Outcome::Platform(x) => bcs::to_bytes(&x)?,
-                    },
-                ),
+            let effs = match msg {
+                Some(CoreMessage::Event(m)) => core.process_event(m),
+                Some(CoreMessage::Response(Outcome::Platform(mut request, outcome))) => {
+                    core.resolve(&mut request, outcome)
+                }
+
                 _ => vec![],
             };
-            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
-            for Request { uuid, effect } in reqs {
-                match effect {
-                    Effect::Render(_) => received.push(effect),
-                    Effect::Platform(_) => {
-                        received.push(effect);
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::Platform(PlatformResponse("test shell".to_string())),
-                        ));
-                    }
+            for effect in effs {
+                if let Effect::Platform(request) = effect {
+                    queue.push_back(CoreMessage::Response(Outcome::Platform(
+                        request,
+                        PlatformResponse("test shell".to_string()),
+                    )));
                 }
             }
         }
-
-        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
-        Ok((received, view))
     }
 }
 
 mod tests {
-    use crate::{shared::Effect, shell::run};
-    use anyhow::Result;
-    use crux_core::render::RenderOperation;
-    use crux_platform::PlatformRequest;
+    use crate::{
+        shared::{App, Effect},
+        shell::run,
+    };
+    use crux_core::Core;
 
     #[test]
-    pub fn test_platform() -> Result<()> {
-        let (received, view) = run()?;
-        assert_eq!(
-            received,
-            vec![
-                Effect::Platform(PlatformRequest),
-                Effect::Render(RenderOperation)
-            ]
-        );
-        assert_eq!(view.platform, "test shell");
-        Ok(())
+    pub fn test_platform() {
+        let core: Core<Effect, App> = Core::default();
+
+        run(&core);
+
+        assert_eq!(core.view().platform, "test shell");
     }
 }

@@ -5,10 +5,8 @@ use std::{
 
 use futures::Stream;
 
-use crate::{
-    channels::{channel, Receiver},
-    steps::Step,
-};
+use super::{channel, channel::Receiver};
+use crate::core::Request;
 
 pub struct ShellStream<T> {
     shared_state: Arc<Mutex<SharedState<T>>>,
@@ -17,7 +15,7 @@ pub struct ShellStream<T> {
 struct SharedState<T> {
     receiver: Receiver<T>,
     waker: Option<Waker>,
-    send_step: Option<Box<dyn FnOnce() + Send + 'static>>,
+    send_request: Option<Box<dyn FnOnce() + Send + 'static>>,
 }
 
 impl<T> Stream for ShellStream<T> {
@@ -29,8 +27,8 @@ impl<T> Stream for ShellStream<T> {
     ) -> Poll<Option<Self::Item>> {
         let mut shared_state = self.shared_state.lock().unwrap();
 
-        if let Some(send_step) = shared_state.send_step.take() {
-            send_step();
+        if let Some(send_request) = shared_state.send_request.take() {
+            send_request();
         }
 
         match shared_state.receiver.try_receive() {
@@ -55,22 +53,22 @@ where
         let shared_state = Arc::new(Mutex::new(SharedState {
             receiver,
             waker: None,
-            send_step: None,
+            send_request: None,
         }));
 
         // Our callback holds a weak pointer so the channel can be freed
         // whenever the associated task ends.
         let callback_shared_state = Arc::downgrade(&shared_state);
 
-        let step = Step::resolves_many_times(operation, move |bytes| {
+        let request = Request::resolves_many_times(operation, move |result| {
             let Some(shared_state) = callback_shared_state.upgrade() else {
-                // Let the StepRegistry know that the associated task has finished.
+                // Let the caller know that the associated task has finished.
                 return Err(());
             };
 
             let mut shared_state = shared_state.lock().unwrap();
 
-            sender.send(bcs::from_bytes(bytes).unwrap());
+            sender.send(result);
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake();
             }
@@ -80,9 +78,9 @@ where
 
         // Put a callback into our shared_state so that we only send
         // our request to the shell when the stream is first polled.
-        let send_step_context = self.clone();
-        let send_step = move || send_step_context.send_step(step);
-        shared_state.lock().unwrap().send_step = Some(Box::new(send_step));
+        let send_req_context = self.clone();
+        let send_request = move || send_req_context.send_request(request);
+        shared_state.lock().unwrap().send_request = Some(Box::new(send_request));
 
         ShellStream { shared_state }
     }
@@ -92,12 +90,7 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::{
-        capability::{CapabilityContext, Operation},
-        channels::channel,
-        executor::executor_and_spawner,
-        steps::Resolve,
-    };
+    use crate::capability::{channel, executor_and_spawner, CapabilityContext, Operation};
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -111,21 +104,21 @@ mod tests {
 
     #[test]
     fn test_shell_stream() {
-        let (step_sender, steps) = channel();
+        let (request_sender, requests) = channel();
         let (event_sender, events) = channel::<()>();
         let (executor, spawner) = executor_and_spawner();
         let capability_context =
-            CapabilityContext::new(step_sender, event_sender.clone(), spawner.clone());
+            CapabilityContext::new(request_sender, event_sender.clone(), spawner.clone());
 
         let mut stream = capability_context.stream_from_shell(TestOperation);
 
-        // The stream hasn't been polled so we shouldn't have any steps.
-        assert_matches!(steps.receive(), None);
+        // The stream hasn't been polled so we shouldn't have any requests.
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
         // It also shouldn't have spawned anything so check that
         executor.run_all();
-        assert_matches!(steps.receive(), None);
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
         spawner.spawn(async move {
@@ -138,41 +131,41 @@ mod tests {
             }
         });
 
-        // We still shouldn't have any steps
-        assert_matches!(steps.receive(), None);
+        // We still shouldn't have any requests
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
         executor.run_all();
-        let step = steps.receive().expect("we should have a step here");
-        assert_matches!(steps.receive(), None);
+        let mut request = requests.receive().expect("we should have a request here");
+
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
-        let Some(Resolve::Many(resolve)) = step.resolve else {
-            panic!("Expected a resolve many");
-        };
-        // Resolve it once
-        resolve(&[0]).unwrap();
+        request.resolve(None).unwrap();
+
         executor.run_all();
 
         // We should have one event
-        assert_matches!(steps.receive(), None);
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), None);
 
         // Resolve it a few more times and then finish.
-        resolve(&[0]).unwrap();
-        resolve(&[0]).unwrap();
-        resolve(&[1]).unwrap();
+        request.resolve(None).unwrap();
+        request.resolve(None).unwrap();
+        request.resolve(Some(Done)).unwrap();
         executor.run_all();
 
         // We should have three events
-        assert_matches!(steps.receive(), None);
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), None);
 
         // The next resolve should error as we've terminated the task
-        resolve(&[0]).expect_err("resolving a finished task should error")
+        request
+            .resolve(None)
+            .expect_err("resolving a finished task should error");
     }
 }

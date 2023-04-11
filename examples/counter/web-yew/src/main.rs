@@ -1,96 +1,103 @@
+use std::rc::Rc;
+
 use anyhow::Result;
-use bcs::{from_bytes, to_bytes};
+use futures::{stream, TryStreamExt};
 use gloo_net::http;
+use wasm_bindgen::JsValue;
 use yew::{html::Scope, prelude::*};
 
 use shared::{
     http::protocol::{HttpHeader, HttpRequest, HttpResponse},
     sse::{SseRequest, SseResponse},
-    Effect, Event, Request, ViewModel,
+    App, Capabilities, Core, Effect, Event,
 };
 
 #[derive(Default)]
-struct RootComponent;
-
-enum CoreMessage {
-    Event(Event),
-    Response(Vec<u8>, Outcome),
+struct RootComponent {
+    core: Rc<Core<Effect, App>>,
 }
 
-pub enum Outcome {
-    Http(HttpResponse),
-    Sse(SseResponse),
+enum Task {
+    Event(Event),
+    Effect(Effect),
+}
+
+fn send_effects(link: &Scope<RootComponent>, effects: Vec<Effect>) {
+    link.send_message_batch(effects.into_iter().map(Task::Effect).collect());
 }
 
 impl Component for RootComponent {
-    type Message = CoreMessage;
+    type Message = Task;
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(CoreMessage::Event(Event::StartWatch));
+        link.send_message(Task::Event(Event::StartWatch));
 
-        Self::default()
+        Self {
+            core: Rc::new(Core::new::<Capabilities>()),
+        }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let link = ctx.link();
+        let core = &self.core;
 
-        let reqs = match msg {
-            CoreMessage::Event(event) => shared::process_event(&to_bytes(&event).unwrap()),
-            CoreMessage::Response(uuid, outcome) => shared::handle_response(
-                &uuid,
-                &match outcome {
-                    Outcome::Http(x) => to_bytes(&x).unwrap(),
-                    Outcome::Sse(x) => to_bytes(&x).unwrap(),
-                },
-            ),
-        };
-
-        let reqs: Vec<Request<Effect>> = from_bytes(&reqs).unwrap();
-
-        let mut should_render = false;
-
-        for Request { uuid, effect } in reqs {
-            match effect {
-                Effect::Render(_) => should_render = true,
-                Effect::Http(HttpRequest {
-                    url,
-                    method,
-                    headers,
-                }) => {
+        match msg {
+            Task::Event(event) => send_effects(link, core.process_event(event)),
+            Task::Effect(effect) => match effect {
+                Effect::Render(_) => return true,
+                Effect::Http(mut request) => {
                     wasm_bindgen_futures::spawn_local({
+                        let link = link.clone();
+                        let core = core.clone();
+
+                        let HttpRequest {
+                            url,
+                            method,
+                            headers,
+                            body: _,
+                        } = request.operation.clone();
+
                         let method = match method.as_str() {
                             "GET" => http::Method::GET,
                             "POST" => http::Method::POST,
                             _ => panic!("not yet handling this method"),
                         };
-                        let link = link.clone();
 
                         async move {
-                            http(&uuid, &url, method, &headers, &link).await.unwrap();
+                            let response = http(&url, method, &headers).await.unwrap();
+
+                            send_effects(&link, core.resolve(&mut request, response));
                         }
                     });
                 }
-                Effect::ServerSentEvents(SseRequest { url }) => {
+                Effect::ServerSentEvents(mut request) => {
                     wasm_bindgen_futures::spawn_local({
                         let link = link.clone();
+                        let core = core.clone();
+
+                        let SseRequest { url } = request.operation.clone();
 
                         async move {
-                            sse(&uuid, &url, &link).await.unwrap();
+                            let mut stream = sse(&url).await.unwrap();
+
+                            while let Ok(Some(chunk)) = stream.try_next().await {
+                                let response = SseResponse::Chunk(chunk);
+                                send_effects(&link, core.resolve(&mut request, response));
+                            }
                         }
                     });
                 }
-            }
-        }
+            },
+        };
 
-        should_render
+        false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let view = shared::view();
-        let view: ViewModel = from_bytes(&view).unwrap();
+        let view = self.core.view();
 
         html! {
             <>
@@ -104,11 +111,11 @@ impl Component for RootComponent {
                     <p class="is-size-5">{&view.text}</p>
                     <div class="buttons section is-centered">
                         <button class="button is-primary is-warning"
-                            onclick={link.callback(|_| CoreMessage::Event(Event::Decrement))}>
+                            onclick={link.callback(|_| Task::Event(Event::Decrement))}>
                             {"Decrement"}
                         </button>
                         <button class="button is-primary is-danger"
-                            onclick={link.callback(|_| CoreMessage::Event(Event::Increment))}>
+                            onclick={link.callback(|_| Task::Event(Event::Increment))}>
                             {"Increment"}
                         </button>
                     </div>
@@ -118,13 +125,7 @@ impl Component for RootComponent {
     }
 }
 
-async fn http(
-    uuid: &[u8],
-    url: &str,
-    method: http::Method,
-    headers: &[HttpHeader],
-    link: &Scope<RootComponent>,
-) -> Result<()> {
+async fn http(url: &str, method: http::Method, headers: &[HttpHeader]) -> Result<HttpResponse> {
     let mut request = http::Request::new(url).method(method);
 
     for header in headers {
@@ -133,18 +134,14 @@ async fn http(
 
     let response = request.send().await?;
     let body = response.binary().await?;
-    link.send_message(CoreMessage::Response(
-        uuid.to_vec(),
-        Outcome::Http(HttpResponse {
-            status: response.status(),
-            body,
-        }),
-    ));
 
-    Ok(())
+    Ok(HttpResponse {
+        status: response.status(),
+        body,
+    })
 }
 
-async fn sse(uuid: &[u8], url: &str, link: &Scope<RootComponent>) -> Result<()> {
+async fn sse(url: &str) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>, Error = JsValue>> {
     use futures_util::StreamExt;
     use js_sys::Uint8Array;
     use wasm_bindgen::{prelude::*, JsCast};
@@ -155,17 +152,21 @@ async fn sse(uuid: &[u8], url: &str, link: &Scope<RootComponent>) -> Result<()> 
     let raw_body = response.body().unwrap_throw();
     let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());
 
-    let mut stream = body.into_stream();
+    let stream = body.into_stream();
 
-    while let Some(Ok(chunk)) = stream.next().await {
-        let chunk: Uint8Array = chunk.dyn_into().unwrap();
-        link.send_message(CoreMessage::Response(
-            uuid.to_vec(),
-            Outcome::Sse(SseResponse::Chunk(chunk.to_vec())),
-        ));
-    }
+    Ok(Box::pin(stream::try_unfold(stream, |mut stream| async {
+        match stream.next().await {
+            Some(Ok(chunk)) => {
+                let chunk: Uint8Array = chunk
+                    .try_into()
+                    .expect("should cast from JSValue into bytes");
 
-    Ok(())
+                Ok(Some((chunk.to_vec(), stream)))
+            }
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
+        }
+    })))
 }
 
 fn main() {

@@ -57,12 +57,19 @@ impl ArcWake for Task {
 
 impl QueuingExecutor {
     pub fn run_all(&self) {
+        // While there are tasks to be processed
         while let Ok(task) = self.ready_queue.try_recv() {
+            // Unlock the future in the Task
             let mut future_slot = task.future.lock().unwrap();
+
+            // Take it, replace with None, ...
             if let Some(mut future) = future_slot.take() {
                 let waker = waker_ref(&task);
                 let context = &mut Context::from_waker(&waker);
+
+                // ...and poll it
                 if future.as_mut().poll(context).is_pending() {
+                    // If it's still pending, put it back
                     *future_slot = Some(future)
                 }
             }

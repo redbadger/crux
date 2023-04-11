@@ -208,6 +208,7 @@ impl App for CatFacts {
 
 #[cfg(test)]
 mod tests {
+    use assert_let_bind::assert_let;
     use crux_core::testing::AppTester;
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
@@ -225,22 +226,16 @@ mod tests {
 
         let update = app.update(Event::Fetch, &mut model);
 
-        assert_eq!(
-            update.effects[0],
-            Effect::Http(HttpRequest {
-                method: "GET".into(),
-                url: FACT_API_URL.into(),
-                headers: vec![]
-            })
-        );
-        assert_eq!(
-            update.effects[1],
-            Effect::Http(HttpRequest {
-                method: "GET".into(),
-                url: IMAGE_API_URL.into(),
-                headers: vec![]
-            })
-        );
+        assert_let!(Effect::Http(request), &update.effects[0]);
+        let actual = &request.operation;
+        let expected = &HttpRequest {
+            method: "GET".into(),
+            url: FACT_API_URL.into(),
+            headers: vec![],
+            body: vec![],
+        };
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -248,25 +243,31 @@ mod tests {
         let app = AppTester::<CatFacts, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::Fetch, &mut model);
+        let mut update = app.update(Event::Fetch, &mut model);
 
-        assert_eq!(
-            update.effects[0],
-            Effect::Http(HttpRequest {
-                method: "GET".into(),
-                url: FACT_API_URL.into(),
-                headers: vec![]
-            })
-        );
+        assert_let!(Effect::Http(request), &mut update.effects[0]);
+        let actual = &request.operation;
+        let expected = &HttpRequest {
+            method: "GET".into(),
+            url: FACT_API_URL.into(),
+            headers: vec![],
+            body: vec![],
+        };
+        assert_eq!(actual, expected);
+
         let a_fact = CatFact {
             fact: "cats are good".to_string(),
             length: 13,
         };
 
-        let update = update.effects[0].resolve(&HttpResponse {
+        let response = HttpResponse {
             status: 200,
             body: serde_json::to_vec(&a_fact).unwrap(),
-        });
+        };
+        let update = app
+            .resolve(request, response)
+            .expect("should resolve successfully");
+
         let expected_response = ResponseBuilder::ok().body(a_fact).build();
         assert_eq!(update.events, vec![Event::SetFact(Ok(expected_response))])
     }

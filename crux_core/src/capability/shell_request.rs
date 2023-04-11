@@ -7,7 +7,7 @@ use std::{
 
 use futures::Future;
 
-use crate::Step;
+use crate::Request;
 
 pub struct ShellRequest<T> {
     shared_state: Arc<Mutex<SharedState<T>>>,
@@ -16,7 +16,7 @@ pub struct ShellRequest<T> {
 struct SharedState<T> {
     result: Option<T>,
     waker: Option<Waker>,
-    send_step: Option<Box<dyn FnOnce() + Send + 'static>>,
+    send_request: Option<Box<dyn FnOnce() + Send + 'static>>,
 }
 
 impl<T> Future for ShellRequest<T> {
@@ -28,10 +28,13 @@ impl<T> Future for ShellRequest<T> {
     ) -> std::task::Poll<Self::Output> {
         let mut shared_state = self.shared_state.lock().unwrap();
 
-        if let Some(send_step) = shared_state.send_step.take() {
-            send_step();
+        // If there's still a request to send, take it and send it
+        if let Some(send_request) = shared_state.send_request.take() {
+            send_request();
         }
 
+        // If a result has been delivered, we're ready to continue
+        // Else we're pending with the waker from context
         match shared_state.result.take() {
             Some(result) => Poll::Ready(result),
             None => {
@@ -59,14 +62,14 @@ where
         let shared_state = Arc::new(Mutex::new(SharedState {
             result: None,
             waker: None,
-            send_step: None,
+            send_request: None,
         }));
 
         // Our callback holds a weak pointer to avoid circular references
-        // from shared_state -> send_step -> step -> shared_state
+        // from shared_state -> send_request -> request -> shared_state
         let callback_shared_state = Arc::downgrade(&shared_state);
 
-        let step = Step::resolves_once(operation, move |bytes| {
+        let request = Request::resolves_once(operation, move |result| {
             let Some(shared_state) = callback_shared_state.upgrade() else {
                 // The ShellRequest was dropped before we were called, so just
                 // do nothing.
@@ -74,16 +77,20 @@ where
             };
 
             let mut shared_state = shared_state.lock().unwrap();
-            shared_state.result = Some(bcs::from_bytes(bytes).unwrap());
+
+            // Attach the result to the shared state of the future
+            shared_state.result = Some(result);
+            // Signal the executor to wake the task holding this future
             if let Some(waker) = shared_state.waker.take() {
                 waker.wake()
             }
         });
 
-        let send_step_context = self.clone();
-        let send_step = move || send_step_context.send_step(step);
+        // Send the request on the next poll of the ShellRequest future
+        let send_req_context = self.clone();
+        let send_request = move || send_req_context.send_request(request);
 
-        shared_state.lock().unwrap().send_step = Some(Box::new(send_step));
+        shared_state.lock().unwrap().send_request = Some(Box::new(send_request));
 
         ShellRequest { shared_state }
     }
@@ -93,12 +100,7 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::{
-        capability::{CapabilityContext, Operation},
-        channels::channel,
-        executor::executor_and_spawner,
-        steps::Resolve,
-    };
+    use crate::capability::{channel, executor_and_spawner, CapabilityContext, Operation};
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -109,21 +111,21 @@ mod tests {
 
     #[test]
     fn test_effect_future() {
-        let (step_sender, steps) = channel();
+        let (request_sender, requests) = channel();
         let (event_sender, events) = channel::<()>();
         let (executor, spawner) = executor_and_spawner();
         let capability_context =
-            CapabilityContext::new(step_sender, event_sender.clone(), spawner.clone());
+            CapabilityContext::new(request_sender, event_sender.clone(), spawner.clone());
 
         let future = capability_context.request_from_shell(TestOperation);
 
-        // The future hasn't been awaited so we shouldn't have any steps.
-        assert_matches!(steps.receive(), None);
+        // The future hasn't been awaited so we shouldn't have any requests.
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
         // It also shouldn't have spawned anything so check that
         executor.run_all();
-        assert_matches!(steps.receive(), None);
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
         spawner.spawn(async move {
@@ -131,24 +133,22 @@ mod tests {
             event_sender.send(());
         });
 
-        // We still shouldn't have any steps
-        assert_matches!(steps.receive(), None);
+        // We still shouldn't have any requests
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
         executor.run_all();
-        let step = steps.receive().expect("we should have a step here");
-        assert_matches!(steps.receive(), None);
+        let mut request = requests.receive().expect("we should have a request here");
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
-        let Some(Resolve::Once(resolve)) = step.resolve else {
-            panic!("Expected a resolve once");
-        };
-        resolve(&[]);
-        assert_matches!(steps.receive(), None);
+        request.resolve(()).expect("request should resolve");
+
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
         executor.run_all();
-        assert_matches!(steps.receive(), None);
+        assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), None);
     }

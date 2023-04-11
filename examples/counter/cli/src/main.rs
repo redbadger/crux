@@ -1,14 +1,12 @@
 use async_std::io::ReadExt;
-use crossbeam_channel::Sender;
-use futures::{stream, TryStreamExt};
-
-use bcs::{from_bytes, to_bytes};
 use clap::Parser;
+use crossbeam_channel::Sender;
 use eyre::{bail, eyre, Result};
+use futures::{stream, TryStreamExt};
 use shared::{
     http::protocol::{HttpHeader, HttpRequest, HttpResponse},
     sse::{SseRequest, SseResponse},
-    Effect, Event, Request, ViewModel,
+    App, Capabilities, Core, Effect, Event,
 };
 use std::{
     str::FromStr,
@@ -17,9 +15,10 @@ use std::{
 };
 use surf::{http::Method, Client, Config, Url};
 
-enum CoreMessage {
+#[derive(Debug)]
+enum Task {
     Event(Event),
-    Response(Vec<u8>, Outcome),
+    Effect(Effect),
 }
 
 #[derive(Parser, Clone)]
@@ -30,13 +29,13 @@ enum Command {
     Watch,
 }
 
-impl From<Command> for CoreMessage {
+impl From<Command> for Task {
     fn from(cmd: Command) -> Self {
         match cmd {
-            Command::Get => CoreMessage::Event(Event::Get),
-            Command::Inc => CoreMessage::Event(Event::Increment),
-            Command::Dec => CoreMessage::Event(Event::Decrement),
-            Command::Watch => CoreMessage::Event(Event::StartWatch),
+            Command::Get => Task::Event(Event::Get),
+            Command::Inc => Task::Event(Event::Increment),
+            Command::Dec => Task::Event(Event::Decrement),
+            Command::Watch => Task::Event(Event::StartWatch),
         }
     }
 }
@@ -54,85 +53,101 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    let (tx, rx) = crossbeam_channel::unbounded::<CoreMessage>();
+    let (tx, rx) = crossbeam_channel::unbounded::<Task>();
 
     let strong_tx = Arc::new(tx);
     let tx = Arc::downgrade(&strong_tx);
 
-    // Kick off with the given command
+    let core: Arc<Core<Effect, App>> = Arc::new(Core::new::<Capabilities>());
 
-    main_loop(Args::parse().cmd.into(), tx.clone())?;
+    // Kick off with the given command
+    main_loop(&core, Args::parse().cmd.into(), tx.clone())?;
     drop(strong_tx); // tx may still live in a side-effect futures
 
     // Continue until there's no more work to do
     while let Ok(msg) = rx.recv() {
-        main_loop(msg, tx.clone())?;
+        main_loop(&core, msg, tx.clone())?;
     }
 
     Ok(())
 }
 
-fn main_loop(msg: CoreMessage, tx: Weak<Sender<CoreMessage>>) -> Result<(), eyre::ErrReport> {
-    let reqs = match msg {
-        CoreMessage::Event(m) => shared::process_event(&to_bytes(&m).unwrap()),
-        CoreMessage::Response(uuid, output) => shared::handle_response(
-            &uuid,
-            &match output {
-                Outcome::Http(x) => to_bytes(&x).unwrap(),
-                Outcome::Sse(x) => to_bytes(&x).unwrap(),
-            },
-        ),
-    };
-    let reqs: Vec<Request<Effect>> = from_bytes(&reqs).unwrap();
-
-    for Request { uuid, effect } in reqs {
-        match effect {
-            Effect::Render(_) => {
-                let view = from_bytes::<ViewModel>(&shared::view())?;
-                let text = view.text;
-
-                if !text.contains("pending") {
-                    println!("{text}");
-                }
-            }
-            Effect::Http(HttpRequest {
-                method,
-                url,
-                headers,
-            }) => {
-                let method = Method::from_str(&method).expect("unknown http method");
-                let url = Url::parse(&url)?;
-
-                async_std::task::spawn({
-                    let tx = tx.upgrade().unwrap();
-                    async move {
-                        let response = http(method, url, &headers).await.unwrap();
-                        let outcome = Outcome::Http(response);
-                        let message = CoreMessage::Response(uuid.clone(), outcome);
-
-                        tx.send(message).unwrap();
-                    }
-                });
-            }
-            Effect::ServerSentEvents(SseRequest { url }) => {
-                let url = Url::parse(&url)?;
-
-                async_std::task::spawn({
-                    let tx = tx.upgrade().unwrap();
-                    async move {
-                        let mut stream = sse(url).await.unwrap();
-
-                        while let Ok(Some(item)) = stream.try_next().await {
-                            let outcome = Outcome::Sse(SseResponse::Chunk(item));
-                            let message = CoreMessage::Response(uuid.clone(), outcome);
-
-                            tx.send(message).unwrap();
-                        }
-                    }
-                });
+fn main_loop(
+    core: &Arc<Core<Effect, App>>,
+    task: Task,
+    tx: Weak<Sender<Task>>,
+) -> Result<(), eyre::ErrReport> {
+    match task {
+        Task::Event(event) => {
+            for effect in core.process_event(event) {
+                process_effect(effect, core, tx.clone())?
             }
         }
+        Task::Effect(effect) => process_effect(effect, core, tx)?,
     }
+
+    Ok(())
+}
+
+fn process_effect(
+    effect: Effect,
+    core: &Arc<Core<Effect, App>>,
+    tx: Weak<Sender<Task>>,
+) -> Result<(), eyre::ErrReport> {
+    match effect {
+        Effect::Render(_) => {
+            let text = core.view().text;
+
+            if !text.contains("pending") {
+                println!("{text}");
+            }
+        }
+        Effect::Http(mut request) => {
+            let HttpRequest {
+                ref method,
+                ref url,
+                ref headers,
+                body: _,
+            } = request.operation;
+
+            async_std::task::spawn({
+                let method = Method::from_str(method).expect("unknown http method");
+                let url = Url::parse(url)?;
+                let headers = headers.clone();
+
+                let core = core.clone();
+                let tx = tx.upgrade().expect("Should be able to upgrade Weak tx");
+
+                async move {
+                    let response = http(method, url, &headers).await.unwrap();
+                    for effect in core.resolve(&mut request, response) {
+                        tx.send(Task::Effect(effect)).unwrap();
+                    }
+                }
+            });
+        }
+        Effect::ServerSentEvents(mut request) => {
+            let SseRequest { ref url } = request.operation;
+
+            async_std::task::spawn({
+                let url = Url::parse(url)?;
+
+                let core = core.clone();
+                let tx = tx.upgrade().unwrap();
+
+                async move {
+                    let mut stream = sse(url).await.unwrap();
+
+                    while let Ok(Some(item)) = stream.try_next().await {
+                        let response = SseResponse::Chunk(item);
+                        for effect in core.resolve(&mut request, response) {
+                            tx.send(Task::Effect(effect)).unwrap();
+                        }
+                    }
+                }
+            });
+        }
+    };
 
     Ok(())
 }

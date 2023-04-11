@@ -1,10 +1,10 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request};
+use crux_core::{bridge::Request, typegen::TypeGen};
 use crux_http::protocol::{HttpRequest, HttpResponse};
 use crux_kv::{KeyValueOperation, KeyValueOutput};
 use crux_platform::PlatformResponse;
 use crux_time::TimeResponse;
-use shared::{app::platform::PlatformEvent, Effect, Event, ViewModel};
+use shared::{app::platform::PlatformEvent, EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
 
 fn main() {
@@ -30,9 +30,9 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<Effect>>()?;
+    gen.register_type::<Request<EffectFfi>>()?;
 
-    gen.register_type::<Effect>()?;
+    gen.register_type::<EffectFfi>()?;
     gen.register_type::<HttpRequest>()?;
     gen.register_type::<KeyValueOperation>()?;
 

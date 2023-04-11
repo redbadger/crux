@@ -1,6 +1,6 @@
 use darling::{ast, util, FromDeriveInput, FromField, FromMeta, ToTokens};
-use proc_macro2::TokenStream;
-use quote::quote;
+use proc_macro2::{Literal, TokenStream};
+use quote::{format_ident, quote};
 use std::collections::BTreeMap;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
@@ -8,7 +8,7 @@ use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 #[darling(attributes(effect), supports(struct_named))]
 struct EffectStructReceiver {
     ident: Ident,
-    name: Option<Type>,
+    name: Option<Ident>,
     app: Option<Type>,
     data: ast::Data<util::Ignored, EffectFieldReceiver>,
 }
@@ -23,12 +23,14 @@ impl ToTokens for EffectStructReceiver {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
 
-        let effect_name = match self.name {
-            Some(ref name) => quote!(#name),
-            None => {
-                let x = Type::from_string("Effect").unwrap();
-                quote!(#x)
+        let (effect_name, ffi_effect_name, ffi_effect_rename) = match self.name {
+            Some(ref name) => {
+                let ffi_ef_name = format_ident!("{}Ffi", name);
+                let ffi_ef_rename = Literal::string(&name.to_string());
+
+                (quote!(#name), quote!(#ffi_ef_name), quote!(#ffi_ef_rename))
             }
+            None => (quote!(Effect), quote!(EffectFfi), quote!("Effect")),
         };
 
         let app = match self.app {
@@ -60,25 +62,44 @@ impl ToTokens for EffectStructReceiver {
         }
         let event = events.first().expect("Capabilities struct has no fields");
 
-        let (variants, fields): (Vec<_>, Vec<_>) = fields.iter()
-            .map(|(field_name, (ty, variant, event))| {
-                (
-                    quote! { #variant(<#ty<#event> as ::crux_core::capability::Capability<#event>>::Operation) },
-                    quote! { #field_name: #ty::new(context.with_effect(#effect_name::#variant)) },
-                )
-            })
-            .unzip();
+        let mut variants = Vec::new();
+        let mut with_context_fields = Vec::new();
+        let mut ffi_variants = Vec::new();
+        let mut match_arms = Vec::new();
+
+        for (field_name, (capability, variant, event)) in fields.iter() {
+            variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
+            with_context_fields.push(quote! { #field_name: #capability::new(context.specialize(#effect_name::#variant)) });
+            ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
+            match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+        }
 
         tokens.extend(quote! {
-            #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
+            #[derive(Debug)]
             pub enum #effect_name {
                 #(#variants ,)*
             }
 
+            #[derive(::serde::Serialize, ::serde::Deserialize)]
+            #[serde(rename = #ffi_effect_rename)]
+            pub enum #ffi_effect_name {
+                #(#ffi_variants ,)*
+            }
+
+            impl ::crux_core::Effect for #effect_name {
+                type Ffi = #ffi_effect_name;
+
+                fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+                    match self {
+                        #(#match_arms ,)*
+                    }
+                }
+            }
+
             impl ::crux_core::WithContext<#app, #effect_name> for #ident {
-                fn new_with_context(context: ::crux_core::capability::CapabilityContext<#effect_name, #event>) -> #ident {
+                fn new_with_context(context: ::crux_core::capability::ProtoContext<#effect_name, #event>) -> #ident {
                     #ident {
-                        #(#fields ,)*
+                        #(#with_context_fields ,)*
                     }
                 }
             }
@@ -148,16 +169,33 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Debug)]
         pub enum Effect {
+            Render(
+                ::crux_core::Request<
+                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                >,
+            ),
+        }
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "Effect")]
+        pub enum EffectFfi {
             Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
+        }
+        impl ::crux_core::Effect for Effect {
+            type Ffi = EffectFfi;
+            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+                match self {
+                    Effect::Render(request) => request.serialize(EffectFfi::Render),
+                }
+            }
         }
         impl ::crux_core::WithContext<App, Effect> for Capabilities {
             fn new_with_context(
-                context: ::crux_core::capability::CapabilityContext<Effect, Event>,
+                context: ::crux_core::capability::ProtoContext<Effect, Event>,
             ) -> Capabilities {
                 Capabilities {
-                    render: Render::new(context.with_effect(Effect::Render)),
+                    render: Render::new(context.specialize(Effect::Render)),
                 }
             }
         }
@@ -202,8 +240,43 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        #[derive(Clone, ::serde::Serialize, ::serde::Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Debug)]
         pub enum MyEffect {
+            Http(
+                ::crux_core::Request<
+                    <crux_http::Http<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ),
+            KeyValue(
+                ::crux_core::Request<
+                    <KeyValue<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ),
+            Platform(
+                ::crux_core::Request<
+                    <Platform<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ),
+            Render(
+                ::crux_core::Request<
+                    <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ),
+            Time(
+                ::crux_core::Request<
+                    <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ),
+        }
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "MyEffect")]
+        pub enum MyEffectFfi {
             Http(
                 <crux_http::Http<
                     MyEvent,
@@ -218,16 +291,28 @@ mod tests {
             Render(<Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
             Time(<Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
         }
+        impl ::crux_core::Effect for MyEffect {
+            type Ffi = MyEffectFfi;
+            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+                match self {
+                    MyEffect::Http(request) => request.serialize(MyEffectFfi::Http),
+                    MyEffect::KeyValue(request) => request.serialize(MyEffectFfi::KeyValue),
+                    MyEffect::Platform(request) => request.serialize(MyEffectFfi::Platform),
+                    MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
+                    MyEffect::Time(request) => request.serialize(MyEffectFfi::Time),
+                }
+            }
+        }
         impl ::crux_core::WithContext<MyApp, MyEffect> for MyCapabilities {
             fn new_with_context(
-                context: ::crux_core::capability::CapabilityContext<MyEffect, MyEvent>,
+                context: ::crux_core::capability::ProtoContext<MyEffect, MyEvent>,
             ) -> MyCapabilities {
                 MyCapabilities {
-                    http: crux_http::Http::new(context.with_effect(MyEffect::Http)),
-                    key_value: KeyValue::new(context.with_effect(MyEffect::KeyValue)),
-                    platform: Platform::new(context.with_effect(MyEffect::Platform)),
-                    render: Render::new(context.with_effect(MyEffect::Render)),
-                    time: Time::new(context.with_effect(MyEffect::Time)),
+                    http: crux_http::Http::new(context.specialize(MyEffect::Http)),
+                    key_value: KeyValue::new(context.specialize(MyEffect::KeyValue)),
+                    platform: Platform::new(context.specialize(MyEffect::Platform)),
+                    render: Render::new(context.specialize(MyEffect::Render)),
+                    time: Time::new(context.specialize(MyEffect::Time)),
                 }
             }
         }

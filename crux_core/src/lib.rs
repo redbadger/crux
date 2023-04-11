@@ -145,30 +145,21 @@
 //! See [typegen] for details.
 //!
 
+pub mod bridge;
 pub mod capability;
-mod channels;
-mod executor;
-mod future;
-pub mod render;
-mod steps;
-mod stream;
 pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
-use std::sync::RwLock;
+mod capabilities;
+mod core;
 
-use serde::{Deserialize, Serialize};
-
-use capability::CapabilityContext;
-use channels::Receiver;
-use executor::QueuingExecutor;
-use steps::{Step, StepRegistry};
+use serde::Serialize;
 
 pub use self::{
+    capabilities::*,
     capability::{Capability, WithContext},
-    future::ShellRequest,
-    stream::ShellStream,
+    core::{Core, Effect, Request},
 };
 
 /// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
@@ -198,139 +189,4 @@ pub trait App: Default {
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
-}
-/// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
-pub struct Core<Ef, A>
-where
-    A: App,
-{
-    model: RwLock<A::Model>,
-    step_registry: StepRegistry,
-    executor: QueuingExecutor,
-    capabilities: A::Capabilities,
-    steps: Receiver<Step<Ef>>,
-    capability_events: Receiver<A::Event>,
-    app: A,
-}
-
-impl<Ef, A> Core<Ef, A>
-where
-    Ef: Serialize + Send + 'static,
-    A: App,
-{
-    /// Create an instance of the Crux core to start a Crux application, e.g.
-    ///
-    /// ```rust,ignore
-    /// lazy_static! {
-    ///     static ref CORE: Core<HelloEffect, Hello> = Core::new::<HelloCapabilities>();
-    /// }
-    /// ```
-    ///
-    /// The core interface passes across messages serialized as bytes. These can be
-    /// deserialized in the Shell using the types generated using the [typegen] module.
-    pub fn new<Capabilities>() -> Self
-    where
-        Capabilities: WithContext<A, Ef>,
-    {
-        let (step_sender, step_receiver) = crate::channels::channel();
-        let (event_sender, event_receiver) = crate::channels::channel();
-        let (executor, spawner) = executor::executor_and_spawner();
-        let capability_context = CapabilityContext::new(step_sender, event_sender, spawner);
-
-        Self {
-            model: Default::default(),
-            step_registry: Default::default(),
-            executor,
-            app: Default::default(),
-            capabilities: Capabilities::new_with_context(capability_context),
-            steps: step_receiver,
-            capability_events: event_receiver,
-        }
-    }
-
-    /// Receive an event from the shell.
-    ///
-    /// The `event` is serialized and will be deserialized by the core before it's passed
-    /// to your app.
-    pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
-    where
-        <A as App>::Event: Deserialize<'de>,
-    {
-        self.process(None, event)
-    }
-
-    /// Receive a response to a capability request from the shell.
-    ///
-    /// The `output` is serialized capability output. It will be deserialized by the core.
-    /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
-    where
-        <A as App>::Event: Deserialize<'de>,
-    {
-        self.process(Some(uuid), output)
-    }
-
-    /// Get the current state of the app's view model (serialized).
-    pub fn view(&self) -> Vec<u8> {
-        let value = {
-            let model = self.model.read().expect("Model RwLock was poisoned.");
-            self.app.view(&model)
-        };
-
-        bcs::to_bytes(&value).expect("View model serialization failed.")
-    }
-
-    fn process<'de>(&self, uuid: Option<&[u8]>, data: &'de [u8]) -> Vec<u8>
-    where
-        <A as App>::Event: Deserialize<'de>,
-    {
-        match uuid {
-            None => {
-                let shell_event = bcs::from_bytes(data).expect("Message deserialization failed.");
-                let mut model = self.model.write().expect("Model RwLock was poisoned.");
-                self.app.update(shell_event, &mut model, &self.capabilities);
-            }
-            Some(uuid) => {
-                self.step_registry.resume(uuid, data);
-            }
-        }
-
-        self.executor.run_all();
-
-        while let Some(capability_event) = self.capability_events.receive() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app
-                .update(capability_event, &mut model, &self.capabilities);
-            drop(model);
-            self.executor.run_all();
-        }
-
-        let requests = self
-            .steps
-            .drain()
-            .map(|c| self.step_registry.register(c))
-            .collect::<Vec<_>>();
-
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
-    }
-}
-
-impl<Ef, A> Default for Core<Ef, A>
-where
-    Ef: Serialize + Send + 'static,
-    A: App,
-    A::Capabilities: WithContext<A, Ef>,
-{
-    fn default() -> Self {
-        Self::new::<A::Capabilities>()
-    }
-}
-
-/// Request for a side-effect passed from the Core to the Shell. The `uuid` links
-/// the `Request` with the corresponding call to [`Core::response`] to pass the data back
-/// to the [`App::update`] function (wrapped in the event provided to the capability originating the effect).
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Request<Effect> {
-    pub uuid: Vec<u8>,
-    pub effect: Effect,
 }
