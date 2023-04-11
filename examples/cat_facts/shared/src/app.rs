@@ -232,6 +232,7 @@ mod tests {
             method: "GET".into(),
             url: FACT_API_URL.into(),
             headers: vec![],
+            body: vec![],
         };
 
         assert_eq!(actual, expected);
@@ -250,6 +251,7 @@ mod tests {
             method: "GET".into(),
             url: FACT_API_URL.into(),
             headers: vec![],
+            body: vec![],
         };
         assert_eq!(actual, expected);
 

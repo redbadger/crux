@@ -107,6 +107,7 @@ fn process_effect(
                 ref method,
                 ref url,
                 ref headers,
+                body: _,
             } = request.operation;
 
             async_std::task::spawn({

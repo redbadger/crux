@@ -119,11 +119,10 @@ mod tests {
 
         let mut update = app.update(Event::Post, &mut model);
 
-        let Effect::Http(mut step) = update.effects.pop().expect("to get an effect");
-        let Step(request, _) = &step;
+        let Effect::Http(mut request) = update.effects.pop().expect("to get an effect");
 
         assert_eq!(
-            *request,
+            request.operation,
             HttpRequest {
                 method: "POST".to_string(),
                 url: "http://example.com/".to_string(),
@@ -137,7 +136,7 @@ mod tests {
 
         let update = app
             .resolve(
-                &mut step,
+                &mut request,
                 HttpResponse {
                     status: 200,
                     body: serde_json::to_vec("The Body").unwrap(),

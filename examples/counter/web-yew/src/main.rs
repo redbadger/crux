@@ -56,6 +56,7 @@ impl Component for RootComponent {
                             url,
                             method,
                             headers,
+                            body: _,
                         } = request.operation.clone();
 
                         let method = match method.as_str() {
