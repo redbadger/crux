@@ -149,6 +149,7 @@ mod tests {
             method: "GET".to_string(),
             url: "https://crux-counter.fly.dev/".to_string(),
             headers: vec![],
+            body: vec![],
         };
 
         assert_eq!(actual, expected);
@@ -208,6 +209,7 @@ mod tests {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/inc".to_string(),
             headers: vec![],
+            body: vec![],
         };
         let actual = &request.operation;
 
@@ -252,6 +254,7 @@ mod tests {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/dec".to_string(),
             headers: vec![],
+            body: vec![],
         };
         assert_eq!(actual, expected);
 
@@ -300,7 +303,7 @@ mod tests {
 
         let update = app.update(event, &mut model);
 
-        assert_effect!(update, Effect::Render(_));
+        assert_let!(Effect::Render(_), &update.effects[0]);
 
         let actual = model.count.value;
         let expected = 1;

@@ -18,6 +18,7 @@ pub struct HttpRequest {
     pub method: String,
     pub url: String,
     pub headers: Vec<HttpHeader>,
+    pub body: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -45,12 +46,24 @@ where
     }
 }
 
-impl From<crate::Request> for HttpRequest {
-    fn from(req: crate::Request) -> Self {
-        HttpRequest {
-            method: req.method().to_string(),
-            url: req.url().to_string(),
-            headers: req
+#[async_trait]
+pub(crate) trait ProtocolRequestBuilder {
+    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest>;
+}
+
+#[async_trait]
+impl ProtocolRequestBuilder for crate::Request {
+    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest> {
+        let body = if self.is_empty() == Some(false) {
+            self.take_body().into_bytes().await?
+        } else {
+            vec![]
+        };
+
+        Ok(HttpRequest {
+            method: self.method().to_string(),
+            url: self.url().to_string(),
+            headers: self
                 .iter()
                 .flat_map(|(name, values)| {
                     values.iter().map(|value| HttpHeader {
@@ -59,7 +72,8 @@ impl From<crate::Request> for HttpRequest {
                     })
                 })
                 .collect(),
-        }
+            body,
+        })
     }
 }
 

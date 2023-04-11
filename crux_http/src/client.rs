@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::http::{Method, Url};
 use crate::middleware::{Middleware, Next};
-use crate::protocol::EffectSender;
+use crate::protocol::{EffectSender, ProtocolRequestBuilder};
 use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
 
 /// An HTTP client, capable of sending `Request`s
@@ -112,7 +112,7 @@ impl Client {
 
         let next = Next::new(&mw_stack, &|req, client| {
             Box::pin(async move {
-                let req = crate::protocol::HttpRequest::from(req);
+                let req = req.into_protocol_request().await.unwrap();
                 Ok(client.effect_sender.send(req).await.into())
             })
         });
@@ -335,7 +335,8 @@ mod client_tests {
             vec![HttpRequest {
                 method: "GET".into(),
                 url: "https://example.com/".into(),
-                headers: vec![]
+                headers: vec![],
+                body: vec![],
             }]
         )
     }

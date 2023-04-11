@@ -148,8 +148,9 @@ mod tests {
             vec![HttpRequest {
                 method: "GET".to_string(),
                 url: "http://example.com/".to_string(),
-                headers: vec![]
-            },]
+                headers: vec![],
+                body: vec![],
+            }]
         );
 
         assert_eq!(
@@ -170,8 +171,9 @@ mod tests {
             vec![HttpRequest {
                 method: "GET".to_string(),
                 url: "http://example.com/".to_string(),
-                headers: vec![]
-            },]
+                headers: vec![],
+                body: vec![]
+            }]
         );
         assert_eq!(core.view().result, "Status: 0, Body: , Json Body: Hello");
         Ok(())
