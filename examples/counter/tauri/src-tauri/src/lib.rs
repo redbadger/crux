@@ -16,26 +16,17 @@ use error::Error;
 mod sse;
 use sse::sse;
 
-#[derive(Debug)]
-enum Task {
-    Event(Event),
-}
-
 lazy_static! {
     static ref CORE: Arc<Core<Effect, App>> = Arc::new(Core::new::<Capabilities>());
 }
 
-fn handle_task(
-    task: Task,
+fn handle_event(
+    event: Event,
     core: &Arc<Core<Effect, App>>,
     tauri_app: tauri::AppHandle,
 ) -> Result<(), Error> {
-    match task {
-        Task::Event(event) => {
-            for effect in core.process_event(event) {
-                process_effect(effect, core, tauri_app.clone())?
-            }
-        }
+    for effect in core.process_event(event) {
+        process_effect(effect, core, tauri_app.clone())?
     }
 
     Ok(())
@@ -56,7 +47,10 @@ fn process_effect(
                 let core = core.clone();
 
                 async move {
-                    let response = http(&request.operation).await.unwrap();
+                    let response = http(&request.operation)
+                        .await
+                        .expect("error processing Http effect");
+
                     for effect in core.resolve(&mut request, response) {
                         let _ = process_effect(effect, &core, tauri_app.clone());
                     }
@@ -73,7 +67,7 @@ fn process_effect(
                 let url = url.clone();
 
                 async move {
-                    let mut stream = sse(url).await.unwrap();
+                    let mut stream = sse(url).await.expect("error processing SSE effect");
 
                     while let Ok(Some(item)) = stream.try_next().await {
                         let response = SseResponse::Chunk(item);
@@ -92,13 +86,13 @@ fn process_effect(
 }
 
 #[tauri::command]
-async fn increment(app_handle: tauri::AppHandle) -> () {
-    let _ = handle_task(Task::Event(Event::Increment), &CORE, app_handle);
+async fn increment(app_handle: tauri::AppHandle) {
+    let _ = handle_event(Event::Increment, &CORE, app_handle);
 }
 
 #[tauri::command]
-async fn decrement(app_handle: tauri::AppHandle) -> () {
-    let _ = handle_task(Task::Event(Event::Decrement), &CORE, app_handle);
+async fn decrement(app_handle: tauri::AppHandle) {
+    let _ = handle_event(Event::Decrement, &CORE, app_handle);
 }
 
 /// The main entry point for Tauri
@@ -106,7 +100,8 @@ async fn decrement(app_handle: tauri::AppHandle) -> () {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            handle_task(Task::Event(Event::StartWatch), &CORE, app.handle()).unwrap();
+            handle_event(Event::StartWatch, &CORE, app.handle())
+                .expect("error sending StartWatch Event");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![increment, decrement])

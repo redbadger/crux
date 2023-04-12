@@ -10,10 +10,7 @@ pub async fn sse(url: String) -> Result<impl futures::stream::TryStream<Ok = Vec
     let body = if let 200..=299 = status {
         response.take_body()
     } else {
-        return Err(Error::HttpResponseError(
-            status.clone(),
-            "SSE error".to_string(),
-        ));
+        return Err(Error::HttpResponse(status, "SSE error".to_string()));
     };
 
     let body = body.into_reader();
@@ -24,7 +21,7 @@ pub async fn sse(url: String) -> Result<impl futures::stream::TryStream<Ok = Vec
         match body.read(&mut buf).await {
             Ok(n) if n == 0 => Ok(None),
             Ok(n) => Ok(Some((buf[0..n].to_vec(), body))),
-            Err(e) => Err(Error::HttpDecodeError(format!(
+            Err(e) => Err(Error::HttpDecode(format!(
                 "failed to read from http response; err = {:?}",
                 e
             ))),

@@ -18,7 +18,7 @@ pub async fn http(http_request: &HttpRequest) -> Result<HttpResponse, Error> {
     let client: surf::Client = surf::Config::new()
         .set_timeout(Some(Duration::from_secs(5)))
         .try_into()
-        .map_err(|_e| Error::HttpConfigError("Http client config error".to_string()))?;
+        .map_err(|_e| Error::HttpConfig("Http client config error".to_string()))?;
 
     let mut request = client.request(method, &url);
 
