@@ -21,6 +21,11 @@ impl Default for ResolveRegistry {
 }
 
 impl ResolveRegistry {
+    /// Register an effect for future continuation, when it has been processed
+    /// and output given back to the core.
+    ///
+    /// The `effect` will be serialized into its FFI counterpart before being stored
+    /// and wrapped in a [`Request`].
     pub fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
     where
         Eff: Effect,
@@ -39,6 +44,8 @@ impl ResolveRegistry {
         }
     }
 
+    /// Resume a previously registered effect. This may fail, either because UUID wasn't
+    /// found or because this effect was not expected to be resumed again.
     pub fn resume(&self, uuid: &[u8], body: &[u8]) -> Result<(), ResolveError> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
@@ -50,12 +57,12 @@ impl ResolveRegistry {
         };
 
         let Entry::Occupied(mut entry) = entry else {
+            // FIXME return an Err instead of panicking here.
             panic!("Request with UUID {uuid:?} not found.");
         };
 
         let resolve = entry.get_mut();
 
-        // FIXME bubble up the error
         resolve.resolve(body)
     }
 }

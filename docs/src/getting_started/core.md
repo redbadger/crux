@@ -102,7 +102,7 @@ Soon we will have macros and/or code-gen to help with this, but for now, we need
 Now we are in a position to create a basic app in `/shared/src/app.rs`. This is from the [simple Counter example](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/counter.rs) (which also has tests, although we're not showing them here):
 
 ```rust,noplayground
-{{#include ../../../examples/hello_world/shared/src/counter.rs:1:45}}
+{{#include ../../../examples/hello_world/shared/src/counter.rs:1:52}}
 ```
 
 Make sure everything builds OK

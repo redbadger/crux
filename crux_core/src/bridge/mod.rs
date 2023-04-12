@@ -22,6 +22,8 @@ where
     pub effect: Eff,
 }
 
+/// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
+/// serialized form
 pub struct Bridge<Eff, A>
 where
     Eff: Effect,
@@ -36,6 +38,7 @@ where
     Eff: Effect + Send + 'static,
     A: App,
 {
+    /// Create a new Bridge using the provided `core`.
     pub fn new(core: Core<Eff, A>) -> Self {
         Self {
             core,
@@ -92,6 +95,7 @@ where
         bcs::to_bytes(&requests).expect("Request serialization failed.")
     }
 
+    /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
         bcs::to_bytes(&self.core.view()).expect("View should serialize")
     }

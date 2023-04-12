@@ -5,6 +5,13 @@ use crate::{
     core::resolve::{Resolve, ResolveError},
 };
 
+/// Request represents an effect request from the core to the shell.
+///
+/// The `operation` is the input needed to proces the effect, and will be one
+/// of the capabilities' [`Operation`] types.
+///
+/// The request can be resolved by passing it to `Core::resolve` along with the
+/// corresponding result of type `Operation::Output`.
 pub struct Request<Op>
 where
     Op: Operation,
