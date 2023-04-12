@@ -72,6 +72,14 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
     steps:
+      # The counter example uses tauri, which has additional dependencies that are not needed for other examples
+      - name: Install tauri dependencies
+        shell: bash
+        if: ${{ matrix.example == 'counter' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev
+
       - uses: actions/checkout@v2
       - uses: Swatinem/rust-cache@v1
       - uses: dtolnay/rust-toolchain@1.66.0
