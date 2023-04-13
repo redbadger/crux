@@ -12,7 +12,7 @@ use crate::Effect;
 
 type Store<T> = HashMap<[u8; 16], T>;
 
-pub(crate) struct ResolveRegistry(Mutex<Store<ResolveBytes>>);
+pub struct ResolveRegistry(Mutex<Store<ResolveBytes>>);
 
 impl Default for ResolveRegistry {
     fn default() -> Self {
@@ -21,7 +21,7 @@ impl Default for ResolveRegistry {
 }
 
 impl ResolveRegistry {
-    pub(crate) fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
+    pub fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
     where
         Eff: Effect,
     {
@@ -39,7 +39,7 @@ impl ResolveRegistry {
         }
     }
 
-    pub(crate) fn resume(&self, uuid: &[u8], body: &[u8]) -> Result<(), ResolveError> {
+    pub fn resume(&self, uuid: &[u8], body: &[u8]) -> Result<(), ResolveError> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
         let entry = {

@@ -6,12 +6,12 @@ use std::sync::RwLock;
 
 pub use effect::Effect;
 pub use request::Request;
-pub use resolve::{Resolve, ResolveError};
+pub use resolve::ResolveError;
 
-use crate::{
-    capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor},
-    App, WithContext,
-};
+pub(crate) use resolve::Resolve;
+
+use crate::capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor};
+use crate::{App, WithContext};
 
 /// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
 pub struct Core<Ef, A>

@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::Effect;
 use crate::{App, Core};
 use registry::ResolveRegistry;
+// ResolveByte is public to be accessible from crux_macros
+#[doc(hidden)]
 pub use request_serde::ResolveBytes;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links

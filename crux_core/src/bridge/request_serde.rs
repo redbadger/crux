@@ -53,7 +53,7 @@ where
 }
 
 impl<Out> Resolve<Out> {
-    pub(crate) fn deserializing<F>(self, func: F) -> ResolveBytes
+    fn deserializing<F>(self, func: F) -> ResolveBytes
     where
         F: (Fn(&[u8]) -> Out) + Send + Sync + 'static,
         Out: 'static,
