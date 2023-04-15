@@ -72,7 +72,8 @@ where
     where
         Op: Operation,
     {
-        let _ = request.resolve(result);
+        let resolve_result = request.resolve(result);
+        debug_assert!(resolve_result.is_ok());
 
         self.process()
     }
