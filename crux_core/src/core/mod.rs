@@ -14,6 +14,13 @@ use crate::capability::{self, channel::Receiver, Operation, ProtoContext, Queuin
 use crate::{App, WithContext};
 
 /// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
+///
+/// The core interface allows passing in events of type `<A as App>::Event` using [`Core::process_event`].
+/// It will return back an effect of type `Ef`, containing an effect request, with the input needed for processing
+/// the effect. the `Effect` type can be used by shells to dispatch to the right capability implementation.
+///
+/// The result of the capability's work can then be sent back to the core using [`Core::resolve`], passing
+/// in the request and the corresponding capability output type.
 pub struct Core<Ef, A>
 where
     A: App,
@@ -34,13 +41,9 @@ where
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
     /// ```rust,ignore
-    /// lazy_static! {
-    ///     static ref CORE: Core<HelloEffect, Hello> = Core::new::<HelloCapabilities>();
-    /// }
+    /// let core: Core<HelloEffect, Hello> = Core::new::<HelloCapabilities>();
     /// ```
     ///
-    /// The core interface passes across messages serialized as bytes. These can be
-    /// deserialized in the Shell using the types generated using the [crate::typegen] module.
     pub fn new<Capabilities>() -> Self
     where
         Capabilities: WithContext<A, Ef>,
@@ -60,6 +63,8 @@ where
         }
     }
 
+    /// Run the app's `update` function with a given `event`, returning a vector of
+    /// effect requests.
     pub fn process_event(&self, event: <A as App>::Event) -> Vec<Ef> {
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
@@ -68,6 +73,11 @@ where
         self.process()
     }
 
+    /// Resolve an effect `request` for operation `Op` with the corresponding result.
+    ///
+    /// Not that the `request` is borrowed mutably. When a request expected to only be
+    /// resolved once is passed in, it will be consumed and changed to a request which can
+    /// no longer be resolved.
     pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<Ef>
     where
         Op: Operation,
@@ -92,7 +102,7 @@ where
         self.requests.drain().collect()
     }
 
-    /// Get the current state of the app's view model (serialized).
+    /// Get the current state of the app's view model.
     pub fn view(&self) -> <A as App>::ViewModel {
         let model = self.model.read().expect("Model RwLock was poisoned.");
 

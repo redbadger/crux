@@ -12,7 +12,7 @@
 //! ## Getting Started
 //!
 //! Crux applications are split into two parts: a Core written in Rust and a Shell written in the platform
-//! native language (e.g. Swift or Kotlin).
+//! native language (e.g. Swift or Kotlin). It is also possible to use Crux from Rust shells.
 //! The Core architecture is based on [Elm architecture](https://guide.elm-lang.org/architecture/).
 //!
 //! Quick glossary of terms to help you follow the example:
@@ -43,6 +43,7 @@
 //!
 //! use serde::{Serialize, Deserialize};
 //! use crux_core::{App, render::Render};
+//! use crux_macros::Effect;
 //!
 //! // Model describing the application state
 //! #[derive(Default)]
@@ -65,6 +66,8 @@
 //!     pub render: Render<Event>
 //! }
 //!
+//! struct Hello;
+//!
 //! impl App for Hello {
 //!     // Use the above Event
 //!     type Event = Event;
@@ -85,7 +88,7 @@
 //!         caps.render.render()
 //!     }
 //!
-//!     fn view(&self, model: &Model) -> self::ViewModel {
+//!     fn view(&self, model: &Model) -> Self::ViewModel {
 //!         format!("Count is: {}", model.count)
 //!     }
 //! }
@@ -94,7 +97,7 @@
 //! ## Integrating with a Shell
 //!
 //! To use the application in a user interface shell, you need to expose the core interface for FFI.
-//! This "plumbing" will likely be simplified with macros in the next version of Crux.
+//! This "plumbing" will likely be simplified with macros in the future versions of Crux.
 //!
 //! ```rust,ignore
 //! // src/lib.rs
@@ -103,15 +106,16 @@
 //! use lazy_static::lazy_static;
 //! use wasm_bindgen::prelude::wasm_bindgen;
 //!
-//! pub use crux_core::Request;
-//! use crux_core::Core;
+//! pub use crux_core::bridge::{Bridge, Request};
+//! pub use crux_core::Core;
+//! pub use crux_http as http;
 //!
 //! pub use app::*;
 //!
 //! uniffi_macros::include_scaffolding!("hello");
 //!
 //! lazy_static! {
-//!     static ref CORE: Core<Effect, App> = Core::new::<Capabilities>();
+//!     static ref CORE: Bridge<Effect, App> = Bridge::new(Core::new::<Capabilities>());
 //! }
 //!
 //! #[wasm_bindgen]
@@ -162,8 +166,8 @@ pub use self::{
     core::{Core, Effect, Request},
 };
 
-/// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
-/// as the type argument to [Core].
+/// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
+/// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
 pub trait App: Default {
     /// Event, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event: Send + 'static;

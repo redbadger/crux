@@ -3,7 +3,9 @@ use thiserror::Error;
 type ResolveOnce<Out> = Box<dyn FnOnce(Out) + Send>;
 type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 
-pub enum Resolve<Out> {
+/// Resolve is a callback used to resolve an effect request and continue
+/// one of the capability Tasks running on the executor.
+pub(crate) enum Resolve<Out> {
     Never,
     Once(ResolveOnce<Out>),
     Many(ResolveMany<Out>),

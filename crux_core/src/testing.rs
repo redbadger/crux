@@ -49,6 +49,10 @@ where
         self.context.updates()
     }
 
+    /// Resolve an effect `request` from previous update with an operation output.
+    ///
+    /// This potentially runs the app's `update` function if the effect is completed, and
+    /// produce another `Update`.
     pub fn resolve<Op: Operation>(
         &self,
         request: &mut Request<Op>,
@@ -109,7 +113,8 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
     }
 }
 
-/// Update test helper holds the result of running an app update using [`AppTester::update`].
+/// Update test helper holds the result of running an app update using [`AppTester::update`]
+/// or resolving a request with [`AppTester::resolve`].
 #[derive(Debug)]
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run

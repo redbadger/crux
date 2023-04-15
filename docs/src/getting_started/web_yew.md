@@ -69,65 +69,83 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `src/main.rs` to look like this:
 
 ```rust,noplayground
-use bcs::{from_bytes, to_bytes};
-use yew::prelude::*;
+use std::rc::Rc;
 
-use shared::{Effect, Event, Request, ViewModel};
+use anyhow::Result;
+use futures::{stream, TryStreamExt};
+use gloo_net::http;
+use wasm_bindgen::JsValue;
+use yew::{html::Scope, prelude::*};
+
+use shared::{
+    http::protocol::{HttpHeader, HttpRequest, HttpResponse},
+    sse::{SseRequest, SseResponse},
+    App, Capabilities, Core, Effect, Event,
+};
 
 #[derive(Default)]
-struct RootComponent;
+struct RootComponent {
+    core: Rc<Core<Effect, App>>,
+}
 
-enum CoreMessage {
+enum Task {
     Event(Event),
+    Effect(Effect),
+}
+
+fn send_effects(link: &Scope<RootComponent>, effects: Vec<Effect>) {
+    link.send_message_batch(effects.into_iter().map(Task::Effect).collect());
 }
 
 impl Component for RootComponent {
-    type Message = CoreMessage;
+    type Message = Task;
     type Properties = ();
 
-    fn create(_ctx: &Context<Self>) -> Self {
-        Self::default()
+    fn create(ctx: &Context<Self>) -> Self {
+        let link = ctx.link();
+        link.send_message(Task::Event(Event::StartWatch));
+
+        Self {
+            core: Rc::new(Core::new::<Capabilities>()),
+        }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        let reqs = match msg {
-            CoreMessage::Event(event) => shared::process_event(&to_bytes(&event).unwrap()),
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        let link = ctx.link();
+        let core = &self.core;
+
+        match msg {
+            Task::Event(event) => send_effects(link, core.process_event(event)),
+            Task::Effect(effect) => match effect {
+                Effect::Render(_) => return true,
+            },
         };
 
-        let reqs: Vec<Request<Effect>> = from_bytes(&reqs).unwrap();
-
-        let mut should_render = false;
-
-        for Request { uuid: _, effect } in reqs {
-            match effect {
-                Effect::Render(_) => should_render = true,
-            }
-        }
-
-        should_render
+        false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let view = shared::view();
-        let view: ViewModel = from_bytes(&view).unwrap();
+        let view = self.core.view();
 
         html! {
             <>
-                <section class="box container has-text-centered m-5">
-                    <p class="is-size-5">{&view.count}</p>
+                <section class="section has-text-centered">
+                    <p class="title">{"Crux Counter Example"}</p>
+                </section>
+                <section class="section has-text-centered">
+                    <p class="is-size-5">{"Rust Core, Rust Shell (Yew)"}</p>
+                </section>
+                <section class="container has-text-centered">
+                    <p class="is-size-5">{&view.text}</p>
                     <div class="buttons section is-centered">
-                        <button class="button is-primary is-danger"
-                            onclick={link.callback(|_| CoreMessage::Event(Event::Reset))}>
-                            {"Reset"}
-                        </button>
-                        <button class="button is-primary is-success"
-                            onclick={link.callback(|_| CoreMessage::Event(Event::Increment))}>
-                            {"Increment"}
-                        </button>
                         <button class="button is-primary is-warning"
-                            onclick={link.callback(|_| CoreMessage::Event(Event::Decrement))}>
+                            onclick={link.callback(|_| Task::Event(Event::Decrement))}>
                             {"Decrement"}
+                        </button>
+                        <button class="button is-primary is-danger"
+                            onclick={link.callback(|_| Task::Event(Event::Increment))}>
+                            {"Increment"}
                         </button>
                     </div>
                 </section>

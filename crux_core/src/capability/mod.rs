@@ -291,6 +291,7 @@ where
     spawner: executor::Spawner,
 }
 
+/// Initial version of capability Context which has not yet been specialized to a chosen capability
 pub struct ProtoContext<Eff, Event> {
     shell_channel: Sender<Eff>,
     app_channel: Sender<Event>,
@@ -331,7 +332,7 @@ where
     /// the effect type.
     ///
     /// This will likely only be called from the implementation of [`WithContext`]
-    /// for the app's `Capabilities` type.
+    /// for the app's `Capabilities` type. You should not need to call this function directly.
     pub fn specialize<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
     where
         F: Fn(Request<Op>) -> Eff + Sync + Send + Copy + 'static,
