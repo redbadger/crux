@@ -166,8 +166,8 @@ pub use self::{
     core::{Core, Effect, Request},
 };
 
-/// Implement [App] on your type to make it into a Crux app. Use your type implementing [App]
-/// as the type argument to [Core] or [Bridge].
+/// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
+/// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
 pub trait App: Default {
     /// Event, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event: Send + 'static;

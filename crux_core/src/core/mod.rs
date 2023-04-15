@@ -63,7 +63,7 @@ where
         }
     }
 
-    /// Run the app's `update` function with a given `event`, returing a vector of
+    /// Run the app's `update` function with a given `event`, returning a vector of
     /// effect requests.
     pub fn process_event(&self, event: <A as App>::Event) -> Vec<Ef> {
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
