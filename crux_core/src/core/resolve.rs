@@ -10,7 +10,7 @@ pub enum Resolve<Out> {
 }
 
 impl<Out> Resolve<Out> {
-    pub(crate) fn resolve(&mut self, output: Out) -> Result<(), ResolveError> {
+    pub fn resolve(&mut self, output: Out) -> Result<(), ResolveError> {
         match self {
             Resolve::Never => Err(ResolveError::Never),
             Resolve::Many(f) => f(output).map_err(|_| ResolveError::FinishedMany),
