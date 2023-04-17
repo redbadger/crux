@@ -12,7 +12,7 @@ rust-version.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
-crux_core = { version = "0.3", path = "../../../crux_core", features = [
+crux_core = { version = "0.4", path = "../../../crux_core", features = [
   "typegen"
 ] }
 shared = { path = "../shared" }

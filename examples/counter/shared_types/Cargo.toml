@@ -12,10 +12,10 @@ rust-version.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
-crux_core = { version = "0.3", path = "../../../crux_core", features = [
+crux_core = { version = "0.4", path = "../../../crux_core", features = [
   "typegen"
 ] }
-crux_http = { version = "0.2", path = "../../../crux_http" }
+crux_http = { version = "0.3", path = "../../../crux_http" }
 crux_kv = { version = "0.1", path = "../../../crux_kv" }
 crux_platform = { version = "0.1", path = "../../../crux_platform" }
 crux_time = { version = "0.1", path = "../../../crux_time" }

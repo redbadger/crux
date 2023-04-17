@@ -9,8 +9,8 @@ crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
 [dependencies]
-crux_core = { version = "0.3", path = "../../../crux_core" }
-crux_macros = { version = "0.1", path = "../../../crux_macros" }
+crux_core = { version = "0.4", path = "../../../crux_core" }
+crux_macros = { version = "0.2", path = "../../../crux_macros" }
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"
 uniffi = "0.23.0"

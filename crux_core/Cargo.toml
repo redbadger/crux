@@ -1,7 +1,7 @@
 [package]
 name = "crux_core"
 description = "Cross-platform app development in Rust"
-version = "0.3.0"
+version = "0.4.0"
 readme = "README.md"
 authors.workspace = true
 repository.workspace = true
@@ -29,7 +29,7 @@ wasm-bindgen = "0.2.84"
 
 [dev-dependencies]
 assert_matches = "1.5"
-crux_macros = { version = "0.1", path = "../crux_macros" }
+crux_macros = { version = "0.2", path = "../crux_macros" }
 serde = { version = "1.0.159", features = ["derive"] }
 static_assertions = "1.1"
 async-channel = "1.8"
