@@ -5,6 +5,7 @@ use crux_http::Http;
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 use url::Url;
+use uuid::Uuid;
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
@@ -27,6 +28,7 @@ pub enum Event {
     Increment,
     Decrement,
     StartWatch,
+    SendUuid(Uuid),
 
     // events local to the core
     #[serde(skip)]
@@ -100,6 +102,9 @@ impl crux_core::App for App {
                 model.count = count;
                 model.confirmed = Some(true);
                 caps.render.render();
+            }
+            Event::SendUuid(_uuid) => {
+                // No-op
             }
         }
     }
