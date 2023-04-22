@@ -8,7 +8,7 @@
 //!
 //! Ensure that you have the following line in the `Cargo.toml` of your `shared_types` library.
 //!
-//! ```rust
+//! ```rust,ignore
 //! [build-dependencies]
 //! crux_core = { version = "0.3", features = ["typegen"] }
 //! ```
@@ -16,7 +16,7 @@
 //! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
 //! * Create a `build.rs` in your `shared_types` library, that looks something like this:
 //!
-//! ```rust
+//! ```rust,ignore
 //! use anyhow::Result;
 //! use crux_core::{typegen::TypeGen, Request};
 //! use crux_http::{HttpRequest, HttpResponse};
@@ -69,6 +69,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+// Expose from `serde_reflection` for `register_type_with_samples()`
+pub use serde_reflection::Samples;
+
 enum State {
     Tracer(Tracer),
     Registry(Registry),
@@ -96,7 +99,7 @@ impl TypeGen {
 
     /// For each of the types that you want to share with the Shell, call this method:
     /// e.g.
-    /// ```rust
+    /// ```rust,ignore
     /// gen.register_type::<Request<Effect>>()?;
     /// gen.register_type::<Effect>()?;
     /// gen.register_type::<Event>()?;
@@ -115,9 +118,51 @@ impl TypeGen {
         }
     }
 
+    /// Usually, the simple `register_type()` method can generate the types you need.
+    /// Sometimes, though, you need to provide samples of your type. The `Uuid` type,
+    /// for example, requires a sample struct to help the typegen system understand
+    /// what it looks like. Use this method to provide samples when you register a
+    /// type.
+    ///
+    /// For each of the types that you want to share with the Shell, call this method,
+    /// providing samples of the type:
+    /// e.g.
+    /// ```rust,ignore
+    /// struct MyUuid(Uuid);
+    /// let mut samples = Samples::new();
+    /// let sample_data = vec![MyUuid(Uuid::new_v4())];
+    /// let mut gen = TypeGen::new();
+    /// gen.register_type_with_samples::<MyUuid>(&mut samples, &sample_data)?;
+    /// ```
+    pub fn register_type_with_samples<'de, T>(
+        &mut self,
+        samples: &'de mut Samples,
+        sample_data: &'de Vec<T>,
+    ) -> Result<()>
+    where
+        T: serde::Deserialize<'de> + serde::Serialize,
+    {
+        match &mut self.state {
+            State::Tracer(tracer) => {
+                for sample in sample_data {
+                    match tracer.trace_value::<T>(samples, sample) {
+                        Ok(_) => (),
+                        Err(e) => bail!("value tracing failed: {}", e),
+                    }
+                }
+
+                match tracer.trace_type::<T>(samples) {
+                    Ok(_) => Ok(()),
+                    Err(e) => bail!("type tracing failed: {}", e),
+                }
+            }
+            _ => bail!("code has been generated, too late to register types"),
+        }
+    }
+
     /// Generates types for Swift
     /// e.g.
-    /// ```rust
+    /// ```rust,ignore
     /// gen.swift("shared_types", output_root.join("swift"))
     ///     .expect("swift type gen failed");
     /// ```
@@ -159,7 +204,7 @@ impl TypeGen {
 
     /// Generates types for Java (for use with Kotlin)
     /// e.g.
-    /// ```rust
+    /// ```rust,ignore
     /// gen.java(
     ///     "com.redbadger.crux_core.shared_types",
     ///     output_root.join("java"),
@@ -202,7 +247,7 @@ impl TypeGen {
 
     /// Generates types for TypeScript
     /// e.g.
-    /// ```rust
+    /// ```rust,ignore
     /// gen.typescript("shared_types", output_root.join("typescript"))
     ///    .expect("typescript type gen failed");
     /// ```
@@ -297,4 +342,36 @@ fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(feature = "typegen")]
+#[cfg(test)]
+mod tests {
+    use crate::typegen::{Samples, TypeGen};
+    use serde::{Deserialize, Serialize};
+    use uuid::Uuid;
+
+    #[derive(Serialize, Deserialize)]
+    struct MyUuid(Uuid);
+
+    #[test]
+    fn test_typegen_for_uuid_without_samples() {
+        let mut gen = TypeGen::new();
+        let result = gen.register_type::<MyUuid>();
+
+        assert!(
+            result.is_err(),
+            "typegen unexpectedly succeeded for Uuid, without samples"
+        )
+    }
+
+    fn test_typegen_for_uuid_with_samples() {
+        let mut samples = Samples::new();
+        let sample_data = vec![MyUuid(Uuid::new_v4())];
+
+        let mut gen = TypeGen::new();
+        let result = gen.register_type_with_samples::<MyUuid>(&mut samples, &sample_data);
+
+        assert!(result.is_ok(), "typegen failed for Uuid, with samples")
+    }
 }

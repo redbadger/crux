@@ -1286,6 +1286,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b55a3fef2a1e3b3a00ce878640918820d3c51081576ac657d23af9fc7928fdb"
 dependencies = [
  "getrandom 0.2.9",
+ "serde",
  "wasm-bindgen",
 ]
 
