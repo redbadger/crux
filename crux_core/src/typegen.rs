@@ -365,6 +365,7 @@ mod tests {
         )
     }
 
+    #[test]
     fn test_typegen_for_uuid_with_samples() {
         let mut samples = Samples::new();
         let sample_data = vec![MyUuid(Uuid::new_v4())];
