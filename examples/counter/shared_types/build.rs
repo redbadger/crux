@@ -1,8 +1,12 @@
 use anyhow::Result;
-use crux_core::{bridge::Request, typegen::TypeGen};
+use crux_core::{
+    bridge::Request,
+    typegen::{Samples, TypeGen},
+};
 use crux_http::protocol::{HttpRequest, HttpResponse};
 use shared::{sse::SseResponse, EffectFfi, Event, ViewModel};
 use std::path::PathBuf;
+use uuid::Uuid;
 
 fn main() {
     println!("cargo:rerun-if-changed=../shared");
@@ -29,7 +33,10 @@ fn register_types(gen: &mut TypeGen) -> Result<()> {
     gen.register_type::<EffectFfi>()?;
     gen.register_type::<HttpRequest>()?;
 
-    gen.register_type::<Event>()?;
+    let mut samples = Samples::new();
+    let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
+    gen.register_type_with_samples::<Event>(&mut samples, &sample_events)?;
+
     gen.register_type::<HttpResponse>()?;
     gen.register_type::<SseResponse>()?;
 
