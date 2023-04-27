@@ -99,11 +99,27 @@ impl TypeGen {
 
     /// For each of the types that you want to share with the Shell, call this method:
     /// e.g.
-    /// ```rust,ignore
-    /// gen.register_type::<Request<Effect>>()?;
-    /// gen.register_type::<Effect>()?;
-    /// gen.register_type::<Event>()?;
-    /// gen.register_type::<ViewModel>()?;
+    /// ```rust
+    /// # use crux_core::typegen::TypeGen;
+    /// # use std::marker::PhantomData;
+    /// # use serde::{Serialize, Deserialize};
+    /// # use anyhow::Error;
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct Request<T> { phantom: PhantomData<T> }
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct Effect {}
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct Event {}
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct ViewModel {}
+    /// # fn register() -> Result<(), Error> {
+    /// # let mut gen = TypeGen::new();
+    ///   gen.register_type::<Request<Effect>>()?;
+    ///   gen.register_type::<Effect>()?;
+    ///   gen.register_type::<Event>()?;
+    ///   gen.register_type::<ViewModel>()?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn register_type<'de, T>(&mut self) -> Result<()>
     where
@@ -127,12 +143,19 @@ impl TypeGen {
     /// For each of the types that you want to share with the Shell, call this method,
     /// providing samples of the type:
     /// e.g.
-    /// ```rust,ignore
-    /// struct MyUuid(Uuid);
-    /// let mut samples = Samples::new();
-    /// let sample_data = vec![MyUuid(Uuid::new_v4())];
-    /// let mut gen = TypeGen::new();
-    /// gen.register_type_with_samples::<MyUuid>(&mut samples, &sample_data)?;
+    /// ```rust
+    /// # use crux_core::typegen::TypeGen;
+    /// # use uuid::Uuid;
+    /// # use serde::{Serialize, Deserialize};
+    /// # use anyhow::Error;
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct MyUuid(Uuid);
+    /// # fn register() -> Result<(), Error> {
+    /// # let mut gen = TypeGen::new();
+    ///   let sample_data = vec![MyUuid(Uuid::new_v4())];
+    ///   gen.register_type_with_samples::<MyUuid>(sample_data)?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
     where
@@ -158,7 +181,11 @@ impl TypeGen {
 
     /// Generates types for Swift
     /// e.g.
-    /// ```rust,ignore
+    /// ```rust
+    /// # use crux_core::typegen::TypeGen;
+    /// # use std::env::temp_dir;
+    /// # let mut gen = TypeGen::new();
+    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// gen.swift("shared_types", output_root.join("swift"))
     ///     .expect("swift type gen failed");
     /// ```
@@ -200,7 +227,11 @@ impl TypeGen {
 
     /// Generates types for Java (for use with Kotlin)
     /// e.g.
-    /// ```rust,ignore
+    /// ```rust
+    /// # use crux_core::typegen::TypeGen;
+    /// # use std::env::temp_dir;
+    /// # let mut gen = TypeGen::new();
+    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// gen.java(
     ///     "com.redbadger.crux_core.shared_types",
     ///     output_root.join("java"),
@@ -243,7 +274,11 @@ impl TypeGen {
 
     /// Generates types for TypeScript
     /// e.g.
-    /// ```rust,ignore
+    /// ```rust
+    /// # use crux_core::typegen::TypeGen;
+    /// # use std::env::temp_dir;
+    /// # let mut gen = TypeGen::new();
+    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// gen.typescript("shared_types", output_root.join("typescript"))
     ///    .expect("typescript type gen failed");
     /// ```
