@@ -70,11 +70,11 @@ use std::{
 };
 
 // Expose from `serde_reflection` for `register_type_with_samples()`
-pub use serde_reflection::Samples;
+use serde_reflection::Samples;
 
 enum State {
-    Tracer(Tracer),
-    Registry(Registry),
+    Registering(Tracer, Samples),
+    Generating(Registry),
 }
 
 /// The `TypeGen` struct stores the registered types so that they can be generated for foreign languages
@@ -86,7 +86,7 @@ pub struct TypeGen {
 impl Default for TypeGen {
     fn default() -> Self {
         TypeGen {
-            state: State::Tracer(Tracer::new(TracerConfig::default())),
+            state: State::Registering(Tracer::new(TracerConfig::default()), Samples::new()),
         }
     }
 }
@@ -110,7 +110,7 @@ impl TypeGen {
         T: serde::Deserialize<'de>,
     {
         match &mut self.state {
-            State::Tracer(tracer) => match tracer.trace_simple_type::<T>() {
+            State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
                 Err(e) => bail!("type tracing failed: {}", e),
             },
@@ -134,18 +134,14 @@ impl TypeGen {
     /// let mut gen = TypeGen::new();
     /// gen.register_type_with_samples::<MyUuid>(&mut samples, &sample_data)?;
     /// ```
-    pub fn register_type_with_samples<'de, T>(
-        &mut self,
-        samples: &'de mut Samples,
-        sample_data: &'de Vec<T>,
-    ) -> Result<()>
+    pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
     where
         T: serde::Deserialize<'de> + serde::Serialize,
     {
         match &mut self.state {
-            State::Tracer(tracer) => {
+            State::Registering(tracer, samples) => {
                 for sample in sample_data {
-                    match tracer.trace_value::<T>(samples, sample) {
+                    match tracer.trace_value::<T>(samples, &sample) {
                         Ok(_) => (),
                         Err(e) => bail!("value tracing failed: {}", e),
                     }
@@ -177,7 +173,7 @@ impl TypeGen {
 
         let generator = serde_generate::swift::CodeGenerator::new(&config);
         let registry = match &self.state {
-            State::Registry(registry) => registry,
+            State::Generating(registry) => registry,
             _ => panic!("registry creation failed"),
         };
 
@@ -220,7 +216,7 @@ impl TypeGen {
             .with_encodings(vec![Encoding::Bcs]);
 
         let registry = match &self.state {
-            State::Registry(registry) => registry,
+            State::Generating(registry) => registry,
             _ => panic!("registry creation failed"),
         };
 
@@ -270,7 +266,7 @@ impl TypeGen {
         copy(extensions_dir, path).expect("Could not copy TS runtime");
 
         let registry = match &self.state {
-            State::Registry(registry) => registry,
+            State::Generating(registry) => registry,
             _ => panic!("registry creation failed"),
         };
 
@@ -309,17 +305,17 @@ impl TypeGen {
     }
 
     fn ensure_registry(&mut self) -> Result<()> {
-        if let State::Tracer(_) = self.state {
+        if let State::Registering(_, _) = self.state {
             // replace the current state with a dummy tracer
             let old_state = mem::replace(
                 &mut self.state,
-                State::Tracer(Tracer::new(TracerConfig::default())),
+                State::Registering(Tracer::new(TracerConfig::default()), Samples::new()),
             );
 
             // convert tracer to registry
-            if let State::Tracer(tracer) = old_state {
+            if let State::Registering(tracer, _) = old_state {
                 // replace dummy with registry
-                self.state = State::Registry(tracer.registry().map_err(|e| anyhow!("{e}"))?);
+                self.state = State::Generating(tracer.registry().map_err(|e| anyhow!("{e}"))?);
             }
         }
         Ok(())
@@ -347,7 +343,7 @@ fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
 #[cfg(feature = "typegen")]
 #[cfg(test)]
 mod tests {
-    use crate::typegen::{Samples, TypeGen};
+    use crate::typegen::TypeGen;
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
@@ -367,12 +363,13 @@ mod tests {
 
     #[test]
     fn test_typegen_for_uuid_with_samples() {
-        let mut samples = Samples::new();
         let sample_data = vec![MyUuid(Uuid::new_v4())];
-
         let mut gen = TypeGen::new();
-        let result = gen.register_type_with_samples::<MyUuid>(&mut samples, &sample_data);
+        let result = gen.register_type_with_samples::<MyUuid>(sample_data);
+        assert!(result.is_ok(), "typegen failed for Uuid, with samples");
 
-        assert!(result.is_ok(), "typegen failed for Uuid, with samples")
+        let sample_data = vec!["a".to_string(), "b".to_string()];
+        let result = gen.register_type_with_samples::<String>(sample_data);
+        assert!(result.is_ok(), "typegen failed with second sample data set");
     }
 }
