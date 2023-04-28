@@ -116,6 +116,7 @@ impl<'a> OpObserver for Observer<'a> {
         _objid: automerge::ObjId,
         _index: usize,
         _tagged_value: (automerge::Value<'_>, automerge::ObjId),
+        _conflict: bool,
     ) {
         // not interested
     }
@@ -179,6 +180,26 @@ impl<'a> OpObserver for Observer<'a> {
         num: usize,
     ) {
         self.edit_observer.body_remove(index, num);
+    }
+
+    fn mark<'b, R: ReadDoc, M: Iterator<Item = automerge::marks::Mark<'b>>>(
+        &mut self,
+        _doc: &'b R,
+        _objid: ObjId,
+        _mark: M,
+    ) {
+        // not interested
+    }
+
+    fn unmark<R: ReadDoc>(
+        &mut self,
+        _doc: &R,
+        _objid: ObjId,
+        _name: &str,
+        _start: usize,
+        _end: usize,
+    ) {
+        // not interested
     }
 }
 

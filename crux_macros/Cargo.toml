@@ -14,11 +14,11 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
-darling = "0.14.4"
-proc-macro2 = "1.0.51"
-quote = "1.0.23"
-syn = "1.0.109"
+darling = "0.20.0"
+proc-macro2 = "1.0.56"
+quote = "1.0.26"
+syn = "2.0.15"
 
 [dev-dependencies]
-insta = "1.28"
-prettyplease = "0.1"
+insta = "1.29"
+prettyplease = "0.2"
