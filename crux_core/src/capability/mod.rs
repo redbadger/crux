@@ -224,7 +224,7 @@ pub trait Capability<Ev> {
     where
         F: Fn(NewEvent) -> Ev + Send + Sync + Copy + 'static,
         Ev: 'static,
-        NewEvent: 'static;
+        NewEvent: 'static + Send;
 }
 
 /// Allows Crux to construct app's set of required capabilities, providing context
