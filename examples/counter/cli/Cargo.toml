@@ -13,7 +13,7 @@ rust-version.workspace = true
 async-std = { version = "1.12.0", features = ["std", "attributes"] }
 async-task-group = "0.2.1"
 futures = "0.3"
-clap = { version = "4.2.5", features = ["derive"] }
+clap = { version = "4.2.7", features = ["derive"] }
 crossbeam-channel = "0.5.8"
 eyre = "0.6.8"
 serde = { workspace = true, features = ["derive"] }
