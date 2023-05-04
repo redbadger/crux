@@ -248,6 +248,7 @@ dependencies = [
  "async-channel",
  "bcs",
  "crossbeam-channel",
+ "crux_http",
  "crux_macros",
  "derive_more",
  "futures",

@@ -29,11 +29,13 @@ wasm-bindgen = "0.2.84"
 
 [dev-dependencies]
 assert_matches = "1.5"
+async-channel = "1.8"
 crux_macros = { version = "0.2", path = "../crux_macros" }
+crux_http = { version = "0.3", path = "../crux_http" }
 serde = { version = "1.0.160", features = ["derive"] }
 static_assertions = "1.1"
-async-channel = "1.8"
 rand = "0.8"
+uuid = { version = "1.3.1", features = ["v4", "serde"] }
 
 [features]
 typegen = ["dep:serde-generate", "dep:serde-reflection"]
