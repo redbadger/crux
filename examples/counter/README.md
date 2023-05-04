@@ -67,7 +67,7 @@ cd iOS
 open CounterApp.xcodeproj
 ```
 
-You should be able to press "Play" to start the app in the simulator.
+You should be able to press "Play" to start the app in the simulator, or on an iPhone.
 
 ### Notes:
 
@@ -90,3 +90,13 @@ If the build is successful, you should be able to press "Play" to start the app 
   - A `linker-wrapper.sh` script failure<br>Ensure you have Python installed and your `PATH`
   - `NDK is not installed`<br>Install this via Android Studio --> Settings --> Appearance and Behaviour --> System Settings --> Select the "SDK Tools" tab, select "NDK (side by side)" and press Apply to install
 - If Android studio fails to install `git`, you can set the path to your git binary (e.g. the homebrew one) in the preferences under Version Control > Git
+
+## Tauri
+
+The Tauri application should now build and run.
+
+```
+cd tauri
+pnpm install
+pnpm tauri dev
+```

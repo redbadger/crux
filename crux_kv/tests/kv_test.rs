@@ -7,14 +7,14 @@ mod shared {
     #[derive(Default)]
     pub struct App;
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub enum Event {
         Write,
         Read,
         Set(KeyValueOutput),
     }
 
-    #[derive(Default, Serialize, Deserialize)]
+    #[derive(Debug, Default, Serialize, Deserialize)]
     pub struct Model {
         pub value: i32,
         pub successful: bool,
@@ -33,6 +33,8 @@ mod shared {
         type Capabilities = Capabilities;
 
         fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+            println!("Update: {event:?}. Model: {model:?}");
+
             match event {
                 Event::Write => {
                     caps.key_value
@@ -69,102 +71,92 @@ mod shared {
 }
 
 mod shell {
-    use super::shared::{App, Effect, Event, ViewModel};
-    use anyhow::Result;
+    use super::shared::{App, Effect, Event};
     use crux_core::{Core, Request};
     use crux_kv::{KeyValueOperation, KeyValueOutput};
     use std::collections::{HashMap, VecDeque};
 
+    #[derive(Debug)]
     pub enum Outcome {
-        KeyValue(KeyValueOutput),
+        KeyValue(Request<KeyValueOperation>, KeyValueOutput),
     }
 
+    #[derive(Debug)]
     enum CoreMessage {
         Event(Event),
-        Response(Vec<u8>, Outcome),
+        Response(Outcome),
     }
 
-    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
-        let core: Core<Effect, App> = Core::default();
+    pub fn run(core: &Core<Effect, App>) {
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Event(Event::Write));
 
-        let mut received = vec![];
         let mut kv_store = HashMap::new();
 
         while !queue.is_empty() {
             let msg = queue.pop_front();
 
-            let reqs = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(&bcs::to_bytes(&m)?),
-                Some(CoreMessage::Response(uuid, output)) => core.handle_response(
-                    &uuid,
-                    &match output {
-                        Outcome::KeyValue(x) => bcs::to_bytes(&x)?,
-                    },
-                ),
+            let effects = match msg {
+                Some(CoreMessage::Event(m)) => core.process_event(m),
+                Some(CoreMessage::Response(Outcome::KeyValue(mut request, output))) => {
+                    core.resolve(&mut request, output)
+                }
                 _ => vec![],
             };
-            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
-            for Request { uuid, effect } in reqs {
+            for effect in effects {
                 match effect {
-                    Effect::Render(_) => received.push(effect.clone()),
-                    Effect::KeyValue(KeyValueOperation::Write(ref k, ref v)) => {
-                        received.push(effect.clone());
+                    Effect::Render(_) => (),
+                    Effect::KeyValue(request) => {
+                        match request.operation {
+                            KeyValueOperation::Write(ref k, ref v) => {
+                                // received.push(effect);
 
-                        // do work
-                        kv_store.insert(k.clone(), v.clone());
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::KeyValue(KeyValueOutput::Write(true)),
-                        ));
+                                // do work
+                                kv_store.insert(k.clone(), v.clone());
 
-                        // now trigger a read
-                        queue.push_back(CoreMessage::Event(Event::Read));
-                    }
-                    Effect::KeyValue(KeyValueOperation::Read(ref k)) => {
-                        received.push(effect.clone());
+                                queue.push_back(CoreMessage::Response(Outcome::KeyValue(
+                                    request,
+                                    KeyValueOutput::Write(true),
+                                )));
 
-                        // do work
-                        let v = kv_store.get(k).unwrap();
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::KeyValue(KeyValueOutput::Read(Some(v.to_vec()))),
-                        ));
+                                // now trigger a read
+                                queue.push_back(CoreMessage::Event(Event::Read));
+                            }
+                            KeyValueOperation::Read(ref k) => {
+                                // received.push(effect);
+
+                                // do work
+                                let v = kv_store.get(k).unwrap();
+                                queue.push_back(CoreMessage::Response(Outcome::KeyValue(
+                                    request,
+                                    KeyValueOutput::Read(Some(v.to_vec())),
+                                )));
+                            }
+                        }
                     }
                 }
             }
         }
-
-        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
-        Ok((received, view))
     }
 }
 
 mod tests {
-    use crate::{shared::Effect, shell::run};
+    use crate::{shared::App, shared::Effect, shell::run};
     use anyhow::Result;
-    use crux_core::render::RenderOperation;
-    use crux_kv::KeyValueOperation;
+    use crux_core::Core;
 
     #[test]
-    pub fn test_http() -> Result<()> {
-        let (received, view) = run()?;
-        assert_eq!(
-            received,
-            vec![
-                Effect::KeyValue(KeyValueOperation::Write(
-                    "test".to_string(),
-                    42i32.to_ne_bytes().to_vec()
-                )),
-                Effect::Render(RenderOperation),
-                Effect::KeyValue(KeyValueOperation::Read("test".to_string())),
-                Effect::Render(RenderOperation)
-            ]
-        );
-        assert_eq!(view.result, "Success: true, Value: 42");
+    pub fn test_kv() -> Result<()> {
+        let core: Core<Effect, App> = Core::default();
+
+        assert_eq!(core.view().result, "Success: false, Value: 0");
+
+        run(&core);
+
+        assert_eq!(core.view().result, "Success: true, Value: 42");
+
         Ok(())
     }
 }

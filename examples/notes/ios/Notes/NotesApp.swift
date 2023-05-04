@@ -2,7 +2,7 @@
 //  NotesApp.swift
 //  Notes
 //
-//  Created by Viktor Charypar on 31/01/2023.
+//  Created by Stuart Harris on 30/03/2023.
 //
 
 import SwiftUI

@@ -17,13 +17,13 @@ name = "shared"
 [dependencies]
 anyhow.workspace = true
 serde = { workspace = true, features = ["derive"] }
-crux_core = { version = "0.3", path = "../../../crux_core" }
+crux_core = { version = "0.4", path = "../../../crux_core" }
 crux_kv = { version = "0.1", path = "../../../crux_kv" }
-crux_macros = { version = "0.1", path = "../../../crux_macros" }
+crux_macros = { version = "0.2", path = "../../../crux_macros" }
 bincode = "1.3.3"
 lazy_static = "1.4"
 uniffi = "0.23.0"
-automerge = "0.3.0"
+automerge = "0.4.1"
 futures = "0.3"
 wasm-bindgen = "0.2"
 
@@ -32,3 +32,6 @@ uniffi = { version = "0.23.0", features = ["cli"] }
 
 [build-dependencies]
 uniffi = { version = "0.23.0", features = ["build"] }
+
+[dev-dependencies]
+assert_let_bind = "0.1.1"

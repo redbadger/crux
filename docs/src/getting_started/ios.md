@@ -14,17 +14,17 @@ We want to make setting up Xcode to work with Crux really easy. As time progress
 
 The first thing we need to do is create a new iOS app in Xcode.
 
-Let's call the app "iOS" and select "SwiftUI" for the interface and "Swift" for the language. If you choose to create the app in the root folder then your repo's directory structure might now look something like this (some files elided):
+Let's call the app "CounterApp" and select "SwiftUI" for the interface and "Swift" for the language. If you choose to create the app in the root folder of your monorepo, then you might want to rename the folder it creates to "iOS". Your repo's directory structure might now look something like this (some files elided):
 
 ```txt
 .
 ├── Cargo.lock
 ├── Cargo.toml
 ├── iOS
-│  ├── iOS
+│  ├── CounterApp
 │  │  ├── ContentView.swift
-│  │  └── iOSApp.swift
-│  └── iOS.xcodeproj
+│  │  └── CounterAppApp.swift
+│  └── CounterApp.xcodeproj
 │     └── project.pbxproj
 ├── shared
 │  ├── build.rs
@@ -79,7 +79,7 @@ $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
 $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h
 ```
 
-Now go to "Build Phases" => "Compile Sources", and add `/shared/src/shared.udl` using the "add other" button, selecting "Copy items if needed" and "Create folder references".
+Now go to "Build Phases" => "Compile Sources", and add `/shared/src/shared.udl` using the "add other" button, selecting "Create folder references".
 
 Build the project (cmd-B), which will fail, but the above script should run successfully and the "generated" folder should contain the generated Swift types and C header files:
 
@@ -88,70 +88,43 @@ $ ls iOS/generated
 shared.swift  sharedFFI.h  sharedFFI.modulemap
 ```
 
+### Add the bridging header
+
+In "Build Settings", search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and Release.
+If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
+
+
 ## Compile our Rust shared library
 
-When we build our iOS app, we also want to build the Rust core as a static library so that it can be linked into the binary that we're going to ship. We do this with Cargo, specifying the relevant target.
+When we build our iOS app, we also want to build the Rust core as a static library so that it can be linked into the binary that we're going to ship.
 
-Create a group called `bin` in your Xcode project and add a shell script (called something like `rust_build.sh`) to it (don't forget to tick the box to ensure it targets our iOS app), with the following contents:
+```admonish
+We will use [`cargo-xcode`](https://crates.io/crates/cargo-xcode) to generate an Xcode project for our shared library, which we can add as a sub-project in Xcode.
 
-```bash
-{{#include ../../../scripts/ios_build.sh}}
+If you don't have this already, you can install it with `cargo install cargo-xcode`.
 ```
 
-Then create a new "Build Phase" of type "Run Script" (called something like `Build Rust library` — you can rename by double-clicking) to call the script something like this:
+Let's generate the sub-project:
 
 ```bash
-cd "$PROJECT_DIR/../shared"
-bash "$PROJECT_DIR/bin/rust_build.sh" shared
+cargo xcode
 ```
 
-Uncheck "Based on dependency analysis".
+This generates an Xcode project for each crate in the workspace, but we're only interested in the one it creates in the `shared` directory. Don't open this generated project yet.
 
-You can drag this build phase up a bit (e.g. before "Compile Sources"), and test that it compiles the Rust library when you build your project.
+Using Finder, drag the `shared/shared.xcodeproj` folder under the Xcode project root.
 
-## Link the Rust shared library into our iOS binary
+Then, in "Build Phases", add the static library to the "Link Binary with Libraries" section (you should be able to navigate to it under `Workspace -> shared -> libshared_static.a`)
 
-Now that we have successfully compiled the share Rust library, we need to link it into the iOS binary. We need to tell Xcode where to find the relevant static library based on which build configuration we have built for (`Debug` or `Release`).
+## Add the Shared Types
 
-This is a little convoluted, but this may be the easiest way to do this:
-
-1.  In "Build Settings", search for "library search paths" and add a dummy string "XXXX" for debug and release (this will update the project file so you can search in it for `XXXX` in the next step).
-
-1.  Open the project configuration file (`*.pbxproj`) in a code editor and search for "XXXX" (you should find 2 occurrences), and replace it with the following:
-
-    1.  In the "Debug" section
-
-    ```txt
-    "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios/debug";
-    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios-sim/debug";
-    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../target/x86_64-apple-ios/debug";
-    ```
-
-    1.  In the "Release"" section
-
-    ```txt
-    "LIBRARY_SEARCH_PATHS[sdk=iphoneos*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios/release";
-    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(PROJECT_DIR)/../target/aarch64-apple-ios-sim/release";
-    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(PROJECT_DIR)/../target/x86_64-apple-ios/release";
-    ```
-
-1.  In "Build Phases", add `/target/debug/libshared.a` to the "Link Binary with Libraries" section (this is the wrong target, but the library search paths, which we set above, should resolve this.
-    For more info see the blog post linked above ([this post](https://blog.mozilla.org/data/2022/01/31/this-week-in-glean-building-and-deploying-a-rust-library-on-ios/)))
+In `File -> Add Files to "CounterApp"`, add `/shared_types/generated/swift/shared_types.swift`.
 
 ## Add the `Serde` package
 
 In order to serialize data across the "bridge" we need to add the [`Serde` package](https://github.com/starcoin-sdk/Serde.swift) to our project. You can do this with `File -> Add Packages` and search for "https://github.com/starcoin-sdk/Serde.swift".
 
-## Add the bridging header
-
-In "Build Settings", search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and Release.
-If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
-
-## Add the Shared Types
-
-In `File -> Add Files to iOS`, add `/shared_types/generated/swift/shared_types.swift`.
-
-## Create some UI and run in the Simulator
+## Create some UI and run in the Simulator, or on an iPhone
 
 ### Hello World counter example
 
@@ -184,12 +157,12 @@ class Model: ObservableObject {
 
         switch msg {
         case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: iOS.processEvent(try! m.bcsSerialize()))
+            reqs = try! [Request].bcsDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
         }
 
         for req in reqs {
             switch req.effect {
-            case .render(_): view = try! ViewModel.bcsDeserialize(input: iOS.view())
+            case .render(_): view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
             }
         }
     }
@@ -251,13 +224,13 @@ struct ContentView_Previews: PreviewProvider {
 }
 ```
 
-And edit `iosApp.swift` to look like this:
+And edit `CounterAppApp.swift` to look like this:
 
 ```swift
 import SwiftUI
 
 @main
-struct iOSApp: App {
+struct CounterAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: Model())
@@ -267,7 +240,7 @@ struct iOSApp: App {
 ```
 
 ```admonish success
-You should then be able to run the app in the simulator, and it should look like this:
+You should then be able to run the app in the simulator or on an iPhone, and it should look like this:
 
 <p align="center"><img alt="hello world app" src="./hello_world_ios.webp"  width="300"></p>
 ```

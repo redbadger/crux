@@ -1,12 +1,13 @@
 //! Testing support for unit testing Crux apps.
-use std::{fmt, rc::Rc};
+use std::rc::Rc;
+
+use anyhow::Result;
 
 use crate::{
-    capability::CapabilityContext,
-    channels::Receiver,
-    executor::{executor_and_spawner, QueuingExecutor},
-    steps::StepRegistry,
-    Request, Step, WithContext,
+    capability::{
+        channel::Receiver, executor_and_spawner, Operation, ProtoContext, QueuingExecutor,
+    },
+    Request, WithContext,
 };
 
 /// AppTester is a simplified execution environment for Crux apps for use in
@@ -30,10 +31,9 @@ where
 }
 
 struct AppContext<Ef, Ev> {
-    commands: Receiver<Step<Ef>>,
+    commands: Receiver<Ef>,
     events: Receiver<Ev>,
     executor: QueuingExecutor,
-    steps: StepRegistry,
 }
 
 impl<App, Ef> AppTester<App, Ef>
@@ -47,6 +47,20 @@ where
     pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
         self.app.update(event, model, &self.capabilities);
         self.context.updates()
+    }
+
+    /// Resolve an effect `request` from previous update with an operation output.
+    ///
+    /// This potentially runs the app's `update` function if the effect is completed, and
+    /// produce another `Update`.
+    pub fn resolve<Op: Operation>(
+        &self,
+        request: &mut Request<Op>,
+        value: Op::Output,
+    ) -> Result<Update<Ef, App::Event>> {
+        request.resolve(value)?;
+
+        Ok(self.context.updates())
     }
 
     /// Run the app's `view` function with a model state
@@ -63,10 +77,10 @@ where
     Ef: Send + 'static,
 {
     fn default() -> Self {
-        let (command_sender, commands) = crate::channels::channel();
-        let (event_sender, events) = crate::channels::channel();
+        let (command_sender, commands) = crate::capability::channel();
+        let (event_sender, events) = crate::capability::channel();
         let (executor, spawner) = executor_and_spawner();
-        let capability_context = CapabilityContext::new(command_sender, event_sender, spawner);
+        let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
 
         Self {
             app: App::default(),
@@ -75,7 +89,6 @@ where
                 commands,
                 events,
                 executor,
-                steps: StepRegistry::default(),
             }),
         }
     }
@@ -93,73 +106,40 @@ where
 impl<Ef, Ev> AppContext<Ef, Ev> {
     pub fn updates(self: &Rc<Self>) -> Update<Ef, Ev> {
         self.executor.run_all();
-        let effects = self
-            .commands
-            .drain()
-            .map(|cmd| {
-                let request = self.steps.register(cmd);
-                TestEffect {
-                    request,
-                    context: Rc::clone(self),
-                }
-            })
-            .collect();
-
+        let effects = self.commands.drain().collect();
         let events = self.events.drain().collect();
 
         Update { effects, events }
     }
 }
 
-/// Update test helper holds the result of running an app update using [`AppTester::update`].
+/// Update test helper holds the result of running an app update using [`AppTester::update`]
+/// or resolving a request with [`AppTester::resolve`].
 #[derive(Debug)]
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run
-    pub effects: Vec<TestEffect<Ef, Ev>>,
+    pub effects: Vec<Ef>,
     /// Events dispatched from the update run
     pub events: Vec<Ev>,
 }
 
-pub struct TestEffect<Ef, Ev> {
-    request: Request<Ef>,
-    context: Rc<AppContext<Ef, Ev>>,
-}
-
-impl<Ef, Ev> TestEffect<Ef, Ev> {
-    pub fn resolve<T>(&self, result: &T) -> Update<Ef, Ev>
-    where
-        T: serde::ser::Serialize,
-    {
-        self.context.steps.resume(
-            self.request.uuid.as_slice(),
-            &bcs::to_bytes(result).unwrap(),
-        );
-        self.context.updates()
-    }
-}
-
-impl<Ef, Ev> AsRef<Ef> for TestEffect<Ef, Ev> {
-    fn as_ref(&self) -> &Ef {
-        &self.request.effect
-    }
-}
-
-impl<Ef, Ev> PartialEq<Ef> for TestEffect<Ef, Ev>
-where
-    Ef: PartialEq,
-{
-    fn eq(&self, other: &Ef) -> bool {
-        self.request.effect == *other
-    }
-}
-
-impl<Ef, Ev> fmt::Debug for TestEffect<Ef, Ev>
-where
-    Ef: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TestEffect")
-            .field("request", &self.request)
-            .finish()
-    }
+/// Panics if the pattern doesn't match an `Effect` from the specified `Update`
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// # Example
+///
+/// ```
+/// use crux_core::assert_effect;
+/// # enum Effect { Render(String) };
+/// # enum Event { None };
+/// # let update = crux_core::testing::Update { effects: vec!(Effect::Render("test".to_string())), events: vec!(Event::None) };
+/// assert_effect!(update, Effect::Render(_));
+/// ```
+#[macro_export]
+macro_rules! assert_effect {
+    ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+        assert!($expression.effects.iter().any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
+    };
 }

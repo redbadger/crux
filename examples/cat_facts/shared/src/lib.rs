@@ -3,8 +3,8 @@ pub mod app;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crux_core::Core;
-pub use crux_core::Request;
+use crux_core::bridge::Bridge;
+pub use crux_core::{Core, Request};
 pub use crux_http as http;
 pub use crux_kv as key_value;
 pub use crux_platform as platform;
@@ -17,7 +17,7 @@ pub use app::*;
 uniffi::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Core<Effect, CatFacts> = Core::new::<CatFactCapabilities>();
+    static ref CORE: Bridge<Effect, CatFacts> = Bridge::new(Core::new::<CatFactCapabilities>());
 }
 
 #[wasm_bindgen]

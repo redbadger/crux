@@ -78,108 +78,104 @@ mod shared {
 }
 
 mod shell {
-    use super::shared::{App, Effect, Event, ViewModel};
+    use super::shared::{App, Effect, Event};
     use anyhow::Result;
-    use crux_core::{Core, Request};
+    use crux_core::Core;
     use crux_http::protocol::{HttpRequest, HttpResponse};
     use std::collections::VecDeque;
 
-    pub enum Outcome {
-        Http(HttpResponse),
-    }
-
-    enum CoreMessage {
+    enum Task {
         Event(Event),
-        Response(Vec<u8>, Outcome),
+        Effect(Effect),
     }
 
-    pub fn run(event: Event) -> Result<(Vec<Effect>, ViewModel)> {
-        let core: Core<Effect, App> = Core::default();
-        let mut queue: VecDeque<CoreMessage> = VecDeque::new();
+    pub(crate) fn run(core: &Core<Effect, App>, event: Event) -> Result<Vec<HttpRequest>> {
+        let mut queue: VecDeque<Task> = VecDeque::new();
 
-        queue.push_back(CoreMessage::Event(event));
+        queue.push_back(Task::Event(event));
 
-        let mut received = vec![];
+        let mut received: Vec<HttpRequest> = vec![];
 
         while !queue.is_empty() {
-            let msg = queue.pop_front();
+            let task = queue.pop_front().expect("an event");
 
-            let reqs = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(&bcs::to_bytes(&m)?),
-                Some(CoreMessage::Response(uuid, output)) => core.handle_response(
-                    &uuid,
-                    &match output {
-                        Outcome::Http(x) => bcs::to_bytes(&x)?,
-                    },
-                ),
-                _ => vec![],
-            };
-            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
-
-            for Request { uuid, effect } in reqs {
-                match effect {
-                    Effect::Render(_) => received.push(effect.clone()),
-                    Effect::Http(HttpRequest { .. }) => {
-                        received.push(effect);
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::Http(HttpResponse {
-                                status: 200,
-                                body: "\"Hello\"".as_bytes().to_owned(),
-                            }),
-                        ));
-                    }
+            match task {
+                Task::Event(event) => {
+                    enqueue_effects(&mut queue, core.process_event(event));
                 }
-            }
+                Task::Effect(effect) => match effect {
+                    Effect::Render(_) => (),
+                    Effect::Http(mut request) => {
+                        let http_request = &request.operation;
+
+                        received.push(http_request.clone());
+                        let response = HttpResponse {
+                            status: 200,
+                            body: "\"Hello\"".as_bytes().to_owned(),
+                        };
+
+                        enqueue_effects(&mut queue, core.resolve(&mut request, response));
+                    }
+                },
+            };
         }
 
-        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
-        Ok((received, view))
+        Ok(received)
+    }
+
+    fn enqueue_effects(queue: &mut VecDeque<Task>, effects: Vec<Effect>) {
+        queue.append(&mut effects.into_iter().map(Task::Effect).collect())
     }
 }
 
 mod tests {
     use crate::{
-        shared::{Effect, Event},
+        shared::{App, Effect, Event},
         shell::run,
     };
     use anyhow::Result;
-    use crux_core::render::RenderOperation;
+    use crux_core::Core;
     use crux_http::protocol::HttpRequest;
 
     #[test]
     pub fn test_http() -> Result<()> {
-        let (received, view) = run(Event::Get)?;
+        let core: Core<Effect, App> = Core::default();
+
+        let received = run(&core, Event::Get)?;
+
         assert_eq!(
             received,
-            vec![
-                Effect::Http(HttpRequest {
-                    method: "GET".to_string(),
-                    url: "http://example.com/".to_string(),
-                    headers: vec![]
-                }),
-                Effect::Render(RenderOperation)
-            ]
+            vec![HttpRequest {
+                method: "GET".to_string(),
+                url: "http://example.com/".to_string(),
+                headers: vec![],
+                body: vec![],
+            }]
         );
-        assert_eq!(view.result, "Status: 200, Body: \"Hello\", Json Body: ");
+
+        assert_eq!(
+            core.view().result,
+            "Status: 200, Body: \"Hello\", Json Body: "
+        );
         Ok(())
     }
 
     #[test]
     pub fn test_http_json() -> Result<()> {
-        let (received, view) = run(Event::GetJson)?;
+        let core: Core<Effect, App> = Core::default();
+
+        let received = run(&core, Event::GetJson)?;
+
         assert_eq!(
             received,
-            vec![
-                Effect::Http(HttpRequest {
-                    method: "GET".to_string(),
-                    url: "http://example.com/".to_string(),
-                    headers: vec![]
-                }),
-                Effect::Render(RenderOperation)
-            ]
+            vec![HttpRequest {
+                method: "GET".to_string(),
+                url: "http://example.com/".to_string(),
+                headers: vec![],
+                body: vec![]
+            }]
         );
-        assert_eq!(view.result, "Status: 0, Body: , Json Body: Hello");
+        assert_eq!(core.view().result, "Status: 0, Body: , Json Body: Hello");
         Ok(())
     }
 }

@@ -10,7 +10,6 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-bcs = "0.1.5"
 gloo-net = { version = "0.2.6", features = ["http"] }
 js-sys = "0.3.61"
 shared = { path = "../shared" }

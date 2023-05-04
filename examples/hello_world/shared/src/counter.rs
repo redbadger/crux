@@ -54,7 +54,7 @@ impl App for Hello {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crux_core::{render::RenderOperation, testing::AppTester};
+    use crux_core::{assert_effect, testing::AppTester};
 
     #[test]
     fn renders() {
@@ -64,9 +64,7 @@ mod test {
         let update = app.update(Event::Reset, &mut model);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        let expected_effect = &Effect::Render(RenderOperation);
-        assert_eq!(actual_effect, expected_effect);
+        assert_effect!(update, Effect::Render(_));
     }
 
     #[test]
@@ -91,9 +89,7 @@ mod test {
         assert_eq!(actual_view, expected_view);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        let expected_effect = &Effect::Render(RenderOperation);
-        assert_eq!(actual_effect, expected_effect);
+        assert_effect!(update, Effect::Render(_));
     }
 
     #[test]
@@ -108,9 +104,7 @@ mod test {
         assert_eq!(actual_view, expected_view);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        let expected_effect = &Effect::Render(RenderOperation);
-        assert_eq!(actual_effect, expected_effect);
+        assert_effect!(update, Effect::Render(_));
     }
 
     #[test]

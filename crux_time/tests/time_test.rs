@@ -54,79 +54,61 @@ mod shared {
 }
 
 mod shell {
-    use super::shared::{App, Effect, Event, ViewModel};
-    use anyhow::Result;
+    use super::shared::{App, Effect, Event};
     use crux_core::{Core, Request};
-    use crux_time::TimeResponse;
+    use crux_time::{TimeRequest, TimeResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Time(TimeResponse),
+        Time(Request<TimeRequest>, TimeResponse),
     }
 
     enum CoreMessage {
         Event(Event),
-        Response(Vec<u8>, Outcome),
+        Response(Outcome),
     }
 
-    pub fn run() -> Result<(Vec<Effect>, ViewModel)> {
-        let core: Core<Effect, App> = Core::default();
+    pub fn run(core: &Core<Effect, App>) {
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Event(Event::TimeGet));
 
-        let mut received = vec![];
-
         while !queue.is_empty() {
             let msg = queue.pop_front();
 
-            let reqs = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(&bcs::to_bytes(&m)?),
-                Some(CoreMessage::Response(uuid, output)) => core.handle_response(
-                    &uuid,
-                    &match output {
-                        Outcome::Time(x) => bcs::to_bytes(&x)?,
-                    },
-                ),
+            let effs = match msg {
+                Some(CoreMessage::Event(m)) => core.process_event(m),
+                Some(CoreMessage::Response(Outcome::Time(mut request, result))) => {
+                    core.resolve(&mut request, result)
+                }
                 _ => vec![],
             };
-            let reqs: Vec<Request<Effect>> = bcs::from_bytes(&reqs)?;
 
-            for Request { uuid, effect } in reqs {
-                match effect {
-                    Effect::Render(_) => received.push(effect),
-                    Effect::Time(_) => {
-                        received.push(effect);
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::Time(TimeResponse(
-                                "2022-12-01T01:47:12.746202562+00:00".to_string(),
-                            )),
-                        ));
-                    }
+            for effect in effs {
+                if let Effect::Time(request) = effect {
+                    queue.push_back(CoreMessage::Response(Outcome::Time(
+                        request,
+                        TimeResponse("2022-12-01T01:47:12.746202562+00:00".to_string()),
+                    )));
                 }
             }
         }
-
-        let view = bcs::from_bytes::<ViewModel>(&core.view())?;
-        Ok((received, view))
     }
 }
 
 mod tests {
-    use crate::{shared::Effect, shell::run};
-    use anyhow::Result;
-    use crux_core::render::RenderOperation;
-    use crux_time::TimeRequest;
+    use crate::{
+        shared::{App, Effect},
+        shell::run,
+    };
+    use crux_core::Core;
 
     #[test]
-    pub fn test_time() -> Result<()> {
-        let (received, view) = run()?;
-        assert_eq!(
-            received,
-            vec![Effect::Time(TimeRequest), Effect::Render(RenderOperation)]
-        );
-        assert_eq!(view.time, "2022-12-01T01:47:12.746202562+00:00");
-        Ok(())
+    pub fn test_time() {
+        let core: Core<Effect, App> = Core::default();
+
+        run(&core);
+
+        assert_eq!(core.view().time, "2022-12-01T01:47:12.746202562+00:00");
     }
 }

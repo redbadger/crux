@@ -14,7 +14,7 @@ pub struct Model {
     confirmed: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,
@@ -126,10 +126,12 @@ impl crux_core::App for App {
 
 #[cfg(test)]
 mod tests {
+    use assert_let_bind::assert_let;
+
     use super::{App, Event, Model};
     use crate::capabilities::sse::SseRequest;
     use crate::{Counter, Effect};
-    use crux_core::{render::RenderOperation, testing::AppTester};
+    use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
@@ -140,24 +142,28 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::Get, &mut model);
+        let mut update = app.update(Event::Get, &mut model);
 
-        let actual = &update.effects[0];
-        let expected = &Effect::Http(HttpRequest {
+        assert_let!(Effect::Http(request), &mut update.effects[0]);
+        let actual = &request.operation;
+        let expected = &HttpRequest {
             method: "GET".to_string(),
             url: "https://crux-counter.fly.dev/".to_string(),
             headers: vec![],
-        });
+            body: vec![],
+        };
+
         assert_eq!(actual, expected);
 
-        let update = update.effects[0].resolve(&HttpResponse {
+        let response = HttpResponse {
             status: 200,
             body: serde_json::to_vec(&Counter {
                 value: 1,
                 updated_at: 1,
             })
             .unwrap(),
-        });
+        };
+        let update = app.resolve(request, response).expect("an update");
 
         let actual = update.events;
         let expected = vec![Event::new_set(1, 1)];
@@ -171,9 +177,7 @@ mod tests {
 
         let update = app.update(Event::new_set(1, 1), &mut model);
 
-        let actual = &update.effects[0];
-        let expected = &Effect::Render(RenderOperation);
-        assert_eq!(actual, expected);
+        assert_effect!(update, Effect::Render(_));
 
         let actual = model.count.value;
         let expected = 1;
@@ -189,11 +193,9 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::Increment, &mut model);
+        let mut update = app.update(Event::Increment, &mut model);
 
-        let actual = &update.effects[0];
-        let expected = &Effect::Render(RenderOperation);
-        assert_eq!(actual, expected);
+        assert_effect!(update, Effect::Render(_));
 
         let actual = model.count.value;
         let expected = 1;
@@ -203,22 +205,27 @@ mod tests {
         let expected = Some(false);
         assert_eq!(actual, expected);
 
-        let actual = &update.effects[1];
-        let expected = &Effect::Http(HttpRequest {
+        assert_let!(Effect::Http(request), &mut update.effects[1]);
+        let expected = &HttpRequest {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/inc".to_string(),
             headers: vec![],
-        });
+            body: vec![],
+        };
+        let actual = &request.operation;
+
         assert_eq!(actual, expected);
 
-        let update = update.effects[1].resolve(&HttpResponse {
+        let response = HttpResponse {
             status: 200,
             body: serde_json::to_vec(&Counter {
                 value: 1,
                 updated_at: 1,
             })
             .unwrap(),
-        });
+        };
+
+        let update = app.resolve(request, response).expect("Update to succeed");
 
         let actual = update.events;
         let expected = vec![Event::new_set(1, 1)];
@@ -230,11 +237,9 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::Decrement, &mut model);
+        let mut update = app.update(Event::Decrement, &mut model);
 
-        let actual = &update.effects[0];
-        let expected = &Effect::Render(RenderOperation);
-        assert_eq!(actual, expected);
+        assert_effect!(update, Effect::Render(_));
 
         let actual = model.count.value;
         let expected = -1;
@@ -244,22 +249,26 @@ mod tests {
         let expected = Some(false);
         assert_eq!(actual, expected);
 
-        let actual = &update.effects[1];
-        let expected = &Effect::Http(HttpRequest {
+        assert_let!(Effect::Http(request), &mut update.effects[1]);
+        let actual = request.operation.clone();
+        let expected = HttpRequest {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/dec".to_string(),
             headers: vec![],
-        });
+            body: vec![],
+        };
         assert_eq!(actual, expected);
 
-        let update = update.effects[1].resolve(&HttpResponse {
+        let response = HttpResponse {
             status: 200,
             body: serde_json::to_vec(&Counter {
                 value: -1,
                 updated_at: 1,
             })
             .unwrap(),
-        });
+        };
+
+        let update = app.resolve(request, response).expect("a successful update");
 
         let actual = update.events;
         let expected = vec![Event::new_set(-1, 1)];
@@ -273,10 +282,12 @@ mod tests {
 
         let update = app.update(Event::StartWatch, &mut model);
 
-        let actual = &update.effects[0];
-        let expected = &Effect::ServerSentEvents(SseRequest {
+        assert_let!(Effect::ServerSentEvents(request), &update.effects[0]);
+        let actual = &request.operation;
+        let expected = &SseRequest {
             url: "https://crux-counter.fly.dev/sse".to_string(),
-        });
+        };
+
         assert_eq!(actual, expected);
     }
 
@@ -292,10 +303,8 @@ mod tests {
         let event = Event::WatchUpdate(count);
 
         let update = app.update(event, &mut model);
-        let actual = &update.effects[0];
-        let expected = &Effect::Render(RenderOperation);
 
-        assert_eq!(actual, expected);
+        assert_let!(Effect::Render(_), &update.effects[0]);
 
         let actual = model.count.value;
         let expected = 1;

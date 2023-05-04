@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crux_core::{typegen::TypeGen, Request};
+use crux_core::{bridge::Request, typegen::TypeGen};
 
 use shared::{
     capabilities::{
@@ -7,7 +7,7 @@ use shared::{
         timer::{TimerOperation, TimerOutput},
         KeyValueOperation, KeyValueOutput,
     },
-    Effect, Event, TextCursor, ViewModel,
+    EffectFfi, Event, TextCursor, ViewModel,
 };
 use std::path::PathBuf;
 
@@ -33,8 +33,8 @@ fn main() {
 }
 
 fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<Effect>>()?;
-    gen.register_type::<Effect>()?;
+    gen.register_type::<Request<EffectFfi>>()?;
+    gen.register_type::<EffectFfi>()?;
 
     gen.register_type::<PubSubOperation>()?;
     gen.register_type::<Message>()?;

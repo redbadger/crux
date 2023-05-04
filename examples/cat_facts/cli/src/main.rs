@@ -3,7 +3,6 @@ use async_std::{
     fs::{File, OpenOptions},
     io::{ReadExt, WriteExt},
 };
-use bcs::{from_bytes, to_bytes};
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use shared::{
@@ -11,13 +10,13 @@ use shared::{
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
-    Effect, Event, Request, ViewModel,
+    CatFactCapabilities, CatFacts, Core, Effect, Event,
 };
 use std::{collections::VecDeque, time::SystemTime};
 
-enum CoreMessage {
+enum Task {
     Event(Event),
-    Response(Vec<u8>, Outcome),
+    Effect(Effect),
 }
 
 #[derive(Parser, Clone)]
@@ -25,13 +24,6 @@ enum Command {
     Clear,
     Get,
     Fetch,
-}
-
-pub enum Outcome {
-    Platform(PlatformResponse),
-    Time(TimeResponse),
-    Http(HttpResponse),
-    KeyValue(KeyValueOutput),
 }
 
 /// Simple program to greet a person
@@ -45,93 +37,81 @@ struct Args {
 #[async_std::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
+    let core: Core<Effect, CatFacts> = Core::new::<CatFactCapabilities>();
 
-    let mut queue: VecDeque<CoreMessage> = VecDeque::new();
+    let mut queue: VecDeque<Task> = VecDeque::new();
 
-    queue.push_back(CoreMessage::Event(Event::Restore));
-    queue.push_back(CoreMessage::Event(Event::GetPlatform));
+    queue.push_back(Task::Event(Event::Restore));
+    queue.push_back(Task::Event(Event::GetPlatform));
 
     while !queue.is_empty() {
-        let msg = queue.pop_front();
+        let task = queue.pop_front().expect("an event");
 
-        let reqs = match msg {
-            Some(CoreMessage::Event(m)) => shared::process_event(&to_bytes(&m)?),
-            Some(CoreMessage::Response(uuid, output)) => shared::handle_response(
-                &uuid,
-                &match output {
-                    Outcome::Platform(x) => to_bytes(&x)?,
-                    Outcome::Time(x) => to_bytes(&x)?,
-                    Outcome::Http(x) => to_bytes(&x)?,
-                    Outcome::KeyValue(x) => to_bytes(&x)?,
-                },
-            ),
-            _ => vec![],
-        };
-        let reqs: Vec<Request<Effect>> = from_bytes(&reqs)?;
-
-        for req in reqs {
-            let Request { uuid, effect } = req;
-            match effect {
+        match task {
+            Task::Event(event) => {
+                enqueue_effects(&mut queue, core.process_event(event));
+            }
+            Task::Effect(effect) => match effect {
                 Effect::Render(_) => (),
-                Effect::Time(_) => {
+                Effect::Time(mut request) => {
                     let now: DateTime<Utc> = SystemTime::now().into();
                     let iso_time = now.to_rfc3339();
+                    let response = TimeResponse(iso_time);
 
-                    queue.push_back(CoreMessage::Response(
-                        uuid,
-                        Outcome::Time(TimeResponse(iso_time)),
-                    ));
+                    enqueue_effects(&mut queue, core.resolve(&mut request, response));
                 }
-                Effect::Http(HttpRequest { url, .. }) => match surf::get(&url).recv_bytes().await {
-                    Ok(bytes) => {
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::Http(HttpResponse {
+                Effect::Http(mut request) => {
+                    let HttpRequest { ref url, .. } = request.operation;
+                    match surf::get(url).recv_bytes().await {
+                        Ok(bytes) => {
+                            let response = HttpResponse {
                                 status: 200,
                                 body: bytes,
-                            }),
-                        ));
+                            };
+
+                            enqueue_effects(&mut queue, core.resolve(&mut request, response));
+                        }
+                        Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
                     }
-                    Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
-                },
-                Effect::Platform(_) => queue.push_back(CoreMessage::Response(
-                    uuid,
-                    Outcome::Platform(PlatformResponse("cli".to_string())),
-                )),
-                Effect::KeyValue(request) => match request {
-                    KeyValueOperation::Read(key) => {
-                        let bytes = read_state(&key).await.ok();
+                }
+                Effect::Platform(mut request) => {
+                    let response = PlatformResponse("cli".to_string());
+                    enqueue_effects(&mut queue, core.resolve(&mut request, response));
+                }
+                Effect::KeyValue(mut request) => match request.operation {
+                    KeyValueOperation::Read(ref key) => {
+                        let bytes = read_state(key).await.ok();
+                        let response = KeyValueOutput::Read(bytes);
 
                         let initial_msg = match &args.cmd {
-                            Command::Clear => CoreMessage::Event(Event::Clear),
-                            Command::Get => CoreMessage::Event(Event::Get),
-                            Command::Fetch => CoreMessage::Event(Event::Fetch),
+                            Command::Clear => Task::Event(Event::Clear),
+                            Command::Get => Task::Event(Event::Get),
+                            Command::Fetch => Task::Event(Event::Fetch),
                         };
 
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::KeyValue(KeyValueOutput::Read(bytes)),
-                        ));
                         queue.push_back(initial_msg);
+                        enqueue_effects(&mut queue, core.resolve(&mut request, response));
                     }
-                    KeyValueOperation::Write(key, value) => {
-                        let success = write_state(&key, &value).await.is_ok();
+                    KeyValueOperation::Write(ref key, ref value) => {
+                        let success = write_state(key, value).await.is_ok();
+                        let response = KeyValueOutput::Write(success);
 
-                        queue.push_back(CoreMessage::Response(
-                            uuid,
-                            Outcome::KeyValue(KeyValueOutput::Write(success)),
-                        ));
+                        enqueue_effects(&mut queue, core.resolve(&mut request, response));
                     }
                 },
-            }
+            },
         }
     }
 
-    let view = from_bytes::<ViewModel>(&shared::view())?;
+    let view = core.view();
     println!("platform: {}", view.platform);
     println!("{}", view.fact);
 
     Ok(())
+}
+
+fn enqueue_effects(queue: &mut VecDeque<Task>, effects: Vec<Effect>) {
+    queue.append(&mut effects.into_iter().map(Task::Effect).collect())
 }
 
 async fn write_state(_key: &str, bytes: &[u8]) -> Result<()> {

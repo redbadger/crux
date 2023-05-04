@@ -15,11 +15,11 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 atty = "0.2.14"
-cargo_metadata = "0.15.3"
+cargo_metadata = "0.15.4"
 cargo_toml = "0.15.2"
-clap = { version = "4.2.0", features = ["derive"] }
-clap-verbosity-flag = "2.0.0"
+clap = { version = "4.2.7", features = ["derive"] }
+clap-verbosity-flag = "2.0.1"
 log = "0.4.17"
 termcolor = "1.2.0"
-trustfall = "0.3.4"
-trustfall_rustdoc = "0.9.0"
+trustfall = "0.4.0"
+trustfall_rustdoc = "0.11.0"

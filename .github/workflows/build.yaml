@@ -2,6 +2,9 @@ name: build
 
 on:
   push:
+  pull_request:
+    branches:
+      - master
 
 env:
   CARGO_INCREMENTAL: 0
@@ -13,6 +16,7 @@ env:
 jobs:
   build-crux:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
 
     steps:
       - uses: actions/checkout@v2
@@ -51,6 +55,7 @@ jobs:
 
   find-examples:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     outputs:
       examples: ${{ steps.find.outputs.examples }}
     steps:
@@ -62,6 +67,7 @@ jobs:
 
   build-examples:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     needs: find-examples
     strategy:
       matrix:
@@ -73,6 +79,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      # The counter example uses tauri, which has additional dependencies that are not needed for other examples
+      - name: Install tauri dependencies
+        shell: bash
+        if: ${{ matrix.example == 'counter' }}
+        run: >
+          sudo apt-get update &&
+          sudo apt-get install -y
+          build-essential
+          curl
+          wget
+          libssl-dev
+          libgtk-3-dev
+          libayatana-appindicator3-dev
+          librsvg2-dev
+          libwebkit2gtk-4.1-dev
+
       - uses: Swatinem/rust-cache@v1
       - uses: dtolnay/rust-toolchain@1.66.0
         with:

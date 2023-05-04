@@ -294,7 +294,7 @@ impl CursorObserver {
 
 #[cfg(test)]
 mod editing_tests {
-    use crux_core::{render::RenderOperation, testing::AppTester};
+    use crux_core::{assert_effect, testing::AppTester};
 
     use super::*;
 
@@ -328,17 +328,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::MoveCursor(5), &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "hello".to_string());
         assert_eq!(view.cursor, TextCursor::Position(5));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -352,17 +347,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Select(2, 5), &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "hello".to_string());
         assert_eq!(view.cursor, TextCursor::Selection(2..5));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -376,17 +366,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Insert("l to the ".to_string()), &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "hell to the lo".to_string());
         assert_eq!(view.cursor, TextCursor::Position(12));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -400,17 +385,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Insert("ter skelter".to_string()), &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "helter skelter".to_string());
         assert_eq!(view.cursor, TextCursor::Position(14));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -424,17 +404,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "hi, yo".to_string());
         assert_eq!(view.cursor, TextCursor::Position(5));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -451,17 +426,12 @@ mod editing_tests {
             Event::Replace(1, 1, "ey, just saying h".to_string()),
             &mut model,
         );
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "hey, just saying hello".to_string());
         assert_eq!(view.cursor, TextCursor::Position(18));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -475,17 +445,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Backspace, &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "hllo".to_string());
         assert_eq!(view.cursor, TextCursor::Position(1));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -499,17 +464,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Delete, &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "helo".to_string());
         assert_eq!(view.cursor, TextCursor::Position(2));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -523,17 +483,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Delete, &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "heo".to_string());
         assert_eq!(view.cursor, TextCursor::Position(2));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -547,17 +502,12 @@ mod editing_tests {
         };
 
         let update = app.update(Event::Backspace, &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "heo".to_string());
         assert_eq!(view.cursor, TextCursor::Position(2));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 
     #[test]
@@ -573,23 +523,19 @@ mod editing_tests {
 
         // Replace the ' w' after the emoji
         let update = app.update(Event::Replace(8, 10, "🥳🙌🏻 w".to_string()), &mut model);
-        let expected_effect = Effect::Render(RenderOperation);
+        assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
 
         assert_eq!(view.text, "Hello 🙌🏻🥳🙌🏻 world.".to_string());
         assert_eq!(view.cursor, TextCursor::Position(13));
-
-        assert!(
-            update.effects.iter().any(|e| e == &expected_effect),
-            "didn't render"
-        );
     }
 }
 
 #[cfg(test)]
 mod save_load_tests {
-    use crux_core::testing::AppTester;
+    use assert_let_bind::assert_let;
+    use crux_core::{assert_effect, testing::AppTester};
     use crux_kv::KeyValueOperation;
 
     use crate::capabilities::timer::{TimerOperation, TimerOutput};
@@ -609,31 +555,27 @@ mod save_load_tests {
 
         // this will eventually take a document ID
         let update = app.update(Event::Open, &mut model);
-        let key_value_effs = update
+        let mut key_value_effs = update
             .effects
-            .iter()
-            .filter(|e| matches!(e.as_ref(), Effect::KeyValue(_op)))
+            .into_iter()
+            .filter(|e| matches!(e, Effect::KeyValue(_req)))
             .collect::<Vec<_>>();
 
         assert_eq!(key_value_effs.len(), 1);
-        assert!(
-            matches!(key_value_effs[0].as_ref(), Effect::KeyValue(KeyValueOperation::Read(key)) if key == &"note".to_string()),
-            "Expected a read with key 'note', got {:?}",
-            key_value_effs[0].as_ref()
-        );
+
+        assert_let!(Effect::KeyValue(request), &mut key_value_effs[0]);
+        assert_let!(KeyValueOperation::Read(key), &request.operation);
+
+        assert_eq!(key, &"note".to_string());
 
         // Read was successful
-        let update = key_value_effs[0].resolve(&KeyValueOutput::Read(Some(note.save())));
+        let response = KeyValueOutput::Read(Some(note.save()));
+        let update = app.resolve(request, response).expect("should update");
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
             let update = app.update(e, &mut model);
-            let renders = update
-                .effects
-                .iter()
-                .any(|e| matches!(e.as_ref(), Effect::Render(_)));
-
-            assert!(renders)
+            assert_effect!(update, Effect::Render(_));
         }
 
         assert_eq!(app.view(&model).text, "LOADED");
@@ -651,21 +593,21 @@ mod save_load_tests {
 
         // this will eventually take a document ID
         let update = app.update(Event::Open, &mut model);
-        let key_value_effs = update
+        let mut key_value_effs = update
             .effects
-            .iter()
-            .filter(|e| matches!(e.as_ref(), Effect::KeyValue(_op)))
+            .into_iter()
+            .filter(|e| matches!(e, Effect::KeyValue(_op)))
             .collect::<Vec<_>>();
 
         assert_eq!(key_value_effs.len(), 1);
-        assert!(
-            matches!(key_value_effs[0].as_ref(), Effect::KeyValue(KeyValueOperation::Read(key)) if key == &"note".to_string()),
-            "Expected a read with key 'note', got {:?}",
-            key_value_effs[0].as_ref()
-        );
+        assert_let!(Effect::KeyValue(request), &mut key_value_effs[0]);
+        assert_let!(KeyValueOperation::Read(key), &request.operation);
+        assert_eq!(key, &"note".to_string());
 
-        // Read was unsuccsessful
-        let update = key_value_effs[0].resolve(&KeyValueOutput::Read(None));
+        // Read was unsuccessful
+        let update = app
+            .resolve(request, KeyValueOutput::Read(None))
+            .expect("should update");
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
@@ -673,9 +615,13 @@ mod save_load_tests {
             let saves = update
                 .effects
                 .iter()
-                .any(|e| matches!(e.as_ref(), Effect::KeyValue(KeyValueOperation::Write(key, _)) if key == &"note".to_string()));
+                .filter(|e| matches!(e, Effect::KeyValue(_)))
+                .collect::<Vec<_>>();
 
-            assert!(saves)
+            assert_let!(Effect::KeyValue(request), saves[0]);
+            assert_let!(KeyValueOperation::Write(key, _), &request.operation);
+
+            assert_eq!(key, &"note".to_string());
         }
     }
 
@@ -691,25 +637,29 @@ mod save_load_tests {
 
         // An edit should trigger a timer
         let update = app.update(Event::Insert("something".to_string()), &mut model);
-        let timer_effects: Vec<_> = update
+        let mut timer_effects: Vec<_> = update
             .effects
-            .iter()
-            .filter(|e| matches!(e.as_ref(), Effect::Timer(_)))
+            .into_iter()
+            .filter(|e| matches!(e, Effect::Timer(_)))
             .collect();
 
         assert_eq!(timer_effects.len(), 1);
 
-        let first_id = match timer_effects[0].as_ref() {
-            Effect::Timer(TimerOperation::Start { id, millis }) => {
-                assert_eq!(*millis, 1000);
+        assert_let!(Effect::Timer(request), &mut timer_effects[0]);
+        assert_let!(
+            TimerOperation::Start {
+                id: first_id,
+                millis
+            },
+            request.operation.clone()
+        );
 
-                id
-            }
-            _ => unreachable!(),
-        };
+        assert_eq!(millis, 1000);
 
         // Tells app the timer was created
-        let update = timer_effects[0].resolve(&TimerOutput::Created { id: *first_id });
+        let update = app
+            .resolve(request, TimerOutput::Created { id: first_id })
+            .expect("should update");
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -719,37 +669,41 @@ mod save_load_tests {
         // cancel the timer and start a new one
         let update = app.update(Event::Replace(1, 2, "a".to_string()), &mut model);
 
-        let timer_effects: Vec<_> = update
+        let mut timer_effects: Vec<_> = update
             .effects
-            .iter()
-            .filter(|e| matches!(e.as_ref(), Effect::Timer(_)))
+            .into_iter()
+            .filter(|e| matches!(e, Effect::Timer(_)))
             .collect();
 
         assert_eq!(timer_effects.len(), 2);
 
-        let cancel = timer_effects[0];
-        let start = timer_effects[1];
-
-        let cancel_id = match cancel.as_ref() {
-            Effect::Timer(TimerOperation::Cancel { id }) => id,
-            _ => unreachable!(),
-        };
+        let cancel = &mut timer_effects[0];
+        assert_let!(Effect::Timer(cancel_request), cancel);
+        assert_let!(
+            TimerOperation::Cancel { id: cancel_id },
+            cancel_request.operation.clone()
+        );
 
         assert_eq!(cancel_id, first_id);
 
-        let second_id = match start.as_ref() {
-            Effect::Timer(TimerOperation::Start { id, millis }) => {
-                assert_eq!(*millis, 1000);
+        let start = &mut timer_effects[1];
+        assert_let!(Effect::Timer(start_request), start);
+        assert_let!(
+            TimerOperation::Start {
+                id: second_id,
+                millis
+            },
+            start_request.operation.clone()
+        );
 
-                id
-            }
-            _ => unreachable!(),
-        };
+        assert_eq!(millis, 1000);
 
         assert_ne!(first_id, second_id);
 
         // Tell app the second timer was created
-        let update = timer_effects[1].resolve(&TimerOutput::Created { id: *second_id });
+        let update = app
+            .resolve(start_request, TimerOutput::Created { id: second_id })
+            .expect("should update");
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -758,7 +712,9 @@ mod save_load_tests {
         // Time passes
 
         // Fire the timer
-        let update = timer_effects[1].resolve(&TimerOutput::Finished { id: *second_id });
+        let update = app
+            .resolve(start_request, TimerOutput::Finished { id: second_id })
+            .expect("should update");
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -769,21 +725,21 @@ mod save_load_tests {
         let timer_effects: Vec<_> = update
             .effects
             .iter()
-            .filter(|e| matches!(e.as_ref(), Effect::Timer(_)))
+            .filter(|e| matches!(e, Effect::Timer(_)))
             .collect();
 
         assert_eq!(timer_effects.len(), 1);
 
-        let third_id = match timer_effects[0].as_ref() {
-            Effect::Timer(TimerOperation::Start { id, millis }) => {
-                assert_eq!(*millis, 1000);
+        assert_let!(Effect::Timer(third_request), timer_effects[0]);
+        assert_let!(
+            TimerOperation::Start {
+                id: third_id,
+                millis
+            },
+            third_request.operation.clone()
+        );
 
-                id
-            }
-            _ => unreachable!(),
-        };
-
-        println!("Third id: {third_id}, second id: {second_id}");
+        assert_eq!(millis, 1000);
 
         assert_ne!(third_id, second_id);
     }
@@ -809,15 +765,14 @@ mod save_load_tests {
         let write_effect = update
             .effects
             .iter()
-            .find(|e| matches!(e.as_ref(), Effect::KeyValue(KeyValueOperation::Write(_, _))))
+            .find(|e| matches!(e, Effect::KeyValue(_)))
             .expect("a key value write");
 
-        if let Effect::KeyValue(KeyValueOperation::Write(key, value)) = write_effect.as_ref() {
-            assert_eq!(key, &"note".to_string());
-            assert_eq!(value, &model.note.save());
-        } else {
-            unreachable!();
-        }
+        assert_let!(Effect::KeyValue(request), write_effect);
+        assert_let!(KeyValueOperation::Write(key, value), &request.operation);
+
+        assert_eq!(key, &"note".to_string());
+        assert_eq!(value, &model.note.save());
     }
 }
 
@@ -825,16 +780,16 @@ mod save_load_tests {
 mod sync_tests {
     use std::collections::VecDeque;
 
-    use crux_core::testing::{AppTester, TestEffect};
+    use crux_core::{testing::AppTester, Request};
 
-    use crate::capabilities::pub_sub::PubSubOperation;
+    use crate::capabilities::pub_sub::{Message, PubSubOperation};
 
     use super::*;
 
     struct Peer {
         app: AppTester<NoteEditor, Effect>,
         model: Model,
-        subscription: Option<TestEffect<Effect, Event>>,
+        subscription: Option<Request<PubSubOperation>>,
         edits: VecDeque<Vec<u8>>,
     }
 
@@ -861,14 +816,16 @@ mod sync_tests {
             let mut effects = Vec::new();
 
             for effect in update.effects {
-                match effect.as_ref() {
-                    Effect::PubSub(PubSubOperation::Subscribe) => {
-                        self.subscription = Some(effect);
-                    }
-                    Effect::PubSub(PubSubOperation::Publish(bytes)) => {
-                        self.edits.push_back(bytes.clone());
-                    }
-                    ef => effects.push(ef.clone()),
+                match effect {
+                    Effect::PubSub(request) => match request.operation {
+                        PubSubOperation::Subscribe => {
+                            self.subscription = Some(request);
+                        }
+                        PubSubOperation::Publish(bytes) => {
+                            self.edits.push_back(bytes.clone());
+                        }
+                    },
+                    ef => effects.push(ef),
                 }
             }
 
@@ -880,14 +837,19 @@ mod sync_tests {
         }
 
         fn send_edits(&mut self, edits: &[Vec<u8>]) -> (Vec<Effect>, Vec<Event>) {
-            let subscription = self.subscription.as_ref().expect("to have a subscription");
+            let subscription = self.subscription.as_mut().expect("to have a subscription");
 
             let mut effects = Vec::new();
             let mut events = Vec::new();
 
             let evs = edits
                 .iter()
-                .flat_map(|ed| subscription.resolve(ed).events)
+                .flat_map(|ed| {
+                    self.app
+                        .resolve(subscription, Message(ed.clone()))
+                        .expect("should resolve")
+                        .events
+                })
                 .collect::<Vec<_>>();
 
             for event in evs {
