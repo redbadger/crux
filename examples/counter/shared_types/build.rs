@@ -31,7 +31,7 @@ fn register_types(gen: &mut TypeGen) -> Result<()> {
     gen.register_type::<HttpRequest>()?;
 
     let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
-    gen.register_type_with_samples::<Event>(sample_events)?;
+    gen.register_type_with_samples(sample_events)?;
 
     gen.register_type::<HttpResponse>()?;
     gen.register_type::<SseResponse>()?;

@@ -16,11 +16,39 @@
 //! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
 //! * Create a `build.rs` in your `shared_types` library, that looks something like this:
 //!
-//! ```rust,ignore
+//! ```rust
+//! # mod shared {
+//! #     use crux_http::Http;
+//! #     use crux_macros::Effect;
+//! #     use serde::{Deserialize, Serialize};
+//! #     #[derive(Default)]
+//! #     pub struct App;
+//! #     #[derive(Serialize, Deserialize)]
+//! #     pub enum Event {
+//! #         None,
+//! #         SendUuid(uuid::Uuid),
+//! #     }
+//! #     #[derive(Serialize, Deserialize)]
+//! #     pub struct ViewModel;
+//! #     impl crux_core::App for App {
+//! #         type Event = Event;
+//! #         type Model = ();
+//! #         type ViewModel = ViewModel;
+//! #         type Capabilities = Capabilities;
+//! #         fn update(&self, _event: Event, _model: &mut Self::Model, _caps: &Capabilities) {}
+//! #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+//! #             todo!();
+//! #         }
+//! #     }
+//! #     #[derive(Effect)]
+//! #     pub struct Capabilities {
+//! #         pub http: Http<Event>,
+//! #     }
+//! # }
 //! use anyhow::Result;
-//! use crux_core::{typegen::TypeGen, Request};
-//! use crux_http::{HttpRequest, HttpResponse};
-//! use shared::{Effect, Event, ViewModel};
+//! use crux_core::{typegen::TypeGen, bridge::Request};
+//! use crux_http::protocol::{HttpRequest, HttpResponse};
+//! use shared::{EffectFfi, Event, ViewModel};
 //! use std::path::PathBuf;
 //!
 //! fn main() {
@@ -30,7 +58,7 @@
 //!
 //!     register_types(&mut gen).expect("type registration failed");
 //!
-//!     let output_root = PathBuf::from("./generated");
+//!     let output_root = std::env::temp_dir().join("crux_core_typegen_doctest");
 //!
 //!     gen.swift("shared_types", output_root.join("swift"))
 //!         .expect("swift type gen failed");
@@ -46,12 +74,14 @@
 //! }
 //!
 //! fn register_types(gen: &mut TypeGen) -> Result<()> {
-//!     gen.register_type::<Request<Effect>>()?;
+//!     gen.register_type::<Request<EffectFfi>>()?;
 //!
-//!     gen.register_type::<Effect>()?;
+//!     gen.register_type::<EffectFfi>()?;
 //!     gen.register_type::<HttpRequest>()?;
 //!
-//!     gen.register_type::<Event>()?;
+//!     let sample_events = vec![Event::SendUuid(uuid::Uuid::new_v4())];
+//!     gen.register_type_with_samples(sample_events)?;
+//!
 //!     gen.register_type::<HttpResponse>()?;
 //!
 //!     gen.register_type::<ViewModel>()?;
@@ -157,6 +187,10 @@ impl TypeGen {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// Note: Because of the way that enums are handled by `serde_reflection`,
+    /// you may need to ensure that enums provided as samples have a first variant
+    /// that does not use custom deserialization.
     pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
     where
         T: serde::Deserialize<'de> + serde::Serialize,
@@ -172,7 +206,12 @@ impl TypeGen {
 
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
-                    Err(e) => bail!("type tracing failed: {}", e),
+                    Err(e) => bail!(
+                        r#"type tracing failed: {}
+                        If you are tracing an enum with a variant that uses custom deserialization,
+                        ensure that it is not the first variant."#,
+                        e
+                    ),
                 }
             }
             _ => bail!("code has been generated, too late to register types"),
@@ -400,11 +439,11 @@ mod tests {
     fn test_typegen_for_uuid_with_samples() {
         let sample_data = vec![MyUuid(Uuid::new_v4())];
         let mut gen = TypeGen::new();
-        let result = gen.register_type_with_samples::<MyUuid>(sample_data);
+        let result = gen.register_type_with_samples(sample_data);
         assert!(result.is_ok(), "typegen failed for Uuid, with samples");
 
         let sample_data = vec!["a".to_string(), "b".to_string()];
-        let result = gen.register_type_with_samples::<String>(sample_data);
+        let result = gen.register_type_with_samples(sample_data);
         assert!(result.is_ok(), "typegen failed with second sample data set");
     }
 }

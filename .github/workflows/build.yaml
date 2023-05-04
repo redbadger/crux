@@ -25,6 +25,10 @@ jobs:
         with:
           components: rustfmt
 
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 7.32.2
+
       - name: Check formatting
         shell: bash
         run: cargo fmt --all --check
@@ -103,7 +107,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: 7.18.1
+          version: 7.32.2
 
       - name: Check formatting
         shell: bash
