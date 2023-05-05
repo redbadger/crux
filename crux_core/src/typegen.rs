@@ -102,15 +102,22 @@ use std::{
 // Expose from `serde_reflection` for `register_type_with_samples()`
 use serde_reflection::Samples;
 
-enum State {
+use crate::App;
+
+#[derive(Debug)]
+pub enum State {
     Registering(Tracer, Samples),
     Generating(Registry),
+}
+
+pub trait Export {
+    fn register_types(generator: &mut TypeGen) -> Result<()>;
 }
 
 /// The `TypeGen` struct stores the registered types so that they can be generated for foreign languages
 /// use `TypeGen::new()` to create an instance
 pub struct TypeGen {
-    state: State,
+    pub state: State,
 }
 
 impl Default for TypeGen {
@@ -121,12 +128,61 @@ impl Default for TypeGen {
     }
 }
 
+static DESERIALIZATION_ERROR_HINT: &str = r#"
+This might be because you attempted to pass types with custom serialization across the FFI boundary. Make sure that:
+1. Types you use in Event, ViewModel and Capabilities serialize as a container, otherwise wrap them in a new type struct,
+    e.g. MyUuid(uuid::Uuid)
+2. Sample values of such types have been provided to the type generator using TypeGen::register_samples, before any type registration."#;
+
 impl TypeGen {
     /// Creates an instance of the `TypeGen` struct
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Register all the types used in app `A` to be shared with the Shell.
+    ///
+    /// Do this before calling TypeGen::swift, TypeGen::java or TypeGen::typescript.
+    /// This method would normally be called in a build.rs file of a sister create responsible for
+    /// creating "foreign language" type definitions for the FFI boundary.
+    /// See the [section on creating the shared types crate](https://redbadger.github.io/crux/getting_started/core.html#create-the-shared-types-crate)
+    /// in the Crux book for more information.
+    pub fn register_app<A: App>(&mut self) -> Result<()>
+    where
+        <A as App>::Capabilities: Export,
+    {
+        self.register_type::<A::Event>()?;
+        self.register_type::<A::ViewModel>()?;
+
+        <A::Capabilities as Export>::register_types(self)?;
+
+        Ok(())
+    }
+
+    /// Register sample values for types with custom serialization. This is necessary
+    /// because the type registration relies on Serde to understand the structure of the types,
+    /// and as part of the process runs a faux deserialization on each of them, with a best
+    /// guess of a default value. If that default value does not deserialize, the type registration
+    /// will fail.
+    /// You can prevent this problem by registering a valid sample value (or values) which the deserialization will use instead.
+    pub fn register_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
+    where
+        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
+    {
+        match &mut self.state {
+            State::Registering(tracer, samples) => {
+                for sample in &sample_data {
+                    match tracer.trace_value::<T>(samples, sample) {
+                        Ok(_) => {}
+                        Err(e) => bail!("value tracing failed: {}", e),
+                    }
+                }
+            }
+            _ => bail!("code has been generated, too late to register types"),
+        }
+
+        Ok(())
+    }
     /// For each of the types that you want to share with the Shell, call this method:
     /// e.g.
     /// ```rust
@@ -158,6 +214,13 @@ impl TypeGen {
         match &mut self.state {
             State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
+                Err(serde_reflection::Error::DeserializationError(text)) => {
+                    bail!(
+                        "Type tracing failed: {}. {}",
+                        text,
+                        DESERIALIZATION_ERROR_HINT
+                    )
+                }
                 Err(e) => bail!("type tracing failed: {}", e),
             },
             _ => bail!("code has been generated, too late to register types"),
@@ -193,25 +256,27 @@ impl TypeGen {
     /// that does not use custom deserialization.
     pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
     where
-        T: serde::Deserialize<'de> + serde::Serialize,
+        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
     {
         match &mut self.state {
             State::Registering(tracer, samples) => {
-                for sample in sample_data {
-                    match tracer.trace_value::<T>(samples, &sample) {
-                        Ok(_) => (),
+                for sample in &sample_data {
+                    match tracer.trace_value::<T>(samples, sample) {
+                        Ok(_) => {}
+                        Err(serde_reflection::Error::DeserializationError(text)) => {
+                            bail!(
+                                "Type tracing failed: {}. {}",
+                                text,
+                                DESERIALIZATION_ERROR_HINT
+                            )
+                        }
                         Err(e) => bail!("value tracing failed: {}", e),
                     }
                 }
 
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
-                    Err(e) => bail!(
-                        r#"type tracing failed: {}
-                        If you are tracing an enum with a variant that uses custom deserialization,
-                        ensure that it is not the first variant."#,
-                        e
-                    ),
+                    Err(e) => bail!("Type tracing failed: {}. {}", e, DESERIALIZATION_ERROR_HINT),
                 }
             }
             _ => bail!("code has been generated, too late to register types"),
@@ -421,7 +486,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Serialize, Deserialize, Debug)]
     struct MyUuid(Uuid);
 
     #[test]

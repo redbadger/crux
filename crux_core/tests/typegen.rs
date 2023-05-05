@@ -6,7 +6,7 @@ mod shared {
     #[derive(Default)]
     pub struct App;
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Serialize, Deserialize, Debug)]
     pub enum Event {
         None,
         SendUuid(uuid::Uuid),
@@ -30,12 +30,21 @@ mod shared {
     }
 }
 mod test {
-    use super::shared::{EffectFfi, Event, ViewModel};
-    use crux_core::{bridge::Request, typegen::TypeGen};
-    use crux_http::protocol::{HttpRequest, HttpResponse};
+    use super::shared::{App, Capabilities, EffectFfi, Event, ViewModel};
+    use crux_core::{
+        bridge::Request,
+        capability::Operation,
+        typegen::{Export, TypeGen},
+        Capability,
+    };
+    use crux_http::{
+        protocol::{HttpRequest, HttpResponse},
+        Http,
+    };
     use std::env::temp_dir;
     use uuid::Uuid;
 
+    // FIXME this test is quite slow
     #[test]
     fn generate_types() {
         let mut gen = TypeGen::new();
@@ -62,5 +71,44 @@ mod test {
 
         gen.typescript("shared_types", output_root.join("typescript"))
             .expect("typescript type gen failed");
+    }
+
+    impl Export for Capabilities {
+        fn register_types(generator: &mut TypeGen) -> anyhow::Result<()> {
+            // for each capability
+            generator.register_type::<<Http<Event> as Capability<Event>>::Operation>()?;
+            generator
+                .register_type::<<<Http<Event> as Capability<Event>>::Operation as Operation>::Output>()?;
+
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_autodiscovery() {
+        let mut gen = TypeGen::new();
+
+        gen.register_type_with_samples(vec![Event::SendUuid(Uuid::new_v4())])
+            .unwrap();
+
+        gen.register_app::<App>()
+            .expect("Should register types in App");
+
+        let registry = match gen.state {
+            crux_core::typegen::State::Registering(tracer, _) => {
+                tracer.registry().expect("Should get registry")
+            }
+            crux_core::typegen::State::Generating(_) => {
+                panic!("Expected to still be in registering stage")
+            }
+        };
+
+        dbg!(&registry);
+
+        assert!(registry.contains_key("Event"));
+        assert!(registry.contains_key("ViewModel"));
+
+        assert!(registry.contains_key("HttpRequest"));
+        assert!(registry.contains_key("HttpResponse"));
     }
 }
