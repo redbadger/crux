@@ -41,7 +41,6 @@ mod test {
         protocol::{HttpRequest, HttpResponse},
         Http,
     };
-    use std::env::temp_dir;
     use uuid::Uuid;
 
     // FIXME this test is quite slow
@@ -61,7 +60,8 @@ mod test {
 
         gen.register_type::<ViewModel>().unwrap();
 
-        let output_root = temp_dir().join("crux_core_typegen_test");
+        let temp = assert_fs::TempDir::new().unwrap();
+        let output_root = temp.join("crux_core_typegen_test");
 
         gen.swift("shared_types", output_root.join("swift"))
             .expect("swift type gen failed");
@@ -88,7 +88,7 @@ mod test {
     fn test_autodiscovery() {
         let mut gen = TypeGen::new();
 
-        gen.register_type_with_samples(vec![Event::SendUuid(Uuid::new_v4())])
+        gen.register_samples(vec![Event::SendUuid(Uuid::new_v4())])
             .unwrap();
 
         gen.register_app::<App>()

@@ -42,6 +42,7 @@
 //!
 //!     #[derive(Default)]
 //!     pub struct MyApp;
+//!     #[derive(Serialize, Deserialize)]
 //!     pub struct Event;
 //!
 //!     // The `Effect` derive macro generates an `Effect` type that is used by the

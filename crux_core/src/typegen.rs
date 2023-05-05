@@ -143,9 +143,10 @@ impl TypeGen {
     /// Register all the types used in app `A` to be shared with the Shell.
     ///
     /// Do this before calling TypeGen::swift, TypeGen::java or TypeGen::typescript.
-    /// This method would normally be called in a build.rs file of a sister create responsible for
+    /// This method would normally be called in a build.rs file of a sister crate responsible for
     /// creating "foreign language" type definitions for the FFI boundary.
-    /// See the [section on creating the shared types crate](https://redbadger.github.io/crux/getting_started/core.html#create-the-shared-types-crate)
+    /// See the section on
+    /// [creating the shared types crate](https://redbadger.github.io/crux/getting_started/core.html#create-the-shared-types-crate)
     /// in the Crux book for more information.
     pub fn register_app<A: App>(&mut self) -> Result<()>
     where
@@ -164,7 +165,8 @@ impl TypeGen {
     /// and as part of the process runs a faux deserialization on each of them, with a best
     /// guess of a default value. If that default value does not deserialize, the type registration
     /// will fail.
-    /// You can prevent this problem by registering a valid sample value (or values) which the deserialization will use instead.
+    /// You can prevent this problem by registering a valid sample value (or values),
+    /// which the deserialization will use instead.
     pub fn register_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
     where
         T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
@@ -241,7 +243,7 @@ impl TypeGen {
     /// # use uuid::Uuid;
     /// # use serde::{Serialize, Deserialize};
     /// # use anyhow::Error;
-    /// # #[derive(Serialize, Deserialize)]
+    /// # #[derive(Serialize, Deserialize, Debug)]
     /// # struct MyUuid(Uuid);
     /// # fn register() -> Result<(), Error> {
     /// # let mut gen = TypeGen::new();
@@ -256,7 +258,7 @@ impl TypeGen {
     /// that does not use custom deserialization.
     pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
     where
-        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
+        T: serde::Deserialize<'de> + serde::Serialize,
     {
         match &mut self.state {
             State::Registering(tracer, samples) => {
