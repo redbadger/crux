@@ -1,0 +1,2 @@
+[projects.crux_cli]
+schema = "https://raw.githubusercontent.com/obi1kenobi/trustfall-rustdoc-adapter/rustdoc-v24/src/rustdoc_schema.graphql"
