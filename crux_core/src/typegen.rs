@@ -73,7 +73,7 @@
 //!         .expect("typescript type gen failed");
 //! }
 //!
-//! fn register_types(gen: &mut TypeGen) -> Result<()> {
+//! fn register_types(gen: &mut TypeGen) -> Result {
 //!     gen.register_type::<Request<EffectFfi>>()?;
 //!
 //!     gen.register_type::<EffectFfi>()?;
@@ -89,7 +89,6 @@
 //! }
 //! ```
 
-use anyhow::{anyhow, bail, Result};
 use serde_generate::Encoding;
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
@@ -98,11 +97,36 @@ use std::{
     mem,
     path::{Path, PathBuf},
 };
+use thiserror::Error;
 
 // Expose from `serde_reflection` for `register_type_with_samples()`
 use serde_reflection::Samples;
 
 use crate::App;
+
+pub type Result = std::result::Result<(), TypeGenError>;
+
+static DESERIALIZATION_ERROR_HINT: &str = r#"
+This might be because you attempted to pass types with custom serialization across the FFI boundary. Make sure that:
+1. Types you use in Event, ViewModel and Capabilities serialize as a container, otherwise wrap them in a new type struct,
+    e.g. MyUuid(uuid::Uuid)
+2. Sample values of such types have been provided to the type generator using TypeGen::register_samples, before any type registration."#;
+
+#[derive(Error, Debug)]
+pub enum TypeGenError {
+    #[error("type tracing failed {0}")]
+    TypeTracing(serde_reflection::Error),
+    #[error("value tracing failed {0}")]
+    ValueTracing(serde_reflection::Error),
+    #[error("type tracing failed: {0} {}", DESERIALIZATION_ERROR_HINT)]
+    Deserialization(serde_reflection::Error),
+    #[error("code has been generated, too late to register types")]
+    LateRegistration,
+    #[error("type generation failed: {0}")]
+    Generation(serde_reflection::Error),
+    #[error("error writing generated types")]
+    Io(#[from] std::io::Error),
+}
 
 #[derive(Debug)]
 pub enum State {
@@ -111,7 +135,7 @@ pub enum State {
 }
 
 pub trait Export {
-    fn register_types(generator: &mut TypeGen) -> Result<()>;
+    fn register_types(generator: &mut TypeGen) -> Result;
 }
 
 /// The `TypeGen` struct stores the registered types so that they can be generated for foreign languages
@@ -128,12 +152,6 @@ impl Default for TypeGen {
     }
 }
 
-static DESERIALIZATION_ERROR_HINT: &str = r#"
-This might be because you attempted to pass types with custom serialization across the FFI boundary. Make sure that:
-1. Types you use in Event, ViewModel and Capabilities serialize as a container, otherwise wrap them in a new type struct,
-    e.g. MyUuid(uuid::Uuid)
-2. Sample values of such types have been provided to the type generator using TypeGen::register_samples, before any type registration."#;
-
 impl TypeGen {
     /// Creates an instance of the `TypeGen` struct
     pub fn new() -> Self {
@@ -148,7 +166,7 @@ impl TypeGen {
     /// See the section on
     /// [creating the shared types crate](https://redbadger.github.io/crux/getting_started/core.html#create-the-shared-types-crate)
     /// in the Crux book for more information.
-    pub fn register_app<A: App>(&mut self) -> Result<()>
+    pub fn register_app<A: App>(&mut self) -> Result
     where
         <A as App>::Capabilities: Export,
     {
@@ -167,23 +185,22 @@ impl TypeGen {
     /// will fail.
     /// You can prevent this problem by registering a valid sample value (or values),
     /// which the deserialization will use instead.
-    pub fn register_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
+    pub fn register_samples<'de, T>(&mut self, sample_data: Vec<T>) -> Result
     where
-        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
+        T: serde::Deserialize<'de> + serde::Serialize,
     {
         match &mut self.state {
             State::Registering(tracer, samples) => {
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(e) => bail!("value tracing failed: {}", e),
+                        Err(e) => return Err(TypeGenError::ValueTracing(e)),
                     }
                 }
+                Ok(())
             }
-            _ => bail!("code has been generated, too late to register types"),
+            _ => Err(TypeGenError::LateRegistration),
         }
-
-        Ok(())
     }
     /// For each of the types that you want to share with the Shell, call this method:
     /// e.g.
@@ -209,23 +226,19 @@ impl TypeGen {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn register_type<'de, T>(&mut self) -> Result<()>
+    pub fn register_type<'de, T>(&mut self) -> Result
     where
         T: serde::Deserialize<'de>,
     {
         match &mut self.state {
             State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
-                Err(serde_reflection::Error::DeserializationError(text)) => {
-                    bail!(
-                        "Type tracing failed: {}. {}",
-                        text,
-                        DESERIALIZATION_ERROR_HINT
-                    )
+                Err(e @ serde_reflection::Error::DeserializationError(_)) => {
+                    Err(TypeGenError::Deserialization(e))
                 }
-                Err(e) => bail!("type tracing failed: {}", e),
+                Err(e) => Err(TypeGenError::TypeTracing(e)),
             },
-            _ => bail!("code has been generated, too late to register types"),
+            _ => Err(TypeGenError::LateRegistration),
         }
     }
 
@@ -256,7 +269,7 @@ impl TypeGen {
     /// Note: Because of the way that enums are handled by `serde_reflection`,
     /// you may need to ensure that enums provided as samples have a first variant
     /// that does not use custom deserialization.
-    pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result<()>
+    pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result
     where
         T: serde::Deserialize<'de> + serde::Serialize,
     {
@@ -265,23 +278,22 @@ impl TypeGen {
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(serde_reflection::Error::DeserializationError(text)) => {
-                            bail!(
-                                "Type tracing failed: {}. {}",
-                                text,
-                                DESERIALIZATION_ERROR_HINT
-                            )
+                        Err(e @ serde_reflection::Error::DeserializationError(_)) => {
+                            return Err(TypeGenError::ValueTracing(e))
                         }
-                        Err(e) => bail!("value tracing failed: {}", e),
+                        Err(e) => return Err(TypeGenError::ValueTracing(e)),
                     }
                 }
 
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
-                    Err(e) => bail!("Type tracing failed: {}. {}", e, DESERIALIZATION_ERROR_HINT),
+                    Err(e @ serde_reflection::Error::DeserializationError(_)) => {
+                        Err(TypeGenError::Deserialization(e))
+                    }
+                    Err(e) => Err(TypeGenError::TypeTracing(e)),
                 }
             }
-            _ => bail!("code has been generated, too late to register types"),
+            _ => Err(TypeGenError::LateRegistration),
         }
     }
 
@@ -295,7 +307,7 @@ impl TypeGen {
     /// gen.swift("shared_types", output_root.join("swift"))
     ///     .expect("swift type gen failed");
     /// ```
-    pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
+    pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
         fs::create_dir_all(&path)?;
@@ -344,7 +356,7 @@ impl TypeGen {
     /// )
     /// .expect("java type gen failed");
     /// ```
-    pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result<()> {
+    pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
         fs::create_dir_all(&path)?;
@@ -388,7 +400,7 @@ impl TypeGen {
     /// gen.typescript("shared_types", output_root.join("typescript"))
     ///    .expect("typescript type gen failed");
     /// ```
-    pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result<()> {
+    pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
         fs::create_dir_all(&path)?;
@@ -445,7 +457,7 @@ impl TypeGen {
         Ok(())
     }
 
-    fn ensure_registry(&mut self) -> Result<()> {
+    fn ensure_registry(&mut self) -> Result {
         if let State::Registering(_, _) = self.state {
             // replace the current state with a dummy tracer
             let old_state = mem::replace(
@@ -456,14 +468,15 @@ impl TypeGen {
             // convert tracer to registry
             if let State::Registering(tracer, _) = old_state {
                 // replace dummy with registry
-                self.state = State::Generating(tracer.registry().map_err(|e| anyhow!("{e}"))?);
+                self.state =
+                    State::Generating(tracer.registry().map_err(TypeGenError::Generation)?);
             }
         }
         Ok(())
     }
 }
 
-fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
+fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
     fs::create_dir_all(to.as_ref())?;
 
     let entries = fs::read_dir(from)?;
@@ -507,6 +520,7 @@ mod tests {
         let sample_data = vec![MyUuid(Uuid::new_v4())];
         let mut gen = TypeGen::new();
         let result = gen.register_type_with_samples(sample_data);
+        dbg!(&result);
         assert!(result.is_ok(), "typegen failed for Uuid, with samples");
 
         let sample_data = vec!["a".to_string(), "b".to_string()];

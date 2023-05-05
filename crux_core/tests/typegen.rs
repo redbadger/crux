@@ -30,17 +30,9 @@ mod shared {
     }
 }
 mod test {
-    use super::shared::{App, Capabilities, EffectFfi, Event, ViewModel};
-    use crux_core::{
-        bridge::Request,
-        capability::Operation,
-        typegen::{Export, TypeGen},
-        Capability,
-    };
-    use crux_http::{
-        protocol::{HttpRequest, HttpResponse},
-        Http,
-    };
+    use super::shared::{App, EffectFfi, Event, ViewModel};
+    use crux_core::{bridge::Request, typegen::TypeGen};
+    use crux_http::protocol::{HttpRequest, HttpResponse};
     use uuid::Uuid;
 
     // FIXME this test is quite slow
@@ -71,17 +63,6 @@ mod test {
 
         gen.typescript("shared_types", output_root.join("typescript"))
             .expect("typescript type gen failed");
-    }
-
-    impl Export for Capabilities {
-        fn register_types(generator: &mut TypeGen) -> anyhow::Result<()> {
-            // for each capability
-            generator.register_type::<<Http<Event> as Capability<Event>>::Operation>()?;
-            generator
-                .register_type::<<<Http<Event> as Capability<Event>>::Operation as Operation>::Output>()?;
-
-            Ok(())
-        }
     }
 
     #[test]

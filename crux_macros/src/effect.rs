@@ -66,12 +66,18 @@ impl ToTokens for EffectStructReceiver {
         let mut with_context_fields = Vec::new();
         let mut ffi_variants = Vec::new();
         let mut match_arms = Vec::new();
+        let mut type_exports = Vec::new();
 
         for (field_name, (capability, variant, event)) in fields.iter() {
             variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
             with_context_fields.push(quote! { #field_name: #capability::new(context.specialize(#effect_name::#variant)) });
             ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
             match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+            type_exports.push(quote! {
+                generator.register_type::<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>()?;
+                generator
+                    .register_type::<<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation as ::crux_core::capability::Operation>::Output>()?;
+            });
         }
 
         tokens.extend(quote! {
@@ -89,7 +95,7 @@ impl ToTokens for EffectStructReceiver {
             impl ::crux_core::Effect for #effect_name {
                 type Ffi = #ffi_effect_name;
 
-                fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+                fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
                     match self {
                         #(#match_arms ,)*
                     }
@@ -101,6 +107,15 @@ impl ToTokens for EffectStructReceiver {
                     #ident {
                         #(#with_context_fields ,)*
                     }
+                }
+            }
+
+            #[cfg(feature = "typegen")]
+            impl ::crux_core::typegen::Export for #ident {
+                fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
+                    #(#type_exports)*
+
+                    Ok(())
                 }
             }
         })
@@ -184,7 +199,7 @@ mod tests {
         }
         impl ::crux_core::Effect for Effect {
             type Ffi = EffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
                 match self {
                     Effect::Render(request) => request.serialize(EffectFfi::Render),
                 }
@@ -197,6 +212,26 @@ mod tests {
                 Capabilities {
                     render: Render::new(context.specialize(Effect::Render)),
                 }
+            }
+        }
+        #[cfg(feature = "typegen")]
+        impl ::crux_core::typegen::Export for Capabilities {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                generator
+                    .register_type::<
+                        <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<Render<
+                            Event,
+                        > as ::crux_core::capability::Capability<
+                            Event,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                Ok(())
             }
         }
         "###);
@@ -293,7 +328,7 @@ mod tests {
         }
         impl ::crux_core::Effect for MyEffect {
             type Ffi = MyEffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
                 match self {
                     MyEffect::Http(request) => request.serialize(MyEffectFfi::Http),
                     MyEffect::KeyValue(request) => request.serialize(MyEffectFfi::KeyValue),
@@ -314,6 +349,84 @@ mod tests {
                     render: Render::new(context.specialize(MyEffect::Render)),
                     time: Time::new(context.specialize(MyEffect::Time)),
                 }
+            }
+        }
+        #[cfg(feature = "typegen")]
+        impl ::crux_core::typegen::Export for MyCapabilities {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                generator
+                    .register_type::<
+                        <crux_http::Http<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<crux_http::Http<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<
+                            MyEvent,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator
+                    .register_type::<
+                        <KeyValue<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<KeyValue<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<
+                            MyEvent,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator
+                    .register_type::<
+                        <Platform<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<Platform<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<
+                            MyEvent,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator
+                    .register_type::<
+                        <Render<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<Render<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<
+                            MyEvent,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator
+                    .register_type::<
+                        <Time<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<Time<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<
+                            MyEvent,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                Ok(())
             }
         }
         "###);
