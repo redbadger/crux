@@ -30,9 +30,8 @@ mod shared {
     }
 }
 mod test {
-    use super::shared::{App, EffectFfi, Event, ViewModel};
+    use super::shared::{App, EffectFfi, Event};
     use crux_core::{bridge::Request, typegen::TypeGen};
-    use crux_http::protocol::{HttpRequest, HttpResponse};
     use uuid::Uuid;
 
     // FIXME this test is quite slow
@@ -42,15 +41,10 @@ mod test {
 
         gen.register_type::<Request<EffectFfi>>().unwrap();
 
-        gen.register_type::<EffectFfi>().unwrap();
-        gen.register_type::<HttpRequest>().unwrap();
-
         let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
         gen.register_type_with_samples(sample_events).unwrap();
 
-        gen.register_type::<HttpResponse>().unwrap();
-
-        gen.register_type::<ViewModel>().unwrap();
+        gen.register_app::<App>().unwrap();
 
         let temp = assert_fs::TempDir::new().unwrap();
         let output_root = temp.join("crux_core_typegen_test");
