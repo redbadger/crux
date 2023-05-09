@@ -223,6 +223,10 @@ mod tests {
             ) -> ::crux_core::typegen::Result {
                 generator
                     .register_type::<
+                        <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
                         <<Render<
                             Event,
                         > as ::crux_core::capability::Capability<
@@ -357,11 +361,23 @@ mod tests {
             ) -> ::crux_core::typegen::Result {
                 generator
                     .register_type::<
+                        <crux_http::Http<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
                         <<crux_http::Http<
                             MyEvent,
                         > as ::crux_core::capability::Capability<
                             MyEvent,
                         >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator
+                    .register_type::<
+                        <KeyValue<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                     >()?;
                 generator
                     .register_type::<
@@ -373,6 +389,12 @@ mod tests {
                     >()?;
                 generator
                     .register_type::<
+                        <Platform<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
                         <<Platform<
                             MyEvent,
                         > as ::crux_core::capability::Capability<
@@ -381,11 +403,23 @@ mod tests {
                     >()?;
                 generator
                     .register_type::<
+                        <Render<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
                         <<Render<
                             MyEvent,
                         > as ::crux_core::capability::Capability<
                             MyEvent,
                         >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator
+                    .register_type::<
+                        <Time<
+                            MyEvent,
+                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                     >()?;
                 generator
                     .register_type::<
