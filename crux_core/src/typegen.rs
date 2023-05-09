@@ -182,7 +182,7 @@ impl TypeGen {
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(e) => return Err(TypeGenError::ValueTracing(e.to_string())),
+                        Err(e) => return Err(TypeGenError::ValueTracing(e.explanation())),
                     }
                 }
                 Ok(())
@@ -222,9 +222,9 @@ impl TypeGen {
             State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
                 Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                    Err(TypeGenError::Deserialization(e.to_string()))
+                    Err(TypeGenError::Deserialization(e.explanation()))
                 }
-                Err(e) => Err(TypeGenError::TypeTracing(e.to_string())),
+                Err(e) => Err(TypeGenError::TypeTracing(e.explanation())),
             },
             _ => Err(TypeGenError::LateRegistration),
         }
@@ -267,18 +267,18 @@ impl TypeGen {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
                         Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                            return Err(TypeGenError::ValueTracing(e.to_string()))
+                            return Err(TypeGenError::ValueTracing(e.explanation()))
                         }
-                        Err(e) => return Err(TypeGenError::ValueTracing(e.to_string())),
+                        Err(e) => return Err(TypeGenError::ValueTracing(e.explanation())),
                     }
                 }
 
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
                     Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                        Err(TypeGenError::Deserialization(e.to_string()))
+                        Err(TypeGenError::Deserialization(e.explanation()))
                     }
-                    Err(e) => Err(TypeGenError::TypeTracing(e.to_string())),
+                    Err(e) => Err(TypeGenError::TypeTracing(e.explanation())),
                 }
             }
             _ => Err(TypeGenError::LateRegistration),
@@ -459,7 +459,7 @@ impl TypeGen {
                 self.state = State::Generating(
                     tracer
                         .registry()
-                        .map_err(|e| TypeGenError::Generation(e.to_string()))?,
+                        .map_err(|e| TypeGenError::Generation(e.explanation()))?,
                 );
             }
         }
