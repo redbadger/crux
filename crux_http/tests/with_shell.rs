@@ -130,11 +130,11 @@ mod shell {
 
 mod tests {
     use crate::{
-        shared::{App, Effect, Event},
+        shared::{App, Effect, EffectFfi, Event},
         shell::run,
     };
     use anyhow::Result;
-    use crux_core::Core;
+    use crux_core::{bridge::Request, typegen::TypeGen, Core};
     use crux_http::protocol::HttpRequest;
 
     #[test]
@@ -177,5 +177,26 @@ mod tests {
         );
         assert_eq!(core.view().result, "Status: 0, Body: , Json Body: Hello");
         Ok(())
+    }
+
+    #[test]
+    fn generate_types() {
+        let mut gen = TypeGen::new();
+
+        gen.register_type::<Request<EffectFfi>>().unwrap();
+
+        gen.register_app::<App>().unwrap();
+
+        let temp = assert_fs::TempDir::new().unwrap();
+        let output_root = temp.join("crux_http_typegen_test");
+
+        gen.swift("shared_types", output_root.join("swift"))
+            .expect("swift type gen failed");
+
+        gen.java("com.example.counter.shared_types", output_root.join("java"))
+            .expect("java type gen failed");
+
+        gen.typescript("shared_types", output_root.join("typescript"))
+            .expect("typescript type gen failed");
     }
 }
