@@ -18,7 +18,7 @@
 //!
 //! ```rust
 //! # mod shared {
-//! #     use crux_http::Http;
+//! #     use crux_core::render::Render;
 //! #     use crux_macros::Effect;
 //! #     use serde::{Deserialize, Serialize};
 //! #     #[derive(Default)]
@@ -42,51 +42,36 @@
 //! #     }
 //! #     #[derive(Effect)]
 //! #     pub struct Capabilities {
-//! #         pub http: Http<Event>,
+//! #         pub render: Render<Event>,
 //! #     }
 //! # }
-//! use anyhow::Result;
-//! use crux_core::{typegen::TypeGen, bridge::Request};
-//! use crux_http::protocol::{HttpRequest, HttpResponse};
-//! use shared::{EffectFfi, Event, ViewModel};
-//! use std::path::PathBuf;
+//!use shared::{App, EffectFfi, Event};
+//!use crux_core::{bridge::Request, typegen::TypeGen};
+//!use uuid::Uuid;
 //!
-//! fn main() {
-//!     println!("cargo:rerun-if-changed=../shared");
+//!#[test]
+//!fn generate_types() {
+//!    let mut gen = TypeGen::new();
 //!
-//!     let mut gen = TypeGen::new();
+//!    gen.register_type::<Request<EffectFfi>>().unwrap();
 //!
-//!     register_types(&mut gen).expect("type registration failed");
+//!    let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
+//!    gen.register_type_with_samples(sample_events).unwrap();
 //!
-//!     let output_root = std::env::temp_dir().join("crux_core_typegen_doctest");
+//!    gen.register_app::<App>().unwrap();
 //!
-//!     gen.swift("shared_types", output_root.join("swift"))
-//!         .expect("swift type gen failed");
+//!    let temp = assert_fs::TempDir::new().unwrap();
+//!    let output_root = temp.join("crux_core_typegen_test");
 //!
-//!     gen.java(
-//!         "com.redbadger.catfacts.shared_types",
-//!         output_root.join("java"),
-//!     )
-//!     .expect("java type gen failed");
+//!    gen.swift("shared_types", output_root.join("swift"))
+//!        .expect("swift type gen failed");
 //!
-//!     gen.typescript("shared_types", output_root.join("typescript"))
-//!         .expect("typescript type gen failed");
-//! }
+//!    gen.java("com.example.counter.shared_types", output_root.join("java"))
+//!        .expect("java type gen failed");
 //!
-//! fn register_types(gen: &mut TypeGen) -> Result {
-//!     gen.register_type::<Request<EffectFfi>>()?;
-//!
-//!     gen.register_type::<EffectFfi>()?;
-//!     gen.register_type::<HttpRequest>()?;
-//!
-//!     let sample_events = vec![Event::SendUuid(uuid::Uuid::new_v4())];
-//!     gen.register_type_with_samples(sample_events)?;
-//!
-//!     gen.register_type::<HttpResponse>()?;
-//!
-//!     gen.register_type::<ViewModel>()?;
-//!     Ok(())
-//! }
+//!    gen.typescript("shared_types", output_root.join("typescript"))
+//!        .expect("typescript type gen failed");
+//!}
 //! ```
 
 use serde::Deserialize;
@@ -169,14 +154,14 @@ impl TypeGen {
     /// in the Crux book for more information.
     pub fn register_app<A: App>(&mut self) -> Result
     where
-        <A as App>::Capabilities: Export,
+        A::Capabilities: Export,
         A::Event: Deserialize<'static>,
         A::ViewModel: Deserialize<'static> + 'static,
     {
         self.register_type::<A::Event>()?;
         self.register_type::<A::ViewModel>()?;
 
-        <A::Capabilities as Export>::register_types(self)?;
+        A::Capabilities::register_types(self)?;
 
         Ok(())
     }

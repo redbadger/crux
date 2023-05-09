@@ -15,7 +15,7 @@ use crate::{App, WithContext};
 
 /// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
 ///
-/// The core interface allows passing in events of type `<A as App>::Event` using [`Core::process_event`].
+/// The core interface allows passing in events of type `A::Event` using [`Core::process_event`].
 /// It will return back an effect of type `Ef`, containing an effect request, with the input needed for processing
 /// the effect. the `Effect` type can be used by shells to dispatch to the right capability implementation.
 ///
@@ -65,7 +65,7 @@ where
 
     /// Run the app's `update` function with a given `event`, returning a vector of
     /// effect requests.
-    pub fn process_event(&self, event: <A as App>::Event) -> Vec<Ef> {
+    pub fn process_event(&self, event: A::Event) -> Vec<Ef> {
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
         self.app.update(event, &mut model, &self.capabilities);
@@ -103,7 +103,7 @@ where
     }
 
     /// Get the current state of the app's view model.
-    pub fn view(&self) -> <A as App>::ViewModel {
+    pub fn view(&self) -> A::ViewModel {
         let model = self.model.read().expect("Model RwLock was poisoned.");
 
         self.app.view(&model)
