@@ -115,15 +115,15 @@ This might be because you attempted to pass types with custom serialization acro
 #[derive(Error, Debug)]
 pub enum TypeGenError {
     #[error("type tracing failed {0}")]
-    TypeTracing(serde_reflection::Error),
+    TypeTracing(String),
     #[error("value tracing failed {0}")]
-    ValueTracing(serde_reflection::Error),
+    ValueTracing(String),
     #[error("type tracing failed: {0} {}", DESERIALIZATION_ERROR_HINT)]
-    Deserialization(serde_reflection::Error),
+    Deserialization(String),
     #[error("code has been generated, too late to register types")]
     LateRegistration,
     #[error("type generation failed: {0}")]
-    Generation(serde_reflection::Error),
+    Generation(String),
     #[error("error writing generated types")]
     Io(#[from] std::io::Error),
 }
@@ -194,7 +194,7 @@ impl TypeGen {
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(e) => return Err(TypeGenError::ValueTracing(e)),
+                        Err(e) => return Err(TypeGenError::ValueTracing(e.to_string())),
                     }
                 }
                 Ok(())
@@ -234,9 +234,9 @@ impl TypeGen {
             State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
                 Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                    Err(TypeGenError::Deserialization(e))
+                    Err(TypeGenError::Deserialization(e.to_string()))
                 }
-                Err(e) => Err(TypeGenError::TypeTracing(e)),
+                Err(e) => Err(TypeGenError::TypeTracing(e.to_string())),
             },
             _ => Err(TypeGenError::LateRegistration),
         }
@@ -279,18 +279,18 @@ impl TypeGen {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
                         Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                            return Err(TypeGenError::ValueTracing(e))
+                            return Err(TypeGenError::ValueTracing(e.to_string()))
                         }
-                        Err(e) => return Err(TypeGenError::ValueTracing(e)),
+                        Err(e) => return Err(TypeGenError::ValueTracing(e.to_string())),
                     }
                 }
 
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
                     Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                        Err(TypeGenError::Deserialization(e))
+                        Err(TypeGenError::Deserialization(e.to_string()))
                     }
-                    Err(e) => Err(TypeGenError::TypeTracing(e)),
+                    Err(e) => Err(TypeGenError::TypeTracing(e.to_string())),
                 }
             }
             _ => Err(TypeGenError::LateRegistration),
@@ -468,8 +468,11 @@ impl TypeGen {
             // convert tracer to registry
             if let State::Registering(tracer, _) = old_state {
                 // replace dummy with registry
-                self.state =
-                    State::Generating(tracer.registry().map_err(TypeGenError::Generation)?);
+                self.state = State::Generating(
+                    tracer
+                        .registry()
+                        .map_err(|e| TypeGenError::Generation(e.to_string()))?,
+                );
             }
         }
         Ok(())
