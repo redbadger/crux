@@ -1,5 +1,5 @@
 mod shared {
-    use crux_http::Http;
+    use crux_core::render::Render;
     use crux_macros::Effect;
     use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,7 @@ mod shared {
         None,
         SendUuid(uuid::Uuid),
     }
+
     #[derive(Serialize, Deserialize)]
     pub struct ViewModel;
     impl crux_core::App for App {
@@ -20,15 +21,16 @@ mod shared {
         type Capabilities = Capabilities;
         fn update(&self, _event: Event, _model: &mut Self::Model, _caps: &Capabilities) {}
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-            todo!();
+            unimplemented!();
         }
     }
 
     #[derive(Effect)]
     pub struct Capabilities {
-        pub http: Http<Event>,
+        pub render: Render<Event>,
     }
 }
+
 mod test {
     use super::shared::{App, EffectFfi, Event};
     use crux_core::{bridge::Request, typegen::TypeGen};
@@ -83,7 +85,6 @@ mod test {
         assert!(registry.contains_key("Event"));
         assert!(registry.contains_key("ViewModel"));
 
-        assert!(registry.contains_key("HttpRequest"));
-        assert!(registry.contains_key("HttpResponse"));
+        assert!(registry.contains_key("RenderOperation"));
     }
 }
