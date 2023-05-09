@@ -89,6 +89,7 @@
 //! }
 //! ```
 
+use serde::Deserialize;
 use serde_generate::Encoding;
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
@@ -169,6 +170,8 @@ impl TypeGen {
     pub fn register_app<A: App>(&mut self) -> Result
     where
         <A as App>::Capabilities: Export,
+        A::Event: Deserialize<'static>,
+        A::ViewModel: Deserialize<'static> + 'static,
     {
         self.register_type::<A::Event>()?;
         self.register_type::<A::ViewModel>()?;

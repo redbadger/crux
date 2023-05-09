@@ -158,7 +158,7 @@ pub mod typegen;
 mod capabilities;
 mod core;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 pub use self::{
     capabilities::*,
@@ -170,12 +170,12 @@ pub use self::{
 /// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
 pub trait App: Default {
     /// Event, typically an `enum`, defines the actions that can be taken to update the application state.
-    type Event: Send + Deserialize<'static> + 'static;
+    type Event: Send + 'static;
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
-    type ViewModel: Serialize + Deserialize<'static> + 'static;
+    type ViewModel: Serialize;
     /// Capabilities, typically a `struct`, lists the capabilities used by this application
     /// Typically, Capabilities should contain at least an instance of the built-in [`Render`](crate::render::Render) capability.
     type Capabilities;
