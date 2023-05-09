@@ -66,15 +66,14 @@ impl ToTokens for EffectStructReceiver {
         let mut with_context_fields = Vec::new();
         let mut ffi_variants = Vec::new();
         let mut match_arms = Vec::new();
-        let mut type_exports = Vec::new();
+        let mut output_type_exports = Vec::new();
 
         for (field_name, (capability, variant, event)) in fields.iter() {
             variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
             with_context_fields.push(quote! { #field_name: #capability::new(context.specialize(#effect_name::#variant)) });
             ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
             match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
-            type_exports.push(quote! {
-                generator.register_type::<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>()?;
+            output_type_exports.push(quote! {
                 generator
                     .register_type::<<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation as ::crux_core::capability::Operation>::Output>()?;
             });
@@ -113,7 +112,9 @@ impl ToTokens for EffectStructReceiver {
             #[cfg(feature = "typegen")]
             impl ::crux_core::typegen::Export for #ident {
                 fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
-                    #(#type_exports)*
+                    #(#output_type_exports)*
+
+                    generator.register_type::<#ffi_effect_name>()?;
 
                     Ok(())
                 }
@@ -221,16 +222,13 @@ mod tests {
             ) -> ::crux_core::typegen::Result {
                 generator
                     .register_type::<
-                        <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
                         <<Render<
                             Event,
                         > as ::crux_core::capability::Capability<
                             Event,
                         >>::Operation as ::crux_core::capability::Operation>::Output,
                     >()?;
+                generator.register_type::<EffectFfi>()?;
                 Ok(())
             }
         }
@@ -358,23 +356,11 @@ mod tests {
             ) -> ::crux_core::typegen::Result {
                 generator
                     .register_type::<
-                        <crux_http::Http<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
                         <<crux_http::Http<
                             MyEvent,
                         > as ::crux_core::capability::Capability<
                             MyEvent,
                         >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
-                generator
-                    .register_type::<
-                        <KeyValue<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                     >()?;
                 generator
                     .register_type::<
@@ -386,23 +372,11 @@ mod tests {
                     >()?;
                 generator
                     .register_type::<
-                        <Platform<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
                         <<Platform<
                             MyEvent,
                         > as ::crux_core::capability::Capability<
                             MyEvent,
                         >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
-                generator
-                    .register_type::<
-                        <Render<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                     >()?;
                 generator
                     .register_type::<
@@ -414,18 +388,13 @@ mod tests {
                     >()?;
                 generator
                     .register_type::<
-                        <Time<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
                         <<Time<
                             MyEvent,
                         > as ::crux_core::capability::Capability<
                             MyEvent,
                         >>::Operation as ::crux_core::capability::Operation>::Output,
                     >()?;
+                generator.register_type::<MyEffectFfi>()?;
                 Ok(())
             }
         }

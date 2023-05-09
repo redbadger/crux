@@ -1,7 +1,5 @@
-use anyhow::Result;
 use crux_core::{bridge::Request, typegen::TypeGen};
-use crux_http::protocol::{HttpRequest, HttpResponse};
-use shared::{sse::SseResponse, EffectFfi, Event, ViewModel};
+use shared::{App, EffectFfi, Event};
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -10,7 +8,12 @@ fn main() {
 
     let mut gen = TypeGen::new();
 
-    register_types(&mut gen).expect("type registration failed");
+    gen.register_type::<Request<EffectFfi>>().expect("register");
+
+    let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
+    gen.register_samples(sample_events).expect("register");
+
+    gen.register_app::<App>().expect("register");
 
     let output_root = PathBuf::from("./generated");
 
@@ -22,20 +25,4 @@ fn main() {
 
     gen.typescript("shared_types", output_root.join("typescript"))
         .expect("typescript type gen failed");
-}
-
-fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<EffectFfi>>()?;
-
-    gen.register_type::<EffectFfi>()?;
-    gen.register_type::<HttpRequest>()?;
-
-    let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
-    gen.register_type_with_samples(sample_events)?;
-
-    gen.register_type::<HttpResponse>()?;
-    gen.register_type::<SseResponse>()?;
-
-    gen.register_type::<ViewModel>()?;
-    Ok(())
 }

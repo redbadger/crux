@@ -61,6 +61,8 @@ mod test {
             .expect("typescript type gen failed");
     }
 
+    // TODO: instead of using the Render capability here, it would be better to also test against a custom
+    // capability that has an output type
     #[test]
     fn test_autodiscovery() {
         let mut gen = TypeGen::new();
@@ -85,6 +87,7 @@ mod test {
         assert!(registry.contains_key("Event"));
         assert!(registry.contains_key("ViewModel"));
 
+        assert!(registry.contains_key("Effect"));
         assert!(registry.contains_key("RenderOperation"));
     }
 }

@@ -298,7 +298,6 @@ dependencies = [
  "async-channel",
  "bcs",
  "crossbeam-channel",
- "crux_http",
  "crux_macros",
  "derive_more",
  "futures",
@@ -318,6 +317,7 @@ name = "crux_http"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "assert_fs",
  "assert_matches",
  "async-trait",
  "bcs",

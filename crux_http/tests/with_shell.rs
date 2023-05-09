@@ -11,7 +11,11 @@ mod shared {
     pub enum Event {
         Get,
         GetJson,
+
+        // events local to the core
+        #[serde(skip)]
         Set(crux_http::Result<crux_http::Response<Vec<u8>>>),
+        #[serde(skip)]
         SetJson(crux_http::Result<crux_http::Response<String>>),
     }
 
@@ -187,16 +191,21 @@ mod tests {
 
         gen.register_app::<App>().unwrap();
 
-        let temp = assert_fs::TempDir::new().unwrap();
-        let output_root = temp.join("crux_http_typegen_test");
+        let registry = match gen.state {
+            crux_core::typegen::State::Registering(tracer, _) => {
+                tracer.registry().expect("Should get registry")
+            }
+            crux_core::typegen::State::Generating(_) => {
+                panic!("Expected to still be in registering stage")
+            }
+        };
 
-        gen.swift("shared_types", output_root.join("swift"))
-            .expect("swift type gen failed");
+        assert!(registry.contains_key("Event"));
+        assert!(registry.contains_key("ViewModel"));
 
-        gen.java("com.example.counter.shared_types", output_root.join("java"))
-            .expect("java type gen failed");
-
-        gen.typescript("shared_types", output_root.join("typescript"))
-            .expect("typescript type gen failed");
+        assert!(registry.contains_key("Effect"));
+        assert!(registry.contains_key("RenderOperation"));
+        assert!(registry.contains_key("HttpRequest"));
+        assert!(registry.contains_key("HttpResponse"));
     }
 }
