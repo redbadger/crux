@@ -8,6 +8,9 @@ rust-version = "1.66"
 crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
+[features]
+typegen = ["crux_core/typegen"]
+
 [dependencies]
 anyhow.workspace = true
 bincode = "1.3.3"

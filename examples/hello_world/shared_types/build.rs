@@ -1,6 +1,5 @@
-use anyhow::Result;
 use crux_core::{bridge::Request, typegen::TypeGen};
-use shared::{EffectFfi, Event, ViewModel};
+use shared::{EffectFfi, Hello};
 use std::path::PathBuf;
 
 fn main() {
@@ -8,7 +7,8 @@ fn main() {
 
     let mut gen = TypeGen::new();
 
-    register_types(&mut gen).expect("type registration failed");
+    gen.register_type::<Request<EffectFfi>>().expect("register");
+    gen.register_app::<Hello>().expect("register");
 
     let output_root = PathBuf::from("./generated");
 
@@ -20,13 +20,4 @@ fn main() {
 
     gen.typescript("shared_types", output_root.join("typescript"))
         .expect("typescript type gen failed");
-}
-
-fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<EffectFfi>>()?;
-    gen.register_type::<EffectFfi>()?;
-    gen.register_type::<Event>()?;
-    gen.register_type::<ViewModel>()?;
-
-    Ok(())
 }

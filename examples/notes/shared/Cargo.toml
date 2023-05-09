@@ -9,6 +9,9 @@ edition.workspace = true
 # keywords.workspace = true
 rust-version.workspace = true
 
+[features]
+typegen = ["crux_core/typegen"]
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
