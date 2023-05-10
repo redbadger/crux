@@ -53,8 +53,6 @@
 //!fn generate_types() {
 //!    let mut gen = TypeGen::new();
 //!
-//!    gen.register_type::<Request<EffectFfi>>().unwrap();
-//!
 //!    let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
 //!    gen.register_type_with_samples(sample_events).unwrap();
 //!
@@ -194,25 +192,18 @@ impl TypeGen {
     /// e.g.
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
-    /// # use std::marker::PhantomData;
     /// # use serde::{Serialize, Deserialize};
     /// # use anyhow::Error;
-    /// # #[derive(Serialize, Deserialize)]
-    /// # struct Request<T> { phantom: PhantomData<T> }
-    /// # #[derive(Serialize, Deserialize)]
-    /// # struct Effect {}
-    /// # #[derive(Serialize, Deserialize)]
-    /// # struct Event {}
-    /// # #[derive(Serialize, Deserialize)]
-    /// # struct ViewModel {}
-    /// # fn register() -> Result<(), Error> {
-    /// # let mut gen = TypeGen::new();
-    ///   gen.register_type::<Request<Effect>>()?;
-    ///   gen.register_type::<Effect>()?;
-    ///   gen.register_type::<Event>()?;
-    ///   gen.register_type::<ViewModel>()?;
-    /// # Ok(())
-    /// # }
+    /// #[derive(Serialize, Deserialize)]
+    /// enum MyNestedEnum { None }
+    /// #[derive(Serialize, Deserialize)]
+    /// enum MyEnum { None, Nested(MyNestedEnum) }
+    /// fn register() -> Result<(), Error> {
+    ///   let mut gen = TypeGen::new();
+    ///   gen.register_type::<MyEnum>()?;
+    ///   gen.register_type::<MyNestedEnum>()?;
+    ///   Ok(())
+    /// }
     /// ```
     pub fn register_type<'de, T>(&mut self) -> Result
     where
