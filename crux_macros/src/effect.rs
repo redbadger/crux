@@ -121,6 +121,13 @@ impl ToTokens for EffectStructReceiver {
                     Ok(())
                 }
             }
+
+            #[cfg(not(feature = "typegen"))]
+            impl ::crux_core::typegen::Export for #ident {
+                fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
+                    Err(::crux_core::typegen::TypeGenError::TypeTracing("you should import your shared library with the `typegen` feature enabled".to_string()))
+                }
+            }
         })
     }
 }
