@@ -5,7 +5,11 @@
   <a href="https://docs.rs/crux_core/"><img alt="API Docs" src="https://img.shields.io/badge/docs.rs-crux_core-green"/></a>
 </p>
 
-Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web, as a single, reusable core built with Rust.
+<p>
+  <a href="https://red-badger.com/crux"><img src="./docs/crux_logo.svg" height="100" /></a>
+</p>
+
+[Crux](https://red-badger.com/crux) helps you share your app's business logic and behavior across mobile (iOS and Android) and web, as a single, reusable core built with Rust.
 
 Unlike [React Native](https://reactnative.dev/), but like [Kotlin Multi-platform Mobile](https://kotlinlang.org/lp/mobile/), the user interface layer is built natively, with modern declarative UI frameworks such as [SwiftUI](https://developer.apple.com/xcode/swiftui/), [Jetpack Compose](https://developer.android.com/jetpack/compose) and [React](https://reactjs.org/)/[Vue](https://vuejs.org/) or a Wasm based framework (like [Yew](https://yew.rs/)) on the web.
 
