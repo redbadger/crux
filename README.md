@@ -1,13 +1,11 @@
-# Crux — Cross-platform app development in Rust
+# [Crux](https://red-badger.com/crux) &middot; [![GitHub license](https://img.shields.io/github/license/redbadger/crux?color=blue)](https://github.com/redbadger/crux/blob/master/LICENSE) [![Crate version](https://img.shields.io/crates/v/crux_core.svg)](https://crates.io/crates/crux_core) [![Docs](https://img.shields.io/badge/docs.rs-crux_core-green)](https://docs.rs/crux_core/) [![Build status](https://img.shields.io/github/actions/workflow/status/redbadger/crux/build.yaml)](https://github.com/redbadger/crux/actions)
 
+## Cross-platform app development in Rust
 <p>
-  <a href="https://crates.io/crates/crux_core"><img alt="Crate Info" src="https://img.shields.io/crates/v/crux_core.svg"/></a>
-  <a href="https://docs.rs/crux_core/"><img alt="API Docs" src="https://img.shields.io/badge/docs.rs-crux_core-green"/></a>
+
+  <a href="https://red-badger.com/crux"><img src="./docs/crux_logo.svg" height="120" /></a>
 </p>
 
-<p>
-  <a href="https://red-badger.com/crux"><img src="./docs/crux_logo.svg" height="100" /></a>
-</p>
 
 [Crux](https://red-badger.com/crux) helps you share your app's business logic and behavior across mobile (iOS and Android) and web, as a single, reusable core built with Rust.
 
