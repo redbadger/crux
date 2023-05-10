@@ -246,6 +246,19 @@ mod tests {
                 Ok(())
             }
         }
+        #[cfg(not(feature = "typegen"))]
+        impl ::crux_core::typegen::Export for Capabilities {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                Err(
+                    ::crux_core::typegen::TypeGenError::TypeTracing(
+                        "you should import your shared library with the `typegen` feature enabled"
+                            .to_string(),
+                    ),
+                )
+            }
+        }
         "###);
     }
 
@@ -441,6 +454,19 @@ mod tests {
                 generator.register_type::<MyEffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
                 Ok(())
+            }
+        }
+        #[cfg(not(feature = "typegen"))]
+        impl ::crux_core::typegen::Export for MyCapabilities {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                Err(
+                    ::crux_core::typegen::TypeGenError::TypeTracing(
+                        "you should import your shared library with the `typegen` feature enabled"
+                            .to_string(),
+                    ),
+                )
             }
         }
         "###);
