@@ -116,6 +116,7 @@ impl ToTokens for EffectStructReceiver {
                     #(#output_type_exports)*
 
                     generator.register_type::<#ffi_effect_name>()?;
+                    generator.register_type::<::crux_core::bridge::Request<#ffi_effect_name>>()?;
 
                     Ok(())
                 }
@@ -234,6 +235,7 @@ mod tests {
                         >>::Operation as ::crux_core::capability::Operation>::Output,
                     >()?;
                 generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
                 Ok(())
             }
         }
@@ -430,6 +432,7 @@ mod tests {
                         >>::Operation as ::crux_core::capability::Operation>::Output,
                     >()?;
                 generator.register_type::<MyEffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
                 Ok(())
             }
         }

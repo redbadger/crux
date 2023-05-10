@@ -1,5 +1,5 @@
-use crux_core::{bridge::Request, typegen::TypeGen};
-use shared::{EffectFfi, Hello};
+use crux_core::typegen::TypeGen;
+use shared::Hello;
 use std::path::PathBuf;
 
 fn main() {
@@ -7,7 +7,6 @@ fn main() {
 
     let mut gen = TypeGen::new();
 
-    gen.register_type::<Request<EffectFfi>>().expect("register");
     gen.register_app::<Hello>().expect("register");
 
     let output_root = PathBuf::from("./generated");

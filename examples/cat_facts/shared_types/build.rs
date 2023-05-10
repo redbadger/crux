@@ -1,13 +1,11 @@
-use crux_core::{bridge::Request, typegen::TypeGen};
-use shared::{app::platform::PlatformEvent, CatFacts, EffectFfi};
+use crux_core::typegen::TypeGen;
+use shared::{app::platform::PlatformEvent, CatFacts};
 use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-changed=../shared");
 
     let mut gen = TypeGen::new();
-
-    gen.register_type::<Request<EffectFfi>>().expect("register");
 
     gen.register_app::<CatFacts>().expect("register");
 
