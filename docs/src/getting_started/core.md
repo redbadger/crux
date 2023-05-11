@@ -120,10 +120,21 @@ This crate serves as the container for type generation for the foreign languages
 
 - Copy over the [shared_types](https://github.com/redbadger/crux/tree/master/examples/counter/shared_types) folder from the counter example.
 
-- Edit the `build.rs` file and make sure that your app type is registered. You may also need to register any nested enum types (due to a current limitation with the reflection library, see <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>). Here is an example of this from the [`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs) file in the `shared_types` crate of the `notes` example:
+- Edit the `build.rs` file and make sure that your app type is registered. You may also need to register any nested enum types (due to a current limitation with the reflection library, see <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>). Here is an example of this from the [`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs) file in the `shared_types` crate of the [notes example](https://github.com/redbadger/crux/tree/master/examples/notes):
 
 ```rust
 {{#include ../../../examples/notes/shared_types/build.rs}}
+```
+
+```admonish note
+For the above to compile, your `Capabilities` struct must implement the `Export` trait. There is a derive macro that can do this for you, e.g.:
+
+    #[derive(crux_macros::Effect, crux_macros::Export)]
+    pub struct Capabilities {
+        pub render: Render<Event>,
+        pub http: Http<Event>,
+    }
+
 ```
 
 - Make sure everything builds and foreign types get generated into the `generated` folder.

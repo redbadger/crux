@@ -32,16 +32,14 @@ mod shared {
 }
 
 mod test {
-    use super::shared::{App, EffectFfi, Event};
-    use crux_core::{bridge::Request, typegen::TypeGen};
+    use super::shared::{App, Event};
+    use crux_core::typegen::TypeGen;
     use uuid::Uuid;
 
     // FIXME this test is quite slow
     #[test]
     fn generate_types() {
         let mut gen = TypeGen::new();
-
-        gen.register_type::<Request<EffectFfi>>().unwrap();
 
         let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
         gen.register_type_with_samples(sample_events).unwrap();

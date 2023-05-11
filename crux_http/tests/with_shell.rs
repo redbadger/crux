@@ -134,11 +134,11 @@ mod shell {
 
 mod tests {
     use crate::{
-        shared::{App, Effect, EffectFfi, Event},
+        shared::{App, Effect, Event},
         shell::run,
     };
     use anyhow::Result;
-    use crux_core::{bridge::Request, typegen::TypeGen, Core};
+    use crux_core::{typegen::TypeGen, Core};
     use crux_http::protocol::HttpRequest;
 
     #[test]
@@ -186,8 +186,6 @@ mod tests {
     #[test]
     fn generate_types() {
         let mut gen = TypeGen::new();
-
-        gen.register_type::<Request<EffectFfi>>().unwrap();
 
         gen.register_app::<App>().unwrap();
 
