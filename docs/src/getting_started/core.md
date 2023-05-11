@@ -41,6 +41,9 @@ The library's manifest, at `/shared/Cargo.toml`, should look something like the 
   - `lib` is the default rust library when linking into a rust binary, e.g. in the `web-yew`, or `cli`, variant
   - `staticlib` is a static library (`libshared.a`) for including in the Swift iOS app variant
   - `cdylib` is a C-ABI dynamic library (`libshared.so`) for use with JNA when included in the Kotlin Android app variant
+- we need to declare a feature called `typegen` that depends on the feature with the same name in the `crux_core` crate. This is used by
+its sister library (often called `shared_types`) that will generate types for
+use across the FFI boundary (see the section below on generating shared types).
 - the `path` fields on the crux dependencies are for the [examples in the Crux repo](https://github.com/redbadger/crux/tree/master/examples) and so you will probably not need them
 - the uniffi dependencies and `uniffi-bindgen` target should make sense after you read the next section
 
@@ -115,11 +118,26 @@ cargo build
 
 This crate serves as the container for type generation for the foreign languages.
 
-1. Copy over the [shared_types](https://github.com/redbadger/crux/tree/master/examples/counter/shared_types) folder from the counter example.
+- Copy over the [shared_types](https://github.com/redbadger/crux/tree/master/examples/counter/shared_types) folder from the counter example.
 
-1. Edit the `build.rs` file and make sure to only list types you need.
+- Edit the `build.rs` file and make sure that your app type is registered. You may also need to register any nested enum types (due to a current limitation with the reflection library, see <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>). Here is an example of this from the [`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs) file in the `shared_types` crate of the [notes example](https://github.com/redbadger/crux/tree/master/examples/notes):
 
-1. Make sure everything builds and foreign types get generated into the `generated` folder.
+```rust
+{{#include ../../../examples/notes/shared_types/build.rs}}
+```
+
+```admonish note
+For the above to compile, your `Capabilities` struct must implement the `Export` trait. There is a derive macro that can do this for you, e.g.:
+
+    #[derive(crux_macros::Effect, crux_macros::Export)]
+    pub struct Capabilities {
+        pub render: Render<Event>,
+        pub http: Http<Event>,
+    }
+
+```
+
+- Make sure everything builds and foreign types get generated into the `generated` folder.
 
    ```sh
    cargo build -vv

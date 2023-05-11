@@ -1,14 +1,5 @@
-use anyhow::Result;
-use crux_core::{bridge::Request, typegen::TypeGen};
-
-use shared::{
-    capabilities::{
-        pub_sub::{Message, PubSubOperation},
-        timer::{TimerOperation, TimerOutput},
-        KeyValueOperation, KeyValueOutput,
-    },
-    EffectFfi, Event, TextCursor, ViewModel,
-};
+use crux_core::typegen::TypeGen;
+use shared::{NoteEditor, TextCursor};
 use std::path::PathBuf;
 
 fn main() {
@@ -16,7 +7,11 @@ fn main() {
 
     let mut gen = TypeGen::new();
 
-    register_types(&mut gen).expect("type registration failed");
+    gen.register_app::<NoteEditor>().expect("register");
+
+    // Note: currently required as we can't find enums inside enums, see:
+    // https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features
+    gen.register_type::<TextCursor>().expect("register");
 
     let output_root = PathBuf::from("./generated");
 
@@ -30,24 +25,4 @@ fn main() {
 
     gen.typescript("shared_types", output_root.join("typescript"))
         .expect("typescript type gen failed");
-}
-
-fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<EffectFfi>>()?;
-    gen.register_type::<EffectFfi>()?;
-
-    gen.register_type::<PubSubOperation>()?;
-    gen.register_type::<Message>()?;
-
-    gen.register_type::<TimerOperation>()?;
-    gen.register_type::<TimerOutput>()?;
-
-    gen.register_type::<KeyValueOperation>()?;
-    gen.register_type::<KeyValueOutput>()?;
-
-    gen.register_type::<Event>()?;
-    gen.register_type::<TextCursor>()?;
-
-    gen.register_type::<ViewModel>()?;
-    Ok(())
 }

@@ -52,7 +52,7 @@ where
     /// to your app.
     pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Event: Deserialize<'de>,
+        A::Event: Deserialize<'de>,
     {
         self.process(None, event)
     }
@@ -63,14 +63,14 @@ where
     /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
     pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Event: Deserialize<'de>,
+        A::Event: Deserialize<'de>,
     {
         self.process(Some(uuid), output)
     }
 
     fn process<'de>(&self, uuid: Option<&[u8]>, data: &'de [u8]) -> Vec<u8>
     where
-        <A as App>::Event: Deserialize<'de>,
+        A::Event: Deserialize<'de>,
     {
         let effects = match uuid {
             None => {

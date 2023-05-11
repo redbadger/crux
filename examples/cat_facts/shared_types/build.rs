@@ -1,10 +1,5 @@
-use anyhow::Result;
-use crux_core::{bridge::Request, typegen::TypeGen};
-use crux_http::protocol::{HttpRequest, HttpResponse};
-use crux_kv::{KeyValueOperation, KeyValueOutput};
-use crux_platform::PlatformResponse;
-use crux_time::TimeResponse;
-use shared::{app::platform::PlatformEvent, EffectFfi, Event, ViewModel};
+use crux_core::typegen::TypeGen;
+use shared::{app::platform::PlatformEvent, CatFacts};
 use std::path::PathBuf;
 
 fn main() {
@@ -12,7 +7,11 @@ fn main() {
 
     let mut gen = TypeGen::new();
 
-    register_types(&mut gen).expect("type registration failed");
+    gen.register_app::<CatFacts>().expect("register");
+
+    // Note: currently required as we can't find enums inside enums, see:
+    // https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features
+    gen.register_type::<PlatformEvent>().expect("register");
 
     let output_root = PathBuf::from("./generated");
 
@@ -27,23 +26,4 @@ fn main() {
 
     gen.typescript("shared_types", output_root.join("typescript"))
         .expect("typescript type gen failed");
-}
-
-fn register_types(gen: &mut TypeGen) -> Result<()> {
-    gen.register_type::<Request<EffectFfi>>()?;
-
-    gen.register_type::<EffectFfi>()?;
-    gen.register_type::<HttpRequest>()?;
-    gen.register_type::<KeyValueOperation>()?;
-
-    gen.register_type::<Event>()?;
-    gen.register_type::<HttpResponse>()?;
-    gen.register_type::<KeyValueOutput>()?;
-    gen.register_type::<TimeResponse>()?;
-
-    gen.register_type::<PlatformEvent>()?;
-    gen.register_type::<PlatformResponse>()?;
-
-    gen.register_type::<ViewModel>()?;
-    Ok(())
 }

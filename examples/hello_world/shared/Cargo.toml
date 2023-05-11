@@ -8,6 +8,9 @@ rust-version = "1.66"
 crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
+[features]
+typegen = ["crux_core/typegen"]
+
 [dependencies]
 crux_core = { version = "0.4", path = "../../../crux_core" }
 crux_macros = { version = "0.2", path = "../../../crux_macros" }

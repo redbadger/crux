@@ -89,7 +89,7 @@ impl ToTokens for EffectStructReceiver {
             impl ::crux_core::Effect for #effect_name {
                 type Ffi = #ffi_effect_name;
 
-                fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+                fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
                     match self {
                         #(#match_arms ,)*
                     }
@@ -184,7 +184,7 @@ mod tests {
         }
         impl ::crux_core::Effect for Effect {
             type Ffi = EffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
                 match self {
                     Effect::Render(request) => request.serialize(EffectFfi::Render),
                 }
@@ -293,7 +293,7 @@ mod tests {
         }
         impl ::crux_core::Effect for MyEffect {
             type Ffi = MyEffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
                 match self {
                     MyEffect::Http(request) => request.serialize(MyEffectFfi::Http),
                     MyEffect::KeyValue(request) => request.serialize(MyEffectFfi::KeyValue),

@@ -8,11 +8,11 @@ license.workspace = true
 keywords.workspace = true
 rust-version.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 
 [build-dependencies]
 anyhow.workspace = true
-crux_core = { version = "0.4", path = "../../../crux_core", features = ["typegen"] }
-shared = { path = "../shared" }
+crux_core = { version = "0.4", path = "../../../crux_core", features = [
+  "typegen"
+] }
+shared = { path = "../shared", features = ["typegen"] }
