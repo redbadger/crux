@@ -4,12 +4,18 @@
 
 ## Cross-platform app development in Rust
 
-- **Shared Core for Behavior**: Crux helps you share your app's business logic and behavior across mobile (iOS/Android) and web — as a single reusable core built with Rust.
-- **Thin Shell for UI**: Crux recognizes that the best experiences are built with modern declarative frameworks such as [SwiftUI](https://developer.apple.com/xcode/swiftui/), [Jetpack Compose](https://developer.android.com/jetpack/compose), [React](https://reactjs.org/)/[Vue](https://vuejs.org/), or a WebAssembly based framework (like [Yew](https://yew.rs/)) — however, it aims to keep this UI layer as thin as it can be, with all other work done by the shared core.
-- **Type Generation**: The interface with the core has static type checking across languages — types and serialization code are generated for Swift, Kotlin and TypeScript. Rust shells can import the core directly.
-- **Capabilities**: Capabilities express the intent for side effects such as calling an API. Because all side effects (including UI) are performed by the shell, the core becomes trivial to test comprehensively — test suites run in milliseconds (not in minutes or hours).
+- **Shared Core for Behavior** - Crux helps you share your app's business logic and behavior across mobile (iOS/Android) and web — as a single reusable core built with Rust.
+- **Thin Shell for UI** - Crux recognizes that the best experiences are built with modern declarative frameworks such as [SwiftUI](https://developer.apple.com/xcode/swiftui/), [Jetpack Compose](https://developer.android.com/jetpack/compose), [React](https://reactjs.org/)/[Vue](https://vuejs.org/), or a WebAssembly based framework (like [Yew](https://yew.rs/)) — however, it aims to keep this UI layer as thin as it can be, with all other work done by the shared core.
+- **Type Generation** - the interface with the core has static type checking across languages — types and serialization code are generated for Swift, Kotlin and TypeScript. Rust shells can import the core directly.
+- **Capabilities** - capabilities express the intent for side effects such as calling an API. Because all side effects (including UI) are performed by the shell, the core becomes trivial to test comprehensively — test suites run in milliseconds (not in minutes or hours).
+
+## Getting Started
 
 [Learn how to use Crux in your project](https://redbadger.github.io/crux).
+
+Follow the [readme in the project's repository on Github](https://github.com/redbadger/crux).
+
+Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/)
 
 [Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g&t=5s) at the recent [Rust Nation 2023](https://www.rustnationuk.com/) conference in London.
 
@@ -17,7 +23,7 @@ You can also join the friendly conversation on our [Zulip channel](https://crux-
 
 > Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). However, the master branch should always be working well, and we will try to keep the examples and documentation up to date as we go. We _do_ think that the API has now settled, so have a play! :-)
 
-# Architectural Overview
+## Architectural Overview
 
 ![Logical architecture](./crux_core/architecture.svg)
 

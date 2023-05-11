@@ -1,25 +1,29 @@
-# Crux — Cross-platform app development in Rust
+# [Crux](https://red-badger.com/crux) &middot; [![GitHub license](https://img.shields.io/github/license/redbadger/crux?color=blue)](https://github.com/redbadger/crux/blob/master/LICENSE) [![Crate version](https://img.shields.io/crates/v/crux_core.svg)](https://crates.io/crates/crux_core) [![Docs](https://img.shields.io/badge/docs.rs-crux_core-green)](https://docs.rs/crux_core/) [![Build status](https://img.shields.io/github/actions/workflow/status/redbadger/crux/build.yaml)](https://github.com/redbadger/crux/actions)
 
-<p>
-  <a href="https://crates.io/crates/crux_core"><img alt="Crate Info" src="https://img.shields.io/crates/v/crux_core.svg"/></a>
-  <a href="https://docs.rs/crux_core/"><img alt="API Docs" src="https://img.shields.io/badge/docs.rs-crux_core-green"/></a>
-</p>
+<a href="https://red-badger.com/crux"><img src="./crux_logo.svg" height="100" /></a>
 
-Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web, as a single, reusable core built with Rust.
+## Cross-platform app development in Rust
 
-Unlike [React Native](https://reactnative.dev/), but like [Kotlin Multi-platform Mobile](https://kotlinlang.org/lp/mobile/), the user interface layer is built natively, with modern declarative UI frameworks such as [SwiftUI](https://developer.apple.com/xcode/swiftui/), [Jetpack Compose](https://developer.android.com/jetpack/compose) and [React](https://reactjs.org/)/[Vue](https://vuejs.org/) or a Wasm based framework (like [Yew](https://yew.rs/)) on the web.
+- **Shared Core for Behavior** - Crux helps you share your app's business logic and behavior across mobile (iOS/Android) and web — as a single reusable core built with Rust.
+- **Thin Shell for UI** - Crux recognizes that the best experiences are built with modern declarative frameworks such as [SwiftUI](https://developer.apple.com/xcode/swiftui/), [Jetpack Compose](https://developer.android.com/jetpack/compose), [React](https://reactjs.org/)/[Vue](https://vuejs.org/), or a WebAssembly based framework (like [Yew](https://yew.rs/)) — however, it aims to keep this UI layer as thin as it can be, with all other work done by the shared core.
+- **Type Generation** - the interface with the core has static type checking across languages — types and serialization code are generated for Swift, Kotlin and TypeScript. Rust shells can import the core directly.
+- **Capabilities** - capabilities express the intent for side effects such as calling an API. Because all side effects (including UI) are performed by the shell, the core becomes trivial to test comprehensively — test suites run in milliseconds (not in minutes or hours).
 
-The UI layer is as thin as it can be, and all other work is done by the shared core. The interface with the core has static type checking across languages.
+## Getting Started
+
+[Learn how to use Crux in your project](https://redbadger.github.io/crux).
+
+Follow the [readme in the project's repository on Github](https://github.com/redbadger/crux).
+
+Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/)
+
+[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g&t=5s) at the recent [Rust Nation 2023](https://www.rustnationuk.com/) conference in London.
+
+You can also join the friendly conversation on our [Zulip channel](https://crux-community.zulipchat.com).
 
 > Note, that Crux is experimental and currently under active development (probably not ready for use in production apps just yet). However, the master branch should always be working well, and we will try to keep the examples and documentation up to date as we go. We _do_ think that the API has now settled, so have a play! :-)
 
-# Getting Started
-
-- Read the [book](https://redbadger.github.io/crux)
-- Follow the [readme in the project's repository on Github](https://github.com/redbadger/crux).
-- Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/)
-
-# Architectural Overview
+## Architectural Overview
 
 ![Logical architecture](./architecture.svg)
 
@@ -36,7 +40,8 @@ In the above diagram, the inner "Core" is compiled and linked to the outer "Shel
 
 In fact, because WebAssembly (Wasm) is one of the compilation targets, the core _must_ remain side-effect free, due to the sandboxed nature of the Wasm runtime environment.
 
-As such, the core is completely isolated and secure against software supply-chain attacks, as it has no access to any external APIs.
+As such, the core is completely isolated and secure against software supply-chain attacks, as it has
+no access to any external APIs.
 All it can do is perform pure calculations and keep internal state.
 
 Following the Elm architecture, the core defines the key component types within the application:
@@ -60,5 +65,5 @@ The job of the `update` function is to process an `Event`, update the model acco
 
 ### Application Shell
 
-The enclosing "Platform native shell" is written using the language appropriate for the platform, and acts as the runtime environment within which all the non-pure tasks are performed.
+The enclosing platform native "Shell" is written using the language appropriate for the platform, and acts as the runtime environment within which all the non-pure tasks are performed.
 From the perspective of the core, the shell is the platform on which the core runs.
