@@ -1,5 +1,5 @@
 use crux_core::{render::Render, App};
-use crux_macros::Effect;
+use crux_macros::{Effect, Export};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -19,6 +19,7 @@ pub struct ViewModel {
     pub count: String,
 }
 
+#[cfg_attr(feature = "typegen", derive(Export))]
 #[derive(Effect)]
 #[effect(app = "Hello")]
 pub struct Capabilities {

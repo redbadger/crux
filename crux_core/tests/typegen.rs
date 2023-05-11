@@ -1,6 +1,6 @@
 mod shared {
     use crux_core::render::Render;
-    use crux_macros::Effect;
+    use crux_macros::{Effect, Export};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -25,7 +25,7 @@ mod shared {
         }
     }
 
-    #[derive(Effect)]
+    #[derive(Effect, Export)]
     pub struct Capabilities {
         pub render: Render<Event>,
     }
