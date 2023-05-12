@@ -11,5 +11,5 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.71"
-serde = "1.0.160"
-uuid = { version = "1.3.1", features = ["v4", "wasm-bindgen", "js", "serde"] }
+serde = "1.0.163"
+uuid = { version = "1.3.2", features = ["v4", "wasm-bindgen", "js", "serde"] }
