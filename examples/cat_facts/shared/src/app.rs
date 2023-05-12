@@ -6,7 +6,7 @@ pub use crux_core::App;
 use crux_core::{render::Render, Capability};
 use crux_http::Http;
 use crux_kv::{KeyValue, KeyValueOutput};
-use crux_macros::{Effect, Export};
+use crux_macros::Effect;
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
@@ -81,7 +81,7 @@ pub struct CatFacts {
     platform: platform::Platform,
 }
 
-#[cfg_attr(feature = "typegen", derive(Export))]
+#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
 #[derive(Effect)]
 #[effect(app = "CatFacts")]
 pub struct CatFactCapabilities {

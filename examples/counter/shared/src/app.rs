@@ -2,7 +2,7 @@ use crate::capabilities::sse::ServerSentEvents;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
-use crux_macros::{Effect, Export};
+use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
@@ -36,7 +36,7 @@ pub enum Event {
     WatchUpdate(Counter),
 }
 
-#[cfg_attr(feature = "typegen", derive(Export))]
+#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
 #[derive(Effect)]
 pub struct Capabilities {
     pub http: Http<Event>,
