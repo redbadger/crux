@@ -74,24 +74,40 @@ afterEvaluate {
 task bindGen(type: Exec) {
     def outDir = "${projectDir}/src/main/java"
     workingDir "../../"
-    commandLine(
-            "sh", "-c",
-            """\
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine(
+                "cmd", "/c",
+                "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
+                        "--language kotlin " +
+                        "--out-dir " + outDir.replace('/', '\\')
+        )
+    } else {
+        commandLine(
+                "sh", "-c",
+                """\
             target/debug/uniffi-bindgen generate shared/src/shared.udl \
             --language kotlin \
             --out-dir $outDir
             """
-    )
+        )
+    }
 }
 
 task typesGen(type: Exec) {
     def outDir = "${projectDir}/src/main/java"
     def srcDir = "shared_types/generated/java/com"
     workingDir "../../"
-    commandLine(
-            "sh", "-c",
-            """\
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine(
+                "cmd", "/c",
+                "xcopy /e /y " + srcDir.replace('/', '\\') + " " + outDir.replace('/', '\\')
+        )
+    } else {
+        commandLine(
+                "sh", "-c",
+                """\
             cp -r $srcDir $outDir
             """
-    )
+        )
+    }
 }

@@ -58,6 +58,10 @@ pnpm install
 pnpm dev
 ```
 
+### Notes:
+
+On Windows if you get "ℹ️  Installing wasm-pack" it does not work. You can solve it by installing it manually from: https://rustwasm.github.io/wasm-pack/installer/
+
 ## iOS
 
 You will need XCode, which you can get in the Mac AppStore
