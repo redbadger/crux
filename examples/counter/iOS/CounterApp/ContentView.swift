@@ -1,4 +1,4 @@
-import Serde
+import SharedTypes
 import SwiftUI
 
 enum Outcome {
@@ -62,21 +62,21 @@ class Model: ObservableObject {
 
         switch msg {
         case let .event(m):
-            reqs = try! [Request].bcsDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
+            reqs = try! [Request].bincodeDeserialize(input: CounterApp.processEvent(try! m.bincodeSerialize()))
         case let .response(uuid, outcome):
-            reqs = try! [Request].bcsDeserialize(input: CounterApp.handleResponse(uuid, {
+            reqs = try! [Request].bincodeDeserialize(input: CounterApp.handleResponse(uuid, {
                 switch outcome {
                 case let .http(x):
-                    return try! x.bcsSerialize()
+                    return try! x.bincodeSerialize()
                 case let .sse(x):
-                    return try! x.bcsSerialize()
+                    return try! x.bincodeSerialize()
                 }
             }()))
         }
 
         for req in reqs {
             switch req.effect {
-            case .render: view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
+            case .render: view = try! ViewModel.bincodeDeserialize(input: CounterApp.view())
             case let .http(r): http(uuid: req.uuid, method: r.method, url: r.url, headers: r.headers)
             case let .serverSentEvents(r): sse(uuid: req.uuid, url: r.url)
             }
