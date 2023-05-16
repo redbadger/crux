@@ -15,7 +15,7 @@ all-features = true
 
 [dependencies]
 anyhow.workspace = true
-bcs.workspace = true
+bincode.workspace = true
 crossbeam-channel = "0.5.8"
 derive_more = "0.99.17"
 futures = "0.3.28"

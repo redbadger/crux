@@ -12,7 +12,7 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-bcs.workspace = true
+bincode.workspace = true
 crux_core = { version = "0.4", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
 

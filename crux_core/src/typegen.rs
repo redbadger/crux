@@ -73,13 +73,13 @@
 //! ```
 
 use serde::Deserialize;
-use serde_generate::Encoding;
+use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
     io::Write,
     mem,
-    path::{Path, PathBuf},
+    path::Path,
 };
 use thiserror::Error;
 
@@ -289,35 +289,50 @@ impl TypeGen {
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
+        let path = path.as_ref().to_path_buf().join(module_name);
+
         fs::create_dir_all(&path)?;
 
-        let mut source = Vec::new();
-        let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
-            .with_encodings(vec![Encoding::Bcs]);
+        let installer = swift::Installer::new(path.clone());
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let generator = serde_generate::swift::CodeGenerator::new(&config);
         let registry = match &self.state {
             State::Generating(registry) => registry,
             _ => panic!("registry creation failed"),
         };
 
-        generator.output(&mut source, registry)?;
+        let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
+            .with_encodings(vec![Encoding::Bincode]);
 
-        // FIXME workaround for odd namespacing behaviour in Swift output
-        // which as far as I can tell does not support namespaces in this way
-        let out = String::from_utf8_lossy(&source).replace("shared.", "");
+        installer
+            .install_module(&config, registry)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let out = format!(
-            "{out}\n\n{}",
+        // add bincode deserialization for Vec<Request>
+        let mut output = File::create(
+            path.join("Sources")
+                .join(module_name)
+                .join("Requests.swift"),
+        )?;
+        write!(
+            output,
+            "{}",
             include_str!("../typegen_extensions/swift/requests.swift")
-        );
+        )?;
 
-        let path = path
-            .as_ref()
-            .to_path_buf()
-            .join(format!("{module_name}.swift"));
-        let mut output = File::create(path)?;
-        write!(output, "{out}")?;
+        // wrap it all up in a swift package
+        let mut output = File::create(path.join("Package.swift"))?;
+        write!(
+            output,
+            "{}",
+            include_str!("../typegen_extensions/swift/Package.swift")
+                .replace("SharedTypes", module_name)
+        )?;
 
         Ok(())
     }
@@ -341,7 +356,15 @@ impl TypeGen {
         fs::create_dir_all(&path)?;
 
         let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
-            .with_encodings(vec![Encoding::Bcs]);
+            .with_encodings(vec![Encoding::Bincode]);
+
+        let installer = java::Installer::new(path.as_ref().to_path_buf());
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         let registry = match &self.state {
             State::Generating(registry) => registry,
@@ -385,17 +408,19 @@ impl TypeGen {
         fs::create_dir_all(&path)?;
         let output_dir = path.as_ref().to_path_buf();
 
-        let extensions_dir =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/typescript");
+        // let extensions_dir =
+        //     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/typescript");
         let mut source = Vec::new();
 
-        // FIXME this should be the actual route, but the runtime is built
-        // for Deno, so we patch it heavily in extensions:
-        //
-        // let installer = typescript::Installer::new(output_dir.clone());
-        // installer.install_serde_runtime()?;
-        // installer.install_bcs_runtime()?;
-        copy(extensions_dir, path).expect("Could not copy TS runtime");
+        let installer = typescript::Installer::new(output_dir.clone());
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
+        // copy(extensions_dir, path).expect("Could not copy TS runtime");
 
         let registry = match &self.state {
             State::Generating(registry) => registry,
@@ -404,7 +429,7 @@ impl TypeGen {
 
         let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
             .with_serialization(true)
-            .with_encodings(vec![Encoding::Bcs]);
+            .with_encodings(vec![Encoding::Bincode]);
 
         let generator = serde_generate::typescript::CodeGenerator::new(&config);
         generator.output(&mut source, registry)?;
@@ -458,23 +483,23 @@ impl TypeGen {
     }
 }
 
-fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
-    fs::create_dir_all(to.as_ref())?;
+// fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
+//     fs::create_dir_all(to.as_ref())?;
 
-    let entries = fs::read_dir(from)?;
-    for entry in entries {
-        let entry = entry?;
+//     let entries = fs::read_dir(from)?;
+//     for entry in entries {
+//         let entry = entry?;
 
-        let to = to.as_ref().to_path_buf().join(entry.file_name());
-        if entry.file_type()?.is_dir() {
-            copy(entry.path(), to)?;
-        } else {
-            fs::copy(entry.path(), to)?;
-        };
-    }
+//         let to = to.as_ref().to_path_buf().join(entry.file_name());
+//         if entry.file_type()?.is_dir() {
+//             copy(entry.path(), to)?;
+//         } else {
+//             fs::copy(entry.path(), to)?;
+//         };
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 #[cfg(feature = "typegen")]
 #[cfg(test)]

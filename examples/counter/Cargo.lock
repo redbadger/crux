@@ -1079,7 +1079,7 @@ name = "crux_core"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "bcs",
+ "bincode",
  "crossbeam-channel",
  "derive_more",
  "futures",
@@ -1098,7 +1098,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "bcs",
+ "bincode",
  "crux_core",
  "futures-util",
  "http-types",
@@ -1113,7 +1113,7 @@ name = "crux_kv"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "bcs",
+ "bincode",
  "crux_core",
  "serde",
 ]
@@ -1133,7 +1133,7 @@ name = "crux_platform"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "bcs",
+ "bincode",
  "crux_core",
  "serde",
 ]
@@ -1143,7 +1143,7 @@ name = "crux_time"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "bcs",
+ "bincode",
  "crux_core",
  "serde",
 ]
@@ -4233,7 +4233,6 @@ dependencies = [
  "assert_let_bind",
  "async-sse",
  "async-std",
- "bcs",
  "bincode",
  "chrono",
  "crux_core",
