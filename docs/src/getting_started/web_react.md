@@ -86,13 +86,13 @@ To generate the shared types for TypeScript, we can just run `cargo build` from 
 ```sh
 ls --tree shared_types/generated/typescript
 shared_types/generated/typescript
-├── bcs
-│  ├── bcsDeserializer.d.ts
-│  ├── bcsDeserializer.js
-│  ├── bcsDeserializer.ts
-│  ├── bcsSerializer.d.ts
-│  ├── bcsSerializer.js
-│  ├── bcsSerializer.ts
+├── bincode
+│  ├── bincodeDeserializer.d.ts
+│  ├── bincodeDeserializer.js
+│  ├── bincodeDeserializer.ts
+│  ├── bincodeSerializer.d.ts
+│  ├── bincodeSerializer.js
+│  ├── bincodeSerializer.ts
 │  ├── mod.d.ts
 │  ├── mod.js
 │  └── mod.ts
@@ -151,7 +151,7 @@ import { useEffect, useState } from "react";
 
 import init_core, { process_event as sendEvent, view } from "../../shared/core";
 import * as types from "shared_types/types/shared_types";
-import * as bcs from "shared_types/bcs/mod";
+import * as bincode from "shared_types/bincode/mod";
 
 interface Event {
   kind: "event";
@@ -167,7 +167,7 @@ const initialState: State = {
 };
 
 function deserializeRequests(bytes: Uint8Array) {
-  let deserializer = new bcs.BcsDeserializer(bytes);
+  let deserializer = new bincode.BincodeDeserializer(bytes);
 
   const len = deserializer.deserializeLen();
 
@@ -185,7 +185,7 @@ const Home: NextPage = () => {
   const [state, setState] = useState(initialState);
 
   const dispatch = (action: Event) => {
-    const serializer = new bcs.BcsSerializer();
+    const serializer = new bincode.BincodeSerializer();
     action.event.serialize(serializer);
     const requests = sendEvent(serializer.getBytes());
     handleRequests(requests);
@@ -198,7 +198,7 @@ const Home: NextPage = () => {
       switch (effect.constructor) {
         case types.EffectVariantRender:
           let bytes = view();
-          let viewDeserializer = new bcs.BcsDeserializer(bytes);
+          let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
 
           setState({

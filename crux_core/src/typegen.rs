@@ -61,7 +61,7 @@
 //!    let temp = assert_fs::TempDir::new().unwrap();
 //!    let output_root = temp.join("crux_core_typegen_test");
 //!
-//!    gen.swift("shared_types", output_root.join("swift"))
+//!    gen.swift("SharedTypes", output_root.join("swift"))
 //!        .expect("swift type gen failed");
 //!
 //!    gen.java("com.example.counter.shared_types", output_root.join("java"))
@@ -283,7 +283,7 @@ impl TypeGen {
     /// # use std::env::temp_dir;
     /// # let mut gen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.swift("shared_types", output_root.join("swift"))
+    /// gen.swift("SharedTypes", output_root.join("swift"))
     ///     .expect("swift type gen failed");
     /// ```
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {

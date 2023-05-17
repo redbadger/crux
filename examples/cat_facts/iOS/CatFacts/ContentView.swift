@@ -1,4 +1,4 @@
-import Serde
+import SharedTypes
 import SwiftUI
 
 func get_platform() -> String {
@@ -38,23 +38,23 @@ class Model: ObservableObject {
 
         switch msg {
         case let .event(m):
-            reqs = try! [Request].bcsDeserialize(input: CatFacts.processEvent(try! m.bcsSerialize()))
+            reqs = try! [Request].bincodeDeserialize(input: CatFacts.processEvent(try! m.bincodeSerialize()))
         case let .response(uuid, outcome):
-            reqs = try! [Request].bcsDeserialize(input: CatFacts.handleResponse(uuid, { switch outcome {
+            reqs = try! [Request].bincodeDeserialize(input: CatFacts.handleResponse(uuid, { switch outcome {
             case let .platform(x):
-                return try! x.bcsSerialize()
+                return try! x.bincodeSerialize()
             case let .time(x):
-                return try! x.bcsSerialize()
+                return try! x.bincodeSerialize()
             case let .http(x):
-                return try! x.bcsSerialize()
+                return try! x.bincodeSerialize()
             case let .key_value(x):
-                return try! x.bcsSerialize()
+                return try! x.bincodeSerialize()
             }}()))
         }
 
         for req in reqs {
             switch req.effect {
-            case .render: view = try! ViewModel.bcsDeserialize(input: CatFacts.view())
+            case .render: view = try! ViewModel.bincodeDeserialize(input: CatFacts.view())
             case let .http(r): httpGet(uuid: req.uuid, url: r.url)
             case .time:
                 update(msg: .response(req.uuid, .time(TimeResponse(value: Date().ISO8601Format()))))

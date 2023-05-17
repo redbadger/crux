@@ -19,9 +19,9 @@ interface Response {
   kind: "response";
   uuid: number[];
   outcome:
-    | types.HttpResponse
-    | types.SseResponseVariantChunk
-    | types.SseResponseVariantDone;
+  | types.HttpResponse
+  | types.SseResponseVariantChunk
+  | types.SseResponseVariantDone;
 }
 
 type State = {

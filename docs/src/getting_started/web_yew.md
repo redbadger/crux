@@ -34,7 +34,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bcs = "0.1.4"
 shared = { path = "../shared" }
 yew = { version = "0.20.0", features = ["csr"] }
 ```

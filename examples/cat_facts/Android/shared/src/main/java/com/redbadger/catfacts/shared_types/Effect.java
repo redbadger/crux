@@ -280,4 +280,3 @@ public abstract class Effect {
         }
     }
 }
-
