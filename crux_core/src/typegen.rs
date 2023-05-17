@@ -79,7 +79,7 @@ use std::{
     fs::{self, File},
     io::Write,
     mem,
-    path::Path,
+    path::{Path, PathBuf},
 };
 use thiserror::Error;
 
@@ -409,10 +409,6 @@ impl TypeGen {
         fs::create_dir_all(&path)?;
         let output_dir = path.as_ref().to_path_buf();
 
-        // let extensions_dir =
-        //     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/typescript");
-        let mut source = Vec::new();
-
         let installer = typescript::Installer::new(output_dir.clone());
         installer
             .install_serde_runtime()
@@ -421,7 +417,9 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        // copy(extensions_dir, path).expect("Could not copy TS runtime");
+        let extensions_dir =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/typescript");
+        copy(extensions_dir, path).expect("Could not copy TS runtime");
 
         let registry = match &self.state {
             State::Generating(registry) => registry,
@@ -429,18 +427,24 @@ impl TypeGen {
         };
 
         let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
-            .with_serialization(true)
             .with_encodings(vec![Encoding::Bincode]);
 
         let generator = serde_generate::typescript::CodeGenerator::new(&config);
+        let mut source = Vec::new();
         generator.output(&mut source, registry)?;
+
         // FIXME fix import paths in generated code which assume running on Deno
-        let out = String::from_utf8_lossy(&source).replace(".ts'", "'");
+        let out = String::from_utf8_lossy(&source)
+            .replace(
+                "import { BcsSerializer, BcsDeserializer } from '../bcs/mod.ts';",
+                "",
+            )
+            .replace(".ts'", "'");
 
         let types_dir = output_dir.join("types");
-        fs::create_dir_all(types_dir)?;
+        fs::create_dir_all(&types_dir)?;
 
-        let mut output = File::create(output_dir.join(format!("types/{module_name}.ts")))?;
+        let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
         write!(output, "{out}")?;
 
         // Install dependencies
@@ -484,23 +488,23 @@ impl TypeGen {
     }
 }
 
-// fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
-//     fs::create_dir_all(to.as_ref())?;
+fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
+    fs::create_dir_all(to.as_ref())?;
 
-//     let entries = fs::read_dir(from)?;
-//     for entry in entries {
-//         let entry = entry?;
+    let entries = fs::read_dir(from)?;
+    for entry in entries {
+        let entry = entry?;
 
-//         let to = to.as_ref().to_path_buf().join(entry.file_name());
-//         if entry.file_type()?.is_dir() {
-//             copy(entry.path(), to)?;
-//         } else {
-//             fs::copy(entry.path(), to)?;
-//         };
-//     }
+        let to = to.as_ref().to_path_buf().join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy(entry.path(), to)?;
+        } else {
+            fs::copy(entry.path(), to)?;
+        };
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 #[cfg(feature = "typegen")]
 #[cfg(test)]
