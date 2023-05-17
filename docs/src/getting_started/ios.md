@@ -135,7 +135,7 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `ContentView.swift` to look like this:
 
 ```swift
-import Serde
+import SharedTypes
 import SwiftUI
 
 enum Message {
@@ -155,12 +155,12 @@ class Model: ObservableObject {
 
         switch msg {
         case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
+            reqs = try! [Request].bincodeDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
         }
 
         for req in reqs {
             switch req.effect {
-            case .render(_): view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
+            case .render(_): view = try! ViewModel.bincodeDeserialize(input: CounterApp.view())
             }
         }
     }
