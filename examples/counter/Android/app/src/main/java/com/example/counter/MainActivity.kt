@@ -83,18 +83,18 @@ class Model : ViewModel() {
         val requests: List<Req> =
             when (msg) {
                 is CoreMessage.Event ->
-                    Requests.bcsDeserialize(
-                        processEvent(msg.event.bcsSerialize().toUByteArray().toList())
+                    Requests.bincodeDeserialize(
+                        processEvent(msg.event.bincodeSerialize().toUByteArray().toList())
                             .toUByteArray()
                             .toByteArray()
                     )
                 is CoreMessage.Response ->
-                    Requests.bcsDeserialize(
+                    Requests.bincodeDeserialize(
                         handleResponse(
                             msg.uuid.toList(),
                             when (msg.outcome) {
-                                is Outcome.Http -> msg.outcome.res.bcsSerialize()
-                                is Outcome.Sse -> msg.outcome.res.bcsSerialize()
+                                is Outcome.Http -> msg.outcome.res.bincodeSerialize()
+                                is Outcome.Sse -> msg.outcome.res.bincodeSerialize()
                             }.toUByteArray().toList()
                         ).toUByteArray().toByteArray()
                     )
@@ -102,7 +102,7 @@ class Model : ViewModel() {
 
         for (req in requests) when (val effect = req.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
+                this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
             }
             is Effect.Http -> {
                 val response = http(httpClient, HttpMethod(effect.value.method), effect.value.url, effect.value.headers)

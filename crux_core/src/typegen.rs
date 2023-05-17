@@ -371,8 +371,9 @@ impl TypeGen {
             _ => panic!("registry creation failed"),
         };
 
-        let generator = serde_generate::java::CodeGenerator::new(&config);
-        generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
+        installer
+            .install_module(&config, registry)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         let package_path = package_name.replace('.', "/");
 
