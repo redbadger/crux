@@ -87,17 +87,17 @@ class Model : ViewModel() {
     suspend fun update(msg: CoreMessage) {
         val requests: List<Req> =
             when (msg) {
-                is CoreMessage.Event -> Requests.bcsDeserialize(
-                    processEvent(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                is CoreMessage.Event -> Requests.bincodeDeserialize(
+                    processEvent(msg.event.bincodeSerialize().toUByteArray().toList()).toUByteArray()
                         .toByteArray()
                 )
-                is CoreMessage.Response -> Requests.bcsDeserialize(
+                is CoreMessage.Response -> Requests.bincodeDeserialize(
                     handleResponse(
                         msg.uuid.toList(), when (msg.outcome) {
-                            is Outcome.Platform -> msg.outcome.res.bcsSerialize()
-                            is Outcome.Time -> msg.outcome.res.bcsSerialize()
-                            is Outcome.Http -> msg.outcome.res.bcsSerialize()
-                            is Outcome.KeyValue -> msg.outcome.res.bcsSerialize()
+                            is Outcome.Platform -> msg.outcome.res.bincodeSerialize()
+                            is Outcome.Time -> msg.outcome.res.bincodeSerialize()
+                            is Outcome.Http -> msg.outcome.res.bincodeSerialize()
+                            is Outcome.KeyValue -> msg.outcome.res.bincodeSerialize()
                         }.toUByteArray().toList()
                     ).toUByteArray()
                         .toByteArray()
@@ -106,7 +106,7 @@ class Model : ViewModel() {
 
         for (req in requests) when (val effect = req.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
+                this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
             }
             is Effect.Http -> {
                 val response = http(httpClient, HttpMethod.Get, effect.value.url)

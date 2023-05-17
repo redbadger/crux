@@ -3,7 +3,7 @@
 
 @file:Suppress("NAME_SHADOWING")
 
-package com.redbadger.catfacts.shared;
+package com.redbadger.catfacts.shared
 
 // Common helper code.
 //
@@ -32,7 +32,9 @@ import java.nio.ByteOrder
 @Structure.FieldOrder("capacity", "len", "data")
 open class RustBuffer : Structure() {
     @JvmField var capacity: Int = 0
+
     @JvmField var len: Int = 0
+
     @JvmField var data: Pointer? = null
 
     class ByValue : RustBuffer(), Structure.ByValue
@@ -41,9 +43,9 @@ open class RustBuffer : Structure() {
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
             _UniFFILib.INSTANCE.ffi_shared_2a51_rustbuffer_alloc(size, status).also {
-                if(it.data == null) {
-                   throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=${size})")
-               }
+                if (it.data == null) {
+                    throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=$size)")
+                }
             }
         }
 
@@ -87,10 +89,12 @@ class RustBufferByReference : ByReference(16) {
 @Structure.FieldOrder("len", "data")
 open class ForeignBytes : Structure() {
     @JvmField var len: Int = 0
+
     @JvmField var data: Pointer? = null
 
     class ByValue : ForeignBytes(), Structure.ByValue
 }
+
 // The FfiConverter interface handles converter types to and from the FFI
 //
 // All implementing objects should be public to support external types.  When a
@@ -146,11 +150,11 @@ public interface FfiConverter<KotlinType, FfiType> {
     fun liftFromRustBuffer(rbuf: RustBuffer.ByValue): KotlinType {
         val byteBuf = rbuf.asByteBuffer()!!
         try {
-           val item = read(byteBuf)
-           if (byteBuf.hasRemaining()) {
-               throw RuntimeException("junk remaining in buffer after lifting, something is very wrong!!")
-           }
-           return item
+            val item = read(byteBuf)
+            if (byteBuf.hasRemaining()) {
+                throw RuntimeException("junk remaining in buffer after lifting, something is very wrong!!")
+            }
+            return item
         } finally {
             RustBuffer.free(rbuf)
         }
@@ -158,16 +162,18 @@ public interface FfiConverter<KotlinType, FfiType> {
 }
 
 // FfiConverter that uses `RustBuffer` as the FfiType
-public interface FfiConverterRustBuffer<KotlinType>: FfiConverter<KotlinType, RustBuffer.ByValue> {
+public interface FfiConverterRustBuffer<KotlinType> : FfiConverter<KotlinType, RustBuffer.ByValue> {
     override fun lift(value: RustBuffer.ByValue) = liftFromRustBuffer(value)
     override fun lower(value: KotlinType) = lowerIntoRustBuffer(value)
 }
+
 // A handful of classes and functions to support the generated data structures.
 // This would be a good candidate for isolating in its own ffi-support lib.
 // Error runtime.
 @Structure.FieldOrder("code", "error_buf")
 internal open class RustCallStatus : Structure() {
     @JvmField var code: Int = 0
+
     @JvmField var error_buf: RustBuffer.ByValue = RustBuffer.ByValue()
 
     fun isSuccess(): Boolean {
@@ -187,7 +193,7 @@ class InternalException(message: String) : Exception(message)
 
 // Each top-level error class has a companion object that can lift the error from the call status's rust buffer
 interface CallStatusErrorHandler<E> {
-    fun lift(error_buf: RustBuffer.ByValue): E;
+    fun lift(error_buf: RustBuffer.ByValue): E
 }
 
 // Helpers for calling Rust
@@ -195,8 +201,8 @@ interface CallStatusErrorHandler<E> {
 // synchronize itself
 
 // Call a rust function that returns a Result<>.  Pass in the Error class companion that corresponds to the Err
-private inline fun <U, E: Exception> rustCallWithError(errorHandler: CallStatusErrorHandler<E>, callback: (RustCallStatus) -> U): U {
-    var status = RustCallStatus();
+private inline fun <U, E : Exception> rustCallWithError(errorHandler: CallStatusErrorHandler<E>, callback: (RustCallStatus) -> U): U {
+    var status = RustCallStatus()
     val return_value = callback(status)
     if (status.isSuccess()) {
         return return_value
@@ -217,7 +223,7 @@ private inline fun <U, E: Exception> rustCallWithError(errorHandler: CallStatusE
 }
 
 // CallStatusErrorHandler implementation for times when we don't expect a CALL_ERROR
-object NullCallStatusErrorHandler: CallStatusErrorHandler<InternalException> {
+object NullCallStatusErrorHandler : CallStatusErrorHandler<InternalException> {
     override fun lift(error_buf: RustBuffer.ByValue): InternalException {
         RustBuffer.free(error_buf)
         return InternalException("Unexpected CALL_ERROR")
@@ -226,7 +232,7 @@ object NullCallStatusErrorHandler: CallStatusErrorHandler<InternalException> {
 
 // Call a rust function that returns a plain value
 private inline fun <U> rustCall(callback: (RustCallStatus) -> U): U {
-    return rustCallWithError(NullCallStatusErrorHandler, callback);
+    return rustCallWithError(NullCallStatusErrorHandler, callback)
 }
 
 // Contains loading, initialization code,
@@ -241,7 +247,7 @@ private fun findLibraryName(componentName: String): String {
 }
 
 private inline fun <reified Lib : Library> loadIndirect(
-    componentName: String
+    componentName: String,
 ): Lib {
     return Native.load<Lib>(findLibraryName(componentName), Lib::class.java)
 }
@@ -253,45 +259,49 @@ internal interface _UniFFILib : Library {
     companion object {
         internal val INSTANCE: _UniFFILib by lazy {
             loadIndirect<_UniFFILib>(componentName = "shared")
-            
         }
     }
 
-    fun shared_2a51_process_event(`msg`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun shared_2a51_process_event(
+        `msg`: RustBuffer.ByValue,
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun shared_2a51_handle_response(`uuid`: RustBuffer.ByValue,`res`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun shared_2a51_handle_response(
+        `uuid`: RustBuffer.ByValue,
+        `res`: RustBuffer.ByValue,
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
     fun shared_2a51_view(
-    _uniffi_out_err: RustCallStatus
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_2a51_rustbuffer_alloc(`size`: Int,
-    _uniffi_out_err: RustCallStatus
+    fun ffi_shared_2a51_rustbuffer_alloc(
+        `size`: Int,
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_2a51_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun ffi_shared_2a51_rustbuffer_from_bytes(
+        `bytes`: ForeignBytes.ByValue,
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
 
-    fun ffi_shared_2a51_rustbuffer_free(`buf`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun ffi_shared_2a51_rustbuffer_free(
+        `buf`: RustBuffer.ByValue,
+        _uniffi_out_err: RustCallStatus,
     ): Unit
 
-    fun ffi_shared_2a51_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,
-    _uniffi_out_err: RustCallStatus
+    fun ffi_shared_2a51_rustbuffer_reserve(
+        `buf`: RustBuffer.ByValue,
+        `additional`: Int,
+        _uniffi_out_err: RustCallStatus,
     ): RustBuffer.ByValue
-
-    
 }
 
 // Public interface members begin here.
 
-
-public object FfiConverterUByte: FfiConverter<UByte, Byte> {
+public object FfiConverterUByte : FfiConverter<UByte, Byte> {
     override fun lift(value: Byte): UByte {
         return value.toUByte()
     }
@@ -311,7 +321,7 @@ public object FfiConverterUByte: FfiConverter<UByte, Byte> {
     }
 }
 
-public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
+public object FfiConverterString : FfiConverter<String, RustBuffer.ByValue> {
     // Note: we don't inherit from FfiConverterRustBuffer, because we use a
     // special encoding when lowering/lifting.  We can use `RustBuffer.len` to
     // store our length and avoid writing it out to the buffer.
@@ -357,10 +367,7 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
-
-
-
-public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<UByte>> {
+public object FfiConverterSequenceUByte : FfiConverterRustBuffer<List<UByte>> {
     override fun read(buf: ByteBuffer): List<UByte> {
         val len = buf.getInt()
         return List<UByte>(len) {
@@ -384,29 +391,24 @@ public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<UByte>> {
 
 fun `processEvent`(`msg`: List<UByte>): List<UByte> {
     return FfiConverterSequenceUByte.lift(
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_2a51_process_event(FfiConverterSequenceUByte.lower(`msg`), _status)
-})
+        rustCall() { _status ->
+            _UniFFILib.INSTANCE.shared_2a51_process_event(FfiConverterSequenceUByte.lower(`msg`), _status)
+        },
+    )
 }
-
-
 
 fun `handleResponse`(`uuid`: List<UByte>, `res`: List<UByte>): List<UByte> {
     return FfiConverterSequenceUByte.lift(
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_2a51_handle_response(FfiConverterSequenceUByte.lower(`uuid`), FfiConverterSequenceUByte.lower(`res`), _status)
-})
+        rustCall() { _status ->
+            _UniFFILib.INSTANCE.shared_2a51_handle_response(FfiConverterSequenceUByte.lower(`uuid`), FfiConverterSequenceUByte.lower(`res`), _status)
+        },
+    )
 }
-
-
 
 fun `view`(): List<UByte> {
     return FfiConverterSequenceUByte.lift(
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.shared_2a51_view( _status)
-})
+        rustCall() { _status ->
+            _UniFFILib.INSTANCE.shared_2a51_view(_status)
+        },
+    )
 }
-
-
-
-
