@@ -5,6 +5,7 @@
 //  Created by Stuart Harris on 30/03/2023.
 //
 
+import SharedTypes
 import SwiftUI
 
 extension TextCursor {
@@ -56,16 +57,16 @@ class Core: ObservableObject {
 
         switch event {
         case let .event(evt):
-            let bytes = Notes.processEvent(try! evt.bcsSerialize())
-            requests = try! [Request].bcsDeserialize(input: bytes)
+            let bytes = Notes.processEvent(try! evt.bincodeSerialize())
+            requests = try! [Request].bincodeDeserialize(input: bytes)
         }
 
         for req in requests {
             switch req.effect {
             case .render:
-                view = try! ViewModel.bcsDeserialize(input: Notes.view())
+                view = try! ViewModel.bincodeDeserialize(input: Notes.view())
             case let .pubSub(.publish(bytes)):
-                print(["Publish", bytes.count, "bytes"])
+                print(["Publish", bytes.count, "bytes"] as [Any])
             case .pubSub(.subscribe):
                 print("Subscribe")
             case .keyValue(_): ()
