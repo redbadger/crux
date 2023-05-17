@@ -287,7 +287,6 @@ name = "crux_kv"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "bincode",
  "crux_core",
  "serde",
 ]
