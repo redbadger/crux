@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "bcs",
@@ -357,7 +357,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "bcs",
@@ -368,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "bcs",
