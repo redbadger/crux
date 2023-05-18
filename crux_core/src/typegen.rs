@@ -10,7 +10,7 @@
 //!
 //! ```rust,ignore
 //! [build-dependencies]
-//! crux_core = { version = "0.4", features = ["typegen"] }
+//! crux_core = { version = "0.5", features = ["typegen"] }
 //! ```
 //!
 //! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
