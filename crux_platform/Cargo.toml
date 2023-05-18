@@ -1,7 +1,7 @@
 [package]
 name = "crux_platform"
 description = "Platform capability for use with crux_core"
-version = "0.1.2"
+version = "0.1.3"
 readme = "README.md"
 authors.workspace = true
 repository.workspace = true
@@ -12,7 +12,7 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-crux_core = { version = "0.5", path = "../crux_core" }
+crux_core = { version = ">=0.4", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
