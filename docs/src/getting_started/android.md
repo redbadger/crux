@@ -321,8 +321,8 @@ class Model : ViewModel() {
         val requests: List<Req> =
             when (msg) {
                 is CoreMessage.Message -> {
-                    Requests.bcsDeserialize(
-                        message(msg.event.bcsSerialize().toUByteArray().toList()).toUByteArray()
+                    Requests.bincodeDeserialize(
+                        message(msg.event.bincodeSerialize().toUByteArray().toList()).toUByteArray()
                             .toByteArray()
                     )
                 }
@@ -330,7 +330,7 @@ class Model : ViewModel() {
 
         for (req in requests) when (req.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bcsDeserialize(view().toUByteArray().toByteArray())
+                this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
             }
         }
     }

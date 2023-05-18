@@ -8,7 +8,7 @@ import init_core, {
   view,
 } from "../shared/core";
 import * as types from "shared_types/types/shared_types";
-import * as bcs from "shared_types/bcs/mod";
+import * as bincode from "shared_types/bincode/mod";
 
 interface Event {
   kind: "event";
@@ -19,9 +19,9 @@ interface Response {
   kind: "response";
   uuid: number[];
   outcome:
-    | types.HttpResponse
-    | types.SseResponseVariantChunk
-    | types.SseResponseVariantDone;
+  | types.HttpResponse
+  | types.SseResponseVariantChunk
+  | types.SseResponseVariantDone;
 }
 
 type State = {
@@ -33,7 +33,7 @@ const initialState: State = {
 };
 
 function deserializeRequests(bytes: Uint8Array) {
-  let deserializer = new bcs.BcsDeserializer(bytes);
+  let deserializer = new bincode.BincodeDeserializer(bytes);
 
   const len = deserializer.deserializeLen();
 
@@ -51,14 +51,14 @@ const Home: NextPage = () => {
   const [state, setState] = useState(initialState);
 
   const dispatch = (action: Event) => {
-    const serializer = new bcs.BcsSerializer();
+    const serializer = new bincode.BincodeSerializer();
     action.event.serialize(serializer);
     const requests = sendEvent(serializer.getBytes());
     handleRequests(requests);
   };
 
   const respond = (action: Response) => {
-    const serializer = new bcs.BcsSerializer();
+    const serializer = new bincode.BincodeSerializer();
     action.outcome.serialize(serializer);
     const moreRequests = sendResponse(
       new Uint8Array(action.uuid),
@@ -74,7 +74,7 @@ const Home: NextPage = () => {
       switch (effect.constructor) {
         case types.EffectVariantRender:
           let bytes = view();
-          let viewDeserializer = new bcs.BcsDeserializer(bytes);
+          let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
 
           // core asked for a re-render with new state

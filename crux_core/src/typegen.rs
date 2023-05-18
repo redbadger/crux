@@ -61,7 +61,7 @@
 //!    let temp = assert_fs::TempDir::new().unwrap();
 //!    let output_root = temp.join("crux_core_typegen_test");
 //!
-//!    gen.swift("shared_types", output_root.join("swift"))
+//!    gen.swift("SharedTypes", output_root.join("swift"))
 //!        .expect("swift type gen failed");
 //!
 //!    gen.java("com.example.counter.shared_types", output_root.join("java"))
@@ -73,7 +73,7 @@
 //! ```
 
 use serde::Deserialize;
-use serde_generate::Encoding;
+use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -283,41 +283,56 @@ impl TypeGen {
     /// # use std::env::temp_dir;
     /// # let mut gen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.swift("shared_types", output_root.join("swift"))
+    /// gen.swift("SharedTypes", output_root.join("swift"))
     ///     .expect("swift type gen failed");
     /// ```
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
+        let path = path.as_ref().join(module_name);
+
         fs::create_dir_all(&path)?;
 
-        let mut source = Vec::new();
-        let config = serde_generate::CodeGeneratorConfig::new("shared".to_string())
-            .with_encodings(vec![Encoding::Bcs]);
+        let installer = swift::Installer::new(path.clone());
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let generator = serde_generate::swift::CodeGenerator::new(&config);
         let registry = match &self.state {
             State::Generating(registry) => registry,
             _ => panic!("registry creation failed"),
         };
 
-        generator.output(&mut source, registry)?;
+        let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
+            .with_encodings(vec![Encoding::Bincode]);
 
-        // FIXME workaround for odd namespacing behaviour in Swift output
-        // which as far as I can tell does not support namespaces in this way
-        let out = String::from_utf8_lossy(&source).replace("shared.", "");
+        installer
+            .install_module(&config, registry)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let out = format!(
-            "{out}\n\n{}",
+        // add bincode deserialization for Vec<Request>
+        let mut output = File::create(
+            path.join("Sources")
+                .join(module_name)
+                .join("Requests.swift"),
+        )?;
+        write!(
+            output,
+            "{}",
             include_str!("../typegen_extensions/swift/requests.swift")
-        );
+        )?;
 
-        let path = path
-            .as_ref()
-            .to_path_buf()
-            .join(format!("{module_name}.swift"));
-        let mut output = File::create(path)?;
-        write!(output, "{out}")?;
+        // wrap it all up in a swift package
+        let mut output = File::create(path.join("Package.swift"))?;
+        write!(
+            output,
+            "{}",
+            include_str!("../typegen_extensions/swift/Package.swift")
+                .replace("SharedTypes", module_name)
+        )?;
 
         Ok(())
     }
@@ -341,15 +356,24 @@ impl TypeGen {
         fs::create_dir_all(&path)?;
 
         let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
-            .with_encodings(vec![Encoding::Bcs]);
+            .with_encodings(vec![Encoding::Bincode]);
+
+        let installer = java::Installer::new(path.as_ref().to_path_buf());
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         let registry = match &self.state {
             State::Generating(registry) => registry,
             _ => panic!("registry creation failed"),
         };
 
-        let generator = serde_generate::java::CodeGenerator::new(&config);
-        generator.write_source_files(path.as_ref().to_path_buf(), registry)?;
+        installer
+            .install_module(&config, registry)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         let package_path = package_name.replace('.', "/");
 
@@ -385,16 +409,16 @@ impl TypeGen {
         fs::create_dir_all(&path)?;
         let output_dir = path.as_ref().to_path_buf();
 
+        let installer = typescript::Installer::new(output_dir.clone());
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
         let extensions_dir =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/typescript");
-        let mut source = Vec::new();
-
-        // FIXME this should be the actual route, but the runtime is built
-        // for Deno, so we patch it heavily in extensions:
-        //
-        // let installer = typescript::Installer::new(output_dir.clone());
-        // installer.install_serde_runtime()?;
-        // installer.install_bcs_runtime()?;
         copy(extensions_dir, path).expect("Could not copy TS runtime");
 
         let registry = match &self.state {
@@ -403,18 +427,24 @@ impl TypeGen {
         };
 
         let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
-            .with_serialization(true)
-            .with_encodings(vec![Encoding::Bcs]);
+            .with_encodings(vec![Encoding::Bincode]);
 
         let generator = serde_generate::typescript::CodeGenerator::new(&config);
+        let mut source = Vec::new();
         generator.output(&mut source, registry)?;
+
         // FIXME fix import paths in generated code which assume running on Deno
-        let out = String::from_utf8_lossy(&source).replace(".ts'", "'");
+        let out = String::from_utf8_lossy(&source)
+            .replace(
+                "import { BcsSerializer, BcsDeserializer } from '../bcs/mod.ts';",
+                "",
+            )
+            .replace(".ts'", "'");
 
         let types_dir = output_dir.join("types");
-        fs::create_dir_all(types_dir)?;
+        fs::create_dir_all(&types_dir)?;
 
-        let mut output = File::create(output_dir.join(format!("types/{module_name}.ts")))?;
+        let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
         write!(output, "{out}")?;
 
         // Install dependencies

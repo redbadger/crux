@@ -49,7 +49,7 @@ mod test {
         let temp = assert_fs::TempDir::new().unwrap();
         let output_root = temp.join("crux_core_typegen_test");
 
-        gen.swift("shared_types", output_root.join("swift"))
+        gen.swift("SharedTypes", output_root.join("swift"))
             .expect("swift type gen failed");
 
         gen.java("com.example.counter.shared_types", output_root.join("java"))

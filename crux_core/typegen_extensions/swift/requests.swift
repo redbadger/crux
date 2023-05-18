@@ -1,6 +1,9 @@
+import Serde
+
+
 public extension [Request] {
-  static func bcsDeserialize(input: [UInt8]) throws -> [Request] {
-    let deserializer = BcsDeserializer(input: input)
+  static func bincodeDeserialize(input: [UInt8]) throws -> [Request] {
+    let deserializer = BincodeDeserializer(input: input)
     try deserializer.increase_container_depth()
     let length = try deserializer.deserialize_len()
 

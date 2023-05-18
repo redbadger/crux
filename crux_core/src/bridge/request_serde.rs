@@ -49,8 +49,8 @@ where
         // FIXME should Eff be bound as `Serializable`?
         let (operation, resolve) = (self.operation, self.resolve);
 
-        let resolve =
-            resolve.deserializing(|bytes| bcs::from_bytes(bytes).expect("Deserialization failed"));
+        let resolve = resolve
+            .deserializing(|bytes| bincode::deserialize(bytes).expect("Deserialization failed"));
 
         (effect(operation), resolve)
     }

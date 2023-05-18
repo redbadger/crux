@@ -21,7 +21,7 @@ import init_core, {
   view,
 } from "../../shared/core";
 import * as types from "shared_types/types/shared_types";
-import * as bcs from "shared_types/bcs/mod";
+import * as bincode from "shared_types/bincode/mod";
 import { Seq } from "shared_types/serde/types";
 
 const LOG_EDITS = false;
@@ -55,7 +55,7 @@ type Timers = {
 const initialState: State = { text: "", selectionStart: 0, selectionEnd: 0 };
 
 function deserializeRequests(bytes: Uint8Array) {
-  let deserializer = new bcs.BcsDeserializer(bytes);
+  let deserializer = new bincode.BincodeDeserializer(bytes);
 
   const len = deserializer.deserializeLen();
 
@@ -98,7 +98,7 @@ function cursorToSelection(cursor: types.TextCursor): {
 
 function render(setState: (state: State) => void) {
   let bytes = view();
-  let viewDeserializer = new bcs.BcsDeserializer(bytes);
+  let viewDeserializer = new bincode.BincodeDeserializer(bytes);
   let viewModel = types.ViewModel.deserialize(viewDeserializer);
 
   var { selectionStart, selectionEnd } = cursorToSelection(viewModel.cursor);
@@ -239,7 +239,7 @@ const Home: NextPage = () => {
   const channel = useRef(new BroadcastChannel("crux-note"));
 
   const dispatch = (action: CoreEvent) => {
-    const serializer = new bcs.BcsSerializer();
+    const serializer = new bincode.BincodeSerializer();
 
     if (action.kind == "event") {
       action.event?.serialize(serializer);

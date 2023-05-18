@@ -74,7 +74,8 @@ where
     {
         let effects = match uuid {
             None => {
-                let shell_event = bcs::from_bytes(data).expect("Message deserialization failed.");
+                let shell_event =
+                    bincode::deserialize(data).expect("Message deserialization failed.");
 
                 self.core.process_event(shell_event)
             }
@@ -92,11 +93,11 @@ where
             .map(|eff| self.registry.register(eff))
             .collect();
 
-        bcs::to_bytes(&requests).expect("Request serialization failed.")
+        bincode::serialize(&requests).expect("Request serialization failed.")
     }
 
     /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
-        bcs::to_bytes(&self.core.view()).expect("View should serialize")
+        bincode::serialize(&self.core.view()).expect("View should serialize")
     }
 }

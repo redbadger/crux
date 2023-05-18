@@ -26,7 +26,7 @@ enum Command {
     Fetch,
 }
 
-/// Simple program to greet a person
+/// CLI to get a cat fact and image
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {

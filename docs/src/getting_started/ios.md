@@ -50,7 +50,7 @@ To achieve this, we'll associate a script with files that match the pattern `*.u
 
 Note that our shared library generates the `uniffi-bindgen` binary (as explained on the page ["Shared core and types"](./core.md)) that the script relies on, so make sure you have built it already, using `cargo build`.
 
-In "Build Rules", add a rule to process files that match the pattern `*.udl` with the following script (and also uncheck "Run once per architecture").
+In "**Build Rules**", add a rule to process files that match the pattern `*.udl` with the following script (and also uncheck "**Run once per architecture**").
 
 ```bash
 # Skip during indexing phase in XCode 13+
@@ -79,7 +79,7 @@ $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
 $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h
 ```
 
-Now go to "Build Phases" => "Compile Sources", and add `/shared/src/shared.udl` using the "add other" button, selecting "Create folder references".
+Now go to "**Build Phases, Compile Sources**", and add `/shared/src/shared.udl` using the "add other" button, selecting "Create folder references".
 
 Build the project (cmd-B), which will fail, but the above script should run successfully and the "generated" folder should contain the generated Swift types and C header files:
 
@@ -90,7 +90,7 @@ shared.swift  sharedFFI.h  sharedFFI.modulemap
 
 ### Add the bridging header
 
-In "Build Settings", search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and Release.
+In "**Build Settings**", search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and Release.
 If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
 
 
@@ -114,15 +114,13 @@ This generates an Xcode project for each crate in the workspace, but we're only 
 
 Using Finder, drag the `shared/shared.xcodeproj` folder under the Xcode project root.
 
-Then, in "Build Phases", add the static library to the "Link Binary with Libraries" section (you should be able to navigate to it under `Workspace -> shared -> libshared_static.a`)
+Then, in the "**Build Phases, Link Binary with Libraries**" section, add the `libshared_static.a` library (you should be able to navigate to it as `Workspace -> shared -> libshared_static.a`)
 
 ## Add the Shared Types
 
-In `File -> Add Files to "CounterApp"`, add `/shared_types/generated/swift/shared_types.swift`.
+Using Finder, drag the `shared_types/generated/swift/SharedTypes` folder under the Xcode project root.
 
-## Add the `Serde` package
-
-In order to serialize data across the "bridge" we need to add the [`Serde` package](https://github.com/starcoin-sdk/Serde.swift) to our project. You can do this with `File -> Add Packages` and search for "https://github.com/starcoin-sdk/Serde.swift".
+Then, in the "**Build Phases, Link Binary with Libraries**" section, add the `SharedTypes` library (you should be able to navigate to it as `Workspace -> SharedTypes -> SharedTypes`)
 
 ## Create some UI and run in the Simulator, or on an iPhone
 
@@ -137,7 +135,7 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `ContentView.swift` to look like this:
 
 ```swift
-import Serde
+import SharedTypes
 import SwiftUI
 
 enum Message {
@@ -157,12 +155,12 @@ class Model: ObservableObject {
 
         switch msg {
         case let .message(m):
-            reqs = try! [Request].bcsDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
+            reqs = try! [Request].bincodeDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
         }
 
         for req in reqs {
             switch req.effect {
-            case .render(_): view = try! ViewModel.bcsDeserialize(input: CounterApp.view())
+            case .render(_): view = try! ViewModel.bincodeDeserialize(input: CounterApp.view())
             }
         }
     }

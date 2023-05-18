@@ -345,16 +345,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
-name = "bcs"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bd3ffe8b19a604421a5d461d4a70346223e535903fbc3067138bddbebddcf77"
-dependencies = [
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -678,7 +668,7 @@ name = "crux_core"
 version = "0.5.0"
 dependencies = [
  "anyhow",
- "bcs",
+ "bincode",
  "crossbeam-channel",
  "derive_more",
  "futures",
@@ -697,7 +687,6 @@ version = "0.3.1"
 dependencies = [
  "anyhow",
  "async-trait",
- "bcs",
  "crux_core",
  "futures-util",
  "http-types",
@@ -712,7 +701,6 @@ name = "crux_kv"
 version = "0.1.2"
 dependencies = [
  "anyhow",
- "bcs",
  "crux_core",
  "serde",
 ]
@@ -732,7 +720,6 @@ name = "crux_platform"
 version = "0.1.2"
 dependencies = [
  "anyhow",
- "bcs",
  "crux_core",
  "serde",
 ]
@@ -742,7 +729,6 @@ name = "crux_time"
 version = "0.1.2"
 dependencies = [
  "anyhow",
- "bcs",
  "crux_core",
  "serde",
 ]

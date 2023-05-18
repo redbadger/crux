@@ -32,7 +32,6 @@ uuid = { version = "1.3.3", features = ["v4", "wasm-bindgen", "js"] }
 wasm-bindgen = "0.2.86"
 
 [dev-dependencies]
-bcs = "0.1.5"
 assert_let_bind = "0.1.1"
 
 [target.uniffi-bindgen.dependencies]

@@ -7,18 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CC2C4F3629D598A600CF927F /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2C4F3529D598A600CF927F /* CounterAppApp.swift */; };
-		CC2C4F3829D598A600CF927F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2C4F3729D598A600CF927F /* ContentView.swift */; };
-		CC2C4F3A29D598A700CF927F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC2C4F3929D598A700CF927F /* Assets.xcassets */; };
-		CC2C4F3D29D598A700CF927F /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC2C4F3C29D598A700CF927F /* Preview Assets.xcassets */; };
-		CCF1A53729D5997600F159DF /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CCF1A53629D5997600F159DF /* shared.udl */; };
-		CCF1A54529D59AA800F159DF /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CCF1A53F29D599B800F159DF /* libshared_static.a */; };
-		CCF1A54829D59AC100F159DF /* Serde in Frameworks */ = {isa = PBXBuildFile; productRef = CCF1A54729D59AC100F159DF /* Serde */; };
-		CCF1A54A29D59B0100F159DF /* shared_types.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF1A54929D59B0100F159DF /* shared_types.swift */; };
+		CC39C3CE2A13DAE300FBAC7B /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = CC39C3CD2A13DAE300FBAC7B /* shared.udl */; };
+		CC39C3DC2A13DB6D00FBAC7B /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CC39C3D62A13DB4F00FBAC7B /* libshared_static.a */; };
+		CC39C3E22A13DC1E00FBAC7B /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC39C3E12A13DC1E00FBAC7B /* SharedTypes */; };
+		CCD731742A13DA610080A09B /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD731732A13DA610080A09B /* CounterAppApp.swift */; };
+		CCD731762A13DA610080A09B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD731752A13DA610080A09B /* ContentView.swift */; };
+		CCD731782A13DA620080A09B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCD731772A13DA620080A09B /* Assets.xcassets */; };
+		CCD7317B2A13DA620080A09B /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCD7317A2A13DA620080A09B /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
-		CCF1A53529D5992500F159DF /* PBXBuildRule */ = {
+		CC39C3CC2A13DA9100FBAC7B /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
@@ -36,23 +35,23 @@
 /* End PBXBuildRule section */
 
 /* Begin PBXContainerItemProxy section */
-		CCF1A53E29D599B800F159DF /* PBXContainerItemProxy */ = {
+		CC39C3D52A13DB4F00FBAC7B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+			containerPortal = CC39C3CF2A13DB4F00FBAC7B /* shared.xcodeproj */;
 			proxyType = 2;
 			remoteGlobalIDString = CA6069A09261FB09138082B7;
 			remoteInfo = "shared-staticlib";
 		};
-		CCF1A54029D599B800F159DF /* PBXContainerItemProxy */ = {
+		CC39C3D72A13DB4F00FBAC7B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+			containerPortal = CC39C3CF2A13DB4F00FBAC7B /* shared.xcodeproj */;
 			proxyType = 2;
 			remoteGlobalIDString = CA60ECB8EC0A10F7F7FCAC5B;
 			remoteInfo = "shared-cdylib";
 		};
-		CCF1A54229D599B800F159DF /* PBXContainerItemProxy */ = {
+		CC39C3D92A13DB4F00FBAC7B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+			containerPortal = CC39C3CF2A13DB4F00FBAC7B /* shared.xcodeproj */;
 			proxyType = 2;
 			remoteGlobalIDString = CA60BEE814088109328FB0D5;
 			remoteInfo = "uniffi-bindgen-bin";
@@ -60,125 +59,135 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CC2C4F3229D598A600CF927F /* CounterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CC2C4F3529D598A600CF927F /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
-		CC2C4F3729D598A600CF927F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		CC2C4F3929D598A700CF927F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		CC2C4F3C29D598A700CF927F /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		CCF1A53629D5997600F159DF /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
-		CCF1A53829D599B700F159DF /* shared.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = shared.xcodeproj; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
-		CCF1A54929D59B0100F159DF /* shared_types.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = shared_types.swift; path = ../shared_types/generated/swift/shared_types.swift; sourceTree = "<group>"; };
+		CC39C3CD2A13DAE300FBAC7B /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; name = shared.udl; path = ../shared/src/shared.udl; sourceTree = "<group>"; };
+		CC39C3CF2A13DB4F00FBAC7B /* shared.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = shared.xcodeproj; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
+		CC39C3DD2A13DB9700FBAC7B /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = "<group>"; };
+		CC39C3DF2A13DBB900FBAC7B /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = "<group>"; };
+		CCD731702A13DA610080A09B /* CounterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CCD731732A13DA610080A09B /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
+		CCD731752A13DA610080A09B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CCD731772A13DA620080A09B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CCD7317A2A13DA620080A09B /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		CC2C4F2F29D598A600CF927F /* Frameworks */ = {
+		CCD7316D2A13DA610080A09B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CCF1A54829D59AC100F159DF /* Serde in Frameworks */,
-				CCF1A54529D59AA800F159DF /* libshared_static.a in Frameworks */,
+				CC39C3DC2A13DB6D00FBAC7B /* libshared_static.a in Frameworks */,
+				CC39C3E22A13DC1E00FBAC7B /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		CC2C4F2929D598A600CF927F = {
+		CC39C3D02A13DB4F00FBAC7B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CCF1A54929D59B0100F159DF /* shared_types.swift */,
-				CCF1A53829D599B700F159DF /* shared.xcodeproj */,
-				CCF1A53629D5997600F159DF /* shared.udl */,
-				CC2C4F3429D598A600CF927F /* CounterApp */,
-				CC2C4F3329D598A600CF927F /* Products */,
-				CCF1A54429D59AA800F159DF /* Frameworks */,
-			);
-			sourceTree = "<group>";
-		};
-		CC2C4F3329D598A600CF927F /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				CC2C4F3229D598A600CF927F /* CounterApp.app */,
+				CC39C3D62A13DB4F00FBAC7B /* libshared_static.a */,
+				CC39C3D82A13DB4F00FBAC7B /* shared.dylib */,
+				CC39C3DA2A13DB4F00FBAC7B /* uniffi-bindgen */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		CC2C4F3429D598A600CF927F /* CounterApp */ = {
+		CC39C3DB2A13DB6D00FBAC7B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				CC2C4F3529D598A600CF927F /* CounterAppApp.swift */,
-				CC2C4F3729D598A600CF927F /* ContentView.swift */,
-				CC2C4F3929D598A700CF927F /* Assets.xcassets */,
-				CC2C4F3B29D598A700CF927F /* Preview Content */,
+				CC39C3DD2A13DB9700FBAC7B /* SharedTypes */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		CC39C3DE2A13DBB900FBAC7B /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				CC39C3DF2A13DBB900FBAC7B /* SharedTypes */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		CCD731672A13DA610080A09B = {
+			isa = PBXGroup;
+			children = (
+				CC39C3DE2A13DBB900FBAC7B /* Packages */,
+				CC39C3CF2A13DB4F00FBAC7B /* shared.xcodeproj */,
+				CC39C3CD2A13DAE300FBAC7B /* shared.udl */,
+				CCD731722A13DA610080A09B /* CounterApp */,
+				CCD731712A13DA610080A09B /* Products */,
+				CC39C3DB2A13DB6D00FBAC7B /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		CCD731712A13DA610080A09B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CCD731702A13DA610080A09B /* CounterApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CCD731722A13DA610080A09B /* CounterApp */ = {
+			isa = PBXGroup;
+			children = (
+				CCD731732A13DA610080A09B /* CounterAppApp.swift */,
+				CCD731752A13DA610080A09B /* ContentView.swift */,
+				CCD731772A13DA620080A09B /* Assets.xcassets */,
+				CCD731792A13DA620080A09B /* Preview Content */,
 			);
 			path = CounterApp;
 			sourceTree = "<group>";
 		};
-		CC2C4F3B29D598A700CF927F /* Preview Content */ = {
+		CCD731792A13DA620080A09B /* Preview Content */ = {
 			isa = PBXGroup;
 			children = (
-				CC2C4F3C29D598A700CF927F /* Preview Assets.xcassets */,
+				CCD7317A2A13DA620080A09B /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
-			sourceTree = "<group>";
-		};
-		CCF1A53929D599B700F159DF /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				CCF1A53F29D599B800F159DF /* libshared_static.a */,
-				CCF1A54129D599B800F159DF /* shared.dylib */,
-				CCF1A54329D599B800F159DF /* uniffi-bindgen */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		CCF1A54429D59AA800F159DF /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		CC2C4F3129D598A600CF927F /* CounterApp */ = {
+		CCD7316F2A13DA610080A09B /* CounterApp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CC2C4F4029D598A700CF927F /* Build configuration list for PBXNativeTarget "CounterApp" */;
+			buildConfigurationList = CCD7317E2A13DA620080A09B /* Build configuration list for PBXNativeTarget "CounterApp" */;
 			buildPhases = (
-				CC2C4F2E29D598A600CF927F /* Sources */,
-				CC2C4F2F29D598A600CF927F /* Frameworks */,
-				CC2C4F3029D598A600CF927F /* Resources */,
+				CCD7316C2A13DA610080A09B /* Sources */,
+				CCD7316D2A13DA610080A09B /* Frameworks */,
+				CCD7316E2A13DA610080A09B /* Resources */,
 			);
 			buildRules = (
-				CCF1A53529D5992500F159DF /* PBXBuildRule */,
+				CC39C3CC2A13DA9100FBAC7B /* PBXBuildRule */,
 			);
 			dependencies = (
 			);
 			name = CounterApp;
 			packageProductDependencies = (
-				CCF1A54729D59AC100F159DF /* Serde */,
+				CC39C3E12A13DC1E00FBAC7B /* SharedTypes */,
 			);
 			productName = CounterApp;
-			productReference = CC2C4F3229D598A600CF927F /* CounterApp.app */;
+			productReference = CCD731702A13DA610080A09B /* CounterApp.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		CC2C4F2A29D598A600CF927F /* Project object */ = {
+		CCD731682A13DA610080A09B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1420;
-				LastUpgradeCheck = 1420;
+				LastSwiftUpdateCheck = 1430;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					CC2C4F3129D598A600CF927F = {
-						CreatedOnToolsVersion = 14.2;
+					CCD7316F2A13DA610080A09B = {
+						CreatedOnToolsVersion = 14.3;
 					};
 				};
 			};
-			buildConfigurationList = CC2C4F2D29D598A600CF927F /* Build configuration list for PBXProject "CounterApp" */;
+			buildConfigurationList = CCD7316B2A13DA610080A09B /* Build configuration list for PBXProject "CounterApp" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -186,77 +195,73 @@
 				en,
 				Base,
 			);
-			mainGroup = CC2C4F2929D598A600CF927F;
-			packageReferences = (
-				CCF1A54629D59AC100F159DF /* XCRemoteSwiftPackageReference "Serde" */,
-			);
-			productRefGroup = CC2C4F3329D598A600CF927F /* Products */;
+			mainGroup = CCD731672A13DA610080A09B;
+			productRefGroup = CCD731712A13DA610080A09B /* Products */;
 			projectDirPath = "";
 			projectReferences = (
 				{
-					ProductGroup = CCF1A53929D599B700F159DF /* Products */;
-					ProjectRef = CCF1A53829D599B700F159DF /* shared.xcodeproj */;
+					ProductGroup = CC39C3D02A13DB4F00FBAC7B /* Products */;
+					ProjectRef = CC39C3CF2A13DB4F00FBAC7B /* shared.xcodeproj */;
 				},
 			);
 			projectRoot = "";
 			targets = (
-				CC2C4F3129D598A600CF927F /* CounterApp */,
+				CCD7316F2A13DA610080A09B /* CounterApp */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		CCF1A53F29D599B800F159DF /* libshared_static.a */ = {
+		CC39C3D62A13DB4F00FBAC7B /* libshared_static.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libshared_static.a;
-			remoteRef = CCF1A53E29D599B800F159DF /* PBXContainerItemProxy */;
+			remoteRef = CC39C3D52A13DB4F00FBAC7B /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CCF1A54129D599B800F159DF /* shared.dylib */ = {
+		CC39C3D82A13DB4F00FBAC7B /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CCF1A54029D599B800F159DF /* PBXContainerItemProxy */;
+			remoteRef = CC39C3D72A13DB4F00FBAC7B /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CCF1A54329D599B800F159DF /* uniffi-bindgen */ = {
+		CC39C3DA2A13DB4F00FBAC7B /* uniffi-bindgen */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.executable";
 			path = "uniffi-bindgen";
-			remoteRef = CCF1A54229D599B800F159DF /* PBXContainerItemProxy */;
+			remoteRef = CC39C3D92A13DB4F00FBAC7B /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
-		CC2C4F3029D598A600CF927F /* Resources */ = {
+		CCD7316E2A13DA610080A09B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC2C4F3D29D598A700CF927F /* Preview Assets.xcassets in Resources */,
-				CC2C4F3A29D598A700CF927F /* Assets.xcassets in Resources */,
+				CCD7317B2A13DA620080A09B /* Preview Assets.xcassets in Resources */,
+				CCD731782A13DA620080A09B /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		CC2C4F2E29D598A600CF927F /* Sources */ = {
+		CCD7316C2A13DA610080A09B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CCF1A54A29D59B0100F159DF /* shared_types.swift in Sources */,
-				CCF1A53729D5997600F159DF /* shared.udl in Sources */,
-				CC2C4F3829D598A600CF927F /* ContentView.swift in Sources */,
-				CC2C4F3629D598A600CF927F /* CounterAppApp.swift in Sources */,
+				CC39C3CE2A13DAE300FBAC7B /* shared.udl in Sources */,
+				CCD731762A13DA610080A09B /* ContentView.swift in Sources */,
+				CCD731742A13DA610080A09B /* CounterAppApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		CC2C4F3E29D598A700CF927F /* Debug */ = {
+		CCD7317C2A13DA620080A09B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -306,7 +311,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -316,7 +321,7 @@
 			};
 			name = Debug;
 		};
-		CC2C4F3F29D598A700CF927F /* Release */ = {
+		CCD7317D2A13DA620080A09B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -360,7 +365,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -370,7 +375,7 @@
 			};
 			name = Release;
 		};
-		CC2C4F4129D598A700CF927F /* Debug */ = {
+		CCD7317F2A13DA620080A09B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -391,7 +396,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.redbadger.crux.CounterApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.redbadger.CounterApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
@@ -400,7 +405,7 @@
 			};
 			name = Debug;
 		};
-		CC2C4F4229D598A700CF927F /* Release */ = {
+		CCD731802A13DA620080A09B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -421,7 +426,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.redbadger.crux.CounterApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.redbadger.CounterApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
@@ -433,44 +438,32 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CC2C4F2D29D598A600CF927F /* Build configuration list for PBXProject "CounterApp" */ = {
+		CCD7316B2A13DA610080A09B /* Build configuration list for PBXProject "CounterApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				CC2C4F3E29D598A700CF927F /* Debug */,
-				CC2C4F3F29D598A700CF927F /* Release */,
+				CCD7317C2A13DA620080A09B /* Debug */,
+				CCD7317D2A13DA620080A09B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CC2C4F4029D598A700CF927F /* Build configuration list for PBXNativeTarget "CounterApp" */ = {
+		CCD7317E2A13DA620080A09B /* Build configuration list for PBXNativeTarget "CounterApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				CC2C4F4129D598A700CF927F /* Debug */,
-				CC2C4F4229D598A700CF927F /* Release */,
+				CCD7317F2A13DA620080A09B /* Debug */,
+				CCD731802A13DA620080A09B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		CCF1A54629D59AC100F159DF /* XCRemoteSwiftPackageReference "Serde" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/starcoin-sdk/Serde.swift";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-		CCF1A54729D59AC100F159DF /* Serde */ = {
+		CC39C3E12A13DC1E00FBAC7B /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = CCF1A54629D59AC100F159DF /* XCRemoteSwiftPackageReference "Serde" */;
-			productName = Serde;
+			productName = SharedTypes;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = CC2C4F2A29D598A600CF927F /* Project object */;
+	rootObject = CCD731682A13DA610080A09B /* Project object */;
 }
