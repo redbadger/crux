@@ -289,7 +289,7 @@ impl TypeGen {
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
-        let path = path.as_ref().to_path_buf().join(module_name);
+        let path = path.as_ref().join(module_name);
 
         fs::create_dir_all(&path)?;
 
