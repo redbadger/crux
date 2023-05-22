@@ -38,28 +38,28 @@
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
-			remoteGlobalIDString = CA6069A09261FB09138082B7;
+			remoteGlobalIDString = CA607A8B44DCFB09138082B7;
 			remoteInfo = "shared-staticlib";
 		};
-		9950BB5ADFAF5115B648D102 /* PBXContainerItemProxy */ = {
+		3DDA7AA1C70938E917385629 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 1;
-			remoteGlobalIDString = CA6069A09261F29647B252D5;
+			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
 			remoteInfo = "shared-staticlib";
 		};
-		CC5B38082A1BA02100C93A63 /* PBXContainerItemProxy */ = {
+		CCCAC3532A1BD4FF003D3BF9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
-			remoteGlobalIDString = CA60ECB8EC0A10F7F7FCAC5B;
+			remoteGlobalIDString = CA60D2B4E60D10F7F7FCAC5B;
 			remoteInfo = "shared-cdylib";
 		};
-		CC5B380A2A1BA02100C93A63 /* PBXContainerItemProxy */ = {
+		CCCAC3552A1BD4FF003D3BF9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
-			remoteGlobalIDString = CA60BEE814088109328FB0D5;
+			remoteGlobalIDString = CA60ACD85ECB8109328FB0D5;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
 /* End PBXContainerItemProxy section */
@@ -145,8 +145,8 @@
 			isa = PBXGroup;
 			children = (
 				BA6A61FB6787C24656A044CC /* libshared_static.a */,
-				CC5B38092A1BA02100C93A63 /* shared.dylib */,
-				CC5B380B2A1BA02100C93A63 /* uniffi-bindgen */,
+				CCCAC3542A1BD4FF003D3BF9 /* shared.dylib */,
+				CCCAC3562A1BD4FF003D3BF9 /* uniffi-bindgen */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -165,7 +165,7 @@
 				E45AE029B6F917B0FFA85BD6 /* PBXBuildRule */,
 			);
 			dependencies = (
-				B6BD349AF2FF1279F39147BB /* PBXTargetDependency */,
+				99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */,
 			);
 			name = CounterApp;
 			packageProductDependencies = (
@@ -214,18 +214,18 @@
 			remoteRef = 3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CC5B38092A1BA02100C93A63 /* shared.dylib */ = {
+		CCCAC3542A1BD4FF003D3BF9 /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CC5B38082A1BA02100C93A63 /* PBXContainerItemProxy */;
+			remoteRef = CCCAC3532A1BD4FF003D3BF9 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CC5B380B2A1BA02100C93A63 /* uniffi-bindgen */ = {
+		CCCAC3562A1BD4FF003D3BF9 /* uniffi-bindgen */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.executable";
 			path = "uniffi-bindgen";
-			remoteRef = CC5B380A2A1BA02100C93A63 /* PBXContainerItemProxy */;
+			remoteRef = CCCAC3552A1BD4FF003D3BF9 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
@@ -244,10 +244,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		B6BD349AF2FF1279F39147BB /* PBXTargetDependency */ = {
+		99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = "shared-staticlib";
-			targetProxy = 9950BB5ADFAF5115B648D102 /* PBXContainerItemProxy */;
+			targetProxy = 3DDA7AA1C70938E917385629 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
