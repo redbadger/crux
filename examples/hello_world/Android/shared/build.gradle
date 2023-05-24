@@ -1,0 +1,94 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.mozilla.rust-android-gradle.rust-android'
+}
+
+android {
+    namespace 'com.example.counter.shared'
+    compileSdk 33
+
+    ndkVersion "25.1.8937393"
+
+
+    defaultConfig {
+        minSdk 33
+        targetSdk 33
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
+
+cargo {
+    module  = "../.."
+    libname = "shared"
+    targets = ["arm64"]
+    extraCargoBuildArguments = ['--package', 'shared']
+}
+
+afterEvaluate {
+    // The `cargoBuild` task isn't available until after evaluation.
+    android.libraryVariants.all { variant ->
+        def productFlavor = ""
+        variant.productFlavors.each {
+            productFlavor += "${it.name.capitalize()}"
+        }
+        def buildType = "${variant.buildType.name.capitalize()}"
+        tasks["cargoBuild"].dependsOn(tasks["bindGen"])
+        tasks["typesGen"].dependsOn(tasks["cargoBuild"])
+        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
+    }
+}
+
+task bindGen(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    workingDir "../../"
+    commandLine(
+            "sh", "-c",
+            """\
+            target/debug/uniffi-bindgen generate shared/src/shared.udl \
+            --language kotlin \
+            --out-dir $outDir
+            """
+    )
+}
+
+task typesGen(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    def srcDir = "shared_types/generated/java/com"
+    workingDir "../../"
+    commandLine(
+            "sh", "-c",
+            """\
+            cp -r $srcDir $outDir
+            """
+    )
+}
+
+dependencies {
+    implementation "net.java.dev.jna:jna:5.12.1@aar"
+
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
