@@ -180,3 +180,4 @@ public abstract class Effect {
         }
     }
 }
+
