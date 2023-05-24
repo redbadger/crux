@@ -66,7 +66,7 @@ We can now add this library as a _dependency_ of our app.
 
 Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like this:
 
-```groovy
+```gradle
 {{#include ../../../examples/hello_world/Android/app/build.gradle}}
 ```
 
@@ -84,13 +84,13 @@ Let's get started.
 
 Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like this:
 
-```groovy
+```gradle
 {{#include ../../../examples/hello_world/Android/build.gradle}}
 ```
 
 Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look like this:
 
-```groovy
+```gradle
 {{#include ../../../examples/hello_world/Android/shared/build.gradle}}
 
 ```
