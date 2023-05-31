@@ -7,7 +7,8 @@
 # Getting Started
 
 1. [Shared core and types](./getting_started/core.md)
-1. [iOS — Swift and SwiftUI](./getting_started/ios.md)
+1. [iOS — Swift and SwiftUI — manual setup](./getting_started/ios.md)
+1. [iOS — Swift and SwiftUI — using XcodeGen](./getting_started/ios_with_xcodegen.md)
 1. [Android — Kotlin and Jetpack Compose](./getting_started/android.md)
 1. [Web — TypeScript and React (Next.js)](./getting_started/web_react.md)
 1. [Web — Rust and Yew](./getting_started/web_yew.md)
@@ -29,4 +30,3 @@
 1. [FFI interface](./internals/uniffi.md)
 1. [Serialization](./internals/serialization.md)
 1. [Type generation](./internals/typegen.md)
-

@@ -1,0 +1,58 @@
+name: CounterApp
+projectReferences:
+  Shared:
+    path: ../shared/shared.xcodeproj
+packages:
+  SharedTypes:
+    path: ../shared_types/generated/swift/SharedTypes
+options:
+  bundleIdPrefix: com.example.counter
+targets:
+  CounterApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - CounterApp
+      - path: ../shared/src/shared.udl
+        buildPhase: sources
+    dependencies:
+      - target: Shared/shared-staticlib
+      - package: SharedTypes
+    info:
+      path: CounterApp/Info.plist
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UILaunchScreen: {}
+    settings:
+      OTHER_LDFLAGS: [-w]
+      SWIFT_OBJC_BRIDGING_HEADER: generated/sharedFFI.h
+    buildRules:
+      - name: Generate FFI
+        filePattern: "*.udl"
+        script: |
+          #!/bin/bash
+          set -e
+
+          # Skip during indexing phase in XCode 13+
+          if [ $ACTION == "indexbuild" ]; then
+            echo "Not building *.udl files during indexing."
+            exit 0
+          fi
+
+          # Skip for preview builds
+          if [ "${ENABLE_PREVIEWS}" = "YES" ]; then
+            echo "Not building *.udl files during preview builds."
+            exit 0
+          fi
+
+          # note, for now, run a cargo build manually to ensure the binary exists for this step
+          cd "$INPUT_FILE_DIR"/..
+          "$PROJECT_DIR/../target/debug/uniffi-bindgen" generate src/"$INPUT_FILE_NAME" --language swift --out-dir "$PROJECT_DIR/generated"
+        outputFiles:
+          - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
+          - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h
+        runOncePerArchitecture: false

@@ -1,13 +1,17 @@
-# iOS — Swift and SwiftUI
+# iOS — Swift and SwiftUI — manual setup
 
 These are the steps to set up Xcode to build and run a simple iOS app that calls into a shared core.
 
+```admonish tip
+We think that using [XcodeGen](https://github.com/yonaskolb/XcodeGen) may be the simplest way to create an Xcode project to build and run a simple iOS app that calls into a shared core. If you want to try this, you can jump to [iOS — using XcodeGen](./ios_with_xcodegen.md), otherwise read on.
+```
+
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo — as described in [Shared core and types](./core.md) — and that you have built them using `cargo build`.
 ```
 
 ```admonish warning title="Sharp edge"
-We want to make setting up Xcode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below (e.g. how to do Xcode project configuration from the command line), please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
+We want to make setting up Xcode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble.
 ```
 
 ## Create an iOS App
@@ -135,106 +139,13 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `ContentView.swift` to look like this:
 
 ```swift
-import SharedTypes
-import SwiftUI
-
-enum Message {
-    case message(Event)
-}
-
-@MainActor
-class Model: ObservableObject {
-    @Published var view = ViewModel(count: "")
-
-    init() {
-        update(msg: .message(.reset))
-    }
-
-    func update(msg: Message) {
-        let reqs: [Request]
-
-        switch msg {
-        case let .message(m):
-            reqs = try! [Request].bincodeDeserialize(input: CounterApp.processEvent(try! m.bcsSerialize()))
-        }
-
-        for req in reqs {
-            switch req.effect {
-            case .render(_): view = try! ViewModel.bincodeDeserialize(input: CounterApp.view())
-            }
-        }
-    }
-}
-
-struct ActionButton: View {
-    var label: String
-    var color: Color
-    var action: () -> Void
-
-    init(label: String, color: Color, action: @escaping () -> Void) {
-        self.label = label
-        self.color = color
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            Text(label)
-                .fontWeight(.bold)
-                .font(.body)
-                .padding(EdgeInsets(top: 10, leading: 15, bottom: 10, trailing: 15))
-                .background(color)
-                .cornerRadius(10)
-                .foregroundColor(.white)
-                .padding()
-        }
-    }
-}
-
-struct ContentView: View {
-    @ObservedObject var model: Model
-
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Text(model.view.count)
-            HStack {
-                ActionButton(label: "Reset", color: .red) {
-                    model.update(msg: .message(.reset))
-                }
-                ActionButton(label: "Inc", color: .green) {
-                    model.update(msg: .message(.increment))
-                }
-                ActionButton(label: "Dec", color: .yellow) {
-                    model.update(msg: .message(.decrement))
-                }
-            }
-        }
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView(model: Model())
-    }
-}
+{{#include ../../../examples/hello_world/iOS/CounterApp/ContentView.swift}}
 ```
 
 And edit `CounterAppApp.swift` to look like this:
 
 ```swift
-import SwiftUI
-
-@main
-struct CounterAppApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView(model: Model())
-        }
-    }
-}
+{{#include ../../../examples/hello_world/iOS/CounterApp/CounterAppApp.swift}}
 ```
 
 ```admonish success
