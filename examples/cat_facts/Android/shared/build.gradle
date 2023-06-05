@@ -64,33 +64,57 @@ afterEvaluate {
             productFlavor += "${it.name.capitalize()}"
         }
         def buildType = "${variant.buildType.name.capitalize()}"
+
         tasks["cargoBuild"].dependsOn(tasks["bindGen"])
-        tasks["typesGen"].dependsOn(tasks["cargoBuild"])
+
+        tasks["bindGen"].dependsOn(tasks["deleteGenerated"])
+        tasks["typesGen"].dependsOn(tasks["cargoBuild"], tasks["deleteGenerated"])
+
         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
+    }
+}
+
+task deleteGenerated(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    workingDir "../../"
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine("cmd", "/c", "rmdir /s " + outDir.replace('/', '\\'))
+        commandLine("cmd", "/c", "mkdir " + outDir.replace('/', '\\'))
+    } else {
+        commandLine("sh", "-c", "rm -rf $outDir")
     }
 }
 
 task bindGen(type: Exec) {
     def outDir = "${projectDir}/src/main/java"
     workingDir "../../"
-    commandLine(
-            "sh", "-c",
-            """\
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine(
+                "cmd", "/c",
+                "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
+                        "--language kotlin " +
+                        "--out-dir " + outDir.replace('/', '\\')
+        )
+    } else {
+        commandLine(
+                "sh", "-c",
+                """\
             target/debug/uniffi-bindgen generate shared/src/shared.udl \
             --language kotlin \
             --out-dir $outDir
             """
-    )
+        )
+    }
 }
 
 task typesGen(type: Exec) {
     def outDir = "${projectDir}/src/main/java"
     def srcDir = "shared_types/generated/java/com"
     workingDir "../../"
-    commandLine(
-            "sh", "-c",
-            """\
-            cp -r $srcDir $outDir
-            """
-    )
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine("cmd", "/c",
+                "xcopy /e /y " + srcDir.replace('/', '\\') + " " + outDir.replace('/', '\\'))
+    } else {
+        commandLine("sh", "-c", "cp -r $srcDir $outDir")
+    }
 }
