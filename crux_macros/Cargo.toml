@@ -15,9 +15,9 @@ proc-macro = true
 
 [dependencies]
 darling = "0.20.1"
-proc-macro2 = "1.0.58"
-quote = "1.0.27"
-syn = "2.0.16"
+proc-macro2 = "1.0.59"
+quote = "1.0.28"
+syn = "2.0.18"
 
 [dev-dependencies]
 insta = "1.29"
