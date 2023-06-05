@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: Swatinem/rust-cache@v1
-      - uses: dtolnay/rust-toolchain@1.66.0
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
 
@@ -101,7 +101,7 @@ jobs:
           libwebkit2gtk-4.1-dev
 
       - uses: Swatinem/rust-cache@v1
-      - uses: dtolnay/rust-toolchain@1.66.0
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
 
