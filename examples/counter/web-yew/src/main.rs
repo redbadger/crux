@@ -144,7 +144,7 @@ async fn http(url: &str, method: http::Method, headers: &[HttpHeader]) -> Result
 async fn sse(url: &str) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>, Error = JsValue>> {
     use futures_util::StreamExt;
     use js_sys::Uint8Array;
-    use wasm_bindgen::{prelude::*, JsCast};
+    use wasm_bindgen::prelude::*;
     use wasm_streams::ReadableStream;
 
     let response = http::Request::new(url).send().await?;
