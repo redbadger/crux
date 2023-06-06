@@ -559,7 +559,7 @@ mod save_load_tests {
         let mut key_value_effs = update
             .effects
             .into_iter()
-            .filter(|e| matches!(e, Effect::KeyValue(_req)))
+            .filter(|e| KeyValueOperation::try_from(e).is_ok())
             .collect::<Vec<_>>();
 
         assert_eq!(key_value_effs.len(), 1);
@@ -597,7 +597,7 @@ mod save_load_tests {
         let mut key_value_effs = update
             .effects
             .into_iter()
-            .filter(|e| matches!(e, Effect::KeyValue(_op)))
+            .filter(|e| KeyValueOperation::try_from(e).is_ok())
             .collect::<Vec<_>>();
 
         assert_eq!(key_value_effs.len(), 1);
@@ -615,11 +615,11 @@ mod save_load_tests {
             let update = app.update(e, &mut model);
             let saves = update
                 .effects
-                .iter()
-                .filter(|e| matches!(e, Effect::KeyValue(_)))
+                .into_iter()
+                .filter(|e| KeyValueOperation::try_from(e).is_ok())
                 .collect::<Vec<_>>();
 
-            assert_let!(Effect::KeyValue(request), saves[0]);
+            assert_let!(Effect::KeyValue(request), &saves[0]);
             assert_let!(KeyValueOperation::Write(key, _), &request.operation);
 
             assert_eq!(key, &"note".to_string());
@@ -641,7 +641,7 @@ mod save_load_tests {
         let mut timer_effects: Vec<_> = update
             .effects
             .into_iter()
-            .filter(|e| matches!(e, Effect::Timer(_)))
+            .filter(|e| TimerOperation::try_from(e).is_ok())
             .collect();
 
         assert_eq!(timer_effects.len(), 1);
@@ -673,7 +673,7 @@ mod save_load_tests {
         let mut timer_effects: Vec<_> = update
             .effects
             .into_iter()
-            .filter(|e| matches!(e, Effect::Timer(_)))
+            .filter(|e| TimerOperation::try_from(e).is_ok())
             .collect();
 
         assert_eq!(timer_effects.len(), 2);
@@ -725,13 +725,13 @@ mod save_load_tests {
         let update = app.update(Event::Backspace, &mut model);
         let timer_effects: Vec<_> = update
             .effects
-            .iter()
-            .filter(|e| matches!(e, Effect::Timer(_)))
+            .into_iter()
+            .filter(|e| TimerOperation::try_from(e).is_ok())
             .collect();
 
         assert_eq!(timer_effects.len(), 1);
 
-        assert_let!(Effect::Timer(third_request), timer_effects[0]);
+        assert_let!(Effect::Timer(third_request), &timer_effects[0]);
         assert_let!(
             TimerOperation::Start {
                 id: third_id,
@@ -765,8 +765,8 @@ mod save_load_tests {
         );
         let write_effect = update
             .effects
-            .iter()
-            .find(|e| matches!(e, Effect::KeyValue(_)))
+            .into_iter()
+            .find(|e| KeyValueOperation::try_from(e).is_ok())
             .expect("a key value write");
 
         assert_let!(Effect::KeyValue(request), write_effect);
