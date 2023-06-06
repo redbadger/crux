@@ -123,6 +123,22 @@ pub struct Update<Ef, Ev> {
     pub events: Vec<Ev>,
 }
 
+impl<Ef, Ev> Update<Ef, Ev> {
+    pub fn filter_effects<P>(self, predicate: P) -> Vec<Ef>
+    where
+        P: Fn(&Ef) -> bool,
+    {
+        self.effects.into_iter().filter(predicate).collect()
+    }
+
+    pub fn find_effect<P>(&self, predicate: P) -> Option<&Ef>
+    where
+        P: Fn(&Ef) -> bool,
+    {
+        self.effects.iter().find(|e| predicate(e))
+    }
+}
+
 /// Panics if the pattern doesn't match an `Effect` from the specified `Update`
 ///
 /// Like in a `match` expression, the pattern can be optionally followed by `if`

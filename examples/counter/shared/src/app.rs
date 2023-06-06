@@ -131,11 +131,10 @@ impl crux_core::App for App {
 
 #[cfg(test)]
 mod tests {
-    use assert_let_bind::assert_let;
-
     use super::{App, Event, Model};
     use crate::capabilities::sse::SseRequest;
     use crate::{Counter, Effect};
+    use assert_let_bind::assert_let;
     use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
