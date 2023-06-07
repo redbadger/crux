@@ -48,7 +48,7 @@ dependencies {
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 cargo {
-    module  = "../.."
+    module = "../.."
     libname = "shared"
     targets = ["arm64"]
     extraCargoBuildArguments = ['--package', 'shared']
@@ -62,10 +62,26 @@ afterEvaluate {
             productFlavor += "${it.name.capitalize()}"
         }
         def buildType = "${variant.buildType.name.capitalize()}"
+
         tasks["cargoBuild"].dependsOn(tasks["bindGen"])
-        tasks["typesGen"].dependsOn(tasks["cargoBuild"])
-        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"],
-                tasks["cargoBuild"])
+
+        tasks["bindGen"].dependsOn(tasks["deleteGenerated"])
+        tasks["typesGen"].dependsOn(tasks["cargoBuild"], tasks["deleteGenerated"])
+
+        tasks["compileDebugKotlin"].dependsOn(tasks["typesGen"])
+
+        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
+    }
+}
+
+task deleteGenerated(type: Exec) {
+    def outDir = "${projectDir}/src/main/java"
+    workingDir "../../"
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine("cmd", "/c", "rmdir /s " + outDir.replace('/', '\\'))
+        commandLine("cmd", "/c", "mkdir " + outDir.replace('/', '\\'))
+    } else {
+        commandLine("sh", "-c", "rm -rf $outDir")
     }
 }
 
@@ -96,16 +112,9 @@ task typesGen(type: Exec) {
     def srcDir = "shared_types/generated/java/com"
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine(
-                "cmd", "/c",
-                "xcopy /e /y " + srcDir.replace('/', '\\') + " " + outDir.replace('/', '\\')
-        )
+        commandLine("cmd", "/c",
+                "xcopy /e /y " + srcDir.replace('/', '\\') + " " + outDir.replace('/', '\\'))
     } else {
-        commandLine(
-                "sh", "-c",
-                """\
-            cp -r $srcDir $outDir
-            """
-        )
+        commandLine("sh", "-c", "cp -r $srcDir $outDir")
     }
 }
