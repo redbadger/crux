@@ -1,5 +1,5 @@
 //! Testing support for unit testing Crux apps.
-use std::rc::Rc;
+use std::{collections::VecDeque, rc::Rc};
 
 use anyhow::Result;
 
@@ -118,24 +118,31 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
 #[derive(Debug)]
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run
-    pub effects: Vec<Ef>,
+    pub effects: Effects<Ef>,
     /// Events dispatched from the update run
     pub events: Vec<Ev>,
 }
 
-impl<Ef, Ev> Update<Ef, Ev> {
-    pub fn filter_effects<P>(self, predicate: P) -> Vec<Ef>
-    where
-        P: Fn(&Ef) -> bool,
-    {
-        self.effects.into_iter().filter(predicate).collect()
-    }
+#[derive(Debug)]
+pub struct Effects<Ef>(VecDeque<Ef>);
 
-    pub fn find_effect<P>(&self, predicate: P) -> Option<&Ef>
-    where
-        P: Fn(&Ef) -> bool,
-    {
-        self.effects.iter().find(|e| predicate(e))
+impl<'a, Ef> Default for Effects<&'a Ef> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<Ef> Iterator for Effects<Ef> {
+    type Item = Ef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.pop_front()
+    }
+}
+
+impl<Ef> std::iter::FromIterator<Ef> for Effects<Ef> {
+    fn from_iter<T: IntoIterator<Item = Ef>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
     }
 }
 
@@ -147,15 +154,18 @@ impl<Ef, Ev> Update<Ef, Ev> {
 /// # Example
 ///
 /// ```
-/// use crux_core::assert_effect;
+/// # use crux_core::testing::{Effects, Update};
+/// # use std::collections::VecDeque;
 /// # enum Effect { Render(String) };
 /// # enum Event { None };
-/// # let update = crux_core::testing::Update { effects: vec!(Effect::Render("test".to_string())), events: vec!(Event::None) };
+/// # let effects = vec![Effect::Render("test".to_string())].into_iter().collect();
+/// # let mut update = Update { effects, events: vec!(Event::None) };
+/// use crux_core::assert_effect;
 /// assert_effect!(update, Effect::Render(_));
 /// ```
 #[macro_export]
 macro_rules! assert_effect {
     ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
-        assert!($expression.effects.iter().any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
+        assert!($expression.effects.any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
     };
 }

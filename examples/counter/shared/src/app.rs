@@ -148,7 +148,7 @@ mod tests {
 
         let mut update = app.update(Event::Get, &mut model);
 
-        assert_let!(Effect::Http(request), &mut update.effects[0]);
+        assert_let!(Effect::Http(request), &mut update.effects.next().unwrap());
         let actual = &request.operation;
         let expected = &HttpRequest {
             method: "GET".to_string(),
@@ -179,7 +179,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::new_set(1, 1), &mut model);
+        let mut update = app.update(Event::new_set(1, 1), &mut model);
 
         assert_effect!(update, Effect::Render(_));
 
@@ -209,7 +209,7 @@ mod tests {
         let expected = Some(false);
         assert_eq!(actual, expected);
 
-        assert_let!(Effect::Http(request), &mut update.effects[1]);
+        assert_let!(Effect::Http(request), &mut update.effects.next().unwrap());
         let expected = &HttpRequest {
             method: "POST".to_string(),
             url: "https://crux-counter.fly.dev/inc".to_string(),
@@ -253,7 +253,7 @@ mod tests {
         let expected = Some(false);
         assert_eq!(actual, expected);
 
-        assert_let!(Effect::Http(request), &mut update.effects[1]);
+        assert_let!(Effect::Http(request), &mut update.effects.next().unwrap());
         let actual = request.operation.clone();
         let expected = HttpRequest {
             method: "POST".to_string(),
@@ -284,9 +284,12 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::StartWatch, &mut model);
+        let mut update = app.update(Event::StartWatch, &mut model);
 
-        assert_let!(Effect::ServerSentEvents(request), &update.effects[0]);
+        assert_let!(
+            Effect::ServerSentEvents(request),
+            update.effects.next().unwrap()
+        );
         let actual = &request.operation;
         let expected = &SseRequest {
             url: "https://crux-counter.fly.dev/sse".to_string(),
@@ -306,9 +309,9 @@ mod tests {
         };
         let event = Event::WatchUpdate(count);
 
-        let update = app.update(event, &mut model);
+        let mut update = app.update(event, &mut model);
 
-        assert_let!(Effect::Render(_), &update.effects[0]);
+        assert_let!(Effect::Render(_), update.effects.next().unwrap());
 
         let actual = model.count.value;
         let expected = 1;

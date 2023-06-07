@@ -80,7 +80,7 @@ mod tests {
 
         let mut update = app.update(Event::Get, &mut model);
 
-        let Effect::Http(mut request) = update.effects.pop().expect("to get an effect");
+        let Effect::Http(mut request) = update.effects.next().unwrap();
         let http_request = &request.operation;
 
         assert_eq!(
@@ -119,7 +119,7 @@ mod tests {
 
         let mut update = app.update(Event::Post, &mut model);
 
-        let Effect::Http(mut request) = update.effects.pop().expect("to get an effect");
+        let Effect::Http(mut request) = update.effects.next().unwrap();
 
         assert_eq!(
             request.operation,
