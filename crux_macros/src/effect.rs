@@ -85,17 +85,6 @@ impl ToTokens for EffectStructReceiver {
                         }
                     }
                 }
-                impl TryFrom<&mut #effect_name> for <#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation {
-                    type Error = ();
-
-                    fn try_from(value: &mut #effect_name) -> Result<Self, Self::Error> {
-                        if let #effect_name::#variant(request) = value {
-                            Ok(request.operation.clone())
-                        } else {
-                            Err(())
-                        }
-                    }
-                }
             });
         }
 
@@ -237,17 +226,6 @@ mod tests {
                 }
             }
         }
-        impl TryFrom<&mut Effect>
-        for <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation {
-            type Error = ();
-            fn try_from(value: &mut Effect) -> Result<Self, Self::Error> {
-                if let Effect::Render(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         "###);
     }
 
@@ -378,34 +356,10 @@ mod tests {
                 }
             }
         }
-        impl TryFrom<&mut MyEffect>
-        for <crux_http::Http<
-            MyEvent,
-        > as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &mut MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Http(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl TryFrom<&MyEffect>
         for <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
             type Error = ();
             fn try_from(value: &MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::KeyValue(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
-        impl TryFrom<&mut MyEffect>
-        for <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &mut MyEffect) -> Result<Self, Self::Error> {
                 if let MyEffect::KeyValue(request) = value {
                     Ok(request.operation.clone())
                 } else {
@@ -424,17 +378,6 @@ mod tests {
                 }
             }
         }
-        impl TryFrom<&mut MyEffect>
-        for <Platform<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &mut MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Platform(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl TryFrom<&MyEffect>
         for <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
             type Error = ();
@@ -446,32 +389,10 @@ mod tests {
                 }
             }
         }
-        impl TryFrom<&mut MyEffect>
-        for <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &mut MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Render(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl TryFrom<&MyEffect>
         for <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
             type Error = ();
             fn try_from(value: &MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Time(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
-        impl TryFrom<&mut MyEffect>
-        for <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &mut MyEffect) -> Result<Self, Self::Error> {
                 if let MyEffect::Time(request) = value {
                     Ok(request.operation.clone())
                 } else {
