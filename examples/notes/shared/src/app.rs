@@ -555,8 +555,8 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let binding = app.update(Event::Open, &mut model);
-        let mut effects = binding
+        let update = app.update(Event::Open, &mut model);
+        let mut effects = update
             .into_effects()
             .filter(|e| KeyValueOperation::try_from(e).is_ok());
 
@@ -637,12 +637,10 @@ mod save_load_tests {
         assert_let!(
             TimerOperation::Start {
                 id: first_id,
-                millis
+                millis: 1000
             },
             request.operation.clone()
         );
-
-        assert_eq!(millis, 1000);
 
         // Tells app the timer was created
         let update = app
@@ -660,11 +658,11 @@ mod save_load_tests {
             .into_effects()
             .filter(|e| TimerOperation::try_from(e).is_ok());
 
-        let cancel = &mut timer_effects.next().unwrap();
+        let cancel = timer_effects.next().unwrap();
         assert_let!(Effect::Timer(cancel_request), cancel);
         assert_let!(
             TimerOperation::Cancel { id: cancel_id },
-            cancel_request.operation.clone()
+            cancel_request.operation
         );
 
         assert_eq!(cancel_id, first_id);
@@ -674,12 +672,10 @@ mod save_load_tests {
         assert_let!(
             TimerOperation::Start {
                 id: second_id,
-                millis
+                millis: 1000
             },
             start_request.operation.clone()
         );
-
-        assert_eq!(millis, 1000);
 
         assert_ne!(first_id, second_id);
 
@@ -704,22 +700,20 @@ mod save_load_tests {
         }
 
         // One more edit. Should result in a timer, but not in cancellation
-        let timer_effect = app
-            .update(Event::Backspace, &mut model)
+        let update = app.update(Event::Backspace, &mut model);
+        let mut timer_effects = update
             .into_effects()
-            .find(|e| TimerOperation::try_from(e).is_ok())
-            .unwrap();
+            .filter(|e| TimerOperation::try_from(e).is_ok());
 
-        assert_let!(Effect::Timer(third_request), timer_effect);
+        assert_let!(Effect::Timer(third_request), timer_effects.next().unwrap());
         assert_let!(
             TimerOperation::Start {
                 id: third_id,
-                millis
+                millis: 1000
             },
             third_request.operation
         );
-
-        assert_eq!(millis, 1000);
+        assert!(timer_effects.next().is_none());
 
         assert_ne!(third_id, second_id);
     }
