@@ -225,9 +225,9 @@ mod tests {
         let app = AppTester::<CatFacts, _>::default();
         let mut model = Model::default();
 
-        let mut update = app.update(Event::Fetch, &mut model);
+        let update = app.update(Event::Fetch, &mut model);
 
-        assert_let!(Effect::Http(request), update.effects.next().unwrap());
+        assert_let!(Effect::Http(request), update.effects().next().unwrap());
         let actual = &request.operation;
         let expected = &HttpRequest {
             method: "GET".into(),
@@ -246,7 +246,7 @@ mod tests {
 
         let mut update = app.update(Event::Fetch, &mut model);
 
-        assert_let!(Effect::Http(request), &mut update.effects.next().unwrap());
+        assert_let!(Effect::Http(request), update.effects_mut().next().unwrap());
         let actual = &request.operation;
         let expected = &HttpRequest {
             method: "GET".into(),

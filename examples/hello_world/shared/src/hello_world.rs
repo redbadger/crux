@@ -52,7 +52,7 @@ mod tests {
         let mut model = Model::default();
 
         // Call 'update' and request effects
-        let mut update = hello.update(Event::None, &mut model);
+        let update = hello.update(Event::None, &mut model);
 
         // Check update asked us to `Render`
         assert_effect!(update, Effect::Render(_));

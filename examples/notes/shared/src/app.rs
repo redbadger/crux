@@ -20,7 +20,7 @@ use self::note::EditObserver;
 #[derive(Default)]
 pub struct NoteEditor;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Event {
     Open,
     Insert(String),
@@ -328,7 +328,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::MoveCursor(5), &mut model);
+        let update = app.update(Event::MoveCursor(5), &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -347,7 +347,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Select(2, 5), &mut model);
+        let update = app.update(Event::Select(2, 5), &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -366,7 +366,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Insert("l to the ".to_string()), &mut model);
+        let update = app.update(Event::Insert("l to the ".to_string()), &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -385,7 +385,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Insert("ter skelter".to_string()), &mut model);
+        let update = app.update(Event::Insert("ter skelter".to_string()), &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -404,7 +404,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model);
+        let update = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -423,7 +423,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(
+        let update = app.update(
             Event::Replace(1, 1, "ey, just saying h".to_string()),
             &mut model,
         );
@@ -445,7 +445,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Backspace, &mut model);
+        let update = app.update(Event::Backspace, &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -464,7 +464,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Delete, &mut model);
+        let update = app.update(Event::Delete, &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -483,7 +483,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Delete, &mut model);
+        let update = app.update(Event::Delete, &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -502,7 +502,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut update = app.update(Event::Backspace, &mut model);
+        let update = app.update(Event::Backspace, &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -523,7 +523,7 @@ mod editing_tests {
         };
 
         // Replace the ' w' after the emoji
-        let mut update = app.update(Event::Replace(8, 10, "🥳🙌🏻 w".to_string()), &mut model);
+        let update = app.update(Event::Replace(8, 10, "🥳🙌🏻 w".to_string()), &mut model);
         assert_effect!(update, Effect::Render(_));
 
         let view = app.view(&model);
@@ -555,9 +555,9 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let mut effects = app
-            .update(Event::Open, &mut model)
-            .effects
+        let binding = app.update(Event::Open, &mut model);
+        let mut effects = binding
+            .into_effects()
             .filter(|e| KeyValueOperation::try_from(e).is_ok());
 
         assert_let!(Effect::KeyValue(request), &mut effects.next().unwrap());
@@ -571,7 +571,7 @@ mod save_load_tests {
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
-            let mut update = app.update(e, &mut model);
+            let update = app.update(e, &mut model);
             assert_effect!(update, Effect::Render(_));
         }
 
@@ -591,7 +591,7 @@ mod save_load_tests {
         // this will eventually take a document ID
         let mut effects = app
             .update(Event::Open, &mut model)
-            .effects
+            .into_effects()
             .filter(|e| KeyValueOperation::try_from(e).is_ok());
 
         assert_let!(Effect::KeyValue(request), &mut effects.next().unwrap());
@@ -607,7 +607,7 @@ mod save_load_tests {
         for e in update.events {
             let mut saves = app
                 .update(e, &mut model)
-                .effects
+                .into_effects()
                 .filter(|e| KeyValueOperation::try_from(e).is_ok());
 
             assert_let!(Effect::KeyValue(request), saves.next().unwrap());
@@ -630,7 +630,7 @@ mod save_load_tests {
         // An edit should trigger a timer
         let mut timer_effects = app
             .update(Event::Insert("something".to_string()), &mut model)
-            .effects
+            .into_effects()
             .filter(|e| TimerOperation::try_from(e).is_ok());
 
         assert_let!(Effect::Timer(request), &mut timer_effects.next().unwrap());
@@ -657,7 +657,7 @@ mod save_load_tests {
         // cancel the timer and start a new one
         let mut timer_effects = app
             .update(Event::Replace(1, 2, "a".to_string()), &mut model)
-            .effects
+            .into_effects()
             .filter(|e| TimerOperation::try_from(e).is_ok());
 
         let cancel = &mut timer_effects.next().unwrap();
@@ -704,12 +704,13 @@ mod save_load_tests {
         }
 
         // One more edit. Should result in a timer, but not in cancellation
-        let mut timer_effects = app
+        let timer_effect = app
             .update(Event::Backspace, &mut model)
-            .effects
-            .filter(|e| TimerOperation::try_from(e).is_ok());
+            .into_effects()
+            .find(|e| TimerOperation::try_from(e).is_ok())
+            .unwrap();
 
-        assert_let!(Effect::Timer(third_request), timer_effects.next().unwrap());
+        assert_let!(Effect::Timer(third_request), timer_effect);
         assert_let!(
             TimerOperation::Start {
                 id: third_id,
@@ -742,7 +743,7 @@ mod save_load_tests {
                 Event::EditTimer(TimerOutput::Finished { id: 1 }),
                 &mut model,
             )
-            .effects
+            .into_effects()
             .find(|e| KeyValueOperation::try_from(e).is_ok())
             .unwrap();
 
@@ -790,10 +791,10 @@ mod sync_tests {
         fn update(&mut self, event: Event) -> (Vec<Effect>, Vec<Event>) {
             let update = self.app.update(event, &mut self.model);
 
-            let events = update.events;
             let mut effects = Vec::new();
+            let events = update.events.clone();
 
-            for effect in update.effects {
+            for effect in update.into_effects() {
                 match effect {
                     Effect::PubSub(request) => match request.operation {
                         PubSubOperation::Subscribe => {
@@ -806,7 +807,6 @@ mod sync_tests {
                     ef => effects.push(ef),
                 }
             }
-
             (effects, events)
         }
 

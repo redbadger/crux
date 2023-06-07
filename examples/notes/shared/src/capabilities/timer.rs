@@ -8,7 +8,7 @@ pub enum TimerOperation {
     Cancel { id: u64 },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum TimerOutput {
     Created { id: u64 },
     Finished { id: u64 },

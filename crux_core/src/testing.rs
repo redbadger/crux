@@ -1,5 +1,5 @@
 //! Testing support for unit testing Crux apps.
-use std::{collections::VecDeque, rc::Rc};
+use std::rc::Rc;
 
 use anyhow::Result;
 
@@ -118,31 +118,22 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
 #[derive(Debug)]
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run
-    pub effects: Effects<Ef>,
+    pub effects: Vec<Ef>,
     /// Events dispatched from the update run
     pub events: Vec<Ev>,
 }
 
-#[derive(Debug)]
-pub struct Effects<Ef>(VecDeque<Ef>);
-
-impl<'a, Ef> Default for Effects<&'a Ef> {
-    fn default() -> Self {
-        Self(Default::default())
+impl<Ef, Ev> Update<Ef, Ev> {
+    pub fn into_effects(self) -> impl Iterator<Item = Ef> {
+        self.effects.into_iter()
     }
-}
 
-impl<Ef> Iterator for Effects<Ef> {
-    type Item = Ef;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.pop_front()
+    pub fn effects(&self) -> impl Iterator<Item = &Ef> {
+        self.effects.iter()
     }
-}
 
-impl<Ef> std::iter::FromIterator<Ef> for Effects<Ef> {
-    fn from_iter<T: IntoIterator<Item = Ef>>(iter: T) -> Self {
-        Self(iter.into_iter().collect())
+    pub fn effects_mut(&mut self) -> impl Iterator<Item = &mut Ef> {
+        self.effects.iter_mut()
     }
 }
 
@@ -154,7 +145,7 @@ impl<Ef> std::iter::FromIterator<Ef> for Effects<Ef> {
 /// # Example
 ///
 /// ```
-/// # use crux_core::testing::{Effects, Update};
+/// # use crux_core::testing::Update;
 /// # use std::collections::VecDeque;
 /// # enum Effect { Render(String) };
 /// # enum Event { None };
@@ -166,6 +157,6 @@ impl<Ef> std::iter::FromIterator<Ef> for Effects<Ef> {
 #[macro_export]
 macro_rules! assert_effect {
     ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
-        assert!($expression.effects.any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
+        assert!($expression.effects().any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
     };
 }
