@@ -68,6 +68,8 @@ afterEvaluate {
         tasks["bindGen"].dependsOn(tasks["deleteGenerated"])
         tasks["typesGen"].dependsOn(tasks["cargoBuild"], tasks["deleteGenerated"])
 
+        tasks["compileDebugKotlin"].dependsOn(tasks["typesGen"])
+
         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
     }
 }
