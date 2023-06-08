@@ -78,15 +78,15 @@ impl ToTokens for EffectStructReceiver {
             let map_fn = format_ident!("into_{}", field_name);
             filters.push(quote! {
                 impl #effect_name {
-                    pub fn #filter_fn(effect: &#effect_name) -> bool {
-                        if let #effect_name::#variant(_) = effect {
+                    pub fn #filter_fn(&self) -> bool {
+                        if let #effect_name::#variant(_) = self {
                             true
                         } else {
                             false
                         }
                     }
-                    pub fn #map_fn(effect: #effect_name) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
-                        if let #effect_name::#variant(request) = effect {
+                    pub fn #map_fn(self) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
+                        if let #effect_name::#variant(request) = self {
                             Some(request)
                         } else {
                             None
@@ -224,17 +224,17 @@ mod tests {
             }
         }
         impl Effect {
-            pub fn is_render(effect: &Effect) -> bool {
-                if let Effect::Render(_) = effect { true } else { false }
+            pub fn is_render(&self) -> bool {
+                if let Effect::Render(_) = self { true } else { false }
             }
             pub fn into_render(
-                effect: Effect,
+                self,
             ) -> Option<
                 crux_core::Request<
                     <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
                 >,
             > {
-                if let Effect::Render(request) = effect { Some(request) } else { None }
+                if let Effect::Render(request) = self { Some(request) } else { None }
             }
         }
         "###);
@@ -355,11 +355,11 @@ mod tests {
             }
         }
         impl MyEffect {
-            pub fn is_http(effect: &MyEffect) -> bool {
-                if let MyEffect::Http(_) = effect { true } else { false }
+            pub fn is_http(&self) -> bool {
+                if let MyEffect::Http(_) = self { true } else { false }
             }
             pub fn into_http(
-                effect: MyEffect,
+                self,
             ) -> Option<
                 crux_core::Request<
                     <crux_http::Http<
@@ -367,15 +367,15 @@ mod tests {
                     > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             > {
-                if let MyEffect::Http(request) = effect { Some(request) } else { None }
+                if let MyEffect::Http(request) = self { Some(request) } else { None }
             }
         }
         impl MyEffect {
-            pub fn is_key_value(effect: &MyEffect) -> bool {
-                if let MyEffect::KeyValue(_) = effect { true } else { false }
+            pub fn is_key_value(&self) -> bool {
+                if let MyEffect::KeyValue(_) = self { true } else { false }
             }
             pub fn into_key_value(
-                effect: MyEffect,
+                self,
             ) -> Option<
                 crux_core::Request<
                     <KeyValue<
@@ -383,15 +383,15 @@ mod tests {
                     > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             > {
-                if let MyEffect::KeyValue(request) = effect { Some(request) } else { None }
+                if let MyEffect::KeyValue(request) = self { Some(request) } else { None }
             }
         }
         impl MyEffect {
-            pub fn is_platform(effect: &MyEffect) -> bool {
-                if let MyEffect::Platform(_) = effect { true } else { false }
+            pub fn is_platform(&self) -> bool {
+                if let MyEffect::Platform(_) = self { true } else { false }
             }
             pub fn into_platform(
-                effect: MyEffect,
+                self,
             ) -> Option<
                 crux_core::Request<
                     <Platform<
@@ -399,35 +399,35 @@ mod tests {
                     > as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             > {
-                if let MyEffect::Platform(request) = effect { Some(request) } else { None }
+                if let MyEffect::Platform(request) = self { Some(request) } else { None }
             }
         }
         impl MyEffect {
-            pub fn is_render(effect: &MyEffect) -> bool {
-                if let MyEffect::Render(_) = effect { true } else { false }
+            pub fn is_render(&self) -> bool {
+                if let MyEffect::Render(_) = self { true } else { false }
             }
             pub fn into_render(
-                effect: MyEffect,
+                self,
             ) -> Option<
                 crux_core::Request<
                     <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             > {
-                if let MyEffect::Render(request) = effect { Some(request) } else { None }
+                if let MyEffect::Render(request) = self { Some(request) } else { None }
             }
         }
         impl MyEffect {
-            pub fn is_time(effect: &MyEffect) -> bool {
-                if let MyEffect::Time(_) = effect { true } else { false }
+            pub fn is_time(&self) -> bool {
+                if let MyEffect::Time(_) = self { true } else { false }
             }
             pub fn into_time(
-                effect: MyEffect,
+                self,
             ) -> Option<
                 crux_core::Request<
                     <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
                 >,
             > {
-                if let MyEffect::Time(request) = effect { Some(request) } else { None }
+                if let MyEffect::Time(request) = self { Some(request) } else { None }
             }
         }
         "###);
