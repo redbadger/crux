@@ -157,9 +157,7 @@ async fn sse(url: &str) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>, 
     Ok(Box::pin(stream::try_unfold(stream, |mut stream| async {
         match stream.next().await {
             Some(Ok(chunk)) => {
-                let chunk: Uint8Array = chunk
-                    .try_into()
-                    .expect("should cast from JSValue into bytes");
+                let chunk: Uint8Array = chunk.into();
 
                 Ok(Some((chunk.to_vec(), stream)))
             }
