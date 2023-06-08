@@ -556,18 +556,17 @@ mod save_load_tests {
 
         // this will eventually take a document ID
         let update = app.update(Event::Open, &mut model);
-        let mut effects = update
+        let mut request = update
             .into_effects()
-            .filter(|e| KeyValueOperation::try_from(e).is_ok());
+            .find_map(Effect::map_key_value)
+            .unwrap();
 
-        assert_let!(Effect::KeyValue(request), &mut effects.next().unwrap());
         assert_let!(KeyValueOperation::Read(key), &request.operation);
-
-        assert_eq!(key, &"note".to_string());
+        assert_eq!(key, "note");
 
         // Read was successful
         let response = KeyValueOutput::Read(Some(note.save()));
-        let update = app.resolve(request, response).expect("should update");
+        let update = app.resolve(&mut request, response).expect("should update");
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
@@ -589,31 +588,30 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let mut effects = app
+        let mut request = app
             .update(Event::Open, &mut model)
             .into_effects()
-            .filter(|e| KeyValueOperation::try_from(e).is_ok());
+            .find_map(Effect::map_key_value)
+            .unwrap();
 
-        assert_let!(Effect::KeyValue(request), &mut effects.next().unwrap());
         assert_let!(KeyValueOperation::Read(key), &request.operation);
-        assert_eq!(key, &"note".to_string());
+        assert_eq!(key, "note");
 
         // Read was unsuccessful
         let update = app
-            .resolve(request, KeyValueOutput::Read(None))
+            .resolve(&mut request, KeyValueOutput::Read(None))
             .expect("should update");
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
-            let mut saves = app
+            let save = app
                 .update(e, &mut model)
                 .into_effects()
-                .filter(|e| KeyValueOperation::try_from(e).is_ok());
+                .find_map(Effect::map_key_value)
+                .unwrap();
 
-            assert_let!(Effect::KeyValue(request), saves.next().unwrap());
-            assert_let!(KeyValueOperation::Write(key, _), &request.operation);
-
-            assert_eq!(key, &"note".to_string());
+            assert_let!(KeyValueOperation::Write(key, _), &save.operation);
+            assert_eq!(key, "note");
         }
     }
 
@@ -628,12 +626,12 @@ mod save_load_tests {
         };
 
         // An edit should trigger a timer
-        let mut timer_effects = app
+        let mut request = app
             .update(Event::Insert("something".to_string()), &mut model)
             .into_effects()
-            .filter(|e| TimerOperation::try_from(e).is_ok());
+            .find_map(Effect::map_timer)
+            .unwrap();
 
-        assert_let!(Effect::Timer(request), &mut timer_effects.next().unwrap());
         assert_let!(
             TimerOperation::Start {
                 id: first_id,
@@ -644,7 +642,7 @@ mod save_load_tests {
 
         // Tells app the timer was created
         let update = app
-            .resolve(request, TimerOutput::Created { id: first_id })
+            .resolve(&mut request, TimerOutput::Created { id: first_id })
             .expect("should update");
         for event in update.events {
             println!("Event: {event:?}");
@@ -653,13 +651,12 @@ mod save_load_tests {
 
         // Before the timer fires, insert another character, which should
         // cancel the timer and start a new one
-        let mut timer_effects = app
+        let mut timer_requests = app
             .update(Event::Replace(1, 2, "a".to_string()), &mut model)
             .into_effects()
-            .filter(|e| TimerOperation::try_from(e).is_ok());
+            .filter_map(Effect::map_timer);
 
-        let cancel = timer_effects.next().unwrap();
-        assert_let!(Effect::Timer(cancel_request), cancel);
+        let cancel_request = timer_requests.next().unwrap();
         assert_let!(
             TimerOperation::Cancel { id: cancel_id },
             cancel_request.operation
@@ -667,8 +664,7 @@ mod save_load_tests {
 
         assert_eq!(cancel_id, first_id);
 
-        let start = &mut timer_effects.next().unwrap();
-        assert_let!(Effect::Timer(start_request), start);
+        let start_request = &mut timer_requests.next().unwrap();
         assert_let!(
             TimerOperation::Start {
                 id: second_id,
@@ -701,19 +697,16 @@ mod save_load_tests {
 
         // One more edit. Should result in a timer, but not in cancellation
         let update = app.update(Event::Backspace, &mut model);
-        let mut timer_effects = update
-            .into_effects()
-            .filter(|e| TimerOperation::try_from(e).is_ok());
+        let mut timer_requests = update.into_effects().filter_map(Effect::map_timer);
 
-        assert_let!(Effect::Timer(third_request), timer_effects.next().unwrap());
         assert_let!(
             TimerOperation::Start {
                 id: third_id,
                 millis: 1000
             },
-            third_request.operation
+            timer_requests.next().unwrap().operation
         );
-        assert!(timer_effects.next().is_none());
+        assert!(timer_requests.next().is_none());
 
         assert_ne!(third_id, second_id);
     }
@@ -732,19 +725,21 @@ mod save_load_tests {
         };
 
         // An edit should trigger a timer
-        let write_effect = app
+        let write_request = app
             .update(
                 Event::EditTimer(TimerOutput::Finished { id: 1 }),
                 &mut model,
             )
             .into_effects()
-            .find(|e| KeyValueOperation::try_from(e).is_ok())
+            .find_map(Effect::map_key_value)
             .unwrap();
 
-        assert_let!(Effect::KeyValue(request), write_effect);
-        assert_let!(KeyValueOperation::Write(key, value), &request.operation);
+        assert_let!(
+            KeyValueOperation::Write(key, value),
+            &write_request.operation
+        );
 
-        assert_eq!(key, &"note".to_string());
+        assert_eq!(key, "note");
         assert_eq!(value, &model.note.save());
     }
 }

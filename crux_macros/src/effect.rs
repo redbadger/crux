@@ -73,6 +73,9 @@ impl ToTokens for EffectStructReceiver {
             with_context_fields.push(quote! { #field_name: #capability::new(context.specialize(#effect_name::#variant)) });
             ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
             match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+
+            let filter_predicate_ident = format_ident!("filter_{}", field_name);
+            let map_predicate_ident = format_ident!("map_{}", field_name);
             try_from_impls.push(quote! {
                 impl TryFrom<&#effect_name> for <#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation {
                     type Error = ();
@@ -82,6 +85,23 @@ impl ToTokens for EffectStructReceiver {
                             Ok(request.operation.clone())
                         } else {
                             Err(())
+                        }
+                    }
+                }
+
+                impl #effect_name {
+                    pub fn #filter_predicate_ident(effect: &#effect_name) -> bool {
+                        if let #effect_name::#variant(_) = effect {
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    pub fn #map_predicate_ident(effect: #effect_name) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
+                        if let #effect_name::#variant(request) = effect {
+                            Some(request)
+                        } else {
+                            None
                         }
                     }
                 }
@@ -226,6 +246,20 @@ mod tests {
                 }
             }
         }
+        impl Effect {
+            pub fn filter_render(effect: &Effect) -> bool {
+                if let Effect::Render(_) = effect { true } else { false }
+            }
+            pub fn map_render(
+                effect: Effect,
+            ) -> Option<
+                crux_core::Request<
+                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                >,
+            > {
+                if let Effect::Render(request) = effect { Some(request) } else { None }
+            }
+        }
         "###);
     }
 
@@ -356,6 +390,22 @@ mod tests {
                 }
             }
         }
+        impl MyEffect {
+            pub fn filter_http(effect: &MyEffect) -> bool {
+                if let MyEffect::Http(_) = effect { true } else { false }
+            }
+            pub fn map_http(
+                effect: MyEffect,
+            ) -> Option<
+                crux_core::Request<
+                    <crux_http::Http<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Http(request) = effect { Some(request) } else { None }
+            }
+        }
         impl TryFrom<&MyEffect>
         for <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
             type Error = ();
@@ -365,6 +415,22 @@ mod tests {
                 } else {
                     Err(())
                 }
+            }
+        }
+        impl MyEffect {
+            pub fn filter_key_value(effect: &MyEffect) -> bool {
+                if let MyEffect::KeyValue(_) = effect { true } else { false }
+            }
+            pub fn map_key_value(
+                effect: MyEffect,
+            ) -> Option<
+                crux_core::Request<
+                    <KeyValue<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::KeyValue(request) = effect { Some(request) } else { None }
             }
         }
         impl TryFrom<&MyEffect>
@@ -378,6 +444,22 @@ mod tests {
                 }
             }
         }
+        impl MyEffect {
+            pub fn filter_platform(effect: &MyEffect) -> bool {
+                if let MyEffect::Platform(_) = effect { true } else { false }
+            }
+            pub fn map_platform(
+                effect: MyEffect,
+            ) -> Option<
+                crux_core::Request<
+                    <Platform<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Platform(request) = effect { Some(request) } else { None }
+            }
+        }
         impl TryFrom<&MyEffect>
         for <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
             type Error = ();
@@ -389,6 +471,20 @@ mod tests {
                 }
             }
         }
+        impl MyEffect {
+            pub fn filter_render(effect: &MyEffect) -> bool {
+                if let MyEffect::Render(_) = effect { true } else { false }
+            }
+            pub fn map_render(
+                effect: MyEffect,
+            ) -> Option<
+                crux_core::Request<
+                    <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Render(request) = effect { Some(request) } else { None }
+            }
+        }
         impl TryFrom<&MyEffect>
         for <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
             type Error = ();
@@ -398,6 +494,20 @@ mod tests {
                 } else {
                     Err(())
                 }
+            }
+        }
+        impl MyEffect {
+            pub fn filter_time(effect: &MyEffect) -> bool {
+                if let MyEffect::Time(_) = effect { true } else { false }
+            }
+            pub fn map_time(
+                effect: MyEffect,
+            ) -> Option<
+                crux_core::Request<
+                    <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Time(request) = effect { Some(request) } else { None }
             }
         }
         "###);
