@@ -556,13 +556,13 @@ mod save_load_tests {
 
         // this will eventually take a document ID
         let update = app.update(Event::Open, &mut model);
-        let mut request = update
-            .into_effects()
-            .find_map(Effect::map_key_value)
-            .unwrap();
+        let requests = &mut update.into_effects().filter_map(Effect::map_key_value);
 
+        let mut request = requests.next().unwrap();
         assert_let!(KeyValueOperation::Read(key), &request.operation);
         assert_eq!(key, "note");
+
+        assert!(requests.next().is_none());
 
         // Read was successful
         let response = KeyValueOutput::Read(Some(note.save()));
@@ -588,14 +588,16 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let mut request = app
+        let requests = &mut app
             .update(Event::Open, &mut model)
             .into_effects()
-            .find_map(Effect::map_key_value)
-            .unwrap();
+            .filter_map(Effect::map_key_value);
 
+        let mut request = requests.next().unwrap();
         assert_let!(KeyValueOperation::Read(key), &request.operation);
         assert_eq!(key, "note");
+
+        assert!(requests.next().is_none());
 
         // Read was unsuccessful
         let update = app
@@ -626,12 +628,12 @@ mod save_load_tests {
         };
 
         // An edit should trigger a timer
-        let mut request = app
+        let requests = &mut app
             .update(Event::Insert("something".to_string()), &mut model)
             .into_effects()
-            .find_map(Effect::map_timer)
-            .unwrap();
+            .filter_map(Effect::map_timer);
 
+        let mut request = requests.next().unwrap();
         assert_let!(
             TimerOperation::Start {
                 id: first_id,
@@ -639,6 +641,8 @@ mod save_load_tests {
             },
             request.operation.clone()
         );
+
+        assert!(requests.next().is_none());
 
         // Tells app the timer was created
         let update = app
@@ -651,20 +655,19 @@ mod save_load_tests {
 
         // Before the timer fires, insert another character, which should
         // cancel the timer and start a new one
-        let mut timer_requests = app
+        let mut requests = app
             .update(Event::Replace(1, 2, "a".to_string()), &mut model)
             .into_effects()
             .filter_map(Effect::map_timer);
 
-        let cancel_request = timer_requests.next().unwrap();
+        let cancel_request = requests.next().unwrap();
         assert_let!(
             TimerOperation::Cancel { id: cancel_id },
             cancel_request.operation
         );
-
         assert_eq!(cancel_id, first_id);
 
-        let start_request = &mut timer_requests.next().unwrap();
+        let start_request = &mut requests.next().unwrap();
         assert_let!(
             TimerOperation::Start {
                 id: second_id,
@@ -672,8 +675,9 @@ mod save_load_tests {
             },
             start_request.operation.clone()
         );
-
         assert_ne!(first_id, second_id);
+
+        assert!(requests.next().is_none());
 
         // Tell app the second timer was created
         let update = app
