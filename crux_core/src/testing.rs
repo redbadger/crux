@@ -146,7 +146,6 @@ impl<Ef, Ev> Update<Ef, Ev> {
 ///
 /// ```
 /// # use crux_core::testing::Update;
-/// # use std::collections::VecDeque;
 /// # enum Effect { Render(String) };
 /// # enum Event { None };
 /// # let effects = vec![Effect::Render("test".to_string())].into_iter().collect();

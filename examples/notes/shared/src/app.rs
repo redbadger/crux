@@ -556,7 +556,7 @@ mod save_load_tests {
 
         // this will eventually take a document ID
         let update = app.update(Event::Open, &mut model);
-        let requests = &mut update.into_effects().filter_map(Effect::map_key_value);
+        let requests = &mut update.into_effects().filter_map(Effect::into_key_value);
 
         let mut request = requests.next().unwrap();
         assert_let!(KeyValueOperation::Read(key), &request.operation);
@@ -591,7 +591,7 @@ mod save_load_tests {
         let requests = &mut app
             .update(Event::Open, &mut model)
             .into_effects()
-            .filter_map(Effect::map_key_value);
+            .filter_map(Effect::into_key_value);
 
         let mut request = requests.next().unwrap();
         assert_let!(KeyValueOperation::Read(key), &request.operation);
@@ -609,7 +609,7 @@ mod save_load_tests {
             let save = app
                 .update(e, &mut model)
                 .into_effects()
-                .find_map(Effect::map_key_value)
+                .find_map(Effect::into_key_value)
                 .unwrap();
 
             assert_let!(KeyValueOperation::Write(key, _), &save.operation);
@@ -631,7 +631,7 @@ mod save_load_tests {
         let requests = &mut app
             .update(Event::Insert("something".to_string()), &mut model)
             .into_effects()
-            .filter_map(Effect::map_timer);
+            .filter_map(Effect::into_timer);
 
         let mut request = requests.next().unwrap();
         assert_let!(
@@ -658,7 +658,7 @@ mod save_load_tests {
         let mut requests = app
             .update(Event::Replace(1, 2, "a".to_string()), &mut model)
             .into_effects()
-            .filter_map(Effect::map_timer);
+            .filter_map(Effect::into_timer);
 
         let cancel_request = requests.next().unwrap();
         assert_let!(
@@ -701,7 +701,7 @@ mod save_load_tests {
 
         // One more edit. Should result in a timer, but not in cancellation
         let update = app.update(Event::Backspace, &mut model);
-        let mut timer_requests = update.into_effects().filter_map(Effect::map_timer);
+        let mut timer_requests = update.into_effects().filter_map(Effect::into_timer);
 
         assert_let!(
             TimerOperation::Start {
@@ -734,7 +734,7 @@ mod save_load_tests {
                 &mut model,
             )
             .into_effects()
-            .find_map(Effect::map_key_value)
+            .find_map(Effect::into_key_value)
             .unwrap();
 
         assert_let!(

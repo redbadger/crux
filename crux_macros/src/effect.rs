@@ -66,7 +66,7 @@ impl ToTokens for EffectStructReceiver {
         let mut with_context_fields = Vec::new();
         let mut ffi_variants = Vec::new();
         let mut match_arms = Vec::new();
-        let mut try_from_impls = Vec::new();
+        let mut filters = Vec::new();
 
         for (field_name, (capability, variant, event)) in fields.iter() {
             variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
@@ -74,30 +74,18 @@ impl ToTokens for EffectStructReceiver {
             ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
             match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
 
-            let filter_predicate_ident = format_ident!("filter_{}", field_name);
-            let map_predicate_ident = format_ident!("map_{}", field_name);
-            try_from_impls.push(quote! {
-                impl TryFrom<&#effect_name> for <#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation {
-                    type Error = ();
-
-                    fn try_from(value: &#effect_name) -> Result<Self, Self::Error> {
-                        if let #effect_name::#variant(request) = value {
-                            Ok(request.operation.clone())
-                        } else {
-                            Err(())
-                        }
-                    }
-                }
-
+            let filter_fn = format_ident!("is_{}", field_name);
+            let map_fn = format_ident!("into_{}", field_name);
+            filters.push(quote! {
                 impl #effect_name {
-                    pub fn #filter_predicate_ident(effect: &#effect_name) -> bool {
+                    pub fn #filter_fn(effect: &#effect_name) -> bool {
                         if let #effect_name::#variant(_) = effect {
                             true
                         } else {
                             false
                         }
                     }
-                    pub fn #map_predicate_ident(effect: #effect_name) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
+                    pub fn #map_fn(effect: #effect_name) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
                         if let #effect_name::#variant(request) = effect {
                             Some(request)
                         } else {
@@ -138,7 +126,7 @@ impl ToTokens for EffectStructReceiver {
                 }
             }
 
-            #(#try_from_impls)*
+            #(#filters)*
         })
     }
 }
@@ -235,22 +223,11 @@ mod tests {
                 }
             }
         }
-        impl TryFrom<&Effect>
-        for <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation {
-            type Error = ();
-            fn try_from(value: &Effect) -> Result<Self, Self::Error> {
-                if let Effect::Render(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl Effect {
-            pub fn filter_render(effect: &Effect) -> bool {
+            pub fn is_render(effect: &Effect) -> bool {
                 if let Effect::Render(_) = effect { true } else { false }
             }
-            pub fn map_render(
+            pub fn into_render(
                 effect: Effect,
             ) -> Option<
                 crux_core::Request<
@@ -377,24 +354,11 @@ mod tests {
                 }
             }
         }
-        impl TryFrom<&MyEffect>
-        for <crux_http::Http<
-            MyEvent,
-        > as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Http(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl MyEffect {
-            pub fn filter_http(effect: &MyEffect) -> bool {
+            pub fn is_http(effect: &MyEffect) -> bool {
                 if let MyEffect::Http(_) = effect { true } else { false }
             }
-            pub fn map_http(
+            pub fn into_http(
                 effect: MyEffect,
             ) -> Option<
                 crux_core::Request<
@@ -406,22 +370,11 @@ mod tests {
                 if let MyEffect::Http(request) = effect { Some(request) } else { None }
             }
         }
-        impl TryFrom<&MyEffect>
-        for <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::KeyValue(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl MyEffect {
-            pub fn filter_key_value(effect: &MyEffect) -> bool {
+            pub fn is_key_value(effect: &MyEffect) -> bool {
                 if let MyEffect::KeyValue(_) = effect { true } else { false }
             }
-            pub fn map_key_value(
+            pub fn into_key_value(
                 effect: MyEffect,
             ) -> Option<
                 crux_core::Request<
@@ -433,22 +386,11 @@ mod tests {
                 if let MyEffect::KeyValue(request) = effect { Some(request) } else { None }
             }
         }
-        impl TryFrom<&MyEffect>
-        for <Platform<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Platform(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl MyEffect {
-            pub fn filter_platform(effect: &MyEffect) -> bool {
+            pub fn is_platform(effect: &MyEffect) -> bool {
                 if let MyEffect::Platform(_) = effect { true } else { false }
             }
-            pub fn map_platform(
+            pub fn into_platform(
                 effect: MyEffect,
             ) -> Option<
                 crux_core::Request<
@@ -460,22 +402,11 @@ mod tests {
                 if let MyEffect::Platform(request) = effect { Some(request) } else { None }
             }
         }
-        impl TryFrom<&MyEffect>
-        for <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Render(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl MyEffect {
-            pub fn filter_render(effect: &MyEffect) -> bool {
+            pub fn is_render(effect: &MyEffect) -> bool {
                 if let MyEffect::Render(_) = effect { true } else { false }
             }
-            pub fn map_render(
+            pub fn into_render(
                 effect: MyEffect,
             ) -> Option<
                 crux_core::Request<
@@ -485,22 +416,11 @@ mod tests {
                 if let MyEffect::Render(request) = effect { Some(request) } else { None }
             }
         }
-        impl TryFrom<&MyEffect>
-        for <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation {
-            type Error = ();
-            fn try_from(value: &MyEffect) -> Result<Self, Self::Error> {
-                if let MyEffect::Time(request) = value {
-                    Ok(request.operation.clone())
-                } else {
-                    Err(())
-                }
-            }
-        }
         impl MyEffect {
-            pub fn filter_time(effect: &MyEffect) -> bool {
+            pub fn is_time(effect: &MyEffect) -> bool {
                 if let MyEffect::Time(_) = effect { true } else { false }
             }
-            pub fn map_time(
+            pub fn into_time(
                 effect: MyEffect,
             ) -> Option<
                 crux_core::Request<
