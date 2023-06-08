@@ -728,7 +728,6 @@ mod save_load_tests {
             },
         };
 
-        // An edit should trigger a timer
         let write_request = app
             .update(
                 Event::EditTimer(TimerOutput::Finished { id: 1 }),
