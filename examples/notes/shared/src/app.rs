@@ -566,7 +566,7 @@ mod save_load_tests {
 
         // Read was successful
         let response = KeyValueOutput::Read(Some(note.save()));
-        let update = app.resolve(&mut request, response).expect("should update");
+        let update = app.resolve(&mut request, response).unwrap();
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
@@ -602,7 +602,7 @@ mod save_load_tests {
         // Read was unsuccessful
         let update = app
             .resolve(&mut request, KeyValueOutput::Read(None))
-            .expect("should update");
+            .unwrap();
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
@@ -647,7 +647,7 @@ mod save_load_tests {
         // Tells app the timer was created
         let update = app
             .resolve(&mut request, TimerOutput::Created { id: first_id })
-            .expect("should update");
+            .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -682,7 +682,7 @@ mod save_load_tests {
         // Tell app the second timer was created
         let update = app
             .resolve(start_request, TimerOutput::Created { id: second_id })
-            .expect("should update");
+            .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -693,7 +693,7 @@ mod save_load_tests {
         // Fire the timer
         let update = app
             .resolve(start_request, TimerOutput::Finished { id: second_id })
-            .expect("should update");
+            .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
