@@ -158,7 +158,7 @@ Here's our test:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crux_core::{render::RenderOperation, testing::AppTester};
+    use crux_core::{assert_effect, testing::AppTester};
 
     #[test]
     fn hello_says_hello_world() {
@@ -169,12 +169,10 @@ mod tests {
         let update = hello.update(Event::None, &mut model);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        let expected_effect = &Effect::Render(RenderOperation);
-        assert_eq!(actual_effect, expected_effect);
+        assert_effect!(update, Effect::Render(_));
 
         // Make sure the view matches our expectations
-        let actual_view = &hello.view(&mut model);
+        let actual_view = &hello.view(&model).data;
         let expected_view = "Hello World";
         assert_eq!(actual_view, expected_view);
     }
@@ -264,7 +262,7 @@ Pretty straightforward, we just do what we're told, update the state, and then t
 #[cfg(test)]
 mod test {
     use super::*;
-    use crux_core::{render::RenderOperation, testing::AppTester};
+    use crux_core::{assert_effect, testing::AppTester};
 
     #[test]
     fn renders() {
@@ -274,17 +272,15 @@ mod test {
         let update = app.update(Event::Reset, &mut model);
 
         // Check update asked us to `Render`
-        let actual_effect = &update.effects[0];
-        let expected_effect = &Effect::Render(RenderOperation);
-        assert_eq!(actual_effect, expected_effect);
+        assert_effect!(update, Effect::Render(_));
     }
 
     #[test]
     fn shows_initial_count() {
         let app = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
+        let model = Model::default();
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 0";
         assert_eq!(actual_view, expected_view);
     }
@@ -294,11 +290,14 @@ mod test {
         let app = AppTester::<Hello, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Increment, &mut model);
+        let update = app.update(Event::Increment, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
+
+        // Check update asked us to `Render`
+        assert_effect!(update, Effect::Render(_));
     }
 
     #[test]
@@ -306,11 +305,14 @@ mod test {
         let app = AppTester::<Hello, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Decrement, &mut model);
+        let update = app.update(Event::Decrement, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: -1";
         assert_eq!(actual_view, expected_view);
+
+        // Check update asked us to `Render`
+        assert_effect!(update, Effect::Render(_));
     }
 
     #[test]
@@ -321,7 +323,7 @@ mod test {
         app.update(Event::Increment, &mut model);
         app.update(Event::Reset, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 0";
         assert_eq!(actual_view, expected_view);
     }
@@ -337,7 +339,7 @@ mod test {
         app.update(Event::Increment, &mut model);
         app.update(Event::Increment, &mut model);
 
-        let actual_view = app.view(&mut model);
+        let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
     }
@@ -539,23 +541,28 @@ fn get_counter() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let update = app.update(Event::Get, &mut model);
+    let mut update = app.update(Event::Get, &mut model);
 
-    let actual = &update.effects[0];
-    let expected = &Effect::Http(HttpRequest {
+    assert_let!(Effect::Http(request), update.effects_mut().next().unwrap());
+    let actual = &request.operation;
+    let expected = &HttpRequest {
         method: "GET".to_string(),
         url: "https://crux-counter.fly.dev/".to_string(),
-    });
+        headers: vec![],
+        body: vec![],
+    };
+
     assert_eq!(actual, expected);
 
-    let update = update.effects[0].resolve(&HttpResponse {
+    let response = HttpResponse {
         status: 200,
         body: serde_json::to_vec(&Counter {
             value: 1,
             updated_at: 1,
         })
         .unwrap(),
-    });
+    };
+    let update = app.resolve(request, response).expect("an update");
 
     let actual = update.events;
     let expected = vec![Event::new_set(1, 1)];
@@ -569,9 +576,7 @@ fn set_counter() {
 
     let update = app.update(Event::new_set(1, 1), &mut model);
 
-    let actual = &update.effects[0];
-    let expected = &Effect::Render(RenderOperation);
-    assert_eq!(actual, expected);
+    assert_effect!(update, Effect::Render(_));
 
     let actual = model.count.value;
     let expected = 1;

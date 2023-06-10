@@ -20,7 +20,7 @@ use self::note::EditObserver;
 #[derive(Default)]
 pub struct NoteEditor;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Event {
     Open,
     Insert(String),
@@ -556,22 +556,17 @@ mod save_load_tests {
 
         // this will eventually take a document ID
         let update = app.update(Event::Open, &mut model);
-        let mut key_value_effs = update
-            .effects
-            .into_iter()
-            .filter(|e| matches!(e, Effect::KeyValue(_req)))
-            .collect::<Vec<_>>();
+        let requests = &mut update.into_effects().filter_map(Effect::into_key_value);
 
-        assert_eq!(key_value_effs.len(), 1);
-
-        assert_let!(Effect::KeyValue(request), &mut key_value_effs[0]);
+        let mut request = requests.next().unwrap();
         assert_let!(KeyValueOperation::Read(key), &request.operation);
+        assert_eq!(key, "note");
 
-        assert_eq!(key, &"note".to_string());
+        assert!(requests.next().is_none());
 
         // Read was successful
         let response = KeyValueOutput::Read(Some(note.save()));
-        let update = app.resolve(request, response).expect("should update");
+        let update = app.resolve(&mut request, response).unwrap();
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
@@ -593,36 +588,32 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let update = app.update(Event::Open, &mut model);
-        let mut key_value_effs = update
-            .effects
-            .into_iter()
-            .filter(|e| matches!(e, Effect::KeyValue(_op)))
-            .collect::<Vec<_>>();
+        let requests = &mut app
+            .update(Event::Open, &mut model)
+            .into_effects()
+            .filter_map(Effect::into_key_value);
 
-        assert_eq!(key_value_effs.len(), 1);
-        assert_let!(Effect::KeyValue(request), &mut key_value_effs[0]);
+        let mut request = requests.next().unwrap();
         assert_let!(KeyValueOperation::Read(key), &request.operation);
-        assert_eq!(key, &"note".to_string());
+        assert_eq!(key, "note");
+
+        assert!(requests.next().is_none());
 
         // Read was unsuccessful
         let update = app
-            .resolve(request, KeyValueOutput::Read(None))
-            .expect("should update");
+            .resolve(&mut request, KeyValueOutput::Read(None))
+            .unwrap();
         assert_eq!(update.events.len(), 1);
 
         for e in update.events {
-            let update = app.update(e, &mut model);
-            let saves = update
-                .effects
-                .iter()
-                .filter(|e| matches!(e, Effect::KeyValue(_)))
-                .collect::<Vec<_>>();
+            let save = app
+                .update(e, &mut model)
+                .into_effects()
+                .find_map(Effect::into_key_value)
+                .unwrap();
 
-            assert_let!(Effect::KeyValue(request), saves[0]);
-            assert_let!(KeyValueOperation::Write(key, _), &request.operation);
-
-            assert_eq!(key, &"note".to_string());
+            assert_let!(KeyValueOperation::Write(key, _), &save.operation);
+            assert_eq!(key, "note");
         }
     }
 
@@ -637,30 +628,26 @@ mod save_load_tests {
         };
 
         // An edit should trigger a timer
-        let update = app.update(Event::Insert("something".to_string()), &mut model);
-        let mut timer_effects: Vec<_> = update
-            .effects
-            .into_iter()
-            .filter(|e| matches!(e, Effect::Timer(_)))
-            .collect();
+        let requests = &mut app
+            .update(Event::Insert("something".to_string()), &mut model)
+            .into_effects()
+            .filter_map(Effect::into_timer);
 
-        assert_eq!(timer_effects.len(), 1);
-
-        assert_let!(Effect::Timer(request), &mut timer_effects[0]);
+        let mut request = requests.next().unwrap();
         assert_let!(
             TimerOperation::Start {
                 id: first_id,
-                millis
+                millis: 1000
             },
             request.operation.clone()
         );
 
-        assert_eq!(millis, 1000);
+        assert!(requests.next().is_none());
 
         // Tells app the timer was created
         let update = app
-            .resolve(request, TimerOutput::Created { id: first_id })
-            .expect("should update");
+            .resolve(&mut request, TimerOutput::Created { id: first_id })
+            .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -668,43 +655,34 @@ mod save_load_tests {
 
         // Before the timer fires, insert another character, which should
         // cancel the timer and start a new one
-        let update = app.update(Event::Replace(1, 2, "a".to_string()), &mut model);
+        let mut requests = app
+            .update(Event::Replace(1, 2, "a".to_string()), &mut model)
+            .into_effects()
+            .filter_map(Effect::into_timer);
 
-        let mut timer_effects: Vec<_> = update
-            .effects
-            .into_iter()
-            .filter(|e| matches!(e, Effect::Timer(_)))
-            .collect();
-
-        assert_eq!(timer_effects.len(), 2);
-
-        let cancel = &mut timer_effects[0];
-        assert_let!(Effect::Timer(cancel_request), cancel);
+        let cancel_request = requests.next().unwrap();
         assert_let!(
             TimerOperation::Cancel { id: cancel_id },
-            cancel_request.operation.clone()
+            cancel_request.operation
         );
-
         assert_eq!(cancel_id, first_id);
 
-        let start = &mut timer_effects[1];
-        assert_let!(Effect::Timer(start_request), start);
+        let start_request = &mut requests.next().unwrap();
         assert_let!(
             TimerOperation::Start {
                 id: second_id,
-                millis
+                millis: 1000
             },
             start_request.operation.clone()
         );
-
-        assert_eq!(millis, 1000);
-
         assert_ne!(first_id, second_id);
+
+        assert!(requests.next().is_none());
 
         // Tell app the second timer was created
         let update = app
             .resolve(start_request, TimerOutput::Created { id: second_id })
-            .expect("should update");
+            .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -715,7 +693,7 @@ mod save_load_tests {
         // Fire the timer
         let update = app
             .resolve(start_request, TimerOutput::Finished { id: second_id })
-            .expect("should update");
+            .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
             app.update(event, &mut model);
@@ -723,24 +701,16 @@ mod save_load_tests {
 
         // One more edit. Should result in a timer, but not in cancellation
         let update = app.update(Event::Backspace, &mut model);
-        let timer_effects: Vec<_> = update
-            .effects
-            .iter()
-            .filter(|e| matches!(e, Effect::Timer(_)))
-            .collect();
+        let mut timer_requests = update.into_effects().filter_map(Effect::into_timer);
 
-        assert_eq!(timer_effects.len(), 1);
-
-        assert_let!(Effect::Timer(third_request), timer_effects[0]);
         assert_let!(
             TimerOperation::Start {
                 id: third_id,
-                millis
+                millis: 1000
             },
-            third_request.operation.clone()
+            timer_requests.next().unwrap().operation
         );
-
-        assert_eq!(millis, 1000);
+        assert!(timer_requests.next().is_none());
 
         assert_ne!(third_id, second_id);
     }
@@ -758,21 +728,21 @@ mod save_load_tests {
             },
         };
 
-        // An edit should trigger a timer
-        let update = app.update(
-            Event::EditTimer(TimerOutput::Finished { id: 1 }),
-            &mut model,
+        let write_request = app
+            .update(
+                Event::EditTimer(TimerOutput::Finished { id: 1 }),
+                &mut model,
+            )
+            .into_effects()
+            .find_map(Effect::into_key_value)
+            .unwrap();
+
+        assert_let!(
+            KeyValueOperation::Write(key, value),
+            &write_request.operation
         );
-        let write_effect = update
-            .effects
-            .iter()
-            .find(|e| matches!(e, Effect::KeyValue(_)))
-            .expect("a key value write");
 
-        assert_let!(Effect::KeyValue(request), write_effect);
-        assert_let!(KeyValueOperation::Write(key, value), &request.operation);
-
-        assert_eq!(key, &"note".to_string());
+        assert_eq!(key, "note");
         assert_eq!(value, &model.note.save());
     }
 }
@@ -813,10 +783,10 @@ mod sync_tests {
         fn update(&mut self, event: Event) -> (Vec<Effect>, Vec<Event>) {
             let update = self.app.update(event, &mut self.model);
 
-            let events = update.events;
             let mut effects = Vec::new();
+            let events = update.events.clone();
 
-            for effect in update.effects {
+            for effect in update.into_effects() {
                 match effect {
                     Effect::PubSub(request) => match request.operation {
                         PubSubOperation::Subscribe => {
@@ -829,7 +799,6 @@ mod sync_tests {
                     ef => effects.push(ef),
                 }
             }
-
             (effects, events)
         }
 

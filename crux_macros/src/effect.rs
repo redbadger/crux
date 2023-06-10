@@ -66,12 +66,34 @@ impl ToTokens for EffectStructReceiver {
         let mut with_context_fields = Vec::new();
         let mut ffi_variants = Vec::new();
         let mut match_arms = Vec::new();
+        let mut filters = Vec::new();
 
         for (field_name, (capability, variant, event)) in fields.iter() {
             variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
             with_context_fields.push(quote! { #field_name: #capability::new(context.specialize(#effect_name::#variant)) });
             ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
             match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+
+            let filter_fn = format_ident!("is_{}", field_name);
+            let map_fn = format_ident!("into_{}", field_name);
+            filters.push(quote! {
+                impl #effect_name {
+                    pub fn #filter_fn(&self) -> bool {
+                        if let #effect_name::#variant(_) = self {
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    pub fn #map_fn(self) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
+                        if let #effect_name::#variant(request) = self {
+                            Some(request)
+                        } else {
+                            None
+                        }
+                    }
+                }
+            });
         }
 
         tokens.extend(quote! {
@@ -103,6 +125,8 @@ impl ToTokens for EffectStructReceiver {
                     }
                 }
             }
+
+            #(#filters)*
         })
     }
 }
@@ -197,6 +221,20 @@ mod tests {
                 Capabilities {
                     render: Render::new(context.specialize(Effect::Render)),
                 }
+            }
+        }
+        impl Effect {
+            pub fn is_render(&self) -> bool {
+                if let Effect::Render(_) = self { true } else { false }
+            }
+            pub fn into_render(
+                self,
+            ) -> Option<
+                crux_core::Request<
+                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                >,
+            > {
+                if let Effect::Render(request) = self { Some(request) } else { None }
             }
         }
         "###);
@@ -314,6 +352,82 @@ mod tests {
                     render: Render::new(context.specialize(MyEffect::Render)),
                     time: Time::new(context.specialize(MyEffect::Time)),
                 }
+            }
+        }
+        impl MyEffect {
+            pub fn is_http(&self) -> bool {
+                if let MyEffect::Http(_) = self { true } else { false }
+            }
+            pub fn into_http(
+                self,
+            ) -> Option<
+                crux_core::Request<
+                    <crux_http::Http<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Http(request) = self { Some(request) } else { None }
+            }
+        }
+        impl MyEffect {
+            pub fn is_key_value(&self) -> bool {
+                if let MyEffect::KeyValue(_) = self { true } else { false }
+            }
+            pub fn into_key_value(
+                self,
+            ) -> Option<
+                crux_core::Request<
+                    <KeyValue<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::KeyValue(request) = self { Some(request) } else { None }
+            }
+        }
+        impl MyEffect {
+            pub fn is_platform(&self) -> bool {
+                if let MyEffect::Platform(_) = self { true } else { false }
+            }
+            pub fn into_platform(
+                self,
+            ) -> Option<
+                crux_core::Request<
+                    <Platform<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Platform(request) = self { Some(request) } else { None }
+            }
+        }
+        impl MyEffect {
+            pub fn is_render(&self) -> bool {
+                if let MyEffect::Render(_) = self { true } else { false }
+            }
+            pub fn into_render(
+                self,
+            ) -> Option<
+                crux_core::Request<
+                    <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Render(request) = self { Some(request) } else { None }
+            }
+        }
+        impl MyEffect {
+            pub fn is_time(&self) -> bool {
+                if let MyEffect::Time(_) = self { true } else { false }
+            }
+            pub fn into_time(
+                self,
+            ) -> Option<
+                crux_core::Request<
+                    <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            > {
+                if let MyEffect::Time(request) = self { Some(request) } else { None }
             }
         }
         "###);

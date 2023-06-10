@@ -123,6 +123,20 @@ pub struct Update<Ef, Ev> {
     pub events: Vec<Ev>,
 }
 
+impl<Ef, Ev> Update<Ef, Ev> {
+    pub fn into_effects(self) -> impl Iterator<Item = Ef> {
+        self.effects.into_iter()
+    }
+
+    pub fn effects(&self) -> impl Iterator<Item = &Ef> {
+        self.effects.iter()
+    }
+
+    pub fn effects_mut(&mut self) -> impl Iterator<Item = &mut Ef> {
+        self.effects.iter_mut()
+    }
+}
+
 /// Panics if the pattern doesn't match an `Effect` from the specified `Update`
 ///
 /// Like in a `match` expression, the pattern can be optionally followed by `if`
@@ -131,15 +145,17 @@ pub struct Update<Ef, Ev> {
 /// # Example
 ///
 /// ```
-/// use crux_core::assert_effect;
+/// # use crux_core::testing::Update;
 /// # enum Effect { Render(String) };
 /// # enum Event { None };
-/// # let update = crux_core::testing::Update { effects: vec!(Effect::Render("test".to_string())), events: vec!(Event::None) };
+/// # let effects = vec![Effect::Render("test".to_string())].into_iter().collect();
+/// # let mut update = Update { effects, events: vec!(Event::None) };
+/// use crux_core::assert_effect;
 /// assert_effect!(update, Effect::Render(_));
 /// ```
 #[macro_export]
 macro_rules! assert_effect {
     ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
-        assert!($expression.effects.iter().any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
+        assert!($expression.effects().any(|e| matches!(e, $( $pattern )|+ $( if $guard )?)));
     };
 }

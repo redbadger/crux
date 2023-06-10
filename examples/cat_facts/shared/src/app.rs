@@ -227,7 +227,7 @@ mod tests {
 
         let update = app.update(Event::Fetch, &mut model);
 
-        assert_let!(Effect::Http(request), &update.effects[0]);
+        assert_let!(Effect::Http(request), update.effects().next().unwrap());
         let actual = &request.operation;
         let expected = &HttpRequest {
             method: "GET".into(),
@@ -246,7 +246,7 @@ mod tests {
 
         let mut update = app.update(Event::Fetch, &mut model);
 
-        assert_let!(Effect::Http(request), &mut update.effects[0]);
+        assert_let!(Effect::Http(request), update.effects_mut().next().unwrap());
         let actual = &request.operation;
         let expected = &HttpRequest {
             method: "GET".into(),
