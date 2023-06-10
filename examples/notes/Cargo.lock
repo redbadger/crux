@@ -266,7 +266,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "bincode",
@@ -293,7 +293,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "darling",
  "proc-macro2",
