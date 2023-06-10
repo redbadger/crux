@@ -245,7 +245,7 @@ we'll use later. Finally, we don't expect any more timer requests to have been
 generated.
 
 ```rust,ignore,no_run
-let mut request = requests.next().unwrap();
+let mut request = requests.next().unwrap(); // this is mutable so we can resolve it later
 assert_let!(
     TimerOperation::Start {
         id: first_id,
@@ -256,10 +256,19 @@ assert_let!(
 assert!(requests.next().is_none());
 ```
 
-At this point the shell would start the timer — this is something the core can't
-do as it is a side effect — and so we need to tell the app that it was created.
-Note that resolving a request could call the app's `update()` resulting in more
-`Event`s being generated, which we need to feed back into the app.
+At this point the shell would start the timer (this is something the core can't
+do as it is a side effect) and so we need to tell the app that it was created.
+We do this by "resolving" the request.
+
+Remember that `Request`s either resolve zero (fire-and-forget, e.g. for
+`Render`), once (request/response, e.g. for `Http`), or many times (for streams,
+e.g. `Sse` — Server-Sent Events). The `Timer` capability falls into the
+"request/response" category, so we need to resolve the `Start` request with a
+`Created` response. This tells the app that the timer has been started, and
+allows it to cancel the timer if necessary.
+
+Note that resolving a request could call the app's `update()` method resulting
+in more `Event`s being generated, which we need to feed back into the app.
 
 ```rust,ignore,no_run
 let update = app
@@ -285,7 +294,7 @@ assert_let!(
 );
 assert_eq!(cancel_id, first_id);
 
-let start_request = &mut requests.next().unwrap();
+let start_request = &mut requests.next().unwrap(); // this is mutable so we can resolve it later
 assert_let!(
     TimerOperation::Start {
         id: second_id,
@@ -309,7 +318,7 @@ for event in update.events {
 }
 ```
 
-In the real world, time passes and the timer fires, but all we have to do it to
+In the real world, time passes and the timer fires, but all we have to do is to
 resolve our start request again, but this time with a `Finished` response.
 
 ```rust,ignore,no_run
@@ -334,7 +343,7 @@ assert_let!(
     },
     timer_requests.next().unwrap().operation
 );
-assert!(timer_requests.next().is_none());
+assert!(timer_requests.next().is_none()); // no cancellation
 
 assert_ne!(third_id, second_id);
 ```
