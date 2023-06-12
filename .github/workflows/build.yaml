@@ -16,7 +16,10 @@ env:
 jobs:
   build-crux:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    if:
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name !=
+      github.event.pull_request.base.repo.full_name
 
     steps:
       - uses: actions/checkout@v2
@@ -59,7 +62,10 @@ jobs:
 
   find-examples:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    if:
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name !=
+      github.event.pull_request.base.repo.full_name
     outputs:
       examples: ${{ steps.find.outputs.examples }}
     steps:
@@ -71,7 +77,10 @@ jobs:
 
   build-examples:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    if:
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name !=
+      github.event.pull_request.base.repo.full_name
     needs: find-examples
     strategy:
       matrix:
@@ -89,16 +98,9 @@ jobs:
         shell: bash
         if: ${{ matrix.example == 'counter' }}
         run: >
-          sudo apt-get update &&
-          sudo apt-get install -y
-          libwebkit2gtk-4.0-dev
-          build-essential
-          curl
-          wget
-          libssl-dev
-          libgtk-3-dev
-          libayatana-appindicator3-dev
-          librsvg2-dev
+          sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev
+          build-essential curl wget libssl-dev libgtk-3-dev
+          libayatana-appindicator3-dev librsvg2-dev
 
       - uses: Swatinem/rust-cache@v1
       - uses: dtolnay/rust-toolchain@stable
@@ -127,10 +129,15 @@ jobs:
         run: |
           cargo nextest run --workspace --all-features --no-run
 
-      - name: Run tests
+      - name: Run unit tests
         shell: bash
         run: |
           cargo nextest run --workspace --all-features
+
+      - name: Run integration tests
+        shell: bash
+        run: |
+          cargo test --test '*' --workspace
 
       - name: Build & run doctests
         shell: bash
