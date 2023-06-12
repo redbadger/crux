@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# run the unit tests
+# run the tests
 cargo nextest run --all-features
-
-# run the integration tests
-cargo test --test '*'
 
 # run the doc tests
 cargo test --doc --all-features

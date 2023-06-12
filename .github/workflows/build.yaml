@@ -129,15 +129,10 @@ jobs:
         run: |
           cargo nextest run --workspace --all-features --no-run
 
-      - name: Run unit tests
+      - name: Run tests
         shell: bash
         run: |
           cargo nextest run --workspace --all-features
-
-      - name: Run integration tests
-        shell: bash
-        run: |
-          cargo test --test '*' --workspace
 
       - name: Build & run doctests
         shell: bash
