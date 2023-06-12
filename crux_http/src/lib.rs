@@ -5,7 +5,8 @@
 //! This is still work in progress and large parts of HTTP are not yet supported.
 // #![warn(missing_docs)]
 
-use crux_core::{capability::CapabilityContext, Capability};
+use crux_core::capability::CapabilityContext;
+use crux_macros::Capability;
 use http::Method;
 use url::Url;
 
@@ -36,6 +37,7 @@ use client::Client;
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// The Http capability API.
+#[derive(Capability)]
 pub struct Http<Ev> {
     context: CapabilityContext<protocol::HttpRequest, Ev>,
     client: Client,
@@ -285,19 +287,5 @@ where
     /// the app's `update function.
     pub fn request(&self, method: http::Method, url: Url) -> RequestBuilder<Ev> {
         RequestBuilder::new(method, url, self.clone())
-    }
-}
-
-impl<Ef> Capability<Ef> for Http<Ef> {
-    type Operation = protocol::HttpRequest;
-    type MappedSelf<MappedEv> = Http<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        Http::new(self.context.map_event(f))
     }
 }

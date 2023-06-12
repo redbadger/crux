@@ -694,6 +694,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "crux_core",
+ "crux_macros",
  "futures-util",
  "http-types",
  "pin-project-lite",
@@ -708,6 +709,7 @@ version = "0.1.3"
 dependencies = [
  "anyhow",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 
@@ -727,6 +729,7 @@ version = "0.1.3"
 dependencies = [
  "anyhow",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 
@@ -736,6 +739,7 @@ version = "0.1.3"
 dependencies = [
  "anyhow",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 

@@ -1,9 +1,7 @@
 //! TODO mod docs
 
-use crux_core::{
-    capability::{CapabilityContext, Operation},
-    Capability,
-};
+use crux_core::capability::{CapabilityContext, Operation};
+use crux_macros::Capability;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -17,6 +15,7 @@ impl Operation for PlatformRequest {
     type Output = PlatformResponse;
 }
 
+#[derive(Capability)]
 pub struct Platform<Ev> {
     context: CapabilityContext<PlatformRequest, Ev>,
 }
@@ -41,19 +40,5 @@ where
                 context.update_app(callback(response));
             }
         });
-    }
-}
-
-impl<Ef> Capability<Ef> for Platform<Ef> {
-    type Operation = PlatformRequest;
-    type MappedSelf<MappedEv> = Platform<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        Platform::new(self.context.map_event(f))
     }
 }

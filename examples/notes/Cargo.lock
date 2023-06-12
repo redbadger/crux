@@ -288,6 +288,7 @@ version = "0.1.3"
 dependencies = [
  "anyhow",
  "crux_core",
+ "crux_macros",
  "serde",
 ]
 
