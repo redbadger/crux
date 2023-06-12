@@ -61,6 +61,7 @@
 //!
 //! // Capabilities listing the side effects the Core
 //! // will use to request side effects from the Shell
+//! #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
 //! #[derive(Effect)]
 //! pub struct Capabilities {
 //!     pub render: Render<Event>

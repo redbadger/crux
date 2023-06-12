@@ -260,7 +260,7 @@ At this point the shell would start the timer (this is something the core can't
 do as it is a side effect) and so we need to tell the app that it was created.
 We do this by "resolving" the request.
 
-Remember that `Request`s either resolve zero (fire-and-forget, e.g. for
+Remember that `Request`s either resolve zero times (fire-and-forget, e.g. for
 `Render`), once (request/response, e.g. for `Http`), or many times (for streams,
 e.g. `Sse` — Server-Sent Events). The `Timer` capability falls into the
 "request/response" category, so we need to resolve the `Start` request with a
