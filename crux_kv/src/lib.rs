@@ -4,10 +4,8 @@
 //! persist the data using platform native capabilities (e.g. disk or web localStorage)
 //!
 //! This is still work in progress and extremely basic.
-use crux_core::{
-    capability::{CapabilityContext, Operation},
-    Capability,
-};
+use crux_core::capability::{CapabilityContext, Operation};
+use crux_macros::Capability;
 use serde::{Deserialize, Serialize};
 
 /// Supported operations
@@ -31,6 +29,7 @@ impl Operation for KeyValueOperation {
     type Output = KeyValueOutput;
 }
 
+#[derive(Capability)]
 pub struct KeyValue<Ev> {
     context: CapabilityContext<KeyValueOperation, Ev>,
 }
@@ -77,19 +76,5 @@ where
                 context.update_app(make_event(resp))
             }
         });
-    }
-}
-
-impl<Ef> Capability<Ef> for KeyValue<Ef> {
-    type Operation = KeyValueOperation;
-    type MappedSelf<MappedEv> = KeyValue<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        KeyValue::new(self.context.map_event(f))
     }
 }

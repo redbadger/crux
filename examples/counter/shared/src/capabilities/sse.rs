@@ -1,12 +1,10 @@
 use async_sse::{decode, Event};
 use async_std::io::Cursor;
+use crux_macros::Capability;
 use futures::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crux_core::{
-    capability::{CapabilityContext, Operation},
-    Capability,
-};
+use crux_core::capability::{CapabilityContext, Operation};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SseRequest {
@@ -23,6 +21,7 @@ impl Operation for SseRequest {
     type Output = SseResponse;
 }
 
+#[derive(Capability)]
 pub struct ServerSentEvents<Ev> {
     context: CapabilityContext<SseRequest, Ev>,
 }
@@ -66,19 +65,5 @@ where
                 }
             }
         });
-    }
-}
-
-impl<Ef> Capability<Ef> for ServerSentEvents<Ef> {
-    type Operation = SseRequest;
-    type MappedSelf<MappedEv> = ServerSentEvents<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        ServerSentEvents::new(self.context.map_event(f))
     }
 }

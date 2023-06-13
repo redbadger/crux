@@ -1,4 +1,5 @@
-use crux_core::capability::{Capability, CapabilityContext, Operation};
+use crux_core::capability::{CapabilityContext, Operation};
+use crux_macros::Capability;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +19,7 @@ impl Operation for TimerOperation {
     type Output = TimerOutput;
 }
 
+#[derive(Capability)]
 pub struct Timer<Event> {
     context: CapabilityContext<TimerOperation, Event>,
 }
@@ -57,19 +59,5 @@ where
                 context.notify_shell(TimerOperation::Cancel { id }).await;
             }
         })
-    }
-}
-
-impl<Ef> Capability<Ef> for Timer<Ef> {
-    type Operation = TimerOperation;
-    type MappedSelf<MappedEv> = Timer<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        Timer::new(self.context.map_event(f))
     }
 }

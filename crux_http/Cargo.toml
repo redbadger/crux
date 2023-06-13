@@ -14,6 +14,7 @@ rust-version.workspace = true
 anyhow.workspace = true
 async-trait = "0.1.68"
 crux_core = { version = ">=0.4", path = "../crux_core" }
+crux_macros = { version = "0.3", path = "../crux_macros" }
 futures-util = "0.3"
 http-types = { version = "2.12", default-features = false, features = ["fs"] }
 pin-project-lite = "0.2.9"
@@ -26,4 +27,3 @@ assert_fs = "1.0.13"
 futures-test = "0.3"
 assert_matches = "1.5"
 crux_core = { version = ">=0.5", path = "../crux_core", features = ["typegen"] }
-crux_macros = { version = "0.3", path = "../crux_macros" }

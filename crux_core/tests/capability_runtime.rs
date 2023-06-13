@@ -1,9 +1,7 @@
 mod capability {
     use async_channel::Sender;
-    use crux_core::{
-        capability::{CapabilityContext, Operation},
-        Capability,
-    };
+    use crux_core::capability::{CapabilityContext, Operation};
+    use crux_macros::Capability;
     use futures::StreamExt;
     use serde::{Deserialize, Serialize};
 
@@ -16,6 +14,7 @@ mod capability {
         type Output = Vec<usize>; // links to other items
     }
 
+    #[derive(Capability)]
     pub struct Crawler<Ev> {
         context: CapabilityContext<Fetch, Ev>,
         tasks_tx: Sender<(usize, Sender<usize>)>,
@@ -77,20 +76,6 @@ mod capability {
                     context.update_app(ev(results));
                 }
             });
-        }
-    }
-
-    impl<Ev> Capability<Ev> for Crawler<Ev> {
-        type Operation = Fetch;
-        type MappedSelf<MappedEv> = Crawler<MappedEv>;
-
-        fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-        where
-            F: Fn(NewEvent) -> Ev + Send + Sync + Copy + 'static,
-            Ev: 'static,
-            NewEvent: 'static,
-        {
-            Self::MappedSelf::new(self.context.map_event(f))
         }
     }
 }

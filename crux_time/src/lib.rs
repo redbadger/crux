@@ -5,10 +5,8 @@
 //! interface to do so.
 //!
 //! This is still work in progress and as such very basic. It returns time as an IS08601 string.
-use crux_core::{
-    capability::{CapabilityContext, Operation},
-    Capability,
-};
+use crux_core::capability::{CapabilityContext, Operation};
+use crux_macros::Capability;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,6 +21,7 @@ impl Operation for TimeRequest {
 }
 
 /// The Time capability API.
+#[derive(Capability)]
 pub struct Time<Ev> {
     context: CapabilityContext<TimeRequest, Ev>,
 }
@@ -49,19 +48,5 @@ where
                 context.update_app(callback(response));
             }
         });
-    }
-}
-
-impl<Ef> Capability<Ef> for Time<Ef> {
-    type Operation = TimeRequest;
-    type MappedSelf<MappedEv> = Time<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        Time::new(self.context.map_event(f))
     }
 }

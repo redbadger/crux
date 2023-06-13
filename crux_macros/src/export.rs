@@ -1,5 +1,6 @@
 use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::TokenStream;
+use proc_macro_error::OptionExt;
 use quote::{format_ident, quote};
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
@@ -33,7 +34,7 @@ impl ToTokens for ExportStructReceiver {
             .data
             .as_ref()
             .take_struct()
-            .expect("Should never be enum")
+            .expect_or_abort("should be a struct")
             .fields;
 
         let mut output_type_exports = Vec::new();
@@ -95,7 +96,7 @@ fn split_on_generic(ty: &Type) -> (Type, Type) {
         }
         _ => None,
     }
-    .expect("capabilities should be generic over a single event type")
+    .expect_or_abort("capabilities should be generic over a single event type")
 }
 
 #[cfg(test)]

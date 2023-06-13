@@ -1,8 +1,9 @@
 # Crux Macros
 
-This crate provides two derive macros (`Effect` and `Export`) that can be used
-in conjunction with [`crux_core`](https://crates.io/crates/crux_core) and
-associated Capabilities.
+This crate provides three derive macros (`Effect`, `Export` and `Capability`)
+that can be used in conjunction with
+[`crux_core`](https://crates.io/crates/crux_core) and associated (or custom)
+Capabilities.
 
 ## 1. Effect
 
@@ -142,3 +143,28 @@ fn main() {
         .expect("typescript type gen failed");
 }
 ```
+
+## 3. Capability
+
+The `Capability` derive macro can be used to implement the `Capability` trait
+when writing your own capabilities. It generates code similar to the following:
+
+```rust
+impl<Ev> crux_core::capability::Capability<Ev> for Render<Ev> {
+    type Operation = RenderOperation;
+    type MappedSelf<MappedEv> = Render<MappedEv>;
+    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
+    where
+        F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
+        Ev: 'static,
+        NewEv: 'static,
+    {
+        Render::new(self.context.map_event(f))
+    }
+}
+```
+
+This allows you to derive an instance of a capability from an existing one and
+adapt it to a different Event type, which is useful when composing Crux apps
+from smaller Crux apps, automatically wrapping the child events in the parent
+events.

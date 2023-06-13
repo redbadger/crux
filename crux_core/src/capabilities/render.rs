@@ -47,14 +47,13 @@ where
 
 impl<Ev> Capability<Ev> for Render<Ev> {
     type Operation = RenderOperation;
+    type MappedSelf<MappedEv> = Render<MappedEv>;
 
-    type MappedSelf<Ev2> = Render<Ev2>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
+    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEvent) -> Ev + Send + Sync + Copy + 'static,
+        F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
         Ev: 'static,
-        NewEvent: 'static,
+        NewEv: 'static,
     {
         Render::new(self.context.map_event(f))
     }

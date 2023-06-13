@@ -1,4 +1,5 @@
-use crux_core::capability::{Capability, CapabilityContext, Operation};
+use crux_core::capability::{CapabilityContext, Operation};
+use crux_macros::Capability;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +18,7 @@ impl Operation for PubSubOperation {
     type Output = Message;
 }
 
+#[derive(Capability)]
 pub struct PubSub<Event> {
     context: CapabilityContext<PubSubOperation, Event>,
 }
@@ -56,19 +58,5 @@ where
                 context.notify_shell(PubSubOperation::Publish(data)).await;
             }
         })
-    }
-}
-
-impl<Ef> Capability<Ef> for PubSub<Ef> {
-    type Operation = PubSubOperation;
-    type MappedSelf<MappedEv> = PubSub<MappedEv>;
-
-    fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-    where
-        F: Fn(NewEvent) -> Ef + Send + Sync + Copy + 'static,
-        Ef: 'static,
-        NewEvent: 'static,
-    {
-        PubSub::new(self.context.map_event(f))
     }
 }
