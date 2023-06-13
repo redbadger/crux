@@ -1,5 +1,6 @@
 use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::TokenStream;
+use proc_macro_error::OptionExt;
 use quote::quote;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
@@ -23,12 +24,12 @@ impl ToTokens for CapabilityStructReceiver {
             .data
             .as_ref()
             .take_struct()
-            .expect("should be a struct")
+            .expect_or_abort("should be a struct")
             .fields
             .iter()
             .find(|f| f.ident.as_ref().unwrap() == "context")
             .map(|f| first_generic_parameter(&f.ty))
-            .expect("could not find a field named `context` with an Operation as its first generic parameter");
+            .expect_or_abort("could not find a field named `context`");
 
         tokens.extend(quote! {
           impl<Ev> crux_core::capability::Capability<Ev> for #name<Ev> {
@@ -80,7 +81,7 @@ fn first_generic_parameter(ty: &Type) -> Type {
         }
         _ => None,
     }
-    .expect("should have a generic type parameter")
+    .expect_or_abort("context field type should have generic type parameters")
 }
 
 #[cfg(test)]

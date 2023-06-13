@@ -1,5 +1,6 @@
 use darling::{ast, util, FromDeriveInput, FromField, FromMeta, ToTokens};
 use proc_macro2::{Literal, TokenStream};
+use proc_macro_error::{abort_call_site, OptionExt};
 use quote::{format_ident, quote};
 use std::collections::BTreeMap;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
@@ -45,7 +46,7 @@ impl ToTokens for EffectStructReceiver {
             .data
             .as_ref()
             .take_struct()
-            .expect("Should never be enum")
+            .expect_or_abort("should be a struct")
             .fields;
 
         let fields: BTreeMap<Ident, (Type, Ident, Type)> = fields
@@ -58,9 +59,11 @@ impl ToTokens for EffectStructReceiver {
             .windows(2)
             .all(|win| win[0].to_token_stream().to_string() == win[1].to_token_stream().to_string())
         {
-            panic!("all fields should be generic over the same event type");
+            abort_call_site!("all fields should be generic over the same event type");
         }
-        let event = events.first().expect("Capabilities struct has no fields");
+        let event = events
+            .first()
+            .expect_or_abort("Capabilities struct has no fields");
 
         let mut variants = Vec::new();
         let mut with_context_fields = Vec::new();
@@ -166,7 +169,7 @@ fn split_on_generic(ty: &Type) -> (Type, Ident, Type) {
         }
         _ => None,
     }
-    .expect("capabilities should be generic over a single event type")
+    .expect_or_abort("capabilities should be generic over a single event type")
 }
 
 #[cfg(test)]
