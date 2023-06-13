@@ -1,6 +1,6 @@
 use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::TokenStream;
-use proc_macro_error::OptionExt;
+use proc_macro_error::{abort, OptionExt};
 use quote::quote;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
@@ -61,8 +61,7 @@ pub(crate) fn capability_impl(input: &DeriveInput) -> TokenStream {
 }
 
 fn first_generic_parameter(ty: &Type) -> Type {
-    let ty = ty.clone();
-    match ty {
+    let generic_param = match ty.clone() {
         Type::Path(mut path) if path.qself.is_none() => {
             // Get the last segment of the path where the generic parameters should be
             let last = path.path.segments.last_mut().expect("type has no segments");
@@ -80,8 +79,11 @@ fn first_generic_parameter(ty: &Type) -> Type {
             }
         }
         _ => None,
-    }
-    .expect_or_abort("context field type should have generic type parameters")
+    };
+    let Some(generic_param) = generic_param else {
+        abort!(ty, "context field type should have generic type parameters");
+    };
+    generic_param
 }
 
 #[cfg(test)]
