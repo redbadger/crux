@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crux_core",
+  "crux_cli",
   "crux_http",
   "crux_kv",
   "crux_macros",

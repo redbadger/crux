@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "path": "crux_cli/vscode",
+      "group": "build",
+      "problemMatcher": [],
+      "label": "npm: build - crux_cli/vscode",
+      "detail": "pnpm build-base --sourcemap"
+    }
+  ]
+}
