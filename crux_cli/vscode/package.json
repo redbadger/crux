@@ -67,7 +67,19 @@
   "contributes": {
     "commands": [
       {
-        "command": "crux.restartServer",
+        "command": "crux-analyzer.restoreDefaults",
+        "title": "Crux: restore default configuration"
+      },
+      {
+        "command": "crux-analyzer.startServer",
+        "title": "Crux: start LSP server"
+      },
+      {
+        "command": "crux-analyzer.stopServer",
+        "title": "Crux: stop LSP server"
+      },
+      {
+        "command": "crux-analyzer.restartServer",
         "title": "Crux: restart LSP server"
       }
     ],
@@ -81,18 +93,6 @@
           "type": "string",
           "scope": "machine-overridable",
           "order": 0
-        },
-        "crux-analyzer.server.args": {
-          "description": "Args for crux CLI executable",
-          "default": [
-            "lsp"
-          ],
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "scope": "machine-overridable",
-          "order": 1
         }
       }
     },

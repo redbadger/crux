@@ -1,4 +1,5 @@
 mod lsp;
+mod lsp_ext;
 
 use anyhow::Result;
 use clap::Parser;

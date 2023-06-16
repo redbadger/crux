@@ -1,8 +1,11 @@
 use anyhow::Result;
+use crossbeam_channel::Sender;
 use lsp_server::{Connection, ExtractError, Message, Request, RequestId, Response};
 use lsp_types::{
     request::GotoDefinition, GotoDefinitionResponse, InitializeParams, OneOf, ServerCapabilities,
 };
+
+use crate::lsp_ext::{self, Health, ServerStatusParams};
 
 pub(crate) fn run() -> Result<()> {
     // Note that  we must have our logging only write out to stderr.
@@ -29,6 +32,14 @@ pub(crate) fn run() -> Result<()> {
 
 fn main_loop(connection: Connection, params: serde_json::Value) -> Result<()> {
     let _params: InitializeParams = serde_json::from_value(params).unwrap();
+    notify_status(
+        &connection,
+        ServerStatusParams {
+            health: Health::Ok,
+            quiescent: true,
+            message: None,
+        },
+    )?;
     eprintln!("starting example main loop");
     for msg in &connection.receiver {
         eprintln!("got msg: {msg:?}");
@@ -64,6 +75,20 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<()> {
             }
         }
     }
+    Ok(())
+}
+
+fn notify_status(connection: &Connection, status: ServerStatusParams) -> Result<(), anyhow::Error> {
+    send_notification::<lsp_ext::ServerStatusNotification>(&connection.sender, status)?;
+    Ok(())
+}
+
+fn send_notification<N: lsp_types::notification::Notification>(
+    sender: &Sender<Message>,
+    params: N::Params,
+) -> Result<()> {
+    let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
+    sender.send(not.into())?;
     Ok(())
 }
 

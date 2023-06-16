@@ -1,68 +1,100 @@
-import { ExtensionContext, commands, window, workspace } from "vscode";
 import {
+  ConfigurationTarget,
+  ExtensionContext,
+  window,
+  workspace,
+} from "vscode";
+import {
+  DidChangeConfigurationNotification,
   LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
 } from "vscode-languageclient/node";
+import { openLogs } from "./commands";
+import { CommandFactory, Ctx, onDidChangeConfiguration } from "./ctx";
+import { setContextValue } from "./util";
 
-let client: LanguageClient;
+const CRUX_PROJECT_CONTEXT_NAME = "inCruxProject";
 
-const SERVER_CONFIG = "crux-analyzer.server";
+export interface CruxAnalyzerExtensionApi {
+  readonly client?: LanguageClient;
+}
+
+export async function deactivate() {
+  await setContextValue(CRUX_PROJECT_CONTEXT_NAME, undefined);
+}
 
 export async function activate(context: ExtensionContext) {
-  const serverConfig = workspace.getConfiguration(SERVER_CONFIG);
-  const command: string = serverConfig.get("path")!;
-  const args: [string] = serverConfig.get("args")!;
+  const ctx = new Ctx(context, createCommands());
+  // VS Code doesn't show a notification when an extension fails to activate
+  // so we do it ourselves.
+  const api = await activateServer(ctx).catch((err) => {
+    void window.showErrorMessage(
+      `Cannot activate crux-analyzer extension: ${err.message}`
+    );
+    throw err;
+  });
+  await setContextValue(CRUX_PROJECT_CONTEXT_NAME, true);
+  return api;
+}
 
-  const serverOptions: ServerOptions = { command, args };
-
-  const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: "file", language: "toml" }],
-    synchronize: {
-      fileEvents: workspace.createFileSystemWatcher("**/Crux.toml"),
+async function activateServer(ctx: Ctx): Promise<CruxAnalyzerExtensionApi> {
+  workspace.onDidChangeConfiguration(
+    async (e) => {
+      await ctx.client?.sendNotification(
+        DidChangeConfigurationNotification.type,
+        {
+          settings: "",
+        }
+      );
+      await onDidChangeConfiguration(e);
     },
-    diagnosticCollectionName: "crux-analyzer",
+    null,
+    ctx.subscriptions
+  );
+
+  await ctx.start();
+  return ctx;
+}
+
+function createCommands(): Record<string, CommandFactory> {
+  return {
+    restartServer: {
+      enabled: (ctx) => async () => {
+        await ctx.restart();
+      },
+      disabled: (ctx) => async () => {
+        await ctx.start();
+      },
+    },
+    startServer: {
+      enabled: (ctx) => async () => {
+        await ctx.start();
+      },
+      disabled: (ctx) => async () => {
+        await ctx.start();
+      },
+    },
+    stopServer: {
+      enabled: (ctx) => async () => {
+        // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
+        await ctx.stopAndDispose();
+        // ctx.setServerStatus({
+        //   health: "stopped",
+        // });
+      },
+      disabled: (_) => async () => {},
+    },
+    restoreDefaults: {
+      enabled: (_) => async () => {
+        await workspace
+          .getConfiguration("crux-analyzer")
+          .update("server.path", "crux", ConfigurationTarget.Global);
+      },
+      disabled: (_) => async () => {
+        await workspace
+          .getConfiguration("crux-analyzer")
+          .update("server.path", "crux", ConfigurationTarget.Global);
+      },
+    },
+    openLogs: { enabled: openLogs },
   };
-
-  client = new LanguageClient(
-    "crux-analyzer",
-    "Crux Analyzer",
-    serverOptions,
-    clientOptions
-  );
-
-  await start();
-
-  context.subscriptions.push(
-    commands.registerCommand("crux.restartServer", restart)
-  );
-
-  // this still needs some work...
-  // workspace.onDidChangeConfiguration(
-  //   async (e) => {
-  //     if (e.affectsConfiguration(SERVER_CONFIG)) {
-  //       await restart();
-  //     }
-  //   },
-  //   null,
-  //   context.subscriptions
-  // );
-}
-
-export function deactivate(): Thenable<void> | undefined {
-  if (!client) {
-    return undefined;
-  }
-
-  return client.stop();
-}
-
-async function start(): Promise<void> {
-  await client.start();
-  void window.showInformationMessage("Crux Analyzer started");
-}
-
-async function restart(): Promise<void> {
-  await client.restart();
-  void window.showInformationMessage("Crux Analyzer restarted");
 }
