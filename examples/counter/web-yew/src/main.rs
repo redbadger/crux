@@ -7,7 +7,7 @@ use wasm_bindgen::JsValue;
 use yew::{html::Scope, prelude::*};
 
 use shared::{
-    http::protocol::{HttpHeader, HttpRequest, HttpResponse},
+    http::protocol::{HttpRequest, HttpResponse},
     sse::{SseRequest, SseResponse},
     App, Capabilities, Core, Effect, Event,
 };
@@ -51,22 +51,10 @@ impl Component for RootComponent {
                     wasm_bindgen_futures::spawn_local({
                         let link = link.clone();
                         let core = core.clone();
-
-                        let HttpRequest {
-                            url,
-                            method,
-                            headers,
-                            body: _,
-                        } = request.operation.clone();
-
-                        let method = match method.as_str() {
-                            "GET" => http::Method::GET,
-                            "POST" => http::Method::POST,
-                            _ => panic!("not yet handling this method"),
-                        };
+                        let http_request = request.operation.clone();
 
                         async move {
-                            let response = http(&url, method, &headers).await.unwrap();
+                            let response = http(&http_request).await.unwrap();
 
                             send_effects(&link, core.resolve(&mut request, response));
                         }
@@ -76,14 +64,12 @@ impl Component for RootComponent {
                     wasm_bindgen_futures::spawn_local({
                         let link = link.clone();
                         let core = core.clone();
-
-                        let SseRequest { url } = request.operation.clone();
+                        let sse_request = request.operation.clone();
 
                         async move {
-                            let mut stream = sse(&url).await.unwrap();
+                            let mut stream = sse(&sse_request).await.unwrap();
 
-                            while let Ok(Some(chunk)) = stream.try_next().await {
-                                let response = SseResponse::Chunk(chunk);
+                            while let Ok(Some(response)) = stream.try_next().await {
                                 send_effects(&link, core.resolve(&mut request, response));
                             }
                         }
@@ -125,7 +111,20 @@ impl Component for RootComponent {
     }
 }
 
-async fn http(url: &str, method: http::Method, headers: &[HttpHeader]) -> Result<HttpResponse> {
+async fn http(request: &HttpRequest) -> Result<HttpResponse> {
+    let HttpRequest {
+        url,
+        method,
+        headers,
+        body: _,
+    } = request;
+
+    let method = match method.as_str() {
+        "GET" => http::Method::GET,
+        "POST" => http::Method::POST,
+        _ => panic!("not yet handling this method"),
+    };
+
     let mut request = http::Request::new(url).method(method);
 
     for header in headers {
@@ -141,13 +140,15 @@ async fn http(url: &str, method: http::Method, headers: &[HttpHeader]) -> Result
     })
 }
 
-async fn sse(url: &str) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>, Error = JsValue>> {
+async fn sse(
+    request: &SseRequest,
+) -> Result<impl futures::stream::TryStream<Ok = SseResponse, Error = JsValue>> {
     use futures_util::StreamExt;
     use js_sys::Uint8Array;
     use wasm_bindgen::prelude::*;
     use wasm_streams::ReadableStream;
 
-    let response = http::Request::new(url).send().await?;
+    let response = http::Request::new(&request.url).send().await?;
 
     let raw_body = response.body().unwrap_throw();
     let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());
@@ -158,8 +159,9 @@ async fn sse(url: &str) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>, 
         match stream.next().await {
             Some(Ok(chunk)) => {
                 let chunk: Uint8Array = chunk.into();
+                let response = SseResponse::Chunk(chunk.to_vec());
 
-                Ok(Some((chunk.to_vec(), stream)))
+                Ok(Some((response, stream)))
             }
             Some(Err(e)) => Err(e),
             None => Ok(None),

@@ -10,6 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+futures = "0.3.28"
 futures-util = "0.3.28"
 gloo-net = { version = "0.2.6", features = ["http"] }
 js-sys = "0.3.64"
@@ -18,4 +19,3 @@ wasm-bindgen = "0.2.87"
 wasm-bindgen-futures = "0.4.37"
 wasm-streams = "0.3.0"
 yew = { version = "0.20.0", features = ["csr"] }
-futures = "0.3.28"
