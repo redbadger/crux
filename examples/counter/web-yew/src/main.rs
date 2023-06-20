@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use futures::{stream, TryStreamExt};
-use gloo_net::http;
 use wasm_bindgen::JsValue;
 use yew::{html::Scope, prelude::*};
 
@@ -112,6 +111,8 @@ impl Component for RootComponent {
 }
 
 async fn http(request: &HttpRequest) -> Result<HttpResponse> {
+    use gloo_net::http;
+
     let HttpRequest {
         url,
         method,
@@ -119,13 +120,11 @@ async fn http(request: &HttpRequest) -> Result<HttpResponse> {
         body: _,
     } = request;
 
-    let method = match method.as_str() {
-        "GET" => http::Method::GET,
-        "POST" => http::Method::POST,
+    let mut request = match method.as_str() {
+        "GET" => http::Request::get(url),
+        "POST" => http::Request::post(url),
         _ => panic!("not yet handling this method"),
     };
-
-    let mut request = http::Request::new(url).method(method);
 
     for header in headers {
         request = request.header(&header.name, &header.value);
@@ -144,11 +143,12 @@ async fn sse(
     request: &SseRequest,
 ) -> Result<impl futures::stream::TryStream<Ok = SseResponse, Error = JsValue>> {
     use futures_util::StreamExt;
+    use gloo_net::http;
     use js_sys::Uint8Array;
     use wasm_bindgen::prelude::*;
     use wasm_streams::ReadableStream;
 
-    let response = http::Request::new(&request.url).send().await?;
+    let response = http::Request::get(&request.url).send().await?;
 
     let raw_body = response.body().unwrap_throw();
     let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());
