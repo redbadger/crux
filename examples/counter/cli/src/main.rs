@@ -4,7 +4,7 @@ use crossbeam_channel::Sender;
 use eyre::{bail, eyre, Result};
 use futures::{stream, TryStreamExt};
 use shared::{
-    http::protocol::{HttpHeader, HttpRequest, HttpResponse},
+    http::protocol::{HttpRequest, HttpResponse},
     sse::{SseRequest, SseResponse},
     App, Capabilities, Core, Effect, Event,
 };
@@ -103,23 +103,12 @@ fn process_effect(
             }
         }
         Effect::Http(mut request) => {
-            let HttpRequest {
-                ref method,
-                ref url,
-                ref headers,
-                body: _,
-            } = request.operation;
-
             async_std::task::spawn({
-                let method = Method::from_str(method).expect("unknown http method");
-                let url = Url::parse(url)?;
-                let headers = headers.clone();
-
                 let core = core.clone();
                 let tx = tx.upgrade().expect("Should be able to upgrade Weak tx");
 
                 async move {
-                    let response = http(method, url, &headers).await.unwrap();
+                    let response = http(&request.operation).await.unwrap();
                     for effect in core.resolve(&mut request, response) {
                         tx.send(Task::Effect(effect)).unwrap();
                     }
@@ -127,16 +116,12 @@ fn process_effect(
             });
         }
         Effect::ServerSentEvents(mut request) => {
-            let SseRequest { ref url } = request.operation;
-
             async_std::task::spawn({
-                let url = Url::parse(url)?;
-
                 let core = core.clone();
                 let tx = tx.upgrade().unwrap();
 
                 async move {
-                    let mut stream = sse(url).await.unwrap();
+                    let mut stream = sse(&request.operation).await.unwrap();
 
                     while let Ok(Some(item)) = stream.try_next().await {
                         let response = SseResponse::Chunk(item);
@@ -152,7 +137,18 @@ fn process_effect(
     Ok(())
 }
 
-async fn http(method: Method, url: Url, headers: &[HttpHeader]) -> Result<HttpResponse> {
+async fn http(
+    HttpRequest {
+        url,
+        method,
+        headers,
+        body: _,
+    }: &HttpRequest,
+) -> Result<HttpResponse> {
+    let method = Method::from_str(method).expect("unknown http method");
+    let url = Url::parse(url)?;
+    let headers = headers.clone();
+
     let client: Client = Config::new()
         .set_timeout(Some(Duration::from_secs(5)))
         .try_into()?;
@@ -175,8 +171,10 @@ async fn http(method: Method, url: Url, headers: &[HttpHeader]) -> Result<HttpRe
     }
 }
 
-async fn sse(url: Url) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>>> {
-    let mut response = surf::get(&url)
+async fn sse(
+    SseRequest { url }: &SseRequest,
+) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>>> {
+    let mut response = surf::get(url)
         .await
         .map_err(|e| eyre!("get {url}: error {e}"))?;
 

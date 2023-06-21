@@ -50,10 +50,9 @@ impl Component for RootComponent {
                     wasm_bindgen_futures::spawn_local({
                         let link = link.clone();
                         let core = core.clone();
-                        let http_request = request.operation.clone();
 
                         async move {
-                            let response = http(&http_request).await.unwrap();
+                            let response = http(&request.operation).await.unwrap();
 
                             send_effects(&link, core.resolve(&mut request, response));
                         }
@@ -63,10 +62,9 @@ impl Component for RootComponent {
                     wasm_bindgen_futures::spawn_local({
                         let link = link.clone();
                         let core = core.clone();
-                        let sse_request = request.operation.clone();
 
                         async move {
-                            let mut stream = sse(&sse_request).await.unwrap();
+                            let mut stream = sse(&request.operation).await.unwrap();
 
                             while let Ok(Some(response)) = stream.try_next().await {
                                 send_effects(&link, core.resolve(&mut request, response));
@@ -110,15 +108,15 @@ impl Component for RootComponent {
     }
 }
 
-async fn http(request: &HttpRequest) -> Result<HttpResponse> {
-    use gloo_net::http;
-
-    let HttpRequest {
+async fn http(
+    HttpRequest {
         url,
         method,
         headers,
         body: _,
-    } = request;
+    }: &HttpRequest,
+) -> Result<HttpResponse> {
+    use gloo_net::http;
 
     let mut request = match method.as_str() {
         "GET" => http::Request::get(url),
@@ -140,7 +138,7 @@ async fn http(request: &HttpRequest) -> Result<HttpResponse> {
 }
 
 async fn sse(
-    request: &SseRequest,
+    SseRequest { url }: &SseRequest,
 ) -> Result<impl futures::stream::TryStream<Ok = SseResponse, Error = JsValue>> {
     use futures_util::StreamExt;
     use gloo_net::http;
@@ -148,7 +146,7 @@ async fn sse(
     use wasm_bindgen::prelude::*;
     use wasm_streams::ReadableStream;
 
-    let response = http::Request::get(&request.url).send().await?;
+    let response = http::Request::get(url).send().await?;
 
     let raw_body = response.body().unwrap_throw();
     let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());
