@@ -58,7 +58,7 @@ fn main() -> Result<()> {
     let strong_tx = Arc::new(tx);
     let tx = Arc::downgrade(&strong_tx);
 
-    let core: Arc<Core<Effect, App>> = Arc::new(Core::new::<Capabilities>());
+    let core = Arc::new(Core::new::<Capabilities>());
 
     // Kick off with the given command
     main_loop(&core, Args::parse().cmd.into(), tx.clone())?;
