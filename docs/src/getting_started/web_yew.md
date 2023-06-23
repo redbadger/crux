@@ -28,35 +28,17 @@ root `Cargo.toml` file.
 members = ["shared", "web-yew"]
 ```
 
-Now we can `cd` into the `web-yew` directory and start fleshing out our project.
-Let's add some dependencies to `shared/Cargo.toml`.
+Now we can start fleshing out our project. Let's add some dependencies to
+`web-yew/Cargo.toml`.
 
 ```toml
-[package]
-name = "web-yew"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-shared = { path = "../shared" }
-yew = { version = "0.20.0", features = ["csr"] }
+{{#include ../../../examples/hello_world/web-yew/Cargo.toml}}
 ```
 
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Yew App</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
-    />
-  </head>
-</html>
+{{#include ../../../examples/hello_world/web-yew/index.html}}
 ```
 
 ## Create some UI
@@ -72,94 +54,7 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `src/main.rs` to look like this:
 
 ```rust,noplayground
-use std::rc::Rc;
-
-use anyhow::Result;
-use futures::{stream, TryStreamExt};
-use gloo_net::http;
-use wasm_bindgen::JsValue;
-use yew::{html::Scope, prelude::*};
-
-use shared::{
-    http::protocol::{HttpHeader, HttpRequest, HttpResponse},
-    sse::{SseRequest, SseResponse},
-    App, Capabilities, Core, Effect, Event,
-};
-
-#[derive(Default)]
-struct RootComponent {
-    core: Rc<Core<Effect, App>>,
-}
-
-enum Task {
-    Event(Event),
-    Effect(Effect),
-}
-
-fn send_effects(link: &Scope<RootComponent>, effects: Vec<Effect>) {
-    link.send_message_batch(effects.into_iter().map(Task::Effect).collect());
-}
-
-impl Component for RootComponent {
-    type Message = Task;
-    type Properties = ();
-
-    fn create(ctx: &Context<Self>) -> Self {
-        let link = ctx.link();
-        link.send_message(Task::Event(Event::StartWatch));
-
-        Self {
-            core: Rc::new(Core::new::<Capabilities>()),
-        }
-    }
-
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        let link = ctx.link();
-        let core = &self.core;
-
-        match msg {
-            Task::Event(event) => send_effects(link, core.process_event(event)),
-            Task::Effect(effect) => match effect {
-                Effect::Render(_) => return true,
-            },
-        };
-
-        false
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        let link = ctx.link();
-        let view = self.core.view();
-
-        html! {
-            <>
-                <section class="section has-text-centered">
-                    <p class="title">{"Crux Counter Example"}</p>
-                </section>
-                <section class="section has-text-centered">
-                    <p class="is-size-5">{"Rust Core, Rust Shell (Yew)"}</p>
-                </section>
-                <section class="container has-text-centered">
-                    <p class="is-size-5">{&view.text}</p>
-                    <div class="buttons section is-centered">
-                        <button class="button is-primary is-warning"
-                            onclick={link.callback(|_| Task::Event(Event::Decrement))}>
-                            {"Decrement"}
-                        </button>
-                        <button class="button is-primary is-danger"
-                            onclick={link.callback(|_| Task::Event(Event::Increment))}>
-                            {"Increment"}
-                        </button>
-                    </div>
-                </section>
-            </>
-        }
-    }
-}
-
-fn main() {
-    yew::Renderer::<RootComponent>::new().render();
-}
+{{#include ../../../examples/hello_world/web-yew/src/main.rs}}
 ```
 
 ## Build and serve our app

@@ -1,8 +1,8 @@
 [package]
-name = "web-leptos"
+name = "web-yew"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-leptos = { version = "0.3.1", features = ["stable"] }
 shared = { path = "../shared" }
+yew = { version = "0.20.0", features = ["csr"] }
