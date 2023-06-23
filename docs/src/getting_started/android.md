@@ -1,6 +1,7 @@
 # Android — Kotlin and Jetpack Compose
 
-These are the steps to set up Android Studio to build and run a simple Android app that calls into a shared core.
+These are the steps to set up Android Studio to build and run a simple Android
+app that calls into a shared core.
 
 ```admonish
 This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
@@ -14,9 +15,13 @@ We want to make setting up Android Studio to work with Crux really easy. As time
 
 The first thing we need to do is create a new Android app in Android Studio.
 
-Open Android Studio and create a new project, for "Phone and Tablet", of type "Empty Compose Activity (Material3)". In this walk-through, we'll call it "Counter", use a minimum SDK of API 33, and save it in a directory called `Android`.
+Open Android Studio and create a new project, for "Phone and Tablet", of type
+"Empty Compose Activity (Material3)". In this walk-through, we'll call it
+"Counter", use a minimum SDK of API 33, and save it in a directory called
+`Android`.
 
-Your repo's directory structure might now look something like this (some files elided):
+Your repo's directory structure might now look something like this (some files
+elided):
 
 ```txt
 .
@@ -58,13 +63,17 @@ Your repo's directory structure might now look something like this (some files e
 
 This shared Android library (`aar`) is going to wrap our shared Rust library.
 
-Under `File -> New -> New Module`, choose "Android Library" and call it something like `shared`. Set the "Package name" to match the one from your `/shared/uniffi.toml`, e.g. `com.example.counter.shared`.
+Under `File -> New -> New Module`, choose "Android Library" and call it
+something like `shared`. Set the "Package name" to match the one from your
+`/shared/uniffi.toml`, e.g. `com.example.counter.shared`.
 
-For more information on how to add an Android library see <https://developer.android.com/studio/projects/android-library>.
+For more information on how to add an Android library see
+<https://developer.android.com/studio/projects/android-library>.
 
 We can now add this library as a _dependency_ of our app.
 
-Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like this:
+Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like
+this:
 
 ```gradle
 {{#include ../../../examples/hello_world/Android/app/build.gradle}}
@@ -72,23 +81,31 @@ Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like thi
 
 ## The Rust shared library
 
-We'll use the following tools to incorporate our Rust shared library into the Android library added above. This includes compiling and linking the Rust dynamic library and generating the runtime bindings and the shared types (including copying them into our project).
+We'll use the following tools to incorporate our Rust shared library into the
+Android library added above. This includes compiling and linking the Rust
+dynamic library and generating the runtime bindings and the shared types
+(including copying them into our project).
 
 - The [Android NDK](https://developer.android.com/ndk)
-- Mozilla's [Rust gradle plugin](https://github.com/mozilla/rust-android-gradle) for Android
+- Mozilla's [Rust gradle plugin](https://github.com/mozilla/rust-android-gradle)
+  for Android
 - [Java Native Access](https://github.com/java-native-access/jna)
 - [Uniffi](https://mozilla.github.io/uniffi-rs/) to generate Java bindings
-- `com.novi.serde`, which is part of the [diem client SDK](https://javadoc.io/doc/com.diem/client-sdk-java/latest/index.html), which we'll need for serialization
+- `com.novi.serde`, which is part of the
+  [diem client SDK](https://javadoc.io/doc/com.diem/client-sdk-java/latest/index.html),
+  which we'll need for serialization
 
 Let's get started.
 
-Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like this:
+Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like
+this:
 
 ```gradle
 {{#include ../../../examples/hello_world/Android/build.gradle}}
 ```
 
-Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look like this:
+Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
+like this:
 
 ```gradle
 {{#include ../../../examples/hello_world/Android/shared/build.gradle}}
@@ -99,7 +116,8 @@ Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look l
 When you have edited the gradle files, don't forget to click "sync now".
 ```
 
-If you now build your project you should see the shared library object file, and the shared types, in the right places.
+If you now build your project you should see the shared library object file, and
+the shared types, in the right places.
 
 ```sh
 $ ls --tree Android/shared/build/rustJniLibs
@@ -129,10 +147,11 @@ Android/shared/src/main/java/com/example/counter
 ```admonish example
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Android apps in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world) — it only has `shared` and `shared_types` libraries, which will work with the following example code.
+However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
-Edit `/Android/app/src/main/java/com/example/counter/MainActivity.kt` to look like this:
+Edit `/Android/app/src/main/java/com/example/counter/MainActivity.kt` to look
+like this:
 
 ```kotlin
 {{#include ../../../examples/hello_world/Android/app/src/main/java/com/example/counter/MainActivity.kt}}

@@ -1,6 +1,7 @@
 # iOS — Swift and SwiftUI — manual setup
 
-These are the steps to set up Xcode to build and run a simple iOS app that calls into a shared core.
+These are the steps to set up Xcode to build and run a simple iOS app that calls
+into a shared core.
 
 ```admonish tip
 We think that using [XcodeGen](https://github.com/yonaskolb/XcodeGen) may be the simplest way to create an Xcode project to build and run a simple iOS app that calls into a shared core. If you want to try this, you can jump to [iOS — using XcodeGen](./ios_with_xcodegen.md), otherwise read on.
@@ -18,7 +19,11 @@ We want to make setting up Xcode to work with Crux really easy. As time progress
 
 The first thing we need to do is create a new iOS app in Xcode.
 
-Let's call the app "CounterApp" and select "SwiftUI" for the interface and "Swift" for the language. If you choose to create the app in the root folder of your monorepo, then you might want to rename the folder it creates to "iOS". Your repo's directory structure might now look something like this (some files elided):
+Let's call the app "CounterApp" and select "SwiftUI" for the interface and
+"Swift" for the language. If you choose to create the app in the root folder of
+your monorepo, then you might want to rename the folder it creates to "iOS".
+Your repo's directory structure might now look something like this (some files
+elided):
 
 ```txt
 .
@@ -48,13 +53,19 @@ Let's call the app "CounterApp" and select "SwiftUI" for the interface and "Swif
 
 ## Generate FFI bindings
 
-We want UniFFI to create the Swift bindings and the C headers for our shared library, and store them in a directory called `generated`.
+We want UniFFI to create the Swift bindings and the C headers for our shared
+library, and store them in a directory called `generated`.
 
-To achieve this, we'll associate a script with files that match the pattern `*.udl` (this will catch the interface definition file we created earlier), and then add our `shared.udl` file to the project.
+To achieve this, we'll associate a script with files that match the pattern
+`*.udl` (this will catch the interface definition file we created earlier), and
+then add our `shared.udl` file to the project.
 
-Note that our shared library generates the `uniffi-bindgen` binary (as explained on the page ["Shared core and types"](./core.md)) that the script relies on, so make sure you have built it already, using `cargo build`.
+Note that our shared library generates the `uniffi-bindgen` binary (as explained
+on the page ["Shared core and types"](./core.md)) that the script relies on, so
+make sure you have built it already, using `cargo build`.
 
-In "**Build Rules**", add a rule to process files that match the pattern `*.udl` with the following script (and also uncheck "**Run once per architecture**").
+In "**Build Rules**", add a rule to process files that match the pattern `*.udl`
+with the following script (and also uncheck "**Run once per architecture**").
 
 ```bash
 # Skip during indexing phase in XCode 13+
@@ -83,9 +94,12 @@ $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
 $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h
 ```
 
-Now go to "**Build Phases, Compile Sources**", and add `/shared/src/shared.udl` using the "add other" button, selecting "Create folder references".
+Now go to "**Build Phases, Compile Sources**", and add `/shared/src/shared.udl`
+using the "add other" button, selecting "Create folder references".
 
-Build the project (cmd-B), which will fail, but the above script should run successfully and the "generated" folder should contain the generated Swift types and C header files:
+Build the project (cmd-B), which will fail, but the above script should run
+successfully and the "generated" folder should contain the generated Swift types
+and C header files:
 
 ```bash
 $ ls iOS/generated
@@ -94,13 +108,16 @@ shared.swift  sharedFFI.h  sharedFFI.modulemap
 
 ### Add the bridging header
 
-In "**Build Settings**", search for "bridging header", and add `generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and Release.
-If there isn't already a setting for "bridging header" you can add one (and then delete it) as per [this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
-
+In "**Build Settings**", search for "bridging header", and add
+`generated/sharedFFI.h`, for any architecture/SDK, i.e. in both Debug and
+Release. If there isn't already a setting for "bridging header" you can add one
+(and then delete it) as per
+[this StackOverflow question](https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055)
 
 ## Compile our Rust shared library
 
-When we build our iOS app, we also want to build the Rust core as a static library so that it can be linked into the binary that we're going to ship.
+When we build our iOS app, we also want to build the Rust core as a static
+library so that it can be linked into the binary that we're going to ship.
 
 ```admonish
 We will use [`cargo-xcode`](https://crates.io/crates/cargo-xcode) to generate an Xcode project for our shared library, which we can add as a sub-project in Xcode.
@@ -114,17 +131,25 @@ Let's generate the sub-project:
 cargo xcode
 ```
 
-This generates an Xcode project for each crate in the workspace, but we're only interested in the one it creates in the `shared` directory. Don't open this generated project yet.
+This generates an Xcode project for each crate in the workspace, but we're only
+interested in the one it creates in the `shared` directory. Don't open this
+generated project yet.
 
-Using Finder, drag the `shared/shared.xcodeproj` folder under the Xcode project root.
+Using Finder, drag the `shared/shared.xcodeproj` folder under the Xcode project
+root.
 
-Then, in the "**Build Phases, Link Binary with Libraries**" section, add the `libshared_static.a` library (you should be able to navigate to it as `Workspace -> shared -> libshared_static.a`)
+Then, in the "**Build Phases, Link Binary with Libraries**" section, add the
+`libshared_static.a` library (you should be able to navigate to it as
+`Workspace -> shared -> libshared_static.a`)
 
 ## Add the Shared Types
 
-Using Finder, drag the `shared_types/generated/swift/SharedTypes` folder under the Xcode project root.
+Using Finder, drag the `shared_types/generated/swift/SharedTypes` folder under
+the Xcode project root.
 
-Then, in the "**Build Phases, Link Binary with Libraries**" section, add the `SharedTypes` library (you should be able to navigate to it as `Workspace -> SharedTypes -> SharedTypes`)
+Then, in the "**Build Phases, Link Binary with Libraries**" section, add the
+`SharedTypes` library (you should be able to navigate to it as
+`Workspace -> SharedTypes -> SharedTypes`)
 
 ## Create some UI and run in the Simulator, or on an iPhone
 
@@ -133,7 +158,7 @@ Then, in the "**Build Phases, Link Binary with Libraries**" section, add the `Sh
 ```admonish example
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of iOS apps in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world) — it only has `shared` and `shared_types` libraries, which will work with the following example code.
+However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `ContentView.swift` to look like this:

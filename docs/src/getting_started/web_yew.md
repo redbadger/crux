@@ -1,6 +1,7 @@
 # Web — Rust and Yew
 
-These are the steps to set up and run a simple Rust Web app that calls into a shared core.
+These are the steps to set up and run a simple Rust Web app that calls into a
+shared core.
 
 ```admonish
 This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
@@ -12,20 +13,23 @@ There are many frameworks available for writing Web applications in Rust. We've 
 
 ## Create a Yew App
 
-Our Yew app is just a new Rust project, which we can create with Cargo. For this example we'll call it `web-yew`.
+Our Yew app is just a new Rust project, which we can create with Cargo. For this
+example we'll call it `web-yew`.
 
 ```sh
 cargo new web-yew
 ```
 
-We'll also want to add this new project to our Cargo workspace, by editing the root `Cargo.toml` file.
+We'll also want to add this new project to our Cargo workspace, by editing the
+root `Cargo.toml` file.
 
 ```toml
 [workspace]
 members = ["shared", "web-yew"]
 ```
 
-Now we can `cd` into the `web-yew` directory and start fleshing out our project. Let's add some dependencies to `shared/Cargo.toml`.
+Now we can `cd` into the `web-yew` directory and start fleshing out our project.
+Let's add some dependencies to `shared/Cargo.toml`.
 
 ```toml
 [package]
@@ -62,7 +66,7 @@ We'll also need a file called `index.html`, to serve our app.
 ```admonish example
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Yew apps in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world) — it only has `shared` and `shared_types` libraries, which will work with the following example code.
+However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `src/main.rs` to look like this:
@@ -160,7 +164,10 @@ fn main() {
 
 ## Build and serve our app
 
-The easiest way to compile the app to WebAssembly and serve it in our web page is to use [`trunk`](https://trunkrs.dev/), which we can install with [Homebrew](https://brew.sh/) (`brew install trunk`) or Cargo (`cargo install trunk`).
+The easiest way to compile the app to WebAssembly and serve it in our web page
+is to use [`trunk`](https://trunkrs.dev/), which we can install with
+[Homebrew](https://brew.sh/) (`brew install trunk`) or Cargo
+(`cargo install trunk`).
 
 We can build our app, serve it and open it in our browser, in one simple step.
 

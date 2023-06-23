@@ -6283,8 +6283,6 @@ dependencies = [
  "js-sys",
  "leptos",
  "log",
- "serde",
- "serde_json",
  "shared",
  "wasm-bindgen",
  "wasm-bindgen-futures",

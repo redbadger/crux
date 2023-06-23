@@ -12,6 +12,7 @@
 1. [Android — Kotlin and Jetpack Compose](./getting_started/android.md)
 1. [Web — TypeScript and React (Next.js)](./getting_started/web_react.md)
 1. [Web — Rust and Yew](./getting_started/web_yew.md)
+1. [Web — Rust and Leptos](./getting_started/web_leptos.md)
 
 # Development Guide
 

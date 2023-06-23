@@ -1,0 +1,7 @@
+[package]
+name = "web-leptos"
+version = "0.1.0"
+
+[dependencies]
+leptos = { version = "0.3.1", features = ["stable"] }
+shared = { path = "../shared" }
