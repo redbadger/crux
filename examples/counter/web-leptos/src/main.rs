@@ -8,28 +8,16 @@ use leptos::{
     component, create_effect, create_signal, spawn_local, view, IntoView, Scope, SignalGet,
     SignalUpdate, WriteSignal,
 };
-use serde::{Deserialize, Serialize};
 use shared::{App, Capabilities, Core, Effect, Event, ViewModel};
-
-// we need a newtype for Event because signals require Clone
-#[derive(Debug, Serialize, Deserialize)]
-struct Task(Event);
-
-// this is a hack because Event doesn't impl Clone (may change in the future)
-impl Clone for Task {
-    fn clone(&self) -> Task {
-        serde_json::from_str(&serde_json::to_string(self).unwrap()).unwrap()
-    }
-}
 
 #[component]
 fn RootComponent(cx: Scope) -> impl IntoView {
     let core = Rc::new(Core::new::<Capabilities>());
     let (view_model, set_view_model) = create_signal(cx, core.view());
-    let (event, set_event) = create_signal(cx, Task(Event::StartWatch));
+    let (event, set_event) = create_signal(cx, Event::StartWatch);
 
     create_effect(cx, move |_| {
-        let event = event.get().0;
+        let event = event.get();
         log::debug!("event: {:?}", event);
         let effects = core.process_event(event);
         process_effects(effects, &core, set_view_model);
@@ -47,12 +35,12 @@ fn RootComponent(cx: Scope) -> impl IntoView {
                 <p class="is-size-5">{move || view_model.get().text}</p>
                 <div class="buttons section is-centered">
                     <button class="button is-primary is-warning"
-                        on:click=move |_| set_event.update(|value| *value = Task(Event::Decrement))
+                        on:click=move |_| set_event.update(|value| *value = Event::Decrement)
                     >
                         {"Decrement"}
                     </button>
                     <button class="button is-primary is-danger"
-                        on:click=move |_| set_event.update(|value| *value = Task(Event::Increment))
+                        on:click=move |_| set_event.update(|value| *value = Event::Increment)
                     >
                         {"Increment"}
                     </button>
