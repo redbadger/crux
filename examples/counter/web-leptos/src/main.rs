@@ -3,7 +3,6 @@ mod sse;
 
 use std::rc::Rc;
 
-use anyhow::Result;
 use futures_util::TryStreamExt;
 use leptos::{
     component, create_effect, create_signal, spawn_local, view, IntoView, Scope, SignalGet,
@@ -12,17 +11,14 @@ use leptos::{
 use serde::{Deserialize, Serialize};
 use shared::{App, Capabilities, Core, Effect, Event, ViewModel};
 
-// we need a newtype for Event because signals require Clone, so use json instead
+// we need a newtype for Event because signals require Clone
 #[derive(Debug, Serialize, Deserialize)]
 struct Task(Event);
 
-impl Task {
-    fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-
-    fn from_json(json: &str) -> Result<Self> {
-        serde_json::from_str(json).map_err(Into::into)
+// this is a hack because Event doesn't impl Clone (may change in the future)
+impl Clone for Task {
+    fn clone(&self) -> Task {
+        serde_json::from_str(&serde_json::to_string(self).unwrap()).unwrap()
     }
 }
 
@@ -30,15 +26,13 @@ impl Task {
 fn RootComponent(cx: Scope) -> impl IntoView {
     let core = Rc::new(Core::new::<Capabilities>());
     let (view_model, set_view_model) = create_signal(cx, core.view());
-    let (event, set_event) = create_signal(cx, Task(Event::StartWatch).to_json());
+    let (event, set_event) = create_signal(cx, Task(Event::StartWatch));
 
     create_effect(cx, move |_| {
-        let event = event.get();
+        let event = event.get().0;
         log::debug!("event: {:?}", event);
-        if let Ok(Task(event)) = Task::from_json(&event) {
-            let effects = core.process_event(event);
-            process_effects(effects, &core, set_view_model);
-        }
+        let effects = core.process_event(event);
+        process_effects(effects, &core, set_view_model);
     });
 
     view! {cx,
@@ -53,12 +47,12 @@ fn RootComponent(cx: Scope) -> impl IntoView {
                 <p class="is-size-5">{move || view_model.get().text}</p>
                 <div class="buttons section is-centered">
                     <button class="button is-primary is-warning"
-                        on:click=move |_| set_event.update(|value| *value = Task(Event::Decrement).to_json())
+                        on:click=move |_| set_event.update(|value| *value = Task(Event::Decrement))
                     >
                         {"Decrement"}
                     </button>
                     <button class="button is-primary is-danger"
-                        on:click=move |_| set_event.update(|value| *value = Task(Event::Increment).to_json())
+                        on:click=move |_| set_event.update(|value| *value = Task(Event::Increment))
                     >
                         {"Increment"}
                     </button>
