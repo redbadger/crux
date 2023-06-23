@@ -154,163 +154,17 @@ There are several [examples](https://github.com/redbadger/crux/tree/master/examp
 However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
-Edit `web-nextjs/src/pages/index.tsx` to look like this:
+Edit `web-nextjs/pages/index.tsx` to look like this:
 
 ```typescript
-import type { NextPage } from "next";
-import Head from "next/head";
-import { useEffect, useState } from "react";
-
-import init_core, { process_event as sendEvent, view } from "../../shared/core";
-import * as types from "shared_types/types/shared_types";
-import * as bincode from "shared_types/bincode/mod";
-
-interface Event {
-  kind: "event";
-  event: types.Event;
-}
-
-type State = {
-  count: string;
-};
-
-const initialState: State = {
-  count: "",
-};
-
-function deserializeRequests(bytes: Uint8Array) {
-  let deserializer = new bincode.BincodeDeserializer(bytes);
-
-  const len = deserializer.deserializeLen();
-
-  let requests: types.Request[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const request = types.Request.deserialize(deserializer);
-    requests.push(request);
-  }
-
-  return requests;
-}
-
-const Home: NextPage = () => {
-  const [state, setState] = useState(initialState);
-
-  const dispatch = (action: Event) => {
-    const serializer = new bincode.BincodeSerializer();
-    action.event.serialize(serializer);
-    const requests = sendEvent(serializer.getBytes());
-    handleRequests(requests);
-  };
-
-  const handleRequests = async (bytes: Uint8Array) => {
-    let requests = deserializeRequests(bytes);
-
-    for (const { uuid: _, effect } of requests) {
-      switch (effect.constructor) {
-        case types.EffectVariantRender:
-          let bytes = view();
-          let viewDeserializer = new bincode.BincodeDeserializer(bytes);
-          let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-          setState({
-            count: viewModel.count,
-          });
-
-          break;
-      }
-    }
-  };
-
-  useEffect(() => {
-    async function loadCore() {
-      await init_core();
-
-      // Initial event
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantReset(),
-      });
-    }
-
-    loadCore();
-  }, []);
-
-  return (
-    <>
-      <Head>
-        <title>Next.js Example</title>
-      </Head>
-
-      <main>
-        <section className="box container has-text-centered m-5">
-          <p className="is-size-5">{state.count}</p>
-          <div className="buttons section is-centered">
-            <button
-              className="button is-primary is-danger"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantReset(),
-                })
-              }
-            >
-              {"Reset"}
-            </button>
-            <button
-              className="button is-primary is-success"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantIncrement(),
-                })
-              }
-            >
-              {"Increment"}
-            </button>
-            <button
-              className="button is-primary is-warning"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantDecrement(),
-                })
-              }
-            >
-              {"Decrement"}
-            </button>
-          </div>
-        </section>
-      </main>
-    </>
-  );
-};
-
-export default Home;
+{{#include ../../../examples/hello_world/web-nextjs/pages/index.tsx}}
 ```
 
 Now all we need is some CSS. Edit
-`examples/hello_world/web-nextjs/src/pages/_document.tsx` to look like this:
+`examples/hello_world/web-nextjs/pages/_document.tsx` to look like this:
 
 ```typescript
-import { Html, Head, Main, NextScript } from "next/document";
-
-export default function Document() {
-  return (
-    <Html>
-      <Head>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
-        />
-      </Head>
-      <body>
-        <Main />
-        <NextScript />
-      </body>
-    </Html>
-  );
-}
+{{#include ../../../examples/hello_world/web-nextjs/pages/_document.tsx}}
 ```
 
 ## Build and serve our app
