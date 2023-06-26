@@ -11,7 +11,7 @@ use leptos::{
 use shared::{App, Capabilities, Core, Effect, Event, ViewModel};
 
 #[component]
-fn RootComponent(cx: Scope) -> impl IntoView {
+fn root_component(cx: Scope) -> impl IntoView {
     let core = Rc::new(Core::new::<Capabilities>());
     let (view_model, set_view_model) = create_signal(cx, core.view());
     let (event, set_event) = create_signal(cx, Event::StartWatch);
