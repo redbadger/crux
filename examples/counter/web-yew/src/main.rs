@@ -1,15 +1,12 @@
+mod http;
+mod sse;
+
 use std::rc::Rc;
 
-use anyhow::Result;
-use futures::{stream, TryStreamExt};
-use wasm_bindgen::JsValue;
+use futures_util::TryStreamExt;
 use yew::{html::Scope, prelude::*};
 
-use shared::{
-    http::protocol::{HttpRequest, HttpResponse},
-    sse::{SseRequest, SseResponse},
-    App, Capabilities, Core, Effect, Event,
-};
+use shared::{App, Capabilities, Core, Effect, Event};
 
 #[derive(Default)]
 struct RootComponent {
@@ -43,7 +40,10 @@ impl Component for RootComponent {
         let core = &self.core;
 
         match msg {
-            Task::Event(event) => send_effects(link, core.process_event(event)),
+            Task::Event(event) => {
+                let effects = core.process_event(event);
+                send_effects(link, effects)
+            }
             Task::Effect(effect) => match effect {
                 Effect::Render(_) => return true,
                 Effect::Http(mut request) => {
@@ -52,9 +52,10 @@ impl Component for RootComponent {
                         let core = core.clone();
 
                         async move {
-                            let response = http(&request.operation).await.unwrap();
+                            let response = http::request(&request.operation).await.unwrap();
 
-                            send_effects(&link, core.resolve(&mut request, response));
+                            let effects = core.resolve(&mut request, response);
+                            send_effects(&link, effects);
                         }
                     });
                 }
@@ -64,10 +65,11 @@ impl Component for RootComponent {
                         let core = core.clone();
 
                         async move {
-                            let mut stream = sse(&request.operation).await.unwrap();
+                            let mut stream = sse::request(&request.operation).await.unwrap();
 
                             while let Ok(Some(response)) = stream.try_next().await {
-                                send_effects(&link, core.resolve(&mut request, response));
+                                let effects = core.resolve(&mut request, response);
+                                send_effects(&link, effects);
                             }
                         }
                     });
@@ -106,65 +108,6 @@ impl Component for RootComponent {
             </>
         }
     }
-}
-
-async fn http(
-    HttpRequest {
-        url,
-        method,
-        headers,
-        body: _,
-    }: &HttpRequest,
-) -> Result<HttpResponse> {
-    use gloo_net::http;
-
-    let mut request = match method.as_str() {
-        "GET" => http::Request::get(url),
-        "POST" => http::Request::post(url),
-        _ => panic!("not yet handling this method"),
-    };
-
-    for header in headers {
-        request = request.header(&header.name, &header.value);
-    }
-
-    let response = request.send().await?;
-    let body = response.binary().await?;
-
-    Ok(HttpResponse {
-        status: response.status(),
-        body,
-    })
-}
-
-async fn sse(
-    SseRequest { url }: &SseRequest,
-) -> Result<impl futures::stream::TryStream<Ok = SseResponse, Error = JsValue>> {
-    use futures_util::StreamExt;
-    use gloo_net::http;
-    use js_sys::Uint8Array;
-    use wasm_bindgen::prelude::*;
-    use wasm_streams::ReadableStream;
-
-    let response = http::Request::get(url).send().await?;
-
-    let raw_body = response.body().unwrap_throw();
-    let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());
-
-    let stream = body.into_stream();
-
-    Ok(Box::pin(stream::try_unfold(stream, |mut stream| async {
-        match stream.next().await {
-            Some(Ok(chunk)) => {
-                let chunk: Uint8Array = chunk.into();
-                let response = SseResponse::Chunk(chunk.to_vec());
-
-                Ok(Some((response, stream)))
-            }
-            Some(Err(e)) => Err(e),
-            None => Ok(None),
-        }
-    })))
 }
 
 fn main() {

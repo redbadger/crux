@@ -4,9 +4,7 @@ mod hello_world;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-pub use crux_core::bridge::Bridge;
-use crux_core::Core;
-pub use crux_core::Request;
+pub use crux_core::{bridge::Bridge, Core, Request};
 
 pub use counter::*;
 

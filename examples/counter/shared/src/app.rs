@@ -21,7 +21,7 @@ pub struct ViewModel {
     pub confirmed: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Event {
     // events from the shell
     Get,
@@ -44,7 +44,7 @@ pub struct Capabilities {
     pub sse: ServerSentEvents<Event>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
 pub struct Counter {
     value: isize,
     updated_at: i64,

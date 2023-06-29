@@ -1,5 +1,13 @@
 [workspace]
-members = ["cli", "server", "shared", "shared_types", "tauri/src-tauri", "web-yew"]
+members = [
+  "cli",
+  "server",
+  "shared_types",
+  "shared",
+  "tauri/src-tauri",
+  "web-leptos",
+  "web-yew",
+]
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]

@@ -2,7 +2,7 @@ use crux_core::{render::Render, App};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Event {
     Increment,
     Decrement,
@@ -14,7 +14,7 @@ pub struct Model {
     count: isize,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ViewModel {
     pub count: String,
 }
