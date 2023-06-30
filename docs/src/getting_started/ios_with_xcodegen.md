@@ -8,7 +8,7 @@ We think that using [XcodeGen](https://github.com/yonaskolb/XcodeGen) may be the
 ```
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo — as described in [Shared core and types](./core.md) — and that you have built them using `cargo build`.
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo — as described in [Shared core and types](./core.md).
 ```
 
 ## Compile our Rust shared library
