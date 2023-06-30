@@ -17,6 +17,7 @@ targets:
       - path: ../shared/src/shared.udl
         buildPhase: sources
     dependencies:
+      - target: Shared/uniffi-bindgen-bin
       - target: Shared/shared-staticlib
       - package: SharedTypes
     info:
@@ -38,20 +39,19 @@ targets:
           set -e
 
           # Skip during indexing phase in XCode 13+
-          if [ $ACTION == "indexbuild" ]; then
+          if [ "$ACTION" == "indexbuild" ]; then
             echo "Not building *.udl files during indexing."
             exit 0
           fi
 
           # Skip for preview builds
-          if [ "${ENABLE_PREVIEWS}" = "YES" ]; then
+          if [ "$ENABLE_PREVIEWS" = "YES" ]; then
             echo "Not building *.udl files during preview builds."
             exit 0
           fi
 
-          # note, for now, run a cargo build manually to ensure the binary exists for this step
-          cd "$INPUT_FILE_DIR"/..
-          "$PROJECT_DIR/../target/debug/uniffi-bindgen" generate src/"$INPUT_FILE_NAME" --language swift --out-dir "$PROJECT_DIR/generated"
+          cd "${INPUT_FILE_DIR}/.."
+          "${BUILD_DIR}/debug/uniffi-bindgen" generate "src/${INPUT_FILE_NAME}" --language swift --out-dir "${PROJECT_DIR}/generated"
         outputFiles:
           - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
           - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h

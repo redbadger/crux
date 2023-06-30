@@ -65,14 +65,12 @@ afterEvaluate {
         }
         def buildType = "${variant.buildType.name.capitalize()}"
 
-        tasks["cargoBuild"].dependsOn(tasks["bindGen"])
-
         tasks["bindGen"].dependsOn(tasks["deleteGenerated"])
-        tasks["typesGen"].dependsOn(tasks["cargoBuild"], tasks["deleteGenerated"])
+        tasks["typesGen"].dependsOn(tasks["deleteGenerated"])
 
-        tasks["compileDebugKotlin"].dependsOn(tasks["typesGen"])
+        tasks["compileDebugKotlin"].dependsOn(tasks["typesGen"], tasks["bindGen"])
 
-        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["typesGen"], tasks["cargoBuild"])
+        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
     }
 }
 
@@ -93,7 +91,7 @@ task bindGen(type: Exec) {
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine(
                 "cmd", "/c",
-                "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
+                "cargo build -p shared && target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
                         "--language kotlin " +
                         "--out-dir " + outDir.replace('/', '\\')
         )
@@ -101,10 +99,11 @@ task bindGen(type: Exec) {
         commandLine(
                 "sh", "-c",
                 """\
-            target/debug/uniffi-bindgen generate shared/src/shared.udl \
-            --language kotlin \
-            --out-dir $outDir
-            """
+                cargo build -p shared && \
+                target/debug/uniffi-bindgen generate shared/src/shared.udl \
+                --language kotlin \
+                --out-dir $outDir
+                """
         )
     }
 }
@@ -115,8 +114,8 @@ task typesGen(type: Exec) {
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine("cmd", "/c",
-                "xcopy /e /y " + srcDir.replace('/', '\\') + " " + outDir.replace('/', '\\'))
+                "cargo build -p shared_types && xcopy /e /y " + srcDir.replace('/', '\\') + " " + outDir.replace('/', '\\'))
     } else {
-        commandLine("sh", "-c", "cp -r $srcDir $outDir")
+        commandLine("sh", "-c", "cargo build -p shared_types && cp -r $srcDir $outDir")
     }
 }
