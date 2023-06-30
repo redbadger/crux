@@ -293,19 +293,6 @@ private func uniffiCheckCallStatus(
 // Public interface members begin here.
 
 
-fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
-    typealias FfiType = UInt8
-    typealias SwiftType = UInt8
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
-        return try lift(readInt(&buf))
-    }
-
-    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
-        writeInt(&buf, lower(value))
-    }
-}
-
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -344,49 +331,42 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
-fileprivate struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
-    typealias SwiftType = [UInt8]
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
+    typealias SwiftType = Data
 
-    public static func write(_ value: [UInt8], into buf: inout [UInt8]) {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        let len: Int32 = try readInt(&buf)
+        return Data(bytes: try readBytes(&buf, count: Int(len)))
+    }
+
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
-        for item in value {
-            FfiConverterUInt8.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt8] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [UInt8]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterUInt8.read(from: &buf))
-        }
-        return seq
+        writeBytes(&buf, value)
     }
 }
 
-public func `processEvent`(_ `msg`: [UInt8])  -> [UInt8] {
-    return try!  FfiConverterSequenceUInt8.lift(
+public func `processEvent`(_ `msg`: Data)  -> Data {
+    return try!  FfiConverterData.lift(
         try! rustCall() {
     uniffi_shared_fn_func_process_event(
-        FfiConverterSequenceUInt8.lower(`msg`),$0)
+        FfiConverterData.lower(`msg`),$0)
 }
     )
 }
 
-public func `handleResponse`(_ `uuid`: [UInt8], _ `res`: [UInt8])  -> [UInt8] {
-    return try!  FfiConverterSequenceUInt8.lift(
+public func `handleResponse`(_ `uuid`: Data, _ `res`: Data)  -> Data {
+    return try!  FfiConverterData.lift(
         try! rustCall() {
     uniffi_shared_fn_func_handle_response(
-        FfiConverterSequenceUInt8.lower(`uuid`),
-        FfiConverterSequenceUInt8.lower(`res`),$0)
+        FfiConverterData.lower(`uuid`),
+        FfiConverterData.lower(`res`),$0)
 }
     )
 }
 
-public func `view`()  -> [UInt8] {
-    return try!  FfiConverterSequenceUInt8.lift(
+public func `view`()  -> Data {
+    return try!  FfiConverterData.lift(
         try! rustCall() {
     uniffi_shared_fn_func_view($0)
 }
@@ -408,13 +388,13 @@ private var initializationResult: InitializationResult {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_shared_checksum_func_process_event() != 55778) {
+    if (uniffi_shared_checksum_func_process_event() != 7497) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_shared_checksum_func_handle_response() != 3418) {
+    if (uniffi_shared_checksum_func_handle_response() != 46585) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_shared_checksum_func_view() != 27297) {
+    if (uniffi_shared_checksum_func_view() != 63715) {
         return InitializationResult.apiChecksumMismatch
     }
 

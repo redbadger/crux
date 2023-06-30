@@ -21,11 +21,11 @@ class Model: ObservableObject {
         update(msg: .event(.startWatch))
     }
 
-    private func http(uuid: Uuid, method: String, url: String, headers: [HttpHeader]) {
-        var req = URLRequest(url: URL(string: url)!)
-        req.httpMethod = method
+    private func http(uuid: Uuid, request: HttpRequest) {
+        var req = URLRequest(url: URL(string: request.url)!)
+        req.httpMethod = request.method
 
-        for header in headers {
+        for header in request.headers {
             req.addValue(header.value, forHTTPHeaderField: header.name)
         }
 
@@ -39,8 +39,8 @@ class Model: ObservableObject {
         }
     }
 
-    private func sse(uuid: Uuid, url: String) {
-        let req = URLRequest(url: URL(string: url)!)
+    private func sse(uuid: Uuid, request: SseRequest) {
+        let req = URLRequest(url: URL(string: request.url)!)
         Task {
             let (asyncBytes, response) = try! await URLSession.shared.bytes(for: req)
             guard let httpResponse = response as? HTTPURLResponse,
@@ -58,27 +58,33 @@ class Model: ObservableObject {
     }
 
     func update(msg: Message) {
-        let reqs: [Request]
+        var reqs: [Request]
 
         switch msg {
         case let .event(m):
-            reqs = try! [Request].bincodeDeserialize(input: CounterApp.processEvent(try! m.bincodeSerialize()))
-        case let .response(uuid, outcome):
-            reqs = try! [Request].bincodeDeserialize(input: CounterApp.handleResponse(uuid, {
-                switch outcome {
-                case let .http(x):
-                    return try! x.bincodeSerialize()
-                case let .sse(x):
-                    return try! x.bincodeSerialize()
-                }
-            }()))
+            reqs = try! [Request].bincodeDeserialize(
+                input: [UInt8](processEvent(Data(try! m.bincodeSerialize())))
+            )
+        case let .response(uuid, .http(r)):
+            reqs = try! [Request].bincodeDeserialize(
+                input: [UInt8](handleResponse(Data(uuid), Data(try! r.bincodeSerialize())))
+            )
+        case let .response(uuid, .sse(r)):
+            reqs = try! [Request].bincodeDeserialize(
+                input: [UInt8](handleResponse(Data(uuid), Data(try! r.bincodeSerialize())))
+            )
         }
 
         for req in reqs {
             switch req.effect {
-            case .render: view = try! ViewModel.bincodeDeserialize(input: CounterApp.view())
-            case let .http(r): http(uuid: req.uuid, method: r.method, url: r.url, headers: r.headers)
-            case let .serverSentEvents(r): sse(uuid: req.uuid, url: r.url)
+            case .render:
+                view = try! ViewModel.bincodeDeserialize(
+                    input: [UInt8](CounterApp.view())
+                )
+            case let .http(r):
+                http(uuid: req.uuid, request: r)
+            case let .serverSentEvents(r):
+                sse(uuid: req.uuid, request: r)
             }
         }
     }
