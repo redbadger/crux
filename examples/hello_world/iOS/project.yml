@@ -17,6 +17,7 @@ targets:
       - path: ../shared/src/shared.udl
         buildPhase: sources
     dependencies:
+      - target: Shared/uniffi-bindgen-bin
       - target: Shared/shared-staticlib
       - package: SharedTypes
     info:
@@ -51,7 +52,7 @@ targets:
 
           # note, for now, run a cargo build manually to ensure the binary exists for this step
           cd "$INPUT_FILE_DIR"/..
-          "$PROJECT_DIR/../target/debug/uniffi-bindgen" generate src/"$INPUT_FILE_NAME" --language swift --out-dir "$PROJECT_DIR/generated"
+          "$BUILD_DIR/debug/uniffi-bindgen" generate src/"$INPUT_FILE_NAME" --language swift --out-dir "$PROJECT_DIR/generated"
         outputFiles:
           - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
           - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h

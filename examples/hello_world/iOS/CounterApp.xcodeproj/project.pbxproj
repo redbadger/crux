@@ -11,6 +11,7 @@
 		0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A6C59672AA736317738B5C /* ContentView.swift */; };
 		4467D267096A960C23F9FF3B /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA6A61FB6787C24656A044CC /* libshared_static.a */; };
 		4A7935DA2D4B24A0427339BC /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 1465E5EDE4F684AD5291C0A3 /* shared.udl */; };
+		5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
 /* End PBXBuildFile section */
 
@@ -29,7 +30,7 @@
 			outputFilesCompilerFlags = (
 			);
 			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ $ACTION == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"${ENABLE_PREVIEWS}\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\n# note, for now, run a cargo build manually to ensure the binary exists for this step\ncd \"$INPUT_FILE_DIR\"/..\n\"$PROJECT_DIR/../target/debug/uniffi-bindgen\" generate src/\"$INPUT_FILE_NAME\" --language swift --out-dir \"$PROJECT_DIR/generated\"\n";
+			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ $ACTION == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"${ENABLE_PREVIEWS}\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\n# note, for now, run a cargo build manually to ensure the binary exists for this step\ncd \"$INPUT_FILE_DIR\"/..\n\"$BUILD_DIR/debug/uniffi-bindgen\" generate src/\"$INPUT_FILE_NAME\" --language swift --out-dir \"$PROJECT_DIR/generated\"\n";
 		};
 /* End PBXBuildRule section */
 
@@ -48,14 +49,21 @@
 			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
 			remoteInfo = "shared-staticlib";
 		};
-		CCCAC3532A1BD4FF003D3BF9 /* PBXContainerItemProxy */ = {
+		C284D65D30E22DC037BD5299 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA60ACD85ECB522D2C86E215;
+			remoteInfo = "uniffi-bindgen-bin";
+		};
+		CCFD12E52A4EF26E005EB70D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
 			remoteGlobalIDString = CA60D2B4E60D10F7F7FCAC5B;
 			remoteInfo = "shared-cdylib";
 		};
-		CCCAC3552A1BD4FF003D3BF9 /* PBXContainerItemProxy */ = {
+		F300AC884F93FAF703B505A3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
@@ -145,8 +153,8 @@
 			isa = PBXGroup;
 			children = (
 				BA6A61FB6787C24656A044CC /* libshared_static.a */,
-				CCCAC3542A1BD4FF003D3BF9 /* shared.dylib */,
-				CCCAC3562A1BD4FF003D3BF9 /* uniffi-bindgen */,
+				CCFD12E62A4EF26E005EB70D /* shared.dylib */,
+				4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -159,12 +167,14 @@
 			buildConfigurationList = B7140C4C9BEE130CB4BA6DAD /* Build configuration list for PBXNativeTarget "CounterApp" */;
 			buildPhases = (
 				29206CB1A0ECB217F5F98845 /* Sources */,
+				7EDA081FAFAA7F31D0463D79 /* Resources */,
 				BDE534E147194D3AC42ADD82 /* Frameworks */,
 			);
 			buildRules = (
 				E45AE029B6F917B0FFA85BD6 /* PBXBuildRule */,
 			);
 			dependencies = (
+				9185B3D491AE14F3B6E7DD76 /* PBXTargetDependency */,
 				99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */,
 			);
 			name = CounterApp;
@@ -207,6 +217,13 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
+		4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "uniffi-bindgen";
+			remoteRef = F300AC884F93FAF703B505A3 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 		BA6A61FB6787C24656A044CC /* libshared_static.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
@@ -214,21 +231,25 @@
 			remoteRef = 3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CCCAC3542A1BD4FF003D3BF9 /* shared.dylib */ = {
+		CCFD12E62A4EF26E005EB70D /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CCCAC3532A1BD4FF003D3BF9 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		CCCAC3562A1BD4FF003D3BF9 /* uniffi-bindgen */ = {
-			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.executable";
-			path = "uniffi-bindgen";
-			remoteRef = CCCAC3552A1BD4FF003D3BF9 /* PBXContainerItemProxy */;
+			remoteRef = CCFD12E52A4EF26E005EB70D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7EDA081FAFAA7F31D0463D79 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		29206CB1A0ECB217F5F98845 /* Sources */ = {
@@ -244,6 +265,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		9185B3D491AE14F3B6E7DD76 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "uniffi-bindgen-bin";
+			targetProxy = C284D65D30E22DC037BD5299 /* PBXContainerItemProxy */;
+		};
 		99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = "shared-staticlib";

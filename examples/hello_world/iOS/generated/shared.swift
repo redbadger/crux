@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_shared_2a51_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_shared_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_shared_2a51_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_shared_rustbuffer_free(self, $0) }
     }
 }
 
@@ -238,28 +238,41 @@ fileprivate extension RustCallStatus {
 }
 
 private func rustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T {
-    try makeRustCall(callback, errorHandler: {
-        $0.deallocate()
-        return UniffiInternalError.unexpectedRustCallError
-    })
+    try makeRustCall(callback, errorHandler: nil)
 }
 
-private func rustCallWithError<T, F: FfiConverter>
-    (_ errorFfiConverter: F.Type, _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T
-    where F.SwiftType: Error, F.FfiType == RustBuffer
-    {
-    try makeRustCall(callback, errorHandler: { return try errorFfiConverter.lift($0) })
+private func rustCallWithError<T>(
+    _ errorHandler: @escaping (RustBuffer) throws -> Error,
+    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T {
+    try makeRustCall(callback, errorHandler: errorHandler)
 }
 
-private func makeRustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) -> T, errorHandler: (RustBuffer) throws -> Error) throws -> T {
+private func makeRustCall<T>(
+    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T,
+    errorHandler: ((RustBuffer) throws -> Error)?
+) throws -> T {
+    uniffiEnsureInitialized()
     var callStatus = RustCallStatus.init()
     let returnedVal = callback(&callStatus)
+    try uniffiCheckCallStatus(callStatus: callStatus, errorHandler: errorHandler)
+    return returnedVal
+}
+
+private func uniffiCheckCallStatus(
+    callStatus: RustCallStatus,
+    errorHandler: ((RustBuffer) throws -> Error)?
+) throws {
     switch callStatus.code {
         case CALL_SUCCESS:
-            return returnedVal
+            return
 
         case CALL_ERROR:
-            throw try errorHandler(callStatus.errorBuf)
+            if let errorHandler = errorHandler {
+                throw try errorHandler(callStatus.errorBuf)
+            } else {
+                callStatus.errorBuf.deallocate()
+                throw UniffiInternalError.unexpectedRustCallError
+            }
 
         case CALL_PANIC:
             // When the rust code sees a panic, it tries to construct a RustBuffer
@@ -354,56 +367,67 @@ fileprivate struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
 }
 
 public func `processEvent`(_ `msg`: [UInt8])  -> [UInt8] {
-    return try! FfiConverterSequenceUInt8.lift(
-        try!
-    
-    rustCall() {
-    
-    shared_2a51_process_event(
-        FfiConverterSequenceUInt8.lower(`msg`), $0)
+    return try!  FfiConverterSequenceUInt8.lift(
+        try! rustCall() {
+    uniffi_shared_fn_func_process_event(
+        FfiConverterSequenceUInt8.lower(`msg`),$0)
 }
     )
 }
-
-
 
 public func `handleResponse`(_ `uuid`: [UInt8], _ `res`: [UInt8])  -> [UInt8] {
-    return try! FfiConverterSequenceUInt8.lift(
-        try!
-    
-    rustCall() {
-    
-    shared_2a51_handle_response(
-        FfiConverterSequenceUInt8.lower(`uuid`), 
-        FfiConverterSequenceUInt8.lower(`res`), $0)
+    return try!  FfiConverterSequenceUInt8.lift(
+        try! rustCall() {
+    uniffi_shared_fn_func_handle_response(
+        FfiConverterSequenceUInt8.lower(`uuid`),
+        FfiConverterSequenceUInt8.lower(`res`),$0)
 }
     )
 }
-
-
 
 public func `view`()  -> [UInt8] {
-    return try! FfiConverterSequenceUInt8.lift(
-        try!
-    
-    rustCall() {
-    
-    shared_2a51_view($0)
+    return try!  FfiConverterSequenceUInt8.lift(
+        try! rustCall() {
+    uniffi_shared_fn_func_view($0)
 }
     )
 }
 
+private enum InitializationResult {
+    case ok
+    case contractVersionMismatch
+    case apiChecksumMismatch
+}
+// Use a global variables to perform the versioning checks. Swift ensures that
+// the code inside is only computed once.
+private var initializationResult: InitializationResult {
+    // Get the bindings contract version from our ComponentInterface
+    let bindings_contract_version = 22
+    // Get the scaffolding contract version by calling the into the dylib
+    let scaffolding_contract_version = ffi_shared_uniffi_contract_version()
+    if bindings_contract_version != scaffolding_contract_version {
+        return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_shared_checksum_func_process_event() != 55778) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_shared_checksum_func_handle_response() != 3418) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_shared_checksum_func_view() != 27297) {
+        return InitializationResult.apiChecksumMismatch
+    }
 
+    return InitializationResult.ok
+}
 
-/**
- * Top level initializers and tear down methods.
- *
- * This is generated by uniffi.
- */
-public enum SharedLifecycle {
-    /**
-     * Initialize the FFI and Rust library. This should be only called once per application.
-     */
-    func initialize() {
+private func uniffiEnsureInitialized() {
+    switch initializationResult {
+    case .ok:
+        break
+    case .contractVersionMismatch:
+        fatalError("UniFFI contract version mismatch: try cleaning and rebuilding your project")
+    case .apiChecksumMismatch:
+        fatalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }

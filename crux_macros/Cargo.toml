@@ -16,10 +16,10 @@ proc-macro = true
 [dependencies]
 darling = "0.20.1"
 proc-macro-error = "1.0.4"
-proc-macro2 = "1.0.60"
-quote = "1.0.28"
-syn = "2.0.18"
+proc-macro2 = "1.0.63"
+quote = "1.0.29"
+syn = "2.0.22"
 
 [dev-dependencies]
-insta = "1.29"
+insta = "1.30"
 prettyplease = "0.2"
