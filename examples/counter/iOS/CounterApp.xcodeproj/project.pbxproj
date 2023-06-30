@@ -21,8 +21,6 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
-			inputFiles = (
-			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -32,7 +30,7 @@
 			outputFilesCompilerFlags = (
 			);
 			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ $ACTION == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"${ENABLE_PREVIEWS}\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\n# note, for now, run a cargo build manually to ensure the binary exists for this step\ncd \"$INPUT_FILE_DIR\"/..\n\"$BUILD_DIR/debug/uniffi-bindgen\" generate src/\"$INPUT_FILE_NAME\" --language swift --out-dir \"$PROJECT_DIR/generated\"\n";
+			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/debug/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
 		};
 /* End PBXBuildRule section */
 
@@ -58,7 +56,7 @@
 			remoteGlobalIDString = CA60BEE81408C5EF52D43448;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CC3D95B12A4ED9DF00BFA604 /* PBXContainerItemProxy */ = {
+		CC5ACC662A4F1B38003C53D7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
@@ -155,7 +153,7 @@
 			isa = PBXGroup;
 			children = (
 				BA6A61FB6787C24656A044CC /* libshared_static.a */,
-				CC3D95B22A4ED9DF00BFA604 /* shared.dylib */,
+				CC5ACC672A4F1B38003C53D7 /* shared.dylib */,
 				4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */,
 			);
 			name = Products;
@@ -233,11 +231,11 @@
 			remoteRef = 3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CC3D95B22A4ED9DF00BFA604 /* shared.dylib */ = {
+		CC5ACC672A4F1B38003C53D7 /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CC3D95B12A4ED9DF00BFA604 /* PBXContainerItemProxy */;
+			remoteRef = CC5ACC662A4F1B38003C53D7 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */

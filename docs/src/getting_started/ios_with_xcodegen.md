@@ -45,8 +45,8 @@ Before we generate the Xcode project, we need to create some directories and a
 `project.yml` file:
 
 ```bash
-mkdir -p iOS/CounterApp
 cd iOS
+mkdir CounterApp
 touch project.yml
 ```
 

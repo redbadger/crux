@@ -68,20 +68,24 @@ In "**Build Rules**", add a rule to process files that match the pattern `*.udl`
 with the following script (and also uncheck "**Run once per architecture**").
 
 ```bash
+#!/bin/bash
+set -e
+
 # Skip during indexing phase in XCode 13+
-if [ $ACTION == "indexbuild" ]; then
+if [ "$ACTION" == "indexbuild" ]; then
    echo "Not building *.udl files during indexing."
    exit 0
 fi
 
 # Skip for preview builds
-if [ "${ENABLE_PREVIEWS}" = "YES" ]; then
+if [ "$ENABLE_PREVIEWS" = "YES" ]; then
    echo "Not building *.udl files during preview builds."
    exit 0
 fi
 
-# note, for now, run a cargo build manually to ensure the binary exists for this step
-cd "$INPUT_FILE_DIR"/.. && "$PROJECT_DIR/../target/debug/uniffi-bindgen" generate src/"$INPUT_FILE_NAME" --language swift --out-dir "$PROJECT_DIR/generated"
+cd "${INPUT_FILE_DIR}/.."
+"${BUILD_DIR}/debug/uniffi-bindgen" generate "src/${INPUT_FILE_NAME}" --language swift --out-dir "${PROJECT_DIR}/generated"
+
 ```
 
 We'll need to add the following as output files:

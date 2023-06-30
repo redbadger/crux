@@ -30,7 +30,7 @@
 			outputFilesCompilerFlags = (
 			);
 			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ $ACTION == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"${ENABLE_PREVIEWS}\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\n# note, for now, run a cargo build manually to ensure the binary exists for this step\ncd \"$INPUT_FILE_DIR\"/..\n\"$BUILD_DIR/debug/uniffi-bindgen\" generate src/\"$INPUT_FILE_NAME\" --language swift --out-dir \"$PROJECT_DIR/generated\"\n";
+			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/debug/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
 		};
 /* End PBXBuildRule section */
 
@@ -56,7 +56,7 @@
 			remoteGlobalIDString = CA60ACD85ECB522D2C86E215;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CCFD12E52A4EF26E005EB70D /* PBXContainerItemProxy */ = {
+		CC76064F2A4F19C400EB73A7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
@@ -153,7 +153,7 @@
 			isa = PBXGroup;
 			children = (
 				BA6A61FB6787C24656A044CC /* libshared_static.a */,
-				CCFD12E62A4EF26E005EB70D /* shared.dylib */,
+				CC7606502A4F19C400EB73A7 /* shared.dylib */,
 				4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */,
 			);
 			name = Products;
@@ -231,11 +231,11 @@
 			remoteRef = 3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CCFD12E62A4EF26E005EB70D /* shared.dylib */ = {
+		CC7606502A4F19C400EB73A7 /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CCFD12E52A4EF26E005EB70D /* PBXContainerItemProxy */;
+			remoteRef = CC76064F2A4F19C400EB73A7 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
