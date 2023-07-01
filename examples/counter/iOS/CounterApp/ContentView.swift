@@ -20,43 +20,7 @@ class Model: ObservableObject {
     init() {
         update(msg: .event(.startWatch))
     }
-
-    private func http(uuid: Uuid, request: HttpRequest) {
-        var req = URLRequest(url: URL(string: request.url)!)
-        req.httpMethod = request.method
-
-        for header in request.headers {
-            req.addValue(header.value, forHTTPHeaderField: header.name)
-        }
-
-        Task {
-            let (data, response) = try! await URLSession.shared.data(for: req)
-            if let httpResponse = response as? HTTPURLResponse {
-                let status = UInt16(httpResponse.statusCode)
-                let body = [UInt8](data)
-                self.update(msg: .response(uuid, .http(HttpResponse(status: status, body: body))))
-            }
-        }
-    }
-
-    private func sse(uuid: Uuid, request: SseRequest) {
-        let req = URLRequest(url: URL(string: request.url)!)
-        Task {
-            let (asyncBytes, response) = try! await URLSession.shared.bytes(for: req)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200 ... 299).contains(httpResponse.statusCode)
-            else {
-                // TODO: handle error
-                return
-            }
-
-            for try await line in asyncBytes.lines {
-                let line = line + "\n\n"
-                self.update(msg: .response(uuid, .sse(.chunk([UInt8](line.utf8)))))
-            }
-        }
-    }
-
+    
     func update(msg: Message) {
         var reqs: [Request]
 
@@ -81,10 +45,17 @@ class Model: ObservableObject {
                 view = try! ViewModel.bincodeDeserialize(
                     input: [UInt8](CounterApp.view())
                 )
-            case let .http(r):
-                http(uuid: req.uuid, request: r)
-            case let .serverSentEvents(r):
-                sse(uuid: req.uuid, request: r)
+            case let .http(httpReq):
+                Task {
+                    let res = try! await http(request: httpReq).get()
+                    update(msg: .response(req.uuid, .http(res)))
+                }
+            case let .serverSentEvents(sseReq):
+                Task {
+                    for await result in await sse(request: sseReq) {
+                        update(msg: .response(req.uuid, .sse(try! result.get())))
+                    }
+                }
             }
         }
     }
@@ -140,5 +111,64 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView(model: Model())
+    }
+}
+
+enum HttpError : Error {
+    case generic(Error)
+    case message(String)
+}
+
+func http(request: HttpRequest) async -> Result<HttpResponse, HttpError> {
+    var req = URLRequest(url: URL(string: request.url)!)
+    req.httpMethod = request.method
+    
+    for header in request.headers {
+        req.addValue(header.value, forHTTPHeaderField: header.name)
+    }
+    
+    do {
+        let (data, response) = try await URLSession.shared.data(for: req)
+        if let httpResponse = response as? HTTPURLResponse {
+            let status = UInt16(httpResponse.statusCode)
+            let body = [UInt8](data)
+            return .success(HttpResponse(status: status, body: body))
+        } else {
+            return .failure(.message("bad response"))
+        }
+    }
+    catch {
+        return .failure(.generic(error))
+    }
+    
+}
+
+func sse(request: SseRequest) async -> AsyncStream<Result<SseResponse, HttpError>> {
+    return AsyncStream { continuation in
+        Task {
+            let req = URLRequest(url: URL(string: request.url)!)
+            do {
+                let (asyncBytes, response) = try await URLSession.shared.bytes(for: req)
+                if let httpResponse = response as? HTTPURLResponse {
+                    if !(200 ... 299).contains(httpResponse.statusCode) {
+                        continuation.yield(.failure(
+                            .message("error, status code: \(httpResponse.statusCode)")
+                        ))
+                        continuation.finish()
+                        return
+                    }
+                }
+                
+                for try await line in asyncBytes.lines {
+                    let line = line + "\n\n"
+                    continuation.yield(.success(.chunk([UInt8](line.utf8))))
+                }
+                continuation.yield(.success(.done))
+                continuation.finish()
+            } catch {
+                continuation.yield(.failure(.generic(error)))
+                continuation.finish()
+            }
+        }
     }
 }
