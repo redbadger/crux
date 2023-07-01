@@ -13,6 +13,8 @@
 		4A7935DA2D4B24A0427339BC /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 1465E5EDE4F684AD5291C0A3 /* shared.udl */; };
 		5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
+		CCA16D1E2A50962F008605C6 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA16D1D2A50962F008605C6 /* http.swift */; };
+		CCA16D202A5096A0008605C6 /* sse.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA16D1F2A5096A0008605C6 /* sse.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -21,6 +23,8 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
+			inputFiles = (
+			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -78,6 +82,8 @@
 		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		984E511AE1F9FB764F58CB7A /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CCA16D1D2A50962F008605C6 /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
+		CCA16D1F2A5096A0008605C6 /* sse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sse.swift; sourceTree = "<group>"; };
 		D533D9BD281C15290E4016E5 /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
 		D6A6C59672AA736317738B5C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -110,6 +116,8 @@
 				D6A6C59672AA736317738B5C /* ContentView.swift */,
 				D533D9BD281C15290E4016E5 /* CounterAppApp.swift */,
 				67D62EB120D164DFC93E7EC0 /* Info.plist */,
+				CCA16D1D2A50962F008605C6 /* http.swift */,
+				CCA16D1F2A5096A0008605C6 /* sse.swift */,
 			);
 			path = CounterApp;
 			sourceTree = "<group>";
@@ -257,7 +265,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */,
+				CCA16D1E2A50962F008605C6 /* http.swift in Sources */,
 				B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */,
+				CCA16D202A5096A0008605C6 /* sse.swift in Sources */,
 				4A7935DA2D4B24A0427339BC /* shared.udl in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
