@@ -21,10 +21,10 @@ interface Response {
   kind: "response";
   uuid: number[];
   outcome:
-  | types.PlatformResponse
-  | types.TimeResponse
-  | types.HttpResponse
-  | types.KeyValueOutput;
+    | types.PlatformResponse
+    | types.TimeResponse
+    | types.HttpResponse
+    | types.KeyValueOutput;
 }
 
 type State = {
@@ -77,8 +77,8 @@ const Home: NextPage = () => {
   const handleRequests = async (bytes: any) => {
     let requests = deserializeRequests(bytes);
 
-    for (const request of requests) {
-      switch (request.effect.constructor) {
+    for (const { uuid, effect } of requests) {
+      switch (effect.constructor) {
         case types.EffectVariantRender:
           let bytes = view();
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
@@ -95,7 +95,7 @@ const Home: NextPage = () => {
         case types.EffectVariantTime:
           respond({
             kind: "response",
-            uuid: request.uuid,
+            uuid,
             outcome: new types.TimeResponse(new Date().toISOString()),
           });
 
@@ -103,7 +103,7 @@ const Home: NextPage = () => {
         case types.EffectVariantPlatform:
           respond({
             kind: "response",
-            uuid: request.uuid,
+            uuid,
             outcome: new types.PlatformResponse(
               new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
             ),
@@ -112,16 +112,20 @@ const Home: NextPage = () => {
         case types.EffectVariantKeyValue:
           break;
         case types.EffectVariantHttp:
-          const { url } = (request.effect as types.EffectVariantHttp).value;
-
-          const resp = await fetch(url);
-          const body = await resp.arrayBuffer();
+          const { method, url, headers } = (effect as types.EffectVariantHttp)
+            .value;
+          const req = new Request(url, {
+            method,
+            headers: headers.map((header) => [header.name, header.value]),
+          });
+          const res = await fetch(req);
+          const body = await res.arrayBuffer();
           const response_bytes = Array.from(new Uint8Array(body));
 
           respond({
             kind: "response",
-            uuid: request.uuid,
-            outcome: new types.HttpResponse(resp.status, response_bytes),
+            uuid,
+            outcome: new types.HttpResponse(res.status, response_bytes),
           });
           break;
         default:
@@ -145,6 +149,7 @@ const Home: NextPage = () => {
     }
 
     loadCore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -162,7 +167,7 @@ const Home: NextPage = () => {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt="A funny cat. Or at least a cute one."
-              src={state.image?.file}
+              src={state.image?.href}
               style={{ height: "200px" }}
             />
           )}

@@ -1,27 +1,21 @@
+mod http;
+
 use std::rc::Rc;
 
 use anyhow::{anyhow, Result};
 use js_sys::Date;
+use log::info;
+use wasm_bindgen::JsValue;
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::{html::Scope, prelude::*};
 
 use shared::{
-    http::protocol::{HttpRequest, HttpResponse},
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
     CatFactCapabilities, CatFacts, Core, Effect, Event,
 };
-
-async fn http_get(url: &str) -> Result<Vec<u8>> {
-    let bytes = gloo_net::http::Request::get(url)
-        .send()
-        .await?
-        .binary()
-        .await?;
-    Ok(bytes)
-}
 
 fn time_get() -> Result<String> {
     let date = Date::new_0();
@@ -48,6 +42,7 @@ struct HelloWorld {
     core: Rc<Core<Effect, CatFacts>>,
 }
 
+#[derive(Debug)]
 enum Task {
     Event(Event),
     Effect(Effect),
@@ -75,6 +70,9 @@ impl Component for HelloWorld {
         let link = ctx.link();
         let core = &self.core;
 
+        let object = JsValue::from(format!("message {:?}", msg));
+        info!("{}", object.as_string().unwrap());
+
         match msg {
             Task::Event(event) => {
                 send_effects(link, self.core.process_event(event));
@@ -82,21 +80,15 @@ impl Component for HelloWorld {
             Task::Effect(effect) => match effect {
                 Effect::Render(_) => return true,
                 Effect::Http(mut request) => {
-                    let HttpRequest { url, .. } = &request.operation;
-
                     wasm_bindgen_futures::spawn_local({
                         let link = link.clone();
                         let core = core.clone();
-                        let url = url.clone();
 
                         async move {
-                            let bytes = http_get(&url).await.unwrap_or_default();
-                            let response = HttpResponse {
-                                status: 200,
-                                body: bytes,
-                            };
+                            let response = http::request(&request.operation).await.unwrap();
 
-                            send_effects(&link, core.resolve(&mut request, response))
+                            let effects = core.resolve(&mut request, response);
+                            send_effects(&link, effects);
                         }
                     });
                 }
@@ -135,7 +127,7 @@ impl Component for HelloWorld {
                 </section>
                 <section class="section container has-text-centered">
                     if let Some(image) = &view.image {
-                        <img src={image.file.clone()} style="height: 400px" />
+                        <img src={image.href.clone()} style="height: 400px" />
                     }
                 </section>
                 <section class="section container has-text-centered">
@@ -161,5 +153,6 @@ impl Component for HelloWorld {
 }
 
 fn main() {
+    wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<HelloWorld>::new().render();
 }

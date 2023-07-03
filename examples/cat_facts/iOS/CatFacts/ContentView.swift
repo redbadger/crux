@@ -107,7 +107,7 @@ struct ContentView: View {
                 AnyView(
                     // For the loading image to work properly, we'd need to add
                     // caching here
-                    AsyncImage(url: URL(string: image.file)) { image in
+                    AsyncImage(url: URL(string: image.href)) { image in
                         image
                             .resizable()
                             .scaledToFit()

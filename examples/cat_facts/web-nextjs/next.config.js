@@ -33,7 +33,7 @@ module.exports = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self' 'unsafe-inline' 'unsafe-eval' catfact.ninja *.tenor.com aws.random.cat *.dream.io cdn.jsdelivr.net",
+              "default-src 'self' 'unsafe-inline' 'unsafe-eval' catfact.ninja *.tenor.com crux-counter.fly.dev *.dream.io cdn.jsdelivr.net; img-src https://*",
           },
           {
             key: "Referrer-Policy",
@@ -47,7 +47,7 @@ module.exports = {
     return [
       {
         source: "/",
-        destination: "https://aws.random.cat/meow",
+        destination: "https://crux-counter.fly.dev/meow",
       },
     ];
   },

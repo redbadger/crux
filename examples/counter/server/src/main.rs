@@ -1,3 +1,5 @@
+mod cats;
+
 use axum::{
     extract::State,
     http::Method,
@@ -51,6 +53,7 @@ async fn main() {
         .route("/sse", get(sse_handler))
         .route("/inc", post(inc))
         .route("/dec", post(dec))
+        .route("/cat", get(cats::get))
         .layer(
             CorsLayer::new()
                 .allow_methods([Method::GET, Method::POST])

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # run the tests
 cargo nextest run --all-features
 

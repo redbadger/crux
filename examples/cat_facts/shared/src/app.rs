@@ -14,7 +14,7 @@ use platform::{PlatformCapabilities, PlatformEvent};
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
-const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
+const IMAGE_API_URL: &str = "https://crux-counter.fly.dev/cat";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
@@ -36,15 +36,15 @@ pub struct Model {
     time: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct CatImage {
-    pub file: String,
+    pub href: String,
 }
 
 impl Default for CatImage {
     fn default() -> Self {
         Self {
-            file: CAT_LOADING_URL.to_string(),
+            href: CAT_LOADING_URL.to_string(),
         }
     }
 }
@@ -155,13 +155,23 @@ impl App for CatFacts {
                 caps.time.get(Event::CurrentTime);
             }
             Event::SetImage(Ok(mut response)) => {
-                // TODO check status
-                model.cat_image = Some(response.take_body().unwrap());
+                if response.status().is_success() {
+                    model.cat_image = Some(response.take_body().unwrap());
 
-                let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.write("state", bytes, |_| Event::None);
+                    let bytes = serde_json::to_vec(&model).unwrap();
+                    caps.key_value.write("state", bytes, |_| Event::None);
 
-                caps.render.render();
+                    caps.render.render();
+                } else {
+                    self.update(
+                        Event::SetImage(Err(crux_http::Error::new(
+                            Some(response.status()),
+                            "fetching cat image failed",
+                        ))),
+                        model,
+                        caps,
+                    );
+                }
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
                 // TODO: Display an error or something?
@@ -240,13 +250,14 @@ mod tests {
     }
 
     #[test]
-    fn fact_response_results_in_set_fact() {
+    fn fetch_results_in_set_fact_and_set_image() {
         let app = AppTester::<CatFacts, _>::default();
         let mut model = Model::default();
 
         let mut update = app.update(Event::Fetch, &mut model);
+        let mut effects = update.effects_mut();
 
-        assert_let!(Effect::Http(request), update.effects_mut().next().unwrap());
+        assert_let!(Effect::Http(request), effects.next().unwrap());
         let actual = &request.operation;
         let expected = &HttpRequest {
             method: "GET".into(),
@@ -269,7 +280,39 @@ mod tests {
             .resolve(request, response)
             .expect("should resolve successfully");
 
-        let expected_response = ResponseBuilder::ok().body(a_fact).build();
-        assert_eq!(update.events, vec![Event::SetFact(Ok(expected_response))])
+        let expected_response = ResponseBuilder::ok().body(a_fact.clone()).build();
+        assert_eq!(update.events, vec![Event::SetFact(Ok(expected_response))]);
+
+        for event in update.events {
+            app.update(event, &mut model);
+        }
+
+        assert_let!(Effect::Http(request), effects.next().unwrap());
+        let actual = &request.operation;
+        let expected = &HttpRequest {
+            method: "GET".into(),
+            url: IMAGE_API_URL.into(),
+            headers: vec![],
+            body: vec![],
+        };
+        assert_eq!(actual, expected);
+
+        let a_image = CatImage {
+            href: "image_url".to_string(),
+        };
+
+        let response = HttpResponse {
+            status: 200,
+            body: serde_json::to_vec(&a_image).unwrap(),
+        };
+        let update = app
+            .resolve(request, response)
+            .expect("should resolve successfully");
+        for event in update.events {
+            app.update(event, &mut model);
+        }
+
+        assert_eq!(model.cat_fact, Some(a_fact));
+        assert_eq!(model.cat_image, Some(a_image));
     }
 }

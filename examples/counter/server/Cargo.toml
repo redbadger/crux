@@ -1,18 +1,14 @@
 [package]
 name = "server"
 version = "0.1.0"
-authors.workspace = true
-repository.workspace = true
-edition.workspace = true
-license.workspace = true
-keywords.workspace = true
-rust-version.workspace = true
+edition = "2021"
 
 [dependencies]
 axum = { version = "0.6.18", features = ["headers"] }
 futures = "0.3.28"
 futures-signals = "0.3.32"
-serde = { workspace = true, features = ["derive"] }
+rand = "0.8.5"
+serde = "1.0.164"
 serde_json = "1.0.99"
 tokio = { version = "1.29.1", features = ["full"] }
 tokio-stream = "0.1.14"

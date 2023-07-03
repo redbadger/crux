@@ -181,7 +181,7 @@ fun CatFacts(model: Model = viewModel()) {
         ) {
             model.view.image.getOrNull()?.let {
                 Image(
-                    painter = rememberAsyncImagePainter(it.file),
+                    painter = rememberAsyncImagePainter(it.href),
                     contentDescription = "cat image",
                     modifier = Modifier
                         .height(250.dp)
