@@ -1,6 +1,5 @@
 use anyhow::Result;
 use shared::http::protocol::{HttpRequest, HttpResponse};
-use web_sys::RequestRedirect;
 
 pub async fn request(request: &HttpRequest) -> Result<HttpResponse> {
     use gloo_net::http;
@@ -22,7 +21,7 @@ pub async fn request(request: &HttpRequest) -> Result<HttpResponse> {
         request = request.header(&header.name, &header.value);
     }
 
-    let response = request.redirect(RequestRedirect::Manual).send().await?;
+    let response = request.send().await?;
 
     let body = response.binary().await?;
 
