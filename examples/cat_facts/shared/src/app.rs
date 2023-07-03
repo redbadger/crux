@@ -264,6 +264,7 @@ mod tests {
         let response = HttpResponse {
             status: 200,
             body: serde_json::to_vec(&a_fact).unwrap(),
+            ..Default::default()
         };
         let update = app
             .resolve(request, response)

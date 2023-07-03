@@ -67,6 +67,7 @@ async fn main() -> Result<()> {
                             let response = HttpResponse {
                                 status: 200,
                                 body: bytes,
+                                ..Default::default()
                             };
 
                             enqueue_effects(&mut queue, core.resolve(&mut request, response));

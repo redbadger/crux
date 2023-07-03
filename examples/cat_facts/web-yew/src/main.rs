@@ -94,6 +94,7 @@ impl Component for HelloWorld {
                             let response = HttpResponse {
                                 status: 200,
                                 body: bytes,
+                                ..Default::default()
                             };
 
                             send_effects(&link, core.resolve(&mut request, response))

@@ -166,7 +166,11 @@ async fn http(
     let status = response.status().into();
 
     match response.body_bytes().await {
-        Ok(body) => Ok(HttpResponse { status, body }),
+        Ok(body) => Ok(HttpResponse {
+            status,
+            body,
+            ..Default::default()
+        }),
         Err(e) => bail!("{method} {url}: error {e}"),
     }
 }

@@ -13,7 +13,7 @@ pub struct HttpHeader {
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 pub struct HttpRequest {
     pub method: String,
     pub url: String,
@@ -21,10 +21,11 @@ pub struct HttpRequest {
     pub body: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 pub struct HttpResponse {
-    pub status: u16,   // FIXME this probably should be a giant enum instead.
-    pub body: Vec<u8>, // TODO support headers
+    pub status: u16, // FIXME this probably should be a giant enum instead.
+    pub headers: Vec<HttpHeader>,
+    pub body: Vec<u8>,
 }
 
 impl crux_core::capability::Operation for HttpRequest {
@@ -81,6 +82,10 @@ impl From<HttpResponse> for crate::ResponseAsync {
     fn from(effect_response: HttpResponse) -> Self {
         let mut res = crate::http::Response::new(effect_response.status);
         res.set_body(effect_response.body);
+        for header in effect_response.headers {
+            res.append_header(header.name.as_str(), header.value);
+        }
+
         crate::ResponseAsync::new(res)
     }
 }

@@ -323,6 +323,7 @@ mod client_tests {
         shell.provide_response(HttpResponse {
             status: 200,
             body: "Hello World!".to_string().into_bytes(),
+            ..Default::default()
         });
 
         let client = Client::new(shell.clone());
@@ -335,8 +336,7 @@ mod client_tests {
             vec![HttpRequest {
                 method: "GET".into(),
                 url: "https://example.com/".into(),
-                headers: vec![],
-                body: vec![],
+                ..Default::default()
             }]
         )
     }

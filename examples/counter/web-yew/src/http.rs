@@ -27,5 +27,6 @@ pub async fn request(request: &HttpRequest) -> Result<HttpResponse> {
     Ok(HttpResponse {
         status: response.status(),
         body,
+        ..Default::default()
     })
 }

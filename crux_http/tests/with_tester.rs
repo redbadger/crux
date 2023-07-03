@@ -11,12 +11,15 @@ mod shared {
     pub enum Event {
         Get,
         Post,
+
+        // events local to the core
         Set(crux_http::Result<crux_http::Response<String>>),
     }
 
     #[derive(Default, Serialize, Deserialize)]
     pub struct Model {
         pub body: String,
+        pub values: Vec<String>,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -47,9 +50,16 @@ mod shared {
                         .expect_string()
                         .send(Event::Set);
                 }
-                Event::Set(body) => {
-                    model.body = body.unwrap().take_body().unwrap();
+                Event::Set(Ok(mut response)) => {
+                    model.body = response.take_body().unwrap();
+                    model.values = response
+                        .header("my_header")
+                        .unwrap()
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect();
                 }
+                Event::Set(Err(_)) => {}
             }
         }
 
@@ -74,7 +84,7 @@ mod tests {
     use crux_http::protocol::{HttpHeader, HttpRequest, HttpResponse};
 
     #[test]
-    fn with_tester() {
+    fn get() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
@@ -92,7 +102,7 @@ mod tests {
                     name: "authorization".to_string(),
                     value: "secret-token".to_string()
                 }],
-                body: vec![],
+                ..Default::default()
             }
         );
 
@@ -102,18 +112,37 @@ mod tests {
                 HttpResponse {
                     status: 200,
                     body: serde_json::to_vec("hello").unwrap(),
+                    headers: vec![
+                        HttpHeader {
+                            name: "my_header".to_string(),
+                            value: "my_value1".to_string(),
+                        },
+                        HttpHeader {
+                            name: "my_header".to_string(),
+                            value: "my_value2".to_string(),
+                        },
+                    ],
                 },
             )
             .expect("Resolves successfully");
 
-        let actual = update.events;
+        let actual = update.events.clone();
         assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
-            assert_eq!(*response.body().unwrap(), "\"hello\"".to_string())
-        })
+            assert_eq!(*response.body().unwrap(), "\"hello\"".to_string());
+            assert_eq!(*response.header("my_header").unwrap().iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>(), vec!["my_value1", "my_value2"]);
+        });
+
+        for event in update.events {
+            app.update(event, &mut model);
+        }
+        assert_eq!(model.body, "\"hello\"");
+        assert_eq!(model.values, vec!["my_value1", "my_value2"]);
     }
 
     #[test]
-    fn with_request_body() {
+    fn post() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
@@ -140,13 +169,14 @@ mod tests {
                 HttpResponse {
                     status: 200,
                     body: serde_json::to_vec("The Body").unwrap(),
+                    ..Default::default()
                 },
             )
             .expect("Resolves successfully");
 
         let actual = update.events;
         assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
-            assert_eq!(*response.body().unwrap(), "\"The Body\"".to_string())
-        })
+            assert_eq!(*response.body().unwrap(), "\"The Body\"".to_string());
+        });
     }
 }

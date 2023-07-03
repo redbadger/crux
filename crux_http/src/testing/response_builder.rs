@@ -14,7 +14,12 @@ pub struct ResponseBuilder<Body> {
 impl ResponseBuilder<Vec<u8>> {
     /// Constructs a new ResponseBuilder with the 200 OK status code.
     pub fn ok() -> ResponseBuilder<Vec<u8>> {
-        let response = Response::new_with_status(http::StatusCode::Ok);
+        ResponseBuilder::with_status(http::StatusCode::Ok)
+    }
+
+    /// Constructs a new ResponseBuilder with the specified status code.
+    pub fn with_status(status: http::StatusCode) -> ResponseBuilder<Vec<u8>> {
+        let response = Response::new_with_status(status);
 
         ResponseBuilder { response }
     }

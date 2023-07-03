@@ -166,6 +166,7 @@ mod tests {
                 updated_at: 1,
             })
             .unwrap(),
+            ..Default::default()
         };
         let update = app.resolve(request, response).expect("an update");
 
@@ -227,6 +228,7 @@ mod tests {
                 updated_at: 1,
             })
             .unwrap(),
+            ..Default::default()
         };
 
         let update = app.resolve(request, response).expect("Update to succeed");
@@ -270,6 +272,7 @@ mod tests {
                 updated_at: 1,
             })
             .unwrap(),
+            ..Default::default()
         };
 
         let update = app.resolve(request, response).expect("a successful update");
