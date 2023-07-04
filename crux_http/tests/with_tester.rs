@@ -81,7 +81,7 @@ mod tests {
 
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
-    use crux_http::protocol::{HttpHeader, HttpRequest, HttpResponse};
+    use crux_http::protocol::{HttpRequest, HttpResponse};
 
     #[test]
     fn get() {
@@ -95,34 +95,19 @@ mod tests {
 
         assert_eq!(
             *http_request,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "http://example.com/".to_string(),
-                headers: vec![HttpHeader {
-                    name: "authorization".to_string(),
-                    value: "secret-token".to_string()
-                }],
-                ..Default::default()
-            }
+            HttpRequest::get("http://example.com/")
+                .header("authorization", "secret-token")
+                .build()
         );
 
         let update = app
             .resolve(
                 request,
-                HttpResponse {
-                    status: 200,
-                    body: serde_json::to_vec("hello").unwrap(),
-                    headers: vec![
-                        HttpHeader {
-                            name: "my_header".to_string(),
-                            value: "my_value1".to_string(),
-                        },
-                        HttpHeader {
-                            name: "my_header".to_string(),
-                            value: "my_value2".to_string(),
-                        },
-                    ],
-                },
+                HttpResponse::status(200)
+                    .body(serde_json::to_vec("hello").unwrap())
+                    .header("my_header", "my_value1")
+                    .header("my_header", "my_value2")
+                    .build(),
             )
             .expect("Resolves successfully");
 
@@ -152,25 +137,18 @@ mod tests {
 
         assert_eq!(
             request.operation,
-            HttpRequest {
-                method: "POST".to_string(),
-                url: "http://example.com/".to_string(),
-                headers: vec![HttpHeader {
-                    name: "content-type".to_string(),
-                    value: "application/octet-stream".to_string()
-                }],
-                body: "The Body".as_bytes().to_vec(),
-            }
+            HttpRequest::post("http://example.com/")
+                .header("content-type", "application/octet-stream")
+                .body("The Body")
+                .build()
         );
 
         let update = app
             .resolve(
                 request,
-                HttpResponse {
-                    status: 200,
-                    body: serde_json::to_vec("The Body").unwrap(),
-                    ..Default::default()
-                },
+                HttpResponse::status(200)
+                    .body(serde_json::to_vec("The Body").unwrap())
+                    .build(),
             )
             .expect("Resolves successfully");
 

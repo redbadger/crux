@@ -113,11 +113,9 @@ mod shell {
                         let http_request = &request.operation;
 
                         received.push(http_request.clone());
-                        let response = HttpResponse {
-                            status: 200,
-                            body: "\"Hello\"".as_bytes().to_owned(),
-                            ..Default::default()
-                        };
+                        let response = HttpResponse::status(200)
+                            .body("\"Hello\"".as_bytes().to_owned())
+                            .build();
 
                         enqueue_effects(&mut queue, core.resolve(&mut request, response));
                     }
@@ -150,11 +148,7 @@ mod tests {
 
         assert_eq!(
             received,
-            vec![HttpRequest {
-                method: "GET".to_string(),
-                url: "http://example.com/".to_string(),
-                ..Default::default()
-            }]
+            vec![HttpRequest::get("http://example.com/").build()]
         );
 
         assert_eq!(
@@ -172,11 +166,7 @@ mod tests {
 
         assert_eq!(
             received,
-            vec![HttpRequest {
-                method: "GET".to_string(),
-                url: "http://example.com/".to_string(),
-                ..Default::default()
-            }]
+            vec![HttpRequest::get("http://example.com/").build()]
         );
         assert_eq!(core.view().result, "Status: 0, Body: , Json Body: Hello");
         Ok(())

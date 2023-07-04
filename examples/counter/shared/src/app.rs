@@ -141,6 +141,7 @@ mod tests {
         testing::ResponseBuilder,
     };
 
+    // ANCHOR: simple_tests
     #[test]
     fn get_counter() {
         let app = AppTester::<App, _>::default();
@@ -149,25 +150,21 @@ mod tests {
         let mut update = app.update(Event::Get, &mut model);
 
         assert_let!(Effect::Http(request), update.effects_mut().next().unwrap());
-        let actual = &request.operation;
-        let expected = &HttpRequest {
-            method: "GET".to_string(),
-            url: "https://crux-counter.fly.dev/".to_string(),
-            headers: vec![],
-            body: vec![],
-        };
 
+        let actual = &request.operation;
+        let expected = &HttpRequest::get("https://crux-counter.fly.dev/").build();
         assert_eq!(actual, expected);
 
-        let response = HttpResponse {
-            status: 200,
-            body: serde_json::to_vec(&Counter {
-                value: 1,
-                updated_at: 1,
-            })
-            .unwrap(),
-            ..Default::default()
-        };
+        let response = HttpResponse::status(200)
+            .body(
+                serde_json::to_vec(&Counter {
+                    value: 1,
+                    updated_at: 1,
+                })
+                .unwrap(),
+            )
+            .build();
+
         let update = app.resolve(request, response).expect("an update");
 
         let actual = update.events;
@@ -192,6 +189,7 @@ mod tests {
         let expected = Some(true);
         assert_eq!(actual, expected);
     }
+    // ANCHOR_END: simple_tests
 
     #[test]
     fn increment_counter() {
@@ -211,25 +209,20 @@ mod tests {
         assert_eq!(actual, expected);
 
         assert_let!(Effect::Http(request), update.effects_mut().nth(1).unwrap());
-        let expected = &HttpRequest {
-            method: "POST".to_string(),
-            url: "https://crux-counter.fly.dev/inc".to_string(),
-            headers: vec![],
-            body: vec![],
-        };
         let actual = &request.operation;
+        let expected = &HttpRequest::post("https://crux-counter.fly.dev/inc").build();
 
         assert_eq!(actual, expected);
 
-        let response = HttpResponse {
-            status: 200,
-            body: serde_json::to_vec(&Counter {
-                value: 1,
-                updated_at: 1,
-            })
-            .unwrap(),
-            ..Default::default()
-        };
+        let response = HttpResponse::status(200)
+            .body(
+                serde_json::to_vec(&Counter {
+                    value: 1,
+                    updated_at: 1,
+                })
+                .unwrap(),
+            )
+            .build();
 
         let update = app.resolve(request, response).expect("Update to succeed");
 
@@ -256,24 +249,19 @@ mod tests {
         assert_eq!(actual, expected);
 
         assert_let!(Effect::Http(request), update.effects_mut().nth(1).unwrap());
-        let actual = request.operation.clone();
-        let expected = HttpRequest {
-            method: "POST".to_string(),
-            url: "https://crux-counter.fly.dev/dec".to_string(),
-            headers: vec![],
-            body: vec![],
-        };
+        let actual = &request.operation;
+        let expected = &HttpRequest::post("https://crux-counter.fly.dev/dec").build();
         assert_eq!(actual, expected);
 
-        let response = HttpResponse {
-            status: 200,
-            body: serde_json::to_vec(&Counter {
-                value: -1,
-                updated_at: 1,
-            })
-            .unwrap(),
-            ..Default::default()
-        };
+        let response = HttpResponse::status(200)
+            .body(
+                serde_json::to_vec(&Counter {
+                    value: -1,
+                    updated_at: 1,
+                })
+                .unwrap(),
+            )
+            .build();
 
         let update = app.resolve(request, response).expect("a successful update");
 

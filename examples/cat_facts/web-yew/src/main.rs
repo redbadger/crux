@@ -91,11 +91,7 @@ impl Component for HelloWorld {
 
                         async move {
                             let bytes = http_get(&url).await.unwrap_or_default();
-                            let response = HttpResponse {
-                                status: 200,
-                                body: bytes,
-                                ..Default::default()
-                            };
+                            let response = HttpResponse::status(200).body(bytes).build();
 
                             send_effects(&link, core.resolve(&mut request, response))
                         }

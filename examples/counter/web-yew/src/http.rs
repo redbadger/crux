@@ -24,9 +24,5 @@ pub async fn request(request: &HttpRequest) -> Result<HttpResponse> {
     let response = request.send().await?;
     let body = response.binary().await?;
 
-    Ok(HttpResponse {
-        status: response.status(),
-        body,
-        ..Default::default()
-    })
+    Ok(HttpResponse::status(response.status()).body(body).build())
 }

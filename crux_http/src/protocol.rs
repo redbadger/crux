@@ -5,6 +5,7 @@
 //! This module defines the protocol for crux_http to communicate with the shell.
 
 use async_trait::async_trait;
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -13,19 +14,94 @@ pub struct HttpHeader {
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq, Builder)]
+#[builder(
+    custom_constructor,
+    build_fn(private, name = "fallible_build"),
+    setter(into)
+)]
 pub struct HttpRequest {
     pub method: String,
     pub url: String,
+    #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     pub body: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
+macro_rules! http_method {
+    ($name:ident, $method:expr) => {
+        pub fn $name(url: impl Into<String>) -> HttpRequestBuilder {
+            HttpRequestBuilder {
+                method: Some($method.to_string()),
+                url: Some(url.into()),
+                headers: Some(vec![]),
+                body: Some(vec![]),
+            }
+        }
+    };
+}
+
+impl HttpRequest {
+    http_method!(get, "GET");
+    http_method!(put, "PUT");
+    http_method!(delete, "DELETE");
+    http_method!(post, "POST");
+    http_method!(patch, "PATCH");
+    http_method!(head, "HEAD");
+    http_method!(options, "OPTIONS");
+}
+
+impl HttpRequestBuilder {
+    pub fn header(&mut self, name: impl Into<String>, value: impl Into<String>) -> &mut Self {
+        self.headers.get_or_insert_with(Vec::new).push(HttpHeader {
+            name: name.into(),
+            value: value.into(),
+        });
+        self
+    }
+
+    pub fn build(&self) -> HttpRequest {
+        self.fallible_build()
+            .expect("All required fields were initialized")
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq, Builder)]
+#[builder(
+    custom_constructor,
+    build_fn(private, name = "fallible_build"),
+    setter(into)
+)]
 pub struct HttpResponse {
     pub status: u16, // FIXME this probably should be a giant enum instead.
+    #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     pub body: Vec<u8>,
+}
+
+impl HttpResponse {
+    pub fn status(status: u16) -> HttpResponseBuilder {
+        HttpResponseBuilder {
+            status: Some(status.into()),
+            headers: Some(vec![]),
+            body: Some(vec![]),
+        }
+    }
+}
+
+impl HttpResponseBuilder {
+    pub fn header(&mut self, name: impl Into<String>, value: impl Into<String>) -> &mut Self {
+        self.headers.get_or_insert_with(Vec::new).push(HttpHeader {
+            name: name.into(),
+            value: value.into(),
+        });
+        self
+    }
+
+    pub fn build(&self) -> HttpResponse {
+        self.fallible_build()
+            .expect("All required fields were initialized")
+    }
 }
 
 impl crux_core::capability::Operation for HttpRequest {
@@ -87,5 +163,78 @@ impl From<HttpResponse> for crate::ResponseAsync {
         }
 
         crate::ResponseAsync::new(res)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_http_request_get() {
+        let req = HttpRequest::get("https://example.com").build();
+
+        assert_eq!(
+            req,
+            HttpRequest {
+                method: "GET".to_string(),
+                url: "https://example.com".to_string(),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_http_request_get_with_fields() {
+        let req = HttpRequest::get("https://example.com")
+            .header("foo", "bar")
+            .body(vec![1, 2, 3])
+            .build();
+
+        assert_eq!(
+            req,
+            HttpRequest {
+                method: "GET".to_string(),
+                url: "https://example.com".to_string(),
+                headers: vec![HttpHeader {
+                    name: "foo".to_string(),
+                    value: "bar".to_string(),
+                }],
+                body: vec![1, 2, 3],
+            }
+        );
+    }
+
+    #[test]
+    fn test_http_response_status() {
+        let req = HttpResponse::status(302).build();
+
+        assert_eq!(
+            req,
+            HttpResponse {
+                status: 302,
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_http_response_status_with_fields() {
+        let req = HttpResponse::status(302)
+            .header("foo", "bar")
+            .body("hello world")
+            .build();
+
+        assert_eq!(
+            req,
+            HttpResponse {
+                status: 302,
+                headers: vec![HttpHeader {
+                    name: "foo".to_string(),
+                    value: "bar".to_string(),
+                }],
+                body: "hello world".as_bytes().to_vec(),
+            }
+        );
     }
 }

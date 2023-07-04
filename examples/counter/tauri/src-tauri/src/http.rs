@@ -30,11 +30,7 @@ pub async fn http(http_request: &HttpRequest) -> Result<HttpResponse, Error> {
     let status = response.status().into();
 
     match response.body_bytes().await {
-        Ok(body) => Ok(HttpResponse {
-            status,
-            body,
-            ..Default::default()
-        }),
+        Ok(body) => Ok(HttpResponse::status(status).body(body).build()),
         Err(e) => Err(e.into()),
     }
 }
