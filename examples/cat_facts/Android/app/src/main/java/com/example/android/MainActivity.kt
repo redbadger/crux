@@ -68,7 +68,7 @@ sealed class Outcome {
 
 sealed class CoreMessage {
     data class Event(val event: Evt) : CoreMessage()
-    data class Response(val uuid: List<UByte>, val outcome: Outcome) : CoreMessage()
+    data class Response(val uuid: List<Byte>, val outcome: Outcome) : CoreMessage()
 }
 
 class Model : ViewModel() {
@@ -88,19 +88,17 @@ class Model : ViewModel() {
         val requests: List<Req> =
             when (msg) {
                 is CoreMessage.Event -> Requests.bincodeDeserialize(
-                    processEvent(msg.event.bincodeSerialize().toUByteArray().toList()).toUByteArray()
-                        .toByteArray()
+                    processEvent(msg.event.bincodeSerialize())
                 )
                 is CoreMessage.Response -> Requests.bincodeDeserialize(
                     handleResponse(
-                        msg.uuid.toList(), when (msg.outcome) {
+                        msg.uuid.toByteArray(), when (msg.outcome) {
                             is Outcome.Platform -> msg.outcome.res.bincodeSerialize()
                             is Outcome.Time -> msg.outcome.res.bincodeSerialize()
                             is Outcome.Http -> msg.outcome.res.bincodeSerialize()
                             is Outcome.KeyValue -> msg.outcome.res.bincodeSerialize()
-                        }.toUByteArray().toList()
-                    ).toUByteArray()
-                        .toByteArray()
+                        }
+                    )
                 )
             }
 
@@ -109,50 +107,34 @@ class Model : ViewModel() {
                 this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
             }
             is Effect.Http -> {
-                val response = http(httpClient, HttpMethod.Get, effect.value.url)
-
-                update(
-                    CoreMessage.Response(
-                        req.uuid.toByteArray().toUByteArray().toList(),
-                        Outcome.Http(response)
-                    )
+                val response = http(
+                    httpClient,
+                    HttpMethod(effect.value.method),
+                    effect.value.url,
+                    effect.value.headers
                 )
+                update(CoreMessage.Response(req.uuid, Outcome.Http(response)))
             }
             is Effect.Time -> {
                 val isoTime =
                     ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
-                update(
-                    CoreMessage.Response(
-                        req.uuid.toByteArray().toUByteArray().toList(), Outcome.Time(
-                            TimeResponse(isoTime)
-                        )
-                    )
-                )
+                update(CoreMessage.Response(req.uuid, Outcome.Time(TimeResponse(isoTime))))
             }
             is Effect.Platform -> {
                 val platform = getPlatform()
 
-                update(
-                    CoreMessage.Response(
-                        req.uuid.toByteArray().toUByteArray().toList(), Outcome.Platform(
-                            PlatformResponse(platform)
-                        )
-                    )
-                )
+                update(CoreMessage.Response(req.uuid, Outcome.Platform(PlatformResponse(platform))))
             }
             is Effect.KeyValue -> when (effect.value) {
                 is KeyValueOperation.Read -> update(
                     CoreMessage.Response(
-                        req.uuid.toByteArray().toUByteArray().toList(),
+                        req.uuid,
                         Outcome.KeyValue(KeyValueOutput.Read(null))
                     )
                 )
                 is KeyValueOperation.Write -> update(
-                    CoreMessage.Response(
-                        req.uuid.toByteArray().toUByteArray().toList(),
-                        Outcome.KeyValue(KeyValueOutput.Write(false)),
-                    )
+                    CoreMessage.Response(req.uuid, Outcome.KeyValue(KeyValueOutput.Write(false)),)
                 )
             }
         }

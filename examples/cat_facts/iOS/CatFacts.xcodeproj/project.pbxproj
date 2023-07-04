@@ -14,6 +14,7 @@
 		8CEEE500CE6BE0647260B67F /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 585C187420F6F4F4142F646D /* SharedTypes */; };
 		91A375A39D8A4F827B873AF3 /* CatFactsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F008C3C1A819A3D7658E59 /* CatFactsApp.swift */; };
 		C6A871270F87D449FB7FE5C4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D27A7B150B96621935C1300 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CC6347992A54B8B400E3D74F /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6347982A54B8B400E3D74F /* http.swift */; };
 		F68573BF507ACC074620C5D8 /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A500489520C085A22DE7285 /* libshared_static.a */; };
 /* End PBXBuildFile section */
 
@@ -23,6 +24,8 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
+			inputFiles = (
+			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -32,7 +35,7 @@
 			outputFilesCompilerFlags = (
 			);
 			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ $ACTION == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"${ENABLE_PREVIEWS}\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\n# note, for now, run a cargo build manually to ensure the binary exists for this step\ncd \"$INPUT_FILE_DIR\"/..\n\"$BUILD_DIR/debug/uniffi-bindgen\" generate src/\"$INPUT_FILE_NAME\" --language swift --out-dir \"$PROJECT_DIR/generated\"\n";
+			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/debug/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
 		};
 /* End PBXBuildRule section */
 
@@ -58,7 +61,7 @@
 			remoteGlobalIDString = CA605677FFD79A6F07B14E08;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CCFD12E12A4EF1F3005EB70D /* PBXContainerItemProxy */ = {
+		CC74A4EF2A54B5DF006858D8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F7A91C46D50C923426AE058D /* Shared */;
 			proxyType = 2;
@@ -83,6 +86,7 @@
 		B159CE6ED67571255C05D2C3 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		BA04D6CC7F18E9A653D26BDD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BEED0A11FB2044F35FBCD25B /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		CC6347982A54B8B400E3D74F /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
 		F7A91C46D50C923426AE058D /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -107,6 +111,7 @@
 				1E4056BAC32CC8AC7A9740CA /* ContentView.swift */,
 				BA04D6CC7F18E9A653D26BDD /* Info.plist */,
 				B5007F506D99687AEC368328 /* Preview Content */,
+				CC6347982A54B8B400E3D74F /* http.swift */,
 			);
 			path = CatFacts;
 			sourceTree = "<group>";
@@ -167,7 +172,7 @@
 			isa = PBXGroup;
 			children = (
 				6A500489520C085A22DE7285 /* libshared_static.a */,
-				CCFD12E22A4EF1F3005EB70D /* shared.dylib */,
+				CC74A4F02A54B5DF006858D8 /* shared.dylib */,
 				4D27A7B150B96621935C1300 /* uniffi-bindgen */,
 			);
 			name = Products;
@@ -245,11 +250,11 @@
 			remoteRef = 898B1C86AA976270992A4381 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CCFD12E22A4EF1F3005EB70D /* shared.dylib */ = {
+		CC74A4F02A54B5DF006858D8 /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CCFD12E12A4EF1F3005EB70D /* PBXContainerItemProxy */;
+			remoteRef = CC74A4EF2A54B5DF006858D8 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
@@ -273,6 +278,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				91A375A39D8A4F827B873AF3 /* CatFactsApp.swift in Sources */,
+				CC6347992A54B8B400E3D74F /* http.swift in Sources */,
 				5CB93AF904772A9440AC765F /* ContentView.swift in Sources */,
 				54C2E71CAF2F96B967BC0DF5 /* shared.udl in Sources */,
 			);

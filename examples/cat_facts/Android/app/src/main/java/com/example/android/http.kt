@@ -11,13 +11,19 @@ import io.ktor.util.flattenEntries
 suspend fun http(
     client: HttpClient,
     method: HttpMethod,
-    url: String
+    url: String,
+    headers: List<HttpHeader>
 ): HttpResponse {
-    val response = client.request(url) {
-        this.method = method
-    }
+    val response =
+        client.request(url) {
+            this.method = method
+            this.headers {
+                for (header in headers) {
+                    append(header.name, header.value)
+                }
+            }
+        }
     val bytes: ByteArray = response.body()
-
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
     return HttpResponse(response.status.value.toShort(), headers, bytes.toList())
 }
