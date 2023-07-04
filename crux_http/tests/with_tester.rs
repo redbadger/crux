@@ -11,12 +11,15 @@ mod shared {
     pub enum Event {
         Get,
         Post,
+
+        // events local to the core
         Set(crux_http::Result<crux_http::Response<String>>),
     }
 
     #[derive(Default, Serialize, Deserialize)]
     pub struct Model {
         pub body: String,
+        pub values: Vec<String>,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -47,9 +50,16 @@ mod shared {
                         .expect_string()
                         .send(Event::Set);
                 }
-                Event::Set(body) => {
-                    model.body = body.unwrap().take_body().unwrap();
+                Event::Set(Ok(mut response)) => {
+                    model.body = response.take_body().unwrap();
+                    model.values = response
+                        .header("my_header")
+                        .unwrap()
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect();
                 }
+                Event::Set(Err(_)) => {}
             }
         }
 
@@ -71,10 +81,10 @@ mod tests {
 
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
-    use crux_http::protocol::{HttpHeader, HttpRequest, HttpResponse};
+    use crux_http::protocol::{HttpRequest, HttpResponse};
 
     #[test]
-    fn with_tester() {
+    fn get() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
@@ -85,35 +95,39 @@ mod tests {
 
         assert_eq!(
             *http_request,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "http://example.com/".to_string(),
-                headers: vec![HttpHeader {
-                    name: "authorization".to_string(),
-                    value: "secret-token".to_string()
-                }],
-                body: vec![],
-            }
+            HttpRequest::get("http://example.com/")
+                .header("authorization", "secret-token")
+                .build()
         );
 
         let update = app
             .resolve(
                 request,
-                HttpResponse {
-                    status: 200,
-                    body: serde_json::to_vec("hello").unwrap(),
-                },
+                HttpResponse::status(200)
+                    .json("hello")
+                    .header("my_header", "my_value1")
+                    .header("my_header", "my_value2")
+                    .build(),
             )
             .expect("Resolves successfully");
 
-        let actual = update.events;
+        let actual = update.events.clone();
         assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
-            assert_eq!(*response.body().unwrap(), "\"hello\"".to_string())
-        })
+            assert_eq!(*response.body().unwrap(), "\"hello\"".to_string());
+            assert_eq!(*response.header("my_header").unwrap().iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>(), vec!["my_value1", "my_value2"]);
+        });
+
+        for event in update.events {
+            app.update(event, &mut model);
+        }
+        assert_eq!(model.body, "\"hello\"");
+        assert_eq!(model.values, vec!["my_value1", "my_value2"]);
     }
 
     #[test]
-    fn with_request_body() {
+    fn post() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
@@ -123,30 +137,19 @@ mod tests {
 
         assert_eq!(
             request.operation,
-            HttpRequest {
-                method: "POST".to_string(),
-                url: "http://example.com/".to_string(),
-                headers: vec![HttpHeader {
-                    name: "content-type".to_string(),
-                    value: "application/octet-stream".to_string()
-                }],
-                body: "The Body".as_bytes().to_vec(),
-            }
+            HttpRequest::post("http://example.com/")
+                .header("content-type", "application/octet-stream")
+                .body("The Body")
+                .build()
         );
 
         let update = app
-            .resolve(
-                request,
-                HttpResponse {
-                    status: 200,
-                    body: serde_json::to_vec("The Body").unwrap(),
-                },
-            )
+            .resolve(request, HttpResponse::status(200).json("The Body").build())
             .expect("Resolves successfully");
 
         let actual = update.events;
         assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
-            assert_eq!(*response.body().unwrap(), "\"The Body\"".to_string())
-        })
+            assert_eq!(*response.body().unwrap(), "\"The Body\"".to_string());
+        });
     }
 }

@@ -29,7 +29,7 @@ class Model: ObservableObject {
     private func httpGet(uuid: [UInt8], url: String) {
         Task {
             let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .response(uuid, .http(HttpResponse(status: 200, body: [UInt8](data)))))
+            self.update(msg: .response(uuid, .http(HttpResponse(status: 200, headers: [], body: [UInt8](data)))))
         }
     }
 

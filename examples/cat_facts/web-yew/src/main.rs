@@ -86,7 +86,6 @@ impl Component for HelloWorld {
 
                         async move {
                             let response = http::request(&request.operation).await.unwrap();
-
                             let effects = core.resolve(&mut request, response);
                             send_effects(&link, effects);
                         }

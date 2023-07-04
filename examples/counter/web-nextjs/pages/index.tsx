@@ -9,6 +9,8 @@ import init_core, {
 } from "../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
+import { httpRequest } from "./httpRequest";
+import { sseRequest } from "./sseRequest";
 
 interface Event {
   kind: "event";
@@ -19,9 +21,9 @@ interface Response {
   kind: "response";
   uuid: number[];
   outcome:
-  | types.HttpResponse
-  | types.SseResponseVariantChunk
-  | types.SseResponseVariantDone;
+    | types.HttpResponse
+    | types.SseResponseVariantChunk
+    | types.SseResponseVariantDone;
 }
 
 type State = {
@@ -72,7 +74,7 @@ const Home: NextPage = () => {
 
     for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
-        case types.EffectVariantRender:
+        case types.EffectVariantRender: {
           let bytes = view();
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
@@ -81,51 +83,24 @@ const Home: NextPage = () => {
           setState({
             text: viewModel.text,
           });
-
           break;
+        }
+
         case types.EffectVariantHttp: {
-          const { method, url, headers } = (effect as types.EffectVariantHttp)
-            .value;
-          const req = new Request(url, {
-            method,
-            headers: headers.map((header) => [header.name, header.value]),
-          });
-          const res = await fetch(req);
-          const body = await res.arrayBuffer();
-          const response_bytes = Array.from(new Uint8Array(body));
-
-          respond({
-            kind: "response",
-            uuid,
-            outcome: new types.HttpResponse(res.status, response_bytes),
-          });
+          const request = (effect as types.EffectVariantHttp).value;
+          const outcome = await httpRequest(request);
+          respond({ kind: "response", uuid, outcome });
           break;
         }
+
         case types.EffectVariantServerSentEvents: {
-          const { url } = (effect as types.EffectVariantServerSentEvents).value;
-          const req = new Request(url);
-          const res = await fetch(req);
-          const reader = await res.body.getReader();
-          try {
-            while (true) {
-              const { done, value: chunk } = await reader.read();
-              respond({
-                kind: "response",
-                uuid,
-                outcome: done
-                  ? new types.SseResponseVariantDone()
-                  : new types.SseResponseVariantChunk(Array.from(chunk)),
-              });
-              if (done) {
-                break;
-              }
-            }
-          } finally {
-            reader.releaseLock();
+          const request = (effect as types.EffectVariantServerSentEvents).value;
+          for await (const outcome of sseRequest(request)) {
+            respond({ kind: "response", uuid, outcome });
           }
-
           break;
         }
+
         default:
       }
     }

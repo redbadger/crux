@@ -239,12 +239,7 @@ mod tests {
 
         assert_let!(Effect::Http(request), update.effects().next().unwrap());
         let actual = &request.operation;
-        let expected = &HttpRequest {
-            method: "GET".into(),
-            url: FACT_API_URL.into(),
-            headers: vec![],
-            body: vec![],
-        };
+        let expected = &HttpRequest::get(FACT_API_URL).build();
 
         assert_eq!(actual, expected);
     }
@@ -259,12 +254,7 @@ mod tests {
 
         assert_let!(Effect::Http(request), effects.next().unwrap());
         let actual = &request.operation;
-        let expected = &HttpRequest {
-            method: "GET".into(),
-            url: FACT_API_URL.into(),
-            headers: vec![],
-            body: vec![],
-        };
+        let expected = &HttpRequest::get(FACT_API_URL).build();
         assert_eq!(actual, expected);
 
         let a_fact = CatFact {
@@ -272,10 +262,7 @@ mod tests {
             length: 13,
         };
 
-        let response = HttpResponse {
-            status: 200,
-            body: serde_json::to_vec(&a_fact).unwrap(),
-        };
+        let response = HttpResponse::status(200).json(&a_fact).build();
         let update = app
             .resolve(request, response)
             .expect("should resolve successfully");
@@ -289,22 +276,14 @@ mod tests {
 
         assert_let!(Effect::Http(request), effects.next().unwrap());
         let actual = &request.operation;
-        let expected = &HttpRequest {
-            method: "GET".into(),
-            url: IMAGE_API_URL.into(),
-            headers: vec![],
-            body: vec![],
-        };
+        let expected = &HttpRequest::get(IMAGE_API_URL).build();
         assert_eq!(actual, expected);
 
         let a_image = CatImage {
             href: "image_url".to_string(),
         };
 
-        let response = HttpResponse {
-            status: 200,
-            body: serde_json::to_vec(&a_image).unwrap(),
-        };
+        let response = HttpResponse::status(200).json(&a_image).build();
         let update = app
             .resolve(request, response)
             .expect("should resolve successfully");

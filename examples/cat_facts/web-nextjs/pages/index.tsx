@@ -11,6 +11,7 @@ import init_core, {
 import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
 import { Optional } from "shared_types/serde/mod";
+import { httpRequest } from "./httpRequest";
 
 interface Event {
   kind: "event";
@@ -79,7 +80,7 @@ const Home: NextPage = () => {
 
     for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
-        case types.EffectVariantRender:
+        case types.EffectVariantRender: {
           let bytes = view();
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
@@ -92,42 +93,31 @@ const Home: NextPage = () => {
           });
 
           break;
-        case types.EffectVariantTime:
-          respond({
-            kind: "response",
-            uuid,
-            outcome: new types.TimeResponse(new Date().toISOString()),
-          });
+        }
 
+        case types.EffectVariantTime: {
+          const outcome = new types.TimeResponse(new Date().toISOString());
+          respond({ kind: "response", uuid, outcome });
           break;
-        case types.EffectVariantPlatform:
-          respond({
-            kind: "response",
-            uuid,
-            outcome: new types.PlatformResponse(
-              new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
-            ),
-          });
+        }
+
+        case types.EffectVariantPlatform: {
+          const outcome = new types.PlatformResponse(
+            new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
+          );
+          respond({ kind: "response", uuid, outcome });
           break;
+        }
+
         case types.EffectVariantKeyValue:
           break;
-        case types.EffectVariantHttp:
-          const { method, url, headers } = (effect as types.EffectVariantHttp)
-            .value;
-          const req = new Request(url, {
-            method,
-            headers: headers.map((header) => [header.name, header.value]),
-          });
-          const res = await fetch(req);
-          const body = await res.arrayBuffer();
-          const response_bytes = Array.from(new Uint8Array(body));
 
-          respond({
-            kind: "response",
-            uuid,
-            outcome: new types.HttpResponse(res.status, response_bytes),
-          });
+        case types.EffectVariantHttp: {
+          const request = (effect as types.EffectVariantHttp).value;
+          const outcome = await httpRequest(request);
+          respond({ kind: "response", uuid, outcome });
           break;
+        }
         default:
       }
     }

@@ -64,10 +64,8 @@ async fn main() -> Result<()> {
                     let HttpRequest { ref url, .. } = request.operation;
                     match surf::get(url).send().await {
                         Ok(mut response) => {
-                            let response = HttpResponse {
-                                status: response.status().into(),
-                                body: response.body_bytes().await.unwrap(),
-                            };
+                            let bytes = response.body_bytes().await.unwrap();
+                            let response = HttpResponse::status(200).body(bytes).build();
 
                             enqueue_effects(&mut queue, core.resolve(&mut request, response));
                         }

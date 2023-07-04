@@ -43,12 +43,4 @@ module.exports = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: "/",
-        destination: "https://crux-counter.fly.dev/meow",
-      },
-    ];
-  },
 };
