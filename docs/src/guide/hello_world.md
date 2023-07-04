@@ -160,49 +160,7 @@ Now we can finally implement the trait with its two methods, `update` and
 `view`.
 
 ```rust,noplayground
-use crux_core::{render::Render, App};
-use crux_macros::Effect;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-pub enum Event {
-    None,
-}
-
-#[derive(Default)]
-pub struct Model;
-
-#[derive(Serialize, Deserialize)]
-pub struct ViewModel {
-    data: String,
-}
-
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
-#[derive(Effect)]
-#[effect(app = "Hello")]
-pub struct Capabilities {
-    render: Render<Event>,
-}
-
-#[derive(Default)]
-pub struct Hello;
-
-impl App for Hello {
-    type Event = Event;
-    type Model = Model;
-    type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
-
-    fn update(&self, _event: Self::Event, _model: &mut Self::Model, caps: &Self::Capabilities) {
-        caps.render.render();
-    }
-
-    fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-        ViewModel {
-            data: "Hello World".to_string(),
-        }
-    }
-}
+{{#include ../../../examples/hello_world/shared/src/hello_world.rs:app}}
 ```
 
 The `update` function is the heart of the app. It responds to events by
@@ -225,28 +183,7 @@ to doing the user experience first, then the visual design.
 Here's our test:
 
 ```rust,noplayground
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crux_core::{assert_effect, testing::AppTester};
-
-    #[test]
-    fn hello_says_hello_world() {
-        let hello = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
-
-        // Call 'update' and request effects
-        let update = hello.update(Event::None, &mut model);
-
-        // Check update asked us to `Render`
-        assert_effect!(update, Effect::Render(_));
-
-        // Make sure the view matches our expectations
-        let actual_view = &hello.view(&model).data;
-        let expected_view = "Hello World";
-        assert_eq!(actual_view, expected_view);
-    }
-}
+{{#include ../../../examples/hello_world/shared/src/hello_world.rs:test}}
 ```
 
 It is a fairly underwhelming test, but it should pass (check with `cargo test`).
@@ -677,56 +614,7 @@ You can find the the complete example, including the shell implementations
 It's interesting to take a closer look at the unit tests
 
 ```rust,noplayground
-#[test]
-fn get_counter() {
-    let app = AppTester::<App, _>::default();
-    let mut model = Model::default();
-
-    let mut update = app.update(Event::Get, &mut model);
-
-    assert_let!(Effect::Http(request), update.effects_mut().next().unwrap());
-    let actual = &request.operation;
-    let expected = &HttpRequest {
-        method: "GET".to_string(),
-        url: "https://crux-counter.fly.dev/".to_string(),
-        headers: vec![],
-        body: vec![],
-    };
-
-    assert_eq!(actual, expected);
-
-    let response = HttpResponse {
-        status: 200,
-        body: serde_json::to_vec(&Counter {
-            value: 1,
-            updated_at: 1,
-        })
-        .unwrap(),
-    };
-    let update = app.resolve(request, response).expect("an update");
-
-    let actual = update.events;
-    let expected = vec![Event::new_set(1, 1)];
-    assert_eq!(actual, expected);
-}
-
-#[test]
-fn set_counter() {
-    let app = AppTester::<App, _>::default();
-    let mut model = Model::default();
-
-    let update = app.update(Event::new_set(1, 1), &mut model);
-
-    assert_effect!(update, Effect::Render(_));
-
-    let actual = model.count.value;
-    let expected = 1;
-    assert_eq!(actual, expected);
-
-    let actual = model.confirmed;
-    let expected = Some(true);
-    assert_eq!(actual, expected);
-}
+{{#include ../../../examples/counter/shared/src/app.rs:simple_tests}}
 ```
 
 You can see how easy it is to check that the app is requesting the right side

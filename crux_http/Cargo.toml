@@ -15,6 +15,7 @@ anyhow.workspace = true
 async-trait = "0.1.68"
 crux_core = { version = ">=0.4", path = "../crux_core" }
 crux_macros = { version = "0.3", path = "../crux_macros" }
+derive_builder = "0.12.0"
 futures-util = "0.3"
 http-types = { version = "2.12", default-features = false, features = ["fs"] }
 pin-project-lite = "0.2.9"

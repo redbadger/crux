@@ -11,6 +11,7 @@ import init_core, {
 import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
 import { Optional } from "shared_types/serde/mod";
+import { httpRequest } from "./httpRequest";
 
 interface Event {
   kind: "event";
@@ -21,10 +22,10 @@ interface Response {
   kind: "response";
   uuid: number[];
   outcome:
-  | types.PlatformResponse
-  | types.TimeResponse
-  | types.HttpResponse
-  | types.KeyValueOutput;
+    | types.PlatformResponse
+    | types.TimeResponse
+    | types.HttpResponse
+    | types.KeyValueOutput;
 }
 
 type State = {
@@ -77,9 +78,9 @@ const Home: NextPage = () => {
   const handleRequests = async (bytes: any) => {
     let requests = deserializeRequests(bytes);
 
-    for (const request of requests) {
-      switch (request.effect.constructor) {
-        case types.EffectVariantRender:
+    for (const { uuid, effect } of requests) {
+      switch (effect.constructor) {
+        case types.EffectVariantRender: {
           let bytes = view();
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
@@ -92,38 +93,31 @@ const Home: NextPage = () => {
           });
 
           break;
-        case types.EffectVariantTime:
-          respond({
-            kind: "response",
-            uuid: request.uuid,
-            outcome: new types.TimeResponse(new Date().toISOString()),
-          });
+        }
 
+        case types.EffectVariantTime: {
+          const outcome = new types.TimeResponse(new Date().toISOString());
+          respond({ kind: "response", uuid, outcome });
           break;
-        case types.EffectVariantPlatform:
-          respond({
-            kind: "response",
-            uuid: request.uuid,
-            outcome: new types.PlatformResponse(
-              new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
-            ),
-          });
+        }
+
+        case types.EffectVariantPlatform: {
+          const outcome = new types.PlatformResponse(
+            new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
+          );
+          respond({ kind: "response", uuid, outcome });
           break;
+        }
+
         case types.EffectVariantKeyValue:
           break;
-        case types.EffectVariantHttp:
-          const { url } = (request.effect as types.EffectVariantHttp).value;
 
-          const resp = await fetch(url);
-          const body = await resp.arrayBuffer();
-          const response_bytes = Array.from(new Uint8Array(body));
-
-          respond({
-            kind: "response",
-            uuid: request.uuid,
-            outcome: new types.HttpResponse(resp.status, response_bytes),
-          });
+        case types.EffectVariantHttp: {
+          const request = (effect as types.EffectVariantHttp).value;
+          const outcome = await httpRequest(request);
+          respond({ kind: "response", uuid, outcome });
           break;
+        }
         default:
       }
     }
@@ -145,6 +139,7 @@ const Home: NextPage = () => {
     }
 
     loadCore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -162,7 +157,7 @@ const Home: NextPage = () => {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt="A funny cat. Or at least a cute one."
-              src={state.image?.file}
+              src={state.image?.href}
               style={{ height: "200px" }}
             />
           )}
