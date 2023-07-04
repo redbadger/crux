@@ -166,7 +166,7 @@ async fn http(
     let status = response.status().into();
 
     match response.body_bytes().await {
-        Ok(body) => Ok(HttpResponse { status, body }),
+        Ok(body) => Ok(HttpResponse::status(status).body(body).build()),
         Err(e) => bail!("{method} {url}: error {e}"),
     }
 }

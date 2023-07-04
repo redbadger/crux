@@ -1,3 +1,5 @@
+// ANCHOR: app
+
 use crux_core::{render::Render, App};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
@@ -41,6 +43,9 @@ impl App for Hello {
     }
 }
 
+// ANCHOR_END: app
+
+// ANCHOR: test
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -63,3 +68,5 @@ mod tests {
         assert_eq!(actual_view, expected_view);
     }
 }
+
+// ANCHOR_END: test

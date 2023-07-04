@@ -19,7 +19,7 @@ func httpRequest(_ request: HttpRequest) async -> Result<HttpResponse, HttpError
         if let httpResponse = response as? HTTPURLResponse {
             let status = UInt16(httpResponse.statusCode)
             let body = [UInt8](data)
-            return .success(HttpResponse(status: status, body: body))
+            return .success(HttpResponse(status: status, headers: [], body: body))
         } else {
             return .failure(.message("bad response"))
         }

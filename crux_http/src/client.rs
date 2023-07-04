@@ -320,10 +320,7 @@ mod client_tests {
     #[futures_test::test]
     async fn an_http_get() {
         let mut shell = FakeShell::default();
-        shell.provide_response(HttpResponse {
-            status: 200,
-            body: "Hello World!".to_string().into_bytes(),
-        });
+        shell.provide_response(HttpResponse::status(200).body("Hello World!").build());
 
         let client = Client::new(shell.clone());
 
@@ -332,12 +329,7 @@ mod client_tests {
 
         assert_eq!(
             shell.take_requests_received(),
-            vec![HttpRequest {
-                method: "GET".into(),
-                url: "https://example.com/".into(),
-                headers: vec![],
-                body: vec![],
-            }]
+            vec![HttpRequest::get("https://example.com/").build()]
         )
     }
 }

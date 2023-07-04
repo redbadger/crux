@@ -1,10 +1,12 @@
 package com.example.android
 
+import com.redbadger.catfacts.shared_types.HttpHeader
 import com.redbadger.catfacts.shared_types.HttpResponse
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.util.flattenEntries
 
 suspend fun http(
     client: HttpClient,
@@ -15,5 +17,7 @@ suspend fun http(
         this.method = method
     }
     val bytes: ByteArray = response.body()
-    return HttpResponse(response.status.value.toShort(), bytes.toList())
+
+    val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
+    return HttpResponse(response.status.value.toShort(), headers, bytes.toList())
 }

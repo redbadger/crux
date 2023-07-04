@@ -14,7 +14,7 @@ use platform::{PlatformCapabilities, PlatformEvent};
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
-const IMAGE_API_URL: &str = "https://aws.random.cat/meow";
+const IMAGE_API_URL: &str = "https://crux-counter.fly.dev/cat";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
@@ -38,13 +38,13 @@ pub struct Model {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct CatImage {
-    pub file: String,
+    pub href: String,
 }
 
 impl Default for CatImage {
     fn default() -> Self {
         Self {
-            file: CAT_LOADING_URL.to_string(),
+            href: CAT_LOADING_URL.to_string(),
         }
     }
 }
@@ -229,12 +229,7 @@ mod tests {
 
         assert_let!(Effect::Http(request), update.effects().next().unwrap());
         let actual = &request.operation;
-        let expected = &HttpRequest {
-            method: "GET".into(),
-            url: FACT_API_URL.into(),
-            headers: vec![],
-            body: vec![],
-        };
+        let expected = &HttpRequest::get(FACT_API_URL).build();
 
         assert_eq!(actual, expected);
     }
@@ -248,12 +243,7 @@ mod tests {
 
         assert_let!(Effect::Http(request), update.effects_mut().next().unwrap());
         let actual = &request.operation;
-        let expected = &HttpRequest {
-            method: "GET".into(),
-            url: FACT_API_URL.into(),
-            headers: vec![],
-            body: vec![],
-        };
+        let expected = &HttpRequest::get(FACT_API_URL).build();
         assert_eq!(actual, expected);
 
         let a_fact = CatFact {
@@ -261,10 +251,7 @@ mod tests {
             length: 13,
         };
 
-        let response = HttpResponse {
-            status: 200,
-            body: serde_json::to_vec(&a_fact).unwrap(),
-        };
+        let response = HttpResponse::status(200).json(&a_fact).build();
         let update = app
             .resolve(request, response)
             .expect("should resolve successfully");
