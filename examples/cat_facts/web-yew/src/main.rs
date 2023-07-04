@@ -132,7 +132,7 @@ impl Component for HelloWorld {
                 </section>
                 <section class="section container has-text-centered">
                     if let Some(image) = &view.image {
-                        <img src={image.file.clone()} style="height: 400px" />
+                        <img src={image.href.clone()} style="height: 400px" />
                     }
                 </section>
                 <section class="section container has-text-centered">

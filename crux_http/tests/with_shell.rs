@@ -113,9 +113,7 @@ mod shell {
                         let http_request = &request.operation;
 
                         received.push(http_request.clone());
-                        let response = HttpResponse::status(200)
-                            .body("\"Hello\"".as_bytes().to_owned())
-                            .build();
+                        let response = HttpResponse::status(200).json("Hello").build();
 
                         enqueue_effects(&mut queue, core.resolve(&mut request, response));
                     }

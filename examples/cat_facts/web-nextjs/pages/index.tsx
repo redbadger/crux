@@ -21,10 +21,10 @@ interface Response {
   kind: "response";
   uuid: number[];
   outcome:
-  | types.PlatformResponse
-  | types.TimeResponse
-  | types.HttpResponse
-  | types.KeyValueOutput;
+    | types.PlatformResponse
+    | types.TimeResponse
+    | types.HttpResponse
+    | types.KeyValueOutput;
 }
 
 type State = {
@@ -121,7 +121,7 @@ const Home: NextPage = () => {
           respond({
             kind: "response",
             uuid: request.uuid,
-            outcome: new types.HttpResponse(resp.status, response_bytes),
+            outcome: new types.HttpResponse(resp.status, [], response_bytes),
           });
           break;
         default:
@@ -145,6 +145,7 @@ const Home: NextPage = () => {
     }
 
     loadCore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -162,7 +163,7 @@ const Home: NextPage = () => {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt="A funny cat. Or at least a cute one."
-              src={state.image?.file}
+              src={state.image?.href}
               style={{ height: "200px" }}
             />
           )}

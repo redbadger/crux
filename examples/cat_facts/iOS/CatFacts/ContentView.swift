@@ -29,7 +29,7 @@ class Model: ObservableObject {
     private func httpGet(uuid: [UInt8], url: String) {
         Task {
             let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .response(uuid, .http(HttpResponse(status: 200, body: [UInt8](data)))))
+            self.update(msg: .response(uuid, .http(HttpResponse(status: 200, headers: [], body: [UInt8](data)))))
         }
     }
 
@@ -107,7 +107,7 @@ struct ContentView: View {
                 AnyView(
                     // For the loading image to work properly, we'd need to add
                     // caching here
-                    AsyncImage(url: URL(string: image.file)) { image in
+                    AsyncImage(url: URL(string: image.href)) { image in
                         image
                             .resizable()
                             .scaledToFit()

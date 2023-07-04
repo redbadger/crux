@@ -34,7 +34,7 @@ class Model: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse {
                 let status = UInt16(httpResponse.statusCode)
                 let body = [UInt8](data)
-                self.update(msg: .response(uuid, .http(HttpResponse(status: status, body: body))))
+                self.update(msg: .response(uuid, .http(HttpResponse(status: status, headers: [], body: body))))
             }
         }
     }

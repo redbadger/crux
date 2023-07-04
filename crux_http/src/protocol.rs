@@ -60,6 +60,11 @@ impl HttpRequestBuilder {
         self
     }
 
+    pub fn json(&mut self, body: impl serde::Serialize) -> &mut Self {
+        self.body = Some(serde_json::to_vec(&body).unwrap());
+        self
+    }
+
     pub fn build(&self) -> HttpRequest {
         self.fallible_build()
             .expect("All required fields were initialized")
@@ -95,6 +100,11 @@ impl HttpResponseBuilder {
             name: name.into(),
             value: value.into(),
         });
+        self
+    }
+
+    pub fn json(&mut self, body: impl serde::Serialize) -> &mut Self {
+        self.body = Some(serde_json::to_vec(&body).unwrap());
         self
     }
 
@@ -188,7 +198,7 @@ mod tests {
     fn test_http_request_get_with_fields() {
         let req = HttpRequest::get("https://example.com")
             .header("foo", "bar")
-            .body(vec![1, 2, 3])
+            .body("123")
             .build();
 
         assert_eq!(
@@ -200,7 +210,7 @@ mod tests {
                     name: "foo".to_string(),
                     value: "bar".to_string(),
                 }],
-                body: vec![1, 2, 3],
+                body: "123".as_bytes().to_vec(),
             }
         );
     }

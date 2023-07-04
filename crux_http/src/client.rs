@@ -320,11 +320,7 @@ mod client_tests {
     #[futures_test::test]
     async fn an_http_get() {
         let mut shell = FakeShell::default();
-        shell.provide_response(
-            HttpResponse::status(200)
-                .body("Hello World!".to_string().into_bytes())
-                .build(),
-        );
+        shell.provide_response(HttpResponse::status(200).body("Hello World!").build());
 
         let client = Client::new(shell.clone());
 

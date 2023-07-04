@@ -19,9 +19,9 @@ interface Response {
   kind: "response";
   uuid: number[];
   outcome:
-  | types.HttpResponse
-  | types.SseResponseVariantChunk
-  | types.SseResponseVariantDone;
+    | types.HttpResponse
+    | types.SseResponseVariantChunk
+    | types.SseResponseVariantDone;
 }
 
 type State = {
@@ -97,7 +97,7 @@ const Home: NextPage = () => {
           respond({
             kind: "response",
             uuid,
-            outcome: new types.HttpResponse(res.status, response_bytes),
+            outcome: new types.HttpResponse(res.status, [], response_bytes),
           });
           break;
         }

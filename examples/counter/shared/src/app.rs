@@ -156,13 +156,10 @@ mod tests {
         assert_eq!(actual, expected);
 
         let response = HttpResponse::status(200)
-            .body(
-                serde_json::to_vec(&Counter {
-                    value: 1,
-                    updated_at: 1,
-                })
-                .unwrap(),
-            )
+            .json(&Counter {
+                value: 1,
+                updated_at: 1,
+            })
             .build();
 
         let update = app.resolve(request, response).expect("an update");
@@ -215,13 +212,10 @@ mod tests {
         assert_eq!(actual, expected);
 
         let response = HttpResponse::status(200)
-            .body(
-                serde_json::to_vec(&Counter {
-                    value: 1,
-                    updated_at: 1,
-                })
-                .unwrap(),
-            )
+            .json(&Counter {
+                value: 1,
+                updated_at: 1,
+            })
             .build();
 
         let update = app.resolve(request, response).expect("Update to succeed");
@@ -254,13 +248,10 @@ mod tests {
         assert_eq!(actual, expected);
 
         let response = HttpResponse::status(200)
-            .body(
-                serde_json::to_vec(&Counter {
-                    value: -1,
-                    updated_at: 1,
-                })
-                .unwrap(),
-            )
+            .json(&Counter {
+                value: -1,
+                updated_at: 1,
+            })
             .build();
 
         let update = app.resolve(request, response).expect("a successful update");

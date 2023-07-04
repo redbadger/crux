@@ -104,7 +104,7 @@ mod tests {
             .resolve(
                 request,
                 HttpResponse::status(200)
-                    .body(serde_json::to_vec("hello").unwrap())
+                    .json("hello")
                     .header("my_header", "my_value1")
                     .header("my_header", "my_value2")
                     .build(),
@@ -144,12 +144,7 @@ mod tests {
         );
 
         let update = app
-            .resolve(
-                request,
-                HttpResponse::status(200)
-                    .body(serde_json::to_vec("The Body").unwrap())
-                    .build(),
-            )
+            .resolve(request, HttpResponse::status(200).json("The Body").build())
             .expect("Resolves successfully");
 
         let actual = update.events;
