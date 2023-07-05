@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
+
 package com.example.counter
 
 import android.os.Bundle
@@ -18,11 +19,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.counter.shared.processEvent
-import com.example.counter.ui.theme.CounterTheme
 import com.example.counter.shared.view
 import com.example.counter.shared_types.Effect
 import com.example.counter.shared_types.Event
 import com.example.counter.shared_types.Requests
+import com.example.counter.ui.theme.CounterTheme
 import com.example.counter.shared_types.Event as Evt
 import com.example.counter.shared_types.Request as Req
 import com.example.counter.shared_types.ViewModel as MyViewModel
@@ -61,15 +62,14 @@ class Model : ViewModel() {
             when (msg) {
                 is CoreMessage.Event -> {
                     Requests.bincodeDeserialize(
-                        processEvent(msg.event.bincodeSerialize().toUByteArray().toList()).toUByteArray()
-                            .toByteArray()
+                        processEvent(msg.event.bincodeSerialize())
                     )
                 }
             }
 
         for (req in requests) when (req.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
+                this.view = MyViewModel.bincodeDeserialize(view())
             }
         }
     }

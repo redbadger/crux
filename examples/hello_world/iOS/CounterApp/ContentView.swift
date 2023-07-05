@@ -2,7 +2,7 @@ import SharedTypes
 import SwiftUI
 
 enum Message {
-    case message(Event)
+    case event(Event)
 }
 
 @MainActor
@@ -10,20 +10,23 @@ class Model: ObservableObject {
     @Published var view = ViewModel(count: "")
 
     init() {
-        update(msg: .message(.reset))
+        update(msg: .event(.reset))
     }
 
     func update(msg: Message) {
-        let reqs: [Request]
+        let requests: [Request]
 
         switch msg {
-        case let .message(m):
-            reqs = try! [Request].bincodeDeserialize(input: CounterApp.processEvent(try! m.bincodeSerialize()))
+        case let .event(event):
+            requests = try! .bincodeDeserialize(
+                input: [UInt8](processEvent(Data(try! event.bincodeSerialize())))
+            )
         }
 
-        for req in reqs {
+        for req in requests {
             switch req.effect {
-            case .render(_): view = try! ViewModel.bincodeDeserialize(input: CounterApp.view())
+            case .render:
+                view = try! .bincodeDeserialize(input: [UInt8](CounterApp.view()))
             }
         }
     }
@@ -65,13 +68,13 @@ struct ContentView: View {
             Text(model.view.count)
             HStack {
                 ActionButton(label: "Reset", color: .red) {
-                    model.update(msg: .message(.reset))
+                    model.update(msg: .event(.reset))
                 }
                 ActionButton(label: "Inc", color: .green) {
-                    model.update(msg: .message(.increment))
+                    model.update(msg: .event(.increment))
                 }
                 ActionButton(label: "Dec", color: .yellow) {
-                    model.update(msg: .message(.decrement))
+                    model.update(msg: .event(.decrement))
                 }
             }
         }

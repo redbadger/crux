@@ -416,38 +416,18 @@ private fun uniffiCheckContractApiVersion(lib: _UniFFILib) {
 
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
-    if (lib.uniffi_shared_checksum_func_process_event() != 55778.toShort()) {
+    if (lib.uniffi_shared_checksum_func_process_event() != 7497.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_shared_checksum_func_handle_response() != 3418.toShort()) {
+    if (lib.uniffi_shared_checksum_func_handle_response() != 46585.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_shared_checksum_func_view() != 27297.toShort()) {
+    if (lib.uniffi_shared_checksum_func_view() != 63715.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
 
 // Public interface members begin here.
-
-public object FfiConverterUByte : FfiConverter<UByte, Byte> {
-    override fun lift(value: Byte): UByte {
-        return value.toUByte()
-    }
-
-    override fun read(buf: ByteBuffer): UByte {
-        return lift(buf.get())
-    }
-
-    override fun lower(value: UByte): Byte {
-        return value.toByte()
-    }
-
-    override fun allocationSize(value: UByte) = 1
-
-    override fun write(value: UByte, buf: ByteBuffer) {
-        buf.put(value.toByte())
-    }
-}
 
 public object FfiConverterString : FfiConverter<String, RustBuffer.ByValue> {
     // Note: we don't inherit from FfiConverterRustBuffer, because we use a
@@ -495,46 +475,40 @@ public object FfiConverterString : FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
-public object FfiConverterSequenceUByte : FfiConverterRustBuffer<List<UByte>> {
-    override fun read(buf: ByteBuffer): List<UByte> {
+public object FfiConverterByteArray : FfiConverterRustBuffer<ByteArray> {
+    override fun read(buf: ByteBuffer): ByteArray {
         val len = buf.getInt()
-        return List<UByte>(len) {
-            FfiConverterUByte.read(buf)
-        }
+        val byteArr = ByteArray(len)
+        buf.get(byteArr)
+        return byteArr
     }
-
-    override fun allocationSize(value: List<UByte>): Int {
-        val sizeForLength = 4
-        val sizeForItems = value.map { FfiConverterUByte.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
+    override fun allocationSize(value: ByteArray): Int {
+        return 4 + value.size
     }
-
-    override fun write(value: List<UByte>, buf: ByteBuffer) {
+    override fun write(value: ByteArray, buf: ByteBuffer) {
         buf.putInt(value.size)
-        value.forEach {
-            FfiConverterUByte.write(it, buf)
-        }
+        buf.put(value)
     }
 }
 
-fun `processEvent`(`msg`: List<UByte>): List<UByte> {
-    return FfiConverterSequenceUByte.lift(
+fun `processEvent`(`msg`: ByteArray): ByteArray {
+    return FfiConverterByteArray.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.uniffi_shared_fn_func_process_event(FfiConverterSequenceUByte.lower(`msg`), _status)
+            _UniFFILib.INSTANCE.uniffi_shared_fn_func_process_event(FfiConverterByteArray.lower(`msg`), _status)
         },
     )
 }
 
-fun `handleResponse`(`uuid`: List<UByte>, `res`: List<UByte>): List<UByte> {
-    return FfiConverterSequenceUByte.lift(
+fun `handleResponse`(`uuid`: ByteArray, `res`: ByteArray): ByteArray {
+    return FfiConverterByteArray.lift(
         rustCall() { _status ->
-            _UniFFILib.INSTANCE.uniffi_shared_fn_func_handle_response(FfiConverterSequenceUByte.lower(`uuid`), FfiConverterSequenceUByte.lower(`res`), _status)
+            _UniFFILib.INSTANCE.uniffi_shared_fn_func_handle_response(FfiConverterByteArray.lower(`uuid`), FfiConverterByteArray.lower(`res`), _status)
         },
     )
 }
 
-fun `view`(): List<UByte> {
-    return FfiConverterSequenceUByte.lift(
+fun `view`(): ByteArray {
+    return FfiConverterByteArray.lift(
         rustCall() { _status ->
             _UniFFILib.INSTANCE.uniffi_shared_fn_func_view(_status)
         },

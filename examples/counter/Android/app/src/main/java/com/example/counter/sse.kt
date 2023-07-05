@@ -1,19 +1,23 @@
 package com.example.counter
 
+import com.example.counter.shared_types.SseRequest
 import com.example.counter.shared_types.SseResponse
-import io.ktor.client.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.core.*
+import io.ktor.client.HttpClient
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.core.toByteArray
+import io.ktor.utils.io.readUTF8Line
 
-suspend fun sse(client: HttpClient, url: String, callback: suspend (SseResponse) -> Unit) {
-    client.prepareGet(url).execute { response ->
+suspend fun sseRequest(
+    client: HttpClient, request: SseRequest, callback: suspend (SseResponse) -> Unit
+) {
+    client.prepareGet(request.url).execute { response ->
         val channel = response.bodyAsChannel()
         while (!channel.isClosedForRead) {
             var chunk = channel.readUTF8Line() ?: break
             chunk += "\n\n"
             callback(SseResponse.Chunk(chunk.toByteArray().toList()))
         }
+        callback(SseResponse.Done())
     }
 }

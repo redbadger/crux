@@ -39,8 +39,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CounterTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) { View() }
             }
         }
@@ -54,7 +53,7 @@ sealed class Outcome {
 
 sealed class CoreMessage {
     data class Event(val event: Evt) : CoreMessage()
-    data class Response(val uuid: List<UByte>, val outcome: Outcome) : CoreMessage()
+    data class Response(val uuid: List<Byte>, val outcome: Outcome) : CoreMessage()
 }
 
 class Model : ViewModel() {
@@ -80,48 +79,37 @@ class Model : ViewModel() {
     }
 
     suspend fun update(msg: CoreMessage) {
-        val requests: List<Req> =
-            when (msg) {
-                is CoreMessage.Event ->
-                    Requests.bincodeDeserialize(
-                        processEvent(msg.event.bincodeSerialize().toUByteArray().toList())
-                            .toUByteArray()
-                            .toByteArray()
-                    )
-                is CoreMessage.Response ->
-                    Requests.bincodeDeserialize(
-                        handleResponse(
-                            msg.uuid.toList(),
-                            when (msg.outcome) {
-                                is Outcome.Http -> msg.outcome.res.bincodeSerialize()
-                                is Outcome.Sse -> msg.outcome.res.bincodeSerialize()
-                            }.toUByteArray().toList()
-                        ).toUByteArray().toByteArray()
-                    )
-            }
+        val requests: List<Req> = when (msg) {
+            is CoreMessage.Event -> Requests.bincodeDeserialize(
+                processEvent(msg.event.bincodeSerialize())
+            )
+
+            is CoreMessage.Response -> Requests.bincodeDeserialize(
+                handleResponse(
+                    msg.uuid.toByteArray(), when (msg.outcome) {
+                        is Outcome.Http -> msg.outcome.res.bincodeSerialize()
+                        is Outcome.Sse -> msg.outcome.res.bincodeSerialize()
+                    }
+                )
+            )
+        }
 
         for (req in requests) when (val effect = req.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
+                this.view = MyViewModel.bincodeDeserialize(view())
             }
+
             is Effect.Http -> {
-                val response = http(httpClient, HttpMethod(effect.value.method), effect.value.url, effect.value.headers)
-                update(
-                    CoreMessage.Response(
-                        req.uuid.toByteArray().toUByteArray().toList(),
-                        Outcome.Http(response)
-                    )
+                val response = http(
+                    httpClient, effect.value
                 )
+                update(CoreMessage.Response(req.uuid, Outcome.Http(response)))
             }
+
             is Effect.ServerSentEvents -> {
                 viewModelScope.launch {
-                    sse(sseClient, effect.value.url) { event ->
-                        update(
-                            CoreMessage.Response(
-                                req.uuid.toByteArray().toUByteArray().toList(),
-                                Outcome.Sse(event)
-                            )
-                        )
+                    sseRequest(sseClient, effect.value) { event ->
+                        update(CoreMessage.Response(req.uuid, Outcome.Sse(event)))
                     }
                 }
             }
@@ -142,16 +130,25 @@ fun View(model: Model = viewModel()) {
     ) {
         Text(text = "Crux Counter Example", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
         Text(text = "Rust Core, Kotlin Shell (Jetpack Compose)", modifier = Modifier.padding(10.dp))
-        Text(text = model.view.text, color = if(model.view.confirmed) { Color.Black } else { Color.Gray }, modifier = Modifier.padding(10.dp))
+        Text(
+            text = model.view.text, color = if (model.view.confirmed) {
+                Color.Black
+            } else {
+                Color.Gray
+            }, modifier = Modifier.padding(10.dp)
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Evt.Decrement())) } },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.hsl(44F, 1F, 0.77F))
+                onClick = {
+                    coroutineScope.launch { model.update(CoreMessage.Event(Evt.Decrement())) }
+                }, colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.hsl(44F, 1F, 0.77F)
+                )
             ) { Text(text = "Decrement", color = Color.DarkGray) }
             Button(
-                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Evt.Increment())) } },
-                colors =
-                ButtonDefaults.buttonColors(
+                onClick = {
+                    coroutineScope.launch { model.update(CoreMessage.Event(Evt.Increment())) }
+                }, colors = ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(348F, 0.86F, 0.61F)
                 )
             ) { Text(text = "Increment", color = Color.White) }

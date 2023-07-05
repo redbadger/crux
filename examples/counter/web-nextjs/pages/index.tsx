@@ -3,8 +3,8 @@ import Head from "next/head";
 import { useEffect, useState } from "react";
 
 import init_core, {
-  process_event as sendEvent,
-  handle_response as sendResponse,
+  process_event,
+  handle_response,
   view,
 } from "../shared/core";
 import * as types from "shared_types/types/shared_types";
@@ -55,14 +55,14 @@ const Home: NextPage = () => {
   const dispatch = (action: Event) => {
     const serializer = new bincode.BincodeSerializer();
     action.event.serialize(serializer);
-    const requests = sendEvent(serializer.getBytes());
+    const requests = process_event(serializer.getBytes());
     handleRequests(requests);
   };
 
   const respond = (action: Response) => {
     const serializer = new bincode.BincodeSerializer();
     action.outcome.serialize(serializer);
-    const moreRequests = sendResponse(
+    const moreRequests = handle_response(
       new Uint8Array(action.uuid),
       serializer.getBytes()
     );

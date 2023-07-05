@@ -26,44 +26,48 @@ class Model: ObservableObject {
         update(msg: .event(.getPlatform))
     }
 
-    private func httpGet(uuid: [UInt8], url: String) {
-        Task {
-            let (data, _) = try! await URLSession.shared.data(from: URL(string: url)!)
-            self.update(msg: .response(uuid, .http(HttpResponse(status: 200, headers: [], body: [UInt8](data)))))
-        }
-    }
-
     func update(msg: Message) {
-        let reqs: [Request]
+        let requests: [Request]
 
         switch msg {
-        case let .event(m):
-            reqs = try! [Request].bincodeDeserialize(input: CatFacts.processEvent(try! m.bincodeSerialize()))
-        case let .response(uuid, outcome):
-            reqs = try! [Request].bincodeDeserialize(input: CatFacts.handleResponse(uuid, { switch outcome {
-            case let .platform(x):
-                return try! x.bincodeSerialize()
-            case let .time(x):
-                return try! x.bincodeSerialize()
-            case let .http(x):
-                return try! x.bincodeSerialize()
-            case let .key_value(x):
-                return try! x.bincodeSerialize()
-            }}()))
+        case let .event(event):
+            requests = try! .bincodeDeserialize(
+                input: [UInt8](processEvent(Data(try! event.bincodeSerialize())))
+            )
+        case let .response(uuid, .http(response)):
+            requests = try! .bincodeDeserialize(
+                input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
+            )
+        case let .response(uuid, .platform(response)):
+            requests = try! .bincodeDeserialize(
+                input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
+            )
+        case let .response(uuid, .time(response)):
+            requests = try! .bincodeDeserialize(
+                input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
+            )
+        case let .response(uuid, .key_value(response)):
+            requests = try! .bincodeDeserialize(
+                input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
+            )
         }
 
-        for req in reqs {
-            switch req.effect {
-            case .render: view = try! ViewModel.bincodeDeserialize(input: CatFacts.view())
-            case let .http(r): httpGet(uuid: req.uuid, url: r.url)
+        for request in requests {
+            switch request.effect {
+            case .render: view = try! ViewModel.bincodeDeserialize(input: [UInt8](CatFacts.view()))
+            case let .http(httpReq):
+                Task {
+                    let res = try! await httpRequest(httpReq).get()
+                    update(msg: .response(request.uuid, .http(res)))
+                }
             case .time:
-                update(msg: .response(req.uuid, .time(TimeResponse(value: Date().ISO8601Format()))))
+                update(msg: .response(request.uuid, .time(TimeResponse(value: Date().ISO8601Format()))))
             case .platform:
-                update(msg: .response(req.uuid, .platform(PlatformResponse(value: get_platform()))))
+                update(msg: .response(request.uuid, .platform(PlatformResponse(value: get_platform()))))
             case .keyValue(.read):
-                update(msg: .response(req.uuid, .key_value(KeyValueOutput.read(.none))))
+                update(msg: .response(request.uuid, .key_value(KeyValueOutput.read(.none))))
             case .keyValue(.write):
-                update(msg: .response(req.uuid, .key_value(KeyValueOutput.write(false))))
+                update(msg: .response(request.uuid, .key_value(KeyValueOutput.write(false))))
             }
         }
     }
