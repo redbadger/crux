@@ -108,7 +108,7 @@ Android Studio (see the following pages).
 
 We will need an interface definition file for the FFI bindings. Uniffi has its
 own file format (similar to WebIDL) that has a `.udl` extension. You can create
-one here `/shared/src/shared.udl`, like this:
+one at `/shared/src/shared.udl`, like this:
 
 ```txt
 {{#include ../../../examples/counter/shared/src/shared.udl}}
@@ -122,6 +122,13 @@ for Kotlin and Swift. They live in the file `/shared/uniffi.toml`, like this
 {{#include ../../../examples/counter/shared/uniffi.toml}}
 ```
 
+Finally, we need a `build.rs` file in the root of the crate
+(`/shared/build.rs`), to generate the bindings:
+
+```rust,noplayground
+{{#include ../../../examples/counter/shared/build.rs}}
+```
+
 ### Scaffolding
 
 Soon we will have macros and/or code-gen to help with this, but for now, we need
@@ -130,7 +137,7 @@ the `Request` type and the capabilities we want to use in our native Shells, as
 well as our public types from the shared library.
 
 ```rust,noplayground
-{{#include ../../../examples/counter/shared/src/lib.rs}}
+{{#include ../../../examples/hello_world/shared/src/lib.rs}}
 ```
 
 ### The app
@@ -141,7 +148,7 @@ from the
 (which also has tests, although we're not showing them here):
 
 ```rust,noplayground
-{{#include ../../../examples/hello_world/shared/src/counter.rs:1:52}}
+{{#include ../../../examples/hello_world/shared/src/counter.rs:app}}
 ```
 
 Make sure everything builds OK

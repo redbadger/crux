@@ -1,3 +1,4 @@
+// ANCHOR: app
 use crux_core::{render::Render, App};
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
@@ -51,6 +52,7 @@ impl App for Hello {
         }
     }
 }
+// ANCHOR_END: app
 
 #[cfg(test)]
 mod test {

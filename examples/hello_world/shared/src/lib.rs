@@ -1,5 +1,5 @@
 pub mod counter;
-mod hello_world;
+mod hello_world; // not exposed so you can remove this in your project
 
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
