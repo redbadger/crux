@@ -15,7 +15,7 @@ typegen = ["crux_core/typegen"]
 anyhow.workspace = true
 bincode = "1.3.3"
 crux_core = { version = "0.6", path = "../../../crux_core" }
-crux_http = { version = "0.3", path = "../../../crux_http" }
+crux_http = { version = "0.4", path = "../../../crux_http" }
 crux_kv = { version = "0.1", path = "../../../crux_kv" }
 crux_macros = { version = "0.3", path = "../../../crux_macros" }
 crux_platform = { version = "0.1", path = "../../../crux_platform" }
