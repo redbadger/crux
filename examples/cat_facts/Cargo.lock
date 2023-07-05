@@ -3003,6 +3003,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca6ad05a4870b2bf5fe995117d3728437bd27d7cd5f06f13c17443ef369775a1"
 
 [[package]]
+name = "wasm-logger"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "074649a66bb306c8f2068c9016395fa65d8e08d2affcbf95acf3c24c3ab19718"
+dependencies = [
+ "log",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3019,8 +3030,11 @@ dependencies = [
  "anyhow",
  "gloo-net",
  "js-sys",
+ "log",
  "shared",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-logger",
  "web-sys",
  "woothee",
  "yew",
