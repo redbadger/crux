@@ -19,14 +19,14 @@ class Model: ObservableObject {
         switch msg {
         case let .event(event):
             requests = try! .bincodeDeserialize(
-                input: processEvent(try! event.bincodeSerialize())
+                input: [UInt8](processEvent(Data(try! event.bincodeSerialize())))
             )
         }
 
         for req in requests {
             switch req.effect {
             case .render:
-                view = try! .bincodeDeserialize(input: CounterApp.view())
+                view = try! .bincodeDeserialize(input: [UInt8](CounterApp.view()))
             }
         }
     }

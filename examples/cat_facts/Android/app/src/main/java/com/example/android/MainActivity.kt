@@ -1,4 +1,3 @@
-
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
 package com.example.android
@@ -63,7 +62,6 @@ sealed class Outcome {
     data class Platform(val res: PlatformResponse) : Outcome()
     data class Time(val res: TimeResponse) : Outcome()
     data class Http(val res: HttpResponse) : Outcome()
-    data class KeyValue(val res: KeyValueOutput) : Outcome()
 }
 
 sealed class CoreMessage {
@@ -90,13 +88,13 @@ class Model : ViewModel() {
                 is CoreMessage.Event -> Requests.bincodeDeserialize(
                     processEvent(msg.event.bincodeSerialize())
                 )
+
                 is CoreMessage.Response -> Requests.bincodeDeserialize(
                     handleResponse(
                         msg.uuid.toByteArray(), when (msg.outcome) {
                             is Outcome.Platform -> msg.outcome.res.bincodeSerialize()
                             is Outcome.Time -> msg.outcome.res.bincodeSerialize()
                             is Outcome.Http -> msg.outcome.res.bincodeSerialize()
-                            is Outcome.KeyValue -> msg.outcome.res.bincodeSerialize()
                         }
                     )
                 )
@@ -106,37 +104,28 @@ class Model : ViewModel() {
             is Effect.Render -> {
                 this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
             }
+
             is Effect.Http -> {
                 val response = http(
-                    httpClient,
-                    HttpMethod(effect.value.method),
-                    effect.value.url,
-                    effect.value.headers
+                    httpClient, effect.value
                 )
                 update(CoreMessage.Response(req.uuid, Outcome.Http(response)))
             }
+
             is Effect.Time -> {
                 val isoTime =
                     ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
 
                 update(CoreMessage.Response(req.uuid, Outcome.Time(TimeResponse(isoTime))))
             }
+
             is Effect.Platform -> {
                 val platform = getPlatform()
 
                 update(CoreMessage.Response(req.uuid, Outcome.Platform(PlatformResponse(platform))))
             }
-            is Effect.KeyValue -> when (effect.value) {
-                is KeyValueOperation.Read -> update(
-                    CoreMessage.Response(
-                        req.uuid,
-                        Outcome.KeyValue(KeyValueOutput.Read(null))
-                    )
-                )
-                is KeyValueOperation.Write -> update(
-                    CoreMessage.Response(req.uuid, Outcome.KeyValue(KeyValueOutput.Write(false)),)
-                )
-            }
+
+            is Effect.KeyValue -> {}
         }
     }
 }
