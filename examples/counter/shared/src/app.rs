@@ -81,7 +81,7 @@ impl crux_core::App for App {
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/inc").unwrap();
-                caps.http.post(url.as_str()).expect_json().send(Event::Set);
+                caps.http.post(url).expect_json().send(Event::Set);
             }
             Event::Decrement => {
                 // optimistic update
@@ -92,12 +92,12 @@ impl crux_core::App for App {
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/dec").unwrap();
-                caps.http.post(url.as_str()).expect_json().send(Event::Set);
+                caps.http.post(url).expect_json().send(Event::Set);
             }
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
-                caps.sse.get_json(url.as_str(), Event::WatchUpdate);
+                caps.sse.get_json(url, Event::WatchUpdate);
             }
             Event::WatchUpdate(count) => {
                 model.count = count;
@@ -247,7 +247,7 @@ mod tests {
         let expected = &HttpRequest::post("https://crux-counter.fly.dev/dec").build();
         assert_eq!(actual, expected);
 
-        let response = HttpResponse::status(200)
+        let response = HttpResponse::ok()
             .json(&Counter {
                 value: -1,
                 updated_at: 1,

@@ -262,7 +262,9 @@ mod tests {
             length: 13,
         };
 
-        let response = HttpResponse::status(200).json(&a_fact).build();
+        let response = HttpResponse::ok()
+            .body(r#"{ "fact": "cats are good", "length": 13 }"#)
+            .build();
         let update = app
             .resolve(request, response)
             .expect("should resolve successfully");
@@ -283,7 +285,7 @@ mod tests {
             href: "image_url".to_string(),
         };
 
-        let response = HttpResponse::status(200).json(&a_image).build();
+        let response = HttpResponse::ok().body(r#"{"href":"image_url"}"#).build();
         let update = app
             .resolve(request, response)
             .expect("should resolve successfully");

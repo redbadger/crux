@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 pub struct TimeRequest;
 
 // TODO revisit this
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeResponse(pub String);
 
 impl Operation for TimeRequest {

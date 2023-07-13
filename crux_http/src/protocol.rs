@@ -92,6 +92,9 @@ impl HttpResponse {
             body: Some(vec![]),
         }
     }
+    pub fn ok() -> HttpResponseBuilder {
+        Self::status(200)
+    }
 }
 
 impl HttpResponseBuilder {

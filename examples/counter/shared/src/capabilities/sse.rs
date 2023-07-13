@@ -34,14 +34,14 @@ where
         Self { context }
     }
 
-    pub fn get_json<F, T>(&self, url: &str, make_event: F)
+    pub fn get_json<F, T>(&self, url: impl AsRef<str>, make_event: F)
     where
         F: Fn(T) -> Ev + Clone + Send + 'static,
         T: DeserializeOwned,
     {
         self.context.spawn({
             let context = self.context.clone();
-            let url = url.to_string();
+            let url = url.as_ref().to_string();
 
             async move {
                 let mut stream = context.stream_from_shell(SseRequest { url });
