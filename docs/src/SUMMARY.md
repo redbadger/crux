@@ -11,6 +11,7 @@
 1. [iOS — Swift and SwiftUI — using XcodeGen](./getting_started/ios_with_xcodegen.md)
 1. [Android — Kotlin and Jetpack Compose](./getting_started/android.md)
 1. [Web — TypeScript and React (Next.js)](./getting_started/web_react.md)
+1. [Web — TypeScript and React (Remix)](./getting_started/web_remix.md)
 1. [Web — Rust and Yew](./getting_started/web_yew.md)
 1. [Web — Rust and Leptos](./getting_started/web_leptos.md)
 
