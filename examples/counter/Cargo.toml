@@ -18,6 +18,6 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 rust-version = "1.66"
 
 [workspace.dependencies]
-anyhow = "1.0.71"
+anyhow = "1.0.72"
 serde = "1.0.171"
-uuid = { version = "1.4.0", features = ["v4", "wasm-bindgen", "js", "serde"] }
+uuid = { version = "1.4.1", features = ["v4", "wasm-bindgen", "js", "serde"] }

@@ -155,7 +155,7 @@ mod tests {
         let expected = &HttpRequest::get("https://crux-counter.fly.dev/").build();
         assert_eq!(actual, expected);
 
-        let response = HttpResponse::status(200)
+        let response = HttpResponse::ok()
             .json(&Counter {
                 value: 1,
                 updated_at: 1,
@@ -211,7 +211,7 @@ mod tests {
 
         assert_eq!(actual, expected);
 
-        let response = HttpResponse::status(200)
+        let response = HttpResponse::ok()
             .json(&Counter {
                 value: 1,
                 updated_at: 1,

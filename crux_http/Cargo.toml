@@ -20,7 +20,7 @@ futures-util = "0.3"
 http-types = { version = "2.12", default-features = false, features = ["fs"] }
 pin-project-lite = "0.2.10"
 serde = { workspace = true, features = ["derive"] }
-serde_json = "1.0.102"
+serde_json = "1.0.103"
 url = "2.4.0"
 
 [dev-dependencies]

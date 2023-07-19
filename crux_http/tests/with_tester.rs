@@ -103,7 +103,7 @@ mod tests {
         let update = app
             .resolve(
                 request,
-                HttpResponse::status(200)
+                HttpResponse::ok()
                     .json("hello")
                     .header("my_header", "my_value1")
                     .header("my_header", "my_value2")
@@ -144,7 +144,7 @@ mod tests {
         );
 
         let update = app
-            .resolve(request, HttpResponse::status(200).json("The Body").build())
+            .resolve(request, HttpResponse::ok().json("The Body").build())
             .expect("Resolves successfully");
 
         let actual = update.events;
