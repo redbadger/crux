@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'com.example.counter'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.example.counter"
         minSdk 29
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -65,7 +65,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Optional - Integration with activities
-    implementation("androidx.activity:activity-compose:1.7.1")
+    implementation("androidx.activity:activity-compose:1.7.2")
     // Optional - Integration with ViewModels
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
     // Optional - Integration with LiveData
@@ -76,6 +76,6 @@ dependencies {
 
     implementation "io.ktor:ktor-client-cio:2.2.2"
 
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1'
 }
