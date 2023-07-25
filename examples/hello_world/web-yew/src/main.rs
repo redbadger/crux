@@ -9,13 +9,13 @@ struct RootComponent {
     core: Rc<Core<Effect, Hello>>,
 }
 
-enum Task {
+enum Message {
     Event(Event),
     Effect(Effect),
 }
 
 impl Component for RootComponent {
-    type Message = Task;
+    type Message = Message;
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
@@ -28,17 +28,18 @@ impl Component for RootComponent {
         let link = ctx.link();
         let core = &self.core;
 
+        let mut render = false;
         match msg {
-            Task::Event(event) => {
+            Message::Event(event) => {
                 let effects = core.process_event(event);
-                link.send_message_batch(effects.into_iter().map(Task::Effect).collect());
+                link.send_message_batch(effects.into_iter().map(Message::Effect).collect());
             }
-            Task::Effect(effect) => match effect {
-                Effect::Render(_) => return true,
+            Message::Effect(effect) => match effect {
+                Effect::Render(_) => render = true,
             },
         };
 
-        false
+        render
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -51,15 +52,15 @@ impl Component for RootComponent {
                     <p class="is-size-5">{&view.count}</p>
                     <div class="buttons section is-centered">
                         <button class="button is-primary is-danger"
-                            onclick={link.callback(|_| Task::Event(Event::Reset))}>
+                            onclick={link.callback(|_| Message::Event(Event::Reset))}>
                             {"Reset"}
                         </button>
                         <button class="button is-primary is-success"
-                            onclick={link.callback(|_| Task::Event(Event::Increment))}>
+                            onclick={link.callback(|_| Message::Event(Event::Increment))}>
                             {"Increment"}
                         </button>
                         <button class="button is-primary is-warning"
-                            onclick={link.callback(|_| Task::Event(Event::Decrement))}>
+                            onclick={link.callback(|_| Message::Event(Event::Decrement))}>
                             {"Decrement"}
                         </button>
                     </div>

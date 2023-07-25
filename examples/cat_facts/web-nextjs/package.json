@@ -9,20 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "eslint": "8.27.0",
-    "eslint-config-next": "13.0.3",
-    "next": "13.0.3",
+    "next": "13.4.12",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "typescript": "4.8.4",
-    "ua-parser-js": "^1.0.32",
-    "shared_types": "../shared_types/generated/typescript"
+    "shared_types": "../shared_types/generated/typescript",
+    "typescript": "5.1.6",
+    "ua-parser-js": "^1.0.35"
   },
   "devDependencies": {
-    "@types/node": "18.11.9",
-    "@types/react": "18.0.25",
-    "@types/react-dom": "18.0.8",
+    "eslint": "8.45.0",
+    "eslint-config-next": "13.4.12",
+    "@types/node": "20.4.4",
+    "@types/react": "18.2.16",
+    "@types/react-dom": "18.2.7",
     "@types/ua-parser-js": "^0.7.36",
-    "@wasm-tool/wasm-pack-plugin": "^1.6.0"
+    "@wasm-tool/wasm-pack-plugin": "^1.7.0"
   }
 }

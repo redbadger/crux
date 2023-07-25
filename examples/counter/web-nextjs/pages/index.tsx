@@ -7,11 +7,11 @@ import init_core, {
   handle_response,
   view,
 } from "../shared/core";
+import type { Event } from "shared_types/types/shared_types";
 import {
   HttpResponse,
   SseResponseVariantChunk,
   SseResponseVariantDone,
-  Event,
   EffectVariantRender,
   ViewModel,
   EffectVariantHttp,
@@ -88,6 +88,7 @@ const Home: NextPage = () => {
 
       loadCore();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
   );
 

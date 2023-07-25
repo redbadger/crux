@@ -3,9 +3,9 @@ mod http;
 use std::rc::Rc;
 
 use anyhow::{anyhow, Result};
+use gloo_console::log;
 use js_sys::Date;
-use log::info;
-use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::spawn_local;
 use web_sys::window;
 use woothee::parser::Parser;
 use yew::{html::Scope, prelude::*};
@@ -43,23 +43,23 @@ struct HelloWorld {
 }
 
 #[derive(Debug)]
-enum Task {
+enum Message {
     Event(Event),
     Effect(Effect),
 }
 
 fn send_effects(link: &Scope<HelloWorld>, effects: Vec<Effect>) {
-    link.send_message_batch(effects.into_iter().map(Task::Effect).collect());
+    link.send_message_batch(effects.into_iter().map(Message::Effect).collect());
 }
 
 impl Component for HelloWorld {
-    type Message = Task;
+    type Message = Message;
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        link.send_message(Task::Event(Event::Get));
-        link.send_message(Task::Event(Event::GetPlatform));
+        link.send_message(Message::Event(Event::Get));
+        link.send_message(Message::Event(Event::GetPlatform));
 
         Self {
             core: Rc::new(Core::new::<CatFactCapabilities>()),
@@ -70,17 +70,16 @@ impl Component for HelloWorld {
         let link = ctx.link();
         let core = &self.core;
 
-        let object = JsValue::from(format!("message {:?}", msg));
-        info!("{}", object.as_string().unwrap());
+        log!(format!("message {:?}", msg));
 
         match msg {
-            Task::Event(event) => {
+            Message::Event(event) => {
                 send_effects(link, self.core.process_event(event));
             }
-            Task::Effect(effect) => match effect {
+            Message::Effect(effect) => match effect {
                 Effect::Render(_) => return true,
                 Effect::Http(mut request) => {
-                    wasm_bindgen_futures::spawn_local({
+                    spawn_local({
                         let link = link.clone();
                         let core = core.clone();
 
@@ -134,15 +133,15 @@ impl Component for HelloWorld {
                 </section>
                 <div class="buttons container is-centered">
                     <button class="button is-primary is-danger"
-                        onclick={link.callback(|_| Task::Event(Event::Clear))}>
+                        onclick={link.callback(|_| Message::Event(Event::Clear))}>
                         {"Clear"}
                     </button>
                     <button class="button is-primary is-success"
-                        onclick={link.callback(|_| Task::Event(Event::Get))}>
+                        onclick={link.callback(|_| Message::Event(Event::Get))}>
                         {"Get"}
                     </button>
                     <button class="button is-primary is-warning"
-                        onclick={link.callback(|_| Task::Event(Event::Fetch))}>
+                        onclick={link.callback(|_| Message::Event(Event::Fetch))}>
                         {"Fetch"}
                     </button>
                 </div>
@@ -152,6 +151,5 @@ impl Component for HelloWorld {
 }
 
 fn main() {
-    wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<HelloWorld>::new().render();
 }

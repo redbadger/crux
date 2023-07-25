@@ -12,6 +12,8 @@
     "shared_types": "../shared_types/generated/typescript"
   },
   "devDependencies": {
+    "eslint": "8.45.0",
+    "eslint-config-next": "13.4.12",
     "@types/node": "20.4.4",
     "@types/react": "18.2.16",
     "@wasm-tool/wasm-pack-plugin": "^1.7.0",
