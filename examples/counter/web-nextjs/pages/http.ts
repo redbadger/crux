@@ -4,25 +4,23 @@ import {
   HttpHeader,
 } from "shared_types/types/shared_types";
 
-export async function httpRequest(
-  httpRequest: HttpRequest
-): Promise<HttpResponse> {
-  const req = new Request(httpRequest.url, {
+export async function http(httpRequest: HttpRequest): Promise<HttpResponse> {
+  const request = new Request(httpRequest.url, {
     method: httpRequest.method,
     headers: httpRequest.headers.map((header) => [header.name, header.value]),
   });
 
-  const res = await fetch(req);
+  const response = await fetch(request);
 
   const responseHeaders = Array.from(
-    res.headers.entries(),
+    response.headers.entries(),
     ([name, value]) => new HttpHeader(name, value)
   );
 
-  const body = await res.arrayBuffer();
+  const body = await response.arrayBuffer();
 
   const httpResponse = new HttpResponse(
-    res.status,
+    response.status,
     responseHeaders,
     Array.from(new Uint8Array(body))
   );

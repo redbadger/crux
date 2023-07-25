@@ -75,9 +75,9 @@ where
 
     /// Resolve an effect `request` for operation `Op` with the corresponding result.
     ///
-    /// Not that the `request` is borrowed mutably. When a request expected to only be
-    /// resolved once is passed in, it will be consumed and changed to a request which can
-    /// no longer be resolved.
+    /// Note that the `request` is borrowed mutably. When a request that is expected to
+    /// only be resolved once is passed in, it will be consumed and changed to a request
+    /// which can no longer be resolved.
     pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<Ef>
     where
         Op: Operation,

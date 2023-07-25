@@ -1,19 +1,21 @@
+use eyre::{bail, eyre, Result};
 use futures::{stream, AsyncReadExt};
 
 use shared::sse::{SseRequest, SseResponse};
 
-use crate::error::Error;
-
 pub async fn sse(
     SseRequest { url }: &SseRequest,
-) -> Result<impl futures::TryStream<Ok = SseResponse>, Error> {
-    let mut response = surf::get(url).await?;
+) -> Result<impl futures::TryStream<Ok = SseResponse>> {
+    let mut response = surf::get(url)
+        .await
+        .map_err(|e| eyre!("get {url}: error {e}"))?;
+
     let status = response.status().into();
 
     let body = if let 200..=299 = status {
         response.take_body()
     } else {
-        return Err(Error::HttpResponse(status, "SSE error".to_string()));
+        bail!("get {url}: status {status}");
     };
 
     let body = body.into_reader();
@@ -27,10 +29,7 @@ pub async fn sse(
                 let chunk = SseResponse::Chunk(buf[0..n].to_vec());
                 Ok(Some((chunk, body)))
             }
-            Err(e) => Err(Error::HttpDecode(format!(
-                "failed to read from http response; err = {:?}",
-                e
-            ))),
+            Err(e) => bail!("failed to read from http response; err = {:?}", e),
         }
     })))
 }

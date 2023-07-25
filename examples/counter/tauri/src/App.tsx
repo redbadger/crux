@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api"
-import { listen, UnlistenFn } from "@tauri-apps/api/event"
+import { invoke } from "@tauri-apps/api";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
 type State = {
   text: string;
@@ -13,19 +13,25 @@ const initialState: State = {
 function App() {
   const [state, setState] = useState(initialState);
 
+  useEffect(
+    () => {
+      invoke("watch");
+    },
+    /*once*/ []
+  );
+
   useEffect(() => {
     let unlistenToRender: UnlistenFn;
 
     listen<State>("render", (event) => {
-      setState(event.payload)
-    })
-      .then(unlisten => {
-        unlistenToRender = unlisten;
-      })
+      setState(event.payload);
+    }).then((unlisten) => {
+      unlistenToRender = unlisten;
+    });
 
     return () => {
       unlistenToRender?.();
-    }
+    };
   });
 
   return (
@@ -42,7 +48,7 @@ function App() {
           <button
             className="button is-primary is-warning"
             onClick={() => {
-              invoke("decrement")
+              invoke("decrement");
             }}
           >
             {"Decrement"}
@@ -50,7 +56,7 @@ function App() {
           <button
             className="button is-primary is-danger"
             onClick={() => {
-              invoke("increment")
+              invoke("increment");
             }}
           >
             {"Increment"}

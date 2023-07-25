@@ -138,10 +138,10 @@ mod tests {
         // instantiate our app via the test harness, which gives us access to the model
         let app = AppTester::<App, _>::default();
 
-        // setup our initial model
+        // set up our initial model
         let mut model = Model::default();
 
-        // send the `Get` event to the app
+        // send a `Get` event to the app
         let mut update = app.update(Event::Get, &mut model);
 
         // check that the app emitted an HTTP request,
@@ -176,7 +176,7 @@ mod tests {
         // instantiate our app via the test harness, which gives us access to the model
         let app = AppTester::<App, _>::default();
 
-        // setup our initial model
+        // set up our initial model
         let mut model = Model::default();
 
         // send a `Set` event (containing the HTTP response) to the app
@@ -208,7 +208,7 @@ mod tests {
         // instantiate our app via the test harness, which gives us access to the model
         let app = AppTester::<App, _>::default();
 
-        // setup our initial model
+        // set up our initial model
         let mut model = Model::default();
 
         // send an `Increment` event to the app
@@ -260,7 +260,7 @@ mod tests {
         // instantiate our app via the test harness, which gives us access to the model
         let app = AppTester::<App, _>::default();
 
-        // setup our initial model
+        // set up our initial model
         let mut model = Model::default();
 
         // send a `Decrement` event to the app

@@ -4,12 +4,12 @@ import {
   SseResponseVariantChunk,
 } from "shared_types/types/shared_types";
 
-export async function* sseRequest(sseRequest: SseRequest) {
-  const req = new Request(sseRequest.url);
+export async function* sse(sseRequest: SseRequest) {
+  const request = new Request(sseRequest.url);
 
-  const res = await fetch(req);
+  const response = await fetch(request);
 
-  const reader = res.body.getReader();
+  const reader = response.body.getReader();
   try {
     while (true) {
       const { done, value } = await reader.read();
