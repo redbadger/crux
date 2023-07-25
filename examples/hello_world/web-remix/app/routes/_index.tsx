@@ -2,36 +2,19 @@ import type { V2_MetaFunction } from "@remix-run/node";
 import { useEffect, useState } from "react";
 
 import { process_event, view } from "shared/shared";
-import * as types from "shared_types/types/shared_types";
-import * as bincode from "shared_types/bincode/mod";
-
-interface Event {
-  kind: "event";
-  event: types.Event;
-}
-
-type State = {
-  count: string;
-};
-
-const initialState: State = {
-  count: "",
-};
-
-function deserialize_effects(bytes: Uint8Array) {
-  let deserializer = new bincode.BincodeDeserializer(bytes);
-
-  const len = deserializer.deserializeLen();
-
-  let effects: types.Request[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const effect = types.Request.deserialize(deserializer);
-    effects.push(effect);
-  }
-
-  return effects;
-}
+import type { Event } from "shared_types/types/shared_types";
+import {
+  Request,
+  ViewModel,
+  EffectVariantRender,
+  EventVariantReset,
+  EventVariantIncrement,
+  EventVariantDecrement,
+} from "shared_types/types/shared_types";
+import {
+  BincodeDeserializer,
+  BincodeSerializer,
+} from "shared_types/bincode/mod";
 
 export const meta: V2_MetaFunction = () => {
   return [
@@ -41,42 +24,36 @@ export const meta: V2_MetaFunction = () => {
 };
 
 export default function Index() {
-  const [state, setState] = useState(initialState);
+  const [state, setState] = useState(new ViewModel("0"));
 
-  const dispatch = (action: Event) => {
-    const serializer = new bincode.BincodeSerializer();
-    action.event.serialize(serializer);
+  function dispatch(event: Event) {
+    const serializer = new BincodeSerializer();
+    event.serialize(serializer);
     const effects = process_event(serializer.getBytes());
-    process_effects(effects);
-  };
+    processEffects(effects);
+  }
 
-  const process_effects = async (bytes: Uint8Array) => {
-    let effects = deserialize_effects(bytes);
+  async function processEffects(effects: Uint8Array) {
+    const requests = deserializeRequests(effects);
 
-    for (const { effect } of effects) {
+    for (const { effect } of requests) {
       switch (effect.constructor) {
-        case types.EffectVariantRender:
-          let bytes = view();
-          let viewDeserializer = new bincode.BincodeDeserializer(bytes);
-          let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-          setState({
-            count: viewModel.count,
-          });
-
+        case EffectVariantRender: {
+          setState(deserializeView(view()));
           break;
+        }
       }
     }
-  };
+  }
 
-  useEffect(() => {
-    // Initial event
-    dispatch({
-      kind: "event",
-      event: new types.EventVariantReset(),
-    });
+  useEffect(
+    () => {
+      // Initial event
+      dispatch(new EventVariantReset());
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    /*once*/ []
+  );
 
   return (
     <main>
@@ -85,34 +62,19 @@ export default function Index() {
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() =>
-              dispatch({
-                kind: "event",
-                event: new types.EventVariantReset(),
-              })
-            }
+            onClick={() => dispatch(new EventVariantReset())}
           >
             {"Reset"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() =>
-              dispatch({
-                kind: "event",
-                event: new types.EventVariantIncrement(),
-              })
-            }
+            onClick={() => dispatch(new EventVariantIncrement())}
           >
             {"Increment"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() =>
-              dispatch({
-                kind: "event",
-                event: new types.EventVariantDecrement(),
-              })
-            }
+            onClick={() => dispatch(new EventVariantDecrement())}
           >
             {"Decrement"}
           </button>
@@ -120,4 +82,19 @@ export default function Index() {
       </section>
     </main>
   );
+}
+
+function deserializeRequests(bytes: Uint8Array) {
+  const deserializer = new BincodeDeserializer(bytes);
+  const len = deserializer.deserializeLen();
+  const requests: Request[] = [];
+  for (let i = 0; i < len; i++) {
+    const request = Request.deserialize(deserializer);
+    requests.push(request);
+  }
+  return requests;
+}
+
+function deserializeView(bytes: Uint8Array) {
+  return ViewModel.deserialize(new BincodeDeserializer(bytes));
 }
