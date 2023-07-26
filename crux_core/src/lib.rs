@@ -38,61 +38,62 @@
 //!
 //! Below is a minimal example of a Crux-based application Core:
 //!
-//! ```rust,ignore
-//! // src/app.rs
+//! ```rust
+//!// src/app.rs
+//!use crux_core::{render::Render, App};
+//!use crux_macros::Effect;
+//!use serde::{Deserialize, Serialize};
 //!
-//! use serde::{Serialize, Deserialize};
-//! use crux_core::{App, render::Render};
-//! use crux_macros::Effect;
+//!// Model describing the application state
+//!#[derive(Default)]
+//!struct Model {
+//!    count: isize,
+//!}
 //!
-//! // Model describing the application state
-//! #[derive(Default)]
-//! struct Model {
-//!     count: isize,
-//! }
+//!// Event describing the actions that can be taken
+//!#[derive(Serialize, Deserialize)]
+//!pub enum Event {
+//!    Increment,
+//!    Decrement,
+//!    Reset,
+//!}
 //!
-//! // Event describing the actions that can be taken
-//! #[derive(Serialize, Deserialize)]
-//! enum Event {
-//!     Increment,
-//!     Decrement,
-//!     Reset,
-//! }
+//!// Capabilities listing the side effects the Core
+//!// will use to request side effects from the Shell
+//!#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+//!#[derive(Effect)]
+//!#[effect(app = "Hello")]
+//!pub struct Capabilities {
+//!    pub render: Render<Event>,
+//!}
 //!
-//! // Capabilities listing the side effects the Core
-//! // will use to request side effects from the Shell
-//! #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
-//! #[derive(Effect)]
-//! pub struct Capabilities {
-//!     pub render: Render<Event>
-//! }
+//!#[derive(Default)]
+//!struct Hello;
 //!
-//! struct Hello;
+//!impl App for Hello {
+//!    // Use the above Event
+//!    type Event = Event;
+//!    // Use the above Model
+//!    type Model = Model;
+//!    type ViewModel = String;
+//!    // Use the above Capabilities
+//!    type Capabilities = Capabilities;
 //!
-//! impl App for Hello {
-//!     // Use the above Event
-//!     type Event = Event;
-//!     // Use the above Model
-//!     type Model = Model;
-//!     type ViewModel = String;
-//!     // Use the above Capabilities
-//!     type Capabilities = Capabilities;
+//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+//!        match event {
+//!            Event::Increment => model.count += 1,
+//!            Event::Decrement => model.count -= 1,
+//!            Event::Reset => model.count = 0,
+//!        };
 //!
-//!     fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
-//!         match event {
-//!             Event::Increment => model.count += 1,
-//!             Event::Decrement => model.count -= 1,
-//!             Event::Reset => model.count = 0,
-//!         };
+//!        // Request a UI update
+//!        caps.render.render()
+//!    }
 //!
-//!         // Request a UI update
-//!         caps.render.render()
-//!     }
-//!
-//!     fn view(&self, model: &Model) -> Self::ViewModel {
-//!         format!("Count is: {}", model.count)
-//!     }
-//! }
+//!    fn view(&self, model: &Model) -> Self::ViewModel {
+//!        format!("Count is: {}", model.count)
+//!    }
+//!}
 //! ```
 //!
 //! ## Integrating with a Shell
