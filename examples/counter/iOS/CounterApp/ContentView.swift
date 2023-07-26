@@ -1,58 +1,47 @@
 import SharedTypes
 import SwiftUI
 
-enum Outcome {
-    case http(HttpResponse)
-    case sse(SseResponse)
-}
-
-typealias Uuid = [UInt8]
-
-enum Message {
-    case event(Event)
-    case response(Uuid, Outcome)
-}
-
 @MainActor
-class Model: ObservableObject {
+class Core: ObservableObject {
     @Published var view = ViewModel(text: "", confirmed: false)
 
     init() {
-        update(msg: .event(.startWatch))
+        update(event: .startWatch)
     }
 
-    func update(msg: Message) {
-        var requests: [Request]
-
-        switch msg {
-        case let .event(event):
-            requests = try! .bincodeDeserialize(
-                input: [UInt8](processEvent(Data(try! event.bincodeSerialize())))
-            )
-        case let .response(uuid, .http(httpRes)):
-            requests = try! .bincodeDeserialize(
-                input: [UInt8](handleResponse(Data(uuid), Data(try! httpRes.bincodeSerialize())))
-            )
-        case let .response(uuid, .sse(sseRes)):
-            requests = try! .bincodeDeserialize(
-                input: [UInt8](handleResponse(Data(uuid), Data(try! sseRes.bincodeSerialize())))
-            )
-        }
-
+    func update(event: Event) {
+        let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
+        
+        process_effects(effects)
+    }
+    
+    func process_effects(_ effects: [UInt8]) {
+        let requests: [Request] = try! .bincodeDeserialize(input: effects)
         for request in requests {
-            switch request.effect {
-            case .render:
-                view = try! .bincodeDeserialize(input: [UInt8](CounterApp.view()))
-            case let .http(httpReq):
-                Task {
-                    let res = try! await httpRequest(httpReq).get()
-                    update(msg: .response(request.uuid, .http(res)))
-                }
-            case let .serverSentEvents(sseReq):
-                Task {
-                    for await result in await sseRequest(sseReq) {
-                        update(msg: .response(request.uuid, .sse(try! result.get())))
-                    }
+            process_request(request)
+        }
+    }
+
+    func process_request(_ request: Request) {
+        switch request.effect {
+        case .render:
+            view = try! .bincodeDeserialize(input: [UInt8](CounterApp.view()))
+        case let .http(req):
+            Task {
+                let response = try! await httpRequest(req).get()
+
+                let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+
+                process_effects(effects)
+            }
+        case let .serverSentEvents(req):
+            Task {
+                for await result in await sseRequest(req) {
+                    let response = try! result.get()
+
+                    let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+                    
+                    process_effects(effects)
                 }
             }
         }
@@ -85,7 +74,7 @@ struct ActionButton: View {
 }
 
 struct ContentView: View {
-    @ObservedObject var model: Model
+    @ObservedObject var model: Core
 
     var body: some View {
         VStack {
@@ -96,10 +85,10 @@ struct ContentView: View {
                 .padding()
             HStack {
                 ActionButton(label: "Decrement", color: .yellow) {
-                    model.update(msg: .event(.decrement))
+                    model.update(event: .decrement)
                 }
                 ActionButton(label: "Increment", color: .red) {
-                    model.update(msg: .event(.increment))
+                    model.update(event: .increment)
                 }
             }
         }
@@ -108,6 +97,6 @@ struct ContentView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(model: Model())
+        ContentView(model: Core())
     }
 }

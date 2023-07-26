@@ -30,6 +30,10 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+
+    sourceSets {
+        main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
+    }
 }
 
 dependencies {
@@ -65,28 +69,14 @@ afterEvaluate {
         }
         def buildType = "${variant.buildType.name.capitalize()}"
 
-        tasks["bindGen"].dependsOn(tasks["deleteGenerated"])
-        tasks["typesGen"].dependsOn(tasks["deleteGenerated"])
-
         tasks["compileDebugKotlin"].dependsOn(tasks["typesGen"], tasks["bindGen"])
 
         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
     }
 }
 
-task deleteGenerated(type: Exec) {
-    def outDir = "${projectDir}/src/main/java"
-    workingDir "../../"
-    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine("cmd", "/c", "rmdir /s " + outDir.replace('/', '\\'))
-        commandLine("cmd", "/c", "mkdir " + outDir.replace('/', '\\'))
-    } else {
-        commandLine("sh", "-c", "rm -rf $outDir")
-    }
-}
-
 task bindGen(type: Exec) {
-    def outDir = "${projectDir}/src/main/java"
+    def outDir = "${projectDir}/../../shared_types/generated/java"
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine(
@@ -109,13 +99,10 @@ task bindGen(type: Exec) {
 }
 
 task typesGen(type: Exec) {
-    def outDir = "${projectDir}/src/main/java"
-    def srcDir = "shared_types/generated/java/com"
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine("cmd", "/c",
-                "cargo build -p shared_types && xcopy /e /y " + srcDir.replace('/', '\\') + " " + outDir.replace('/', '\\'))
+        commandLine("cmd", "/c", "cargo build -p shared_types")
     } else {
-        commandLine("sh", "-c", "cargo build -p shared_types && cp -r $srcDir $outDir")
+        commandLine("sh", "-c", "cargo build -p shared_types")
     }
 }

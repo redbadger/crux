@@ -1,22 +1,21 @@
-use async_std::io::ReadExt;
+mod http;
+mod sse;
+
+use std::sync::{Arc, Weak};
+
+use async_std::task::spawn;
 use clap::Parser;
-use crossbeam_channel::Sender;
-use eyre::{bail, eyre, Result};
-use futures::{stream, TryStreamExt};
-use shared::{
-    http::protocol::{HttpRequest, HttpResponse},
-    sse::{SseRequest, SseResponse},
-    App, Capabilities, Core, Effect, Event,
-};
-use std::{
-    str::FromStr,
-    sync::{Arc, Weak},
-    time::Duration,
-};
-use surf::{http::Method, Client, Config, Url};
+use crossbeam_channel::{unbounded, Sender};
+use eyre::{ErrReport, Result};
+use futures::TryStreamExt;
+
+use shared::{App, Capabilities, Core, Effect, Event};
+
+use http::http;
+use sse::sse;
 
 #[derive(Debug)]
-enum Task {
+enum Message {
     Event(Event),
     Effect(Effect),
 }
@@ -29,20 +28,15 @@ enum Command {
     Watch,
 }
 
-impl From<Command> for Task {
+impl From<Command> for Message {
     fn from(cmd: Command) -> Self {
         match cmd {
-            Command::Get => Task::Event(Event::Get),
-            Command::Inc => Task::Event(Event::Increment),
-            Command::Dec => Task::Event(Event::Decrement),
-            Command::Watch => Task::Event(Event::StartWatch),
+            Command::Get => Message::Event(Event::Get),
+            Command::Inc => Message::Event(Event::Increment),
+            Command::Dec => Message::Event(Event::Decrement),
+            Command::Watch => Message::Event(Event::StartWatch),
         }
     }
-}
-
-pub enum Outcome {
-    Http(HttpResponse),
-    Sse(SseResponse),
 }
 
 #[derive(Parser)]
@@ -53,7 +47,7 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    let (tx, rx) = crossbeam_channel::unbounded::<Task>();
+    let (tx, rx) = unbounded::<Message>();
 
     let strong_tx = Arc::new(tx);
     let tx = Arc::downgrade(&strong_tx);
@@ -74,16 +68,16 @@ fn main() -> Result<()> {
 
 fn main_loop(
     core: &Arc<Core<Effect, App>>,
-    task: Task,
-    tx: Weak<Sender<Task>>,
-) -> Result<(), eyre::ErrReport> {
-    match task {
-        Task::Event(event) => {
+    message: Message,
+    tx: Weak<Sender<Message>>,
+) -> Result<(), ErrReport> {
+    match message {
+        Message::Event(event) => {
             for effect in core.process_event(event) {
                 process_effect(effect, core, tx.clone())?
             }
         }
-        Task::Effect(effect) => process_effect(effect, core, tx)?,
+        Message::Effect(effect) => process_effect(effect, core, tx)?,
     }
 
     Ok(())
@@ -92,41 +86,40 @@ fn main_loop(
 fn process_effect(
     effect: Effect,
     core: &Arc<Core<Effect, App>>,
-    tx: Weak<Sender<Task>>,
-) -> Result<(), eyre::ErrReport> {
+    tx: Weak<Sender<Message>>,
+) -> Result<(), ErrReport> {
     match effect {
         Effect::Render(_) => {
-            let text = core.view().text;
+            let view = core.view();
 
-            if !text.contains("pending") {
-                println!("{text}");
+            if view.confirmed {
+                println!("{text}", text = view.text);
             }
         }
         Effect::Http(mut request) => {
-            async_std::task::spawn({
+            spawn({
                 let core = core.clone();
                 let tx = tx.upgrade().expect("Should be able to upgrade Weak tx");
 
                 async move {
                     let response = http(&request.operation).await.unwrap();
                     for effect in core.resolve(&mut request, response) {
-                        tx.send(Task::Effect(effect)).unwrap();
+                        tx.send(Message::Effect(effect)).unwrap();
                     }
                 }
             });
         }
         Effect::ServerSentEvents(mut request) => {
-            async_std::task::spawn({
+            spawn({
                 let core = core.clone();
                 let tx = tx.upgrade().unwrap();
 
                 async move {
                     let mut stream = sse(&request.operation).await.unwrap();
 
-                    while let Ok(Some(item)) = stream.try_next().await {
-                        let response = SseResponse::Chunk(item);
+                    while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core.resolve(&mut request, response) {
-                            tx.send(Task::Effect(effect)).unwrap();
+                            tx.send(Message::Effect(effect)).unwrap();
                         }
                     }
                 }
@@ -135,66 +128,4 @@ fn process_effect(
     };
 
     Ok(())
-}
-
-async fn http(
-    HttpRequest {
-        url,
-        method,
-        headers,
-        body: _,
-    }: &HttpRequest,
-) -> Result<HttpResponse> {
-    let method = Method::from_str(method).expect("unknown http method");
-    let url = Url::parse(url)?;
-    let headers = headers.clone();
-
-    let client: Client = Config::new()
-        .set_timeout(Some(Duration::from_secs(5)))
-        .try_into()?;
-
-    let mut request = client.request(method, &url);
-
-    for header in headers {
-        request = request.header(header.name.as_str(), &header.value);
-    }
-
-    let mut response = request
-        .await
-        .map_err(|e| eyre!("{method} {url}: error {e}"))?;
-
-    let status = response.status().into();
-
-    match response.body_bytes().await {
-        Ok(body) => Ok(HttpResponse::status(status).body(body).build()),
-        Err(e) => bail!("{method} {url}: error {e}"),
-    }
-}
-
-async fn sse(
-    SseRequest { url }: &SseRequest,
-) -> Result<impl futures::stream::TryStream<Ok = Vec<u8>>> {
-    let mut response = surf::get(url)
-        .await
-        .map_err(|e| eyre!("get {url}: error {e}"))?;
-
-    let status = response.status().into();
-
-    let body = if let 200..=299 = status {
-        response.take_body()
-    } else {
-        bail!("get {url}: status {status}");
-    };
-
-    let body = body.into_reader();
-
-    Ok(Box::pin(stream::try_unfold(body, |mut body| async {
-        let mut buf = [0; 1024];
-
-        match body.read(&mut buf).await {
-            Ok(n) if n == 0 => Ok(None),
-            Ok(n) => Ok(Some((buf[0..n].to_vec(), body))),
-            Err(e) => bail!("failed to read from http response; err = {:?}", e),
-        }
-    })))
 }

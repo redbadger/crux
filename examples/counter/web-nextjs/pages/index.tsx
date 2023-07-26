@@ -7,118 +7,90 @@ import init_core, {
   handle_response,
   view,
 } from "../shared/core";
-import * as types from "shared_types/types/shared_types";
-import * as bincode from "shared_types/bincode/mod";
-import { httpRequest } from "./httpRequest";
-import { sseRequest } from "./sseRequest";
+import type { Event } from "shared_types/types/shared_types";
+import {
+  HttpResponse,
+  SseResponseVariantChunk,
+  SseResponseVariantDone,
+  EffectVariantRender,
+  ViewModel,
+  EffectVariantHttp,
+  EffectVariantServerSentEvents,
+  EventVariantStartWatch,
+  EventVariantDecrement,
+  EventVariantIncrement,
+  Request,
+} from "shared_types/types/shared_types";
+import {
+  BincodeSerializer,
+  BincodeDeserializer,
+} from "shared_types/bincode/mod";
 
-interface Event {
-  kind: "event";
-  event: types.Event;
-}
+import { http } from "./http";
+import { sse } from "./sse";
 
-interface Response {
-  kind: "response";
-  uuid: number[];
-  outcome:
-    | types.HttpResponse
-    | types.SseResponseVariantChunk
-    | types.SseResponseVariantDone;
-}
-
-type State = {
-  text: string;
-};
-
-const initialState: State = {
-  text: "",
-};
-
-function deserializeRequests(bytes: Uint8Array) {
-  let deserializer = new bincode.BincodeDeserializer(bytes);
-
-  const len = deserializer.deserializeLen();
-
-  let requests: types.Request[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const request = types.Request.deserialize(deserializer);
-    requests.push(request);
-  }
-
-  return requests;
-}
+type Response = HttpResponse | SseResponseVariantChunk | SseResponseVariantDone;
 
 const Home: NextPage = () => {
-  const [state, setState] = useState(initialState);
+  const [state, setState] = useState(new ViewModel("", false));
 
-  const dispatch = (action: Event) => {
-    const serializer = new bincode.BincodeSerializer();
-    action.event.serialize(serializer);
-    const requests = process_event(serializer.getBytes());
-    handleRequests(requests);
-  };
+  function dispatch(event: Event) {
+    const serializer = new BincodeSerializer();
+    event.serialize(serializer);
+    const effects = process_event(serializer.getBytes());
+    processEffects(effects);
+  }
 
-  const respond = (action: Response) => {
-    const serializer = new bincode.BincodeSerializer();
-    action.outcome.serialize(serializer);
-    const moreRequests = handle_response(
-      new Uint8Array(action.uuid),
+  function respond(uuid: number[], response: Response) {
+    const serializer = new BincodeSerializer();
+    response.serialize(serializer);
+    const effects = handle_response(
+      new Uint8Array(uuid),
       serializer.getBytes()
     );
-    handleRequests(moreRequests);
-  };
+    processEffects(effects);
+  }
 
-  const handleRequests = async (bytes: Uint8Array) => {
-    let requests = deserializeRequests(bytes);
+  async function processEffects(effects: Uint8Array) {
+    const requests = deserializeRequests(effects);
 
     for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
-        case types.EffectVariantRender: {
-          let bytes = view();
-          let viewDeserializer = new bincode.BincodeDeserializer(bytes);
-          let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-          // core asked for a re-render with new state
-          setState({
-            text: viewModel.text,
-          });
+        case EffectVariantRender: {
+          setState(deserializeView(view()));
           break;
         }
-
-        case types.EffectVariantHttp: {
-          const request = (effect as types.EffectVariantHttp).value;
-          const outcome = await httpRequest(request);
-          respond({ kind: "response", uuid, outcome });
+        case EffectVariantHttp: {
+          const request = (effect as EffectVariantHttp).value;
+          const response = await http(request);
+          respond(uuid, response);
           break;
         }
-
-        case types.EffectVariantServerSentEvents: {
-          const request = (effect as types.EffectVariantServerSentEvents).value;
-          for await (const outcome of sseRequest(request)) {
-            respond({ kind: "response", uuid, outcome });
+        case EffectVariantServerSentEvents: {
+          const request = (effect as EffectVariantServerSentEvents).value;
+          for await (const response of sse(request)) {
+            respond(uuid, response);
           }
           break;
         }
-
-        default:
       }
     }
-  };
+  }
 
-  useEffect(() => {
-    async function loadCore() {
-      await init_core();
+  useEffect(
+    () => {
+      async function loadCore() {
+        await init_core();
 
-      // Initial event
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantStartWatch(),
-      });
-    }
+        // Initial event
+        dispatch(new EventVariantStartWatch());
+      }
 
-    loadCore();
-  }, []);
+      loadCore();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    /*once*/ []
+  );
 
   return (
     <>
@@ -138,23 +110,13 @@ const Home: NextPage = () => {
           <div className="buttons section is-centered">
             <button
               className="button is-primary is-warning"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantDecrement(),
-                })
-              }
+              onClick={() => dispatch(new EventVariantDecrement())}
             >
               {"Decrement"}
             </button>
             <button
               className="button is-primary is-danger"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantIncrement(),
-                })
-              }
+              onClick={() => dispatch(new EventVariantIncrement())}
             >
               {"Increment"}
             </button>
@@ -164,5 +126,20 @@ const Home: NextPage = () => {
     </>
   );
 };
+
+function deserializeRequests(bytes: Uint8Array) {
+  const deserializer = new BincodeDeserializer(bytes);
+  const len = deserializer.deserializeLen();
+  const requests: Request[] = [];
+  for (let i = 0; i < len; i++) {
+    const request = Request.deserialize(deserializer);
+    requests.push(request);
+  }
+  return requests;
+}
+
+function deserializeView(bytes: Uint8Array) {
+  return ViewModel.deserialize(new BincodeDeserializer(bytes));
+}
 
 export default Home;

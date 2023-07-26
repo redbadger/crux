@@ -1,27 +1,25 @@
 use std::{str::FromStr, time::Duration};
 
+use eyre::{bail, eyre, Result};
 use surf::{http::Method, Client, Config, Url};
 
 use shared::http::protocol::{HttpRequest, HttpResponse};
 
-use crate::error::Error;
-
-pub async fn http(
+pub(crate) async fn http(
     HttpRequest {
         url,
         method,
         headers,
         body: _,
     }: &HttpRequest,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse> {
     let method = Method::from_str(method).expect("unknown http method");
     let url = Url::parse(url)?;
     let headers = headers.clone();
 
     let client: Client = Config::new()
         .set_timeout(Some(Duration::from_secs(5)))
-        .try_into()
-        .map_err(|_e| Error::HttpConfig("Http client config error".to_string()))?;
+        .try_into()?;
 
     let mut request = client.request(method, &url);
 
@@ -29,9 +27,14 @@ pub async fn http(
         request = request.header(header.name.as_str(), &header.value);
     }
 
-    let mut response = request.await?;
+    let mut response = request
+        .await
+        .map_err(|e| eyre!("{method} {url}: error {e}"))?;
+
     let status = response.status().into();
 
-    let body = response.body_bytes().await?;
-    Ok(HttpResponse::status(status).body(body).build())
+    match response.body_bytes().await {
+        Ok(body) => Ok(HttpResponse::status(status).body(body).build()),
+        Err(e) => bail!("{method} {url}: error {e}"),
+    }
 }

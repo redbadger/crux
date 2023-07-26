@@ -14,24 +14,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.counter.shared.handleResponse
 import com.example.counter.shared.processEvent
 import com.example.counter.shared.view
 import com.example.counter.shared_types.Effect
-import com.example.counter.shared_types.HttpResponse
+import com.example.counter.shared_types.Event
+import com.example.counter.shared_types.Request
 import com.example.counter.shared_types.Requests
-import com.example.counter.shared_types.SseResponse
+import com.example.counter.shared_types.ViewModel
 import com.example.counter.ui.theme.CounterTheme
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.http.*
 import kotlinx.coroutines.launch
-import com.example.counter.shared_types.Event as Evt
-import com.example.counter.shared_types.Request as Req
-import com.example.counter.shared_types.ViewModel as MyViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,18 +43,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class Outcome {
-    data class Http(val res: HttpResponse) : Outcome()
-    data class Sse(val res: SseResponse) : Outcome()
-}
-
-sealed class CoreMessage {
-    data class Event(val event: Evt) : CoreMessage()
-    data class Response(val uuid: List<Byte>, val outcome: Outcome) : CoreMessage()
-}
-
-class Model : ViewModel() {
-    var view: MyViewModel by mutableStateOf(MyViewModel("", false))
+class Core : androidx.lifecycle.ViewModel() {
+    var view: ViewModel by mutableStateOf(ViewModel("", false))
         private set
 
     private val httpClient = HttpClient(CIO)
@@ -74,43 +61,43 @@ class Model : ViewModel() {
 
     init {
         viewModelScope.launch {
-            update(CoreMessage.Event(Evt.StartWatch()))
+            update(Event.StartWatch())
         }
     }
 
-    suspend fun update(msg: CoreMessage) {
-        val requests: List<Req> = when (msg) {
-            is CoreMessage.Event -> Requests.bincodeDeserialize(
-                processEvent(msg.event.bincodeSerialize())
-            )
+    suspend fun update(event: Event) {
+        val effects = processEvent(event.bincodeSerialize())
+        processEffects(effects)
+    }
 
-            is CoreMessage.Response -> Requests.bincodeDeserialize(
-                handleResponse(
-                    msg.uuid.toByteArray(), when (msg.outcome) {
-                        is Outcome.Http -> msg.outcome.res.bincodeSerialize()
-                        is Outcome.Sse -> msg.outcome.res.bincodeSerialize()
-                    }
-                )
-            )
+    private suspend fun processEffects(effects: ByteArray) {
+        val requests = Requests.bincodeDeserialize(effects)
+        for (request in requests) {
+            processRequest(request)
         }
+    }
 
-        for (req in requests) when (val effect = req.effect) {
+    private suspend fun processRequest(request: Request) {
+        when (val effect = request.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bincodeDeserialize(view())
+                this.view = ViewModel.bincodeDeserialize(view())
             }
 
             is Effect.Http -> {
-                val response = http(
-                    httpClient, effect.value
-                )
-                update(CoreMessage.Response(req.uuid, Outcome.Http(response)))
+                val response = http(httpClient, effect.value)
+
+                val effects =
+                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+
+                processEffects(effects)
             }
 
             is Effect.ServerSentEvents -> {
-                viewModelScope.launch {
-                    sseRequest(sseClient, effect.value) { event ->
-                        update(CoreMessage.Response(req.uuid, Outcome.Sse(event)))
-                    }
+                sseRequest(sseClient, effect.value) { response ->
+                    val effects =
+                        handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+
+                    processEffects(effects)
                 }
             }
         }
@@ -119,7 +106,7 @@ class Model : ViewModel() {
 
 
 @Composable
-fun View(model: Model = viewModel()) {
+fun View(core: Core = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -131,7 +118,7 @@ fun View(model: Model = viewModel()) {
         Text(text = "Crux Counter Example", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
         Text(text = "Rust Core, Kotlin Shell (Jetpack Compose)", modifier = Modifier.padding(10.dp))
         Text(
-            text = model.view.text, color = if (model.view.confirmed) {
+            text = core.view.text, color = if (core.view.confirmed) {
                 Color.Black
             } else {
                 Color.Gray
@@ -140,14 +127,14 @@ fun View(model: Model = viewModel()) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = {
-                    coroutineScope.launch { model.update(CoreMessage.Event(Evt.Decrement())) }
+                    coroutineScope.launch { core.update(Event.Decrement()) }
                 }, colors = ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(44F, 1F, 0.77F)
                 )
             ) { Text(text = "Decrement", color = Color.DarkGray) }
             Button(
                 onClick = {
-                    coroutineScope.launch { model.update(CoreMessage.Event(Evt.Increment())) }
+                    coroutineScope.launch { core.update(Event.Increment()) }
                 }, colors = ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(348F, 0.86F, 0.61F)
                 )

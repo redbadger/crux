@@ -1,19 +1,16 @@
+mod error;
+mod http;
+mod sse;
+
 use futures::TryStreamExt;
 use lazy_static::lazy_static;
-use shared::{
-    sse::{SseRequest, SseResponse},
-    App, Capabilities, Core, Effect, Event,
-};
 use std::sync::Arc;
 use tauri::Manager;
 
-mod http;
-use http::http;
+use shared::{App, Capabilities, Core, Effect, Event};
 
-mod error;
 use error::Error;
-
-mod sse;
+use http::http;
 use sse::sse;
 
 lazy_static! {
@@ -60,17 +57,15 @@ fn process_effect(
             Ok::<(), Error>(())?
         }
         Effect::ServerSentEvents(mut request) => {
-            let SseRequest { ref url } = request.operation;
-
             tauri::async_runtime::spawn({
                 let core = core.clone();
-                let url = url.clone();
 
                 async move {
-                    let mut stream = sse(url).await.expect("error processing SSE effect");
+                    let mut stream = sse(&request.operation)
+                        .await
+                        .expect("error processing SSE effect");
 
-                    while let Ok(Some(item)) = stream.try_next().await {
-                        let response = SseResponse::Chunk(item);
+                    while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core.resolve(&mut request, response) {
                             let _ = process_effect(effect, &core, tauri_app.clone());
                         }
@@ -95,16 +90,16 @@ async fn decrement(app_handle: tauri::AppHandle) {
     let _ = handle_event(Event::Decrement, &CORE, app_handle);
 }
 
+#[tauri::command]
+async fn watch(app_handle: tauri::AppHandle) {
+    let _ = handle_event(Event::StartWatch, &CORE, app_handle);
+}
+
 /// The main entry point for Tauri
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .setup(|app| {
-            handle_event(Event::StartWatch, &CORE, app.handle())
-                .expect("error sending StartWatch Event");
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![increment, decrement])
+        .invoke_handler(tauri::generate_handler![increment, decrement, watch])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

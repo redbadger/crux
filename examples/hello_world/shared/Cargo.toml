@@ -16,11 +16,11 @@ crux_core = { version = "0.6", path = "../../../crux_core" }
 crux_macros = { version = "0.3", path = "../../../crux_macros" }
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"
-uniffi = "0.24.1"
+uniffi = "0.24.2"
 wasm-bindgen = "0.2.87"
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.24.1", features = ["cli"] }
+uniffi = { version = "0.24.2", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.24.1", features = ["build"] }
+uniffi = { version = "0.24.2", features = ["build"] }

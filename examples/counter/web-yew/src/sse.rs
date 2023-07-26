@@ -1,11 +1,11 @@
 use anyhow::Result;
-use futures_util::stream;
+use futures::stream;
 use shared::sse::{SseRequest, SseResponse};
 use wasm_bindgen::JsValue;
 
 pub async fn request(
     request: &SseRequest,
-) -> Result<impl futures::stream::TryStream<Ok = SseResponse, Error = JsValue>> {
+) -> Result<impl stream::TryStream<Ok = SseResponse, Error = JsValue>> {
     use futures_util::StreamExt;
     use gloo_net::http;
     use js_sys::Uint8Array;
@@ -21,6 +21,7 @@ pub async fn request(
 
     Ok(Box::pin(stream::try_unfold(stream, |mut stream| async {
         match stream.next().await {
+            None => Ok(None),
             Some(Ok(chunk)) => {
                 let chunk: Uint8Array = chunk.into();
                 let response = SseResponse::Chunk(chunk.to_vec());
@@ -28,7 +29,6 @@ pub async fn request(
                 Ok(Some((response, stream)))
             }
             Some(Err(e)) => Err(e),
-            None => Ok(None),
         }
     })))
 }

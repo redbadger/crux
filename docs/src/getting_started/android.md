@@ -17,7 +17,7 @@ The first thing we need to do is create a new Android app in Android Studio.
 
 Open Android Studio and create a new project, for "Phone and Tablet", of type
 "Empty Compose Activity (Material3)". In this walk-through, we'll call it
-"Counter", use a minimum SDK of API 33, and save it in a directory called
+"Counter", use a minimum SDK of API 34, and save it in a directory called
 `Android`.
 
 Your repo's directory structure might now look something like this (some files
@@ -83,17 +83,13 @@ this:
 
 We'll use the following tools to incorporate our Rust shared library into the
 Android library added above. This includes compiling and linking the Rust
-dynamic library and generating the runtime bindings and the shared types
-(including copying them into our project).
+dynamic library and generating the runtime bindings and the shared types.
 
 - The [Android NDK](https://developer.android.com/ndk)
 - Mozilla's [Rust gradle plugin](https://github.com/mozilla/rust-android-gradle)
   for Android
 - [Java Native Access](https://github.com/java-native-access/jna)
 - [Uniffi](https://mozilla.github.io/uniffi-rs/) to generate Java bindings
-- `com.novi.serde`, which is part of the
-  [diem client SDK](https://javadoc.io/doc/com.diem/client-sdk-java/latest/index.html),
-  which we'll need for serialization
 
 Let's get started.
 
@@ -116,8 +112,8 @@ like this:
 When you have edited the gradle files, don't forget to click "sync now".
 ```
 
-If you now build your project you should see the shared library object file, and
-the shared types, in the right places.
+If you now build your project you should see the newly built shared library
+object file.
 
 ```sh
 $ ls --tree Android/shared/build/rustJniLibs
@@ -125,19 +121,50 @@ Android/shared/build/rustJniLibs
 └── android
    └── arm64-v8a
       └── libshared.so
+```
 
-$ ls --tree Android/shared/src/main/java/com/example/counter
-Android/shared/src/main/java/com/example/counter
-├── shared
-│  └── shared.kt
-└── shared_types
-   ├── Effect.java
-   ├── Event.java
-   ├── RenderOperation.java
-   ├── Request.java
-   ├── Requests.java
-   ├── TraitHelpers.java
-   └── ViewModel.java
+You should also see the generated types — note that the `sourceSets` directive
+in the shared library gradle file (above) allows us to build our shared library
+against the generated types in the `shared_types/generated` folder.
+
+```sh
+$ ls --tree shared_types/generated/java
+shared_types/generated/java
+└── com
+   ├── example
+   │  └── counter
+   │     ├── shared
+   │     │  └── shared.kt
+   │     └── shared_types
+   │        ├── Effect.java
+   │        ├── Event.java
+   │        ├── RenderOperation.java
+   │        ├── Request.java
+   │        ├── Requests.java
+   │        ├── TraitHelpers.java
+   │        └── ViewModel.java
+   └── novi
+      ├── bincode
+      │  ├── BincodeDeserializer.java
+      │  └── BincodeSerializer.java
+      └── serde
+         ├── ArrayLen.java
+         ├── BinaryDeserializer.java
+         ├── BinarySerializer.java
+         ├── Bytes.java
+         ├── DeserializationError.java
+         ├── Deserializer.java
+         ├── Int128.java
+         ├── SerializationError.java
+         ├── Serializer.java
+         ├── Slice.java
+         ├── Tuple2.java
+         ├── Tuple3.java
+         ├── Tuple4.java
+         ├── Tuple5.java
+         ├── Tuple6.java
+         ├── Unit.java
+         └── Unsigned.java
 ```
 
 ## Create some UI and run in the Simulator

@@ -4,143 +4,105 @@ import { useEffect, useState } from "react";
 import UAParser from "ua-parser-js";
 
 import init_core, {
-  process_event as sendEvent,
-  handle_response as sendResponse,
+  process_event,
+  handle_response,
   view,
 } from "../shared/core";
-import * as types from "shared_types/types/shared_types";
-import * as bincode from "shared_types/bincode/mod";
-import { Optional } from "shared_types/serde/mod";
-import { httpRequest } from "./httpRequest";
+import type { Event } from "shared_types/types/shared_types";
+import {
+  PlatformResponse,
+  TimeResponse,
+  HttpResponse,
+  KeyValueOutput,
+  CatImage,
+  Request,
+  EffectVariantRender,
+  ViewModel,
+  EffectVariantTime,
+  EffectVariantPlatform,
+  EffectVariantKeyValue,
+  EffectVariantHttp,
+  EventVariantGetPlatform,
+  EventVariantGet,
+  EventVariantClear,
+  EventVariantFetch,
+} from "shared_types/types/shared_types";
+import {
+  BincodeSerializer,
+  BincodeDeserializer,
+} from "shared_types/bincode/mod";
+import { http } from "./http";
 
-interface Event {
-  kind: "event";
-  event: types.Event;
-}
-
-interface Response {
-  kind: "response";
-  uuid: number[];
-  outcome:
-    | types.PlatformResponse
-    | types.TimeResponse
-    | types.HttpResponse
-    | types.KeyValueOutput;
-}
-
-type State = {
-  image: Optional<types.CatImage>;
-  fact: string;
-  platform: string;
-};
-
-const initialState: State = {
-  image: new types.CatImage(""),
-  fact: "",
-  platform: "",
-};
-
-function deserializeRequests(bytes: Uint8Array) {
-  let deserializer = new bincode.BincodeDeserializer(bytes);
-
-  const len = deserializer.deserializeLen();
-
-  let requests = [];
-
-  for (let i = 0; i < len; i++) {
-    const request = types.Request.deserialize(deserializer);
-    requests.push(request);
-  }
-
-  return requests;
-}
+type Response = PlatformResponse | TimeResponse | HttpResponse | KeyValueOutput;
 
 const Home: NextPage = () => {
-  const [state, setState] = useState(initialState);
+  const [state, setState] = useState(new ViewModel("", new CatImage(""), ""));
 
-  const dispatch = (action: Event) => {
-    const serializer = new bincode.BincodeSerializer();
-    action.event.serialize(serializer);
-    const requests = sendEvent(serializer.getBytes());
-    handleRequests(requests);
-  };
+  function dispatch(event: Event) {
+    const serializer = new BincodeSerializer();
+    event.serialize(serializer);
+    const effects = process_event(serializer.getBytes());
+    processEffects(effects);
+  }
 
-  const respond = (action: Response) => {
-    const serializer = new bincode.BincodeSerializer();
-    action.outcome.serialize(serializer);
-    const moreRequests = sendResponse(
-      new Uint8Array(action.uuid),
+  function respond(uuid: number[], response: Response) {
+    const serializer = new BincodeSerializer();
+    response.serialize(serializer);
+    const effects = handle_response(
+      new Uint8Array(uuid),
       serializer.getBytes()
     );
-    handleRequests(moreRequests);
-  };
+    processEffects(effects);
+  }
 
-  const handleRequests = async (bytes: any) => {
-    let requests = deserializeRequests(bytes);
+  async function processEffects(effects: Uint8Array) {
+    const requests = deserializeRequests(effects);
 
     for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
-        case types.EffectVariantRender: {
-          let bytes = view();
-          let viewDeserializer = new bincode.BincodeDeserializer(bytes);
-          let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-          // core asked for a re-render with new state
-          setState({
-            platform: viewModel.platform,
-            image: viewModel.image,
-            fact: viewModel.fact,
-          });
-
+        case EffectVariantRender: {
+          setState(deserializeView(view()));
           break;
         }
-
-        case types.EffectVariantTime: {
-          const outcome = new types.TimeResponse(new Date().toISOString());
-          respond({ kind: "response", uuid, outcome });
+        case EffectVariantTime: {
+          const response = new TimeResponse(new Date().toISOString());
+          respond(uuid, response);
           break;
         }
-
-        case types.EffectVariantPlatform: {
-          const outcome = new types.PlatformResponse(
+        case EffectVariantPlatform: {
+          const response = new PlatformResponse(
             new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
           );
-          respond({ kind: "response", uuid, outcome });
+          respond(uuid, response);
           break;
         }
-
-        case types.EffectVariantKeyValue:
+        case EffectVariantKeyValue:
           break;
-
-        case types.EffectVariantHttp: {
-          const request = (effect as types.EffectVariantHttp).value;
-          const outcome = await httpRequest(request);
-          respond({ kind: "response", uuid, outcome });
+        case EffectVariantHttp: {
+          const request = (effect as EffectVariantHttp).value;
+          const response = await http(request);
+          respond(uuid, response);
           break;
         }
-        default:
       }
     }
-  };
+  }
 
-  useEffect(() => {
-    async function loadCore() {
-      await init_core();
+  useEffect(
+    () => {
+      async function loadCore() {
+        await init_core();
 
-      // Initial events
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantGetPlatform(),
-      });
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantGet(),
-      });
-    }
+        // Initial events
+        dispatch(new EventVariantGetPlatform());
+        dispatch(new EventVariantGet());
+      }
 
-    loadCore();
+      loadCore();
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    /*once*/ []
+  );
 
   return (
     <div className="container">
@@ -168,34 +130,19 @@ const Home: NextPage = () => {
         <div className="buttons container is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() =>
-              dispatch({
-                kind: "event",
-                event: new types.EventVariantClear(),
-              })
-            }
+            onClick={() => dispatch(new EventVariantClear())}
           >
             {"Clear"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() =>
-              dispatch({
-                kind: "event",
-                event: new types.EventVariantGet(),
-              })
-            }
+            onClick={() => dispatch(new EventVariantGet())}
           >
             {"Get"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() =>
-              dispatch({
-                kind: "event",
-                event: new types.EventVariantFetch(),
-              })
-            }
+            onClick={() => dispatch(new EventVariantFetch())}
           >
             {"Fetch"}
           </button>
@@ -204,5 +151,20 @@ const Home: NextPage = () => {
     </div>
   );
 };
+
+function deserializeRequests(bytes: Uint8Array) {
+  const deserializer = new BincodeDeserializer(bytes);
+  const len = deserializer.deserializeLen();
+  const requests: Request[] = [];
+  for (let i = 0; i < len; i++) {
+    const request = Request.deserialize(deserializer);
+    requests.push(request);
+  }
+  return requests;
+}
+
+function deserializeView(bytes: Uint8Array) {
+  return ViewModel.deserialize(new BincodeDeserializer(bytes));
+}
 
 export default Home;

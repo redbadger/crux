@@ -4,9 +4,7 @@ import {
   HttpHeader,
 } from "shared_types/types/shared_types";
 
-export async function httpRequest(
-  httpRequest: HttpRequest
-): Promise<HttpResponse> {
+export async function http(httpRequest: HttpRequest): Promise<HttpResponse> {
   const req = new Request(httpRequest.url, {
     method: httpRequest.method,
     headers: httpRequest.headers.map((header) => [header.name, header.value]),
