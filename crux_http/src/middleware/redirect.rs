@@ -77,7 +77,6 @@ impl Redirect {
 
 #[async_trait::async_trait]
 impl Middleware for Redirect {
-    #[allow(rustdoc::missing_doc_code_examples)]
     async fn handle(
         &self,
         mut req: Request,

@@ -1,7 +1,10 @@
 #!/bin/bash
 
-cargo clippy --fix --allow-staged
+set -e
 
-for example in ./examples/*; do
-  (cd "$example" && cargo clippy --fix --allow-staged)
+for dir in . ./examples/*; do
+  (
+    cd "$dir"
+    cargo clippy --fix --allow-staged
+  )
 done

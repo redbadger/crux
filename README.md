@@ -81,7 +81,7 @@ The former two are tied together by the `update` function, familiar from Elm,
 Redux or other event sourcing architectures, which currently has this type
 signature:
 
-```rust
+```rust,ignore
 fn update(
     &self,
     event: Event,

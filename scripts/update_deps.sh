@@ -1,12 +1,11 @@
 #!/bin/bash
 
-cargo upgrade -i --verbose
-cargo update
+set -e
 
-for example in ./examples/*; do
+for dir in . ./examples/*; do
   (
-    cd "$example" &&
-      cargo upgrade -i --verbose &&
-      cargo update
+    cd "$dir"
+    cargo upgrade -i --verbose
+    cargo update
   )
 done

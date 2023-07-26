@@ -5,7 +5,8 @@ set -e
 for dir in . ./examples/*; do
   (
     cd "$dir"
-    cargo nextest run --all-features
-    cargo test --doc --all-features
+    cargo clean
+    rm -rf shared_types/generated
+    rm -rf iOS/generated
   )
 done
