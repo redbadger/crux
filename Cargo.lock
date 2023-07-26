@@ -288,7 +288,9 @@ dependencies = [
  "async-channel",
  "bincode",
  "crossbeam-channel",
+ "crux_http",
  "crux_macros",
+ "crux_time",
  "derive_more",
  "futures",
  "rand 0.8.5",
@@ -298,6 +300,7 @@ dependencies = [
  "serde_json",
  "static_assertions",
  "thiserror",
+ "url",
  "uuid",
  "wasm-bindgen",
 ]

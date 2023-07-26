@@ -35,7 +35,10 @@ assert_fs = "1.0.13"
 assert_matches = "1.5"
 async-channel = "1.9"
 crux_macros = { version = "0.3", path = "../crux_macros" }
+crux_http = { version = "0.4", path = "../crux_http" }
+crux_time = { version = "0.1", path = "../crux_time" }
 serde = { version = "1.0.171", features = ["derive"] }
 static_assertions = "1.1"
 rand = "0.8"
 uuid = { version = "1.4.1", features = ["v4", "serde"] }
+url = "2.4.0"

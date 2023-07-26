@@ -292,7 +292,6 @@ impl<Body> AsMut<http::Headers> for Response<Body> {
 }
 
 impl<Body> fmt::Debug for Response<Body> {
-    #[allow(rustdoc::missing_doc_code_examples)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Response")
             .field("version", &self.version)

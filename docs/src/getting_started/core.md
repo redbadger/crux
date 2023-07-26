@@ -86,7 +86,7 @@ version. You can read more about it
 Generating the binary is simple, we just add the following to our crate, in a
 file called `/shared/src/bin/uniffi-bindgen.rs`.
 
-```rust
+```rust,ignore
 {{#include ../../../examples/hello_world/shared/src/bin/uniffi-bindgen.rs}}
 ```
 
@@ -125,7 +125,7 @@ for Kotlin and Swift. They live in the file `/shared/uniffi.toml`, like this
 Finally, we need a `build.rs` file in the root of the crate
 (`/shared/build.rs`), to generate the bindings:
 
-```rust,noplayground
+```rust,no_run,noplayground
 {{#include ../../../examples/counter/shared/build.rs}}
 ```
 
@@ -136,7 +136,7 @@ some scaffolding in `/shared/src/lib.rs`. You'll notice that we are re-exporting
 the `Request` type and the capabilities we want to use in our native Shells, as
 well as our public types from the shared library.
 
-```rust,noplayground
+```rust,no_run,noplayground
 {{#include ../../../examples/hello_world/shared/src/lib.rs}}
 ```
 
@@ -147,7 +147,7 @@ from the
 [simple Counter example](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/counter.rs)
 (which also has tests, although we're not showing them here):
 
-```rust,noplayground
+```rust,no_run,noplayground
 {{#include ../../../examples/hello_world/shared/src/counter.rs:app}}
 ```
 
@@ -175,20 +175,22 @@ languages.
   file in the `shared_types` crate of the
   [notes example](https://github.com/redbadger/crux/tree/master/examples/notes):
 
-```rust
+```rust,ignore
 {{#include ../../../examples/notes/shared_types/build.rs}}
 ```
 
-```admonish note
+````admonish tip
 For the above to compile, your `Capabilities` struct must implement the `Export` trait. There is a derive macro that can do this for you, e.g.:
 
-    #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
-    pub struct Capabilities {
-        pub render: Render<Event>,
-        pub http: Http<Event>,
-    }
-
+```rust,ignore
+#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+pub struct Capabilities {
+    pub render: Render<Event>,
+    pub http: Http<Event>,
+}
 ```
+
+````
 
 - Make sure everything builds and foreign types get generated into the
   `generated` folder.
