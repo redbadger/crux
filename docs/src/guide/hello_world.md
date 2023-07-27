@@ -11,6 +11,10 @@ project.
 
 ## Creating an app
 
+```admonish example
+You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/hello_world.rs)
+```
+
 To start with, we need a `struct` to be the root of our app.
 
 ```rust,noplayground
@@ -29,7 +33,7 @@ use crux_core::App;
 #[derive(Default)]
 pub struct Model;
 
-impl App for Hello {
+impl App for Hello {}
 ```
 
 If you're following along, the compiler is now screaming at you that you're
@@ -87,7 +91,7 @@ unnecessary mistakes, we can use the `Effect` derive macro from the
 `crux_macros` crate.
 
 ```rust,noplayground
-use crux_core::{render::Render};
+use crux_core::render::Render;
 use crux_macros::Effect;
 
 #[derive(Effect)]
@@ -194,6 +198,10 @@ it's a fair amount of boiler plate code.
 
 ## Counting up and down
 
+```admonish example
+You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/counter.rs)
+```
+
 Let's make things more interesting and add some behaviour. We'll teach the app
 to count up and down. First, we'll need a model, which represents the state. We
 could just make our model a number, but we'll go with a struct instead, so that
@@ -201,7 +209,7 @@ we can easily add more state later.
 
 ```rust,noplayground
 #[derive(Default)]
-struct Model {
+pub struct Model {
     count: isize,
 }
 ```
@@ -218,7 +226,9 @@ impl App for Hello {
 // ...
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        format!("Count is: {}", model.count)
+        ViewModel {
+            count: format!("Count is: {}", model.count),
+        }
     }
 }
 ```
@@ -237,7 +247,7 @@ Great. All that's left is adding the behaviour. That's where `Event` comes in:
 
 ```rust,noplayground
 #[derive(Serialize, Deserialize)]
-enum Event {
+pub enum Event {
     Increment,
     Decrement,
     Reset,
@@ -250,28 +260,7 @@ is [a nice way to make this scale](./composing.md) and get reuse as well. Let's
 carry on. We need to actually handle those messages.
 
 ```rust,noplayground
-impl App for Hello {
-    type Event = Event;
-    type Model = Model;
-    type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
-
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
-        match event {
-            Event::Increment => model.count += 1,
-            Event::Decrement => model.count -= 1,
-            Event::Reset => model.count = 0,
-        };
-
-        caps.render.render();
-    }
-
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        ViewModel {
-            count: format!("Count is: {}", model.count),
-        }
-    }
-}
+{{#include ../../../examples/hello_world/shared/src/counter.rs:impl_app}}
 // ...
 ```
 
@@ -280,91 +269,7 @@ tell the Shell to render. Lets update the tests to check everything works as
 expected.
 
 ```rust,noplayground
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crux_core::{assert_effect, testing::AppTester};
-
-    #[test]
-    fn renders() {
-        let app = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
-
-        let update = app.update(Event::Reset, &mut model);
-
-        // Check update asked us to `Render`
-        assert_effect!(update, Effect::Render(_));
-    }
-
-    #[test]
-    fn shows_initial_count() {
-        let app = AppTester::<Hello, _>::default();
-        let model = Model::default();
-
-        let actual_view = app.view(&model).count;
-        let expected_view = "Count is: 0";
-        assert_eq!(actual_view, expected_view);
-    }
-
-    #[test]
-    fn increments_count() {
-        let app = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
-
-        let update = app.update(Event::Increment, &mut model);
-
-        let actual_view = app.view(&model).count;
-        let expected_view = "Count is: 1";
-        assert_eq!(actual_view, expected_view);
-
-        // Check update asked us to `Render`
-        assert_effect!(update, Effect::Render(_));
-    }
-
-    #[test]
-    fn decrements_count() {
-        let app = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
-
-        let update = app.update(Event::Decrement, &mut model);
-
-        let actual_view = app.view(&model).count;
-        let expected_view = "Count is: -1";
-        assert_eq!(actual_view, expected_view);
-
-        // Check update asked us to `Render`
-        assert_effect!(update, Effect::Render(_));
-    }
-
-    #[test]
-    fn resets_count() {
-        let app = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
-
-        app.update(Event::Increment, &mut model);
-        app.update(Event::Reset, &mut model);
-
-        let actual_view = app.view(&model).count;
-        let expected_view = "Count is: 0";
-        assert_eq!(actual_view, expected_view);
-    }
-
-    #[test]
-    fn counts_up_and_down() {
-        let app = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
-
-        app.update(Event::Increment, &mut model);
-        app.update(Event::Reset, &mut model);
-        app.update(Event::Decrement, &mut model);
-        app.update(Event::Increment, &mut model);
-        app.update(Event::Increment, &mut model);
-
-        let actual_view = app.view(&model).count;
-        let expected_view = "Count is: 1";
-        assert_eq!(actual_view, expected_view);
-    }
-}
+{{#include ../../../examples/hello_world/shared/src/counter.rs:test}}
 ```
 
 Hopefully those all pass. We are now sure that when we build an actual UI for
@@ -381,6 +286,10 @@ probably be doing both to get the confidence you need that your app is working.
 Before we dive into the thinking behind the architecture, let's add one more
 feature - a remote API call - to get a better feel for how side-effects and
 capabilities work.
+
+```admonish example
+You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)
+```
 
 We'll add a simple integration with a counter API we've prepared at
 <https://crux-counter.fly.dev>. All it does is count up an down like our local
@@ -400,51 +309,48 @@ something like this
 }
 ```
 
-We can represent that with a struct and use Serde for the serialization, and
-we'll need to update the model as well. We'll also update the count
-optimistically and keep track of when the server confirmed it (there are other
-ways to model these semantics, but let's keep it straightforward for now).
+We can represent that with a struct and use Serde for the serialization
+(deserializing `updated_at` from timestamp milliseconds to an option of
+`DateTime`), and we'll need to update the model as well. We'll also update the
+count optimistically and keep track of when the server confirmed it (there are
+other ways to model these semantics, but let's keep it straightforward for now).
 
 ```rust,noplayground
-#[derive(Default)]
-pub struct Model {
-    count: Counter,
-    confirmed: Option<bool>,
-}
+use chrono::serde::ts_milliseconds_option::deserialize as ts_milliseconds_option;
 
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
-pub struct Counter {
-    value: isize,
-    updated_at: i64,
-}
+{{#include ../../../examples/counter/shared/src/app.rs:model}}
 ```
 
-We also need to update the view function to display the new data. To work with
-the date, we'll use `chrono`
+We also need to update the `ViewModel` and the `view()` function to display the
+new data. To work with the date, we'll use `chrono`.
 
 ```rust,noplayground
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ViewModel {
+    pub text: String,
+    pub confirmed: bool,
+}
 
 ...
 
 fn view(&self, model: &Self::Model) -> Self::ViewModel {
-    let updated_at = DateTime::<Utc>::from_utc(
-        NaiveDateTime::from_timestamp_millis(model.count.updated_at).unwrap(),
-        Utc,
-    );
-    let suffix = match model.confirmed {
-        Some(true) => format!(" ({})", updated_at),
-        Some(false) => " (pending)".to_string(),
-        None => "Loading...".to_string(),
+    let suffix = match model.count.updated_at {
+        Some(d) => format!(" ({d})"),
+        None => " (pending)".to_string(),
     };
 
-    format!("{}{}", model.count.value.to_string(), &suffix)
+    Self::ViewModel {
+        text: model.count.value.to_string() + &suffix,
+        confirmed: model.count.updated_at.is_some(),
+    }
 }
 ```
 
-You can see that the view function caters to three states - not knowing the
-count, having set a count but not having it confirmed, and having the count
-confirmed by the server.
+You can see that the view function caters to two states - the count has not yet
+been confirmed (`updated_at` is `None`), and having the count confirmed by the
+server.
 
 In a real-world app, it's likely that this information would be captured in a
 struct rather than converted to string inside the core, so that the UI can
@@ -472,13 +378,12 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capab
         }
         Event::Set(_response) => {
             // TODO Get the data and update the model
-            model.confirmed = Some(true);
             caps.render.render();
         }
         Event::Increment => {
             // optimistic update
             model.count.value += 1;
-            model.confirmed = Some(false);
+            model.count.updated_at = None;
             caps.render.render();
 
             // real update
@@ -487,7 +392,7 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capab
         Event::Decrement => {
             // optimistic update
             model.count.value -= 1;
-            model.confirmed = Some(false);
+            model.count.updated_at = None;
             caps.render.render();
 
             // real update
@@ -517,7 +422,7 @@ pub enum Event {
 
     // this variant is private to the Core
     #[serde(skip)]
-    Set(crux_http::Result<crux_http::Response<Counter>>),
+    Set(crux_http::Result<crux_http::Response<Count>>),
 }
 ```
 
@@ -551,19 +456,16 @@ We can now implement those TODOs, so lets do it.
 ```rust,noplayground
 const API_URL: &str = "https://crux-counter.fly.dev";
 
-...
+//...
 
 fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
             Event::Get => {
-                caps.http
-                    .get(API_URL)
-                    .expect_json::<Counter>()
-                    .send(Event::Set);
+                caps.http.get(API_URL).expect_json().send(Event::Set);
             }
-            Event::Set(Ok(mut counter)) => {
-                model.count = counter.take_body().unwrap();
-                model.confirmed = Some(true);
+            Event::Set(Ok(mut response)) => {
+                let count = response.take_body().unwrap();
+                model.count = count;
                 caps.render.render();
             }
             Event::Set(Err(_)) => {
@@ -571,25 +473,29 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capab
             }
             Event::Increment => {
                 // optimistic update
-                model.count.value += 1;
-                model.confirmed = Some(false);
+                model.count = Count {
+                    value: model.count.value + 1,
+                    updated_at: None,
+                };
                 caps.render.render();
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/inc").unwrap();
-                caps.http.post(url.as_str()).expect_json().send(Event::Set);
+                caps.http.post(url).expect_json().send(Event::Set);
             }
             Event::Decrement => {
                 // optimistic update
-                model.count.value -= 1;
-                model.confirmed = Some(false);
+                model.count = Count {
+                    value: model.count.value - 1,
+                    updated_at: None,
+                };
                 caps.render.render();
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/dec").unwrap();
-                caps.http.post(url.as_str()).expect_json().send(Event::Set);
+                caps.http.post(url).expect_json().send(Event::Set);
             }
         }
     }
@@ -601,8 +507,8 @@ of each chain of calls to `crux_http` expects a function that wraps its argument
 (a `Result` of a http response) in a variant of `Event`. Fortunately, enum tuple
 variants create just such a function, and we can use it. The way to read the
 call is "Send a get request, parse the response as JSON, which should be
-deserialized as a `Counter`, and then call me again with `Event::Set` carrying
-the result".
+deserialized as a `Count`, and then call me again with `Event::Set` carrying the
+result".
 
 The other thing of note is that the capability calls don't block. They queue up
 requests to send to the shell and execution continues immediately. The requests

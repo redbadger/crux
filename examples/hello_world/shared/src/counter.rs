@@ -30,6 +30,7 @@ pub struct Capabilities {
 #[derive(Default)]
 pub struct Hello;
 
+// ANCHOR: impl_app
 impl App for Hello {
     type Event = Event;
     type Model = Model;
@@ -52,8 +53,10 @@ impl App for Hello {
         }
     }
 }
+// ANCHOR_END: impl_app
 // ANCHOR_END: app
 
+// ANCHOR: test
 #[cfg(test)]
 mod test {
     use super::*;
@@ -139,3 +142,4 @@ mod test {
         assert_eq!(actual_view, expected_view);
     }
 }
+// ANCHOR_END: test

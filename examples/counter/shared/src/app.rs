@@ -1,5 +1,5 @@
 use crate::capabilities::sse::ServerSentEvents;
-use chrono::{serde::ts_milliseconds_option::deserialize as from_ms, DateTime, Utc};
+use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
 use crux_macros::Effect;
@@ -8,10 +8,19 @@ use url::Url;
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
+// ANCHOR: model
 #[derive(Default, Serialize)]
 pub struct Model {
     count: Count,
 }
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
+pub struct Count {
+    value: isize,
+    #[serde(deserialize_with = "ts_milliseconds_option")]
+    updated_at: Option<DateTime<Utc>>,
+}
+// ANCHOR_END: model
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ViewModel {
@@ -42,13 +51,6 @@ pub struct Capabilities {
     pub sse: ServerSentEvents<Event>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
-pub struct Count {
-    value: isize,
-    #[serde(deserialize_with = "from_ms")]
-    updated_at: Option<DateTime<Utc>>,
-}
-
 #[derive(Default)]
 pub struct App;
 
@@ -76,8 +78,10 @@ impl crux_core::App for App {
             }
             Event::Increment => {
                 // optimistic update
-                model.count.value += 1;
-                model.count.updated_at = None;
+                model.count = Count {
+                    value: model.count.value + 1,
+                    updated_at: None,
+                };
                 caps.render.render();
 
                 // real update
@@ -87,8 +91,10 @@ impl crux_core::App for App {
             }
             Event::Decrement => {
                 // optimistic update
-                model.count.value -= 1;
-                model.count.updated_at = None;
+                model.count = Count {
+                    value: model.count.value - 1,
+                    updated_at: None,
+                };
                 caps.render.render();
 
                 // real update
@@ -208,8 +214,13 @@ mod tests {
         // instantiate our app via the test harness, which gives us access to the model
         let app = AppTester::<App, _>::default();
 
-        // set up our initial model
-        let mut model = Model::default();
+        // set up our initial model as though we've previously fetched the counter
+        let mut model = Model {
+            count: Count {
+                value: 1,
+                updated_at: Some(Utc.with_ymd_and_hms(2022, 12, 31, 23, 59, 0).unwrap()),
+            },
+        };
 
         // send an `Increment` event to the app
         let mut update = app.update(Event::Increment, &mut model);
@@ -223,7 +234,7 @@ mod tests {
         insta::assert_yaml_snapshot!(model, @r###"
         ---
         count:
-          value: 1
+          value: 2
           updated_at: ~
         "###);
 
@@ -238,7 +249,7 @@ mod tests {
 
         // resolve the request with a simulated response from the web API
         let response = HttpResponse::ok()
-            .body(r#"{ "value": 1, "updated_at": 1672531200000 }"#)
+            .body(r#"{ "value": 2, "updated_at": 1672531200000 }"#)
             .build();
         let update = app.resolve(request, response).expect("Update to succeed");
 
@@ -249,7 +260,7 @@ mod tests {
         insta::assert_yaml_snapshot!(model, @r###"
         ---
         count:
-          value: 1
+          value: 2
           updated_at: "2023-01-01T00:00:00Z"
         "###);
     }
@@ -260,8 +271,13 @@ mod tests {
         // instantiate our app via the test harness, which gives us access to the model
         let app = AppTester::<App, _>::default();
 
-        // set up our initial model
-        let mut model = Model::default();
+        // set up our initial model as though we've previously fetched the counter
+        let mut model = Model {
+            count: Count {
+                value: 0,
+                updated_at: Some(Utc.with_ymd_and_hms(2022, 12, 31, 23, 59, 0).unwrap()),
+            },
+        };
 
         // send a `Decrement` event to the app
         let mut update = app.update(Event::Decrement, &mut model);
