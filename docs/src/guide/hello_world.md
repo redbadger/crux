@@ -309,24 +309,25 @@ something like this
 }
 ```
 
-We can represent that with a struct and use Serde for the serialization
-(deserializing `updated_at` from timestamp milliseconds to an option of
-`DateTime`), and we'll need to update the model as well. We'll also update the
-count optimistically and keep track of when the server confirmed it (there are
-other ways to model these semantics, but let's keep it straightforward for now).
+We can represent that with a struct, and we'll need to update the model as well.
+We can use Serde for the serialization (deserializing `updated_at` from
+timestamp milliseconds to an option of `DateTime` using `chrono`).
+
+We'll also update the count optimistically by keeping track of if/when the
+server confirmed it (there are other ways to model these semantics, but let's
+keep it straightforward for now).
 
 ```rust,noplayground
+use chrono::{DateTime, Utc};
 use chrono::serde::ts_milliseconds_option::deserialize as ts_milliseconds_option;
 
 {{#include ../../../examples/counter/shared/src/app.rs:model}}
 ```
 
 We also need to update the `ViewModel` and the `view()` function to display the
-new data. To work with the date, we'll use `chrono`.
+new data.
 
 ```rust,noplayground
-use chrono::{DateTime, Utc};
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ViewModel {
     pub text: String,
@@ -337,8 +338,8 @@ pub struct ViewModel {
 
 fn view(&self, model: &Self::Model) -> Self::ViewModel {
     let suffix = match model.count.updated_at {
-        Some(d) => format!(" ({d})"),
         None => " (pending)".to_string(),
+        Some(d) => format!(" ({d})"),
     };
 
     Self::ViewModel {
@@ -508,7 +509,9 @@ of each chain of calls to `crux_http` expects a function that wraps its argument
 variants create just such a function, and we can use it. The way to read the
 call is "Send a get request, parse the response as JSON, which should be
 deserialized as a `Count`, and then call me again with `Event::Set` carrying the
-result".
+result". Interestingly, we didn't need to specifically mention the `Count` type,
+as the type inference from the `Event::Set` variant is enough, making it really
+easy to read.
 
 The other thing of note is that the capability calls don't block. They queue up
 requests to send to the shell and execution continues immediately. The requests
@@ -522,6 +525,14 @@ It's interesting to take a closer look at the unit tests
 ```rust,noplayground
 {{#include ../../../examples/counter/shared/src/app.rs:simple_tests}}
 ```
+
+Incidentally, we're using [`insta`](https://crates.io/crates/insta) in that last
+test to assert that the view model is correct. If you don't know it already,
+check it out. The really cool thing is that if the test fails, it shows you a
+diff of the actual and expected output, and if you're happy with the new output,
+you can accept the change (or not) by running `cargo insta review` — it will
+update the code for you to reflect the change. It's a really nice way to do
+snapshot testing, especially for the model and view model.
 
 You can see how easy it is to check that the app is requesting the right side
 effects, with the right arguments, and even test a chain of interactions and

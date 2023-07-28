@@ -112,8 +112,8 @@ impl crux_core::App for App {
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         let suffix = match model.count.updated_at {
-            Some(d) => format!(" ({d})"),
             None => " (pending)".to_string(),
+            Some(d) => format!(" ({d})"),
         };
 
         Self::ViewModel {
