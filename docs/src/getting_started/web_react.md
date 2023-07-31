@@ -17,16 +17,10 @@ For this walk-through, we'll use the [`pnpm`](https://pnpm.io/) package manager
 for no reason other than we like it the most!
 
 Let's create a simple Next.js app for TypeScript, using `pnpx` (from `pnpm`).
-You can accept all the defaults.
+You can probably accept the defaults.
 
 ```sh
-pnpx create-next-app@latest web-nextjs --ts --use-pnpm
-```
-
-Then we can change to the project directory and start adding dependencies.
-
-```sh
-cd web-nextjs
+pnpx create-next-app@latest
 ```
 
 ## Compile our Rust shared library
@@ -46,46 +40,33 @@ brew install wasm-pack
 curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
-But we won't call `wasm-pack` directly. Instead we'll use a Next.js plugin to do
-this for us. That way the shared library will be compiled to WebAssembly when we
-build our app using `pnpm`.
-
-Add the `wasm-pack-plugin` to our project:
+Now that we have `wasm-pack` installed, we can build our `shared` library to
+WebAssembly for the browser.
 
 ```sh
-pnpm install --save-dev @wasm-tool/wasm-pack-plugin
+(cd shared && wasm-pack build --target web)
 ```
 
-We'll need to configure Next.js to call the plugin by editing
-`web-nextjs/next.config.js` to look like this:
+````admonish tip
+  You might want to add a `wasm:build` script to your `package.json`
+  file, and call it when you build your nextjs project.
 
-```javascript
-const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
-const path = require("path");
-
-// see https://github.com/wasm-tool/wasm-pack-plugin/issues/112
-let loaded = false;
-
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-  webpack(nextConfig) {
-    if (!loaded) {
-      nextConfig.plugins.push(
-        new WasmPackPlugin({
-          crateDirectory: path.resolve(__dirname, "..", "shared"),
-          extraArgs: "--target web",
-          outDir: path.resolve(__dirname, "shared", "core"),
-        })
-      );
-      loaded = true;
+  ```json
+  {
+    "scripts": {
+      "build": "pnpm run wasm:build && next build",
+      "dev": "pnpm run wasm:build && next dev",
+      "wasm:build": "cd ../shared && wasm-pack build --target web"
     }
+  }
+  ```
+````
 
-    return nextConfig;
-  },
-};
+Add the `shared` library as a Wasm package to your `web-nextjs` project
 
-module.exports = nextConfig;
+```sh
+cd web-nextjs
+pnpm add ../shared/pkg
 ```
 
 ## Add the Shared Types
@@ -157,14 +138,18 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `web-nextjs/pages/index.tsx` to look like this:
 
 ```typescript
-{{#include ../../../examples/hello_world/web-nextjs/pages/index.tsx}}
+{{#include ../../../examples/hello_world/web-nextjs/src/app/page.tsx}}
 ```
 
-Now all we need is some CSS. Edit
-`examples/hello_world/web-nextjs/pages/_document.tsx` to look like this:
+Now all we need is some CSS. First add the `Bulma` package, and then import it
+in `layout.tsx`.
+
+```bash
+pnpm add bulma
+```
 
 ```typescript
-{{#include ../../../examples/hello_world/web-nextjs/pages/_document.tsx}}
+{{#include ../../../examples/hello_world/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app

@@ -11,9 +11,6 @@ use futures::TryStreamExt;
 
 use shared::{App, Capabilities, Core, Effect, Event};
 
-use http::http;
-use sse::sse;
-
 #[derive(Debug)]
 enum Message {
     Event(Event),
@@ -102,7 +99,7 @@ fn process_effect(
                 let tx = tx.upgrade().expect("Should be able to upgrade Weak tx");
 
                 async move {
-                    let response = http(&request.operation).await.unwrap();
+                    let response = http::request(&request.operation).await.unwrap();
                     for effect in core.resolve(&mut request, response) {
                         tx.send(Message::Effect(effect)).unwrap();
                     }
@@ -115,7 +112,7 @@ fn process_effect(
                 let tx = tx.upgrade().unwrap();
 
                 async move {
-                    let mut stream = sse(&request.operation).await.unwrap();
+                    let mut stream = sse::request(&request.operation).await.unwrap();
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core.resolve(&mut request, response) {

@@ -3,25 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm run wasm:build && next build",
+    "dev": "pnpm run wasm:build && next dev",
+    "wasm:build": "cd ../shared && wasm-pack build --target web",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "@next/font": "13.1.6",
-    "@types/node": "18.13.0",
-    "@types/react": "18.0.27",
-    "@types/react-dom": "18.0.10",
+    "@types/node": "20.4.5",
+    "@types/react": "18.2.17",
+    "@types/react-dom": "18.2.7",
+    "eslint": "8.46.0",
+    "eslint-config-next": "13.4.12",
     "daisyui": "^2.50.0",
-    "next": "13.1.6",
+    "next": "13.4.12",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "shared": "link:../shared/pkg",
     "shared_types": "link:../shared_types/generated/typescript",
-    "typescript": "4.9.5"
+    "typescript": "5.1.6"
   },
   "devDependencies": {
-    "@wasm-tool/wasm-pack-plugin": "^1.6.0",
     "windicss-webpack-plugin": "^1.7.7"
   }
 }

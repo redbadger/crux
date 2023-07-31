@@ -4,7 +4,7 @@ use shared::sse::{SseRequest, SseResponse};
 use wasm_bindgen::JsValue;
 
 pub async fn request(
-    request: &SseRequest,
+    SseRequest { url }: &SseRequest,
 ) -> Result<impl futures::stream::TryStream<Ok = SseResponse, Error = JsValue>> {
     use futures_util::StreamExt;
     use gloo_net::http;
@@ -12,7 +12,7 @@ pub async fn request(
     use wasm_bindgen::prelude::*;
     use wasm_streams::ReadableStream;
 
-    let response = http::Request::get(&request.url).send().await?;
+    let response = http::Request::get(url).send().await?;
 
     let raw_body = response.body().unwrap_throw();
     let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());

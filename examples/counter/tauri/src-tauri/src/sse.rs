@@ -4,7 +4,7 @@ use shared::sse::{SseRequest, SseResponse};
 
 use crate::error::Error;
 
-pub async fn sse(
+pub async fn request(
     SseRequest { url }: &SseRequest,
 ) -> Result<impl futures::TryStream<Ok = SseResponse>, Error> {
     let mut response = surf::get(url).await?;

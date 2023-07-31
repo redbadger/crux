@@ -6,12 +6,12 @@ use shared::http::protocol::{HttpRequest, HttpResponse};
 
 use crate::error::Error;
 
-pub async fn http(
+pub async fn request(
     HttpRequest {
         url,
         method,
         headers,
-        body: _,
+        ..
     }: &HttpRequest,
 ) -> Result<HttpResponse, Error> {
     let method = Method::from_str(method).expect("unknown http method");

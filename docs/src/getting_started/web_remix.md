@@ -45,8 +45,7 @@ Now that we have `wasm-pack` installed, we can build our `shared` library to
 WebAssembly for the browser.
 
 ```sh
-cd shared
-wasm-pack build --target web
+(cd shared && wasm-pack build --target web)
 ```
 
 ````admonish tip
@@ -56,8 +55,9 @@ wasm-pack build --target web
   ```json
   {
     "scripts": {
-      "wasm:build": "cd ../shared && wasm-pack build --target web",
-      "build": "pnpm run wasm:build && remix build"
+      "build": "pnpm run wasm:build && remix build",
+      "dev": "pnpm run wasm:build && remix dev",
+      "wasm:build": "cd ../shared && wasm-pack build --target web"
     }
   }
   ```
@@ -66,7 +66,7 @@ wasm-pack build --target web
 Add the `shared` library as a Wasm package to your `web-remix` project
 
 ```sh
-cd ../web-remix
+cd web-remix
 pnpm add ../shared/pkg
 ```
 

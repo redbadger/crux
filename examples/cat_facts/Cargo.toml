@@ -11,4 +11,4 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.72"
-serde = "1.0.175"
+serde = "1.0.179"

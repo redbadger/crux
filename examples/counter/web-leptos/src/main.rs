@@ -19,8 +19,9 @@ fn root_component(cx: Scope) -> impl IntoView {
     create_effect(cx, move |_| {
         let event = event.get();
         log::debug!("event: {:?}", event);
-        let effects = core.process_event(event);
-        process_effects(effects, &core, set_view_model);
+        for effect in core.process_event(event) {
+            process_effect(effect, &core, set_view_model);
+        }
     });
 
     view! {cx,
@@ -50,44 +51,40 @@ fn root_component(cx: Scope) -> impl IntoView {
     }
 }
 
-fn process_effects(
-    effects: Vec<Effect>,
-    core: &Rc<Core<Effect, App>>,
-    render: WriteSignal<ViewModel>,
-) {
-    for effect in effects {
-        log::debug!("effect: {:?}", effect);
-        match effect {
-            Effect::Render(_) => {
-                render.update(|view_model| *view_model = core.view());
-            }
-            Effect::Http(mut request) => {
-                spawn_local({
-                    let core = core.clone();
+fn process_effect(effect: Effect, core: &Rc<Core<Effect, App>>, render: WriteSignal<ViewModel>) {
+    log::debug!("effect: {:?}", effect);
+    match effect {
+        Effect::Render(_) => {
+            render.update(|view_model| *view_model = core.view());
+        }
+        Effect::Http(mut request) => {
+            spawn_local({
+                let core = core.clone();
 
-                    async move {
-                        let response = http::request(&request.operation).await.unwrap();
-                        let effects = core.resolve(&mut request, response);
-                        process_effects(effects, &core, render);
+                async move {
+                    let response = http::request(&request.operation).await.unwrap();
+                    for effect in core.resolve(&mut request, response) {
+                        process_effect(effect, &core, render);
                     }
-                });
-            }
-            Effect::ServerSentEvents(mut request) => {
-                spawn_local({
-                    let core = core.clone();
+                }
+            });
+        }
+        Effect::ServerSentEvents(mut request) => {
+            spawn_local({
+                let core = core.clone();
 
-                    async move {
-                        let mut stream = sse::request(&request.operation).await.unwrap();
+                async move {
+                    let mut stream = sse::request(&request.operation).await.unwrap();
 
-                        while let Ok(Some(response)) = stream.try_next().await {
-                            let effects = core.resolve(&mut request, response);
-                            process_effects(effects, &core, render);
+                    while let Ok(Some(response)) = stream.try_next().await {
+                        for effect in core.resolve(&mut request, response) {
+                            process_effect(effect, &core, render);
                         }
                     }
-                });
-            }
-        };
-    }
+                }
+            });
+        }
+    };
 }
 
 fn main() {

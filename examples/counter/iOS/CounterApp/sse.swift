@@ -1,13 +1,12 @@
 import SharedTypes
 import SwiftUI
 
-enum SseError : Error {
+enum SseError: Error {
     case generic(Error)
     case message(String)
 }
 
-
-func sseRequest(_ request: SseRequest) async -> AsyncStream<Result<SseResponse, SseError>> {
+func requestSse(_ request: SseRequest) async -> AsyncStream<Result<SseResponse, SseError>> {
     return AsyncStream { continuation in
         Task {
             let req = URLRequest(url: URL(string: request.url)!)
@@ -22,7 +21,7 @@ func sseRequest(_ request: SseRequest) async -> AsyncStream<Result<SseResponse, 
                         return
                     }
                 }
-                
+
                 for try await line in asyncBytes.lines {
                     let line = line + "\n\n"
                     continuation.yield(.success(.chunk([UInt8](line.utf8))))
