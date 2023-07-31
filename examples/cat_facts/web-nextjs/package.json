@@ -3,26 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm run wasm:build && next build",
+    "dev": "pnpm run wasm:build && next dev",
+    "wasm:build": "cd ../shared && wasm-pack build --target web",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/node": "20.4.5",
+    "@types/react": "18.2.17",
+    "@types/react-dom": "18.2.7",
+    "bulma": "^0.9.4",
+    "eslint": "8.46.0",
+    "eslint-config-next": "13.4.12",
     "next": "13.4.12",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "shared_types": "../shared_types/generated/typescript",
+    "shared": "link:../shared/pkg",
+    "shared_types": "link:../shared_types/generated/typescript",
     "typescript": "5.1.6",
     "ua-parser-js": "^1.0.35"
   },
   "devDependencies": {
-    "eslint": "8.45.0",
-    "eslint-config-next": "13.4.12",
-    "@types/node": "20.4.4",
-    "@types/react": "18.2.16",
-    "@types/react-dom": "18.2.7",
-    "@types/ua-parser-js": "^0.7.36",
-    "@wasm-tool/wasm-pack-plugin": "^1.7.0"
+    "@types/ua-parser-js": "^0.7.36"
   }
 }

@@ -1,13 +1,11 @@
+"use client";
+
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useState } from "react";
 import UAParser from "ua-parser-js";
 
-import init_core, {
-  process_event,
-  handle_response,
-  view,
-} from "../shared/core";
+import init_core, { process_event, handle_response, view } from "shared/shared";
 import type { Event } from "shared_types/types/shared_types";
 import {
   PlatformResponse,
@@ -31,7 +29,7 @@ import {
   BincodeSerializer,
   BincodeDeserializer,
 } from "shared_types/bincode/mod";
-import { http } from "./http";
+import { request as http } from "./http";
 
 type Response = PlatformResponse | TimeResponse | HttpResponse | KeyValueOutput;
 
