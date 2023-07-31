@@ -11,10 +11,10 @@ class Core: ObservableObject {
 
     func update(event: Event) {
         let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
-        
+
         process_effects(effects)
     }
-    
+
     func process_effects(_ effects: [UInt8]) {
         let requests: [Request] = try! .bincodeDeserialize(input: effects)
         for request in requests {
@@ -28,7 +28,7 @@ class Core: ObservableObject {
             view = try! .bincodeDeserialize(input: [UInt8](CounterApp.view()))
         case let .http(req):
             Task {
-                let response = try! await httpRequest(req).get()
+                let response = try! await requestHttp(req).get()
 
                 let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
 
@@ -36,11 +36,11 @@ class Core: ObservableObject {
             }
         case let .serverSentEvents(req):
             Task {
-                for await result in await sseRequest(req) {
+                for await result in await requestSse(req) {
                     let response = try! result.get()
 
                     let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-                    
+
                     process_effects(effects)
                 }
             }

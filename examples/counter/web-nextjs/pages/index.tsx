@@ -26,8 +26,8 @@ import {
   BincodeDeserializer,
 } from "shared_types/bincode/mod";
 
-import { http } from "./http";
-import { sse } from "./sse";
+import { request as http } from "./http";
+import { request as sse } from "./sse";
 
 type Response = HttpResponse | SseResponseVariantChunk | SseResponseVariantDone;
 

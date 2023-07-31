@@ -1,16 +1,16 @@
 use anyhow::Result;
+use gloo_net::http;
+
 use shared::http::protocol::{HttpRequest, HttpResponse};
 
-pub async fn request(request: &HttpRequest) -> Result<HttpResponse> {
-    use gloo_net::http;
-
-    let HttpRequest {
+pub async fn request(
+    HttpRequest {
         url,
         method,
         headers,
-        body: _,
-    } = request;
-
+        ..
+    }: &HttpRequest,
+) -> Result<HttpResponse> {
     let mut request = match method.as_str() {
         "GET" => http::Request::get(url),
         "POST" => http::Request::post(url),

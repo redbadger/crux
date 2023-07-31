@@ -84,7 +84,7 @@ class Core : androidx.lifecycle.ViewModel() {
             }
 
             is Effect.Http -> {
-                val response = http(httpClient, effect.value)
+                val response = requestHttp(httpClient, effect.value)
 
                 val effects =
                     handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
@@ -93,7 +93,7 @@ class Core : androidx.lifecycle.ViewModel() {
             }
 
             is Effect.ServerSentEvents -> {
-                sseRequest(sseClient, effect.value) { response ->
+                requestSse(sseClient, effect.value) { response ->
                     val effects =
                         handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
 

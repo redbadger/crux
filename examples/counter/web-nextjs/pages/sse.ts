@@ -4,8 +4,8 @@ import {
   SseResponseVariantChunk,
 } from "shared_types/types/shared_types";
 
-export async function* sse(sseRequest: SseRequest) {
-  const request = new Request(sseRequest.url);
+export async function* request({ url }: SseRequest) {
+  const request = new Request(url);
 
   const response = await fetch(request);
 

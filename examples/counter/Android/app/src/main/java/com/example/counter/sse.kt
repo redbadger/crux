@@ -8,7 +8,7 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.readUTF8Line
 
-suspend fun sseRequest(
+suspend fun requestSse(
     client: HttpClient, request: SseRequest, callback: suspend (SseResponse) -> Unit
 ) {
     client.prepareGet(request.url).execute { response ->

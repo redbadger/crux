@@ -10,8 +10,6 @@ use tauri::Manager;
 use shared::{App, Capabilities, Core, Effect, Event};
 
 use error::Error;
-use http::http;
-use sse::sse;
 
 lazy_static! {
     static ref CORE: Arc<Core<Effect, App>> = Arc::new(Core::new::<Capabilities>());
@@ -44,7 +42,7 @@ fn process_effect(
                 let core = core.clone();
 
                 async move {
-                    let response = http(&request.operation)
+                    let response = http::request(&request.operation)
                         .await
                         .expect("error processing Http effect");
 
@@ -61,7 +59,7 @@ fn process_effect(
                 let core = core.clone();
 
                 async move {
-                    let mut stream = sse(&request.operation)
+                    let mut stream = sse::request(&request.operation)
                         .await
                         .expect("error processing SSE effect");
 

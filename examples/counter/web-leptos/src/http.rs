@@ -1,15 +1,15 @@
 use anyhow::Result;
 use shared::http::protocol::{HttpRequest, HttpResponse};
 
-pub async fn request(request: &HttpRequest) -> Result<HttpResponse> {
-    use gloo_net::http;
-
-    let HttpRequest {
-        url,
+pub async fn request(
+    HttpRequest {
         method,
+        url,
         headers,
-        body: _,
-    } = request;
+        ..
+    }: &HttpRequest,
+) -> Result<HttpResponse> {
+    use gloo_net::http;
 
     let mut request = match method.as_str() {
         "GET" => http::Request::get(url),

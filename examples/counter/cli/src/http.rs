@@ -5,12 +5,12 @@ use surf::{http::Method, Client, Config, Url};
 
 use shared::http::protocol::{HttpRequest, HttpResponse};
 
-pub(crate) async fn http(
+pub(crate) async fn request(
     HttpRequest {
         url,
         method,
         headers,
-        body: _,
+        ..
     }: &HttpRequest,
 ) -> Result<HttpResponse> {
     let method = Method::from_str(method).expect("unknown http method");

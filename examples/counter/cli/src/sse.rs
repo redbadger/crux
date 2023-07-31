@@ -3,7 +3,7 @@ use futures::{stream, AsyncReadExt};
 
 use shared::sse::{SseRequest, SseResponse};
 
-pub async fn sse(
+pub async fn request(
     SseRequest { url }: &SseRequest,
 ) -> Result<impl futures::TryStream<Ok = SseResponse>> {
     let mut response = surf::get(url)
