@@ -1,8 +1,10 @@
+"use client";
+
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useState } from "react";
 
-import init_core, { process_event, view } from "../shared/core";
+import init_core, { process_event, view } from "shared/shared";
 import type { Event } from "shared_types/types/shared_types";
 import {
   Request,
@@ -51,6 +53,7 @@ const Home: NextPage = () => {
 
       loadCore();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
   );
 

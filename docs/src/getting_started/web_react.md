@@ -20,7 +20,7 @@ Let's create a simple Next.js app for TypeScript, using `pnpx` (from `pnpm`).
 You can probably accept the defaults.
 
 ```sh
-pnpx create-next-app@latest web-nextjs --ts --use-pnpm
+pnpx create-next-app@latest
 ```
 
 ## Compile our Rust shared library
@@ -44,8 +44,7 @@ Now that we have `wasm-pack` installed, we can build our `shared` library to
 WebAssembly for the browser.
 
 ```sh
-cd shared
-wasm-pack build --target web
+(cd shared && wasm-pack build --target web)
 ```
 
 ````admonish tip
@@ -66,7 +65,7 @@ wasm-pack build --target web
 Add the `shared` library as a Wasm package to your `web-nextjs` project
 
 ```sh
-cd ../web-nextjs
+cd web-nextjs
 pnpm add ../shared/pkg
 ```
 
@@ -139,14 +138,18 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `web-nextjs/pages/index.tsx` to look like this:
 
 ```typescript
-{{#include ../../../examples/hello_world/web-nextjs/pages/index.tsx}}
+{{#include ../../../examples/hello_world/web-nextjs/src/app/page.tsx}}
 ```
 
-Now all we need is some CSS. Edit
-`examples/hello_world/web-nextjs/pages/_document.tsx` to look like this:
+Now all we need is some CSS. First add the `Bulma` package, and then import it
+in `layout.tsx`.
+
+```bash
+pnpm add bulma
+```
 
 ```typescript
-{{#include ../../../examples/hello_world/web-nextjs/pages/_document.tsx}}
+{{#include ../../../examples/hello_world/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app
