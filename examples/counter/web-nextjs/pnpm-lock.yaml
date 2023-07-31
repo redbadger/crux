@@ -14,8 +14,11 @@ dependencies:
   react-dom:
     specifier: 18.2.0
     version: 18.2.0(react@18.2.0)
+  shared:
+    specifier: link:../shared/pkg
+    version: link:../shared/pkg
   shared_types:
-    specifier: ../shared_types/generated/typescript
+    specifier: link:../shared_types/generated/typescript
     version: link:../shared_types/generated/typescript
 
 devDependencies:

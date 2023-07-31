@@ -56,8 +56,9 @@ wasm-pack build --target web
   ```json
   {
     "scripts": {
-      "wasm:build": "cd ../shared && wasm-pack build --target web",
-      "build": "pnpm run wasm:build && remix build"
+      "build": "pnpm run wasm:build && remix build",
+      "dev": "pnpm run wasm:build && remix dev",
+      "wasm:build": "cd ../shared && wasm-pack build --target web"
     }
   }
   ```

@@ -1,5 +1,4 @@
-import type { NextPage } from "next";
-import Head from "next/head";
+import type { V2_MetaFunction } from "@remix-run/node";
 import { useEffect, useState } from "react";
 
 import init_core, { process_event, handle_response, view } from "shared/shared";
@@ -24,12 +23,19 @@ import {
   BincodeDeserializer,
 } from "shared_types/bincode/mod";
 
-import { request as http } from "./http";
-import { request as sse } from "./sse";
+import { request as http } from "../http";
+import { request as sse } from "../sse";
 
 type Response = HttpResponse | SseResponseVariantChunk | SseResponseVariantDone;
 
-const Home: NextPage = () => {
+export const meta: V2_MetaFunction = () => {
+  return [
+    { title: "Crux Counter Example - Remix" },
+    { name: "description", content: "Rust Core, TypeScript Shell (Remix)" },
+  ];
+};
+
+export default function Index() {
   const [state, setState] = useState(new ViewModel("", false));
 
   function dispatch(event: Event) {
@@ -91,39 +97,33 @@ const Home: NextPage = () => {
   );
 
   return (
-    <>
-      <Head>
-        <title>Crux Counter Example - Next.js</title>
-      </Head>
-
-      <main>
-        <section className="section has-text-centered">
-          <p className="title">Crux Counter Example</p>
-        </section>
-        <section className="section has-text-centered">
-          <p className="is-size-5">Rust Core, TypeScript Shell (Next.js)</p>
-        </section>
-        <section className="container has-text-centered">
-          <p className="is-size-5">{state.text}</p>
-          <div className="buttons section is-centered">
-            <button
-              className="button is-primary is-warning"
-              onClick={() => dispatch(new EventVariantDecrement())}
-            >
-              {"Decrement"}
-            </button>
-            <button
-              className="button is-primary is-danger"
-              onClick={() => dispatch(new EventVariantIncrement())}
-            >
-              {"Increment"}
-            </button>
-          </div>
-        </section>
-      </main>
-    </>
+    <main>
+      <section className="section has-text-centered">
+        <p className="title">Crux Counter Example</p>
+      </section>
+      <section className="section has-text-centered">
+        <p className="is-size-5">Rust Core, TypeScript Shell (Remix)</p>
+      </section>
+      <section className="container has-text-centered">
+        <p className="is-size-5">{state.text}</p>
+        <div className="buttons section is-centered">
+          <button
+            className="button is-primary is-warning"
+            onClick={() => dispatch(new EventVariantDecrement())}
+          >
+            {"Decrement"}
+          </button>
+          <button
+            className="button is-primary is-danger"
+            onClick={() => dispatch(new EventVariantIncrement())}
+          >
+            {"Increment"}
+          </button>
+        </div>
+      </section>
+    </main>
   );
-};
+}
 
 function deserializeRequests(bytes: Uint8Array) {
   const deserializer = new BincodeDeserializer(bytes);
@@ -139,5 +139,3 @@ function deserializeRequests(bytes: Uint8Array) {
 function deserializeView(bytes: Uint8Array) {
   return ViewModel.deserialize(new BincodeDeserializer(bytes));
 }
-
-export default Home;

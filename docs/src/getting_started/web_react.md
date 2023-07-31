@@ -46,46 +46,34 @@ brew install wasm-pack
 curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
-But we won't call `wasm-pack` directly. Instead we'll use a Next.js plugin to do
-this for us. That way the shared library will be compiled to WebAssembly when we
-build our app using `pnpm`.
-
-Add the `wasm-pack-plugin` to our project:
+Now that we have `wasm-pack` installed, we can build our `shared` library to
+WebAssembly for the browser.
 
 ```sh
-pnpm install --save-dev @wasm-tool/wasm-pack-plugin
+cd shared
+wasm-pack build --target web
 ```
 
-We'll need to configure Next.js to call the plugin by editing
-`web-nextjs/next.config.js` to look like this:
+````admonish tip
+  You might want to add a `wasm:build` script to your `package.json`
+  file, and call it when you build your nextjs project.
 
-```javascript
-const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
-const path = require("path");
-
-// see https://github.com/wasm-tool/wasm-pack-plugin/issues/112
-let loaded = false;
-
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-  webpack(nextConfig) {
-    if (!loaded) {
-      nextConfig.plugins.push(
-        new WasmPackPlugin({
-          crateDirectory: path.resolve(__dirname, "..", "shared"),
-          extraArgs: "--target web",
-          outDir: path.resolve(__dirname, "shared", "core"),
-        })
-      );
-      loaded = true;
+  ```json
+  {
+    "scripts": {
+      "build": "pnpm run wasm:build && next build",
+      "dev": "pnpm run wasm:build && next dev",
+      "wasm:build": "cd ../shared && wasm-pack build --target web"
     }
+  }
+  ```
+````
 
-    return nextConfig;
-  },
-};
+Add the `shared` library as a Wasm package to your `web-nextjs` project
 
-module.exports = nextConfig;
+```sh
+cd ../web-nextjs
+pnpm add ../shared/pkg
 ```
 
 ## Add the Shared Types
