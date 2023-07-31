@@ -1,3 +1,5 @@
+"use client";
+
 import type { NextPage } from "next";
 import Head from "next/head";
 import {
@@ -15,11 +17,7 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import init_core, {
-  process_event as sendEvent,
-  handle_response as sendResponse,
-  view,
-} from "../../shared/core";
+import init_core, { process_event, handle_response, view } from "shared/shared";
 import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
 import { Seq } from "shared_types/serde/types";
@@ -243,7 +241,7 @@ const Home: NextPage = () => {
 
     if (action.kind == "event") {
       action.event?.serialize(serializer);
-      const requests = sendEvent(serializer.getBytes());
+      const requests = process_event(serializer.getBytes());
       handleRequests(requests);
     } else {
       if (action.response == null) return;
@@ -251,7 +249,7 @@ const Home: NextPage = () => {
       action.response?.data.serialize(serializer);
       let uuid = Uint8Array.from(action.response?.uuid);
 
-      const requests = sendResponse(uuid, serializer.getBytes());
+      const requests = handle_response(uuid, serializer.getBytes());
       handleRequests(requests);
     }
   };
@@ -331,9 +329,11 @@ const Home: NextPage = () => {
 
     loadCore();
 
+    const currentChannel = channel.current;
     return () => {
-      channel.current.onmessage = null;
+      currentChannel.onmessage = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Event handlers
@@ -385,8 +385,10 @@ const Home: NextPage = () => {
           {LOG_EDITS ? (
             <div className="flex-grow basis-1 overflow-scroll">
               <div className=" p-3 text-sm font-mono bg-slate-100 ">
-                {inputLog.map((line) => (
-                  <p className="font-mono">{line}</p>
+                {inputLog.map((line, i) => (
+                  <p className="font-mono" key={i}>
+                    {line}
+                  </p>
                 ))}
               </div>
             </div>
