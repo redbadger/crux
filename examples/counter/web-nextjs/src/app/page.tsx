@@ -1,5 +1,6 @@
+"use client";
+
 import type { NextPage } from "next";
-import Head from "next/head";
 import { useEffect, useState } from "react";
 
 import init_core, { process_event, handle_response, view } from "shared/shared";
@@ -91,37 +92,31 @@ const Home: NextPage = () => {
   );
 
   return (
-    <>
-      <Head>
-        <title>Crux Counter Example - Next.js</title>
-      </Head>
-
-      <main>
-        <section className="section has-text-centered">
-          <p className="title">Crux Counter Example</p>
-        </section>
-        <section className="section has-text-centered">
-          <p className="is-size-5">Rust Core, TypeScript Shell (Next.js)</p>
-        </section>
-        <section className="container has-text-centered">
-          <p className="is-size-5">{state.text}</p>
-          <div className="buttons section is-centered">
-            <button
-              className="button is-primary is-warning"
-              onClick={() => dispatch(new EventVariantDecrement())}
-            >
-              {"Decrement"}
-            </button>
-            <button
-              className="button is-primary is-danger"
-              onClick={() => dispatch(new EventVariantIncrement())}
-            >
-              {"Increment"}
-            </button>
-          </div>
-        </section>
-      </main>
-    </>
+    <main>
+      <section className="section has-text-centered">
+        <p className="title">Crux Counter Example</p>
+      </section>
+      <section className="section has-text-centered">
+        <p className="is-size-5">Rust Core, TypeScript Shell (Next.js)</p>
+      </section>
+      <section className="container has-text-centered">
+        <p className="is-size-5">{state.text}</p>
+        <div className="buttons section is-centered">
+          <button
+            className="button is-primary is-warning"
+            onClick={() => dispatch(new EventVariantDecrement())}
+          >
+            {"Decrement"}
+          </button>
+          <button
+            className="button is-primary is-danger"
+            onClick={() => dispatch(new EventVariantIncrement())}
+          >
+            {"Increment"}
+          </button>
+        </div>
+      </section>
+    </main>
   );
 };
 

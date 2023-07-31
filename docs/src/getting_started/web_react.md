@@ -17,16 +17,10 @@ For this walk-through, we'll use the [`pnpm`](https://pnpm.io/) package manager
 for no reason other than we like it the most!
 
 Let's create a simple Next.js app for TypeScript, using `pnpx` (from `pnpm`).
-You can accept all the defaults.
+You can probably accept the defaults.
 
 ```sh
 pnpx create-next-app@latest web-nextjs --ts --use-pnpm
-```
-
-Then we can change to the project directory and start adding dependencies.
-
-```sh
-cd web-nextjs
 ```
 
 ## Compile our Rust shared library
