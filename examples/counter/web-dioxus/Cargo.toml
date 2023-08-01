@@ -1,0 +1,22 @@
+[package]
+name = "web-dioxus"
+version = "0.1.0"
+authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+anyhow.workspace = true
+console_error_panic_hook = "0.1.7"
+dioxus = "0.4"
+dioxus-logger = "0.4.1"
+dioxus-web = "0.4"
+futures = "0.3.28"
+futures-util = "0.3.28"
+gloo-net = "0.3.1"
+js-sys = "0.3.64"
+log = "0.4.19"
+shared = { path = "../shared" }
+wasm-bindgen = "0.2.87"
+wasm-streams = "0.3.0"
+wasm-bindgen-futures = "0.4.37"

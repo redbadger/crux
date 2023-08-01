@@ -5,8 +5,8 @@ use shared::http::protocol::{HttpRequest, HttpResponse};
 
 pub async fn request(
     HttpRequest {
-        url,
         method,
+        url,
         headers,
         ..
     }: &HttpRequest,
