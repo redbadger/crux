@@ -56,6 +56,12 @@ the core's ability to stream responses from the shell.
 
 ## Web app — Yew
 
+If you don't have it already, install the `trunk` CLI tool:
+
+```sh
+brew install trunk
+```
+
 To build and run the [Yew](https://yew.rs/) web app:
 
 ```
@@ -65,11 +71,32 @@ trunk serve
 
 ## Web app — Leptos
 
+If you don't have it already, install the `trunk` CLI tool:
+
+```sh
+brew install trunk
+```
+
 To build and run the [Leptos](https://leptos.dev/) web app:
 
 ```
 cd web-leptos
 trunk serve
+```
+
+## Web app — Dioxus
+
+If you don't have it already, install the `dx` CLI tool:
+
+```sh
+cargo install dioxus-cli
+```
+
+To build and run the [Dioxus]https://dioxuslabs.com/) web app:
+
+```
+cd web-dioxus
+dx serve
 ```
 
 ## Web app — NextJS (React)
