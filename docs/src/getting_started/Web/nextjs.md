@@ -4,7 +4,7 @@ These are the steps to set up and run a simple TypeScript Web app that calls
 into a shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
 ```
 
 ```admonish info
@@ -138,7 +138,7 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `web-nextjs/pages/index.tsx` to look like this:
 
 ```typescript
-{{#include ../../../examples/hello_world/web-nextjs/src/app/page.tsx}}
+{{#include ../../../../examples/hello_world/web-nextjs/src/app/page.tsx}}
 ```
 
 Now all we need is some CSS. First add the `Bulma` package, and then import it
@@ -149,7 +149,7 @@ pnpm add bulma
 ```
 
 ```typescript
-{{#include ../../../examples/hello_world/web-nextjs/src/app/layout.tsx}}
+{{#include ../../../../examples/hello_world/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app
@@ -163,5 +163,5 @@ pnpm dev
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world_nextjs.webp"  width="300"></p>
+<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
 ```

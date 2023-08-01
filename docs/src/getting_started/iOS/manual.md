@@ -3,16 +3,17 @@
 These are the steps to set up Xcode to build and run a simple iOS app that calls
 into a shared core.
 
-```admonish tip
-We think that using [XcodeGen](https://github.com/yonaskolb/XcodeGen) may be the simplest way to create an Xcode project to build and run a simple iOS app that calls into a shared core. If you want to try this, you can jump to [iOS — using XcodeGen](./ios_with_xcodegen.md), otherwise read on.
+```admonish warning
+We recommend setting up Xcode with XcodeGen as described in the
+[previous section](./with_xcodegen.md). It is the simplest way to create an Xcode
+project to build and run a simple iOS app that calls into a shared core. However,
+if you want to set up Xcode manually then read on.
 ```
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo — as described in [Shared core and types](./core.md) — and that you have built them using `cargo build`.
-```
-
-```admonish warning title="Sharp edge"
-We want to make setting up Xcode to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble.
+This walk-through assumes you have already added the `shared` and `shared_types`
+libraries to your repo — as described in [Shared core and types](../core.md)
+— and that you have built them using `cargo build`.
 ```
 
 ## Create an iOS App
@@ -61,7 +62,7 @@ To achieve this, we'll associate a script with files that match the pattern
 then add our `shared.udl` file to the project.
 
 Note that our shared library generates the `uniffi-bindgen` binary (as explained
-on the page ["Shared core and types"](./core.md)) that the script relies on, so
+on the page ["Shared core and types"](../core.md)) that the script relies on, so
 make sure you have built it already, using `cargo build`.
 
 In "**Build Rules**", add a rule to process files that match the pattern `*.udl`
@@ -168,17 +169,17 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `ContentView.swift` to look like this:
 
 ```swift
-{{#include ../../../examples/hello_world/iOS/CounterApp/ContentView.swift}}
+{{#include ../../../../examples/hello_world/iOS/CounterApp/ContentView.swift}}
 ```
 
 And edit `CounterAppApp.swift` to look like this:
 
 ```swift
-{{#include ../../../examples/hello_world/iOS/CounterApp/CounterAppApp.swift}}
+{{#include ../../../../examples/hello_world/iOS/CounterApp/CounterAppApp.swift}}
 ```
 
 ```admonish success
 You should then be able to run the app in the simulator or on an iPhone, and it should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world_ios.webp"  width="300"></p>
+<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
 ```

@@ -4,7 +4,7 @@ These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
 ```
 
 ```admonish info
@@ -32,13 +32,13 @@ Now we can start fleshing out our project. Let's add some dependencies to
 `web-yew/Cargo.toml`.
 
 ```toml
-{{#include ../../../examples/hello_world/web-yew/Cargo.toml}}
+{{#include ../../../../examples/hello_world/web-yew/Cargo.toml}}
 ```
 
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-{{#include ../../../examples/hello_world/web-yew/index.html}}
+{{#include ../../../../examples/hello_world/web-yew/index.html}}
 ```
 
 ## Create some UI
@@ -54,7 +54,7 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `src/main.rs` to look like this:
 
 ```rust,noplayground
-{{#include ../../../examples/hello_world/web-yew/src/main.rs}}
+{{#include ../../../../examples/hello_world/web-yew/src/main.rs}}
 ```
 
 ## Build and serve our app
@@ -73,5 +73,5 @@ trunk serve --open
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world_yew.webp"  width="300"></p>
+<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
 ```

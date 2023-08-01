@@ -196,9 +196,9 @@ pub struct Capabilities {
   `generated` folder.
 
   ```sh
-  cargo build -vv
+  cargo build
   ```
 
 ```admonish success
-You should now be ready to set up [iOS](ios.md), [Android](android.md), [web](web_react.md), or [WebAssembly](web_yew.md) specific builds.
+You should now be ready to set up [iOS](iOS/index.md), [Android](Android/index.md), or [web](web/index.md) specific builds.
 ```

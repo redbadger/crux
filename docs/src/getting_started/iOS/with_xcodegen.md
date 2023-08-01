@@ -4,11 +4,11 @@ These are the steps to set up Xcode to build and run a simple iOS app that calls
 into a shared core.
 
 ```admonish tip
-We think that using [XcodeGen](https://github.com/yonaskolb/XcodeGen) may be the simplest way to create an Xcode project to build and run a simple iOS app that calls into a shared core. If you'd rather set up Xcode manually, you can jump back to [iOS — Swift and SwiftUI — manual setup](./ios.md), otherwise read on.
+We think that using [XcodeGen](https://github.com/yonaskolb/XcodeGen) may be the simplest way to create an Xcode project to build and run a simple iOS app that calls into a shared core. If you'd rather set up Xcode manually, you can jump to [iOS — Swift and SwiftUI — manual setup](./manual.md), otherwise read on.
 ```
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo — as described in [Shared core and types](./core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo — as described in [Shared core and types](../core.md).
 ```
 
 ## Compile our Rust shared library
@@ -54,7 +54,7 @@ The `project.yml` file describes the Xcode project we want to generate. Here's
 one for the Counter example — you may want to adapt this for your own project:
 
 ```yaml
-{{#include ../../../examples/counter/iOS/project.yml}}
+{{#include ../../../../examples/counter/iOS/project.yml}}
 ```
 
 Then we can generate the Xcode project:
@@ -79,13 +79,13 @@ However, the simplest example is the [Hello World counter example](https://githu
 Create `iOS/CounterApp/ContentView.swift` to look like this:
 
 ```swift
-{{#include ../../../examples/hello_world/iOS/CounterApp/ContentView.swift}}
+{{#include ../../../../examples/hello_world/iOS/CounterApp/ContentView.swift}}
 ```
 
 And create `iOS/CounterApp/CounterAppApp.swift` to look like this:
 
 ```swift
-{{#include ../../../examples/hello_world/iOS/CounterApp/CounterAppApp.swift}}
+{{#include ../../../../examples/hello_world/iOS/CounterApp/CounterAppApp.swift}}
 ```
 
 Run `xcodegen` again to update the Xcode project with these newly created source
@@ -97,5 +97,5 @@ before you build.
 ```admonish success
 You should then be able to run the app in the simulator or on an iPhone, and it should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world_ios.webp"  width="300"></p>
+<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
 ```
