@@ -17,3 +17,12 @@ mathjax-support = true
 site-url = "/crux/"
 git-repository-url = "https://github.com/redbadger/crux/"
 edit-url-template = "https://github.com/redbadger/crux/edit/master/docs/{path}"
+
+[output.html.redirect]
+"getting_started/android.html" = "./Android/android.html"
+"getting_started/web_leptos.html" = "./Web/leptos.html"
+"getting_started/web_react.html" = "./Web/nextjs.html"
+"getting_started/web_remix.html" = "./Web/remix.html"
+"getting_started/web_yew.html" = "./Web/yew.html"
+"getting_started/ios.html" = "./iOS/manual.html"
+"getting_started/ios_with_xcodegen.html" = "./iOS/with_xcodegen.html"
