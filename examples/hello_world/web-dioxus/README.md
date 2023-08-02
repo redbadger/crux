@@ -1,6 +1,7 @@
 # dioxus-template
 
-> a template for starting a dioxus project to be used with [dioxus-cli](https://github.com/DioxusLabs/cli)
+> a template for starting a dioxus project to be used with
+> [dioxus-cli](https://github.com/DioxusLabs/cli)
 
 ## Usage
 
@@ -10,7 +11,7 @@
 dioxus init hello-dioxus
 ```
 
-or you can choose the template, for this tempalte:
+or you can choose the template, for this template:
 
 ```
 dioxus init hello-dioxus --template=gh:dioxuslabs/dioxus-template
