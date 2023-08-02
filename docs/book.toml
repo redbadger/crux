@@ -7,12 +7,12 @@ title = "Crux: Cross-platform app development in Rust"
 
 [preprocessor.admonish]
 command = "mdbook-admonish"
-assets_version = "2.0.0" # do not edit: managed by `mdbook-admonish install`
+assets_version = "2.0.2" # do not edit: managed by `mdbook-admonish install`
 
 [output]
 
 [output.html]
-additional-css = ["././mdbook-admonish.css"]
+additional-css = ["./mdbook-admonish.css"]
 mathjax-support = true
 site-url = "/crux/"
 git-repository-url = "https://github.com/redbadger/crux/"
@@ -26,3 +26,5 @@ edit-url-template = "https://github.com/redbadger/crux/edit/master/docs/{path}"
 "getting_started/web_yew.html" = "./Web/yew.html"
 "getting_started/ios.html" = "./iOS/manual.html"
 "getting_started/ios_with_xcodegen.html" = "./iOS/with_xcodegen.html"
+
+[output.linkcheck]
