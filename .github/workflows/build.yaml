@@ -12,11 +12,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CARGO_INCREMENTAL: 0
   RUSTFLAGS: "-D warnings"
   RUST_BACKTRACE: short
   NEXTEST_PROFILE: ci
   CI: 1
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
   build:
@@ -29,11 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: Swatinem/rust-cache@v1
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - uses: pnpm/action-setup@v2
         with:
@@ -53,7 +55,7 @@ jobs:
       - name: Install tauri dependencies
         shell: bash
         run: |
-          set -euxo pipefail
+          set -e
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
