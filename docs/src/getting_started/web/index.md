@@ -37,10 +37,9 @@ This section has two guides for building TypeScript UI with Crux:
 
 ## Web apps with Rust UI
 
-When building UI with Rust (or other languages), we can compile the entire app
-to WebAssembly, and reference the core and the `shared` crate directly. We do
-not have to serialize and deserialize messages, because they stay in the same
-memory space.
+When building UI with Rust, we can compile the entire app to WebAssembly, and
+reference the core and the `shared` crate directly. We do not have to serialize
+and deserialize messages, because the messages stay in the same memory space.
 
 The shared core (that contains our app's behavior) _and_ the UI code are
 compiled to a WebAssembly binary, using the relevant toolchain for the language
