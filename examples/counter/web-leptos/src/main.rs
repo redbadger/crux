@@ -28,8 +28,6 @@ fn root_component(cx: Scope) -> impl IntoView {
         <>
             <section class="section has-text-centered">
                 <p class="title">{"Crux Counter Example"}</p>
-            </section>
-            <section class="section has-text-centered">
                 <p class="is-size-5">{"Rust Core, Rust Shell (Leptos)"}</p>
             </section>
             <section class="container has-text-centered">

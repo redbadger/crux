@@ -89,9 +89,7 @@ impl Component for RootComponent {
         html! {
             <>
                 <section class="section has-text-centered">
-                    <p class="title">{"Crux Counter Example"}</p>
-                </section>
-                <section class="section has-text-centered">
+                    <h1 class="title">{"Crux Counter Example"}</h1>
                     <p class="is-size-5">{"Rust Core, Rust Shell (Yew)"}</p>
                 </section>
                 <section class="container has-text-centered">

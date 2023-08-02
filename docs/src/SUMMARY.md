@@ -7,13 +7,17 @@
 # Getting Started
 
 1. [Shared core and types](./getting_started/core.md)
-1. [iOS — Swift and SwiftUI — manual setup](./getting_started/ios.md)
-1. [iOS — Swift and SwiftUI — using XcodeGen](./getting_started/ios_with_xcodegen.md)
-1. [Android — Kotlin and Jetpack Compose](./getting_started/android.md)
-1. [Web — TypeScript and React (Next.js)](./getting_started/web_react.md)
-1. [Web — TypeScript and React (Remix)](./getting_started/web_remix.md)
-1. [Web — Rust and Yew](./getting_started/web_yew.md)
-1. [Web — Rust and Leptos](./getting_started/web_leptos.md)
+1. [iOS](./getting_started/iOs/index.md)
+   1. [Swift and SwiftUI (XcodeGen)](./getting_started/iOS/with_xcodegen.md)
+   1. [Swift and SwiftUI (manual)](./getting_started/iOS/manual.md)
+1. [Android](./getting_started/Android/index.md)
+   1. [Kotlin and Jetpack Compose](./getting_started/Android/android.md)
+1. [Web](./getting_started/web/index.md)
+   1. [TypeScript and React (Next.js)](./getting_started/web/nextjs.md)
+   1. [TypeScript and React (Remix)](./getting_started/web/remix.md)
+   1. [Rust and Yew](./getting_started/web/yew.md)
+   1. [Rust and Leptos](./getting_started/web/leptos.md)
+   1. [Rust and Dioxus](./getting_started/web/dioxus.md)
 
 # Development Guide
 

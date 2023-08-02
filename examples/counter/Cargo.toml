@@ -5,6 +5,7 @@ members = [
   "shared_types",
   "shared",
   "tauri/src-tauri",
+  "web-dioxus",
   "web-leptos",
   "web-yew",
 ]
@@ -19,5 +20,5 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.72"
-serde = "1.0.179"
+serde = "1.0.180"
 uuid = { version = "1.4.1", features = ["v4", "wasm-bindgen", "js", "serde"] }

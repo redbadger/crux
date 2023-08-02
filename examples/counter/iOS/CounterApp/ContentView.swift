@@ -36,12 +36,16 @@ class Core: ObservableObject {
             }
         case let .serverSentEvents(req):
             Task {
-                for await result in await requestSse(req) {
-                    let response = try! result.get()
-
-                    let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-
-                    process_effects(effects)
+                do {
+                    for await result in await requestSse(req) {
+                        let response = try result.get()
+                        
+                        let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+                        
+                        process_effects(effects)
+                    }
+                } catch {
+                    update(event: .startWatch)
                 }
             }
         }

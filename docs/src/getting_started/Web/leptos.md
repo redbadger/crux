@@ -4,11 +4,11 @@ These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
 ```
 
 ```admonish info
-There are many frameworks available for writing Web applications in Rust. Here we're choosing [Leptos](https://leptos.dev/) for this walk-through as a way to demonstrate how Crux can work with web frameworks that use fine-grained reactivity rather than the conceptual full re-rendering of React. However, a similar setup would work for any framework that compiles to WebAssembly.
+There are many frameworks available for writing Web applications in Rust. Here we're choosing [Leptos](https://leptos.dev/) for this walk-through as a way to demonstrate how Crux can work with web frameworks that use fine-grained reactivity rather than the conceptual full re-rendering of React. However, a similar setup would work for other frameworks that compile to WebAssembly.
 ```
 
 ## Create a Leptos App
@@ -32,21 +32,21 @@ Now we can `cd` into the `web-leptos` directory and start fleshing out our
 project. Let's add some dependencies to `shared/Cargo.toml`.
 
 ```toml
-{{#include ../../../examples/hello_world/web-leptos/Cargo.toml}}
+{{#include ../../../../examples/hello_world/web-leptos/Cargo.toml}}
 ```
 
-```admonish note
-We're using the `stable` feature of Leptos here, which works on the stable
-channel of Rust. However, if you're using a nightly version of Rust, you can
-just use the `leptos` dependency with default features.
+```admonish tip
+If using nightly Rust, you can enable the "nightly" feature for Leptos.
+When you do this, the signals become functions that can be called directly.
 
-On nightly Rust, the syntax for using signals in your view is more concise.
+However in our examples we are using the stable channel and so have to use
+the `get()` and `update()` functions explicitly.
 ```
 
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-{{#include ../../../examples/hello_world/web-leptos/index.html}}
+{{#include ../../../../examples/hello_world/web-leptos/index.html}}
 ```
 
 ## Create some UI
@@ -62,7 +62,7 @@ However, the simplest example is the [Hello World counter example](https://githu
 Edit `src/main.rs` to look like this:
 
 ```rust,noplayground
-{{#include ../../../examples/hello_world/web-leptos/src/main.rs}}
+{{#include ../../../../examples/hello_world/web-leptos/src/main.rs}}
 ```
 
 ## Build and serve our app
@@ -81,5 +81,5 @@ trunk serve --open
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world_leptos.webp"  width="300"></p>
+<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
 ```

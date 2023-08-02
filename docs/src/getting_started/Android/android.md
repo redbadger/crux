@@ -4,7 +4,7 @@ These are the steps to set up Android Studio to build and run a simple Android
 app that calls into a shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](./core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
 ```
 
 ```admonish warning title="Sharp edge"
@@ -76,7 +76,7 @@ Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like
 this:
 
 ```gradle
-{{#include ../../../examples/hello_world/Android/app/build.gradle}}
+{{#include ../../../../examples/hello_world/Android/app/build.gradle}}
 ```
 
 ## The Rust shared library
@@ -97,14 +97,14 @@ Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like
 this:
 
 ```gradle
-{{#include ../../../examples/hello_world/Android/build.gradle}}
+{{#include ../../../../examples/hello_world/Android/build.gradle}}
 ```
 
 Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
 like this:
 
 ```gradle
-{{#include ../../../examples/hello_world/Android/shared/build.gradle}}
+{{#include ../../../../examples/hello_world/Android/shared/build.gradle}}
 
 ```
 
@@ -181,11 +181,11 @@ Edit `/Android/app/src/main/java/com/example/counter/MainActivity.kt` to look
 like this:
 
 ```kotlin
-{{#include ../../../examples/hello_world/Android/app/src/main/java/com/example/counter/MainActivity.kt}}
+{{#include ../../../../examples/hello_world/Android/app/src/main/java/com/example/counter/MainActivity.kt}}
 ```
 
 ```admonish success
 You should then be able to run the app in the simulator, and it should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world_android.webp"  width="300"></p>
+<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
 ```

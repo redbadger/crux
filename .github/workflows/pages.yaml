@@ -24,6 +24,7 @@ jobs:
         uses: jontze/action-mdbook@v2
         with:
           token: ${{secrets.GITHUB_TOKEN}}
+          use-linkcheck: true
           use-admonish: true
 
       - name: Build Documentation
@@ -34,7 +35,9 @@ jobs:
         run: mdbook build
 
       - name: Move outputs
-        run: mkdir ./public && mv ./target/doc ./public/master_api_docs && mv ./docs/book/* ./public/
+        run:
+          mkdir ./public && mv ./target/doc ./public/master_api_docs && mv
+          ./docs/book/* ./public/
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3

@@ -95,8 +95,6 @@ const Home: NextPage = () => {
     <main>
       <section className="section has-text-centered">
         <p className="title">Crux Counter Example</p>
-      </section>
-      <section className="section has-text-centered">
         <p className="is-size-5">Rust Core, TypeScript Shell (Next.js)</p>
       </section>
       <section className="container has-text-centered">

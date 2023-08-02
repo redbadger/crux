@@ -8,8 +8,8 @@ use crate::error::Error;
 
 pub async fn request(
     HttpRequest {
-        url,
         method,
+        url,
         headers,
         ..
     }: &HttpRequest,
