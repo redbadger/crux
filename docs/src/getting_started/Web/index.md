@@ -48,8 +48,8 @@ and framework we are using. We use [`trunk`](https://trunkrs.dev/) for the Yew
 and Leptos guides and [`dx`](https://dioxuslabs.com/learn/0.4/CLI/installation/)
 for the Dioxus guide.
 
-When using Rust throughout, we can simple use Cargo to add the shared and
-shared_types crates directly to our app.
+When using Rust throughout, we can simply use Cargo to add the `shared` and
+`shared_types` crates directly to our app.
 
 ![build flow](./flow_rust.svg)
 
