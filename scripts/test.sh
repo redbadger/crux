@@ -2,11 +2,14 @@
 
 set -euxo pipefail
 
-for dir in . ./examples/*; do
+cargo fmt --all --check
+cargo nextest run --all-features
+cargo test --doc --all-features
+
+for dir in ./examples/*; do
   (
     cd "$dir"
-    cargo nextest run --all-features
-    cargo test --doc --all-features
     cargo fmt --all --check
+    cargo nextest run --all-features
   )
 done
