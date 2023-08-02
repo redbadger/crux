@@ -38,9 +38,9 @@ This section has two guides for building TypeScript UI with Crux:
 ## Web apps with Rust UI
 
 When building UI with Rust (or other languages), we can compile the entire app
-to WebAssembly, and reference the core and the shared types directly. We do not
-have to serialize and deserialize messages, because they stay in the same memory
-space.
+to WebAssembly, and reference the core and the `shared` crate directly. We do
+not have to serialize and deserialize messages, because they stay in the same
+memory space.
 
 The shared core (that contains our app's behavior) _and_ the UI code are
 compiled to a WebAssembly binary, using the relevant toolchain for the language
@@ -48,8 +48,8 @@ and framework we are using. We use [`trunk`](https://trunkrs.dev/) for the Yew
 and Leptos guides and [`dx`](https://dioxuslabs.com/learn/0.4/CLI/installation/)
 for the Dioxus guide.
 
-When using Rust throughout, we can simply use Cargo to add the `shared` and
-`shared_types` crates directly to our app.
+When using Rust throughout, we can simply use Cargo to add the `shared` crate
+directly to our app.
 
 ![build flow](./flow_rust.svg)
 
