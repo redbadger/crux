@@ -49,7 +49,12 @@ jobs:
           set -euxo pipefail
           curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - name: Run all tests
+      - name: Run tests
         shell: bash
         run: |
           ./scripts/test.sh
+
+      - name: Build and Test examples
+        shell: bash
+        run: |
+          ./scripts/build_and_test_examples.sh
