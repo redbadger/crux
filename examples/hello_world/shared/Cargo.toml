@@ -12,8 +12,8 @@ name = "shared"
 typegen = ["crux_core/typegen"]
 
 [dependencies]
-crux_core = { version = "0.6", path = "../../../crux_core" }
-crux_macros = { version = "0.3", path = "../../../crux_macros" }
+crux_core = "0.6"
+crux_macros = "0.3"
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"
 uniffi = "0.24.2"

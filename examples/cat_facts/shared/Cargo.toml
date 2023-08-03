@@ -14,12 +14,12 @@ typegen = ["crux_core/typegen"]
 [dependencies]
 anyhow.workspace = true
 bincode = "1.3.3"
-crux_core = { version = "0.6", path = "../../../crux_core" }
-crux_http = { version = "0.4", path = "../../../crux_http" }
-crux_kv = { version = "0.1", path = "../../../crux_kv" }
-crux_macros = { version = "0.3", path = "../../../crux_macros" }
-crux_platform = { version = "0.1", path = "../../../crux_platform" }
-crux_time = { version = "0.1", path = "../../../crux_time" }
+crux_core = "0.6"
+crux_http = "0.4"
+crux_kv = "0.1"
+crux_macros = "0.3"
+crux_platform = "0.1"
+crux_time = "0.1"
 derive_more = "0.99.17"
 lazy_static = "1.4.0"
 serde = { workspace = true, features = ["derive"] }
