@@ -9,6 +9,8 @@ env:
   CARGO_NET_RETRY: 10
   RUSTFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
   pages:
@@ -17,8 +19,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: Swatinem/rust-cache@v1
+
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Setup mdBook
         uses: jontze/action-mdbook@v2
@@ -35,9 +40,11 @@ jobs:
         run: mdbook build
 
       - name: Move outputs
-        run:
-          mkdir ./public && mv ./target/doc ./public/master_api_docs && mv
-          ./docs/book/html/* ./public/
+        run: |
+          set -e
+          mkdir ./public
+          mv ./target/doc ./public/master_api_docs
+          mv ./docs/book/html/* ./public/
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
