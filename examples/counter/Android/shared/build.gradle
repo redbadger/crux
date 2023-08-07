@@ -8,7 +8,7 @@ android {
     namespace 'com.example.counter.shared'
     compileSdk 34
 
-    ndkVersion '25.1.8937393'
+    ndkVersion '25.2.9519653'
 
     defaultConfig {
         minSdk 29
@@ -60,26 +60,31 @@ cargo {
 
 afterEvaluate {
     // The `cargoBuild` task isn't available until after evaluation.
-    android.libraryVariants.all { variant ->
+    android.libraryVariants.configureEach { variant ->
         def productFlavor = ""
         variant.productFlavors.each {
             productFlavor += "${it.name.capitalize()}"
         }
         def buildType = "${variant.buildType.name.capitalize()}"
 
-        tasks["compileDebugKotlin"].dependsOn(tasks["typesGen"], tasks["bindGen"])
+        tasks.named("compileDebugKotlin") {
+            it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
+        }
 
-        tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
+        tasks.named("generate${productFlavor}${buildType}Assets") {
+            it.dependsOn(tasks.named("cargoBuild"))
+        }
     }
 }
 
-task bindGen(type: Exec) {
+tasks.register('bindGen', Exec) {
     def outDir = "${projectDir}/../../shared_types/generated/java"
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine(
                 "cmd", "/c",
-                "cargo build -p shared && target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
+                "cargo build -p shared && " +
+                        "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
                         "--language kotlin " +
                         "--out-dir " + outDir.replace('/', '\\')
         )
@@ -96,7 +101,7 @@ task bindGen(type: Exec) {
     }
 }
 
-task typesGen(type: Exec) {
+tasks.register('typesGen', Exec) {
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine("cmd", "/c", "cargo build -p shared_types")
