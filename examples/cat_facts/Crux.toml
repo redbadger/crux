@@ -1,0 +1,34 @@
+name = "Cat Facts"
+description = "An example app that demonstrates calling Web APIs"
+authors = ["Red Badger Consulting Limited"]
+repository = "https://github.com/redbadger/crux/"
+
+[cores.shared]
+source = "shared"
+type_gen = "shared_types"
+capability_crates = ["crux_http", "crux_kv", "crux_platform", "crux_time"]
+
+[shells.android]
+template = "android"
+source = "Android"
+cores = ["shared"]
+
+[shells.cli]
+template = "cli"
+source = "cli"
+cores = ["shared"]
+
+[shells.iOS]
+template = "ios"
+source = "iOS"
+cores = ["shared"]
+
+[shells.web_nextjs]
+template = "nextjs"
+source = "web-nextjs"
+cores = ["shared"]
+
+[shells.web_yew]
+template = "yew"
+source = "web-yew"
+cores = ["shared"]

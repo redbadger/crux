@@ -1,0 +1,19 @@
+name = "Notes"
+description = "A simple note taking app that syncs across instances using CRDTs"
+authors = ["Red Badger Consulting Limited"]
+repository = "https://github.com/redbadger/crux/"
+
+[cores.shared]
+source = "shared"
+type_gen = "shared_types"
+capability_crates = ["crux_http"]
+
+[shells.iOS]
+template = "ios"
+source = "iOS"
+cores = ["shared"]
+
+[shells.web_nextjs]
+template = "nextjs"
+source = "web-nextjs"
+cores = ["shared"]

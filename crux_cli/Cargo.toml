@@ -1,0 +1,19 @@
+[package]
+name = "crux_cli"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "crux"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap = { version = "4.3.21", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
+toml = "0.7.6"
