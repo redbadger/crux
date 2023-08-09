@@ -1,5 +1,5 @@
 name = "Hello World"
-description = "2 cores: Helloo World and a _very_ simple counter app"
+description = "A Hello World core, and a _very_ simple counter core, which is wrapped with multiple shells"
 authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
 

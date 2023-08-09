@@ -13,7 +13,7 @@ pub fn read_config() -> Result<Workspace> {
         for (name, core) in &workspace.cores {
             if !core.source.exists() {
                 bail!(
-                    "Crux.toml: core ({name}) source directory ({path}) does not exist",
+                    "{CONFIG_FILE}: core ({name}) source directory ({path}) does not exist",
                     path = core.source.display()
                 );
             }
@@ -21,12 +21,12 @@ pub fn read_config() -> Result<Workspace> {
         for (name, shell) in &workspace.shells {
             if !shell.source.exists() {
                 bail!(
-                    "Crux.toml: shell ({name}) source directory ({path}) does not exist",
+                    "{CONFIG_FILE}: shell ({name}) source directory ({path}) does not exist",
                     path = shell.source.display()
                 );
             }
             if !shell.cores.iter().all(|core| all_cores.contains(core)) {
-                bail!("Crux.toml: shell ({name}) references a core that does not exist");
+                bail!("{CONFIG_FILE}: shell ({name}) references a core that does not exist");
             }
         }
         Ok(workspace)

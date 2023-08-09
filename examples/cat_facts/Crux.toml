@@ -1,5 +1,5 @@
 name = "Cat Facts"
-description = "An example app that demonstrates calling Web APIs"
+description = "An app that demonstrates using various capabilities"
 authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
 
