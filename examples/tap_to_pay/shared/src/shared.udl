@@ -1,0 +1,5 @@
+namespace shared {
+  sequence<u8> process_event([ByRef] sequence<u8> msg);
+  sequence<u8> handle_response([ByRef] sequence<u8> uuid, [ByRef] sequence<u8> res);
+  sequence<u8> view();
+};

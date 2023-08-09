@@ -1,0 +1,15 @@
+[package]
+name = "shared_types"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[build-dependencies]
+anyhow.workspace = true
+crux_core = { version = "0.6", path = "../../../crux_core", features = ["typegen"] }
+crux_http = { version = "0.4", path = "../../../crux_http" }
+shared = { path = "../shared" }

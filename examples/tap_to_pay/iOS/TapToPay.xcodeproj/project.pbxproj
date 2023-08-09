@@ -1,0 +1,509 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 52;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02AE63840F478552EB170E9A /* Core.swift in Sources */ = {isa = PBXBuildFile; fileRef = B612D7315A4650E7FECF1E8D /* Core.swift */; };
+		20D7C3E0B23AE56751B74EF4 /* ReceiptScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3EF1471D7064B16848A1901 /* ReceiptScreen.swift */; };
+		25D3F307C64EAF16CE20B494 /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 561C26363B9A8FD22B6A3AD5 /* libshared_static.a */; };
+		5AFBACFE6D4B55CC23C58C75 /* TapToPayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949587A4D28ACA77FC393505 /* TapToPayApp.swift */; };
+		769A241C09469A17A3B7D766 /* InputScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0BB1B12EA358358D52FEEBC /* InputScreen.swift */; };
+		896D9ABC89003912991676DC /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = FDB49091D37E1D522ED8F28E /* SharedTypes */; };
+		93255A5B94E0F1E174C492FE /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDCF48ECC7FB2224974B4076 /* RootView.swift */; };
+		A2D4E5ECBD534FC785A11F63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A84BC6357C415168E4F7BE9C /* Assets.xcassets */; };
+		A623D866B7B6120D6E9838CC /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = C155745D03B8A6032E0E060D /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B69B660D15D81B0434CA097E /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 1DE99E17B7848389BDC3782A /* shared.udl */; };
+		DA29B07D2DD0551A3DF541D2 /* PaymentFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5414CE2A3E300058C15A3D80 /* PaymentFlow.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXBuildRule section */
+		6055AF702D1D4215191B5FA8 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			filePatterns = "*.udl";
+			fileType = pattern.proxy;
+			inputFiles = (
+			);
+			isEditable = 1;
+			name = "Generate FFI";
+			outputFiles = (
+				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift",
+				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h",
+			);
+			outputFilesCompilerFlags = (
+			);
+			runOncePerArchitecture = 0;
+			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/debug/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
+		};
+/* End PBXBuildRule section */
+
+/* Begin PBXContainerItemProxy section */
+		5E621C1AF6758951D4657D66 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA6000B3FAD78995E25C4B2B;
+			remoteInfo = "uniffi-bindgen-bin";
+		};
+		5E8E16148360B1C98A4D097F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA6047B8670022A3B7869CC7;
+			remoteInfo = "shared-staticlib";
+		};
+		770A6E092A83ED6C00775EFB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA6029512E5F10F7F7FCAC5B;
+			remoteInfo = "shared-cdylib";
+		};
+		838ABE70EF2D2EA7FD0728EA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA6000B3FAD78109328FB0D5;
+			remoteInfo = "uniffi-bindgen-bin";
+		};
+		CFF44F6D972E8CF2687CDE4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA6047B86700FB09138082B7;
+			remoteInfo = "shared-staticlib";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1DE99E17B7848389BDC3782A /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
+		26C519A8A98148C39D13F7A4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5414CE2A3E300058C15A3D80 /* PaymentFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentFlow.swift; sourceTree = "<group>"; };
+		949587A4D28ACA77FC393505 /* TapToPayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapToPayApp.swift; sourceTree = "<group>"; };
+		A84BC6357C415168E4F7BE9C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B0BB1B12EA358358D52FEEBC /* InputScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputScreen.swift; sourceTree = "<group>"; };
+		B612D7315A4650E7FECF1E8D /* Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core.swift; sourceTree = "<group>"; };
+		BA50000798F11691CF817031 /* TapToPay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TapToPay.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D980B763F26C2F2246B45291 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
+		DDCF48ECC7FB2224974B4076 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		E9F1437A45FFD736CF54A408 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		F3EF1471D7064B16848A1901 /* ReceiptScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptScreen.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8A5262F1723DFE8DEBE7DC4A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				25D3F307C64EAF16CE20B494 /* libshared_static.a in Frameworks */,
+				896D9ABC89003912991676DC /* SharedTypes in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2E942EF58FF07A6B501003A5 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				E9F1437A45FFD736CF54A408 /* SharedTypes */,
+			);
+			name = Packages;
+			sourceTree = SOURCE_ROOT;
+		};
+		645776118A8B2DD18680D289 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				1DE99E17B7848389BDC3782A /* shared.udl */,
+			);
+			name = src;
+			path = ../shared/src;
+			sourceTree = "<group>";
+		};
+		674D615BD20D51FCB8924FBF /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				D980B763F26C2F2246B45291 /* Shared */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		73184950464100DA5738938E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B0BB1B12EA358358D52FEEBC /* InputScreen.swift */,
+				5414CE2A3E300058C15A3D80 /* PaymentFlow.swift */,
+				F3EF1471D7064B16848A1901 /* ReceiptScreen.swift */,
+				DDCF48ECC7FB2224974B4076 /* RootView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A6141830280F100AC54B6208 /* TapToPay */ = {
+			isa = PBXGroup;
+			children = (
+				A84BC6357C415168E4F7BE9C /* Assets.xcassets */,
+				B612D7315A4650E7FECF1E8D /* Core.swift */,
+				26C519A8A98148C39D13F7A4 /* Info.plist */,
+				949587A4D28ACA77FC393505 /* TapToPayApp.swift */,
+				73184950464100DA5738938E /* Views */,
+			);
+			path = TapToPay;
+			sourceTree = "<group>";
+		};
+		ADE32FA7145BAE7D70FDB181 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BA50000798F11691CF817031 /* TapToPay.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D85D9F497565C4213CF5323E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				561C26363B9A8FD22B6A3AD5 /* libshared_static.a */,
+				770A6E0A2A83ED6C00775EFB /* shared.dylib */,
+				C155745D03B8A6032E0E060D /* uniffi-bindgen */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DD15AB1A817305DB47319F04 = {
+			isa = PBXGroup;
+			children = (
+				2E942EF58FF07A6B501003A5 /* Packages */,
+				645776118A8B2DD18680D289 /* src */,
+				A6141830280F100AC54B6208 /* TapToPay */,
+				ADE32FA7145BAE7D70FDB181 /* Products */,
+				674D615BD20D51FCB8924FBF /* Projects */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B8F6CE706E5706B5CDC73460 /* TapToPay */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B40A45B43BF77109A24415F6 /* Build configuration list for PBXNativeTarget "TapToPay" */;
+			buildPhases = (
+				EBFFD2B44BA374BA4C738A54 /* Sources */,
+				00E45498A7027E220555336B /* Resources */,
+				8A5262F1723DFE8DEBE7DC4A /* Frameworks */,
+			);
+			buildRules = (
+				6055AF702D1D4215191B5FA8 /* PBXBuildRule */,
+			);
+			dependencies = (
+				5ED944F778473B27CB6DC438 /* PBXTargetDependency */,
+				BE0BB9EAFF85C67387E852A1 /* PBXTargetDependency */,
+			);
+			name = TapToPay;
+			packageProductDependencies = (
+				FDB49091D37E1D522ED8F28E /* SharedTypes */,
+			);
+			productName = TapToPay;
+			productReference = BA50000798F11691CF817031 /* TapToPay.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46D8D087D7DCE7848571F336 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1200;
+			};
+			buildConfigurationList = BB2D7599B654F57F66FA3004 /* Build configuration list for PBXProject "TapToPay" */;
+			compatibilityVersion = "Xcode 11.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DD15AB1A817305DB47319F04;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = D85D9F497565C4213CF5323E /* Products */;
+					ProjectRef = D980B763F26C2F2246B45291 /* Shared */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				B8F6CE706E5706B5CDC73460 /* TapToPay */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		561C26363B9A8FD22B6A3AD5 /* libshared_static.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libshared_static.a;
+			remoteRef = CFF44F6D972E8CF2687CDE4D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		770A6E0A2A83ED6C00775EFB /* shared.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = shared.dylib;
+			remoteRef = 770A6E092A83ED6C00775EFB /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		C155745D03B8A6032E0E060D /* uniffi-bindgen */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "uniffi-bindgen";
+			remoteRef = 838ABE70EF2D2EA7FD0728EA /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		00E45498A7027E220555336B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2D4E5ECBD534FC785A11F63 /* Assets.xcassets in Resources */,
+				A623D866B7B6120D6E9838CC /* uniffi-bindgen in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		EBFFD2B44BA374BA4C738A54 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				02AE63840F478552EB170E9A /* Core.swift in Sources */,
+				769A241C09469A17A3B7D766 /* InputScreen.swift in Sources */,
+				DA29B07D2DD0551A3DF541D2 /* PaymentFlow.swift in Sources */,
+				20D7C3E0B23AE56751B74EF4 /* ReceiptScreen.swift in Sources */,
+				93255A5B94E0F1E174C492FE /* RootView.swift in Sources */,
+				5AFBACFE6D4B55CC23C58C75 /* TapToPayApp.swift in Sources */,
+				B69B660D15D81B0434CA097E /* shared.udl in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5ED944F778473B27CB6DC438 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "uniffi-bindgen-bin";
+			targetProxy = 5E621C1AF6758951D4657D66 /* PBXContainerItemProxy */;
+		};
+		BE0BB9EAFF85C67387E852A1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "shared-staticlib";
+			targetProxy = 5E8E16148360B1C98A4D097F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		391535412C23ED5AF2CE5C28 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		80D2BF889EA7F72AF01CCE6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		ACE6B0E5F5490036A8FF3BE5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = TapToPay/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-w",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.tap-to-pay.TapToPay";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		C810944DAD328F0F387E6C9A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = TapToPay/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-w",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.tap-to-pay.TapToPay";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B40A45B43BF77109A24415F6 /* Build configuration list for PBXNativeTarget "TapToPay" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C810944DAD328F0F387E6C9A /* Debug */,
+				ACE6B0E5F5490036A8FF3BE5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BB2D7599B654F57F66FA3004 /* Build configuration list for PBXProject "TapToPay" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				391535412C23ED5AF2CE5C28 /* Debug */,
+				80D2BF889EA7F72AF01CCE6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FDB49091D37E1D522ED8F28E /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 46D8D087D7DCE7848571F336 /* Project object */;
+}
