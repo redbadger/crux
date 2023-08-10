@@ -1,12 +1,12 @@
 [package]
-name = "shared"
+name = "{{name}}"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.66"
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
-name = "shared"
+name = "{{name}}"
 
 [features]
 typegen = ["crux_core/typegen"]

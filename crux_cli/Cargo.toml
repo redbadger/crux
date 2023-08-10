@@ -15,5 +15,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap = { version = "4.3.21", features = ["derive"] }
+ramhorns = "0.14.0"
 serde = { workspace = true, features = ["derive"] }
 toml = "0.7.6"
+walkdir = "2.3.3"

@@ -9,14 +9,14 @@ pub struct Workspace {
     pub authors: Vec<String>,
     pub repository: Option<String>,
     pub cores: BTreeMap<String, Core>,
-    pub shells: BTreeMap<String, Shell>,
+    pub shells: Option<BTreeMap<String, Shell>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Core {
     pub source: PathBuf,
     pub type_gen: PathBuf,
-    pub capability_crates: Vec<String>,
+    pub crux_version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

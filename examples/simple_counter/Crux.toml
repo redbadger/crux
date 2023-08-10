@@ -1,5 +1,5 @@
-name = "Cat Facts"
-description = "An app that demonstrates using various capabilities"
+name = "Hello World"
+description = "A Hello World core, and a _very_ simple counter core, which is wrapped with multiple shells"
 authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
 
@@ -13,19 +13,29 @@ template = "android"
 source = "Android"
 cores = ["shared"]
 
-[shells.cli]
-template = "cli"
-source = "cli"
-cores = ["shared"]
-
 [shells.iOS]
 template = "ios"
 source = "iOS"
 cores = ["shared"]
 
+[shells.web_dioxus]
+template = "dioxus"
+source = "web-dioxus"
+cores = ["shared"]
+
+[shells.web_leptos]
+template = "leptos"
+source = "web-leptos"
+cores = ["shared"]
+
 [shells.web_nextjs]
 template = "nextjs"
 source = "web-nextjs"
+cores = ["shared"]
+
+[shells.web_remix]
+template = "remix"
+source = "web-remix"
 cores = ["shared"]
 
 [shells.web_yew]

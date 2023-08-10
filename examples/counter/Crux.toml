@@ -6,7 +6,7 @@ repository = "https://github.com/redbadger/crux/"
 [cores.shared]
 source = "shared"
 type_gen = "shared_types"
-capability_crates = ["crux_http"]
+crux_version = "0.6.3"
 
 [shells.android]
 template = "android"

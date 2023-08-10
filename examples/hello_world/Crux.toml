@@ -6,39 +6,4 @@ repository = "https://github.com/redbadger/crux/"
 [cores.shared]
 source = "shared"
 type_gen = "shared_types"
-capability_crates = ["crux_http"]
-
-[shells.android]
-template = "android"
-source = "Android"
-cores = ["shared"]
-
-[shells.iOS]
-template = "ios"
-source = "iOS"
-cores = ["shared"]
-
-[shells.web_dioxus]
-template = "dioxus"
-source = "web-dioxus"
-cores = ["shared"]
-
-[shells.web_leptos]
-template = "leptos"
-source = "web-leptos"
-cores = ["shared"]
-
-[shells.web_nextjs]
-template = "nextjs"
-source = "web-nextjs"
-cores = ["shared"]
-
-[shells.web_remix]
-template = "remix"
-source = "web-remix"
-cores = ["shared"]
-
-[shells.web_yew]
-template = "yew"
-source = "web-yew"
-cores = ["shared"]
+crux_version = "0.6.3"

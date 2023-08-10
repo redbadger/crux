@@ -18,15 +18,17 @@ pub fn read_config() -> Result<Workspace> {
                 );
             }
         }
-        for (name, shell) in &workspace.shells {
-            if !shell.source.exists() {
-                bail!(
-                    "{CONFIG_FILE}: shell ({name}) source directory ({path}) does not exist",
-                    path = shell.source.display()
-                );
-            }
-            if !shell.cores.iter().all(|core| all_cores.contains(core)) {
-                bail!("{CONFIG_FILE}: shell ({name}) references a core that does not exist");
+        if let Some(shells) = &workspace.shells {
+            for (name, shell) in shells {
+                if !shell.source.exists() {
+                    bail!(
+                        "{CONFIG_FILE}: shell ({name}) source directory ({path}) does not exist",
+                        path = shell.source.display()
+                    );
+                }
+                if !shell.cores.iter().all(|core| all_cores.contains(core)) {
+                    bail!("{CONFIG_FILE}: shell ({name}) references a core that does not exist");
+                }
             }
         }
         Ok(workspace)
