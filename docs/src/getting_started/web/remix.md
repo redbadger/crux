@@ -75,7 +75,7 @@ to add a `serverDependenciesToBundle` key to the object exported in
 `remix.config.js`:
 
 ```js
-{{#include ../../../../examples/hello_world/web-remix/remix.config.js}}
+{{#include ../../../../examples/simple_counter/web-remix/remix.config.js}}
 ```
 
 ## Add the Shared Types
@@ -146,19 +146,19 @@ it for us, giving it a cache-friendly hash-based name.
 ```
 
 ```ts
-{{#include ../../../../examples/hello_world/web-remix/app/entry.client.tsx}}
+{{#include ../../../../examples/simple_counter/web-remix/app/entry.client.tsx}}
 ```
 
 ## Create some UI
 
 ```admonish example
-We will use the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `app/routes/_index.tsx` to look like this:
 
 ```typescript
-{{#include ../../../../examples/hello_world/web-remix/app/routes/_index.tsx}}
+{{#include ../../../../examples/simple_counter/web-remix/app/routes/_index.tsx}}
 ```
 
 Now all we need is some CSS.
@@ -167,7 +167,7 @@ To add a CSS stylesheet, we can add it to the `Links` export in the
 `app/root.tsx` file.
 
 ```tsx
-{{#include ../../../../examples/hello_world/web-remix/app/root.tsx:links}}
+{{#include ../../../../examples/simple_counter/web-remix/app/root.tsx:links}}
 ```
 
 ## Build and serve our app
@@ -181,5 +181,5 @@ pnpm dev
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
 ```

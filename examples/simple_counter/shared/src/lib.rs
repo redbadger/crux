@@ -1,18 +1,18 @@
-pub mod hello_world; // not exposed so you can remove this in your project
+pub mod counter;
 
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub use crux_core::{bridge::Bridge, Core, Request};
 
-pub use hello_world::*;
+pub use counter::*;
 
 // TODO hide this plumbing
 
 uniffi::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Bridge<Effect, Hello> = Bridge::new(Core::new::<Capabilities>());
+    static ref CORE: Bridge<Effect, Counter> = Bridge::new(Core::new::<Capabilities>());
 }
 
 #[wasm_bindgen]

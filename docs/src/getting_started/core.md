@@ -43,7 +43,7 @@ root, to add the new library to our workspace. It should look something like
 this (the `package` and `dependencies` fields are just examples):
 
 ```toml
-{{#include ../../../examples/hello_world/Cargo.toml}}
+{{#include ../../../examples/simple_counter/Cargo.toml}}
 ```
 
 The library's manifest, at `/shared/Cargo.toml`, should look something like the
@@ -67,7 +67,7 @@ following, but there are a few things to note:
   you read the next section
 
 ```toml
-{{#include ../../../examples/hello_world/shared/Cargo.toml}}
+{{#include ../../../examples/simple_counter/shared/Cargo.toml}}
 ```
 
 ### FFI bindings
@@ -87,7 +87,7 @@ Generating the binary is simple, we just add the following to our crate, in a
 file called `/shared/src/bin/uniffi-bindgen.rs`.
 
 ```rust,ignore
-{{#include ../../../examples/hello_world/shared/src/bin/uniffi-bindgen.rs}}
+{{#include ../../../examples/simple_counter/shared/src/bin/uniffi-bindgen.rs}}
 ```
 
 And then we can build it with cargo.
@@ -137,18 +137,18 @@ the `Request` type and the capabilities we want to use in our native Shells, as
 well as our public types from the shared library.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/hello_world/shared/src/lib.rs}}
+{{#include ../../../examples/simple_counter/shared/src/lib.rs}}
 ```
 
 ### The app
 
 Now we are in a position to create a basic app in `/shared/src/app.rs`. This is
 from the
-[simple Counter example](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/counter.rs)
+[simple Counter example](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/counter.rs)
 (which also has tests, although we're not showing them here):
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/hello_world/shared/src/counter.rs:app}}
+{{#include ../../../examples/simple_counter/shared/src/counter.rs:app}}
 ```
 
 Make sure everything builds OK

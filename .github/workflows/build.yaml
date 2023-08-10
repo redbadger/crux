@@ -31,6 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Remove rust-toolchain.toml
+        shell: bash
+        run: |
+          # so we don't add tooling for all targets
+          rm rust-toolchain.toml
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -57,6 +63,21 @@ jobs:
         run: |
           ./scripts/test.sh
 
+  find-examples:
+    runs-on: ubuntu-latest
+    if:
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name !=
+      github.event.pull_request.base.repo.full_name
+    outputs:
+      examples: ${{ steps.find.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: find
+        run: |
+          EXAMPLES=$(ls -d examples/*/ | xargs -L 1 basename | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
+          echo "examples=$EXAMPLES" >> $GITHUB_OUTPUT
+
   examples:
     runs-on: ubuntu-latest
     container: ivangabriele/tauri:debian-bookworm-18
@@ -66,8 +87,24 @@ jobs:
       github.event.pull_request.head.repo.full_name !=
       github.event.pull_request.base.repo.full_name
 
+    needs: find-examples
+
+    strategy:
+      matrix:
+        example: ${{ fromJson(needs.find-examples.outputs.examples) }}
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
     steps:
       - uses: actions/checkout@v3
+
+      - name: Remove rust-toolchain.toml
+        shell: bash
+        run: |
+          # so we don't add tooling for all targets
+          rm ../../rust-toolchain.toml
 
       - name: Install rustfmt
         shell: bash
@@ -82,7 +119,20 @@ jobs:
           set -euxo pipefail
           curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - name: Build and Test examples
+      - name: Check formatting
+        shell: bash
+        run: cargo fmt --all --check
+
+      - name: Build ${{ matrix.example }}
+        shell: bash
+        run: cargo build
+
+      - name: Run tests
         shell: bash
         run: |
-          ./scripts/build_and_test_examples.sh
+          cargo nextest run --all-features
+
+      - name: Build & run doctests
+        shell: bash
+        run: |
+          cargo test --doc --no-fail-fast

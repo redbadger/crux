@@ -5,7 +5,7 @@ out_dir = "dist"
 asset_dir = "public"
 
 [web.app]
-title = "Crux Hello World example"
+title = "Crux Simple Counter example"
 
 [web.watcher]
 reload_html = true
