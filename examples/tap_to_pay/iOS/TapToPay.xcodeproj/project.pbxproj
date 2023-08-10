@@ -26,8 +26,6 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
-			inputFiles = (
-			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -56,7 +54,7 @@
 			remoteGlobalIDString = CA6047B8670022A3B7869CC7;
 			remoteInfo = "shared-staticlib";
 		};
-		770A6E092A83ED6C00775EFB /* PBXContainerItemProxy */ = {
+		770A6E0D2A84E38700775EFB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
 			proxyType = 2;
@@ -87,7 +85,7 @@
 		A84BC6357C415168E4F7BE9C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B0BB1B12EA358358D52FEEBC /* InputScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputScreen.swift; sourceTree = "<group>"; };
 		B612D7315A4650E7FECF1E8D /* Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core.swift; sourceTree = "<group>"; };
-		BA50000798F11691CF817031 /* TapToPay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TapToPay.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA50000798F11691CF817031 /* TapToPay.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TapToPay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D980B763F26C2F2246B45291 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		DDCF48ECC7FB2224974B4076 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		E9F1437A45FFD736CF54A408 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
@@ -167,7 +165,7 @@
 			isa = PBXGroup;
 			children = (
 				561C26363B9A8FD22B6A3AD5 /* libshared_static.a */,
-				770A6E0A2A83ED6C00775EFB /* shared.dylib */,
+				770A6E0E2A84E38700775EFB /* shared.dylib */,
 				C155745D03B8A6032E0E060D /* uniffi-bindgen */,
 			);
 			name = Products;
@@ -249,11 +247,11 @@
 			remoteRef = CFF44F6D972E8CF2687CDE4D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		770A6E0A2A83ED6C00775EFB /* shared.dylib */ = {
+		770A6E0E2A84E38700775EFB /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = 770A6E092A83ED6C00775EFB /* PBXContainerItemProxy */;
+			remoteRef = 770A6E0D2A84E38700775EFB /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 		C155745D03B8A6032E0E060D /* uniffi-bindgen */ = {
@@ -429,9 +427,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = TapToPay/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -443,7 +439,6 @@
 					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.example.tap-to-pay.TapToPay";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -454,9 +449,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = TapToPay/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -468,7 +461,6 @@
 					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.example.tap-to-pay.TapToPay";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";

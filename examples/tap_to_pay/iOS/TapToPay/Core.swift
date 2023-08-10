@@ -9,10 +9,10 @@ import Serde
 import SwiftUI
 import SharedTypes
 
+@MainActor
 class Core: ObservableObject {
     @Published var view = ViewModel(screen: .payment(Payment(amount: 0, status: .new)))
 
-    @MainActor
     func update(event: Event) {
         let reqs: [Request] = try! [Request].bincodeDeserialize(input: TapToPay.processEvent(try! event.bincodeSerialize()))
 
@@ -21,7 +21,6 @@ class Core: ObservableObject {
         }
     }
 
-    @MainActor
     func process_effect(request: Request) {
         switch request.effect {
         case .render(_):

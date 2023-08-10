@@ -7,6 +7,8 @@ packages:
     path: ../shared_types/generated/swift/SharedTypes
 options:
   bundleIdPrefix: com.example.tap-to-pay
+attributes:
+  BuildIndependentTargetsInParallel: true
 targets:
   TapToPay:
     type: application
