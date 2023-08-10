@@ -1,0 +1,12 @@
+[workspace]
+members = ["shared", "shared_types"]
+
+[workspace.package]
+authors = ["Red Badger Consulting Limited"]
+edition = "2021"
+keywords = ["tap-to-pay"]
+rust-version = "1.68"
+
+[workspace.dependencies]
+anyhow = "1.0.70"
+serde = "1.0.159"
