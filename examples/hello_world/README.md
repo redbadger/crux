@@ -4,13 +4,6 @@ Simple "hello world" example, with tests.
 
 > Note: this is only a shared lib (and does not include any native shells).
 
-### Notes:
-
-1. This example currently depends on the `pnpm` package manager when generating
-   types for TypeScript. We are currently revisiting the type generation for
-   foreign types and so this requirement will probably go, but for now, please
-   [install `pnpm`](https://pnpm.io/installation).
-
 ## Hello World
 
 There is a single `None` event (enums with no variants cannot be instantiated).
