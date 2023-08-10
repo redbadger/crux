@@ -107,7 +107,20 @@ jobs:
           set -euxo pipefail
           curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - name: Build and Test examples
+      - name: Check formatting
+        shell: bash
+        run: cargo fmt --all --check
+
+      - name: Build ${{ matrix.example }}
+        shell: bash
+        run: cargo build
+
+      - name: Run tests
         shell: bash
         run: |
-          ./scripts/build_and_test_examples.sh
+          cargo nextest run --all-features
+
+      - name: Build & run doctests
+        shell: bash
+        run: |
+          cargo test --doc --no-fail-fast
