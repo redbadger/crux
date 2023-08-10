@@ -22,16 +22,16 @@ pub struct ViewModel {
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
 #[derive(Effect)]
-#[effect(app = "Hello")]
+#[effect(app = "Counter")]
 pub struct Capabilities {
     render: Render<Event>,
 }
 
 #[derive(Default)]
-pub struct Hello;
+pub struct Counter;
 
 // ANCHOR: impl_app
-impl App for Hello {
+impl App for Counter {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -64,7 +64,7 @@ mod test {
 
     #[test]
     fn renders() {
-        let app = AppTester::<Hello, _>::default();
+        let app = AppTester::<Counter, _>::default();
         let mut model = Model::default();
 
         let update = app.update(Event::Reset, &mut model);
@@ -75,7 +75,7 @@ mod test {
 
     #[test]
     fn shows_initial_count() {
-        let app = AppTester::<Hello, _>::default();
+        let app = AppTester::<Counter, _>::default();
         let model = Model::default();
 
         let actual_view = app.view(&model).count;
@@ -85,7 +85,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = AppTester::<Hello, _>::default();
+        let app = AppTester::<Counter, _>::default();
         let mut model = Model::default();
 
         let update = app.update(Event::Increment, &mut model);
@@ -100,7 +100,7 @@ mod test {
 
     #[test]
     fn decrements_count() {
-        let app = AppTester::<Hello, _>::default();
+        let app = AppTester::<Counter, _>::default();
         let mut model = Model::default();
 
         let update = app.update(Event::Decrement, &mut model);
@@ -115,7 +115,7 @@ mod test {
 
     #[test]
     fn resets_count() {
-        let app = AppTester::<Hello, _>::default();
+        let app = AppTester::<Counter, _>::default();
         let mut model = Model::default();
 
         app.update(Event::Increment, &mut model);
@@ -128,7 +128,7 @@ mod test {
 
     #[test]
     fn counts_up_and_down() {
-        let app = AppTester::<Hello, _>::default();
+        let app = AppTester::<Counter, _>::default();
         let mut model = Model::default();
 
         app.update(Event::Increment, &mut model);

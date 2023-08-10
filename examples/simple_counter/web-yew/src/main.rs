@@ -2,11 +2,11 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 
-use shared::{Capabilities, Core, Effect, Event, Hello};
+use shared::{Capabilities, Core, Counter, Effect, Event};
 
 #[derive(Default)]
 struct RootComponent {
-    core: Rc<Core<Effect, Hello>>,
+    core: Rc<Core<Effect, Counter>>,
 }
 
 enum Message {

@@ -32,29 +32,29 @@ Now we can start fleshing out our project. Let's add some dependencies to
 `web-yew/Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/hello_world/web-yew/Cargo.toml}}
+{{#include ../../../../examples/simple_counter/web-yew/Cargo.toml}}
 ```
 
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-{{#include ../../../../examples/hello_world/web-yew/index.html}}
+{{#include ../../../../examples/simple_counter/web-yew/index.html}}
 ```
 
 ## Create some UI
 
-### Hello World counter example
+### Simple counter example
 
 ```admonish example
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Yew apps in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `src/main.rs` to look like this:
 
 ```rust,noplayground
-{{#include ../../../../examples/hello_world/web-yew/src/main.rs}}
+{{#include ../../../../examples/simple_counter/web-yew/src/main.rs}}
 ```
 
 ## Build and serve our app
@@ -73,5 +73,5 @@ trunk serve --open
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
 ```

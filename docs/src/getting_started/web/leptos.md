@@ -32,7 +32,7 @@ Now we can `cd` into the `web-leptos` directory and start fleshing out our
 project. Let's add some dependencies to `shared/Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/hello_world/web-leptos/Cargo.toml}}
+{{#include ../../../../examples/simple_counter/web-leptos/Cargo.toml}}
 ```
 
 ```admonish tip
@@ -46,23 +46,23 @@ the `get()` and `update()` functions explicitly.
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-{{#include ../../../../examples/hello_world/web-leptos/index.html}}
+{{#include ../../../../examples/simple_counter/web-leptos/index.html}}
 ```
 
 ## Create some UI
 
-### Hello World counter example
+### Simple counter example
 
 ```admonish example
 There is slightly more complex [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Leptos app in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `src/main.rs` to look like this:
 
 ```rust,noplayground
-{{#include ../../../../examples/hello_world/web-leptos/src/main.rs}}
+{{#include ../../../../examples/simple_counter/web-leptos/src/main.rs}}
 ```
 
 ## Build and serve our app
@@ -81,5 +81,5 @@ trunk serve --open
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
 ```

@@ -50,30 +50,30 @@ Now we can start fleshing out our project. Let's add some dependencies to the
 project's `Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/hello_world/web-dioxus/Cargo.toml}}
+{{#include ../../../../examples/simple_counter/web-dioxus/Cargo.toml}}
 ```
 
 ## Create some UI
 
-### Hello World counter example
+### Simple counter example
 
 ```admonish example
 There is slightly more complex [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Dioxus app in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `src/main.rs` to look like this:
 
 ```rust,noplayground
-{{#include ../../../../examples/hello_world/web-dioxus/src/main.rs}}
+{{#include ../../../../examples/simple_counter/web-dioxus/src/main.rs}}
 ```
 
 We can add a title and a stylesheet by editing
-`examples/hello_world/web-dioxus/Dioxus.toml`.
+`examples/simple_counter/web-dioxus/Dioxus.toml`.
 
 ```toml
-{{#include ../../../../examples/hello_world/web-dioxus/Dioxus.toml}}
+{{#include ../../../../examples/simple_counter/web-dioxus/Dioxus.toml}}
 ```
 
 ## Build and serve our app
@@ -87,5 +87,5 @@ dx serve
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
 ```

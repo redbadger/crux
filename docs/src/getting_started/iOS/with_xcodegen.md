@@ -68,24 +68,24 @@ we can open in Xcode. It should build OK, but we will need to add some code!
 
 ## Create some UI and run in the Simulator, or on an iPhone
 
-### Hello World counter example
+### Simple counter example
 
 ```admonish example
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of iOS apps in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Create `iOS/CounterApp/ContentView.swift` to look like this:
 
 ```swift
-{{#include ../../../../examples/hello_world/iOS/CounterApp/ContentView.swift}}
+{{#include ../../../../examples/simple_counter/iOS/CounterApp/ContentView.swift}}
 ```
 
 And create `iOS/CounterApp/CounterAppApp.swift` to look like this:
 
 ```swift
-{{#include ../../../../examples/hello_world/iOS/CounterApp/CounterAppApp.swift}}
+{{#include ../../../../examples/simple_counter/iOS/CounterApp/CounterAppApp.swift}}
 ```
 
 Run `xcodegen` again to update the Xcode project with these newly created source
@@ -97,5 +97,5 @@ before you build.
 ```admonish success
 You should then be able to run the app in the simulator or on an iPhone, and it should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
 ```

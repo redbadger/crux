@@ -7,6 +7,8 @@ packages:
     path: ../shared_types/generated/swift/SharedTypes
 options:
   bundleIdPrefix: com.example.counter
+attributes:
+  BuildIndependentTargetsInParallel: true
 targets:
   CounterApp:
     type: application

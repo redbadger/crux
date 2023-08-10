@@ -127,18 +127,18 @@ pnpm add ../shared_types/generated/typescript
 
 ## Create some UI
 
-### Hello World counter example
+### Simple counter example
 
 ```admonish example
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Next.js apps in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `web-nextjs/pages/index.tsx` to look like this:
 
 ```typescript
-{{#include ../../../../examples/hello_world/web-nextjs/src/app/page.tsx}}
+{{#include ../../../../examples/simple_counter/web-nextjs/src/app/page.tsx}}
 ```
 
 Now all we need is some CSS. First add the `Bulma` package, and then import it
@@ -149,7 +149,7 @@ pnpm add bulma
 ```
 
 ```typescript
-{{#include ../../../../examples/hello_world/web-nextjs/src/app/layout.tsx}}
+{{#include ../../../../examples/simple_counter/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app
@@ -163,5 +163,5 @@ pnpm dev
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
 ```

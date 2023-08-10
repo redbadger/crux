@@ -5,7 +5,7 @@ use dioxus_web::Config;
 use futures_util::StreamExt;
 use log::LevelFilter;
 
-use shared::{Capabilities, Core, Effect, Event, Hello, ViewModel};
+use shared::{Capabilities, Core, Counter, Effect, Event, ViewModel};
 
 fn main() {
     dioxus_logger::init(LevelFilter::Info).expect("failed to init logger");
@@ -16,7 +16,7 @@ fn main() {
     dioxus_web::launch_with_props(app, core, Config::new());
 }
 
-fn app(cx: Scope<Rc<Core<Effect, Hello>>>) -> Element {
+fn app(cx: Scope<Rc<Core<Effect, Counter>>>) -> Element {
     let core = cx.props;
     let view = use_state(cx, || core.view());
     let dispatcher = use_coroutine(cx, |rx| {
@@ -56,7 +56,7 @@ fn app(cx: Scope<Rc<Core<Effect, Hello>>>) -> Element {
 async fn core_service(
     mut rx: UnboundedReceiver<Event>,
     view: UseState<ViewModel>,
-    core: &Rc<Core<Effect, Hello>>,
+    core: &Rc<Core<Effect, Counter>>,
 ) {
     while let Some(event) = rx.next().await {
         log::info!("event: {:?}", event);
@@ -67,7 +67,7 @@ async fn core_service(
     }
 }
 
-fn process_effect(effect: Effect, view: &UseState<ViewModel>, core: &Rc<Core<Effect, Hello>>) {
+fn process_effect(effect: Effect, view: &UseState<ViewModel>, core: &Rc<Core<Effect, Counter>>) {
     match effect {
         Effect::Render(_) => {
             view.set(core.view());
