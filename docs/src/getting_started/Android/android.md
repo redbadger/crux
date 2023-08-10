@@ -76,7 +76,7 @@ Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like
 this:
 
 ```gradle
-{{#include ../../../../examples/hello_world/Android/app/build.gradle}}
+{{#include ../../../../examples/simple_counter/Android/app/build.gradle}}
 ```
 
 ## The Rust shared library
@@ -97,14 +97,14 @@ Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like
 this:
 
 ```gradle
-{{#include ../../../../examples/hello_world/Android/build.gradle}}
+{{#include ../../../../examples/simple_counter/Android/build.gradle}}
 ```
 
 Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
 like this:
 
 ```gradle
-{{#include ../../../../examples/hello_world/Android/shared/build.gradle}}
+{{#include ../../../../examples/simple_counter/Android/shared/build.gradle}}
 
 ```
 
@@ -169,23 +169,23 @@ shared_types/generated/java
 
 ## Create some UI and run in the Simulator
 
-### Hello World counter example
+### Simple counter example
 
 ```admonish example
 There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Android apps in the Crux repository.
 
-However, the simplest example is the [Hello World counter example](https://github.com/redbadger/crux/tree/master/examples/hello_world), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 Edit `/Android/app/src/main/java/com/example/counter/MainActivity.kt` to look
 like this:
 
 ```kotlin
-{{#include ../../../../examples/hello_world/Android/app/src/main/java/com/example/counter/MainActivity.kt}}
+{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/counter/MainActivity.kt}}
 ```
 
 ```admonish success
 You should then be able to run the app in the simulator, and it should look like this:
 
-<p align="center"><img alt="hello world app" src="./hello_world.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
 ```
