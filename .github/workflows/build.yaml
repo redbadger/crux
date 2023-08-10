@@ -57,6 +57,21 @@ jobs:
         run: |
           ./scripts/test.sh
 
+  find-examples:
+    runs-on: ubuntu-latest
+    if:
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name !=
+      github.event.pull_request.base.repo.full_name
+    outputs:
+      examples: ${{ steps.find.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: find
+        run: |
+          EXAMPLES=$(ls -d examples/*/ | xargs -L 1 basename | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
+          echo "examples=$EXAMPLES" >> $GITHUB_OUTPUT
+
   examples:
     runs-on: ubuntu-latest
     container: ivangabriele/tauri:debian-bookworm-18
@@ -65,6 +80,16 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
       github.event.pull_request.base.repo.full_name
+
+    needs: find-examples
+
+    strategy:
+      matrix:
+        example: ${{ fromJson(needs.find-examples.outputs.examples) }}
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
 
     steps:
       - uses: actions/checkout@v3
