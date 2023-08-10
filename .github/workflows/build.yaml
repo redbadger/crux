@@ -104,7 +104,7 @@ jobs:
         shell: bash
         run: |
           # so we don't add tooling for all targets
-          rm rust-toolchain.toml
+          rm ../../rust-toolchain.toml
 
       - name: Install rustfmt
         shell: bash
