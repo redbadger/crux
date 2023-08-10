@@ -5,7 +5,7 @@ use dioxus_web::Config;
 use futures_util::StreamExt;
 use log::LevelFilter;
 
-use shared::{Capabilities, Core, Effect, Event, Counter, ViewModel};
+use shared::{Capabilities, Core, Counter, Effect, Event, ViewModel};
 
 fn main() {
     dioxus_logger::init(LevelFilter::Info).expect("failed to init logger");
