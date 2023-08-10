@@ -31,6 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Remove rust-toolchain.toml
+        shell: bash
+        run: |
+          # so we don't add tooling for all targets
+          rm rust-toolchain.toml
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -93,6 +99,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Remove rust-toolchain.toml
+        shell: bash
+        run: |
+          # so we don't add tooling for all targets
+          rm rust-toolchain.toml
 
       - name: Install rustfmt
         shell: bash
