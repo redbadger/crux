@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::BTreeMap,
     env, fs,
     path::{Path, PathBuf},
@@ -8,7 +7,6 @@ use std::{
 use anyhow::Result;
 use ignore::Walk;
 use ramhorns::{Content, Template};
-use similar::{capture_diff_slices, Algorithm, ChangeTag, DiffOp};
 
 use crate::{display, workspace};
 
@@ -30,16 +28,11 @@ pub(crate) fn doctor(template_dir: &Path) -> Result<()> {
         let root = current_dir.join(&core.source);
         let (desired, actual) = read_files(&root, &template_root, workspace_name, name)?;
 
-        let desired_filenames = &get_keys(&desired);
-        let actual_filenames = &get_keys(&actual);
-
-        let ops = &capture_diff_slices(Algorithm::Myers, desired_filenames, actual_filenames);
-
-        let missing = filter_changes(ChangeTag::Delete, ops, desired_filenames, actual_filenames);
+        let missing = find_missing_files(&desired, &actual);
         println!("Missing files: {:?} \n", missing);
 
-        let existing = filter_changes(ChangeTag::Equal, ops, desired_filenames, actual_filenames);
-        for file_name in existing {
+        let common: Vec<String> = find_common_files(&desired, &actual);
+        for file_name in common {
             let desired = desired
                 .get(&PathBuf::from(&file_name))
                 .expect("file not in map");
@@ -51,28 +44,6 @@ pub(crate) fn doctor(template_dir: &Path) -> Result<()> {
     }
 
     workspace::write_config(&workspace)
-}
-
-fn get_keys(desired: &FileMap) -> Vec<Cow<'_, str>> {
-    desired.keys().map(|k| k.to_string_lossy()).collect()
-}
-
-fn filter_changes(
-    tag: ChangeTag,
-    ops: &Vec<DiffOp>,
-    old: &Vec<Cow<'_, str>>,
-    new: &Vec<Cow<'_, str>>,
-) -> Vec<String> {
-    ops.iter()
-        .flat_map(|x| x.iter_changes(old, new))
-        .filter_map(|x| {
-            if x.tag() == tag {
-                Some(x.value().to_string())
-            } else {
-                None
-            }
-        })
-        .collect()
 }
 
 fn read_files(
@@ -118,6 +89,26 @@ fn ensure_trailing_newline(s: &str) -> String {
     s
 }
 
+fn find_missing_files(desired: &FileMap, actual: &FileMap) -> Vec<String> {
+    let mut missing = Vec::new();
+    for (k, _) in desired {
+        if !actual.contains_key(k) {
+            missing.push(k.to_string_lossy().to_string());
+        }
+    }
+    missing
+}
+
+fn find_common_files(desired: &FileMap, actual: &FileMap) -> Vec<String> {
+    let mut common = Vec::new();
+    for (k, _) in desired {
+        if actual.contains_key(k) {
+            common.push(k.to_string_lossy().to_string());
+        }
+    }
+    common
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -127,5 +118,29 @@ mod test {
         assert_eq!(ensure_trailing_newline("hello\n"), "hello\n");
         assert_eq!(ensure_trailing_newline("hello\n \t"), "hello\n");
         assert_eq!(ensure_trailing_newline("hello\n\n "), "hello\n");
+    }
+
+    #[test]
+    fn test_find_missing_files() {
+        let mut desired_map = FileMap::new();
+        desired_map.insert(PathBuf::from("foo"), "foo".to_string());
+        desired_map.insert(PathBuf::from("bar"), "bar".to_string());
+        let mut actual_map = FileMap::new();
+        actual_map.insert(PathBuf::from("foo"), "foo".to_string());
+        let expected = vec!["bar"];
+        let actual = find_missing_files(&desired_map, &actual_map);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_find_common_files() {
+        let mut desired_map = FileMap::new();
+        desired_map.insert(PathBuf::from("foo"), "foo".to_string());
+        desired_map.insert(PathBuf::from("bar"), "bar".to_string());
+        let mut actual_map = FileMap::new();
+        actual_map.insert(PathBuf::from("foo"), "foo".to_string());
+        let expected = vec!["foo"];
+        let actual = find_common_files(&desired_map, &actual_map);
+        assert_eq!(expected, actual);
     }
 }
