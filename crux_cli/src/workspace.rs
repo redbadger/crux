@@ -9,7 +9,12 @@ pub fn read_config() -> Result<Workspace> {
     let path = PathBuf::from(CONFIG_FILE);
     if let Ok(file) = &fs::read_to_string(path) {
         let workspace: Workspace = toml::from_str(file)?;
+
         let all_cores = workspace.cores.keys().cloned().collect::<Vec<_>>();
+        if all_cores.len() == 0 {
+            bail!("{CONFIG_FILE}: no cores defined");
+        }
+
         for (name, core) in &workspace.cores {
             if !core.source.exists() {
                 bail!(
@@ -18,6 +23,7 @@ pub fn read_config() -> Result<Workspace> {
                 );
             }
         }
+
         if let Some(shells) = &workspace.shells {
             for (name, shell) in shells {
                 if !shell.source.exists() {
@@ -31,6 +37,7 @@ pub fn read_config() -> Result<Workspace> {
                 }
             }
         }
+
         Ok(workspace)
     } else {
         Ok(Workspace::default())
