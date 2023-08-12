@@ -25,25 +25,48 @@ pub(crate) fn doctor(template_dir: &Path) -> Result<()> {
     let template_root = current_dir.join(template_dir).canonicalize()?;
 
     for (name, core) in &workspace.cores {
-        let root = current_dir.join(&core.source);
-        let (desired, actual) = read_files(&root, &template_root, workspace_name, name)?;
-
-        let missing = find_missing_files(&desired, &actual);
-        println!("Missing files: {:?} \n", missing);
-
-        let common: Vec<String> = find_common_files(&desired, &actual);
-        for file_name in common {
-            let desired = desired
-                .get(&PathBuf::from(&file_name))
-                .expect("file not in map");
-            let actual = actual
-                .get(&PathBuf::from(&file_name))
-                .expect("file not in map");
-            display::show_diff(&file_name, desired, actual);
-        }
+        compare(
+            current_dir.join(&core.source),
+            template_root.join("shared"),
+            workspace_name,
+            name,
+        )?;
+        compare(
+            current_dir.join(&core.type_gen),
+            template_root.join("shared_types"),
+            workspace_name,
+            name,
+        )?;
     }
 
     workspace::write_config(&workspace)
+}
+
+fn compare(
+    root: PathBuf,
+    template_root: PathBuf,
+    workspace_name: &String,
+    name: &String,
+) -> Result<(), anyhow::Error> {
+    println!(
+        "{:-<80}\nSource:    {}\nTemplates: {}",
+        "",
+        root.display(),
+        template_root.display()
+    );
+    let (desired, actual) = read_files(&root, &template_root, workspace_name, name)?;
+    let missing = find_missing_files(&desired, &actual);
+    println!("Missing files: {:?}", missing);
+    let common: Vec<String> = find_common_files(&desired, &actual);
+    Ok(for file_name in common {
+        let desired = desired
+            .get(&PathBuf::from(&file_name))
+            .expect("file not in map");
+        let actual = actual
+            .get(&PathBuf::from(&file_name))
+            .expect("file not in map");
+        display::show_diff(&file_name, desired, actual);
+    })
 }
 
 fn read_files(
