@@ -49,24 +49,15 @@ fn compare(
     name: &String,
 ) -> Result<(), anyhow::Error> {
     println!(
-        "{:-<80}\nSource:    {}\nTemplates: {}",
+        "{:-<80}\nActual:  {}\nDesired: {}",
         "",
         root.display(),
         template_root.display()
     );
-    let (desired, actual) = read_files(&root, &template_root, workspace_name, name)?;
-    let missing = find_missing_files(&desired, &actual);
-    println!("Missing files: {:?}", missing);
-    let common: Vec<String> = find_common_files(&desired, &actual);
-    Ok(for file_name in common {
-        let desired = desired
-            .get(&PathBuf::from(&file_name))
-            .expect("file not in map");
-        let actual = actual
-            .get(&PathBuf::from(&file_name))
-            .expect("file not in map");
-        display::show_diff(&file_name, desired, actual);
-    })
+    let (actual, desired) = &read_files(&root, &template_root, workspace_name, name)?;
+    missing(actual, desired);
+    common(actual, desired);
+    Ok(())
 }
 
 fn read_files(
@@ -75,8 +66,17 @@ fn read_files(
     workspace_name: &String,
     name: &String,
 ) -> Result<(FileMap, FileMap)> {
-    let mut desired = FileMap::new();
     let mut actual = FileMap::new();
+    for entry in Walk::new(&root).into_iter().filter_map(|e| e.ok()) {
+        if entry.file_type().expect("should have a file type").is_dir() {
+            continue;
+        }
+        let contents = fs::read_to_string(entry.path())?;
+        let relative = entry.path().strip_prefix(&root)?.to_path_buf();
+        actual.insert(relative, contents);
+    }
+
+    let mut desired = FileMap::new();
     for entry in Walk::new(template_root).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().expect("should have a file type").is_dir() {
             continue;
@@ -94,15 +94,29 @@ fn read_files(
         let relative = entry.path().strip_prefix(template_root)?.to_path_buf();
         desired.insert(relative, rendered);
     }
-    for entry in Walk::new(&root).into_iter().filter_map(|e| e.ok()) {
-        if entry.file_type().expect("should have a file type").is_dir() {
-            continue;
+
+    Ok((actual, desired))
+}
+
+fn missing(actual: &FileMap, desired: &FileMap) {
+    let missing = difference(actual, desired);
+    if missing.len() == 0 {
+        println!("No missing files");
+    } else {
+        println!("Missing files:");
+        for file_name in missing {
+            println!("  {}", file_name.to_string_lossy());
         }
-        let contents = fs::read_to_string(entry.path())?;
-        let relative = entry.path().strip_prefix(&root)?.to_path_buf();
-        actual.insert(relative, contents);
+        println!("");
     }
-    Ok((desired, actual))
+}
+
+fn common(actual: &FileMap, desired: &FileMap) {
+    for file_name in &intersection(actual, desired) {
+        let desired = desired.get(file_name).expect("file not in map");
+        let actual = actual.get(file_name).expect("file not in map");
+        display::show_diff(file_name, desired, actual);
+    }
 }
 
 /// Trim whitespace from end of line and ensure trailing newline
@@ -112,21 +126,23 @@ fn ensure_trailing_newline(s: &str) -> String {
     s
 }
 
-fn find_missing_files(desired: &FileMap, actual: &FileMap) -> Vec<String> {
+/// files in second but not in first
+fn difference(first: &FileMap, second: &FileMap) -> Vec<PathBuf> {
     let mut missing = Vec::new();
-    for (k, _) in desired {
-        if !actual.contains_key(k) {
-            missing.push(k.to_string_lossy().to_string());
+    for (k, _) in second {
+        if !first.contains_key(k) {
+            missing.push(k.clone());
         }
     }
     missing
 }
 
-fn find_common_files(desired: &FileMap, actual: &FileMap) -> Vec<String> {
+/// files in both first and second
+fn intersection(first: &FileMap, second: &FileMap) -> Vec<PathBuf> {
     let mut common = Vec::new();
-    for (k, _) in desired {
-        if actual.contains_key(k) {
-            common.push(k.to_string_lossy().to_string());
+    for (k, _) in first {
+        if second.contains_key(k) {
+            common.push(k.clone());
         }
     }
     common
@@ -145,25 +161,29 @@ mod test {
 
     #[test]
     fn test_find_missing_files() {
+        let mut actual_map = FileMap::new();
+        actual_map.insert(PathBuf::from("foo"), "foo".to_string());
+
         let mut desired_map = FileMap::new();
         desired_map.insert(PathBuf::from("foo"), "foo".to_string());
         desired_map.insert(PathBuf::from("bar"), "bar".to_string());
-        let mut actual_map = FileMap::new();
-        actual_map.insert(PathBuf::from("foo"), "foo".to_string());
-        let expected = vec!["bar"];
-        let actual = find_missing_files(&desired_map, &actual_map);
+
+        let expected = vec![PathBuf::from("bar")];
+        let actual = difference(&actual_map, &desired_map);
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn test_find_common_files() {
+        let mut actual_map = FileMap::new();
+        actual_map.insert(PathBuf::from("foo"), "foo".to_string());
+
         let mut desired_map = FileMap::new();
         desired_map.insert(PathBuf::from("foo"), "foo".to_string());
         desired_map.insert(PathBuf::from("bar"), "bar".to_string());
-        let mut actual_map = FileMap::new();
-        actual_map.insert(PathBuf::from("foo"), "foo".to_string());
-        let expected = vec!["foo"];
-        let actual = find_common_files(&desired_map, &actual_map);
+
+        let expected = vec![PathBuf::from("foo")];
+        let actual = intersection(&actual_map, &desired_map);
         assert_eq!(expected, actual);
     }
 }

@@ -1,13 +1,13 @@
-use std::fmt;
+use std::{fmt, path::Path};
 
 use console::{style, Style};
 use similar::{ChangeTag, TextDiff};
 
-pub(crate) fn show_diff(file_name: &str, desired: &str, actual: &str) {
+pub(crate) fn show_diff(file_name: &Path, desired: &str, actual: &str) {
     let diff = TextDiff::from_lines(actual, desired);
     for (idx, group) in diff.grouped_ops(3).iter().enumerate() {
         if idx == 0 {
-            println!("\n{:-<80}", file_name);
+            println!("{:-<80}", file_name.to_string_lossy());
         }
         for op in group {
             for change in diff.iter_inline_changes(op) {
@@ -34,6 +34,7 @@ pub(crate) fn show_diff(file_name: &str, desired: &str, actual: &str) {
                 }
             }
         }
+        println!(""); // empty line between diffs
     }
 }
 struct Line(Option<usize>);
