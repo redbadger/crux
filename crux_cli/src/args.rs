@@ -14,21 +14,24 @@ use clap::{ArgAction, Parser, Subcommand};
     propagate_version = true
 )]
 pub(crate) struct Cli {
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+
+    #[arg(long, short, action = ArgAction::Count)]
+    pub verbose: u8,
+
+    #[arg(long, short, default_value = "false")]
+    pub include_source_code: bool,
+
     /// temporary
     #[arg(long, short)]
     pub template_dir: PathBuf,
-    #[command(subcommand)]
-    pub command: Option<Commands>,
-    #[arg(long, short, action = ArgAction::Count)]
-    pub verbose: u8,
 }
 
 #[derive(Subcommand)]
 pub(crate) enum Commands {
     #[command(visible_alias = "doc")]
     Doctor {
-        #[arg(long, short)]
-        list: bool,
         #[arg(long, short)]
         fix: Option<PathBuf>,
     },

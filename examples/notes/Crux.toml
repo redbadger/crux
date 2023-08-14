@@ -9,11 +9,11 @@ type_gen = "shared_types"
 crux_version = "0.6.3"
 
 [shells.iOS]
-template = "ios"
+template = "iOS"
 source = "iOS"
 cores = ["shared"]
 
 [shells.web_nextjs]
-template = "nextjs"
+template = "web-nextjs"
 source = "web-nextjs"
 cores = ["shared"]

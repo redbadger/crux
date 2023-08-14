@@ -9,7 +9,7 @@ type_gen = "shared_types"
 crux_version = "0.6.3"
 
 [shells.android]
-template = "android"
+template = "Android"
 source = "Android"
 cores = ["shared"]
 
@@ -19,16 +19,16 @@ source = "cli"
 cores = ["shared"]
 
 [shells.iOS]
-template = "ios"
+template = "iOS"
 source = "iOS"
 cores = ["shared"]
 
 [shells.web_nextjs]
-template = "nextjs"
+template = "web-nextjs"
 source = "web-nextjs"
 cores = ["shared"]
 
 [shells.web_yew]
-template = "yew"
+template = "web-yew"
 source = "web-yew"
 cores = ["shared"]

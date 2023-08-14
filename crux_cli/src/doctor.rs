@@ -9,14 +9,17 @@ use ignore::Walk;
 use ramhorns::Template;
 
 use crate::{
-    display,
+    diff,
     template::{Context, CoreContext, ShellContext},
     workspace,
 };
 
+const SOURCE_CODE_EXTENSIONS: [&str; 9] =
+    ["rs", "kt", "swift", "ts", "js", "tsx", "jsx", "html", "css"];
+
 type FileMap = BTreeMap<PathBuf, String>;
 
-pub(crate) fn doctor(template_dir: &Path, verbosity: u8) -> Result<()> {
+pub(crate) fn doctor(template_dir: &Path, verbosity: u8, include_source_code: bool) -> Result<()> {
     let workspace = workspace::read_config()?;
     let current_dir = &env::current_dir()?;
     let template_root = current_dir.join(template_dir).canonicalize()?;
@@ -26,12 +29,24 @@ pub(crate) fn doctor(template_dir: &Path, verbosity: u8) -> Result<()> {
 
         let root = current_dir.join(&core.source);
         let template_root = template_root.join("shared");
-        compare(&root, &template_root, &context, verbosity)?;
+        compare(
+            &root,
+            &template_root,
+            &context,
+            verbosity,
+            include_source_code,
+        )?;
 
         let root = current_dir.join(&core.type_gen);
         let template_root = template_root.join("shared_types");
         if template_root.exists() {
-            compare(&root, &template_root, &context, verbosity)?;
+            compare(
+                &root,
+                &template_root,
+                &context,
+                verbosity,
+                include_source_code,
+            )?;
         }
     }
 
@@ -48,7 +63,13 @@ pub(crate) fn doctor(template_dir: &Path, verbosity: u8) -> Result<()> {
             let template_root =
                 template_root.join(shell.template.as_deref().unwrap_or(Path::new(&name)));
             if template_root.exists() {
-                compare(&root, &template_root, &context, verbosity)?;
+                compare(
+                    &root,
+                    &template_root,
+                    &context,
+                    verbosity,
+                    include_source_code,
+                )?;
             }
         }
     }
@@ -61,6 +82,7 @@ fn compare(
     template_root: &Path,
     context: &Context,
     verbosity: u8,
+    include_source_code: bool,
 ) -> Result<(), anyhow::Error> {
     println!(
         "{:-<80}\nActual:  {}\nDesired: {}",
@@ -68,7 +90,13 @@ fn compare(
         root.display(),
         template_root.display()
     );
-    let (actual, desired) = &read_files(&root, &template_root, context, verbosity)?;
+    let (actual, desired) = &read_files(
+        &root,
+        &template_root,
+        context,
+        verbosity,
+        include_source_code,
+    )?;
     missing(actual, desired);
     common(actual, desired);
     Ok(())
@@ -79,6 +107,7 @@ fn read_files(
     template_root: &Path,
     context: &Context,
     verbosity: u8,
+    include_source_code: bool,
 ) -> Result<(FileMap, FileMap)> {
     validate_path(root)?;
     validate_path(template_root)?;
@@ -88,24 +117,29 @@ fn read_files(
         if entry.file_type().expect("should have a file type").is_dir() {
             continue;
         }
+        let path = entry.path();
+        if !include_source_code && is_source_code(path) {
+            continue;
+        }
+        let path_display = path.display();
         if verbosity > 0 {
-            println!("Reading: {}", entry.path().display());
+            println!("Reading: {path_display}");
         }
 
-        match fs::read_to_string(entry.path()) {
+        match fs::read_to_string(path) {
             Ok(contents) => {
-                let relative = entry.path().strip_prefix(root)?.to_path_buf();
+                let relative = path.strip_prefix(root)?.to_path_buf();
                 actual.insert(relative, ensure_trailing_newline(&contents));
             }
             Err(e) => match e.kind() {
                 std::io::ErrorKind::InvalidData => {
                     if verbosity > 0 {
-                        println!("Warning, cannot read: {}, {e}", entry.path().display());
+                        println!("Warning, cannot read: {path_display}, {e}");
                     }
                 }
-                _ => {}
+                _ => bail!("Error reading: {path_display}, {e}"),
             },
-        }
+        };
     }
 
     let mut desired = FileMap::new();
@@ -113,11 +147,16 @@ fn read_files(
         if entry.file_type().expect("should have a file type").is_dir() {
             continue;
         }
+        let path = entry.path();
+        if !include_source_code && is_source_code(path) {
+            continue;
+        }
+        let path_display = path.display();
         if verbosity > 0 {
-            println!("Reading: {:?}", entry);
+            println!("Reading: {path_display}");
         }
 
-        let template = fs::read_to_string(entry.path())?;
+        let template = fs::read_to_string(path)?;
         let template = Template::new(template).unwrap();
 
         let rendered = match context {
@@ -126,7 +165,7 @@ fn read_files(
         };
         let rendered = ensure_trailing_newline(&rendered);
 
-        let relative = entry.path().strip_prefix(template_root)?.to_path_buf();
+        let relative = path.strip_prefix(template_root)?.to_path_buf();
         desired.insert(relative, rendered);
     }
 
@@ -160,7 +199,7 @@ fn common(actual: &FileMap, desired: &FileMap) {
     for file_name in &intersection(actual, desired) {
         let desired = desired.get(file_name).expect("file not in map");
         let actual = actual.get(file_name).expect("file not in map");
-        display::show_diff(file_name, desired, actual);
+        diff::show(file_name, desired, actual);
     }
 }
 
@@ -191,6 +230,16 @@ fn intersection(first: &FileMap, second: &FileMap) -> Vec<PathBuf> {
         }
     }
     common
+}
+
+/// test if file is source code
+fn is_source_code(path: &Path) -> bool {
+    if let Some(ext) = path.extension() {
+        if let Some(ext) = ext.to_str() {
+            return SOURCE_CODE_EXTENSIONS.contains(&ext);
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -230,5 +279,21 @@ mod test {
         let expected = vec![PathBuf::from("foo")];
         let actual = intersection(&actual_map, &desired_map);
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_is_source_code() {
+        assert!(is_source_code(Path::new("foo.rs")));
+        assert!(is_source_code(Path::new("foo.kt")));
+        assert!(is_source_code(Path::new("foo.swift")));
+        assert!(is_source_code(Path::new("foo.ts")));
+        assert!(is_source_code(Path::new("foo.js")));
+        assert!(is_source_code(Path::new("foo.tsx")));
+        assert!(is_source_code(Path::new("foo.jsx")));
+        assert!(is_source_code(Path::new("foo.html")));
+        assert!(is_source_code(Path::new("foo.css")));
+
+        assert!(!is_source_code(Path::new("foo.txt")));
+        assert!(!is_source_code(Path::new("foo")));
     }
 }

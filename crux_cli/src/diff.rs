@@ -3,7 +3,7 @@ use std::{fmt, path::Path};
 use console::{style, Style};
 use similar::{ChangeTag, TextDiff};
 
-pub(crate) fn show_diff(file_name: &Path, desired: &str, actual: &str) {
+pub(crate) fn show(file_name: &Path, desired: &str, actual: &str) {
     let diff = TextDiff::from_lines(actual, desired);
     for (idx, group) in diff.grouped_ops(3).iter().enumerate() {
         if idx == 0 {
