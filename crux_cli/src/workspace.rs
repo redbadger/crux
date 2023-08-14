@@ -8,14 +8,15 @@ const CONFIG_FILE: &str = "Crux.toml";
 pub fn read_config() -> Result<Workspace> {
     let path = PathBuf::from(CONFIG_FILE);
     if let Ok(file) = &fs::read_to_string(path) {
-        let workspace: Workspace = toml::from_str(file)?;
+        let mut workspace: Workspace = toml::from_str(file)?;
 
         let all_cores = workspace.cores.keys().cloned().collect::<Vec<_>>();
         if all_cores.len() == 0 {
             bail!("{CONFIG_FILE}: no cores defined");
         }
 
-        for (name, core) in &workspace.cores {
+        for (name, core) in &mut workspace.cores {
+            core.name = name.to_string();
             if !core.source.exists() {
                 bail!(
                     "{CONFIG_FILE}: core ({name}) source directory ({path}) does not exist",
@@ -24,8 +25,9 @@ pub fn read_config() -> Result<Workspace> {
             }
         }
 
-        if let Some(shells) = &workspace.shells {
+        if let Some(shells) = &mut workspace.shells {
             for (name, shell) in shells {
+                shell.name = name.to_string();
                 if !shell.source.exists() {
                     bail!(
                         "{CONFIG_FILE}: shell ({name}) source directory ({path}) does not exist",

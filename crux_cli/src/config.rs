@@ -14,6 +14,8 @@ pub struct Workspace {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Core {
+    #[serde(skip)]
+    pub name: String,
     pub source: PathBuf,
     pub type_gen: PathBuf,
     pub crux_version: String,
@@ -21,6 +23,8 @@ pub struct Core {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Shell {
+    #[serde(skip)]
+    pub name: String,
     pub template: Option<PathBuf>,
     pub source: PathBuf,
     pub cores: Vec<String>,

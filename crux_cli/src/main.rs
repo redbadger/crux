@@ -8,6 +8,7 @@ mod args;
 mod config;
 mod display;
 mod doctor;
+mod template;
 mod workspace;
 
 fn main() -> Result<()> {

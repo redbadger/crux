@@ -1,5 +1,5 @@
 use crux_core::typegen::TypeGen;
-use {{name}}::Counter;
+use {{core_name}}::Counter;
 use std::path::PathBuf;
 
 fn main() {

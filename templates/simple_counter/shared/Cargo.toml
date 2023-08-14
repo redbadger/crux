@@ -1,12 +1,12 @@
 [package]
-name = "{{name}}"
+name = "{{core_name_dashes}}"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.66"
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
-name = "{{name}}"
+name = "{{core_name}}"
 
 [features]
 typegen = ["crux_core/typegen"]

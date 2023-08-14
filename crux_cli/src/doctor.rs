@@ -6,42 +6,24 @@ use std::{
 
 use anyhow::{bail, Result};
 use ignore::Walk;
-use ramhorns::{Content, Template};
+use ramhorns::Template;
 
-use crate::{display, workspace};
+use crate::{
+    display,
+    template::{Context, CoreContext, ShellContext},
+    workspace,
+};
 
 type FileMap = BTreeMap<PathBuf, String>;
 
-enum Context {
-    Core(CoreContext),
-    Shell(ShellContext),
-}
-
-#[derive(Content)]
-struct CoreContext {
-    workspace: String,
-    name: String,
-}
-
-#[derive(Content)]
-struct ShellContext {
-    workspace: String,
-    core: String,
-    type_gen: String,
-    name: String,
-}
-
 pub(crate) fn doctor(template_dir: &Path, verbosity: u8) -> Result<()> {
     let workspace = workspace::read_config()?;
-    let workspace_name = &workspace.name;
     let current_dir = &env::current_dir()?;
     let template_root = current_dir.join(template_dir).canonicalize()?;
 
-    for (name, core) in &workspace.cores {
-        let context = Context::Core(CoreContext {
-            workspace: workspace_name.to_ascii_lowercase().replace(" ", "_"),
-            name: name.to_string(),
-        });
+    for (_, core) in &workspace.cores {
+        let context = CoreContext::new(&workspace, core);
+
         let root = current_dir.join(&core.source);
         let template_root = template_root.join("shared");
         compare(&root, &template_root, &context, verbosity)?;
@@ -60,12 +42,8 @@ pub(crate) fn doctor(template_dir: &Path, verbosity: u8) -> Result<()> {
                 .cores
                 .get(&shell.cores[0])
                 .expect("core not in workspace");
-            let context = Context::Shell(ShellContext {
-                workspace: workspace_name.to_ascii_lowercase().replace(" ", "_"),
-                core: core.source.to_string_lossy().to_string(),
-                type_gen: core.type_gen.to_string_lossy().to_string(),
-                name: name.to_string(),
-            });
+            let context = ShellContext::new(&workspace, core, shell);
+
             let root = current_dir.join(&shell.source);
             let template_root =
                 template_root.join(shell.template.as_deref().unwrap_or(Path::new(&name)));
@@ -90,7 +68,7 @@ fn compare(
         root.display(),
         template_root.display()
     );
-    let (actual, desired) = &read_files(&root, &template_root, verbosity, context)?;
+    let (actual, desired) = &read_files(&root, &template_root, context, verbosity)?;
     missing(actual, desired);
     common(actual, desired);
     Ok(())
@@ -99,8 +77,8 @@ fn compare(
 fn read_files(
     root: &Path,
     template_root: &Path,
-    verbosity: u8,
     context: &Context,
+    verbosity: u8,
 ) -> Result<(FileMap, FileMap)> {
     validate_path(root)?;
     validate_path(template_root)?;

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 
-use {{core}}::{Capabilities, Core, Counter, Effect, Event};
+use {{core_name}}::{Capabilities, Core, Counter, Effect, Event};
 
 #[derive(Default)]
 struct RootComponent {

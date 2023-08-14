@@ -3,7 +3,7 @@ module.exports = {
   ignoredRouteFiles: ["**/.*"],
 
   // make sure the server bundles our shared library
-  serverDependenciesToBundle: [/^{{core}}.*/],
+  serverDependenciesToBundle: [/^{{core_name}}.*/],
 
   serverModuleFormat: "cjs",
   future: {

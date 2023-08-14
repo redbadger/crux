@@ -1,5 +1,5 @@
 [package]
-name = "{{name}}"
+name = "{{shell_name_dashes}}"
 version = "0.1.0"
 authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
 edition = "2021"
@@ -12,4 +12,4 @@ dioxus-web = "0.4"
 futures = "0.3.28"
 futures-util = "0.3.28"
 log = "0.4.19"
-shared = { path = "../{{core}}" }
+shared = { path = "../{{core_dir}}" }

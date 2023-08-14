@@ -1,5 +1,5 @@
 {
-  "name": "{{name}}",
+  "name": "{{shell_name_dashes}}",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,7 +19,7 @@
     "next": "13.4.12",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "shared": "link:../{{core}}/pkg",
+    "shared": "link:../{{core_dir}}/pkg",
     "shared_types": "link:../{{type_gen}}/generated/typescript",
     "typescript": "5.1.6"
   }
