@@ -1,5 +1,5 @@
-name = "Hello World"
-description = "A Hello World core, and a _very_ simple counter core, which is wrapped with multiple shells"
+name = "Simple Counter"
+description = "A _very_ simple counter core, which is wrapped with multiple shells"
 authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
 
@@ -9,12 +9,12 @@ type_gen = "shared_types"
 crux_version = "0.6.3"
 
 [shells.android]
-template = "android"
+template = "Android"
 source = "Android"
 cores = ["shared"]
 
 [shells.iOS]
-template = "ios"
+template = "iOS"
 source = "iOS"
 cores = ["shared"]
 

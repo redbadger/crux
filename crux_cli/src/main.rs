@@ -13,7 +13,7 @@ mod workspace;
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Some(Commands::Doctor { .. }) => doctor::doctor(&cli.template_dir),
+        Some(Commands::Doctor { .. }) => doctor::doctor(&cli.template_dir, cli.verbose),
         None => Ok(()),
     }
 }

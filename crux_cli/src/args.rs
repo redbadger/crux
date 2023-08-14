@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
@@ -19,6 +19,8 @@ pub(crate) struct Cli {
     pub template_dir: PathBuf,
     #[command(subcommand)]
     pub command: Option<Commands>,
+    #[arg(long, short, action = ArgAction::Count)]
+    pub verbose: u8,
 }
 
 #[derive(Subcommand)]
