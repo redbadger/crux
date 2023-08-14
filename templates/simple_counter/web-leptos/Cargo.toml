@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+leptos = { version = "0.4.6", features = ["csr"] }
 shared = { path = "../{{core}}" }
-yew = { version = "0.20.0", features = ["csr"] }
