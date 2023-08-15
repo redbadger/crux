@@ -1,0 +1,14 @@
+name = "Tap To Pay"
+description = "An iOS app that demonstrates navigation, with placeholders for Apple TTP"
+authors = ["Red Badger Consulting Limited"]
+repository = "https://github.com/redbadger/crux/"
+
+[cores.shared]
+source = "shared"
+type_gen = "shared_types"
+crux_version = "0.6.3"
+
+[shells.iOS]
+template = "iOS"
+source = "iOS"
+cores = ["shared"]

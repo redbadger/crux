@@ -1,0 +1,54 @@
+name = "Counter"
+description = "A simple counter app"
+authors = ["Red Badger Consulting Limited"]
+repository = "https://github.com/redbadger/crux/"
+
+[cores.shared]
+source = "shared"
+type_gen = "shared_types"
+crux_version = "0.6.3"
+
+[shells.android]
+template = "Android"
+source = "Android"
+cores = ["shared"]
+
+[shells.cli]
+template = "cli"
+source = "cli"
+cores = ["shared"]
+
+[shells.iOS]
+template = "iOS"
+source = "iOS"
+cores = ["shared"]
+
+[shells.tauri]
+template = "tauri"
+source = "tauri"
+cores = ["shared"]
+
+[shells.web_dioxus]
+template = "web-dioxus"
+source = "web-dioxus"
+cores = ["shared"]
+
+[shells.web_leptos]
+template = "web-leptos"
+source = "web-leptos"
+cores = ["shared"]
+
+[shells.web_nextjs]
+template = "web-nextjs"
+source = "web-nextjs"
+cores = ["shared"]
+
+[shells.web_remix]
+template = "web-remix"
+source = "web-remix"
+cores = ["shared"]
+
+[shells.web_yew]
+template = "web-yew"
+source = "web-yew"
+cores = ["shared"]

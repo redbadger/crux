@@ -1,11 +1,11 @@
-pub mod counter;
+pub mod app;
 
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub use crux_core::{bridge::Bridge, Core, Request};
 
-pub use counter::*;
+pub use app::*;
 
 // TODO hide this plumbing
 

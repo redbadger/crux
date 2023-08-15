@@ -1,11 +1,11 @@
-pub mod hello_world; // not exposed so you can remove this in your project
+pub mod app; // not exposed so you can remove this in your project
 
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub use crux_core::{bridge::Bridge, Core, Request};
 
-pub use hello_world::*;
+pub use app::*;
 
 // TODO hide this plumbing
 

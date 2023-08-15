@@ -5,6 +5,10 @@
     "examples/counter/Cargo.toml",
     "examples/hello_world/Cargo.toml",
     "examples/notes/Cargo.toml",
-    "examples/simple_counter/Cargo.toml"
-  ]
+    "examples/simple_counter/Cargo.toml",
+    "examples/tap_to_pay/Cargo.toml"
+  ],
+  "files.watcherExclude": {
+    "templates/**": true
+  }
 }

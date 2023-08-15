@@ -1,0 +1,16 @@
+[package]
+name = "shared_types"
+version = "0.1.0"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[build-dependencies]
+anyhow.workspace = true
+crux_core = { version = "0.6", features = ["typegen"] }
+shared = { path = "../shared", features = ["typegen"] }

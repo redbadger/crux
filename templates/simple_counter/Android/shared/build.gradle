@@ -1,0 +1,111 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.mozilla.rust-android-gradle.rust-android'
+}
+
+android {
+    namespace 'com.example.counter.shared'
+    compileSdk 34
+
+    ndkVersion "25.2.9519653"
+
+
+    defaultConfig {
+        minSdk 33
+        targetSdk 34
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
+    }
+}
+
+dependencies {
+    implementation "net.java.dev.jna:jna:5.12.1@aar"
+
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
+
+apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
+
+cargo {
+    module  = "../.."
+    libname = "shared"
+    targets = ["arm64"]
+    extraCargoBuildArguments = ['--package', 'shared']
+}
+
+afterEvaluate {
+    // The `cargoBuild` task isn't available until after evaluation.
+    android.libraryVariants.configureEach { variant ->
+        def productFlavor = ""
+        variant.productFlavors.each {
+            productFlavor += "${it.name.capitalize()}"
+        }
+        def buildType = "${variant.buildType.name.capitalize()}"
+
+        tasks.named("compileDebugKotlin") {
+            it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
+        }
+
+        tasks.named("generate${productFlavor}${buildType}Assets") {
+            it.dependsOn(tasks.named("cargoBuild"))
+        }
+    }
+}
+
+tasks.register('bindGen', Exec) {
+    def outDir = "${projectDir}/../../shared_types/generated/java"
+    workingDir "../../"
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine(
+                "cmd", "/c",
+                "cargo build -p shared && " +
+                        "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
+                        "--language kotlin " +
+                        "--out-dir " + outDir.replace('/', '\\')
+        )
+    } else {
+        commandLine(
+                "sh", "-c",
+                """\
+                cargo build -p shared && \
+                target/debug/uniffi-bindgen generate shared/src/shared.udl \
+                --language kotlin \
+                --out-dir $outDir
+                """
+        )
+    }
+}
+
+tasks.register('typesGen', Exec) {
+    workingDir "../../"
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine("cmd", "/c", "cargo build -p shared_types")
+    } else {
+        commandLine("sh", "-c", "cargo build -p shared_types")
+    }
+}

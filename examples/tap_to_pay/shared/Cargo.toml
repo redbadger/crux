@@ -10,8 +10,11 @@ rust-version.workspace = true
 crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
+[features]
+typegen = ["crux_core/typegen"]
+
 [dependencies]
-crux_core = { version = "0.6", features = ["typegen"] }
+crux_core = "0.6"
 crux_macros = "0.3"
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"

@@ -1,0 +1,34 @@
+name = "Cat Facts"
+description = "An app that demonstrates using various capabilities"
+authors = ["Red Badger Consulting Limited"]
+repository = "https://github.com/redbadger/crux/"
+
+[cores.shared]
+source = "shared"
+type_gen = "shared_types"
+crux_version = "0.6.3"
+
+[shells.android]
+template = "Android"
+source = "Android"
+cores = ["shared"]
+
+[shells.cli]
+template = "cli"
+source = "cli"
+cores = ["shared"]
+
+[shells.iOS]
+template = "iOS"
+source = "iOS"
+cores = ["shared"]
+
+[shells.web_nextjs]
+template = "web-nextjs"
+source = "web-nextjs"
+cores = ["shared"]
+
+[shells.web_yew]
+template = "web-yew"
+source = "web-yew"
+cores = ["shared"]
