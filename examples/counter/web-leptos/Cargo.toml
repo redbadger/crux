@@ -14,10 +14,10 @@ console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
 futures = "0.3.28"
 futures-util = "0.3.28"
-gloo-net = { version = "0.3.1", features = ["http"] }
+gloo-net = { version = "0.4.0", features = ["http"] }
 js-sys = "0.3.64"
-leptos = { version = "0.4.6", features = ["csr"] }
-log = "0.4.19"
+leptos = { version = "0.4.8", features = ["csr"] }
+log = "0.4.20"
 shared = { path = "../shared" }
 wasm-bindgen = "0.2.87"
 wasm-bindgen-futures = "0.4.37"
