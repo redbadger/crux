@@ -11,17 +11,17 @@ crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
 [dependencies]
-crux_core = { version = "0.6", path = "../../../crux_core", features = ["typegen"] }
-crux_macros = { version = "0.3", path = "../../../crux_macros" }
+crux_core = { version = "0.6", features = ["typegen"] }
+crux_macros = "0.3"
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"
-uniffi = "0.23.0"
+uniffi = "0.24.3"
 
 [dev-dependencies]
-assert_let_bind = { version = "0.1"}
+assert_let_bind = { version = "0.1" }
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.23.0", features = ["cli"] }
+uniffi = { version = "0.24.3", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.23.0", features = ["build"] }
+uniffi = { version = "0.24.3", features = ["build"] }

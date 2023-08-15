@@ -8,5 +8,5 @@ keywords = ["tap-to-pay"]
 rust-version = "1.68"
 
 [workspace.dependencies]
-anyhow = "1.0.70"
-serde = "1.0.159"
+anyhow = "1.0.73"
+serde = "1.0.183"
