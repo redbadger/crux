@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
@@ -26,15 +26,21 @@ pub(crate) struct Cli {
     /// temporary
     #[arg(long, short)]
     pub template_dir: PathBuf,
+
+    #[arg(long, short)]
+    pub path: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
 pub(crate) enum Commands {
     #[command(visible_alias = "doc")]
-    Doctor {
-        #[arg(long, short)]
-        fix: Option<PathBuf>,
-    },
+    Doctor(DoctorArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct DoctorArgs {
+    #[arg(long, short)]
+    pub(crate) fix: Option<PathBuf>,
 }
 
 #[cfg(test)]

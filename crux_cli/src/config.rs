@@ -17,7 +17,7 @@ pub struct Core {
     #[serde(skip)]
     pub name: String,
     pub source: PathBuf,
-    pub type_gen: PathBuf,
+    pub type_gen: Option<PathBuf>,
     pub crux_version: String,
 }
 
