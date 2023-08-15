@@ -28,21 +28,21 @@ pub(crate) fn doctor(template_dir: &Path, verbosity: u8, include_source_code: bo
         let context = CoreContext::new(&workspace, core);
 
         let root = current_dir.join(&core.source);
-        let template_root = template_root.join("shared");
+        let templates_shared = template_root.join("shared");
         compare(
             &root,
-            &template_root,
+            &templates_shared,
             &context,
             verbosity,
             include_source_code,
         )?;
 
         let root = current_dir.join(&core.type_gen);
-        let template_root = template_root.join("shared_types");
-        if template_root.exists() {
+        let templates_typegen = template_root.join("shared_types");
+        if templates_typegen.exists() {
             compare(
                 &root,
-                &template_root,
+                &templates_typegen,
                 &context,
                 verbosity,
                 include_source_code,
