@@ -22,7 +22,10 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles {
+                getDefaultProguardFile('proguard-android-optimize.txt')
+                'proguard-rules.pro'
+            }
         }
     }
     compileOptions {
@@ -52,7 +55,7 @@ dependencies {
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 cargo {
-    module  = "../.."
+    module = "../.."
     libname = "shared"
     targets = ["arm64"]
     extraCargoBuildArguments = ['--package', 'shared']
@@ -81,23 +84,16 @@ tasks.register('bindGen', Exec) {
     def outDir = "${projectDir}/../../shared_types/generated/java"
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine(
-                "cmd", "/c",
-                "cargo build -p shared && " +
-                        "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
-                        "--language kotlin " +
-                        "--out-dir " + outDir.replace('/', '\\')
-        )
+        commandLine("cmd", "/c",
+                "cargo build -p shared && " + "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " + "--language kotlin " + "--out-dir " + outDir.replace('/', '\\'))
     } else {
-        commandLine(
-                "sh", "-c",
+        commandLine("sh", "-c",
                 """\
                 cargo build -p shared && \
                 target/debug/uniffi-bindgen generate shared/src/shared.udl \
                 --language kotlin \
                 --out-dir $outDir
-                """
-        )
+                """)
     }
 }
 
