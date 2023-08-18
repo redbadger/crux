@@ -2381,7 +2381,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28999cda5ef6916ffd33fb4a7b87e1de633c47c0dc6d97905fee1cdaa142b94d"
 dependencies = [
- "gloo-console",
+ "gloo-console 0.2.3",
  "gloo-dialogs",
  "gloo-events",
  "gloo-file",
@@ -2401,6 +2401,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82b7ce3c05debe147233596904981848862b068862e9ec3e34be446077190d3f"
 dependencies = [
  "gloo-utils 0.1.7",
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "gloo-console"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a17868f56b4a24f677b17c8cb69958385102fa879418052d60b50bc1727e261"
+dependencies = [
+ "gloo-utils 0.2.0",
  "js-sys",
  "serde",
  "wasm-bindgen",
@@ -2588,7 +2601,7 @@ checksum = "13471584da78061a28306d1359dd0178d8d6fc1c7c80e5e35d27260346e0516a"
 dependencies = [
  "anymap2",
  "bincode",
- "gloo-console",
+ "gloo-console 0.2.3",
  "gloo-utils 0.1.7",
  "js-sys",
  "serde",
@@ -6670,6 +6683,7 @@ dependencies = [
  "anyhow",
  "futures",
  "futures-util",
+ "gloo-console 0.3.0",
  "gloo-net 0.4.0",
  "js-sys",
  "shared",

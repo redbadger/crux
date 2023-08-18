@@ -1,26 +1,14 @@
+mod core;
 mod http;
 mod sse;
 
-use std::rc::Rc;
-
-use futures_util::TryStreamExt;
-use wasm_bindgen_futures::spawn_local;
-use yew::{html::Scope, prelude::*};
-
-use shared::{App, Capabilities, Core, Effect, Event};
+use crate::core::{Core, Message};
+use shared::Event;
+use yew::prelude::*;
 
 #[derive(Default)]
 struct RootComponent {
-    core: Rc<Core<Effect, App>>,
-}
-
-enum Message {
-    Event(Event),
-    Effect(Effect),
-}
-
-fn send_effects(link: &Scope<RootComponent>, effects: Vec<Effect>) {
-    link.send_message_batch(effects.into_iter().map(Message::Effect).collect());
+    core: Core,
 }
 
 impl Component for RootComponent {
@@ -28,58 +16,22 @@ impl Component for RootComponent {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let link = ctx.link();
-        link.send_message(Message::Event(Event::StartWatch));
+        ctx.link().send_message(Message::Event(Event::StartWatch));
 
-        Self {
-            core: Rc::new(Core::new::<Capabilities>()),
-        }
+        Self { core: core::new() }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        let link = ctx.link();
-        let core = &self.core;
-
-        let mut render = false;
-        match msg {
-            Message::Event(event) => {
-                let effects = core.process_event(event);
-                send_effects(link, effects)
-            }
-            Message::Effect(effect) => match effect {
-                Effect::Render(_) => render = true,
-                Effect::Http(mut request) => {
-                    spawn_local({
-                        let link = link.clone();
-                        let core = core.clone();
-
-                        async move {
-                            let response = http::request(&request.operation).await.unwrap();
-
-                            let effects = core.resolve(&mut request, response);
-                            send_effects(&link, effects);
-                        }
-                    });
-                }
-                Effect::ServerSentEvents(mut request) => {
-                    spawn_local({
-                        let link = link.clone();
-                        let core = core.clone();
-
-                        async move {
-                            let mut stream = sse::request(&request.operation).await.unwrap();
-
-                            while let Ok(Some(response)) = stream.try_next().await {
-                                let effects = core.resolve(&mut request, response);
-                                send_effects(&link, effects);
-                            }
-                        }
-                    });
-                }
-            },
-        };
-
-        render
+        let link = ctx.link().clone();
+        let callback = Callback::from(move |msg| {
+            link.send_message(msg);
+        });
+        if let Message::Event(event) = msg {
+            core::update(&self.core, event, &callback);
+            false
+        } else {
+            true
+        }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
