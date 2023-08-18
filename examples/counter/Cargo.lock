@@ -6624,7 +6624,6 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "dioxus-web",
- "futures",
  "futures-util",
  "gloo-net 0.4.0",
  "js-sys",
