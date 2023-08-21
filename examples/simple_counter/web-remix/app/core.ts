@@ -1,5 +1,7 @@
+import type { Dispatch, SetStateAction } from "react";
+
 import { process_event, view } from "shared/shared";
-import type { Event } from "shared_types/types/shared_types";
+import type { Effect, Event } from "shared_types/types/shared_types";
 import {
   EffectVariantRender,
   ViewModel,
@@ -12,28 +14,32 @@ import {
 
 export function update(
   event: Event,
-  callback: React.Dispatch<React.SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>
 ) {
   console.log("event", event);
+
   const serializer = new BincodeSerializer();
   event.serialize(serializer);
+
   const effects = process_event(serializer.getBytes());
-  processEffects(effects, callback);
+
+  const requests = deserializeRequests(effects);
+  for (const { uuid, effect } of requests) {
+    processEffect(uuid, effect, callback);
+  }
 }
 
-async function processEffects(
-  effects: Uint8Array,
-  callback: React.Dispatch<React.SetStateAction<ViewModel>>
+async function processEffect(
+  _uuid: number[],
+  effect: Effect,
+  callback: Dispatch<SetStateAction<ViewModel>>
 ) {
-  const requests = deserializeRequests(effects);
+  console.log("effect", effect);
 
-  for (const { effect } of requests) {
-    console.log("effect", effect);
-    switch (effect.constructor) {
-      case EffectVariantRender: {
-        callback(deserializeView(view()));
-        break;
-      }
+  switch (effect.constructor) {
+    case EffectVariantRender: {
+      callback(deserializeView(view()));
+      break;
     }
   }
 }
