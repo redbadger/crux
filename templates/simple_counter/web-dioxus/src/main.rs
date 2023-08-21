@@ -1,27 +1,19 @@
+mod core;
+
 use std::rc::Rc;
 
 use dioxus::prelude::*;
 use dioxus_web::Config;
-use futures_util::StreamExt;
 use log::LevelFilter;
 
-use shared::{Capabilities, Core, Counter, Effect, Event, ViewModel};
-
-fn main() {
-    dioxus_logger::init(LevelFilter::Info).expect("failed to init logger");
-    console_error_panic_hook::set_once();
-
-    log::info!("starting app");
-    let core = Rc::new(Core::new::<Capabilities>());
-    dioxus_web::launch_with_props(app, core, Config::new());
-}
+use {{core_name}}::{Core, Counter, Effect, Event};
 
 fn app(cx: Scope<Rc<Core<Effect, Counter>>>) -> Element {
     let core = cx.props;
     let view = use_state(cx, || core.view());
     let dispatcher = use_coroutine(cx, |rx| {
         to_owned![core, view];
-        async move { core_service(rx, view, &core).await }
+        async move { core::core_service(&core, rx, view).await }
     });
 
     render! {
@@ -53,24 +45,9 @@ fn app(cx: Scope<Rc<Core<Effect, Counter>>>) -> Element {
     }
 }
 
-async fn core_service(
-    mut rx: UnboundedReceiver<Event>,
-    view: UseState<ViewModel>,
-    core: &Rc<Core<Effect, Counter>>,
-) {
-    while let Some(event) = rx.next().await {
-        log::info!("event: {:?}", event);
-        let effects = core.process_event(event);
-        for effect in effects {
-            process_effect(effect, &view, core);
-        }
-    }
-}
+fn main() {
+    dioxus_logger::init(LevelFilter::Debug).expect("failed to init logger");
+    console_error_panic_hook::set_once();
 
-fn process_effect(effect: Effect, view: &UseState<ViewModel>, core: &Rc<Core<Effect, Counter>>) {
-    match effect {
-        Effect::Render(_) => {
-            view.set(core.view());
-        }
-    };
+    dioxus_web::launch_with_props(app, core::new(), Config::new());
 }
