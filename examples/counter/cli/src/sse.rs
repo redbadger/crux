@@ -1,4 +1,4 @@
-use eyre::{bail, eyre, Result};
+use anyhow::{anyhow, bail, Result};
 use futures::{stream, AsyncReadExt};
 
 use shared::sse::{SseRequest, SseResponse};
@@ -8,7 +8,7 @@ pub async fn request(
 ) -> Result<impl futures::TryStream<Ok = SseResponse>> {
     let mut response = surf::get(url)
         .await
-        .map_err(|e| eyre!("get {url}: error {e}"))?;
+        .map_err(|e| anyhow!("get {url}: error {e}"))?;
 
     let status = response.status().into();
 

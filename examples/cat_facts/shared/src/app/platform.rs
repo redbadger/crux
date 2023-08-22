@@ -30,8 +30,8 @@ impl App for Platform {
     fn update(&self, msg: PlatformEvent, model: &mut Model, caps: &PlatformCapabilities) {
         match msg {
             PlatformEvent::Get => caps.platform.get(PlatformEvent::Set),
-            PlatformEvent::Set(platform) => {
-                model.platform = platform.0;
+            PlatformEvent::Set(PlatformResponse(platform)) => {
+                model.platform = platform;
                 caps.render.render()
             }
         }

@@ -225,6 +225,7 @@ mod tests {
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
     };
+    use crux_platform::{PlatformRequest, PlatformResponse};
 
     use crate::Effect;
 
@@ -295,5 +296,26 @@ mod tests {
 
         assert_eq!(model.cat_fact, Some(a_fact));
         assert_eq!(model.cat_image, Some(a_image));
+    }
+
+    #[test]
+    fn get_platform() {
+        let app = AppTester::<CatFacts, _>::default();
+        let mut model = Model::default();
+
+        let mut update = app.update(Event::GetPlatform, &mut model);
+
+        assert_let!(Effect::Platform(request), &mut update.effects[0]);
+
+        let response = PlatformResponse("platform".to_string());
+        let update = app
+            .resolve(request, response)
+            .expect("should resolve successfully");
+        for event in update.events {
+            app.update(event, &mut model);
+        }
+
+        assert_eq!(model.platform.platform, "platform");
+        assert_eq!(app.view(&mut model).platform, "Hello platform");
     }
 }
