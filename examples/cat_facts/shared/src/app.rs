@@ -225,7 +225,7 @@ mod tests {
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
     };
-    use crux_platform::{PlatformRequest, PlatformResponse};
+    use crux_platform::PlatformResponse;
 
     use crate::Effect;
 
