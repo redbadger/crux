@@ -19,8 +19,8 @@ pub fn new() -> Core {
 
 pub fn update(core: &Core, event: Event, callback: &Callback<Message>) {
     log!(format!("event: {:?}", event));
-    let effects = core.process_event(event);
-    for effect in effects {
+
+    for effect in core.process_event(event) {
         process_effect(core, effect, callback);
     }
 }
@@ -29,6 +29,7 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
     log!(format!("effect: {:?}", effect));
     match effect {
         render @ Effect::Render(_) => callback.emit(Message::Effect(render)),
+
         Effect::Http(mut request) => {
             spawn_local({
                 let core = core.clone();
@@ -37,13 +38,13 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
                 async move {
                     let response = http::request(&request.operation).await.unwrap();
 
-                    let effects = core.resolve(&mut request, response);
-                    for effect in effects {
+                    for effect in core.resolve(&mut request, response) {
                         process_effect(&core, effect, &callback);
                     }
                 }
             });
         }
+
         Effect::ServerSentEvents(mut request) => {
             spawn_local({
                 let core = core.clone();
@@ -53,8 +54,7 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
                     let mut stream = sse::request(&request.operation).await.unwrap();
 
                     while let Ok(Some(response)) = stream.try_next().await {
-                        let effects = core.resolve(&mut request, response);
-                        for effect in effects {
+                        for effect in core.resolve(&mut request, response) {
                             process_effect(&core, effect, &callback);
                         }
                     }

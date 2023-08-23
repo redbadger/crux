@@ -54,12 +54,44 @@ We'll also need a file called `index.html`, to serve our app.
 ### Simple counter example
 
 ```admonish example
-There is slightly more complex [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Leptos app in the Crux repository.
+There is slightly more advanced
+[example](https://github.com/redbadger/crux/tree/master/examples/counter) of a
+Leptos app in the Crux repository.
 
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+which has `shared` and `shared_types` libraries that will work with the
+following example code.
 ```
 
-Edit `src/main.rs` to look like this:
+Edit `src/core.rs` to look like the following. This code sends our
+(UI-generated) events to the core, and handles any effects that the core asks
+for. In this simple example, we aren't calling any HTTP APIs or handling any
+side effects other than rendering the UI, so we just handle this render effect
+by sending the new ViewModel to the relevant Leptos signal.
+
+Also note that because both our core and our shell are written in Rust (and run
+in the same memory space), we do not need to serialize and deserialize the data
+that we pass between them. We can just pass the data directly.
+
+```rust,noplayground
+{{#include ../../../../examples/simple_counter/web-leptos/src/core.rs}}
+```
+
+```admonish tip
+That `match` statement above is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-leptos/src/core.rs)
+in the Crux repository.
+```
+
+Edit `src/main.rs` to look like the following. This code creates two signals
+— one to update the view (which starts off with the core's current view), and
+the other to capture events from the UI (which starts of by sending the reset
+event). We also create an effect that sends these events into the core whenever
+they are raised.
 
 ```rust,noplayground
 {{#include ../../../../examples/simple_counter/web-leptos/src/main.rs}}

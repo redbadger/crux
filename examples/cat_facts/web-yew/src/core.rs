@@ -23,8 +23,7 @@ pub fn new() -> Core {
 
 pub fn update(core: &Core, event: Event, callback: &Callback<Message>) {
     log!(format!("event: {:?}", event));
-    let effects = core.process_event(event);
-    for effect in effects {
+    for effect in core.process_event(event) {
         process_effect(core, effect, callback);
     }
 }
@@ -41,36 +40,37 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
                 async move {
                     let response = http::request(&request.operation).await.unwrap();
 
-                    let effects = core.resolve(&mut request, response);
-                    for effect in effects {
+                    for effect in core.resolve(&mut request, response) {
                         process_effect(&core, effect, &callback);
                     }
                 }
             });
         }
+
         Effect::KeyValue(mut request) => {
             let response = match request.operation {
                 KeyValueOperation::Read(_) => KeyValueOutput::Read(None),
                 KeyValueOperation::Write(_, _) => KeyValueOutput::Write(false),
             };
 
-            let effects = core.resolve(&mut request, response);
-            for effect in effects {
+            for effect in core.resolve(&mut request, response) {
                 process_effect(&core, effect, &callback);
             }
         }
+
         Effect::Platform(mut request) => {
             let response =
                 PlatformResponse(platform::get().unwrap_or_else(|_| "Unknown browser".to_string()));
-            let effects = core.resolve(&mut request, response);
-            for effect in effects {
+
+            for effect in core.resolve(&mut request, response) {
                 process_effect(&core, effect, &callback);
             }
         }
+
         Effect::Time(mut request) => {
             let response = TimeResponse(time::get().unwrap());
-            let effects = core.resolve(&mut request, response);
-            for effect in effects {
+
+            for effect in core.resolve(&mut request, response) {
                 process_effect(&core, effect, &callback);
             }
         }

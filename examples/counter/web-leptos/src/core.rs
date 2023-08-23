@@ -2,26 +2,24 @@ use std::rc::Rc;
 
 use futures_util::TryStreamExt;
 use leptos::{spawn_local, SignalUpdate, WriteSignal};
-use shared::{App, Capabilities, Core, Effect, Event, ViewModel};
+use shared::{App, Capabilities, Effect, Event, ViewModel};
 
 use crate::{http, sse};
 
-pub fn new() -> Rc<Core<Effect, App>> {
-    Rc::new(Core::new::<Capabilities>())
+pub type Core = Rc<shared::Core<Effect, App>>;
+
+pub fn new() -> Core {
+    Rc::new(shared::Core::new::<Capabilities>())
 }
 
-pub fn update(core: &Rc<Core<Effect, App>>, event: Event, render: WriteSignal<ViewModel>) {
+pub fn update(core: &Core, event: Event, render: WriteSignal<ViewModel>) {
     log::debug!("event: {:?}", event);
     for effect in core.process_event(event) {
         process_effect(core, effect, render);
     }
 }
 
-pub fn process_effect(
-    core: &Rc<Core<Effect, App>>,
-    effect: Effect,
-    render: WriteSignal<ViewModel>,
-) {
+pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
     log::debug!("effect: {:?}", effect);
     match effect {
         Effect::Render(_) => {

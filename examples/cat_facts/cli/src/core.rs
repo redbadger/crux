@@ -27,8 +27,7 @@ pub fn new() -> Core {
 pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()> {
     debug!("event: {:?}", event);
 
-    let effects = core.process_event(event);
-    for effect in effects {
+    for effect in core.process_event(event) {
         process_effect(core, effect, &tx)?;
     }
     Ok(())
@@ -50,8 +49,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                 async move {
                     let response = http::request(&request.operation).await?;
 
-                    let effects = core.resolve(&mut request, response);
-                    for effect in effects {
+                    for effect in core.resolve(&mut request, response) {
                         process_effect(&core, effect, &tx)?;
                     }
                     Result::<()>::Ok(())
@@ -70,14 +68,14 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                         let bytes = read_state(&key).await.ok();
                         let response = KeyValueOutput::Read(bytes);
 
-                        let effects = core.resolve(&mut request, response);
-                        for effect in effects {
+                        for effect in core.resolve(&mut request, response) {
                             process_effect(&core, effect, &tx)?;
                         }
                         Result::<()>::Ok(())
                     }
                 });
             }
+
             KeyValueOperation::Write(ref key, ref value) => {
                 spawn({
                     let core = core.clone();
@@ -89,8 +87,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                         let success = write_state(&key, &value).await.is_ok();
                         let response = KeyValueOutput::Write(success);
 
-                        let effects = core.resolve(&mut request, response);
-                        for effect in effects {
+                        for effect in core.resolve(&mut request, response) {
                             process_effect(&core, effect, &tx)?;
                         }
                         Result::<()>::Ok(())
@@ -102,8 +99,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
         Effect::Platform(mut request) => {
             let response = PlatformResponse("cli".to_string());
 
-            let effects = core.resolve(&mut request, response);
-            for effect in effects {
+            for effect in core.resolve(&mut request, response) {
                 process_effect(&core, effect, &tx)?;
             }
         }
@@ -113,8 +109,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
             let iso_time = now.to_rfc3339();
             let response = TimeResponse(iso_time);
 
-            let effects = core.resolve(&mut request, response);
-            for effect in effects {
+            for effect in core.resolve(&mut request, response) {
                 process_effect(&core, effect, &tx)?;
             }
         }

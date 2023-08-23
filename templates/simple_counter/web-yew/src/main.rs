@@ -35,25 +35,23 @@ impl Component for RootComponent {
         let view = self.core.view();
 
         html! {
-            <>
-                <section class="box container has-text-centered m-5">
-                    <p class="is-size-5">{&view.count}</p>
-                    <div class="buttons section is-centered">
-                        <button class="button is-primary is-danger"
-                            onclick={link.callback(|_| Message::Event(Event::Reset))}>
-                            {"Reset"}
-                        </button>
-                        <button class="button is-primary is-success"
-                            onclick={link.callback(|_| Message::Event(Event::Increment))}>
-                            {"Increment"}
-                        </button>
-                        <button class="button is-primary is-warning"
-                            onclick={link.callback(|_| Message::Event(Event::Decrement))}>
-                            {"Decrement"}
-                        </button>
-                    </div>
-                </section>
-            </>
+            <section class="box container has-text-centered m-5">
+                <p class="is-size-5">{&view.count}</p>
+                <div class="buttons section is-centered">
+                    <button class="button is-primary is-danger"
+                        onclick={link.callback(|_| Message::Event(Event::Reset))}>
+                        {"Reset"}
+                    </button>
+                    <button class="button is-primary is-success"
+                        onclick={link.callback(|_| Message::Event(Event::Increment))}>
+                        {"Increment"}
+                    </button>
+                    <button class="button is-primary is-warning"
+                        onclick={link.callback(|_| Message::Event(Event::Decrement))}>
+                        {"Decrement"}
+                    </button>
+                </div>
+            </section>
         }
     }
 }

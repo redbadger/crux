@@ -2,15 +2,15 @@ mod core;
 mod http;
 mod sse;
 
-use std::rc::Rc;
-
 use dioxus::prelude::*;
 use dioxus_web::Config;
 use log::LevelFilter;
 
-use shared::{App, Core, Effect, Event};
+use shared::Event;
 
-fn app(cx: Scope<Rc<Core<Effect, App>>>) -> Element {
+use crate::core::Core;
+
+fn app(cx: Scope<Core>) -> Element {
     let core = cx.props;
     let view = use_state(cx, || core.view());
     let dispatcher = use_coroutine(cx, |rx| {
