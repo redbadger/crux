@@ -43,8 +43,6 @@ We'll also need a file called `index.html`, to serve our app.
 
 ## Create some UI
 
-### Simple counter example
-
 ```admonish example
 There are several, more advanced,
 [examples](https://github.com/redbadger/crux/tree/master/examples) of Yew apps
@@ -54,6 +52,21 @@ However, we will use the
 [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
 which has `shared` and `shared_types` libraries that will work with the
 following example code.
+```
+
+### Simple counter example
+
+A simple app that increments, decrements and resets a local counter.
+
+#### Wrap the core to support capabilities
+
+First, let's add some boilerplate code to wrap our core. This code will handle
+the capabilities that our core needs to support. In this example, we only need
+to support rendering the UI.
+
+```admonish
+The code that wraps our core only needs to be written once — it only grows when
+we need to support new capabilities.
 ```
 
 Edit `src/core.rs` to look like the following. This code sends our

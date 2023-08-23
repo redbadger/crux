@@ -44,7 +44,7 @@ async function processEffect(
   }
 }
 
-function deserializeRequests(bytes: Uint8Array) {
+function deserializeRequests(bytes: Uint8Array): Request[] {
   const deserializer = new BincodeDeserializer(bytes);
   const len = deserializer.deserializeLen();
   const requests: Request[] = [];
@@ -55,6 +55,6 @@ function deserializeRequests(bytes: Uint8Array) {
   return requests;
 }
 
-function deserializeView(bytes: Uint8Array) {
+function deserializeView(bytes: Uint8Array): ViewModel {
   return ViewModel.deserialize(new BincodeDeserializer(bytes));
 }
