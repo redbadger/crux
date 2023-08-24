@@ -10,7 +10,7 @@ use crux_macros::Effect;
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
-use platform::{PlatformCapabilities, PlatformEvent};
+use platform::Capabilities;
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
@@ -67,7 +67,7 @@ pub enum Event {
     Restore, // restore state
 
     // events local to the core
-    Platform(PlatformEvent),
+    Platform(platform::Event),
     SetState(KeyValueOutput), // receive the data to restore state with
     CurrentTime(TimeResponse),
     #[serde(skip)]
@@ -78,7 +78,7 @@ pub enum Event {
 
 #[derive(Default)]
 pub struct CatFacts {
-    platform: platform::Platform,
+    platform: platform::App,
 }
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
@@ -93,9 +93,9 @@ pub struct CatFactCapabilities {
 }
 
 // Allow easily using Platform as a submodule
-impl From<&CatFactCapabilities> for PlatformCapabilities {
+impl From<&CatFactCapabilities> for Capabilities {
     fn from(incoming: &CatFactCapabilities) -> Self {
-        PlatformCapabilities {
+        Capabilities {
             platform: incoming.platform.map_event(super::Event::Platform),
             render: incoming.render.map_event(super::Event::Platform),
         }
@@ -112,7 +112,7 @@ impl App for CatFacts {
         match msg {
             Event::GetPlatform => {
                 self.platform
-                    .update(PlatformEvent::Get, &mut model.platform, &caps.into())
+                    .update(platform::Event::Get, &mut model.platform, &caps.into())
             }
             Event::Platform(msg) => self.platform.update(msg, &mut model.platform, &caps.into()),
             Event::Clear => {
@@ -207,10 +207,10 @@ impl App for CatFacts {
         };
 
         let platform =
-            <platform::Platform as crux_core::App>::view(&self.platform, &model.platform).platform;
+            <platform::App as crux_core::App>::view(&self.platform, &model.platform).platform;
 
         ViewModel {
-            platform: format!("Hello {platform}"),
+            platform,
             fact,
             image: model.cat_image.clone(),
         }
@@ -225,7 +225,6 @@ mod tests {
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
     };
-    use crux_platform::PlatformResponse;
 
     use crate::Effect;
 
@@ -296,26 +295,5 @@ mod tests {
 
         assert_eq!(model.cat_fact, Some(a_fact));
         assert_eq!(model.cat_image, Some(a_image));
-    }
-
-    #[test]
-    fn get_platform() {
-        let app = AppTester::<CatFacts, _>::default();
-        let mut model = Model::default();
-
-        let mut update = app.update(Event::GetPlatform, &mut model);
-
-        assert_let!(Effect::Platform(request), &mut update.effects[0]);
-
-        let response = PlatformResponse("platform".to_string());
-        let update = app
-            .resolve(request, response)
-            .expect("should resolve successfully");
-        for event in update.events {
-            app.update(event, &mut model);
-        }
-
-        assert_eq!(model.platform.platform, "platform");
-        assert_eq!(app.view(&mut model).platform, "Hello platform");
     }
 }
