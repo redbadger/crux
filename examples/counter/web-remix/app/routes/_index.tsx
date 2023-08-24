@@ -17,11 +17,11 @@ export const meta: V2_MetaFunction = () => {
 };
 
 export default function Index() {
-  const [state, setState] = useState(new ViewModel("", false));
+  const [view, setView] = useState(new ViewModel("", false));
   useEffect(
     () => {
       // Initial event, beware of StrictMode in ../entry.client.tsx as it will run twice in dev
-      update(new EventVariantStartWatch(), setState);
+      update(new EventVariantStartWatch(), setView);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
@@ -34,17 +34,17 @@ export default function Index() {
         <p className="is-size-5">Rust Core, TypeScript Shell (Remix)</p>
       </section>
       <section className="container has-text-centered">
-        <p className="is-size-5">{state.text}</p>
+        <p className="is-size-5">{view.text}</p>
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-warning"
-            onClick={() => update(new EventVariantDecrement(), setState)}
+            onClick={() => update(new EventVariantDecrement(), setView)}
           >
             {"Decrement"}
           </button>
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantIncrement(), setState)}
+            onClick={() => update(new EventVariantIncrement(), setView)}
           >
             {"Increment"}
           </button>

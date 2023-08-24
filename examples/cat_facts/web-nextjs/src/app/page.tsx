@@ -17,7 +17,7 @@ import {
 import { update } from "./core";
 
 const Home: NextPage = () => {
-  const [state, setState] = useState(new ViewModel("", new CatImage(""), ""));
+  const [view, setView] = useState(new ViewModel("", new CatImage(""), ""));
 
   useEffect(
     () => {
@@ -25,8 +25,8 @@ const Home: NextPage = () => {
         await init_core();
 
         // Initial events
-        update(new EventVariantGetPlatform(), setState);
-        update(new EventVariantGet(), setState);
+        update(new EventVariantGetPlatform(), setView);
+        update(new EventVariantGet(), setView);
       }
 
       loadCore();
@@ -43,37 +43,37 @@ const Home: NextPage = () => {
 
       <main>
         <section className="section title has-text-centered">
-          <p>{state.platform}</p>
+          <p>{view.platform}</p>
         </section>
         <section className="section container has-text-centered">
-          {state.image && (
+          {view.image && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt="A funny cat. Or at least a cute one."
-              src={state.image?.href}
+              src={view.image?.href}
               style={{ height: "200px" }}
             />
           )}
         </section>
         <section className="section container has-text-centered">
-          <p>{state.fact}</p>
+          <p>{view.fact}</p>
         </section>
         <div className="buttons container is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantClear(), setState)}
+            onClick={() => update(new EventVariantClear(), setView)}
           >
             {"Clear"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() => update(new EventVariantGet(), setState)}
+            onClick={() => update(new EventVariantGet(), setView)}
           >
             {"Get"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() => update(new EventVariantFetch(), setState)}
+            onClick={() => update(new EventVariantFetch(), setView)}
           >
             {"Fetch"}
           </button>

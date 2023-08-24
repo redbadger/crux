@@ -17,12 +17,12 @@ export const meta: V2_MetaFunction = () => {
 };
 
 export default function Index() {
-  const [state, setState] = useState(new ViewModel("0"));
+  const [view, setView] = useState(new ViewModel("0"));
 
   useEffect(
     () => {
       // Initial event
-      update(new EventVariantReset(), setState);
+      update(new EventVariantReset(), setView);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
@@ -31,23 +31,23 @@ export default function Index() {
   return (
     <main>
       <section className="box container has-text-centered m-5">
-        <p className="is-size-5">{state.count}</p>
+        <p className="is-size-5">{view.count}</p>
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantReset(), setState)}
+            onClick={() => update(new EventVariantReset(), setView)}
           >
             {"Reset"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() => update(new EventVariantIncrement(), setState)}
+            onClick={() => update(new EventVariantIncrement(), setView)}
           >
             {"Increment"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() => update(new EventVariantDecrement(), setState)}
+            onClick={() => update(new EventVariantDecrement(), setView)}
           >
             {"Decrement"}
           </button>

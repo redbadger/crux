@@ -29,7 +29,7 @@ export function update(
   }
 }
 
-async function processEffect(
+function processEffect(
   _uuid: number[],
   effect: Effect,
   callback: Dispatch<SetStateAction<ViewModel>>

@@ -57,14 +57,14 @@ function cursorToSelection(cursor: TextCursor): Selection {
 }
 
 const Home: NextPage = () => {
-  const [state, setState] = useState<ViewModel>(
+  const [view, setView] = useState<ViewModel>(
     new ViewModel("", new TextCursorVariantPosition(BigInt(0)))
   );
   const [selection, setSelection] = useState<Selection>({
     start: 0,
     end: 0,
   });
-  useEffect(() => setSelection(cursorToSelection(state.cursor)), [state]);
+  useEffect(() => setSelection(cursorToSelection(view.cursor)), [view]);
 
   const [_, setTimers] = useState<Timers>({});
 
@@ -75,7 +75,7 @@ const Home: NextPage = () => {
   const channel = useRef(new BroadcastChannel("crux-note"));
 
   const core = useRef<Core>(
-    new Core(setState, setTimers, channel, subscriptionId)
+    new Core(setView, setTimers, channel, subscriptionId)
   );
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
@@ -165,7 +165,7 @@ const Home: NextPage = () => {
               selectionEnd={selection.end}
               onSelect={onSelect}
               onChange={onChange}
-              value={state.text}
+              value={view.text}
             />
           </div>
           {LOG_EDITS ? (

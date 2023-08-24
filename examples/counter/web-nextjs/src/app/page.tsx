@@ -14,7 +14,7 @@ import {
 import { update } from "./core";
 
 const Home: NextPage = () => {
-  const [state, setState] = useState(new ViewModel("", false));
+  const [view, setView] = useState(new ViewModel("", false));
 
   useEffect(
     () => {
@@ -22,7 +22,7 @@ const Home: NextPage = () => {
         await init_core();
 
         // Initial event
-        update(new EventVariantStartWatch(), setState);
+        update(new EventVariantStartWatch(), setView);
       }
 
       loadCore();
@@ -38,17 +38,17 @@ const Home: NextPage = () => {
         <p className="is-size-5">Rust Core, TypeScript Shell (Next.js)</p>
       </section>
       <section className="container has-text-centered">
-        <p className="is-size-5">{state.text}</p>
+        <p className="is-size-5">{view.text}</p>
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-warning"
-            onClick={() => update(new EventVariantDecrement(), setState)}
+            onClick={() => update(new EventVariantDecrement(), setView)}
           >
             {"Decrement"}
           </button>
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantIncrement(), setState)}
+            onClick={() => update(new EventVariantIncrement(), setView)}
           >
             {"Increment"}
           </button>

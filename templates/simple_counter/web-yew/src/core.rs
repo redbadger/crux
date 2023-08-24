@@ -14,8 +14,7 @@ pub fn new() -> Core {
 }
 
 pub fn update(core: &Core, event: Event, callback: &Callback<Message>) {
-    let effects = core.process_event(event);
-    for effect in effects {
+    for effect in core.process_event(event) {
         process_effect(core, effect, callback);
     }
 }

@@ -161,13 +161,13 @@ A simple app that increments, decrements and resets a local counter.
 
 #### Wrap the core to support capabilities
 
-First, let's add some boilerplate code to wrap our core. This code will handle
-the capabilities that our core needs to support. In this example, we only need
-to support rendering the UI.
+First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+`Render` capability, which triggers a render of the UI.
 
 ```admonish
-The code that wraps our core only needs to be written once — it only grows when
-we need to support new capabilities.
+This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.
 ```
 
 Edit `app/core.ts` to look like the following. This code sends our
@@ -185,7 +185,7 @@ WebAssembly instance, and so we can't just pass the data directly.
 ```
 
 ```admonish tip
-That `switch` statement above is where you would handle any other effects that
+That `switch` statement, above, is where you would handle any other effects that
 your core might ask for. For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example of this, take a look at
 the

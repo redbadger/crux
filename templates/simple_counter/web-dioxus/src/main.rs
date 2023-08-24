@@ -1,14 +1,14 @@
 mod core;
 
-use std::rc::Rc;
-
 use dioxus::prelude::*;
 use dioxus_web::Config;
 use log::LevelFilter;
 
-use {{core_name}}::{Core, Counter, Effect, Event};
+use {{core_name}}::Event;
 
-fn app(cx: Scope<Rc<Core<Effect, Counter>>>) -> Element {
+use crate::core::Core;
+
+fn app(cx: Scope<Core>) -> Element {
     let core = cx.props;
     let view = use_state(cx, || core.view());
     let dispatcher = use_coroutine(cx, |rx| {
