@@ -1,0 +1,8 @@
+[package]
+name = "web-yew"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+shared = { path = "../shared" }
+yew = { version = "0.20.0", features = ["csr"] }
