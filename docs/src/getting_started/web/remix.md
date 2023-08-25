@@ -157,7 +157,7 @@ We will use the [simple counter example](https://github.com/redbadger/crux/tree/
 
 ### Simple counter example
 
-A simple app that increments, decrements and resets a local counter.
+A simple app that increments, decrements and resets a counter.
 
 #### Wrap the core to support capabilities
 

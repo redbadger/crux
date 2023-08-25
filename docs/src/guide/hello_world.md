@@ -164,7 +164,7 @@ Now we can finally implement the trait with its two methods, `update` and
 `view`.
 
 ```rust,noplayground
-{{#include ../../../examples/hello_world/shared/src/hello_world.rs:app}}
+{{#include ../../../examples/hello_world/shared/src/app.rs:app}}
 ```
 
 The `update` function is the heart of the app. It responds to events by
@@ -187,7 +187,7 @@ to doing the user experience first, then the visual design.
 Here's our test:
 
 ```rust,noplayground
-{{#include ../../../examples/hello_world/shared/src/hello_world.rs:test}}
+{{#include ../../../examples/hello_world/shared/src/app.rs:test}}
 ```
 
 It is a fairly underwhelming test, but it should pass (check with `cargo test`).
@@ -199,7 +199,8 @@ it's a fair amount of boiler plate code.
 ## Counting up and down
 
 ```admonish example
-You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/counter.rs)
+You can find the full code for this part of the guide
+[here](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/counter.rs)
 ```
 
 Let's make things more interesting and add some behaviour. We'll teach the app
@@ -260,7 +261,7 @@ is [a nice way to make this scale](./composing.md) and get reuse as well. Let's
 carry on. We need to actually handle those messages.
 
 ```rust,noplayground
-{{#include ../../../examples/simple_counter/shared/src/counter.rs:impl_app}}
+{{#include ../../../examples/simple_counter/shared/src/app.rs:impl_app}}
 // ...
 ```
 
@@ -269,7 +270,7 @@ tell the Shell to render. Lets update the tests to check everything works as
 expected.
 
 ```rust,noplayground
-{{#include ../../../examples/simple_counter/shared/src/counter.rs:test}}
+{{#include ../../../examples/simple_counter/shared/src/app.rs:test}}
 ```
 
 Hopefully those all pass. We are now sure that when we build an actual UI for

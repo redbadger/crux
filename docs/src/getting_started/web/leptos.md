@@ -64,7 +64,7 @@ following example code.
 
 ### Simple counter example
 
-A simple app that increments, decrements and resets a local counter.
+A simple app that increments, decrements and resets a counter.
 
 #### Wrap the core to support capabilities
 

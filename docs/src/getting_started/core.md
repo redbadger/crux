@@ -148,7 +148,7 @@ from the
 (which also has tests, although we're not showing them here):
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/simple_counter/shared/src/counter.rs:app}}
+{{#include ../../../examples/simple_counter/shared/src/app.rs:app}}
 ```
 
 Make sure everything builds OK
