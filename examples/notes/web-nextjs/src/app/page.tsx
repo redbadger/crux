@@ -60,11 +60,6 @@ const Home: NextPage = () => {
   const [view, setView] = useState<ViewModel>(
     new ViewModel("", new TextCursorVariantPosition(BigInt(0)))
   );
-  const [selection, setSelection] = useState<Selection>({
-    start: 0,
-    end: 0,
-  });
-  useEffect(() => setSelection(cursorToSelection(view.cursor)), [view]);
 
   const [_, setTimers] = useState<Timers>({});
 
@@ -148,6 +143,8 @@ const Home: NextPage = () => {
   const log = (line: string): void => {
     updateLog((log) => [line, ...log.slice(0, 100)]);
   };
+
+  let selection = cursorToSelection(view.cursor);
 
   return (
     <>
