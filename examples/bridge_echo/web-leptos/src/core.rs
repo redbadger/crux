@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use leptos::{SignalUpdate, WriteSignal};
-use shared::{Capabilities, Counter, Effect, Event, ViewModel};
+use shared::{App, Capabilities, Effect, Event, ViewModel};
 
-pub type Core = Rc<shared::Core<Effect, Counter>>;
+pub type Core = Rc<shared::Core<Effect, App>>;
 
 pub fn new() -> Core {
     Rc::new(shared::Core::new::<Capabilities>())

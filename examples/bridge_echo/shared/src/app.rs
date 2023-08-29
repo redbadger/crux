@@ -1,5 +1,5 @@
 // ANCHOR: app
-use crux_core::{render::Render, App};
+use crux_core::render::Render;
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
@@ -22,16 +22,15 @@ pub struct ViewModel {
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
 #[derive(Effect)]
-#[effect(app = "Counter")]
 pub struct Capabilities {
     render: Render<Event>,
 }
 
 #[derive(Default)]
-pub struct Counter;
+pub struct App;
 
 // ANCHOR: impl_app
-impl App for Counter {
+impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -42,7 +41,7 @@ impl App for Counter {
             Event::Tick => model.count += 1,
             Event::NewPeriod => {
                 model.log.push(model.count);
-                model.count = 0
+                model.count = 0;
             }
         };
 
@@ -63,19 +62,8 @@ mod test {
     use crux_core::{assert_effect, testing::AppTester};
 
     #[test]
-    fn renders() {
-        let app = AppTester::<Counter, _>::default();
-        let mut model = Model::default();
-
-        let update = app.update(Event::Tick, &mut model);
-
-        // Check update asked us to `Render`
-        assert_effect!(update, Effect::Render(_));
-    }
-
-    #[test]
     fn shows_initial_count() {
-        let app = AppTester::<Counter, _>::default();
+        let app = AppTester::<App, _>::default();
         let model = Model::default();
 
         let actual_view = app.view(&model);
@@ -86,7 +74,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = AppTester::<Counter, _>::default();
+        let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
         app.update(Event::Tick, &mut model);
@@ -101,7 +89,7 @@ mod test {
 
     #[test]
     fn logs_previous_counts() {
-        let app = AppTester::<Counter, _>::default();
+        let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
         app.update(Event::Tick, &mut model);
@@ -118,6 +106,26 @@ mod test {
             count: 1,
         };
         assert_eq!(model, expected);
+    }
+
+    #[test]
+    fn renders_on_tick() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::Tick, &mut model);
+
+        assert_effect!(update, Effect::Render(_));
+    }
+
+    #[test]
+    fn renders_on_new_period() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::NewPeriod, &mut model);
+
+        assert_effect!(update, Effect::Render(_));
     }
 }
 // ANCHOR_END: test
