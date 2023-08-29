@@ -70,6 +70,12 @@ pub(crate) fn doctor(
 
             if do_shell {
                 // TODO support shell having multiple cores
+                if shell.cores.len() > 1 {
+                    eprintln!(
+                        "Warning: shell {} has multiple cores, only checking first",
+                        name
+                    );
+                }
                 let core = workspace
                     .cores
                     .get(&shell.cores[0])

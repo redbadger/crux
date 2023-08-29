@@ -59,16 +59,18 @@ fn main() -> Result<()> {
 }
 
 fn run_loop(core: &core::Core, events: Vec<Event>) -> Result<()> {
-    let (tx, rx) = unbounded::<Effect>();
+    let (render_tx, render_rx) = unbounded::<Effect>();
     {
-        let tx = Arc::new(tx);
+        let render_tx = Arc::new(render_tx);
         for event in events {
-            update(&core, event, &tx.clone())?;
+            update(&core, event, &render_tx.clone())?;
         }
     }
 
-    // wait for core to settle
-    while let Ok(_effect) = rx.recv() {}
+    // wait for core to settle,
+    // we could process the render effect(s) here
+    // but we do it once at the end, instead
+    while let Ok(_effect) = render_rx.recv() {}
 
     Ok(())
 }
