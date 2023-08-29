@@ -1,6 +1,5 @@
 use anyhow::Result;
-use futures::stream;
-use futures_util::StreamExt;
+use futures_util::{stream, StreamExt};
 use gloo_net::http;
 use js_sys::Uint8Array;
 use wasm_bindgen::{prelude::*, JsValue};

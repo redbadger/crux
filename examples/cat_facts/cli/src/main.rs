@@ -1,23 +1,15 @@
-use anyhow::{bail, Result};
-use async_std::{
-    fs::{File, OpenOptions},
-    io::{ReadExt, WriteExt},
-};
-use chrono::{DateTime, Utc};
-use clap::Parser;
-use shared::{
-    http::protocol::{HttpRequest, HttpResponse},
-    key_value::{KeyValueOperation, KeyValueOutput},
-    platform::PlatformResponse,
-    time::TimeResponse,
-    CatFactCapabilities, CatFacts, Core, Effect, Event,
-};
-use std::{collections::VecDeque, time::SystemTime};
+mod core;
+mod http;
 
-enum Task {
-    Event(Event),
-    Effect(Effect),
-}
+use anyhow::Result;
+use clap::Parser;
+use crossbeam_channel::unbounded;
+use std::sync::Arc;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+use shared::{Effect, Event, ViewModel};
+
+use crate::core::update;
 
 #[derive(Parser, Clone)]
 enum Command {
@@ -26,7 +18,17 @@ enum Command {
     Fetch,
 }
 
-/// CLI to get a cat fact and image
+impl From<Command> for Event {
+    fn from(cmd: Command) -> Self {
+        match cmd {
+            Command::Clear => Event::Clear,
+            Command::Get => Event::Get,
+            Command::Fetch => Event::Fetch,
+        }
+    }
+}
+
+/// CLI to get a cat fact
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -34,104 +36,41 @@ struct Args {
     cmd: Command,
 }
 
-#[async_std::main]
-async fn main() -> Result<()> {
-    let args = Args::parse();
-    let core: Core<Effect, CatFacts> = Core::new::<CatFactCapabilities>();
+fn main() -> Result<()> {
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,surf=warn".into());
+    let format = tracing_subscriber::fmt::layer();
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(format)
+        .init();
 
-    let mut queue: VecDeque<Task> = VecDeque::new();
+    let command = Args::parse().cmd;
 
-    queue.push_back(Task::Event(Event::Restore));
-    queue.push_back(Task::Event(Event::GetPlatform));
+    let core = core::new();
 
-    while !queue.is_empty() {
-        let task = queue.pop_front().expect("an event");
+    run_loop(&core, vec![Event::Restore])?;
+    run_loop(&core, vec![Event::GetPlatform, command.into()])?;
 
-        match task {
-            Task::Event(event) => {
-                enqueue_effects(&mut queue, core.process_event(event));
-            }
-            Task::Effect(effect) => match effect {
-                Effect::Render(_) => (),
-                Effect::Time(mut request) => {
-                    let now: DateTime<Utc> = SystemTime::now().into();
-                    let iso_time = now.to_rfc3339();
-                    let response = TimeResponse(iso_time);
+    let ViewModel { platform, fact, .. } = core.view();
+    println!("platform: {platform}",);
+    println!("{fact}",);
 
-                    enqueue_effects(&mut queue, core.resolve(&mut request, response));
-                }
-                Effect::Http(mut request) => {
-                    let HttpRequest { ref url, .. } = request.operation;
-                    match surf::get(url).send().await {
-                        Ok(mut response) => {
-                            let bytes = response.body_bytes().await.unwrap();
-                            let response = HttpResponse::status(response.status().into())
-                                .body(bytes)
-                                .build();
+    Ok(())
+}
 
-                            enqueue_effects(&mut queue, core.resolve(&mut request, response));
-                        }
-                        Err(e) => bail!("Could not HTTP GET from {}: {}", &url, e),
-                    }
-                }
-                Effect::Platform(mut request) => {
-                    let response = PlatformResponse("cli".to_string());
-                    enqueue_effects(&mut queue, core.resolve(&mut request, response));
-                }
-                Effect::KeyValue(mut request) => match request.operation {
-                    KeyValueOperation::Read(ref key) => {
-                        let bytes = read_state(key).await.ok();
-                        let response = KeyValueOutput::Read(bytes);
-
-                        let initial_msg = match &args.cmd {
-                            Command::Clear => Task::Event(Event::Clear),
-                            Command::Get => Task::Event(Event::Get),
-                            Command::Fetch => Task::Event(Event::Fetch),
-                        };
-
-                        queue.push_back(initial_msg);
-                        enqueue_effects(&mut queue, core.resolve(&mut request, response));
-                    }
-                    KeyValueOperation::Write(ref key, ref value) => {
-                        let success = write_state(key, value).await.is_ok();
-                        let response = KeyValueOutput::Write(success);
-
-                        enqueue_effects(&mut queue, core.resolve(&mut request, response));
-                    }
-                },
-            },
+fn run_loop(core: &core::Core, events: Vec<Event>) -> Result<()> {
+    let (render_tx, render_rx) = unbounded::<Effect>();
+    {
+        let render_tx = Arc::new(render_tx);
+        for event in events {
+            update(&core, event, &render_tx.clone())?;
         }
     }
 
-    let view = core.view();
-    println!("platform: {}", view.platform);
-    println!("{}", view.fact);
+    // wait for core to settle,
+    // we could process the render effect(s) here
+    // but we do it once at the end, instead
+    while let Ok(_effect) = render_rx.recv() {}
 
     Ok(())
-}
-
-fn enqueue_effects(queue: &mut VecDeque<Task>, effects: Vec<Effect>) {
-    queue.append(&mut effects.into_iter().map(Task::Effect).collect())
-}
-
-async fn write_state(_key: &str, bytes: &[u8]) -> Result<()> {
-    let mut f = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(".cat_facts")
-        .await?;
-
-    f.write_all(bytes).await?;
-
-    Ok(())
-}
-
-async fn read_state(_key: &str) -> Result<Vec<u8>> {
-    let mut f = File::open(".cat_facts").await?;
-    let mut buf: Vec<u8> = vec![];
-
-    f.read_to_end(&mut buf).await?;
-
-    Ok(buf)
 }

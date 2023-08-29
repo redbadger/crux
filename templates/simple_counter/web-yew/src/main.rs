@@ -1,17 +1,12 @@
-use std::rc::Rc;
+mod core;
 
+use crate::core::{Core, Message};
+use {{core_name}}::Event;
 use yew::prelude::*;
-
-use {{core_name}}::{Capabilities, Core, Counter, Effect, Event};
 
 #[derive(Default)]
 struct RootComponent {
-    core: Rc<Core<Effect, Counter>>,
-}
-
-enum Message {
-    Event(Event),
-    Effect(Effect),
+    core: Core,
 }
 
 impl Component for RootComponent {
@@ -19,27 +14,20 @@ impl Component for RootComponent {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        Self {
-            core: Rc::new(Core::new::<Capabilities>()),
-        }
+        Self { core: core::new() }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        let link = ctx.link();
-        let core = &self.core;
-
-        let mut render = false;
-        match msg {
-            Message::Event(event) => {
-                let effects = core.process_event(event);
-                link.send_message_batch(effects.into_iter().map(Message::Effect).collect());
-            }
-            Message::Effect(effect) => match effect {
-                Effect::Render(_) => render = true,
-            },
-        };
-
-        render
+        let link = ctx.link().clone();
+        let callback = Callback::from(move |msg| {
+            link.send_message(msg);
+        });
+        if let Message::Event(event) = msg {
+            core::update(&self.core, event, &callback);
+            false
+        } else {
+            true
+        }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -47,25 +35,23 @@ impl Component for RootComponent {
         let view = self.core.view();
 
         html! {
-            <>
-                <section class="box container has-text-centered m-5">
-                    <p class="is-size-5">{&view.count}</p>
-                    <div class="buttons section is-centered">
-                        <button class="button is-primary is-danger"
-                            onclick={link.callback(|_| Message::Event(Event::Reset))}>
-                            {"Reset"}
-                        </button>
-                        <button class="button is-primary is-success"
-                            onclick={link.callback(|_| Message::Event(Event::Increment))}>
-                            {"Increment"}
-                        </button>
-                        <button class="button is-primary is-warning"
-                            onclick={link.callback(|_| Message::Event(Event::Decrement))}>
-                            {"Decrement"}
-                        </button>
-                    </div>
-                </section>
-            </>
+            <section class="box container has-text-centered m-5">
+                <p class="is-size-5">{&view.count}</p>
+                <div class="buttons section is-centered">
+                    <button class="button is-primary is-danger"
+                        onclick={link.callback(|_| Message::Event(Event::Reset))}>
+                        {"Reset"}
+                    </button>
+                    <button class="button is-primary is-success"
+                        onclick={link.callback(|_| Message::Event(Event::Increment))}>
+                        {"Increment"}
+                    </button>
+                    <button class="button is-primary is-warning"
+                        onclick={link.callback(|_| Message::Event(Event::Decrement))}>
+                        {"Decrement"}
+                    </button>
+                </div>
+            </section>
         }
     }
 }

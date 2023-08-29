@@ -14,6 +14,9 @@ anyhow.workspace = true
 async-std = { version = "1.12.0", features = ["std", "attributes"] }
 chrono = "0.4.26"
 clap = { version = "4.3.21", features = ["derive"] }
+crossbeam-channel = "0.5.8"
 serde = { workspace = true, features = ["derive"] }
 shared = { path = "../shared" }
 surf = "2.3.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -19,57 +19,78 @@ const SOURCE_CODE_EXTENSIONS: [&str; 9] =
 
 type FileMap = BTreeMap<PathBuf, String>;
 
-pub(crate) fn doctor(template_dir: &Path, verbosity: u8, include_source_code: bool) -> Result<()> {
+pub(crate) fn doctor(
+    template_dir: &Path,
+    path: Option<&Path>,
+    verbosity: u8,
+    include_source_code: bool,
+) -> Result<()> {
     let workspace = workspace::read_config()?;
     let current_dir = &env::current_dir()?;
     let template_root = current_dir.join(template_dir).canonicalize()?;
 
     for (_, core) in &workspace.cores {
-        let context = CoreContext::new(&workspace, core);
+        let (do_core, do_typegen) = match path {
+            Some(path) => (path == &core.source, Some(path) == core.type_gen.as_deref()),
+            None => (true, true),
+        };
 
-        let root = current_dir.join(&core.source);
-        let templates_shared = template_root.join("shared");
-        compare(
-            &root,
-            &templates_shared,
-            &context,
-            verbosity,
-            include_source_code,
-        )?;
-
-        let root = current_dir.join(&core.type_gen);
-        let templates_typegen = template_root.join("shared_types");
-        if templates_typegen.exists() {
+        if do_core {
             compare(
-                &root,
-                &templates_typegen,
-                &context,
+                &current_dir.join(&core.source),
+                &template_root.join("shared"),
+                &CoreContext::new(&workspace, core),
                 verbosity,
                 include_source_code,
             )?;
+        }
+
+        if do_typegen {
+            if let Some(type_gen) = &core.type_gen {
+                let templates_typegen = template_root.join("shared_types");
+                if templates_typegen.exists() {
+                    compare(
+                        &current_dir.join(type_gen),
+                        &templates_typegen,
+                        &CoreContext::new(&workspace, core),
+                        verbosity,
+                        include_source_code,
+                    )?;
+                }
+            }
         }
     }
 
     if let Some(shells) = &workspace.shells {
         for (name, shell) in shells {
-            // TODO support shell having multiple cores
-            let core = workspace
-                .cores
-                .get(&shell.cores[0])
-                .expect("core not in workspace");
-            let context = ShellContext::new(&workspace, core, shell);
+            let do_shell = match path {
+                Some(path) => path == &shell.source,
+                None => true,
+            };
 
-            let root = current_dir.join(&shell.source);
-            let template_root =
-                template_root.join(shell.template.as_deref().unwrap_or(Path::new(&name)));
-            if template_root.exists() {
-                compare(
-                    &root,
-                    &template_root,
-                    &context,
-                    verbosity,
-                    include_source_code,
-                )?;
+            if do_shell {
+                // TODO support shell having multiple cores
+                if shell.cores.len() > 1 {
+                    eprintln!(
+                        "Warning: shell {} has multiple cores, only checking first",
+                        name
+                    );
+                }
+                let core = workspace
+                    .cores
+                    .get(&shell.cores[0])
+                    .expect("core not in workspace");
+                let template_root =
+                    template_root.join(shell.template.as_deref().unwrap_or(Path::new(&name)));
+                if template_root.exists() {
+                    compare(
+                        &current_dir.join(&shell.source),
+                        &template_root,
+                        &ShellContext::new(&workspace, core, shell),
+                        verbosity,
+                        include_source_code,
+                    )?;
+                }
             }
         }
     }

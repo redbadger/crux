@@ -81,23 +81,16 @@ tasks.register('bindGen', Exec) {
     def outDir = "${projectDir}/../../shared_types/generated/java"
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine(
-                "cmd", "/c",
-                "cargo build -p shared && " +
-                        "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
-                        "--language kotlin " +
-                        "--out-dir " + outDir.replace('/', '\\')
-        )
+        commandLine("cmd", "/c",
+                "cargo build -p shared && " + "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " + "--language kotlin " + "--out-dir " + outDir.replace('/', '\\'))
     } else {
-        commandLine(
-                "sh", "-c",
+        commandLine("sh", "-c",
                 """\
                 cargo build -p shared && \
                 target/debug/uniffi-bindgen generate shared/src/shared.udl \
                 --language kotlin \
                 --out-dir $outDir
-                """
-        )
+                """)
     }
 }
 

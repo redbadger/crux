@@ -10,7 +10,7 @@ use crux_macros::Effect;
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
-use platform::{PlatformCapabilities, PlatformEvent};
+use platform::Capabilities;
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
@@ -67,7 +67,7 @@ pub enum Event {
     Restore, // restore state
 
     // events local to the core
-    Platform(PlatformEvent),
+    Platform(platform::Event),
     SetState(KeyValueOutput), // receive the data to restore state with
     CurrentTime(TimeResponse),
     #[serde(skip)]
@@ -78,7 +78,7 @@ pub enum Event {
 
 #[derive(Default)]
 pub struct CatFacts {
-    platform: platform::Platform,
+    platform: platform::App,
 }
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
@@ -93,9 +93,9 @@ pub struct CatFactCapabilities {
 }
 
 // Allow easily using Platform as a submodule
-impl From<&CatFactCapabilities> for PlatformCapabilities {
+impl From<&CatFactCapabilities> for Capabilities {
     fn from(incoming: &CatFactCapabilities) -> Self {
-        PlatformCapabilities {
+        Capabilities {
             platform: incoming.platform.map_event(super::Event::Platform),
             render: incoming.render.map_event(super::Event::Platform),
         }
@@ -112,7 +112,7 @@ impl App for CatFacts {
         match msg {
             Event::GetPlatform => {
                 self.platform
-                    .update(PlatformEvent::Get, &mut model.platform, &caps.into())
+                    .update(platform::Event::Get, &mut model.platform, &caps.into())
             }
             Event::Platform(msg) => self.platform.update(msg, &mut model.platform, &caps.into()),
             Event::Clear => {
@@ -207,10 +207,10 @@ impl App for CatFacts {
         };
 
         let platform =
-            <platform::Platform as crux_core::App>::view(&self.platform, &model.platform).platform;
+            <platform::App as crux_core::App>::view(&self.platform, &model.platform).platform;
 
         ViewModel {
-            platform: format!("Hello {platform}"),
+            platform,
             fact,
             image: model.cat_image.clone(),
         }

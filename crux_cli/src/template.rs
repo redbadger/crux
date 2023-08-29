@@ -41,7 +41,12 @@ impl ShellContext {
             workspace: workspace.name.to_ascii_lowercase().replace(" ", "_"),
             core_dir: core.source.to_string_lossy().to_string(),
             core_name: core.name.replace("-", "_"),
-            type_gen: core.type_gen.to_string_lossy().to_string(),
+            type_gen: core
+                .type_gen
+                .as_ref()
+                .map(|x| x.to_string_lossy().to_string())
+                .or(Some("".into()))
+                .unwrap(),
             shell_dir: shell.source.to_string_lossy().to_string(),
             shell_name: shell.name.replace("-", "_"),
             shell_name_dashes: shell.name.replace("_", "-"),

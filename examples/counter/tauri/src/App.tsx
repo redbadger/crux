@@ -11,7 +11,7 @@ const initialState: State = {
 };
 
 function App() {
-  const [state, setState] = useState(initialState);
+  const [view, setView] = useState(initialState);
 
   useEffect(
     () => {
@@ -24,7 +24,7 @@ function App() {
     let unlistenToRender: UnlistenFn;
 
     listen<State>("render", (event) => {
-      setState(event.payload);
+      setView(event.payload);
     }).then((unlisten) => {
       unlistenToRender = unlisten;
     });
@@ -41,7 +41,7 @@ function App() {
         <p className="is-size-5">Rust Core, Rust Shell (Tauri + React.js)</p>
       </section>
       <section className="container has-text-centered">
-        <p className="is-size-5">{state.text}</p>
+        <p className="is-size-5">{view.text}</p>
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-warning"

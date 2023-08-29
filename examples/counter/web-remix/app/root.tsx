@@ -15,6 +15,7 @@ export const links: LinksFunction = () => [
     rel: "stylesheet",
     href: "https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css",
   },
+  { rel: "favicon", href: "" },
 ];
 
 export default function App() {

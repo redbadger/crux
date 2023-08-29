@@ -12,6 +12,7 @@ rust-version.workspace = true
 anyhow.workspace = true
 futures = "0.3.28"
 futures-util = "0.3.28"
+gloo-console = "0.3.0"
 gloo-net = { version = "0.4.0", features = ["http"] }
 js-sys = "0.3.64"
 shared = { path = "../shared" }

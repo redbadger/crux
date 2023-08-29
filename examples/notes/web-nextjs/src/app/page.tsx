@@ -2,14 +2,7 @@
 
 import type { NextPage } from "next";
 import Head from "next/head";
-import {
-  Dispatch,
-  MutableRefObject,
-  SetStateAction,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Navbar from "../components/Navbar/Navbar";
 import Textarea, {
@@ -17,218 +10,58 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import init_core, { process_event, handle_response, view } from "shared/shared";
-import * as types from "shared_types/types/shared_types";
-import * as bincode from "shared_types/bincode/mod";
-import { Seq } from "shared_types/serde/types";
+import init_core from "shared/shared";
+import { SyncMessage, Timers, Core } from "./core";
+import {
+  TextCursor,
+  TextCursorVariantPosition,
+  TextCursorVariantSelection,
+  ViewModel,
+  Message,
+  EventVariantOpen,
+  EventVariantReplace,
+  EventVariantMoveCursor,
+  EventVariantSelect,
+} from "shared_types/types/shared_types";
 
 const LOG_EDITS = false;
 
-interface CoreEvent {
-  kind: "event" | "response";
-  event?: types.Event;
-  response?: Response;
-}
-
-type Response = {
-  uuid: number[];
-  data: any;
+type Selection = {
+  start: number;
+  end: number;
 };
 
-type State = {
-  text: string;
-  selectionStart: number;
-  selectionEnd: number;
-};
-
-type SyncMessage = {
-  kind: "change" | "reset";
-  data?: number[];
-};
-
-type Timers = {
-  [key: number]: number;
-};
-
-const initialState: State = { text: "", selectionStart: 0, selectionEnd: 0 };
-
-function deserializeRequests(bytes: Uint8Array) {
-  let deserializer = new bincode.BincodeDeserializer(bytes);
-
-  const len = deserializer.deserializeLen();
-
-  let requests: types.Request[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const request = types.Request.deserialize(deserializer);
-    requests.push(request);
-  }
-
-  return requests;
-}
-
-function cursorToSelection(cursor: types.TextCursor): {
-  selectionStart: number;
-  selectionEnd: number;
-} {
-  var selectionStart = 0;
-  var selectionEnd = 0;
+function cursorToSelection(cursor: TextCursor): Selection {
+  var start = 0;
+  var end = 0;
 
   switch (cursor.constructor) {
-    case types.TextCursorVariantPosition:
-      let cursorP = cursor as types.TextCursorVariantPosition;
+    case TextCursorVariantPosition:
+      let cursorP = cursor as TextCursorVariantPosition;
 
-      selectionStart = Number(cursorP.value);
-      selectionEnd = Number(cursorP.value);
+      start = Number(cursorP.value);
+      end = Number(cursorP.value);
       break;
-    case types.TextCursorVariantSelection:
-      let cursorS = cursor as types.TextCursorVariantSelection;
+    case TextCursorVariantSelection:
+      let cursorS = cursor as TextCursorVariantSelection;
 
-      selectionStart = Number(cursorS.value.start);
-      selectionEnd = Number(cursorS.value.end);
-      break;
-  }
-
-  return { selectionStart, selectionEnd };
-}
-
-// Crux Effects
-
-function render(setState: (state: State) => void) {
-  let bytes = view();
-  let viewDeserializer = new bincode.BincodeDeserializer(bytes);
-  let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-  var { selectionStart, selectionEnd } = cursorToSelection(viewModel.cursor);
-
-  setState({
-    text: viewModel.text,
-    selectionStart: selectionStart,
-    selectionEnd: selectionEnd,
-  });
-}
-
-function timer(
-  timerOp: types.TimerOperation,
-  updateTimers: Dispatch<SetStateAction<Timers>>, // Might not be the best idea
-  dispatch: (action: CoreEvent) => void,
-  uuid: Seq<number>
-) {
-  switch (timerOp.constructor) {
-    case types.TimerOperationVariantStart:
-      let { id: startId, millis } = timerOp as types.TimerOperationVariantStart;
-
-      let handle = window.setTimeout(() => {
-        // Drop the timer
-        updateTimers((ts) => {
-          let { [Number(startId)]: _, ...rest } = ts;
-
-          return rest;
-        });
-
-        dispatch({
-          kind: "response",
-          response: {
-            uuid,
-            data: new types.TimerOutputVariantFinished(startId),
-          },
-        });
-      }, Number(millis));
-      updateTimers((ts) => ({ [Number(startId)]: handle, ...ts }));
-
-      dispatch({
-        kind: "response",
-        response: {
-          uuid,
-          data: new types.TimerOutputVariantCreated(startId),
-        },
-      });
-
-      break;
-    case types.TimerOperationVariantCancel:
-      let { id: cancelId } = timerOp as types.TimerOperationVariantCancel;
-
-      updateTimers((ts) => {
-        let { [Number(cancelId)]: handle, ...rest } = ts;
-        window.clearTimeout(handle);
-
-        return rest;
-      });
-  }
-}
-
-function pubSub(
-  pubSubOp: types.PubSubOperation,
-  channel: MutableRefObject<BroadcastChannel>,
-  subscriptionId: MutableRefObject<number[] | null>,
-  uuid: Seq<number>
-) {
-  switch (pubSubOp.constructor) {
-    case types.PubSubOperationVariantPublish:
-      let publish = pubSubOp as types.PubSubOperationVariantPublish;
-      let message: SyncMessage = {
-        kind: "change",
-        data: publish.value,
-      };
-
-      channel.current.postMessage(message);
-
-      break;
-    case types.PubSubOperationVariantSubscribe:
-      subscriptionId.current = uuid;
-
+      start = Number(cursorS.value.start);
+      end = Number(cursorS.value.end);
       break;
   }
-}
 
-function keyValue(
-  keyValueOp: types.KeyValueOperation,
-  dispatch: (action: CoreEvent) => void,
-  uuid: Seq<number>
-) {
-  switch (keyValueOp.constructor) {
-    case types.KeyValueOperationVariantRead:
-      const { value: readKey } =
-        keyValueOp as types.KeyValueOperationVariantRead;
-
-      let data = window.localStorage.getItem(readKey);
-      let bytes: number[] | null = data == null ? data : JSON.parse(data);
-
-      console.log(`Loaded document (${bytes?.length} bytes)`);
-
-      dispatch({
-        kind: "response",
-        response: {
-          uuid,
-          data: new types.KeyValueOutputVariantRead(bytes),
-        },
-      });
-
-      break;
-    case types.KeyValueOperationVariantWrite:
-      const { field0: writeKey, field1: writeValue } =
-        keyValueOp as types.KeyValueOperationVariantWrite;
-
-      console.log(`Saving document (${writeValue.length} bytes)`);
-
-      // FIXME JSON is not exactly a space efficient format
-      window.localStorage.setItem(writeKey, JSON.stringify(writeValue));
-
-      dispatch({
-        kind: "response",
-        response: {
-          uuid,
-          data: new types.KeyValueOutputVariantWrite(true),
-        },
-      });
-
-      break;
-  }
+  return {
+    start,
+    end,
+  };
 }
 
 const Home: NextPage = () => {
-  const [state, setState] = useState<State>(initialState);
-  const [_, updateTimers] = useState<Timers>({});
+  const [view, setView] = useState<ViewModel>(
+    new ViewModel("", new TextCursorVariantPosition(BigInt(0)))
+  );
+
+  const [_, setTimers] = useState<Timers>({});
 
   // TODO the state and channel handling should probably get
   // packaged up as a custom hook or something
@@ -236,53 +69,9 @@ const Home: NextPage = () => {
   const subscriptionId = useRef<number[] | null>(null);
   const channel = useRef(new BroadcastChannel("crux-note"));
 
-  const dispatch = (action: CoreEvent) => {
-    const serializer = new bincode.BincodeSerializer();
-
-    if (action.kind == "event") {
-      action.event?.serialize(serializer);
-      const requests = process_event(serializer.getBytes());
-      handleRequests(requests);
-    } else {
-      if (action.response == null) return;
-
-      action.response?.data.serialize(serializer);
-      let uuid = Uint8Array.from(action.response?.uuid);
-
-      const requests = handle_response(uuid, serializer.getBytes());
-      handleRequests(requests);
-    }
-  };
-
-  const handleRequests = async (bytes: Uint8Array) => {
-    let requests = deserializeRequests(bytes);
-
-    for (const { uuid, effect } of requests) {
-      console.log("Handling effect", effect);
-
-      switch (effect.constructor) {
-        case types.EffectVariantRender:
-          render(setState);
-
-          break;
-        case types.EffectVariantPubSub:
-          const pubSubOp = (effect as types.EffectVariantPubSub).value;
-
-          pubSub(pubSubOp, channel, subscriptionId, uuid);
-          break;
-        case types.EffectVariantTimer:
-          const timerOp = (effect as types.EffectVariantTimer).value;
-
-          timer(timerOp, updateTimers, dispatch, uuid);
-          break;
-        case types.EffectVariantKeyValue:
-          const keyValueOp = (effect as types.EffectVariantKeyValue).value;
-
-          keyValue(keyValueOp, dispatch, uuid);
-          break;
-      }
-    }
-  };
+  const core = useRef<Core>(
+    new Core(setView, setTimers, channel, subscriptionId)
+  );
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
     let message = event.data;
@@ -294,57 +83,49 @@ const Home: NextPage = () => {
       return;
     } else if (message.kind == "change" && message.data != null) {
       if (subscriptionId.current == null) return;
-      let data = message.data;
 
       // Pass data into the core
-      dispatch({
-        kind: "response",
-        response: {
-          uuid: subscriptionId.current,
-          data: new types.Message(message.data),
-        },
-      });
+      core.current.respond(subscriptionId.current, new Message(message.data));
     }
   };
 
-  useEffect(() => {
-    async function loadCore() {
-      await init_core();
+  useEffect(
+    () => {
+      async function loadCore() {
+        await init_core();
 
-      // Subscribe to the BroadcastChannel
-      channel.current.onmessage = onMessage;
+        // Subscribe to the BroadcastChannel
+        channel.current.onmessage = onMessage;
 
-      // Open the document
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantOpen(),
-      });
+        // Open the document
+        core.current.update(new EventVariantOpen());
 
-      // Ask all peers to reset
-      let message: SyncMessage = {
-        kind: "reset",
+        // Ask all peers to reset
+        let message: SyncMessage = {
+          kind: "reset",
+        };
+        channel.current.postMessage(message);
+      }
+
+      loadCore();
+
+      const currentChannel = channel.current;
+      return () => {
+        currentChannel.onmessage = null;
       };
-      channel.current.postMessage(message);
-    }
-
-    loadCore();
-
-    const currentChannel = channel.current;
-    return () => {
-      currentChannel.onmessage = null;
-    };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    /*once*/ []
+  );
 
   // Event handlers
 
   const onChange = ({ start, end, text }: ChangeEvent): void => {
     log(`onChange ${start} ${end} "${text}"`);
 
-    dispatch({
-      kind: "event",
-      event: new types.EventVariantReplace(BigInt(start), BigInt(end), text),
-    });
+    core.current.update(
+      new EventVariantReplace(BigInt(start), BigInt(end), text)
+    );
   };
 
   const onSelect = ({ start, end }: SelectEvent): void => {
@@ -352,16 +133,18 @@ const Home: NextPage = () => {
 
     let event =
       start == end
-        ? new types.EventVariantMoveCursor(BigInt(end))
-        : new types.EventVariantSelect(BigInt(start), BigInt(end));
+        ? new EventVariantMoveCursor(BigInt(end))
+        : new EventVariantSelect(BigInt(start), BigInt(end));
 
-    dispatch({ kind: "event", event: event });
+    core.current.update(event);
   };
 
   const [inputLog, updateLog] = useState<string[]>([]);
   const log = (line: string): void => {
     updateLog((log) => [line, ...log.slice(0, 100)]);
   };
+
+  let selection = cursorToSelection(view.cursor);
 
   return (
     <>
@@ -375,11 +158,11 @@ const Home: NextPage = () => {
           <div className="flex-grow basis-1 flex flex-col bg-slate-200 ">
             <Textarea
               className="p-3 flex-grow resize-none w-full focus:outline-none"
-              selectionStart={state.selectionStart}
-              selectionEnd={state.selectionEnd}
+              selectionStart={selection.start}
+              selectionEnd={selection.end}
               onSelect={onSelect}
               onChange={onChange}
-              value={state.text}
+              value={view.text}
             />
           </div>
           {LOG_EDITS ? (

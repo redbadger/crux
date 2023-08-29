@@ -43,15 +43,66 @@ We'll also need a file called `index.html`, to serve our app.
 
 ## Create some UI
 
-### Simple counter example
-
 ```admonish example
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Yew apps in the Crux repository.
+There are several, more advanced,
+[examples](https://github.com/redbadger/crux/tree/master/examples) of Yew apps
+in the Crux repository.
 
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+which has `shared` and `shared_types` libraries that will work with the
+following example code.
 ```
 
-Edit `src/main.rs` to look like this:
+### Simple counter example
+
+A simple app that increments, decrements and resets a counter.
+
+#### Wrap the core to support capabilities
+
+First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+`Render` capability, which triggers a render of the UI.
+
+```admonish
+This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.
+```
+
+Edit `src/core.rs` to look like the following. This code sends our
+(UI-generated) events to the core, and handles any effects that the core asks
+for. In this simple example, we aren't calling any HTTP APIs or handling any
+side effects other than rendering the UI, so we just handle this render effect
+by sending it directly back to the Yew component. Note that we wrap the effect
+in a Message enum because Yew components have a single associated type for
+messages and we need that to include both the events that the UI raises (to send
+to the core) and the effects that the core uses to request side effects from the
+shell.
+
+Also note that because both our core and our shell are written in Rust (and run
+in the same memory space), we do not need to serialize and deserialize the data
+that we pass between them. We can just pass the data directly.
+
+```rust,noplayground
+{{#include ../../../../examples/simple_counter/web-yew/src/core.rs}}
+```
+
+```admonish tip
+That `match` statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-yew/src/core.rs)
+in the Crux repository.
+```
+
+Edit `src/main.rs` to look like the following. The `update` function is
+interesting here. We set up a `Callback` to receive messages from the core and
+feed them back into Yew's event loop. Then we test to see if the incoming
+message is an `Event` (raised by UI interaction) and if so we use it to update
+the core, returning false to indicate that the re-render will happen later. In
+this app, we can assume that any other message is a render `Effect` and so we
+return true indicating to Yew that we _do_ want to re-render.
 
 ```rust,noplayground
 {{#include ../../../../examples/simple_counter/web-yew/src/main.rs}}

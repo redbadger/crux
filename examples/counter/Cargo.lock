@@ -894,15 +894,17 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 name = "cli"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-std",
  "async-task-group",
  "clap",
  "crossbeam-channel",
- "eyre",
  "futures",
  "serde",
  "shared",
  "surf",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1869,16 +1871,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 
 [[package]]
-name = "eyre"
-version = "0.6.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c2b6b5a29c02cdc822728b7d7b8ae1bab3e3b05d44522770ddd49722eeac7eb"
-dependencies = [
- "indenter",
- "once_cell",
-]
-
-[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2381,7 +2373,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28999cda5ef6916ffd33fb4a7b87e1de633c47c0dc6d97905fee1cdaa142b94d"
 dependencies = [
- "gloo-console",
+ "gloo-console 0.2.3",
  "gloo-dialogs",
  "gloo-events",
  "gloo-file",
@@ -2401,6 +2393,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82b7ce3c05debe147233596904981848862b068862e9ec3e34be446077190d3f"
 dependencies = [
  "gloo-utils 0.1.7",
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "gloo-console"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a17868f56b4a24f677b17c8cb69958385102fa879418052d60b50bc1727e261"
+dependencies = [
+ "gloo-utils 0.2.0",
  "js-sys",
  "serde",
  "wasm-bindgen",
@@ -2588,7 +2593,7 @@ checksum = "13471584da78061a28306d1359dd0178d8d6fc1c7c80e5e35d27260346e0516a"
 dependencies = [
  "anymap2",
  "bincode",
- "gloo-console",
+ "gloo-console 0.2.3",
  "gloo-utils 0.1.7",
  "js-sys",
  "serde",
@@ -3026,12 +3031,6 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
-
-[[package]]
-name = "indenter"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
@@ -6624,7 +6623,6 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "dioxus-web",
- "futures",
  "futures-util",
  "gloo-net 0.4.0",
  "js-sys",
@@ -6671,6 +6669,7 @@ dependencies = [
  "anyhow",
  "futures",
  "futures-util",
+ "gloo-console 0.3.0",
  "gloo-net 0.4.0",
  "js-sys",
  "shared",

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use args::Commands;
+use args::{Commands, DoctorArgs};
 use clap::Parser;
 
 use args::Cli;
@@ -14,9 +14,12 @@ mod workspace;
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Some(Commands::Doctor { .. }) => {
-            doctor::doctor(&cli.template_dir, cli.verbose, cli.include_source_code)
-        }
+        Some(Commands::Doctor(DoctorArgs { .. })) => doctor::doctor(
+            &cli.template_dir,
+            cli.path.as_deref(),
+            cli.verbose,
+            cli.include_source_code,
+        ),
         None => Ok(()),
     }
 }

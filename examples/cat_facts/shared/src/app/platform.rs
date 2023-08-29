@@ -1,9 +1,10 @@
-use crux_core::{render::Render, App};
-use crux_platform::{Platform as PlatformCap, PlatformResponse};
+use crux_core::render::Render;
+use crux_macros::Effect;
+use crux_platform::{Platform, PlatformResponse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
-pub struct Platform {}
+pub struct App {}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Model {
@@ -11,27 +12,28 @@ pub struct Model {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub enum PlatformEvent {
+pub enum Event {
     Get,
     Set(PlatformResponse),
 }
 
-pub struct PlatformCapabilities {
-    pub platform: PlatformCap<PlatformEvent>,
-    pub render: Render<PlatformEvent>,
+#[derive(Effect)]
+pub struct Capabilities {
+    pub platform: Platform<Event>,
+    pub render: Render<Event>,
 }
 
-impl App for Platform {
-    type Event = PlatformEvent;
+impl crux_core::App for App {
+    type Event = Event;
     type Model = Model;
     type ViewModel = Model;
-    type Capabilities = PlatformCapabilities;
+    type Capabilities = Capabilities;
 
-    fn update(&self, msg: PlatformEvent, model: &mut Model, caps: &PlatformCapabilities) {
+    fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) {
         match msg {
-            PlatformEvent::Get => caps.platform.get(PlatformEvent::Set),
-            PlatformEvent::Set(platform) => {
-                model.platform = platform.0;
+            Event::Get => caps.platform.get(Event::Set),
+            Event::Set(PlatformResponse(platform)) => {
+                model.platform = platform;
                 caps.render.render()
             }
         }
@@ -39,7 +41,37 @@ impl App for Platform {
 
     fn view(&self, model: &Model) -> Model {
         Model {
-            platform: model.platform.clone(),
+            platform: format!("Hello {platform}", platform = model.platform),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use assert_let_bind::assert_let;
+    use crux_core::testing::AppTester;
+    use crux_platform::PlatformResponse;
+
+    use super::*;
+
+    #[test]
+    fn get_platform() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let mut update = app.update(Event::Get, &mut model);
+
+        assert_let!(Effect::Platform(request), &mut update.effects[0]);
+
+        let response = PlatformResponse("platform".to_string());
+        let update = app
+            .resolve(request, response)
+            .expect("should resolve successfully");
+        for event in update.events {
+            app.update(event, &mut model);
+        }
+
+        assert_eq!(model.platform, "platform");
+        assert_eq!(app.view(&mut model).platform, "Hello platform");
     }
 }

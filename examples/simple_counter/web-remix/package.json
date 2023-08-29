@@ -2,8 +2,9 @@
   "private": true,
   "sideEffects": false,
   "scripts": {
-    "build": "remix build",
-    "dev": "remix dev",
+    "build": "pnpm run wasm:build && remix build",
+    "dev": "pnpm run wasm:build && remix dev",
+    "wasm:build": "cd ../shared && wasm-pack build --target web",
     "start": "remix-serve build",
     "typecheck": "tsc"
   },

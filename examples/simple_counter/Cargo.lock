@@ -3297,7 +3297,6 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "dioxus-web",
- "futures",
  "futures-util",
  "log",
  "shared",

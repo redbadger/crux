@@ -127,15 +127,56 @@ pnpm add ../shared_types/generated/typescript
 
 ## Create some UI
 
-### Simple counter example
-
 ```admonish example
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Next.js apps in the Crux repository.
+There are other, more advanced, [examples](https://github.com/redbadger/crux/tree/master/examples) of Next.js apps in the Crux repository.
 
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
-Edit `web-nextjs/pages/index.tsx` to look like this:
+### Simple counter example
+
+A simple app that increments, decrements and resets a counter.
+
+#### Wrap the core to support capabilities
+
+First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+`Render` capability, which triggers a render of the UI.
+
+```admonish
+This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.
+```
+
+Edit `src/app/core.ts` to look like the following. This code sends our
+(UI-generated) events to the core, and handles any effects that the core asks
+for. In this simple example, we aren't calling any HTTP APIs or handling any
+side effects other than rendering the UI, so we just handle this render effect
+by updating the component's `view` hook with the core's ViewModel.
+
+Notice that we have to serialize and deserialize the data that we pass between
+the core and the shell. This is because the core is running in a separate
+WebAssembly instance, and so we can't just pass the data directly.
+
+```typescript
+{{#include ../../../../examples/simple_counter/web-nextjs/src/app/core.ts}}
+```
+
+```admonish tip
+That `switch` statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-nextjs/src/core.rs)
+in the Crux repository.
+```
+
+#### Create a component to render the UI
+
+Edit `src/app/page.tsx` to look like the following. This code loads the
+WebAssembly core and sends it an initial event. Notice that we pass the
+`setState` hook to the update function so that we can update the state in
+response to a render effect from the core.
 
 ```typescript
 {{#include ../../../../examples/simple_counter/web-nextjs/src/app/page.tsx}}

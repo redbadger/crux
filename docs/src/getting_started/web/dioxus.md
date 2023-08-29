@@ -55,15 +55,54 @@ project's `Cargo.toml`.
 
 ## Create some UI
 
-### Simple counter example
-
 ```admonish example
-There is slightly more complex [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Dioxus app in the Crux repository.
+There is slightly more advanced [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Dioxus app in the Crux repository.
 
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
-Edit `src/main.rs` to look like this:
+### Simple counter example
+
+A simple app that increments, decrements and resets a counter.
+
+#### Wrap the core to support capabilities
+
+First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+`Render` capability, which triggers a render of the UI.
+
+```admonish
+This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.
+```
+
+Edit `src/core.rs` to look like the following. This code sends our
+(UI-generated) events to the core, and handles any effects that the core asks
+for. In this simple example, we aren't calling any HTTP APIs or handling any
+side effects other than rendering the UI, so we just handle this render effect
+by updating the component's `view` hook with the core's ViewModel.
+
+Also note that because both our core and our shell are written in Rust (and run
+in the same memory space), we do not need to serialize and deserialize the data
+that we pass between them. We can just pass the data directly.
+
+```rust,noplayground
+{{#include ../../../../examples/simple_counter/web-dioxus/src/core.rs}}
+```
+
+```admonish tip
+That `match` statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-dioxus/src/core.rs)
+in the Crux repository.
+```
+
+Edit `src/main.rs` to look like the following. This code sets up the Dioxus app,
+and connects the core to the UI. Not only do we create a hook for the view state
+but we also create a coroutine that plugs in the Dioxus "service" we defined
+above to constantly send any events from the UI to the core.
 
 ```rust,noplayground
 {{#include ../../../../examples/simple_counter/web-dioxus/src/main.rs}}

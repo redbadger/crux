@@ -1,5 +1,5 @@
 use crux_core::typegen::TypeGen;
-use shared::{app::platform::PlatformEvent, CatFacts};
+use shared::CatFacts;
 use std::path::PathBuf;
 
 fn main() {
@@ -8,10 +8,6 @@ fn main() {
     let mut gen = TypeGen::new();
 
     gen.register_app::<CatFacts>().expect("register");
-
-    // Note: currently required as we can't find enums inside enums, see:
-    // https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features
-    gen.register_type::<PlatformEvent>().expect("register");
 
     let output_root = PathBuf::from("./generated");
 
