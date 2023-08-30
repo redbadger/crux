@@ -16,8 +16,6 @@ export function update(
   event: Event,
   callback: Dispatch<SetStateAction<ViewModel>>
 ) {
-  console.log("event", event);
-
   const serializer = new BincodeSerializer();
   event.serialize(serializer);
 
@@ -34,8 +32,6 @@ function processEffect(
   effect: Effect,
   callback: Dispatch<SetStateAction<ViewModel>>
 ) {
-  console.log("effect", effect);
-
   switch (effect.constructor) {
     case EffectVariantRender: {
       callback(deserializeView(view()));
