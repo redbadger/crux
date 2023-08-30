@@ -7,16 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		08A5891079278B0627EECC52 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 32258924E0AD419BAA621949 /* SharedTypes */; };
-		0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A6C59672AA736317738B5C /* ContentView.swift */; };
-		4467D267096A960C23F9FF3B /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA6A61FB6787C24656A044CC /* libshared_static.a */; };
-		4A7935DA2D4B24A0427339BC /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 1465E5EDE4F684AD5291C0A3 /* shared.udl */; };
-		5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
+		0787064227803E37303F8850 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 973DE79248816287A24759FA /* ContentView.swift */; };
+		1D91DEB92273DE4FC7EE2D8F /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = BBD3AE0E65859A8BDC264878 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3BC6ECA0F473F02732E308CF /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D58E719CAB41FB94F163AB8D /* libshared_static.a */; };
+		5425067E3C89678E1AEF3F79 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 9CC45FB589F9964637A15D5C /* shared.udl */; };
+		9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 987661FD124A360FFF36A4F4 /* SharedTypes */; };
+		C4CD26945C055EF9827876AE /* BridgePerfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E902CC2F9431673D47029C6C /* BridgePerfApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
-		E45AE029B6F917B0FFA85BD6 /* PBXBuildRule */ = {
+		CE78713175AD80D3C2ECFE30 /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
@@ -35,165 +35,165 @@
 /* End PBXBuildRule section */
 
 /* Begin PBXContainerItemProxy section */
-		3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */ = {
+		3B6BFE67C9D12C319529549B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
 			proxyType = 2;
-			remoteGlobalIDString = CA607A8B44DCFB09138082B7;
-			remoteInfo = "shared-staticlib";
-		};
-		3DDA7AA1C70938E917385629 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
-			proxyType = 1;
-			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
-			remoteInfo = "shared-staticlib";
-		};
-		C284D65D30E22DC037BD5299 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
-			proxyType = 1;
-			remoteGlobalIDString = CA60ACD85ECB522D2C86E215;
+			remoteGlobalIDString = CA60ACD85ECB8109328FB0D5;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CCA572612A851DA9009C82BD /* PBXContainerItemProxy */ = {
+		775B38BB2A9F8EE900A5A7F9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
 			proxyType = 2;
 			remoteGlobalIDString = CA60D2B4E60D10F7F7FCAC5B;
 			remoteInfo = "shared-cdylib";
 		};
-		F300AC884F93FAF703B505A3 /* PBXContainerItemProxy */ = {
+		83B41448E196CC4F3B4DDFCF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
 			proxyType = 2;
-			remoteGlobalIDString = CA60ACD85ECB8109328FB0D5;
+			remoteGlobalIDString = CA607A8B44DCFB09138082B7;
+			remoteInfo = "shared-staticlib";
+		};
+		B724024E5A9D7E5FEF0FB8C5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
+			remoteInfo = "shared-staticlib";
+		};
+		D7237C0DEFADD2FC00B525B2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA60ACD85ECB522D2C86E215;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		1465E5EDE4F684AD5291C0A3 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
-		67D62EB120D164DFC93E7EC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
-		984E511AE1F9FB764F58CB7A /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
-		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D533D9BD281C15290E4016E5 /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
-		D6A6C59672AA736317738B5C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5714ACFE617CB6EE596AD894 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
+		973DE79248816287A24759FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9CC45FB589F9964637A15D5C /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
+		CB21FEAAC10EE53663214F3D /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		CC862345F0CDB156048B1417 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E902CC2F9431673D47029C6C /* BridgePerfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgePerfApp.swift; sourceTree = "<group>"; };
+		EC64E599F518F2E743EA1C66 /* BridgePerf.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BridgePerf.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		BDE534E147194D3AC42ADD82 /* Frameworks */ = {
+		058E488EF07713DF66B51F6D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4467D267096A960C23F9FF3B /* libshared_static.a in Frameworks */,
-				08A5891079278B0627EECC52 /* SharedTypes in Frameworks */,
+				3BC6ECA0F473F02732E308CF /* libshared_static.a in Frameworks */,
+				9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1B75A283E60878770D306B2A /* src */ = {
+		5F3D13089EDA162C9AD13180 = {
 			isa = PBXGroup;
 			children = (
-				1465E5EDE4F684AD5291C0A3 /* shared.udl */,
+				A745C5C6AA1501560EB5DA3C /* BridgePerf */,
+				690F97A271CC1AAFF155F799 /* Packages */,
+				7DD811CAEDAD7DF7CA41F833 /* src */,
+				CB13C3F3A78020B70FBF188F /* Products */,
+				FCE50907855ED2F9637A72B2 /* Projects */,
+			);
+			sourceTree = "<group>";
+		};
+		690F97A271CC1AAFF155F799 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				CB21FEAAC10EE53663214F3D /* SharedTypes */,
+			);
+			name = Packages;
+			sourceTree = SOURCE_ROOT;
+		};
+		7DD811CAEDAD7DF7CA41F833 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				9CC45FB589F9964637A15D5C /* shared.udl */,
 			);
 			name = src;
 			path = ../shared/src;
 			sourceTree = "<group>";
 		};
-		20BEF56E8A58908817A7D5C2 /* CounterApp */ = {
+		A745C5C6AA1501560EB5DA3C /* BridgePerf */ = {
 			isa = PBXGroup;
 			children = (
-				D6A6C59672AA736317738B5C /* ContentView.swift */,
-				D533D9BD281C15290E4016E5 /* CounterAppApp.swift */,
-				67D62EB120D164DFC93E7EC0 /* Info.plist */,
+				E902CC2F9431673D47029C6C /* BridgePerfApp.swift */,
+				973DE79248816287A24759FA /* ContentView.swift */,
+				CC862345F0CDB156048B1417 /* Info.plist */,
 			);
-			path = CounterApp;
+			path = BridgePerf;
 			sourceTree = "<group>";
 		};
-		79077CB87B15CD5B056551FE /* Packages */ = {
+		ADD693609F892973F1B1FAAC /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6D984934DC207C1C28EDF6F1 /* SharedTypes */,
-			);
-			name = Packages;
-			sourceTree = SOURCE_ROOT;
-		};
-		91C0E33BEDE2E530350B68C8 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				9D06BFB95E0269CB9E1CD716 /* CounterApp.app */,
+				D58E719CAB41FB94F163AB8D /* libshared_static.a */,
+				775B38BC2A9F8EE900A5A7F9 /* shared.dylib */,
+				BBD3AE0E65859A8BDC264878 /* uniffi-bindgen */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		B86E33DC287DA7AC92DD5972 = {
+		CB13C3F3A78020B70FBF188F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				20BEF56E8A58908817A7D5C2 /* CounterApp */,
-				79077CB87B15CD5B056551FE /* Packages */,
-				1B75A283E60878770D306B2A /* src */,
-				91C0E33BEDE2E530350B68C8 /* Products */,
-				B95BE3C5CA8A234A4D1E9F0E /* Projects */,
+				EC64E599F518F2E743EA1C66 /* BridgePerf.app */,
 			);
+			name = Products;
 			sourceTree = "<group>";
 		};
-		B95BE3C5CA8A234A4D1E9F0E /* Projects */ = {
+		FCE50907855ED2F9637A72B2 /* Projects */ = {
 			isa = PBXGroup;
 			children = (
-				984E511AE1F9FB764F58CB7A /* Shared */,
+				5714ACFE617CB6EE596AD894 /* Shared */,
 			);
 			name = Projects;
-			sourceTree = "<group>";
-		};
-		CFB8F28E88E6BF19B5129CB8 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				BA6A61FB6787C24656A044CC /* libshared_static.a */,
-				CCA572622A851DA9009C82BD /* shared.dylib */,
-				4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		010B0A238A076EB26DD23BB1 /* CounterApp */ = {
+		D4BDC0123D79E2CEE8019CC9 /* BridgePerf */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B7140C4C9BEE130CB4BA6DAD /* Build configuration list for PBXNativeTarget "CounterApp" */;
+			buildConfigurationList = A66AFC9AFEDD2D8A619E2E2A /* Build configuration list for PBXNativeTarget "BridgePerf" */;
 			buildPhases = (
-				29206CB1A0ECB217F5F98845 /* Sources */,
-				7EDA081FAFAA7F31D0463D79 /* Resources */,
-				BDE534E147194D3AC42ADD82 /* Frameworks */,
+				7F7ED5D9102C34900DD37253 /* Sources */,
+				63BEA0E7DE2757751E08E927 /* Resources */,
+				058E488EF07713DF66B51F6D /* Frameworks */,
 			);
 			buildRules = (
-				E45AE029B6F917B0FFA85BD6 /* PBXBuildRule */,
+				CE78713175AD80D3C2ECFE30 /* PBXBuildRule */,
 			);
 			dependencies = (
-				9185B3D491AE14F3B6E7DD76 /* PBXTargetDependency */,
-				99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */,
+				5C15DD2899A033B2E75B22E1 /* PBXTargetDependency */,
+				379D55B64F83CAE74DC7B1DA /* PBXTargetDependency */,
 			);
-			name = CounterApp;
+			name = BridgePerf;
 			packageProductDependencies = (
-				32258924E0AD419BAA621949 /* SharedTypes */,
+				987661FD124A360FFF36A4F4 /* SharedTypes */,
 			);
-			productName = CounterApp;
-			productReference = 9D06BFB95E0269CB9E1CD716 /* CounterApp.app */;
+			productName = BridgePerf;
+			productReference = EC64E599F518F2E743EA1C66 /* BridgePerf.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		CF1FACE8C7C58FDD63D46C13 /* Project object */ = {
+		E6AC867294C325C06F91A2B5 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 1200;
 			};
-			buildConfigurationList = 7851C38F90AFE0DC30E065D2 /* Build configuration list for PBXProject "CounterApp" */;
+			buildConfigurationList = 93793E0225371F5631E490D1 /* Build configuration list for PBXProject "BridgePerf" */;
 			compatibilityVersion = "Xcode 11.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -201,128 +201,84 @@
 				Base,
 				en,
 			);
-			mainGroup = B86E33DC287DA7AC92DD5972;
+			mainGroup = 5F3D13089EDA162C9AD13180;
 			projectDirPath = "";
 			projectReferences = (
 				{
-					ProductGroup = CFB8F28E88E6BF19B5129CB8 /* Products */;
-					ProjectRef = 984E511AE1F9FB764F58CB7A /* Shared */;
+					ProductGroup = ADD693609F892973F1B1FAAC /* Products */;
+					ProjectRef = 5714ACFE617CB6EE596AD894 /* Shared */;
 				},
 			);
 			projectRoot = "";
 			targets = (
-				010B0A238A076EB26DD23BB1 /* CounterApp */,
+				D4BDC0123D79E2CEE8019CC9 /* BridgePerf */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */ = {
-			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.executable";
-			path = "uniffi-bindgen";
-			remoteRef = F300AC884F93FAF703B505A3 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		BA6A61FB6787C24656A044CC /* libshared_static.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libshared_static.a;
-			remoteRef = 3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		CCA572622A851DA9009C82BD /* shared.dylib */ = {
+		775B38BC2A9F8EE900A5A7F9 /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CCA572612A851DA9009C82BD /* PBXContainerItemProxy */;
+			remoteRef = 775B38BB2A9F8EE900A5A7F9 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		BBD3AE0E65859A8BDC264878 /* uniffi-bindgen */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "uniffi-bindgen";
+			remoteRef = 3B6BFE67C9D12C319529549B /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		D58E719CAB41FB94F163AB8D /* libshared_static.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libshared_static.a;
+			remoteRef = 83B41448E196CC4F3B4DDFCF /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
-		7EDA081FAFAA7F31D0463D79 /* Resources */ = {
+		63BEA0E7DE2757751E08E927 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */,
+				1D91DEB92273DE4FC7EE2D8F /* uniffi-bindgen in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		29206CB1A0ECB217F5F98845 /* Sources */ = {
+		7F7ED5D9102C34900DD37253 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */,
-				B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */,
-				4A7935DA2D4B24A0427339BC /* shared.udl in Sources */,
+				C4CD26945C055EF9827876AE /* BridgePerfApp.swift in Sources */,
+				0787064227803E37303F8850 /* ContentView.swift in Sources */,
+				5425067E3C89678E1AEF3F79 /* shared.udl in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		9185B3D491AE14F3B6E7DD76 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "uniffi-bindgen-bin";
-			targetProxy = C284D65D30E22DC037BD5299 /* PBXContainerItemProxy */;
-		};
-		99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */ = {
+		379D55B64F83CAE74DC7B1DA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = "shared-staticlib";
-			targetProxy = 3DDA7AA1C70938E917385629 /* PBXContainerItemProxy */;
+			targetProxy = B724024E5A9D7E5FEF0FB8C5 /* PBXContainerItemProxy */;
+		};
+		5C15DD2899A033B2E75B22E1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "uniffi-bindgen-bin";
+			targetProxy = D7237C0DEFADD2FC00B525B2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		796BD0ACD6614E951D434587 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				INFOPLIST_FILE = CounterApp/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				OTHER_LDFLAGS = (
-					"-w",
-					"-ObjC",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.CounterApp;
-				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		836270C59FCC6D96A607D822 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				INFOPLIST_FILE = CounterApp/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				OTHER_LDFLAGS = (
-					"-w",
-					"-ObjC",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.CounterApp;
-				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		B4EC29AAFF2F22C740DBFB9F /* Release */ = {
+		0C0873955D078661AA1DF0A6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -377,7 +333,29 @@
 			};
 			name = Release;
 		};
-		E81AA16697771FD928AEC5D5 /* Debug */ = {
+		305922C5F34F8372793F2B75 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = BridgePerf/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-w",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.bridge_perf.BridgePerf;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		51D0488225B720E2F1A1F974 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -439,23 +417,45 @@
 			};
 			name = Debug;
 		};
+		57F315C31BDE965926F32D28 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = BridgePerf/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-w",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.bridge_perf.BridgePerf;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7851C38F90AFE0DC30E065D2 /* Build configuration list for PBXProject "CounterApp" */ = {
+		93793E0225371F5631E490D1 /* Build configuration list for PBXProject "BridgePerf" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E81AA16697771FD928AEC5D5 /* Debug */,
-				B4EC29AAFF2F22C740DBFB9F /* Release */,
+				51D0488225B720E2F1A1F974 /* Debug */,
+				0C0873955D078661AA1DF0A6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		B7140C4C9BEE130CB4BA6DAD /* Build configuration list for PBXNativeTarget "CounterApp" */ = {
+		A66AFC9AFEDD2D8A619E2E2A /* Build configuration list for PBXNativeTarget "BridgePerf" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				796BD0ACD6614E951D434587 /* Debug */,
-				836270C59FCC6D96A607D822 /* Release */,
+				57F315C31BDE965926F32D28 /* Debug */,
+				305922C5F34F8372793F2B75 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -463,11 +463,11 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		32258924E0AD419BAA621949 /* SharedTypes */ = {
+		987661FD124A360FFF36A4F4 /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = CF1FACE8C7C58FDD63D46C13 /* Project object */;
+	rootObject = E6AC867294C325C06F91A2B5 /* Project object */;
 }

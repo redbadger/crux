@@ -1,4 +1,4 @@
-name: CounterApp
+name: BridgePerf
 projectReferences:
   Shared:
     path: ../shared/shared.xcodeproj
@@ -6,16 +6,16 @@ packages:
   SharedTypes:
     path: ../shared_types/generated/swift/SharedTypes
 options:
-  bundleIdPrefix: com.example.counter
+  bundleIdPrefix: com.example.bridge_perf
 attributes:
   BuildIndependentTargetsInParallel: true
 targets:
-  CounterApp:
+  BridgePerf:
     type: application
     platform: iOS
     deploymentTarget: "15.0"
     sources:
-      - CounterApp
+      - BridgePerf
       - path: ../shared/src/shared.udl
         buildPhase: sources
     dependencies:
@@ -23,7 +23,7 @@ targets:
       - target: Shared/shared-staticlib
       - package: SharedTypes
     info:
-      path: CounterApp/Info.plist
+      path: BridgePerf/Info.plist
       properties:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct CounterAppApp: App {
+struct BridgePerfApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: Model())
