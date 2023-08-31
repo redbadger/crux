@@ -57,7 +57,7 @@ apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 cargo {
     module = "../.."
     libname = "shared"
-    targets = ["arm64"]
+    targets = ["arm", "arm64", "x86", "x86_64"]
     extraCargoBuildArguments = ['--package', 'shared']
 }
 
