@@ -1,4 +1,4 @@
-package com.example.counter.shared
+package com.example.bridge_perf.shared
 
 import org.junit.Test
 

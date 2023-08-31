@@ -1,4 +1,4 @@
-package com.example.counter
+package com.example.bridge_perf
 
 import org.junit.Test
 

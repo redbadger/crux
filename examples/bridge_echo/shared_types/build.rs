@@ -14,7 +14,7 @@ fn main() {
     gen.swift("SharedTypes", output_root.join("swift"))
         .expect("swift type gen failed");
 
-    gen.java("com.example.counter.shared_types", output_root.join("java"))
+    gen.java("com.example.bridge_echo.shared_types", output_root.join("java"))
         .expect("java type gen failed");
 
     gen.typescript("shared_types", output_root.join("typescript"))

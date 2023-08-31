@@ -10,7 +10,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Counter">
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.bridge_echo.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Counter">
             <intent-filter>

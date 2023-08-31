@@ -1,8 +1,9 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
-package com.example.counter
+package com.example.bridge_echo
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -13,20 +14,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.counter.shared.processEvent
-import com.example.counter.shared.view
-import com.example.counter.shared_types.Effect
-import com.example.counter.shared_types.Event
-import com.example.counter.shared_types.Requests
-import com.example.counter.ui.theme.CounterTheme
-import com.example.counter.shared_types.Event as Evt
-import com.example.counter.shared_types.Request as Req
-import com.example.counter.shared_types.ViewModel as MyViewModel
+import com.example.bridge_echo.shared.processEvent
+import com.example.bridge_echo.shared.view
+import com.example.bridge_echo.shared_types.Effect
+import com.example.bridge_echo.shared_types.Event
+import com.example.bridge_echo.shared_types.Requests
+import com.example.bridge_echo.ui.theme.CounterTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.example.bridge_echo.shared_types.Event as Evt
+import com.example.bridge_echo.shared_types.Request as Req
+import com.example.bridge_echo.shared_types.ViewModel as MyViewModel
 
 
 class MainActivity : ComponentActivity() {
@@ -50,11 +56,33 @@ sealed class CoreMessage {
 }
 
 class Model : ViewModel() {
-    var view: MyViewModel by mutableStateOf(MyViewModel(""))
+    var view: MyViewModel by mutableStateOf(MyViewModel(0))
         private set
 
     init {
-        update(CoreMessage.Event(Event.Reset()))
+        viewModelScope.launch {
+            clock()
+        }
+        viewModelScope.launch {
+            ticker()
+        }
+    }
+
+    suspend fun ticker() {
+        withContext(Dispatchers.Default) {
+            while (true) {
+                update(CoreMessage.Event(Event.Tick()))
+            }
+        }
+    }
+
+    suspend fun clock() {
+        withContext(Dispatchers.Default) {
+            while (true) {
+                update(CoreMessage.Event(Event.NewPeriod()))
+                delay(1000)
+            }
+        }
     }
 
     fun update(msg: CoreMessage) {
@@ -84,30 +112,7 @@ fun View(model: Model = viewModel()) {
             .fillMaxSize()
             .padding(10.dp),
     ) {
-        Text(text = model.view.count.toString(), modifier = Modifier.padding(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(
-                onClick = { model.update(CoreMessage.Event(Event.Reset())) },
-                colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) { Text(text = "Reset", color = Color.White) }
-            Button(
-                onClick = { model.update(CoreMessage.Event(Event.Increment())) },
-                colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) { Text(text = "Increment", color = Color.White) }
-            Button(
-                onClick = { model.update(CoreMessage.Event(Event.Decrement())) },
-                colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
-                )
-            ) { Text(text = "Decrement", color = Color.White) }
-        }
+        Text(text = model.view.count.toString(), fontSize = 30.sp,  modifier = Modifier.padding(10.dp))
     }
 }
 

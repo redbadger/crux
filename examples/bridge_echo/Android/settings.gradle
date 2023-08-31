@@ -12,6 +12,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Counter"
+rootProject.name = "BridgePerf"
 include ':app'
 include ':shared'

@@ -1,5 +1,5 @@
 [bindings.kotlin]
-package_name = "com.example.simple_counter.shared"
+package_name = "com.example.bridge_echo.shared"
 cdylib_name = "shared"
 
 [bindings.swift]
