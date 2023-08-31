@@ -1,0 +1,473 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 52;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0787064227803E37303F8850 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 973DE79248816287A24759FA /* ContentView.swift */; };
+		1D91DEB92273DE4FC7EE2D8F /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = BBD3AE0E65859A8BDC264878 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3BC6ECA0F473F02732E308CF /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D58E719CAB41FB94F163AB8D /* libshared_static.a */; };
+		5425067E3C89678E1AEF3F79 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 9CC45FB589F9964637A15D5C /* shared.udl */; };
+		9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 987661FD124A360FFF36A4F4 /* SharedTypes */; };
+		C4CD26945C055EF9827876AE /* BridgePerfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E902CC2F9431673D47029C6C /* BridgePerfApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXBuildRule section */
+		CE78713175AD80D3C2ECFE30 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			filePatterns = "*.udl";
+			fileType = pattern.proxy;
+			isEditable = 1;
+			name = "Generate FFI";
+			outputFiles = (
+				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift",
+				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h",
+			);
+			outputFilesCompilerFlags = (
+			);
+			runOncePerArchitecture = 0;
+			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/debug/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
+		};
+/* End PBXBuildRule section */
+
+/* Begin PBXContainerItemProxy section */
+		3B6BFE67C9D12C319529549B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA60ACD85ECB8109328FB0D5;
+			remoteInfo = "uniffi-bindgen-bin";
+		};
+		775B38BB2A9F8EE900A5A7F9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA60D2B4E60D10F7F7FCAC5B;
+			remoteInfo = "shared-cdylib";
+		};
+		83B41448E196CC4F3B4DDFCF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA607A8B44DCFB09138082B7;
+			remoteInfo = "shared-staticlib";
+		};
+		B724024E5A9D7E5FEF0FB8C5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
+			remoteInfo = "shared-staticlib";
+		};
+		D7237C0DEFADD2FC00B525B2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA60ACD85ECB522D2C86E215;
+			remoteInfo = "uniffi-bindgen-bin";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		5714ACFE617CB6EE596AD894 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
+		973DE79248816287A24759FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9CC45FB589F9964637A15D5C /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
+		CB21FEAAC10EE53663214F3D /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		CC862345F0CDB156048B1417 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E902CC2F9431673D47029C6C /* BridgePerfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgePerfApp.swift; sourceTree = "<group>"; };
+		EC64E599F518F2E743EA1C66 /* BridgePerf.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BridgePerf.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		058E488EF07713DF66B51F6D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3BC6ECA0F473F02732E308CF /* libshared_static.a in Frameworks */,
+				9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5F3D13089EDA162C9AD13180 = {
+			isa = PBXGroup;
+			children = (
+				A745C5C6AA1501560EB5DA3C /* BridgePerf */,
+				690F97A271CC1AAFF155F799 /* Packages */,
+				7DD811CAEDAD7DF7CA41F833 /* src */,
+				CB13C3F3A78020B70FBF188F /* Products */,
+				FCE50907855ED2F9637A72B2 /* Projects */,
+			);
+			sourceTree = "<group>";
+		};
+		690F97A271CC1AAFF155F799 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				CB21FEAAC10EE53663214F3D /* SharedTypes */,
+			);
+			name = Packages;
+			sourceTree = SOURCE_ROOT;
+		};
+		7DD811CAEDAD7DF7CA41F833 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				9CC45FB589F9964637A15D5C /* shared.udl */,
+			);
+			name = src;
+			path = ../shared/src;
+			sourceTree = "<group>";
+		};
+		A745C5C6AA1501560EB5DA3C /* BridgePerf */ = {
+			isa = PBXGroup;
+			children = (
+				E902CC2F9431673D47029C6C /* BridgePerfApp.swift */,
+				973DE79248816287A24759FA /* ContentView.swift */,
+				CC862345F0CDB156048B1417 /* Info.plist */,
+			);
+			path = BridgePerf;
+			sourceTree = "<group>";
+		};
+		ADD693609F892973F1B1FAAC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D58E719CAB41FB94F163AB8D /* libshared_static.a */,
+				775B38BC2A9F8EE900A5A7F9 /* shared.dylib */,
+				BBD3AE0E65859A8BDC264878 /* uniffi-bindgen */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CB13C3F3A78020B70FBF188F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EC64E599F518F2E743EA1C66 /* BridgePerf.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FCE50907855ED2F9637A72B2 /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				5714ACFE617CB6EE596AD894 /* Shared */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D4BDC0123D79E2CEE8019CC9 /* BridgePerf */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A66AFC9AFEDD2D8A619E2E2A /* Build configuration list for PBXNativeTarget "BridgePerf" */;
+			buildPhases = (
+				7F7ED5D9102C34900DD37253 /* Sources */,
+				63BEA0E7DE2757751E08E927 /* Resources */,
+				058E488EF07713DF66B51F6D /* Frameworks */,
+			);
+			buildRules = (
+				CE78713175AD80D3C2ECFE30 /* PBXBuildRule */,
+			);
+			dependencies = (
+				5C15DD2899A033B2E75B22E1 /* PBXTargetDependency */,
+				379D55B64F83CAE74DC7B1DA /* PBXTargetDependency */,
+			);
+			name = BridgePerf;
+			packageProductDependencies = (
+				987661FD124A360FFF36A4F4 /* SharedTypes */,
+			);
+			productName = BridgePerf;
+			productReference = EC64E599F518F2E743EA1C66 /* BridgePerf.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E6AC867294C325C06F91A2B5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1200;
+			};
+			buildConfigurationList = 93793E0225371F5631E490D1 /* Build configuration list for PBXProject "BridgePerf" */;
+			compatibilityVersion = "Xcode 11.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 5F3D13089EDA162C9AD13180;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = ADD693609F892973F1B1FAAC /* Products */;
+					ProjectRef = 5714ACFE617CB6EE596AD894 /* Shared */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				D4BDC0123D79E2CEE8019CC9 /* BridgePerf */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		775B38BC2A9F8EE900A5A7F9 /* shared.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = shared.dylib;
+			remoteRef = 775B38BB2A9F8EE900A5A7F9 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		BBD3AE0E65859A8BDC264878 /* uniffi-bindgen */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "uniffi-bindgen";
+			remoteRef = 3B6BFE67C9D12C319529549B /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		D58E719CAB41FB94F163AB8D /* libshared_static.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libshared_static.a;
+			remoteRef = 83B41448E196CC4F3B4DDFCF /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		63BEA0E7DE2757751E08E927 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D91DEB92273DE4FC7EE2D8F /* uniffi-bindgen in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7F7ED5D9102C34900DD37253 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4CD26945C055EF9827876AE /* BridgePerfApp.swift in Sources */,
+				0787064227803E37303F8850 /* ContentView.swift in Sources */,
+				5425067E3C89678E1AEF3F79 /* shared.udl in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		379D55B64F83CAE74DC7B1DA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "shared-staticlib";
+			targetProxy = B724024E5A9D7E5FEF0FB8C5 /* PBXContainerItemProxy */;
+		};
+		5C15DD2899A033B2E75B22E1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "uniffi-bindgen-bin";
+			targetProxy = D7237C0DEFADD2FC00B525B2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0C0873955D078661AA1DF0A6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		305922C5F34F8372793F2B75 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = BridgePerf/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-w",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.bridge_perf.BridgePerf;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		51D0488225B720E2F1A1F974 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		57F315C31BDE965926F32D28 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = BridgePerf/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-w",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.bridge_perf.BridgePerf;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		93793E0225371F5631E490D1 /* Build configuration list for PBXProject "BridgePerf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				51D0488225B720E2F1A1F974 /* Debug */,
+				0C0873955D078661AA1DF0A6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A66AFC9AFEDD2D8A619E2E2A /* Build configuration list for PBXNativeTarget "BridgePerf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				57F315C31BDE965926F32D28 /* Debug */,
+				305922C5F34F8372793F2B75 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		987661FD124A360FFF36A4F4 /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = E6AC867294C325C06F91A2B5 /* Project object */;
+}
