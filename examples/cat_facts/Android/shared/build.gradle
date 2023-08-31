@@ -56,7 +56,10 @@ apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 cargo {
     module  = "../.."
     libname = "shared"
-    targets = ["arm64"]
+    // these are the four recommended targets for Android that will ensure your library works on all mainline android devices
+    // make sure you have included the rust toolchain for each of these targets: \
+    // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
+    targets = ["arm", "arm64", "x86", "x86_64"]
     extraCargoBuildArguments = ['--package', 'shared']
 }
 
