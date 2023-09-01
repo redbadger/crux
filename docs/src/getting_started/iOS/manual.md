@@ -20,7 +20,7 @@ libraries to your repo — as described in [Shared core and types](../core.md)
 
 The first thing we need to do is create a new iOS app in Xcode.
 
-Let's call the app "CounterApp" and select "SwiftUI" for the interface and
+Let's call the app "SimpleCounter" and select "SwiftUI" for the interface and
 "Swift" for the language. If you choose to create the app in the root folder of
 your monorepo, then you might want to rename the folder it creates to "iOS".
 Your repo's directory structure might now look something like this (some files
@@ -31,10 +31,10 @@ elided):
 ├── Cargo.lock
 ├── Cargo.toml
 ├── iOS
-│  ├── CounterApp
+│  ├── SimpleCounter
 │  │  ├── ContentView.swift
-│  │  └── CounterAppApp.swift
-│  └── CounterApp.xcodeproj
+│  │  └── SimpleCounterApp.swift
+│  └── SimpleCounter.xcodeproj
 │     └── project.pbxproj
 ├── shared
 │  ├── build.rs
@@ -156,26 +156,50 @@ Then, in the "**Build Phases, Link Binary with Libraries**" section, add the
 `SharedTypes` library (you should be able to navigate to it as
 `Workspace -> SharedTypes -> SharedTypes`)
 
-## Create some UI and run in the Simulator, or on an iPhone
-
 ### Simple counter example
 
-```admonish example
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of iOS apps in the Crux repository.
+A simple app that increments, decrements and resets a counter.
 
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+#### Wrap the core to support capabilities
+
+First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+`Render` capability, which triggers a render of the UI.
+
+```admonish
+This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.
 ```
 
-Edit `ContentView.swift` to look like this:
+Edit `iOS/SimpleCounter/core.swift` to look like the following. This code sends
+our (UI-generated) events to the core, and handles any effects that the core
+asks for. In this simple example, we aren't calling any HTTP APIs or handling
+any side effects other than rendering the UI, so we just handle this render
+effect by updating the published view model from the core.
 
 ```swift
-{{#include ../../../../examples/simple_counter/iOS/CounterApp/ContentView.swift}}
+{{#include ../../../../examples/simple_counter/iOS/SimpleCounter/core.swift}}
 ```
 
-And edit `CounterAppApp.swift` to look like this:
+```admonish tip
+That `switch` statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/iOS/CounterApp/core.swift)
+in the Crux repository.
+```
+
+Edit `iOS/SimpleCounter/ContentView.swift` to look like the following:
 
 ```swift
-{{#include ../../../../examples/simple_counter/iOS/CounterApp/CounterAppApp.swift}}
+{{#include ../../../../examples/simple_counter/iOS/SimpleCounter/ContentView.swift}}
+```
+
+And create `iOS/SimpleCounter/SimpleCounterApp.swift` to look like this:
+
+```swift
+{{#include ../../../../examples/simple_counter/iOS/SimpleCounter/SimpleCounterApp.swift}}
 ```
 
 ```admonish success
