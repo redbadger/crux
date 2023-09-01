@@ -46,7 +46,7 @@ Before we generate the Xcode project, we need to create some directories and a
 
 ```bash
 cd iOS
-mkdir CounterApp
+mkdir SimpleCounter
 touch project.yml
 ```
 
@@ -63,36 +63,74 @@ Then we can generate the Xcode project:
 xcodegen
 ```
 
-This should create an `iOS/CounterApp/CounterApp.xcodeproj` project file, which
-we can open in Xcode. It should build OK, but we will need to add some code!
+This should create an `iOS/SimpleCounter/SimpleCounter.xcodeproj` project file,
+which we can open in Xcode. It should build OK, but we will need to add some
+code!
 
 ## Create some UI and run in the Simulator, or on an iPhone
 
+```admonish example
+There is slightly more advanced
+[example](https://github.com/redbadger/crux/tree/master/examples/counter) of a
+Leptos app in the Crux repository.
+
+However, we will use the
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+which has `shared` and `shared_types` libraries that will work with the
+following example code.
+```
+
 ### Simple counter example
 
-```admonish example
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of iOS apps in the Crux repository.
+A simple app that increments, decrements and resets a counter.
 
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+#### Wrap the core to support capabilities
+
+First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+`Render` capability, which triggers a render of the UI.
+
+```admonish
+This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.
 ```
 
-Create `iOS/CounterApp/ContentView.swift` to look like this:
+Edit `iOS/SimpleCounter/core.swift` to look like the following. This code sends
+our (UI-generated) events to the core, and handles any effects that the core
+asks for. In this simple example, we aren't calling any HTTP APIs or handling
+any side effects other than rendering the UI, so we just handle this render
+effect by updating the published view model from the core.
 
 ```swift
-{{#include ../../../../examples/simple_counter/iOS/CounterApp/ContentView.swift}}
+{{#include ../../../../examples/simple_counter/iOS/SimpleCounter/core.swift}}
 ```
 
-And create `iOS/CounterApp/CounterAppApp.swift` to look like this:
+```admonish tip
+That `switch` statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/iOS/CounterApp/core.swift)
+in the Crux repository.
+```
+
+Edit `iOS/SimpleCounter/ContentView.swift` to look like the following:
 
 ```swift
-{{#include ../../../../examples/simple_counter/iOS/CounterApp/CounterAppApp.swift}}
+{{#include ../../../../examples/simple_counter/iOS/SimpleCounter/ContentView.swift}}
+```
+
+And create `iOS/SimpleCounter/SimpleCounterApp.swift` to look like this:
+
+```swift
+{{#include ../../../../examples/simple_counter/iOS/SimpleCounter/SimpleCounterApp.swift}}
 ```
 
 Run `xcodegen` again to update the Xcode project with these newly created source
-files (or add them manually in Xcode to the `CounterApp` group), and then open
-`iOS/CounterApp/CounterApp.xcodeproj` in Xcode. You might need to select the
-`CounterApp` scheme, and an appropriate simulator, in the drop-down at the top,
-before you build.
+files (or add them manually in Xcode to the `SimpleCounter` group), and then
+open `iOS/SimpleCounter/SimpleCounter.xcodeproj` in Xcode. You might need to
+select the `SimpleCounter` scheme, and an appropriate simulator, in the
+drop-down at the top, before you build.
 
 ```admonish success
 You should then be able to run the app in the simulator or on an iPhone, and it should look like this:

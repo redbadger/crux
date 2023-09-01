@@ -1,51 +1,27 @@
 import SharedTypes
 import SwiftUI
 
-@MainActor
-class Core: ObservableObject {
-    @Published var view = ViewModel(text: "", confirmed: false)
+struct ContentView: View {
+    @ObservedObject var core: Core
 
-    init() {
-        update(event: .startWatch)
+    init(core: Core) {
+        self.core = core
+        core.update(.startWatch)
     }
 
-    func update(event: Event) {
-        let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
-
-        process_effects(effects)
-    }
-
-    func process_effects(_ effects: [UInt8]) {
-        let requests: [Request] = try! .bincodeDeserialize(input: effects)
-        for request in requests {
-            process_request(request)
-        }
-    }
-
-    func process_request(_ request: Request) {
-        switch request.effect {
-        case .render:
-            view = try! .bincodeDeserialize(input: [UInt8](CounterApp.view()))
-        case let .http(req):
-            Task {
-                let response = try! await requestHttp(req).get()
-
-                let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-
-                process_effects(effects)
-            }
-        case let .serverSentEvents(req):
-            Task {
-                do {
-                    for await result in await requestSse(req) {
-                        let response = try result.get()
-                        
-                        let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-                        
-                        process_effects(effects)
-                    }
-                } catch {
-                    update(event: .startWatch)
+    var body: some View {
+        VStack {
+            Text("Crux Counter Example").font(.headline)
+            Text("Rust Core, Swift Shell (SwiftUI)").padding()
+            Text(String(core.view.text))
+                .foregroundColor(core.view.confirmed ? Color.black : Color.gray)
+                .padding()
+            HStack {
+                ActionButton(label: "Decrement", color: .yellow) {
+                    core.update(.decrement)
+                }
+                ActionButton(label: "Increment", color: .red) {
+                    core.update(.increment)
                 }
             }
         }
@@ -77,30 +53,8 @@ struct ActionButton: View {
     }
 }
 
-struct ContentView: View {
-    @ObservedObject var model: Core
-
-    var body: some View {
-        VStack {
-            Text("Crux Counter Example").font(.headline)
-            Text("Rust Core, Swift Shell (SwiftUI)").padding()
-            Text(String(model.view.text))
-                .foregroundColor(model.view.confirmed ? Color.black : Color.gray)
-                .padding()
-            HStack {
-                ActionButton(label: "Decrement", color: .yellow) {
-                    model.update(event: .decrement)
-                }
-                ActionButton(label: "Increment", color: .red) {
-                    model.update(event: .increment)
-                }
-            }
-        }
-    }
-}
-
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(model: Core())
+        ContentView(core: Core())
     }
 }

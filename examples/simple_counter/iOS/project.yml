@@ -1,4 +1,4 @@
-name: CounterApp
+name: SimpleCounter
 projectReferences:
   Shared:
     path: ../shared/shared.xcodeproj
@@ -10,12 +10,12 @@ options:
 attributes:
   BuildIndependentTargetsInParallel: true
 targets:
-  CounterApp:
+  SimpleCounter:
     type: application
     platform: iOS
     deploymentTarget: "15.0"
     sources:
-      - CounterApp
+      - SimpleCounter
       - path: ../shared/src/shared.udl
         buildPhase: sources
     dependencies:
@@ -23,7 +23,7 @@ targets:
       - target: Shared/shared-staticlib
       - package: SharedTypes
     info:
-      path: CounterApp/Info.plist
+      path: SimpleCounter/Info.plist
       properties:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

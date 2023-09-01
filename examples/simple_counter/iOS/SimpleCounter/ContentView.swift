@@ -1,47 +1,24 @@
 import SharedTypes
 import SwiftUI
 
-
 struct ContentView: View {
     @ObservedObject var core: Core
-
-    init(core: Core) {
-        self.core = core
-        core.update(.get)
-        core.update(.getPlatform)
-    }
 
     var body: some View {
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
-            Text(core.view.platform)
-            core.view.image.map { image in
-                AnyView(
-                    // For the loading image to work properly, we'd need to add
-                    // caching here
-                    AsyncImage(url: URL(string: image.href)) { image in
-                        image
-                            .resizable()
-                            .scaledToFit()
-                    } placeholder: {
-                        EmptyView()
-                    }
-                    .frame(maxHeight: 250)
-                    .padding()
-                )
-            } ?? AnyView(EmptyView())
-            Text(core.view.fact).padding()
+            Text(core.view.count)
             HStack {
-                ActionButton(label: "Clear", color: .red) {
-                    core.update(.clear)
+                ActionButton(label: "Reset", color: .red) {
+                    core.update(.reset)
                 }
-                ActionButton(label: "Get", color: .green) {
-                    core.update(.get)
+                ActionButton(label: "Inc", color: .green) {
+                    core.update(.increment)
                 }
-                ActionButton(label: "Fetch", color: .yellow) {
-                    core.update(.fetch)
+                ActionButton(label: "Dec", color: .yellow) {
+                    core.update(.decrement)
                 }
             }
         }

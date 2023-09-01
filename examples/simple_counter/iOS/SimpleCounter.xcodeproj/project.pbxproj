@@ -3,24 +3,27 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		08A5891079278B0627EECC52 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 32258924E0AD419BAA621949 /* SharedTypes */; };
-		0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A6C59672AA736317738B5C /* ContentView.swift */; };
-		4467D267096A960C23F9FF3B /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA6A61FB6787C24656A044CC /* libshared_static.a */; };
-		4A7935DA2D4B24A0427339BC /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 1465E5EDE4F684AD5291C0A3 /* shared.udl */; };
-		5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
+		1989BD3C863A9FB37C889B6D /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = ADFA4530638891CDAA6FCC5D /* SharedTypes */; };
+		2AD69AC61D674BB2BC300FC2 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = E75E53B837C6A0E03FDCEC5A /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		401EA3CBD0D2AD8D475C10AF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842F8D01CC76E9BFCDBD2862 /* ContentView.swift */; };
+		94DCD6C97BBC86B89673CA0E /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 258EC994D7C693E3141C4563 /* core.swift */; };
+		A022BC4B1B16254762ED55B3 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */; };
+		C26A1E5DDAB1ED32518E8F2A /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2EA4D4AAE1A6C4D3400A9A06 /* libshared_static.a */; };
+		D39A72610E7E3BD191DBDC06 /* SimpleCounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF52C000453302D743B48803 /* SimpleCounterApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
-		E45AE029B6F917B0FFA85BD6 /* PBXBuildRule */ = {
+		A7015E42CE7FE365402B3A57 /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
+			inputFiles = (
+			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -35,37 +38,37 @@
 /* End PBXBuildRule section */
 
 /* Begin PBXContainerItemProxy section */
-		3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */ = {
+		4579D0264028B49513DBCDA5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA607A8B44DCFB09138082B7;
-			remoteInfo = "shared-staticlib";
-		};
-		3DDA7AA1C70938E917385629 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
-			proxyType = 1;
-			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
-			remoteInfo = "shared-staticlib";
-		};
-		C284D65D30E22DC037BD5299 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
+			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
 			proxyType = 1;
 			remoteGlobalIDString = CA60ACD85ECB522D2C86E215;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CCA572612A851DA9009C82BD /* PBXContainerItemProxy */ = {
+		6EC78E6AA13637C891278065 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
+			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA607A8B44DCFB09138082B7;
+			remoteInfo = "shared-staticlib";
+		};
+		95A6826AEAE8F6F3B0B0F393 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
+			proxyType = 1;
+			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
+			remoteInfo = "shared-staticlib";
+		};
+		CCE0790C2AA1F71400CD4B57 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
 			proxyType = 2;
 			remoteGlobalIDString = CA60D2B4E60D10F7F7FCAC5B;
 			remoteInfo = "shared-cdylib";
 		};
-		F300AC884F93FAF703B505A3 /* PBXContainerItemProxy */ = {
+		EC190C8522C4065CF4E41954 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
+			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
 			proxyType = 2;
 			remoteGlobalIDString = CA60ACD85ECB8109328FB0D5;
 			remoteInfo = "uniffi-bindgen-bin";
@@ -73,217 +76,221 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		1465E5EDE4F684AD5291C0A3 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
-		67D62EB120D164DFC93E7EC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
-		984E511AE1F9FB764F58CB7A /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
-		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D533D9BD281C15290E4016E5 /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
-		D6A6C59672AA736317738B5C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SimpleCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		258EC994D7C693E3141C4563 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
+		642CF26F4B57B0FF7348C6BF /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		842F8D01CC76E9BFCDBD2862 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
+		8EA6E09EE87596B896068D0E /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
+		BF52C000453302D743B48803 /* SimpleCounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleCounterApp.swift; sourceTree = "<group>"; };
+		CF5BE0317D54587DCCF48AF4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		BDE534E147194D3AC42ADD82 /* Frameworks */ = {
+		593C7A3AEAC5E5C614E32E14 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4467D267096A960C23F9FF3B /* libshared_static.a in Frameworks */,
-				08A5891079278B0627EECC52 /* SharedTypes in Frameworks */,
+				C26A1E5DDAB1ED32518E8F2A /* libshared_static.a in Frameworks */,
+				1989BD3C863A9FB37C889B6D /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1B75A283E60878770D306B2A /* src */ = {
+		1B8911D02E90EF25A711F2BE = {
 			isa = PBXGroup;
 			children = (
-				1465E5EDE4F684AD5291C0A3 /* shared.udl */,
+				E551F092584A1E0A747C2BEB /* Packages */,
+				E6F6A75B1B8366C3D868D1E4 /* SimpleCounter */,
+				A58FEB50EA86B3FEA463FCF0 /* src */,
+				D4D259F256E0F508B61E0EA9 /* Products */,
+				B6068D7E9E67CAA3B5F4F827 /* Projects */,
+			);
+			sourceTree = "<group>";
+		};
+		64DA90BC973EE8B5939308C2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2EA4D4AAE1A6C4D3400A9A06 /* libshared_static.a */,
+				CCE0790D2AA1F71400CD4B57 /* shared.dylib */,
+				E75E53B837C6A0E03FDCEC5A /* uniffi-bindgen */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A58FEB50EA86B3FEA463FCF0 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */,
 			);
 			name = src;
 			path = ../shared/src;
 			sourceTree = "<group>";
 		};
-		20BEF56E8A58908817A7D5C2 /* CounterApp */ = {
+		B6068D7E9E67CAA3B5F4F827 /* Projects */ = {
 			isa = PBXGroup;
 			children = (
-				D6A6C59672AA736317738B5C /* ContentView.swift */,
-				D533D9BD281C15290E4016E5 /* CounterAppApp.swift */,
-				67D62EB120D164DFC93E7EC0 /* Info.plist */,
-			);
-			path = CounterApp;
-			sourceTree = "<group>";
-		};
-		79077CB87B15CD5B056551FE /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				6D984934DC207C1C28EDF6F1 /* SharedTypes */,
-			);
-			name = Packages;
-			sourceTree = SOURCE_ROOT;
-		};
-		91C0E33BEDE2E530350B68C8 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				9D06BFB95E0269CB9E1CD716 /* CounterApp.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		B86E33DC287DA7AC92DD5972 = {
-			isa = PBXGroup;
-			children = (
-				20BEF56E8A58908817A7D5C2 /* CounterApp */,
-				79077CB87B15CD5B056551FE /* Packages */,
-				1B75A283E60878770D306B2A /* src */,
-				91C0E33BEDE2E530350B68C8 /* Products */,
-				B95BE3C5CA8A234A4D1E9F0E /* Projects */,
-			);
-			sourceTree = "<group>";
-		};
-		B95BE3C5CA8A234A4D1E9F0E /* Projects */ = {
-			isa = PBXGroup;
-			children = (
-				984E511AE1F9FB764F58CB7A /* Shared */,
+				8EA6E09EE87596B896068D0E /* Shared */,
 			);
 			name = Projects;
 			sourceTree = "<group>";
 		};
-		CFB8F28E88E6BF19B5129CB8 /* Products */ = {
+		D4D259F256E0F508B61E0EA9 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BA6A61FB6787C24656A044CC /* libshared_static.a */,
-				CCA572622A851DA9009C82BD /* shared.dylib */,
-				4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */,
+				1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E551F092584A1E0A747C2BEB /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				642CF26F4B57B0FF7348C6BF /* SharedTypes */,
+			);
+			name = Packages;
+			sourceTree = SOURCE_ROOT;
+		};
+		E6F6A75B1B8366C3D868D1E4 /* SimpleCounter */ = {
+			isa = PBXGroup;
+			children = (
+				842F8D01CC76E9BFCDBD2862 /* ContentView.swift */,
+				258EC994D7C693E3141C4563 /* core.swift */,
+				BF52C000453302D743B48803 /* SimpleCounterApp.swift */,
+				CF5BE0317D54587DCCF48AF4 /* Info.plist */,
+			);
+			path = SimpleCounter;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		010B0A238A076EB26DD23BB1 /* CounterApp */ = {
+		8B6A9DC714EBBF344A0B8FE6 /* SimpleCounter */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B7140C4C9BEE130CB4BA6DAD /* Build configuration list for PBXNativeTarget "CounterApp" */;
+			buildConfigurationList = 9E0AD7CAC5BB549B27CE41A2 /* Build configuration list for PBXNativeTarget "SimpleCounter" */;
 			buildPhases = (
-				29206CB1A0ECB217F5F98845 /* Sources */,
-				7EDA081FAFAA7F31D0463D79 /* Resources */,
-				BDE534E147194D3AC42ADD82 /* Frameworks */,
+				478572120AF419B2ED7B1CD2 /* Sources */,
+				46D7FA9B53241FD3DF2E5739 /* Resources */,
+				593C7A3AEAC5E5C614E32E14 /* Frameworks */,
 			);
 			buildRules = (
-				E45AE029B6F917B0FFA85BD6 /* PBXBuildRule */,
+				A7015E42CE7FE365402B3A57 /* PBXBuildRule */,
 			);
 			dependencies = (
-				9185B3D491AE14F3B6E7DD76 /* PBXTargetDependency */,
-				99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */,
+				2FF352CA5059B90A12956273 /* PBXTargetDependency */,
+				13F58E1E97508F177C3F567E /* PBXTargetDependency */,
 			);
-			name = CounterApp;
+			name = SimpleCounter;
 			packageProductDependencies = (
-				32258924E0AD419BAA621949 /* SharedTypes */,
+				ADFA4530638891CDAA6FCC5D /* SharedTypes */,
 			);
-			productName = CounterApp;
-			productReference = 9D06BFB95E0269CB9E1CD716 /* CounterApp.app */;
+			productName = SimpleCounter;
+			productReference = 1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		CF1FACE8C7C58FDD63D46C13 /* Project object */ = {
+		CD78CDD1885DDE8281AB8F8F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
 			};
-			buildConfigurationList = 7851C38F90AFE0DC30E065D2 /* Build configuration list for PBXProject "CounterApp" */;
-			compatibilityVersion = "Xcode 11.0";
+			buildConfigurationList = 2D6F50C7605F083A24BC32D1 /* Build configuration list for PBXProject "SimpleCounter" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
 				en,
 			);
-			mainGroup = B86E33DC287DA7AC92DD5972;
+			mainGroup = 1B8911D02E90EF25A711F2BE;
 			projectDirPath = "";
 			projectReferences = (
 				{
-					ProductGroup = CFB8F28E88E6BF19B5129CB8 /* Products */;
-					ProjectRef = 984E511AE1F9FB764F58CB7A /* Shared */;
+					ProductGroup = 64DA90BC973EE8B5939308C2 /* Products */;
+					ProjectRef = 8EA6E09EE87596B896068D0E /* Shared */;
 				},
 			);
 			projectRoot = "";
 			targets = (
-				010B0A238A076EB26DD23BB1 /* CounterApp */,
+				8B6A9DC714EBBF344A0B8FE6 /* SimpleCounter */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */ = {
-			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.executable";
-			path = "uniffi-bindgen";
-			remoteRef = F300AC884F93FAF703B505A3 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		BA6A61FB6787C24656A044CC /* libshared_static.a */ = {
+		2EA4D4AAE1A6C4D3400A9A06 /* libshared_static.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libshared_static.a;
-			remoteRef = 3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */;
+			remoteRef = 6EC78E6AA13637C891278065 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CCA572622A851DA9009C82BD /* shared.dylib */ = {
+		CCE0790D2AA1F71400CD4B57 /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CCA572612A851DA9009C82BD /* PBXContainerItemProxy */;
+			remoteRef = CCE0790C2AA1F71400CD4B57 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		E75E53B837C6A0E03FDCEC5A /* uniffi-bindgen */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "uniffi-bindgen";
+			remoteRef = EC190C8522C4065CF4E41954 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
-		7EDA081FAFAA7F31D0463D79 /* Resources */ = {
+		46D7FA9B53241FD3DF2E5739 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */,
+				2AD69AC61D674BB2BC300FC2 /* uniffi-bindgen in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		29206CB1A0ECB217F5F98845 /* Sources */ = {
+		478572120AF419B2ED7B1CD2 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */,
-				B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */,
-				4A7935DA2D4B24A0427339BC /* shared.udl in Sources */,
+				401EA3CBD0D2AD8D475C10AF /* ContentView.swift in Sources */,
+				D39A72610E7E3BD191DBDC06 /* SimpleCounterApp.swift in Sources */,
+				94DCD6C97BBC86B89673CA0E /* core.swift in Sources */,
+				A022BC4B1B16254762ED55B3 /* shared.udl in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		9185B3D491AE14F3B6E7DD76 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "uniffi-bindgen-bin";
-			targetProxy = C284D65D30E22DC037BD5299 /* PBXContainerItemProxy */;
-		};
-		99E7D76F76C66E4FE9312F30 /* PBXTargetDependency */ = {
+		13F58E1E97508F177C3F567E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = "shared-staticlib";
-			targetProxy = 3DDA7AA1C70938E917385629 /* PBXContainerItemProxy */;
+			targetProxy = 95A6826AEAE8F6F3B0B0F393 /* PBXContainerItemProxy */;
+		};
+		2FF352CA5059B90A12956273 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "uniffi-bindgen-bin";
+			targetProxy = 4579D0264028B49513DBCDA5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		796BD0ACD6614E951D434587 /* Debug */ = {
+		38E9C57DFAFF962AE6CC44FE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				INFOPLIST_FILE = CounterApp/Info.plist;
+				INFOPLIST_FILE = SimpleCounter/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -293,19 +300,19 @@
 					"-w",
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.CounterApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.SimpleCounter;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		836270C59FCC6D96A607D822 /* Release */ = {
+		39E600C588D5780CE6402DF1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				INFOPLIST_FILE = CounterApp/Info.plist;
+				INFOPLIST_FILE = SimpleCounter/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -315,14 +322,14 @@
 					"-w",
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.CounterApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.SimpleCounter;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
-		B4EC29AAFF2F22C740DBFB9F /* Release */ = {
+		956B887BDAFF7104DDA08B86 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -377,7 +384,7 @@
 			};
 			name = Release;
 		};
-		E81AA16697771FD928AEC5D5 /* Debug */ = {
+		C945D4B7F010B5287F97D4A5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -442,20 +449,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7851C38F90AFE0DC30E065D2 /* Build configuration list for PBXProject "CounterApp" */ = {
+		2D6F50C7605F083A24BC32D1 /* Build configuration list for PBXProject "SimpleCounter" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E81AA16697771FD928AEC5D5 /* Debug */,
-				B4EC29AAFF2F22C740DBFB9F /* Release */,
+				C945D4B7F010B5287F97D4A5 /* Debug */,
+				956B887BDAFF7104DDA08B86 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		B7140C4C9BEE130CB4BA6DAD /* Build configuration list for PBXNativeTarget "CounterApp" */ = {
+		9E0AD7CAC5BB549B27CE41A2 /* Build configuration list for PBXNativeTarget "SimpleCounter" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				796BD0ACD6614E951D434587 /* Debug */,
-				836270C59FCC6D96A607D822 /* Release */,
+				38E9C57DFAFF962AE6CC44FE /* Debug */,
+				39E600C588D5780CE6402DF1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -463,11 +470,11 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		32258924E0AD419BAA621949 /* SharedTypes */ = {
+		ADFA4530638891CDAA6FCC5D /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = CF1FACE8C7C58FDD63D46C13 /* Project object */;
+	rootObject = CD78CDD1885DDE8281AB8F8F /* Project object */;
 }

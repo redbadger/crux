@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -54,19 +54,19 @@
 			remoteGlobalIDString = CA6047B8670022A3B7869CC7;
 			remoteInfo = "shared-staticlib";
 		};
-		770A6E0D2A84E38700775EFB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA6029512E5F10F7F7FCAC5B;
-			remoteInfo = "shared-cdylib";
-		};
 		838ABE70EF2D2EA7FD0728EA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
 			proxyType = 2;
 			remoteGlobalIDString = CA6000B3FAD78109328FB0D5;
 			remoteInfo = "uniffi-bindgen-bin";
+		};
+		CCE079222AA1F9CE00CD4B57 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D980B763F26C2F2246B45291 /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA6029512E5F10F7F7FCAC5B;
+			remoteInfo = "shared-cdylib";
 		};
 		CFF44F6D972E8CF2687CDE4D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -165,7 +165,7 @@
 			isa = PBXGroup;
 			children = (
 				561C26363B9A8FD22B6A3AD5 /* libshared_static.a */,
-				770A6E0E2A84E38700775EFB /* shared.dylib */,
+				CCE079232AA1F9CE00CD4B57 /* shared.dylib */,
 				C155745D03B8A6032E0E060D /* uniffi-bindgen */,
 			);
 			name = Products;
@@ -214,10 +214,11 @@
 		46D8D087D7DCE7848571F336 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
 			};
 			buildConfigurationList = BB2D7599B654F57F66FA3004 /* Build configuration list for PBXProject "TapToPay" */;
-			compatibilityVersion = "Xcode 11.0";
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -247,18 +248,18 @@
 			remoteRef = CFF44F6D972E8CF2687CDE4D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		770A6E0E2A84E38700775EFB /* shared.dylib */ = {
-			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.dylib";
-			path = shared.dylib;
-			remoteRef = 770A6E0D2A84E38700775EFB /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
 		C155745D03B8A6032E0E060D /* uniffi-bindgen */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.executable";
 			path = "uniffi-bindgen";
 			remoteRef = 838ABE70EF2D2EA7FD0728EA /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		CCE079232AA1F9CE00CD4B57 /* shared.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = shared.dylib;
+			remoteRef = CCE079222AA1F9CE00CD4B57 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */

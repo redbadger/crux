@@ -1,10 +1,3 @@
-//
-//  ReceiptScreen.swift
-//  TapToPay
-//
-//  Created by Viktor Charypar on 18/04/2023.
-//
-
 import SwiftUI
 import SharedTypes
 

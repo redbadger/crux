@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  Notes
-//
-//  Created by Stuart Harris on 30/03/2023.
-//
-
 import SharedTypes
 import SwiftUI
 
@@ -19,70 +12,33 @@ extension TextCursor {
     }
 }
 
-typealias Uuid = [UInt8]
+struct ContentView: View {
+    @ObservedObject var core: Core
 
-enum CoreEvent {
-    case event(Event)
-    // TODO: response
-}
-
-class Core: ObservableObject {
-    @Published var view: ViewModel
-
-    var num = 1
-
-    init() {
-        view = ViewModel(text: "", cursor: .position(0)) // this will get replaced by the next call
-
+    init(core: Core) {
+        self.core = core
         // Insert initial document for testing
-        update(event: .event(.insert("Hello from the core!")))
+        core.update(.insert("Hello!"))
     }
 
     func editText(change: TextEditor.TextChange) {
         let location = UInt64(change.range.location), length = UInt64(change.range.length), text = change.replacementText
 
         if let text = text {
-            update(event: .event(.replace(location, location + length, text)))
+            core.update(.replace(location, location + length, text))
         } else {
             if length > 0 {
-                update(event: .event(.select(location, location + length)))
+                core.update(.select(location, location + length))
             } else {
-                update(event: .event(.moveCursor(location)))
+                core.update(.moveCursor(location))
             }
         }
     }
-
-    func update(event: CoreEvent) {
-        var requests: [Request]
-
-        switch event {
-        case let .event(evt):
-            let bytes = Notes.processEvent(try! evt.bincodeSerialize())
-            requests = try! [Request].bincodeDeserialize(input: bytes)
-        }
-
-        for req in requests {
-            switch req.effect {
-            case .render:
-                view = try! ViewModel.bincodeDeserialize(input: Notes.view())
-            case let .pubSub(.publish(bytes)):
-                print(["Publish", bytes.count, "bytes"] as [Any])
-            case .pubSub(.subscribe):
-                print("Subscribe")
-            case .keyValue(_): ()
-            case .timer(_): ()
-            }
-        }
-    }
-}
-
-struct ContentView: View {
-    @StateObject private var core = Core()
 
     var body: some View {
         TextEditor(text: core.view.text, selection: core.view.cursor.range())
             .onEdit { textChange in
-                core.editText(change: textChange)
+                editText(change: textChange)
             }
             .padding()
     }
@@ -163,6 +119,6 @@ extension TextEditor {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        ContentView(core:  Core())
     }
 }

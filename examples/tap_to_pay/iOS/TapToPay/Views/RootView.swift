@@ -15,7 +15,7 @@ struct RootView: View {
             },
             set: { value in
                 if !value {
-                    self.core.update(event: .abortPayment)
+                    self.core.update(.abortPayment)
                 }
             }
         )
@@ -46,7 +46,7 @@ struct RootView: View {
                     }
             }
         }
-        .environment(\.update, { e in core.update(event: e)})
+        .environment(\.update, { e in core.update(e)})
     }
 }
 
