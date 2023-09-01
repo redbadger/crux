@@ -6,7 +6,7 @@ packages:
   SharedTypes:
     path: ../shared_types/generated/swift/SharedTypes
 options:
-  bundleIdPrefix: com.example.counter
+  bundleIdPrefix: com.example.simple_counter
 attributes:
   BuildIndependentTargetsInParallel: true
 targets:
