@@ -93,6 +93,12 @@ dynamic library and generating the runtime bindings and the shared types.
 
 Let's get started.
 
+Add the four rust android toolchains to your system:
+
+```sh
+$ rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+```
+
 Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like
 this:
 
@@ -120,6 +126,12 @@ $ ls --tree Android/shared/build/rustJniLibs
 Android/shared/build/rustJniLibs
 └── android
    └── arm64-v8a
+      └── libshared.so
+   └── armeabi-v7a
+      └── libshared.so
+   └── x86
+      └── libshared.so
+   └── x86_64
       └── libshared.so
 ```
 
