@@ -80,8 +80,4 @@ dependencies {
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1'
-
-    implementation('com.diem:client-sdk-java:1.0.5') {
-        exclude group: 'org.bouncycastle', module: 'bcprov-jdk15to18'
-    }
 }
