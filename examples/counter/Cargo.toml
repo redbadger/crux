@@ -9,6 +9,7 @@ members = [
   "web-leptos",
   "web-yew",
 ]
+resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]

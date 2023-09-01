@@ -1,5 +1,6 @@
 [workspace]
 members = ["shared"]
+resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]

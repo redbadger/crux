@@ -1,5 +1,6 @@
 [workspace]
 members = ["cli", "shared", "shared_types", "web-yew"]
+resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
