@@ -1,4 +1,4 @@
-name: BridgePerf
+name: Notes
 projectReferences:
   Shared:
     path: ../shared/shared.xcodeproj
@@ -6,16 +6,16 @@ packages:
   SharedTypes:
     path: ../shared_types/generated/swift/SharedTypes
 options:
-  bundleIdPrefix: com.example.bridge-perf
+  bundleIdPrefix: com.example.notes
 attributes:
   BuildIndependentTargetsInParallel: true
 targets:
-  BridgePerf:
+  Notes:
     type: application
     platform: iOS
     deploymentTarget: "15.0"
     sources:
-      - BridgePerf
+      - Notes
       - path: ../shared/src/shared.udl
         buildPhase: sources
     dependencies:
@@ -23,7 +23,7 @@ targets:
       - target: Shared/shared-staticlib
       - package: SharedTypes
     info:
-      path: BridgePerf/Info.plist
+      path: Notes/Info.plist
       properties:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

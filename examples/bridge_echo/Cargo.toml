@@ -1,5 +1,6 @@
 [workspace]
 members = ["shared", "shared_types", "web-leptos", "cli"]
+resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]

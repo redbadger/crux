@@ -3,18 +3,19 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		08A5891079278B0627EECC52 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 32258924E0AD419BAA621949 /* SharedTypes */; };
 		0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A6C59672AA736317738B5C /* ContentView.swift */; };
+		0EDCC21106F85DBD04C91356 /* sse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72B940D339BFB9B4DC05041C /* sse.swift */; };
 		4467D267096A960C23F9FF3B /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA6A61FB6787C24656A044CC /* libshared_static.a */; };
 		4A7935DA2D4B24A0427339BC /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 1465E5EDE4F684AD5291C0A3 /* shared.udl */; };
 		5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B6930825270C051C48F86524 /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408B50841C0469CE0D78A7C2 /* core.swift */; };
 		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
-		CCA16D1E2A50962F008605C6 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA16D1D2A50962F008605C6 /* http.swift */; };
-		CCA16D202A5096A0008605C6 /* sse.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA16D1F2A5096A0008605C6 /* sse.swift */; };
+		E49A93362F08CF053C69A7F5 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCEAEA08AFCD101ED86B664C /* http.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -23,8 +24,6 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
-			inputFiles = (
-			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -60,7 +59,7 @@
 			remoteGlobalIDString = CA60BEE81408C5EF52D43448;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CC5ACC662A4F1B38003C53D7 /* PBXContainerItemProxy */ = {
+		CCE079102AA1F7CC00CD4B57 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 984E511AE1F9FB764F58CB7A /* Shared */;
 			proxyType = 2;
@@ -78,12 +77,13 @@
 
 /* Begin PBXFileReference section */
 		1465E5EDE4F684AD5291C0A3 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
+		408B50841C0469CE0D78A7C2 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		67D62EB120D164DFC93E7EC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		72B940D339BFB9B4DC05041C /* sse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sse.swift; sourceTree = "<group>"; };
 		984E511AE1F9FB764F58CB7A /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CCA16D1D2A50962F008605C6 /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
-		CCA16D1F2A5096A0008605C6 /* sse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sse.swift; sourceTree = "<group>"; };
+		BCEAEA08AFCD101ED86B664C /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
 		D533D9BD281C15290E4016E5 /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
 		D6A6C59672AA736317738B5C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -114,10 +114,11 @@
 			isa = PBXGroup;
 			children = (
 				D6A6C59672AA736317738B5C /* ContentView.swift */,
+				408B50841C0469CE0D78A7C2 /* core.swift */,
 				D533D9BD281C15290E4016E5 /* CounterAppApp.swift */,
+				BCEAEA08AFCD101ED86B664C /* http.swift */,
 				67D62EB120D164DFC93E7EC0 /* Info.plist */,
-				CCA16D1D2A50962F008605C6 /* http.swift */,
-				CCA16D1F2A5096A0008605C6 /* sse.swift */,
+				72B940D339BFB9B4DC05041C /* sse.swift */,
 			);
 			path = CounterApp;
 			sourceTree = "<group>";
@@ -161,7 +162,7 @@
 			isa = PBXGroup;
 			children = (
 				BA6A61FB6787C24656A044CC /* libshared_static.a */,
-				CC5ACC672A4F1B38003C53D7 /* shared.dylib */,
+				CCE079112AA1F7CC00CD4B57 /* shared.dylib */,
 				4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */,
 			);
 			name = Products;
@@ -199,10 +200,11 @@
 		CF1FACE8C7C58FDD63D46C13 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
 			};
 			buildConfigurationList = 7851C38F90AFE0DC30E065D2 /* Build configuration list for PBXProject "CounterApp" */;
-			compatibilityVersion = "Xcode 11.0";
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -239,11 +241,11 @@
 			remoteRef = 3A18BF348254AA353DD83D2E /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		CC5ACC672A4F1B38003C53D7 /* shared.dylib */ = {
+		CCE079112AA1F7CC00CD4B57 /* shared.dylib */ = {
 			isa = PBXReferenceProxy;
 			fileType = "compiled.mach-o.dylib";
 			path = shared.dylib;
-			remoteRef = CC5ACC662A4F1B38003C53D7 /* PBXContainerItemProxy */;
+			remoteRef = CCE079102AA1F7CC00CD4B57 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
@@ -265,10 +267,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				0D4D3C5B2AA243A48B9CEE38 /* ContentView.swift in Sources */,
-				CCA16D1E2A50962F008605C6 /* http.swift in Sources */,
 				B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */,
-				CCA16D202A5096A0008605C6 /* sse.swift in Sources */,
+				B6930825270C051C48F86524 /* core.swift in Sources */,
+				E49A93362F08CF053C69A7F5 /* http.swift in Sources */,
 				4A7935DA2D4B24A0427339BC /* shared.udl in Sources */,
+				0EDCC21106F85DBD04C91356 /* sse.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
