@@ -2,23 +2,23 @@ import SharedTypes
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var model: Core
+    @ObservedObject var core: Core
 
     var body: some View {
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
-            Text(model.view.count)
+            Text(core.view.count)
             HStack {
                 ActionButton(label: "Reset", color: .red) {
-                    model.update(event: .reset)
+                    core.update(.reset)
                 }
                 ActionButton(label: "Inc", color: .green) {
-                    model.update(event: .increment)
+                    core.update(.increment)
                 }
                 ActionButton(label: "Dec", color: .yellow) {
-                    model.update(event: .decrement)
+                    core.update(.decrement)
                 }
             }
         }
@@ -52,6 +52,6 @@ struct ActionButton: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(model: Core())
+        ContentView(core: Core())
     }
 }

@@ -10,7 +10,7 @@ class Core: ObservableObject {
         self.view = try! .bincodeDeserialize(input: [UInt8](CatFacts.view()))
     }
     
-    func update(event: Event) {
+    func update(_ event: Event) {
         let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
         
         let requests: [Request] = try! .bincodeDeserialize(input: effects)

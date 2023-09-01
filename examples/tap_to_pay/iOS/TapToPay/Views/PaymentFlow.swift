@@ -1,10 +1,3 @@
-//
-//  PaymentFlow.swift
-//  TapToPay
-//
-//  Created by Viktor Charypar on 17/04/2023.
-//
-
 import SwiftUI
 import SharedTypes
 

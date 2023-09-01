@@ -1,10 +1,3 @@
-//
-//  PaymentScreen.swift
-//  TapToPay
-//
-//  Created by Viktor Charypar on 14/04/2023.
-//
-
 import SwiftUI
 
 struct InputScreen: View {

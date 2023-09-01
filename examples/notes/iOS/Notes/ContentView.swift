@@ -13,30 +13,30 @@ extension TextCursor {
 }
 
 struct ContentView: View {
-    @ObservedObject var model: Core
+    @ObservedObject var core: Core
 
-    init(model: Core) {
-        self.model = model
+    init(core: Core) {
+        self.core = core
         // Insert initial document for testing
-        model.update(event: .insert("Hello!"))
+        core.update(.insert("Hello!"))
     }
 
     func editText(change: TextEditor.TextChange) {
         let location = UInt64(change.range.location), length = UInt64(change.range.length), text = change.replacementText
 
         if let text = text {
-            model.update(event: .replace(location, location + length, text))
+            core.update(.replace(location, location + length, text))
         } else {
             if length > 0 {
-                model.update(event: .select(location, location + length))
+                core.update(.select(location, location + length))
             } else {
-                model.update(event: .moveCursor(location))
+                core.update(.moveCursor(location))
             }
         }
     }
 
     var body: some View {
-        TextEditor(text: model.view.text, selection: model.view.cursor.range())
+        TextEditor(text: core.view.text, selection: core.view.cursor.range())
             .onEdit { textChange in
                 editText(change: textChange)
             }
@@ -119,6 +119,6 @@ extension TextEditor {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(model:  Core())
+        ContentView(core:  Core())
     }
 }

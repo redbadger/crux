@@ -3,12 +3,12 @@ import SwiftUI
 
 
 struct ContentView: View {
-    @ObservedObject var model: Core
+    @ObservedObject var core: Core
 
-    init(model: Core) {
-        self.model = model
-        model.update(event: .get)
-        model.update(event: .getPlatform)
+    init(core: Core) {
+        self.core = core
+        core.update(.get)
+        core.update(.getPlatform)
     }
 
     var body: some View {
@@ -16,8 +16,8 @@ struct ContentView: View {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
-            Text(model.view.platform)
-            model.view.image.map { image in
+            Text(core.view.platform)
+            core.view.image.map { image in
                 AnyView(
                     // For the loading image to work properly, we'd need to add
                     // caching here
@@ -32,16 +32,16 @@ struct ContentView: View {
                     .padding()
                 )
             } ?? AnyView(EmptyView())
-            Text(model.view.fact).padding()
+            Text(core.view.fact).padding()
             HStack {
                 ActionButton(label: "Clear", color: .red) {
-                    model.update(event: .clear)
+                    core.update(.clear)
                 }
                 ActionButton(label: "Get", color: .green) {
-                    model.update(event: .get)
+                    core.update(.get)
                 }
                 ActionButton(label: "Fetch", color: .yellow) {
-                    model.update(event: .fetch)
+                    core.update(.fetch)
                 }
             }
         }
@@ -75,6 +75,6 @@ struct ActionButton: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(model: Core())
+        ContentView(core: Core())
     }
 }

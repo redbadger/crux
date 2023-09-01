@@ -4,7 +4,7 @@ import SwiftUI
 struct BridgePerfApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView(model: Core())
+            ContentView(core: Core())
         }
     }
 }

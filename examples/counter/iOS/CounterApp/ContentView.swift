@@ -2,26 +2,26 @@ import SharedTypes
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var model: Core
+    @ObservedObject var core: Core
 
-    init(model: Core) {
-        self.model = model
-        model.update(event: .startWatch)
+    init(core: Core) {
+        self.core = core
+        core.update(.startWatch)
     }
 
     var body: some View {
         VStack {
             Text("Crux Counter Example").font(.headline)
             Text("Rust Core, Swift Shell (SwiftUI)").padding()
-            Text(String(model.view.text))
-                .foregroundColor(model.view.confirmed ? Color.black : Color.gray)
+            Text(String(core.view.text))
+                .foregroundColor(core.view.confirmed ? Color.black : Color.gray)
                 .padding()
             HStack {
                 ActionButton(label: "Decrement", color: .yellow) {
-                    model.update(event: .decrement)
+                    core.update(.decrement)
                 }
                 ActionButton(label: "Increment", color: .red) {
-                    model.update(event: .increment)
+                    core.update(.increment)
                 }
             }
         }
@@ -55,6 +55,6 @@ struct ActionButton: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(model: Core())
+        ContentView(core: Core())
     }
 }

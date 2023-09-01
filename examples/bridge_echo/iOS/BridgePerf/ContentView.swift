@@ -2,13 +2,13 @@ import SharedTypes
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var model: Core
+    @ObservedObject var core: Core
     
-    init(model: Core) {
-        self.model = model
+    init(core: Core) {
+        self.core = core
         Task.init {
             while(true) {
-                model.update(event: .tick)
+                core.update(.tick)
                 await Task.yield()
             }
         }
@@ -16,22 +16,22 @@ struct ContentView: View {
         Task.init {
             while(true) {
                 try await Task.sleep(nanoseconds: UInt64(Double(NSEC_PER_SEC)))
-                model.update(event: .newPeriod)
+                core.update(.newPeriod)
             }
         }
         
-        model.update(event: .tick)
+        core.update(.tick)
     }
 
     var body: some View {
         VStack {
-            Text(String(model.view.count)).font(.largeTitle)
+            Text(String(core.view.count)).font(.largeTitle)
         }
     }
 }
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(model: Core())
+        ContentView(core: Core())
     }
 }
