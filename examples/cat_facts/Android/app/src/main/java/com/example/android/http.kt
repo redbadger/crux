@@ -1,4 +1,4 @@
-package com.example.android
+package com.example.counter
 
 import com.redbadger.catfacts.shared_types.HttpHeader
 import com.redbadger.catfacts.shared_types.HttpRequest
@@ -10,7 +10,7 @@ import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
 import io.ktor.util.flattenEntries
 
-suspend fun http(
+suspend fun requestHttp(
     client: HttpClient,
     request: HttpRequest,
 ): HttpResponse {
@@ -26,3 +26,4 @@ suspend fun http(
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
     return HttpResponse(response.status.value.toShort(), headers, bytes.toList())
 }
+

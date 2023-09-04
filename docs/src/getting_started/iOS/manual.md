@@ -156,6 +156,19 @@ Then, in the "**Build Phases, Link Binary with Libraries**" section, add the
 `SharedTypes` library (you should be able to navigate to it as
 `Workspace -> SharedTypes -> SharedTypes`)
 
+## Create some UI and run in the Simulator, or on an iPhone
+
+```admonish example
+There is slightly more advanced
+[example](https://github.com/redbadger/crux/tree/master/examples/counter) of an
+iOS app in the Crux repository.
+
+However, we will use the
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+which has `shared` and `shared_types` libraries that will work with the
+following example code.
+```
+
 ### Simple counter example
 
 A simple app that increments, decrements and resets a counter.

@@ -181,19 +181,57 @@ shared_types/generated/java
 
 ## Create some UI and run in the Simulator
 
-### Simple counter example
-
 ```admonish example
-There are several [examples](https://github.com/redbadger/crux/tree/master/examples) of Android apps in the Crux repository.
+There is a slightly more advanced
+[example](https://github.com/redbadger/crux/tree/master/examples/counter) of an
+Android app in the Crux repository.
 
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+which has `shared` and `shared_types` libraries that will work with the
+following example code.
 ```
 
-Edit `/Android/app/src/main/java/com/example/counter/MainActivity.kt` to look
-like this:
+### Simple counter example
+
+A simple app that increments, decrements and resets a counter.
+
+#### Wrap the core to support capabilities
+
+First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+`Render` capability, which triggers a render of the UI.
+
+```admonish
+This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.
+```
+
+Edit `Android/app/src/main/java/com/example/simple_counter/Core.kt` to look like
+the following. This code sends our (UI-generated) events to the core, and
+handles any effects that the core asks for. In this simple example, we aren't
+calling any HTTP APIs or handling any side effects other than rendering the UI,
+so we just handle this render effect by updating the published view model from
+the core.
+
+```swift
+{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/simple_counter/Core.kt}}
+```
+
+```admonish tip
+That `when` statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/iOS/CounterApp/core.swift)
+in the Crux repository.
+```
+
+Edit `/Android/app/src/main/java/com/example/simple_counter/MainActivity.kt` to
+look like the following:
 
 ```kotlin
-{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/counter/MainActivity.kt}}
+{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/simple_counter/MainActivity.kt}}
 ```
 
 ```admonish success

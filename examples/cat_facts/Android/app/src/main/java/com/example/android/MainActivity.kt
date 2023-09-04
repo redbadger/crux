@@ -1,44 +1,41 @@
-@file:OptIn(ExperimentalUnsignedTypes::class)
-
 package com.example.android
 
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.android.ui.theme.AndroidTheme
-import com.redbadger.catfacts.shared.handleResponse
-import com.redbadger.catfacts.shared.processEvent
-import com.redbadger.catfacts.shared.view
-import com.redbadger.catfacts.shared_types.*
-import com.redbadger.catfacts.shared_types.Event.*
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.http.*
+import com.redbadger.catfacts.shared_types.Event
+import com.redbadger.catfacts.shared_types.Event.Clear
+import com.redbadger.catfacts.shared_types.Event.Fetch
+import com.redbadger.catfacts.shared_types.Event.Get
 import kotlinx.coroutines.launch
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.*
 import kotlin.jvm.optionals.getOrNull
-import com.redbadger.catfacts.shared_types.Event as Evt
-import com.redbadger.catfacts.shared_types.Request as Req
-import com.redbadger.catfacts.shared_types.ViewModel as MyViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,85 +51,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-fun getPlatform(): String {
-    return Build.BRAND + " " + Build.VERSION.RELEASE
-}
-
-sealed class Outcome {
-    data class Platform(val res: PlatformResponse) : Outcome()
-    data class Time(val res: TimeResponse) : Outcome()
-    data class Http(val res: HttpResponse) : Outcome()
-}
-
-sealed class CoreMessage {
-    data class Event(val event: Evt) : CoreMessage()
-    data class Response(val uuid: List<Byte>, val outcome: Outcome) : CoreMessage()
-}
-
-class Model : ViewModel() {
-    var view: MyViewModel by mutableStateOf(MyViewModel("", Optional.empty(), ""))
-        private set
-
-    private val httpClient = HttpClient(CIO)
-
+class MyCore : Core() {
     init {
         viewModelScope.launch {
-            update(CoreMessage.Event(Get()))
-            update(CoreMessage.Event(GetPlatform()))
-        }
-    }
-
-    suspend fun update(msg: CoreMessage) {
-        val requests: List<Req> =
-            when (msg) {
-                is CoreMessage.Event -> Requests.bincodeDeserialize(
-                    processEvent(msg.event.bincodeSerialize())
-                )
-
-                is CoreMessage.Response -> Requests.bincodeDeserialize(
-                    handleResponse(
-                        msg.uuid.toByteArray(), when (msg.outcome) {
-                            is Outcome.Platform -> msg.outcome.res.bincodeSerialize()
-                            is Outcome.Time -> msg.outcome.res.bincodeSerialize()
-                            is Outcome.Http -> msg.outcome.res.bincodeSerialize()
-                        }
-                    )
-                )
-            }
-
-        for (req in requests) when (val effect = req.effect) {
-            is Effect.Render -> {
-                this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
-            }
-
-            is Effect.Http -> {
-                val response = http(
-                    httpClient, effect.value
-                )
-                update(CoreMessage.Response(req.uuid, Outcome.Http(response)))
-            }
-
-            is Effect.Time -> {
-                val isoTime =
-                    ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
-
-                update(CoreMessage.Response(req.uuid, Outcome.Time(TimeResponse(isoTime))))
-            }
-
-            is Effect.Platform -> {
-                val platform = getPlatform()
-
-                update(CoreMessage.Response(req.uuid, Outcome.Platform(PlatformResponse(platform))))
-            }
-
-            is Effect.KeyValue -> {}
+            update(Get())
+            update(Event.GetPlatform())
         }
     }
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 @Composable
-fun CatFacts(model: Model = viewModel()) {
+fun CatFacts(core: MyCore = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -142,7 +71,7 @@ fun CatFacts(model: Model = viewModel()) {
             .padding(10.dp),
     ) {
         Icon(Icons.Filled.Public, "Platform")
-        Text(text = model.view.platform, modifier = Modifier.padding(10.dp))
+        Text(text = core.view.platform, modifier = Modifier.padding(10.dp))
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
@@ -150,7 +79,7 @@ fun CatFacts(model: Model = viewModel()) {
                 .height(250.dp)
                 .padding(10.dp)
         ) {
-            model.view.image.getOrNull()?.let {
+            core.view.image.getOrNull()?.let {
                 Image(
                     painter = rememberAsyncImagePainter(it.href),
                     contentDescription = "cat image",
@@ -160,24 +89,24 @@ fun CatFacts(model: Model = viewModel()) {
                 )
             }
         }
-        Text(text = model.view.fact, modifier = Modifier.padding(10.dp))
+        Text(text = core.view.fact, modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Clear())) } },
+                onClick = { coroutineScope.launch { core.update(Clear()) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Get())) } },
+                onClick = { coroutineScope.launch { core.update(Get()) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) { Text(text = "Get", color = Color.White) }
             Button(
-                onClick = { coroutineScope.launch { model.update(CoreMessage.Event(Fetch())) } },
+                onClick = { coroutineScope.launch { core.update(Fetch()) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary

@@ -1,26 +1,21 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
-package com.example.counter
+package com.example.simple_counter
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.counter.shared_types.Event
-import com.example.counter.ui.theme.CounterTheme
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.http.*
-import kotlinx.coroutines.launch
+import com.example.simple_counter.shared_types.Event
+import com.example.simple_counter.ui.theme.CounterTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,7 +24,9 @@ class MainActivity : ComponentActivity() {
             CounterTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) { View() }
+                ) {
+                    View()
+                }
             }
         }
     }
@@ -37,7 +34,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun View(core: Core = viewModel()) {
-    val coroutineScope = rememberCoroutineScope()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -45,30 +41,23 @@ fun View(core: Core = viewModel()) {
             .fillMaxSize()
             .padding(10.dp),
     ) {
-        Text(text = "Crux Counter Example", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
-        Text(text = "Rust Core, Kotlin Shell (Jetpack Compose)", modifier = Modifier.padding(10.dp))
-        Text(
-            text = core.view.text, color = if (core.view.confirmed) {
-                Color.Black
-            } else {
-                Color.Gray
-            }, modifier = Modifier.padding(10.dp)
-        )
+        Text(text = core.view.count.toString(), modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = {
-                    coroutineScope.launch { core.update(Event.Decrement()) }
-                }, colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.hsl(44F, 1F, 0.77F)
+                onClick = { core.update(Event.Reset()) }, colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
                 )
-            ) { Text(text = "Decrement", color = Color.DarkGray) }
+            ) { Text(text = "Reset", color = Color.White) }
             Button(
-                onClick = {
-                    coroutineScope.launch { core.update(Event.Increment()) }
-                }, colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.hsl(348F, 0.86F, 0.61F)
+                onClick = { core.update(Event.Increment()) }, colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) { Text(text = "Increment", color = Color.White) }
+            Button(
+                onClick = { core.update(Event.Decrement()) }, colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) { Text(text = "Decrement", color = Color.White) }
         }
     }
 }
@@ -76,5 +65,7 @@ fun View(core: Core = viewModel()) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    CounterTheme { View() }
+    CounterTheme {
+        View()
+    }
 }
