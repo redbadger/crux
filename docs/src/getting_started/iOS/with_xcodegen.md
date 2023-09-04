@@ -71,8 +71,8 @@ code!
 
 ```admonish example
 There is slightly more advanced
-[example](https://github.com/redbadger/crux/tree/master/examples/counter) of a
-Leptos app in the Crux repository.
+[example](https://github.com/redbadger/crux/tree/master/examples/counter) of an
+iOS app in the Crux repository.
 
 However, we will use the
 [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
