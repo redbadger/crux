@@ -26,6 +26,8 @@ pub struct Model {
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ViewModel {
     pub count: usize,
+    pub rate: f64,
+    pub running: bool,
 }
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
@@ -96,7 +98,11 @@ impl crux_core::App for App {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        ViewModel { count: model.count }
+        ViewModel {
+            count: model.count,
+            rate: model.rate,
+            running: model.sample_period.is_some(),
+        }
     }
 }
 // ANCHOR_END: impl_app
@@ -202,7 +208,11 @@ mod test {
         let model = Model::default();
 
         let actual_view = app.view(&model);
-        let expected_view = ViewModel { count: 0 };
+        let expected_view = ViewModel {
+            count: 0,
+            rate: 0.0,
+            running: false,
+        };
 
         assert_eq!(actual_view, expected_view);
     }
@@ -218,7 +228,11 @@ mod test {
         app.update(Event::Tick, &mut model);
 
         let actual_view = app.view(&model);
-        let expected_view = ViewModel { count: 3 };
+        let expected_view = ViewModel {
+            count: 3,
+            rate: 0.0,
+            running: true,
+        };
 
         assert_eq!(actual_view, expected_view);
     }
@@ -233,7 +247,11 @@ mod test {
         app.update(Event::Tick, &mut model);
 
         let actual_view = app.view(&model);
-        let expected_view = ViewModel { count: 0 };
+        let expected_view = ViewModel {
+            count: 0,
+            rate: 0.0,
+            running: false,
+        };
 
         assert_eq!(actual_view, expected_view);
     }
