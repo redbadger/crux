@@ -27,6 +27,7 @@ pub struct Model {
 pub struct ViewModel {
     pub count: usize,
     pub rate: f64,
+    pub log: Vec<usize>,
     pub running: bool,
 }
 
@@ -101,6 +102,7 @@ impl crux_core::App for App {
         ViewModel {
             count: model.count,
             rate: model.rate,
+            log: model.log.clone(),
             running: model.sample_period.is_some(),
         }
     }
@@ -211,6 +213,7 @@ mod test {
         let expected_view = ViewModel {
             count: 0,
             rate: 0.0,
+            log: vec![],
             running: false,
         };
 
@@ -231,6 +234,7 @@ mod test {
         let expected_view = ViewModel {
             count: 3,
             rate: 0.0,
+            log: vec![],
             running: true,
         };
 
@@ -250,6 +254,7 @@ mod test {
         let expected_view = ViewModel {
             count: 0,
             rate: 0.0,
+            log: vec![],
             running: false,
         };
 

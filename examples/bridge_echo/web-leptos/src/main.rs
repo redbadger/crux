@@ -7,6 +7,7 @@ use leptos::{
     SignalGetUntracked, SignalSet, SignalUpdate,
 };
 
+use leptos_chart::{Cartesian, LineChart, Series};
 use shared::Event;
 
 const PERIOD: u64 = 1000;
@@ -43,6 +44,28 @@ fn RootComponent(cx: Scope) -> impl IntoView {
         }
     });
 
+    let chart = move || {
+        clock.get();
+
+        let log: Vec<_> = view.get_untracked().log;
+
+        let count = log.len() as i64;
+        let max = *log.iter().max().unwrap_or(&0);
+
+        let (x, y) = if count > 0 {
+            (
+                (1..=count).collect::<Vec<_>>(),
+                log.iter().map(|i| *i as f64).collect::<Vec<_>>(),
+            )
+        } else {
+            (vec![0, 1], vec![0.0, 1.0])
+        };
+
+        log::debug!("Chart: {:?}, {:?}", x, y);
+
+        Cartesian::new(Series::from(x), Series::from(y)).set_view(420, 380, 3, 100, 100, 20)
+    };
+
     view! {cx,
         <section class="box container has-text-centered my-5 mx-auto">
             <div class="is-flex flex-direction-row is-justify-content-center is-align-items-flex-end">
@@ -62,6 +85,11 @@ fn RootComponent(cx: Scope) -> impl IntoView {
                     </button>
                 </p>
             </div>
+            {move || {
+                let chart = chart();
+
+                view! {cx, <LineChart chart=chart />}
+            }}
         </section>
     }
 }
