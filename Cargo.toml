@@ -8,6 +8,7 @@ members = [
   "crux_platform",
   "crux_time"
 ]
+resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]

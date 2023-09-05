@@ -1,5 +1,6 @@
 import Foundation
-import SharedTypes
+
+import {{ type_gen_pascal }}
 
 @MainActor
 class Core: ObservableObject {

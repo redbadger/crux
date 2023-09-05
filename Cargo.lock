@@ -410,6 +410,7 @@ dependencies = [
  "anyhow",
  "clap",
  "console",
+ "heck 0.4.1",
  "ignore",
  "ramhorns",
  "serde",
