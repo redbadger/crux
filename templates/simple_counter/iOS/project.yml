@@ -1,4 +1,4 @@
-name: CounterApp
+name: {{workspace_pascal}}
 projectReferences:
   Shared:
     path: ../shared/shared.xcodeproj
@@ -6,16 +6,16 @@ packages:
   SharedTypes:
     path: ../shared_types/generated/swift/SharedTypes
 options:
-  bundleIdPrefix: com.example.counter
+  bundleIdPrefix: com.example.{{workspace}}
 attributes:
   BuildIndependentTargetsInParallel: true
 targets:
-  CounterApp:
+  {{workspace_pascal}}:
     type: application
     platform: iOS
     deploymentTarget: "15.0"
     sources:
-      - CounterApp
+      - {{workspace_pascal}}
       - path: ../shared/src/shared.udl
         buildPhase: sources
     dependencies:
@@ -23,7 +23,7 @@ targets:
       - target: Shared/shared-staticlib
       - package: SharedTypes
     info:
-      path: CounterApp/Info.plist
+      path: {{workspace_pascal}}/Info.plist
       properties:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

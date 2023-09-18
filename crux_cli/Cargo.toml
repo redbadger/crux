@@ -16,6 +16,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { version = "4.3.21", features = ["derive"] }
 console = "0.15.7"
+heck = "0.4.1"
 ignore = "0.4.20"
 ramhorns = "0.14.0"
 serde = { workspace = true, features = ["derive"] }

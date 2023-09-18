@@ -1,4 +1,4 @@
-package com.example.counter.ui.theme
+package com.example.simple_counter.ui.theme
 
 import android.app.Activity
 import android.os.Build

@@ -1,10 +1,10 @@
 import SwiftUI
 
 @main
-struct CounterAppApp: App {
+struct SimpleCounterApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView(model: Model())
+            ContentView(core: Core())
         }
     }
 }
