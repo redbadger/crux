@@ -8,6 +8,7 @@ members = [
   "crux_platform",
   "crux_time"
 ]
+resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
@@ -18,5 +19,5 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 rust-version = "1.66"
 
 [workspace.dependencies]
-anyhow = "1.0.73"
-serde = "1.0.183"
+anyhow = "1.0.75"
+serde = "1.0.188"
