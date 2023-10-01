@@ -20,4 +20,4 @@ ignore = "0.4.20"
 ramhorns = "0.14.0"
 serde = { workspace = true, features = ["derive"] }
 similar = { version = "2.2.1", features = ["inline"] }
-toml = "0.8.0"
+toml = "0.8.1"

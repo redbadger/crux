@@ -1,21 +1,19 @@
 mod core;
 
-use leptos::{
-    component, create_effect, create_signal, view, IntoView, Scope, SignalGet, SignalUpdate,
-};
+use leptos::{component, create_effect, create_signal, view, IntoView, SignalGet, SignalUpdate};
 use {{core_name}}::Event;
 
 #[component]
-fn RootComponent(cx: Scope) -> impl IntoView {
+fn RootComponent() -> impl IntoView {
     let core = core::new();
-    let (view, render) = create_signal(cx, core.view());
-    let (event, set_event) = create_signal(cx, Event::Reset);
+    let (view, render) = create_signal(core.view());
+    let (event, set_event) = create_signal(Event::Reset);
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         core::update(&core, event.get(), render);
     });
 
-    view! {cx,
+    view! {
         <section class="box container has-text-centered m-5">
             <p class="is-size-5">{move || view.get().count}</p>
             <div class="buttons section is-centered">
@@ -40,7 +38,7 @@ fn RootComponent(cx: Scope) -> impl IntoView {
 }
 
 fn main() {
-    leptos::mount_to_body(|cx| {
-        view! { cx, <RootComponent /> }
+    leptos::mount_to_body(|| {
+        view! { <RootComponent /> }
     });
 }
