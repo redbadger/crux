@@ -2,22 +2,20 @@ mod core;
 mod http;
 mod sse;
 
-use leptos::{
-    component, create_effect, create_signal, view, IntoView, Scope, SignalGet, SignalUpdate,
-};
+use leptos::{component, create_effect, create_signal, view, IntoView, SignalGet, SignalUpdate};
 use shared::Event;
 
 #[component]
-fn root_component(cx: Scope) -> impl IntoView {
+fn root_component() -> impl IntoView {
     let core = core::new();
-    let (view, render) = create_signal(cx, core.view());
-    let (event, set_event) = create_signal(cx, Event::StartWatch);
+    let (view, render) = create_signal(core.view());
+    let (event, set_event) = create_signal(Event::StartWatch);
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         core::update(&core, event.get(), render);
     });
 
-    view! {cx,
+    view! {
         <>
             <section class="section has-text-centered">
                 <p class="title">{"Crux Counter Example"}</p>
@@ -46,7 +44,7 @@ fn main() {
     _ = console_log::init_with_level(log::Level::Debug);
     console_error_panic_hook::set_once();
 
-    leptos::mount_to_body(|cx| {
-        view! { cx, <RootComponent /> }
+    leptos::mount_to_body(|| {
+        view! { <RootComponent /> }
     });
 }

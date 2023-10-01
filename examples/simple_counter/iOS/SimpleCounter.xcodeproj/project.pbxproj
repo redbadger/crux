@@ -300,7 +300,7 @@
 					"-w",
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.SimpleCounter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.simple_counter.SimpleCounter;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -322,7 +322,7 @@
 					"-w",
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.counter.SimpleCounter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.simple_counter.SimpleCounter;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";

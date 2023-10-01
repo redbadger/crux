@@ -355,6 +355,11 @@ impl TypeGen {
 
         fs::create_dir_all(&path)?;
 
+        let package_path = package_name.replace('.', "/");
+
+        // remove any existing generated shared types, this ensures that we remove no longer used types
+        fs::remove_dir_all(path.as_ref().join(&package_path)).unwrap_or(());
+
         let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
             .with_encodings(vec![Encoding::Bincode]);
 
@@ -374,8 +379,6 @@ impl TypeGen {
         installer
             .install_module(&config, registry)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-
-        let package_path = package_name.replace('.', "/");
 
         let requests = format!(
             "package {package_name};\n\n{}",

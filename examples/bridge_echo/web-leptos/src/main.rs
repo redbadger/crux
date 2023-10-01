@@ -50,7 +50,7 @@ fn RootComponent(cx: Scope) -> impl IntoView {
         let log: Vec<_> = view.get_untracked().log;
 
         let count = log.len() as i64;
-        let max = *log.iter().max().unwrap_or(&0);
+        // let max = *log.iter().max().unwrap_or(&0);
 
         let (x, y) = if count > 0 {
             (
