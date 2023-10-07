@@ -40,7 +40,7 @@ impl ToTokens for CapabilityStructReceiver {
             where
                 F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
                 Ev: 'static,
-                NewEv: 'static,
+                NewEv: 'static + Send,
             {
               #name::new(self.context.map_event(f))
             }
