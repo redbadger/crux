@@ -2,7 +2,8 @@
 
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 
 import init_core from "shared/shared";
 import {
@@ -19,17 +20,18 @@ import { update } from "./core";
 const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel("", new CatImage(""), ""));
 
+  const initialized = useRef(false);
   useEffect(
     () => {
-      async function loadCore() {
-        await init_core();
+      if (!initialized.current) {
+        initialized.current = true;
 
-        // Initial events
-        update(new EventVariantGetPlatform(), setView);
-        update(new EventVariantGet(), setView);
+        init_core().then(() => {
+          // Initial events
+          update(new EventVariantGetPlatform(), setView);
+          update(new EventVariantGet(), setView);
+        });
       }
-
-      loadCore();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []

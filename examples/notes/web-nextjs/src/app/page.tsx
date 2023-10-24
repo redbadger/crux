@@ -89,30 +89,31 @@ const Home: NextPage = () => {
     }
   };
 
+  const initialized = useRef(false);
   useEffect(
     () => {
-      async function loadCore() {
-        await init_core();
+      if (!initialized.current) {
+        initialized.current = true;
 
-        // Subscribe to the BroadcastChannel
-        channel.current.onmessage = onMessage;
+        init_core().then(() => {
+          // Subscribe to the BroadcastChannel
+          channel.current.onmessage = onMessage;
 
-        // Open the document
-        core.current.update(new EventVariantOpen());
+          // Open the document
+          core.current.update(new EventVariantOpen());
 
-        // Ask all peers to reset
-        let message: SyncMessage = {
-          kind: "reset",
+          // Ask all peers to reset
+          let message: SyncMessage = {
+            kind: "reset",
+          };
+          channel.current.postMessage(message);
+        });
+
+        const currentChannel = channel.current;
+        return () => {
+          currentChannel.onmessage = null;
         };
-        channel.current.postMessage(message);
       }
-
-      loadCore();
-
-      const currentChannel = channel.current;
-      return () => {
-        currentChannel.onmessage = null;
-      };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
