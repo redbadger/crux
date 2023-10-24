@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ViewModel,
@@ -17,15 +17,19 @@ export const meta = () => {
 
 export default function Index() {
   const [view, setView] = useState(new ViewModel("", false));
+
+  const initialized = useRef(false);
   useEffect(
     () => {
-      // Initial event, beware of StrictMode in ../entry.client.tsx as it will run twice in dev
-      update(new EventVariantStartWatch(), setView);
+      if (!initialized.current) {
+        initialized.current = true;
+
+        update(new EventVariantStartWatch(), setView);
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
   );
-
   return (
     <main>
       <section className="section has-text-centered">

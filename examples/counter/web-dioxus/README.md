@@ -1,33 +1,33 @@
 # dioxus-template
 
 > a template for starting a dioxus project to be used with
-> [dioxus-cli](https://github.com/DioxusLabs/cli)
+> [dioxus-cli](https://dioxuslabs.com/learn/0.4/getting_started/wasm)
 
 ## Usage
 
 #### use `dioxus-cli` init the template:
 
 ```
-dioxus init hello-dioxus
+dx init hello-dioxus
 ```
 
 or you can choose the template, for this template:
 
 ```
-dioxus init hello-dioxus --template=gh:dioxuslabs/dioxus-template
+dx init hello-dioxus --template=gh:dioxuslabs/dioxus-template
 ```
 
 #### Start a `dev-server` for the project:
 
 ```
 cd ./hello-dioxus
-dioxus serve
+dx serve
 ```
 
 or package this project:
 
 ```
-dioxus build --release
+dx build --release
 ```
 
 ## Project Structure
