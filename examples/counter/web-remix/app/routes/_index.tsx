@@ -1,5 +1,4 @@
-import type { V2_MetaFunction } from "@remix-run/node";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ViewModel,
@@ -9,7 +8,7 @@ import {
 } from "shared_types/types/shared_types";
 import { update } from "../core";
 
-export const meta: V2_MetaFunction = () => {
+export const meta = () => {
   return [
     { title: "Crux Counter Example - Remix" },
     { name: "description", content: "Rust Core, TypeScript Shell (Remix)" },
@@ -18,15 +17,19 @@ export const meta: V2_MetaFunction = () => {
 
 export default function Index() {
   const [view, setView] = useState(new ViewModel("", false));
+
+  const initialized = useRef(false);
   useEffect(
     () => {
-      // Initial event, beware of StrictMode in ../entry.client.tsx as it will run twice in dev
-      update(new EventVariantStartWatch(), setView);
+      if (!initialized.current) {
+        initialized.current = true;
+
+        update(new EventVariantStartWatch(), setView);
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
   );
-
   return (
     <main>
       <section className="section has-text-centered">

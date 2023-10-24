@@ -1,5 +1,4 @@
-import type { V2_MetaFunction } from "@remix-run/node";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ViewModel,
@@ -9,7 +8,7 @@ import {
 } from "shared_types/types/shared_types";
 import { update } from "../core";
 
-export const meta: V2_MetaFunction = () => {
+export const meta = () => {
   return [
     { title: "New Remix App" },
     { name: "description", content: "Welcome to Remix!" },
@@ -19,10 +18,16 @@ export const meta: V2_MetaFunction = () => {
 export default function Index() {
   const [view, setView] = useState(new ViewModel("0"));
 
+  const initialized = useRef(false);
+
   useEffect(
     () => {
-      // Initial event
-      update(new EventVariantReset(), setView);
+      if (!initialized.current) {
+        initialized.current = true;
+
+        // Initial event
+        update(new EventVariantReset(), setView);
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []

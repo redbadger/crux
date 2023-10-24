@@ -12,7 +12,7 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-trait = "0.1.73"
+async-trait = "0.1.74"
 crux_core = { version = ">=0.4", path = "../crux_core" }
 crux_macros = { version = "0.3", path = "../crux_macros" }
 derive_builder = "0.12.0"

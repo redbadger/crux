@@ -2,7 +2,7 @@
 
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import init_core from "shared/shared";
 import {
@@ -17,16 +17,17 @@ import { update } from "./core";
 const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel("0"));
 
+  const initialized = useRef(false);
   useEffect(
     () => {
-      async function loadCore() {
-        await init_core();
+      if (!initialized.current) {
+        initialized.current = true;
 
-        // Initial event
-        update(new EventVariantReset(), setView);
+        init_core().then(() => {
+          // Initial event
+          update(new EventVariantReset(), setView);
+        });
       }
-
-      loadCore();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ []
