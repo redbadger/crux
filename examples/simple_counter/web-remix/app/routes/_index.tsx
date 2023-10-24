@@ -1,4 +1,3 @@
-import type { V2_MetaFunction } from "@remix-run/node";
 import { useEffect, useState } from "react";
 
 import {
@@ -9,7 +8,7 @@ import {
 } from "shared_types/types/shared_types";
 import { update } from "../core";
 
-export const meta: V2_MetaFunction = () => {
+export const meta = () => {
   return [
     { title: "New Remix App" },
     { name: "description", content: "Welcome to Remix!" },

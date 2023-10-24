@@ -1,4 +1,3 @@
-import type { V2_MetaFunction } from "@remix-run/node";
 import { useEffect, useState } from "react";
 
 import {
@@ -8,7 +7,7 @@ import {
 } from "shared_types/types/shared_types";
 import { update } from "../core";
 
-export const meta: V2_MetaFunction = () => {
+export const meta = () => {
   return [
     { title: "New Remix App" },
     { name: "description", content: "Welcome to Remix!" },
@@ -25,13 +24,15 @@ export default function Index() {
       update(new EventVariantTick(), setView);
 
       if (run) {
-        setTimeout(tick, 0)
+        setTimeout(tick, 0);
       }
-    }
+    };
 
     tick();
 
-    return (() => { run = false; });
+    return () => {
+      run = false;
+    };
   }, []);
 
   // Once a second reset the period
@@ -40,7 +41,9 @@ export default function Index() {
       update(new EventVariantNewPeriod(), setView);
     }, 1000);
 
-    return (() => { clearInterval(id); });
+    return () => {
+      clearInterval(id);
+    };
   }, []);
 
   return (
