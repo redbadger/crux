@@ -75,7 +75,10 @@ where
         Self { context }
     }
 
-    pub fn milliseconds(&self, millis: usize, event: Ev) {
+    pub fn milliseconds(&self, millis: usize, event: Ev)
+    where
+        Ev: Send,
+    {
         let ctx = self.context.clone();
         self.context.spawn(async move {
             ctx.request_from_shell(DelayOperation { millis }).await;
