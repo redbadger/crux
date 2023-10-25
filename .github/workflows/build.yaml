@@ -23,13 +23,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    if:
+    if: |
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
       github.event.pull_request.base.repo.full_name
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Remove rust-toolchain.toml
         shell: bash
@@ -46,7 +46,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: 8.6.11
+          version: latest
 
       - name: Build crux
         shell: bash
@@ -65,14 +65,14 @@ jobs:
 
   find-examples:
     runs-on: ubuntu-latest
-    if:
+    if: |
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
       github.event.pull_request.base.repo.full_name
     outputs:
       examples: ${{ steps.find.outputs.examples }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: find
         run: |
           EXAMPLES=$(ls -d examples/*/ | xargs -L 1 basename | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     container: ivangabriele/tauri:debian-bookworm-18
 
-    if:
+    if: |
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
       github.event.pull_request.base.repo.full_name
@@ -98,7 +98,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Remove rust-toolchain.toml
         shell: bash
