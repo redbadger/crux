@@ -24,9 +24,9 @@ jobs:
     runs-on: ubuntu-latest
 
     if: |
-      github.event_name != 'pull_request' ||
+      ${{ github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
-      github.event.pull_request.base.repo.full_name
+      github.event.pull_request.base.repo.full_name }}
 
     steps:
       - uses: actions/checkout@v4
@@ -66,9 +66,9 @@ jobs:
   find-examples:
     runs-on: ubuntu-latest
     if: |
-      github.event_name != 'pull_request' ||
+      ${{ github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
-      github.event.pull_request.base.repo.full_name
+      github.event.pull_request.base.repo.full_name }}
     outputs:
       examples: ${{ steps.find.outputs.examples }}
     steps:
@@ -83,9 +83,9 @@ jobs:
     container: ivangabriele/tauri:debian-bookworm-18
 
     if: |
-      github.event_name != 'pull_request' ||
+      ${{ github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
-      github.event.pull_request.base.repo.full_name
+      github.event.pull_request.base.repo.full_name }}
 
     needs: find-examples
 
