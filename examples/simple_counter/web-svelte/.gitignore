@@ -4,3 +4,4 @@ dist/**
 target/*
 static/*
 .parcel-cache/*
+package-json.lock

@@ -27,3 +27,8 @@ cores = ["shared"]
 template = "web-remix"
 source = "web-remix"
 cores = ["shared"]
+
+[shells.web_svelte]
+template = "web-svelte"
+source = "web-svelte"
+cores = ["shared"]
