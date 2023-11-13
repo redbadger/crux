@@ -1,0 +1,6 @@
+node_modules/
+wasm/pkg/
+dist/**
+target/*
+static/*
+.parcel-cache/*

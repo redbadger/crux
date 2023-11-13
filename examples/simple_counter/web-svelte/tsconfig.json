@@ -1,0 +1,24 @@
+{
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "esnext",
+		"strict": true,
+		"jsx": "preserve",
+		"isolatedModules": true,
+		"moduleResolution": "node",
+    	"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+        "forceConsistentCasingInFileNames": true,
+		"sourceMap": true,
+		"types": ["node", "svelte", "svelte/store"],
+		"paths": {
+			"@/*": ["./src/*"]
+		},
+		"lib": ["esnext", "dom", "dom.iterable"]
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte", "tests/**/*.ts", "../shared", "../shared_types"],
+	"exclude": ["node_modules"],
+}
