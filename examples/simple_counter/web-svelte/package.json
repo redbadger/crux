@@ -8,21 +8,23 @@
     "dev": "pnpm run wasm:build && parcel build src/index.html"
   },
   "dependencies": {
-    "bulma": "^0.9.4",
     "bincode": "file:../shared_types/generated/typescript/bincode",
+    "bulma": "^0.9.4",
     "concurrently": "^7.6.0",
     "parcel": "^2.8.3",
     "parcel-transformer-svelte3-plus": "^0.2.8",
-    "shared": "file:../shared/pkg",
     "reflect-metadata": "^0.1.13",
+    "shared": "file:../shared/pkg",
     "shared_types": "file:../shared_types/generated/typescript",
     "svelte": "^3.56.0",
     "typescript": "^4.9.5"
   },
   "devDependencies": {
+    "@parcel/config-default": "^2.10.2",
     "@parcel/transformer-inline-string": "^2.8.3",
     "@parcel/transformer-webmanifest": "^2.8.3",
     "@types/node": "^18.15.11",
-    "@types/webpack": "^5.28.1"
+    "@types/webpack": "^5.28.1",
+    "process": "^0.11.10"
   }
 }
