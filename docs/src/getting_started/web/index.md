@@ -34,6 +34,7 @@ This section has two guides for building TypeScript UI with Crux:
 
 1. [TypeScript and React (Next.js)](./nextjs.md)
 2. [TypeScript and React (Remix)](./remix.md)
+3. [TypeScript and Svelte (Parcel)](./svelte.md)
 
 ## Web apps with Rust UI
 

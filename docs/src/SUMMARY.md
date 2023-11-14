@@ -15,6 +15,7 @@
 1. [Web](./getting_started/web/index.md)
    1. [TypeScript and React (Next.js)](./getting_started/web/nextjs.md)
    1. [TypeScript and React (Remix)](./getting_started/web/remix.md)
+   1. [TypeScript and Svelte (Parcel)](./getting_started/web/svelte.md)
    1. [Rust and Yew](./getting_started/web/yew.md)
    1. [Rust and Leptos](./getting_started/web/leptos.md)
    1. [Rust and Dioxus](./getting_started/web/dioxus.md)
