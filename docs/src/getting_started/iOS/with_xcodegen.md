@@ -19,7 +19,9 @@ library so that it can be linked into the binary that we're going to ship.
 ```admonish
 We will use [`cargo-xcode`](https://crates.io/crates/cargo-xcode) to generate an Xcode project for our shared library, which we can add as a sub-project in Xcode.
 
-If you don't have this already, you can install it with `cargo install cargo-xcode`.
+Recent changes to `cargo-xcode` mean that we need to use version <=1.7.0 for now.
+
+If you don't have this already, you can install it with `cargo install --force cargo-xcode --version 1.7.0`.
 ```
 
 Let's generate the sub-project:
@@ -45,16 +47,17 @@ Before we generate the Xcode project, we need to create some directories and a
 `project.yml` file:
 
 ```bash
+mkdir -p iOS/SimpleCounter
 cd iOS
-mkdir SimpleCounter
 touch project.yml
 ```
 
 The `project.yml` file describes the Xcode project we want to generate. Here's
-one for the Counter example — you may want to adapt this for your own project:
+one for the SimpleCounter example — you may want to adapt this for your own
+project:
 
 ```yaml
-{{#include ../../../../examples/counter/iOS/project.yml}}
+{{#include ../../../../examples/simple_counter/iOS/project.yml}}
 ```
 
 Then we can generate the Xcode project:

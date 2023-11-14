@@ -127,7 +127,9 @@ library so that it can be linked into the binary that we're going to ship.
 ```admonish
 We will use [`cargo-xcode`](https://crates.io/crates/cargo-xcode) to generate an Xcode project for our shared library, which we can add as a sub-project in Xcode.
 
-If you don't have this already, you can install it with `cargo install cargo-xcode`.
+Recent changes to `cargo-xcode` mean that we need to use version <=1.7.0 for now.
+
+If you don't have this already, you can install it with `cargo install --force cargo-xcode --version 1.7.0`.
 ```
 
 Let's generate the sub-project:
