@@ -71,26 +71,26 @@
 //!        .expect("typescript type gen failed");
 //!}
 //! ```
-//! 
+//!
 //! ## Custom extensions
-//! 
+//!
 //! May you need to use customized files for one of:
-//! 
-//! - `generated/typescript/*`, 
+//!
+//! - `generated/typescript/*`,
 //! - `generated/swift/(requests | Package).swift` -
 //! - `generated/java/Requests.java`
-//! 
-//! Then create the `typegen_extensions/{target}/{target-file}` 
+//!
+//! Then create the `typegen_extensions/{target}/{target-file}`
 //! with the desired content next to your `build.rs` file.
-//! 
+//!
 //! For example `typegen_extensions/swift/Package.swift`:
-//! 
+//!
 //! ```swift
 //! // swift-tools-version: 5.7.1
 //! // The swift-tools-version declares the minimum version of Swift required to build this package.
-//! 
+//!
 //! import PackageDescription
-//! 
+//!
 //! let package = Package(
 //!     name: "SharedTypes",
 //!     products: [
@@ -115,7 +115,6 @@
 //!     ]
 //! )
 //! ```
-
 
 use serde::Deserialize;
 use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
