@@ -9,6 +9,6 @@ console_error_panic_hook = "0.1.7"
 dioxus = "0.4"
 dioxus-logger = "0.4.1"
 dioxus-web = "0.4"
-futures-util = "0.3.28"
+futures-util = "0.3.29"
 log = "0.4.20"
 shared = { path = "../shared" }

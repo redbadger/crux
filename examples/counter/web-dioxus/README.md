@@ -3,6 +3,13 @@
 > a template for starting a dioxus project to be used with
 > [dioxus-cli](https://dioxuslabs.com/learn/0.4/getting_started/wasm)
 
+Note: you may need to update `dioxus-cli` first (to build against newer versions
+of `wasm-bindgen`):
+
+```
+cargo install --force dioxus-cli
+```
+
 ## Usage
 
 #### use `dioxus-cli` init the template:
