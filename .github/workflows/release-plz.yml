@@ -19,6 +19,8 @@ jobs:
   release-plz:
     name: Release-plz
     runs-on: ubuntu-latest
+    if:
+      ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
