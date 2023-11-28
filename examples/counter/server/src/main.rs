@@ -8,7 +8,7 @@ use axum::{
         IntoResponse, Sse,
     },
     routing::{get, post},
-    Json, Router, Server,
+    Json, Router,
 };
 use futures::Stream;
 use futures_signals::signal::{Mutable, SignalExt};
@@ -18,6 +18,7 @@ use std::{
     net::SocketAddr,
     time::{SystemTime, UNIX_EPOCH},
 };
+use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -62,9 +63,10 @@ async fn main() {
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let listener = TcpListener::bind(&addr).await.unwrap();
+
     tracing::info!("listening on {}", addr);
-    Server::bind(&addr)
-        .serve(app.into_make_service())
+    axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
 }
