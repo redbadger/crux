@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "postinstall": "mkdir -p dist"
   },
   "dependencies": {
     "@tauri-apps/api": "^1.5.1",
