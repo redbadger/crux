@@ -327,9 +327,9 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51f7c4e7212fa3535071e43a3737d5aa79fba0dd0c2e697d3a3c7fa5fc9f6d41"
+checksum = "0559487e3e6a4353ed12225eb353e9bd16bada6a505595073fcdb264ce4cfcd9"
 dependencies = [
  "anyhow",
  "bincode",
@@ -347,9 +347,9 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb8a04d308e7a6cc71eacb16bd175634a7783d29531c4cf6c5ead31cbdc0d3c3"
+checksum = "8a0856209d76799eecde28fd13fb62307dca5a1a073ddc1579028645f3c23902"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -359,9 +359,9 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcf94d071fb3a38ca72b4411a122bad758352d6cb859501fcc2de9c6ae08e94a"
+checksum = "6eb47f6a47c7d38e9331ddbe04b3171498e206bc2eb4b32581655c2619bc9a71"
 dependencies = [
  "darling",
  "proc-macro-error",
