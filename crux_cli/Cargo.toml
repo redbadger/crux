@@ -17,7 +17,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { version = "4.3.24", features = ["derive"] }
 console = "0.15.7"
-ignore = "0.4.20"
+ignore = "0.4.21"
 ramhorns = "0.14.0"
 serde = { workspace = true, features = ["derive"] }
 similar = { version = "2.3.0", features = ["inline"] }
