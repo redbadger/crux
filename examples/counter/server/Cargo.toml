@@ -17,3 +17,6 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [workspace]
+
+[package.metadata.bin]
+cargo-xcode = { version = "=1.7.0" }
