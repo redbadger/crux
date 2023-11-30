@@ -124,13 +124,42 @@ Release. If there isn't already a setting for "bridging header" you can add one
 When we build our iOS app, we also want to build the Rust core as a static
 library so that it can be linked into the binary that we're going to ship.
 
-```admonish
-We will use [`cargo-xcode`](https://crates.io/crates/cargo-xcode) to generate an Xcode project for our shared library, which we can add as a sub-project in Xcode.
+We will use [`cargo-xcode`](https://crates.io/crates/cargo-xcode) to generate an
+Xcode project for our shared library, which we can add as a sub-project in
+Xcode.
 
-Recent changes to `cargo-xcode` mean that we need to use version <=1.7.0 for now.
+````admonish
 
-If you don't have this already, you can install it with `cargo install --force cargo-xcode --version 1.7.0`.
-```
+Recent changes to `cargo-xcode` mean that we need to use version <=1.7.0 for
+now.
+
+If you don't have this already, you can install it in one of two ways:
+
+1.  Globally, with `cargo install --force cargo-xcode --version 1.7.0`
+2.  Locally, using
+    [`cargo-run-bin`](https://github.com/dustinblackman/cargo-run-bin), after
+    ensuring that your `Cargo.toml` has the following lines (see
+    [The workspace and library manifests](/getting_started/core.html#the-workspace-and-library-manifests)):
+
+    ```toml
+    [workspace.metadata.bin]
+    cargo-xcode = { version = "=1.7.0" }
+    ```
+
+    Ensure you have `cargo-run-bin` (and optionally `cargo-binstall`) installed:
+
+    ```bash
+    cargo install cargo-run-bin cargo-binstall
+    ```
+
+    Then, in the root of your app:
+
+    ```bash
+    cargo bin --install # will be faster if `cargo-binstall` is installed
+    cargo bin --sync-aliases # to use `cargo xcode` instead of `cargo bin xcode`
+    ```
+
+````
 
 Let's generate the sub-project:
 
