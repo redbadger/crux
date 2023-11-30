@@ -139,7 +139,7 @@ If you don't have this already, you can install it in one of two ways:
 2.  Locally, using
     [`cargo-run-bin`](https://github.com/dustinblackman/cargo-run-bin), after
     ensuring that your `Cargo.toml` has the following lines (see
-    [The workspace and library manifests](/getting_started/core.html#the-workspace-and-library-manifests)):
+    [The workspace and library manifests](../core.html#the-workspace-and-library-manifests)):
 
     ```toml
     [workspace.metadata.bin]
