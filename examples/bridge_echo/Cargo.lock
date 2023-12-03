@@ -836,9 +836,9 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.6.5"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0559487e3e6a4353ed12225eb353e9bd16bada6a505595073fcdb264ce4cfcd9"
+checksum = "62df816526cd1907274d95d65483b80abf75b32c9dca6b1de914ddda319afb85"
 dependencies = [
  "anyhow",
  "bincode",

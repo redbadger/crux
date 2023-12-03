@@ -1218,9 +1218,9 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.6.5"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0559487e3e6a4353ed12225eb353e9bd16bada6a505595073fcdb264ce4cfcd9"
+checksum = "62df816526cd1907274d95d65483b80abf75b32c9dca6b1de914ddda319afb85"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1238,9 +1238,9 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95c0eb0dc89170ca34e2283f02830f0d4175d7ae559c70285955879f6b24fca2"
+checksum = "c502dd59568442d5def30b68b3862c746c502d1cc2b25b8d5ff1a80774f8da00"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1257,9 +1257,9 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0856209d76799eecde28fd13fb62307dca5a1a073ddc1579028645f3c23902"
+checksum = "65e2d0b1f958a0c793f77325b5ccb9e1cadb2eac866d3e447cd25c1777a7781a"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -1282,9 +1282,9 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f7631dcab026dcb16b11b42df492b1ca14bbdb1b08a1ffae631256a38bcee37"
+checksum = "8721a3e71fc04be00c3c9b32d4e2385a13ad7d151d0b1a791814c73b92ea9aad"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -1294,9 +1294,9 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51720f3b0159e151f1b9fb2a7cb5d50168202f4ea2831b4fa10946d6f537abb6"
+checksum = "e714ecc35520d582e9440803618607373aac47408ca962f3a66da36953fbdd12"
 dependencies = [
  "anyhow",
  "crux_core",
