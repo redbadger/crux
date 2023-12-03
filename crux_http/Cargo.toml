@@ -1,7 +1,7 @@
 [package]
 name = "crux_http"
 description = "HTTP capability for use with crux_core"
-version = "0.4.3"
+version = "0.4.4"
 readme = "README.md"
 authors.workspace = true
 repository.workspace = true
@@ -13,7 +13,7 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait = "0.1.74"
-crux_core = { version = "0.6", path = "../crux_core" }
+crux_core = { version = "0.7", path = "../crux_core" }
 crux_macros = { version = "0.3", path = "../crux_macros" }
 derive_builder = "0.12.0"
 futures-util = "0.3"
@@ -27,4 +27,4 @@ url = "2.5.0"
 assert_fs = "1.0.13"
 futures-test = "0.3"
 assert_matches = "1.5"
-crux_core = { version = "0.6", path = "../crux_core", features = ["typegen"] }
+crux_core = { version = "0.7", path = "../crux_core", features = ["typegen"] }
