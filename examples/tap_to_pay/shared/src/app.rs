@@ -38,6 +38,7 @@ pub enum Screen {
 
 #[derive(Effect)]
 #[effect(app = "App")]
+#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
 pub struct Capabilities {
     render: Render<Event>,
     delay: Delay<Event>,

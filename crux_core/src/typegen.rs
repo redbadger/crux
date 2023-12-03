@@ -50,25 +50,22 @@
 //!use uuid::Uuid;
 //!
 //!#[test]
-//!fn generate_types() {
+//!fn generate_types() -> anyhow::Result<()> {
 //!    let mut gen = TypeGen::new();
 //!
 //!    let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
-//!    gen.register_type_with_samples(sample_events).unwrap();
+//!    gen.register_type_with_samples(sample_events)?;
 //!
-//!    gen.register_app::<App>().unwrap();
+//!    gen.register_app::<App>()?;
 //!
-//!    let temp = assert_fs::TempDir::new().unwrap();
+//!    let temp = assert_fs::TempDir::new()?;
 //!    let output_root = temp.join("crux_core_typegen_test");
 //!
-//!    gen.swift("SharedTypes", output_root.join("swift"))
-//!        .expect("swift type gen failed");
+//!    gen.swift("SharedTypes", output_root.join("swift"))?;
 //!
-//!    gen.java("com.example.counter.shared_types", output_root.join("java"))
-//!        .expect("java type gen failed");
+//!    gen.java("com.example.counter.shared_types", output_root.join("java"))?;
 //!
-//!    gen.typescript("shared_types", output_root.join("typescript"))
-//!        .expect("typescript type gen failed");
+//!    gen.typescript("shared_types", output_root.join("typescript"))?;
 //!}
 //! ```
 
@@ -110,6 +107,8 @@ pub enum TypeGenError {
     Generation(String),
     #[error("error writing generated types")]
     Io(#[from] std::io::Error),
+    #[error("`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation")]
+    PnpmNotFound(#[source] std::io::Error),
 }
 
 #[derive(Debug)]
@@ -309,8 +308,7 @@ impl TypeGen {
     /// # use std::env::temp_dir;
     /// # let mut gen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.swift("SharedTypes", output_root.join("swift"))
-    ///     .expect("swift type gen failed");
+    /// gen.swift("SharedTypes", output_root.join("swift"))?;
     /// ```
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
@@ -373,8 +371,7 @@ impl TypeGen {
     /// gen.java(
     ///     "com.redbadger.crux_core.shared_types",
     ///     output_root.join("java"),
-    /// )
-    /// .expect("java type gen failed");
+    /// )?;
     /// ```
     pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
@@ -429,8 +426,7 @@ impl TypeGen {
     /// # use std::env::temp_dir;
     /// # let mut gen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.typescript("shared_types", output_root.join("typescript"))
-    ///    .expect("typescript type gen failed");
+    /// gen.typescript("shared_types", output_root.join("typescript"))?;
     /// ```
     pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
@@ -448,7 +444,7 @@ impl TypeGen {
 
         let extensions_dir =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/typescript");
-        copy(extensions_dir, path).expect("Could not copy TS runtime");
+        copy(extensions_dir, path)?;
 
         let registry = match &self.state {
             State::Generating(registry) => registry,
@@ -481,7 +477,10 @@ impl TypeGen {
             .current_dir(output_dir.clone())
             .arg("install")
             .status()
-            .expect("Could not pnpm install");
+            .map_err(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => TypeGenError::PnpmNotFound(e),
+                _ => TypeGenError::Io(e),
+            })?;
 
         // Build TS code and emit declarations
         std::process::Command::new("pnpm")
@@ -490,7 +489,7 @@ impl TypeGen {
             .arg("tsc")
             .arg("--build")
             .status()
-            .expect("Could tsc --build");
+            .map_err(TypeGenError::Io)?;
 
         Ok(())
     }
