@@ -309,6 +309,7 @@ impl TypeGen {
     /// # let mut gen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// gen.swift("SharedTypes", output_root.join("swift"))?;
+    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
@@ -372,6 +373,7 @@ impl TypeGen {
     ///     "com.redbadger.crux_core.shared_types",
     ///     output_root.join("java"),
     /// )?;
+    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
     pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
@@ -427,6 +429,7 @@ impl TypeGen {
     /// # let mut gen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// gen.typescript("shared_types", output_root.join("typescript"))?;
+    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
     pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
