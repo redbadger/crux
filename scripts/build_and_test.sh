@@ -2,9 +2,6 @@
 
 set -euo pipefail
 
-# until https://github.com/killercup/cargo-edit/pull/870 is merged
-CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git cargo fetch
-
 mapfile -t all < <(fd Cargo.toml)
 roots=()
 for file in "${all[@]}"; do
@@ -21,10 +18,9 @@ readarray -t sorted < <(printf '%s\n' "${roots[@]}" | sort -u)
 
 for dir in "${sorted[@]}"; do
   (
-    echo "---  Updating dependencies in $dir"
     cd "$dir"
-    # until https://github.com/killercup/cargo-edit/pull/870 is merged
-    CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git cargo upgrade -i --verbose
-    cargo update
+    cargo fmt --all --check
+    cargo build --all-features
+    cargo nextest run --all-features
   )
 done
