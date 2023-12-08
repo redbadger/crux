@@ -4,14 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.6.20", features = ["headers"] }
-futures = "0.3.28"
+axum = "0.7.1"
+futures = "0.3.29"
 futures-signals = "0.3.33"
 rand = "0.8.5"
-serde.workspace = true
-serde_json = "1.0.107"
-tokio = { version = "1.33.0", features = ["full"] }
+serde = "1.0.193"
+serde_json = "1.0.108"
+tokio = { version = "1.34.0", features = ["full"] }
 tokio-stream = "0.1.14"
-tower-http = { version = "0.4.4", features = ["cors"] }
+tower-http = { version = "0.5.0", features = ["cors"] }
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+
+[workspace]

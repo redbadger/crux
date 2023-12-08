@@ -12,15 +12,15 @@ name = "shared"
 typegen = ["crux_core/typegen"]
 
 [dependencies]
-crux_core = "0.6"
+crux_core = "0.7"
 crux_macros = "0.3"
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"
-uniffi = "0.25.0"
-wasm-bindgen = "0.2.87"
+uniffi = "0.25.2"
+wasm-bindgen = "0.2.89"
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.25.0", features = ["cli"] }
+uniffi = { version = "0.25.2", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.25.0", features = ["build"] }
+uniffi = { version = "0.25.2", features = ["build"] }

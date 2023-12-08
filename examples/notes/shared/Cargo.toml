@@ -20,21 +20,21 @@ name = "shared"
 [dependencies]
 anyhow.workspace = true
 serde = { workspace = true, features = ["derive"] }
-crux_core = "0.6"
+crux_core = "0.7"
 crux_kv = "0.1"
 crux_macros = "0.3"
 bincode = "1.3.3"
 lazy_static = "1.4"
-uniffi = "0.25.0"
+uniffi = "0.25.2"
 automerge = "0.4.1"
 futures = "0.3"
 wasm-bindgen = "0.2"
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.25.0", features = ["cli"] }
+uniffi = { version = "0.25.2", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.25.0", features = ["build"] }
+uniffi = { version = "0.25.2", features = ["build"] }
 
 [dev-dependencies]
 assert_let_bind = "0.1.1"

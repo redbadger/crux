@@ -12,13 +12,13 @@ rust-version.workspace = true
 anyhow.workspace = true
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
-futures = "0.3.28"
-futures-util = "0.3.28"
+futures = "0.3.29"
+futures-util = "0.3.29"
 gloo-net = { version = "0.4.0", features = ["http"] }
-js-sys = "0.3.64"
-leptos = { version = "0.5.1", features = ["csr"] }
+js-sys = "0.3.66"
+leptos = { version = "0.5.4", features = ["csr"] }
 log = "0.4.20"
 shared = { path = "../shared" }
-wasm-bindgen = "0.2.87"
-wasm-bindgen-futures = "0.4.37"
-wasm-streams = "0.3.0"
+wasm-bindgen = "0.2.89"
+wasm-bindgen-futures = "0.4.39"
+wasm-streams = "0.4.0"

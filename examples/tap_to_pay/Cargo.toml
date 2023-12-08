@@ -10,4 +10,7 @@ rust-version = "1.68"
 
 [workspace.dependencies]
 anyhow = "1.0.75"
-serde = "1.0.189"
+serde = "1.0.193"
+
+[workspace.metadata.bin]
+cargo-xcode = { version = "=1.7.0" }

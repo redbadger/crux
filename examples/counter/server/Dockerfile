@@ -22,13 +22,12 @@ WORKDIR /app
 
 COPY ./ .
 
-# We no longer need to use the x86_64-unknown-linux-musl target
 RUN cargo build --release
 
 ####################################################################################################
 ## Final image
 ####################################################################################################
-FROM gcr.io/distroless/cc
+FROM debian:bookworm-slim
 
 # Import from builder.
 COPY --from=builder /etc/passwd /etc/passwd

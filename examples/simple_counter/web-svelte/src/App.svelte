@@ -21,19 +21,19 @@
       class="button is-primary is-danger"
       on:click={() => update(new EventVariantReset())}
     >
-    {"Reset"}
-      </button>
+      {"Reset"}
+    </button>
     <button
       class="button is-primary is-success"
       on:click={() => update(new EventVariantIncrement())}
     >
-    {"Increment"}
-      </button>
+      {"Increment"}
+    </button>
     <button
       class="button is-primary is-warning"
       on:click={() => update(new EventVariantDecrement())}
     >
-    {"Decrement"}
-      </button>
+      {"Decrement"}
+    </button>
   </div>
 </section>
