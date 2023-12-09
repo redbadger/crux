@@ -391,8 +391,7 @@ impl TypeGen {
 
         let requests_path = self.extensions_path("swift/requests.swift");
 
-        let requests_data =
-            fs::read_to_string(requests_path).expect("requests.swift typegen extension");
+        let requests_data = fs::read_to_string(requests_path)?;
 
         write!(output, "{}", requests_data)?;
 
@@ -401,8 +400,7 @@ impl TypeGen {
 
         let package_path = self.extensions_path("swift/Package.swift");
 
-        let package_data =
-            fs::read_to_string(package_path).expect("Package.swift typegen extension");
+        let package_data = fs::read_to_string(package_path)?;
 
         write!(
             output,
@@ -458,8 +456,7 @@ impl TypeGen {
 
         let requests_path = self.extensions_path("java/Requests.java");
 
-        let requests_data =
-            fs::read_to_string(requests_path).expect("Requests.java typegen extension");
+        let requests_data = fs::read_to_string(requests_path)?;
 
         let requests = format!("package {package_name};\n\n{}", requests_data);
 
