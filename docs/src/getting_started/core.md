@@ -167,7 +167,7 @@ languages.
   folder from the counter example.
 
 - Edit the `build.rs` file and make sure that your app type is registered. In our previous example, the app type is `Counter`, so make sure you include this statement in your `build.rs`
-```
+```rust,ignore
  gen.register_app::<Counter>()?;
 ```
 
