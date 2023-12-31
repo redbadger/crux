@@ -166,18 +166,19 @@ languages.
   [shared_types](https://github.com/redbadger/crux/tree/master/examples/counter/shared_types)
   folder from the counter example.
 
-- Edit the `build.rs` file and make sure that your app type is registered. You
-  may also need to register any nested enum types (due to a current limitation
-  with the reflection library, see
-  <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>).
-  Here is an example of this from the
-  [`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs)
-  file in the `shared_types` crate of the
-  [notes example](https://github.com/redbadger/crux/tree/master/examples/notes):
+- Edit the `build.rs` file and make sure that your app type is registered. In our previous example, the app type is `Counter`, so make sure you include this statement in your `build.rs`
+```
+ gen.register_app::<Counter>()?;
+```
+
+````admonish tip
+ You may also need to register any nested enum types (due to a current limitation with the reflection library, see <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>).
+Here is an example of this from the [`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs) file in the `shared_types` crate of the [notes example](https://github.com/redbadger/crux/tree/master/examples/notes):
 
 ```rust,ignore
 {{#include ../../../examples/notes/shared_types/build.rs}}
 ```
+````
 
 ````admonish tip
 For the above to compile, your `Capabilities` struct must implement the `Export` trait. There is a derive macro that can do this for you, e.g.:
@@ -194,6 +195,7 @@ pub struct Capabilities {
 
 - Make sure everything builds and foreign types get generated into the
   `generated` folder.
+  This step needs pnpm installed and on your `$PATH`.
 
   ```sh
   cargo build
