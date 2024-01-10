@@ -11,19 +11,19 @@
     "bincode": "file:../shared_types/generated/typescript/bincode",
     "bulma": "^0.9.4",
     "concurrently": "^8.2.2",
-    "parcel": "^2.10.3",
+    "parcel": "^2.11.0",
     "parcel-transformer-svelte3-plus": "^0.2.10",
-    "reflect-metadata": "^0.1.13",
+    "reflect-metadata": "^0.2.1",
     "shared": "file:../shared/pkg",
     "shared_types": "file:../shared_types/generated/typescript",
-    "svelte": "^4.2.7",
-    "typescript": "^5.3.2"
+    "svelte": "^4.2.8",
+    "typescript": "^5.3.3"
   },
   "devDependencies": {
-    "@parcel/config-default": "^2.10.3",
-    "@parcel/transformer-inline-string": "^2.10.3",
-    "@parcel/transformer-webmanifest": "^2.10.3",
-    "@types/node": "^20.10.0",
+    "@parcel/config-default": "^2.11.0",
+    "@parcel/transformer-inline-string": "^2.11.0",
+    "@parcel/transformer-webmanifest": "^2.11.0",
+    "@types/node": "^20.10.8",
     "@types/webpack": "^5.28.5",
     "process": "^0.11.10"
   },

@@ -5,8 +5,16 @@ package com.example.simple_counter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +49,7 @@ fun View(core: Core = viewModel()) {
             .fillMaxSize()
             .padding(10.dp),
     ) {
-        Text(text = core.view.count.toString(), modifier = Modifier.padding(10.dp))
+        Text(text = (core.view?.count ?: "0").toString(), modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = { core.update(Event.Reset()) }, colors = ButtonDefaults.buttonColors(
