@@ -1218,9 +1218,9 @@ checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 
 [[package]]
 name = "crux_core"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62df816526cd1907274d95d65483b80abf75b32c9dca6b1de914ddda319afb85"
+checksum = "734af90d11091c543ff0a1a8f72c8a2882d571e81867eb168113688b736163ea"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1238,9 +1238,9 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c502dd59568442d5def30b68b3862c746c502d1cc2b25b8d5ff1a80774f8da00"
+checksum = "9508451f1b29d03f22d5a3987ca5d966bc84895fdd723041fbac98862a63e22b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1257,9 +1257,9 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65e2d0b1f958a0c793f77325b5ccb9e1cadb2eac866d3e447cd25c1777a7781a"
+checksum = "b56d26ef93d67d6258f6ebecfd6e219ecb94e064577f2cbc6fec39b7c0f2fac5"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -1269,9 +1269,9 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6eb47f6a47c7d38e9331ddbe04b3171498e206bc2eb4b32581655c2619bc9a71"
+checksum = "e6c32c48afab812c08d41600859323b1a7ce7bda467611bebd2b1510dae5b915"
 dependencies = [
  "darling 0.20.3",
  "proc-macro-error",
@@ -1282,9 +1282,9 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8721a3e71fc04be00c3c9b32d4e2385a13ad7d151d0b1a791814c73b92ea9aad"
+checksum = "c84cc62033922b6466e7594224abc1c42d2edba8a425f622d7193514af867f5d"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -1294,9 +1294,9 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e714ecc35520d582e9440803618607373aac47408ca962f3a66da36953fbdd12"
+checksum = "16671646fec3c5a89a4f9df7c91d1324953357548954ecc18cb5e2f2cc0f0355"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -2855,9 +2855,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d6250322ef6e60f93f9a2162799302cd6f68f79f6e5d85c8c16f14d1d958178"
+checksum = "b553656127a00601c8ae5590fcfdc118e4083a7924b6cf4ffc1ea4b99dc429d7"
 dependencies = [
  "bytes 1.5.0",
  "fnv",
@@ -7214,9 +7214,9 @@ checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winnow"
-version = "0.5.33"
+version = "0.5.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7520bbdec7211caa7c4e682eb1fbe07abe20cee6756b6e00f537c82c11816aa"
+checksum = "b7cf47b659b318dccbd69cc4797a39ae128f533dce7902a1096044d1967b9c16"
 dependencies = [
  "memchr",
 ]
