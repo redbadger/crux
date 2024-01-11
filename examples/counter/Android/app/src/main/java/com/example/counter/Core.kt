@@ -3,8 +3,8 @@
 package com.example.counter
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.example.counter.shared.handleResponse
 import com.example.counter.shared.processEvent
@@ -19,9 +19,8 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.engine.cio.endpoint
 import kotlinx.coroutines.launch
 
-
 class Core : androidx.lifecycle.ViewModel() {
-    var view: ViewModel by mutableStateOf(ViewModel.bincodeDeserialize(view()))
+    var view: ViewModel? by mutableStateOf(null)
         private set
 
     private val httpClient = HttpClient(CIO)

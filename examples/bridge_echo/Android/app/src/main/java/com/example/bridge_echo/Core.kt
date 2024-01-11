@@ -13,7 +13,7 @@ import com.example.bridge_echo.shared_types.ViewModel
 
 
 open class Core : androidx.lifecycle.ViewModel() {
-    var view: ViewModel by mutableStateOf(ViewModel.bincodeDeserialize(view()))
+    var view: ViewModel? by mutableStateOf(null)
         private set
 
     fun update(event: Event) {

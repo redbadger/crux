@@ -12,7 +12,7 @@ import com.example.simple_counter.shared_types.Requests
 import com.example.simple_counter.shared_types.ViewModel
 
 class Core : androidx.lifecycle.ViewModel() {
-    var view: ViewModel by mutableStateOf(ViewModel.bincodeDeserialize(view()))
+    var view: ViewModel? by mutableStateOf(null)
         private set
 
     fun update(event: Event) {

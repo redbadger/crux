@@ -24,7 +24,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 open class Core : androidx.lifecycle.ViewModel() {
-    var view: ViewModel by mutableStateOf(ViewModel.bincodeDeserialize(view()))
+    var view: ViewModel? by mutableStateOf(null)
         private set
 
     private val httpClient = HttpClient(CIO)
@@ -87,4 +87,3 @@ open class Core : androidx.lifecycle.ViewModel() {
         }
     }
 }
-

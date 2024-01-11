@@ -27,7 +27,6 @@ import kotlinx.coroutines.withContext
 
 class MyCore : Core() {
     init {
-
         viewModelScope.launch {
             clock()
         }
@@ -79,7 +78,7 @@ fun View(model: MyCore = viewModel()) {
             .padding(10.dp),
     ) {
         Text(
-            text = model.view.count.toString(), fontSize = 30.sp, modifier = Modifier.padding(10.dp)
+            text = model.view?.count.toString(), fontSize = 30.sp, modifier = Modifier.padding(10.dp)
         )
     }
 }
