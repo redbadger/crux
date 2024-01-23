@@ -21,3 +21,9 @@ rust-version = "1.66"
 [workspace.dependencies]
 anyhow = "1.0.79"
 serde = "1.0.195"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = "warn"

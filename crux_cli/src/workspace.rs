@@ -11,7 +11,7 @@ pub fn read_config() -> Result<Workspace> {
         let mut workspace: Workspace = toml::from_str(file)?;
 
         let all_cores = workspace.cores.keys().cloned().collect::<Vec<_>>();
-        if all_cores.len() == 0 {
+        if all_cores.is_empty() {
             bail!("{CONFIG_FILE}: no cores defined");
         }
 

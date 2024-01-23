@@ -92,10 +92,7 @@ pub struct Next<'a> {
 
 impl Clone for Next<'_> {
     fn clone(&self) -> Self {
-        Self {
-            next_middleware: self.next_middleware,
-            endpoint: self.endpoint,
-        }
+        *self
     }
 }
 
