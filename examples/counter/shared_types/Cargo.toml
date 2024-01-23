@@ -18,4 +18,3 @@ crux_kv = "0.1"
 crux_platform = "0.1"
 crux_time = "0.1"
 shared = { path = "../shared", features = ["typegen"] }
-uuid = { workspace = true }
