@@ -87,7 +87,7 @@ pub struct HttpResponse {
 impl HttpResponse {
     pub fn status(status: u16) -> HttpResponseBuilder {
         HttpResponseBuilder {
-            status: Some(status.into()),
+            status: Some(status),
             headers: Some(vec![]),
             body: Some(vec![]),
         }

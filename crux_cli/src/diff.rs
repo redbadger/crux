@@ -34,7 +34,7 @@ pub(crate) fn show(file_name: &Path, desired: &str, actual: &str) {
                 }
             }
         }
-        println!(""); // empty line between diffs
+        println!(); // empty line between diffs
     }
 }
 struct Line(Option<usize>);
