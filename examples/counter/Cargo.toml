@@ -21,7 +21,7 @@ rust-version = "1.66"
 [workspace.dependencies]
 anyhow = "1.0.79"
 serde = "1.0.195"
-uuid = { version = "1.6.1", features = ["v4", "wasm-bindgen", "js", "serde"] }
+uuid = { version = "1.6.1", features = ["v4", "js", "serde"] }
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }
