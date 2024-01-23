@@ -72,6 +72,6 @@ mod tests {
         }
 
         assert_eq!(model.platform, "platform");
-        assert_eq!(app.view(&mut model).platform, "Hello platform");
+        assert_eq!(app.view(&model).platform, "Hello platform");
     }
 }

@@ -211,17 +211,12 @@ impl TypeGen {
         match &mut self.state {
             State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
-                Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                    Err(TypeGenError::Deserialization(format!(
-                        "{}: {}",
-                        e.to_string(),
-                        e.explanation()
-                    )))
-                }
+                Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
+                    TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
+                ),
                 Err(e) => Err(TypeGenError::TypeTracing(format!(
-                    "{}: {}",
-                    e.to_string(),
-                    e.explanation()
+                    "{e}: {exp}",
+                    exp = e.explanation()
                 ))),
             },
             _ => Err(TypeGenError::LateRegistration),
@@ -266,16 +261,14 @@ impl TypeGen {
                         Ok(_) => {}
                         Err(e @ serde_reflection::Error::DeserializationError(_)) => {
                             return Err(TypeGenError::ValueTracing(format!(
-                                "{}: {}",
-                                e.to_string(),
-                                e.explanation()
+                                "{e}: {exp}",
+                                exp = e.explanation()
                             )))
                         }
                         Err(e) => {
                             return Err(TypeGenError::ValueTracing(format!(
-                                "{}: {}",
-                                e.to_string(),
-                                e.explanation()
+                                "{e}: {exp}",
+                                exp = e.explanation()
                             )))
                         }
                     }
@@ -283,17 +276,12 @@ impl TypeGen {
 
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
-                    Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                        Err(TypeGenError::Deserialization(format!(
-                            "{}: {}",
-                            e.to_string(),
-                            e.explanation()
-                        )))
-                    }
+                    Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
+                        TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
+                    ),
                     Err(e) => Err(TypeGenError::TypeTracing(format!(
-                        "{}: {}",
-                        e.to_string(),
-                        e.explanation()
+                        "{e}: {exp}",
+                        exp = e.explanation()
                     ))),
                 }
             }

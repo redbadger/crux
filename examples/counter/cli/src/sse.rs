@@ -24,7 +24,7 @@ pub async fn request(
         let mut buf = [0; 1024];
 
         match body.read(&mut buf).await {
-            Ok(n) if n == 0 => Ok(None),
+            Ok(0) => Ok(None),
             Ok(n) => {
                 let chunk = SseResponse::Chunk(buf[0..n].to_vec());
                 Ok(Some((chunk, body)))

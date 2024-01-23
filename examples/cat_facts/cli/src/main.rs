@@ -63,7 +63,7 @@ fn run_loop(core: &core::Core, events: Vec<Event>) -> Result<()> {
     {
         let render_tx = Arc::new(render_tx);
         for event in events {
-            update(&core, event, &render_tx.clone())?;
+            update(core, event, &render_tx.clone())?;
         }
     }
 

@@ -54,7 +54,7 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
             };
 
             for effect in core.resolve(&mut request, response) {
-                process_effect(&core, effect, &callback);
+                process_effect(core, effect, callback);
             }
         }
 
@@ -63,7 +63,7 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
                 PlatformResponse(platform::get().unwrap_or_else(|_| "Unknown browser".to_string()));
 
             for effect in core.resolve(&mut request, response) {
-                process_effect(&core, effect, &callback);
+                process_effect(core, effect, callback);
             }
         }
 
@@ -71,7 +71,7 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
             let response = TimeResponse(time::get().unwrap());
 
             for effect in core.resolve(&mut request, response) {
-                process_effect(&core, effect, &callback);
+                process_effect(core, effect, callback);
             }
         }
     }
