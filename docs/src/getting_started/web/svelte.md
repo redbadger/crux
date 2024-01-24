@@ -56,7 +56,8 @@ Create a `package.json` file and add the `wasm:build` script:
   },
 ```
 
-Also make sure to add the `shared` and `shared_types` as local dependencies to the `package.json`:
+Also make sure to add the `shared` and `shared_types` as local dependencies to
+the `package.json`:
 
 ```json
   "dependencies": {
@@ -75,15 +76,14 @@ Create a `main.ts` file in `src/`:
 {{#include ../../../../examples/simple_counter/web-svelte/src/main.ts}}
 ```
 
-This file is the main entry point which instantiates a new `App` object.
-The `App` object is defined in the `App.svelte` file:
+This file is the main entry point which instantiates a new `App` object. The
+`App` object is defined in the `App.svelte` file:
 
 ```js
 {{#include ../../../../examples/simple_counter/web-svelte/src/App.svelte}}
 ```
 
 This file implements the UI and the behaviour for various user actions.
-
 
 In order to serve the Svelte app, create a `index.html` in `src/`:
 
@@ -102,11 +102,12 @@ capabilities that we are using.
 {{#include ../../../../examples/simple_counter/web-svelte/src/core.ts}}
 ```
 
-This code sends our (UI-generated) events to the core, and handles any effects that the core asks
-for via the `update()` function. Notice that we are creating a [store](https://svelte.dev/docs/svelte-store)
-to update and manage the view model. Whenever `update()` gets called to send an event to the core, we are
-fetching the updated view model via `view()` and are udpating the value in the store. Svelte components can
-import and use the store values.
+This code sends our (UI-generated) events to the core, and handles any effects
+that the core asks for via the `update()` function. Notice that we are creating
+a [store](https://svelte.dev/docs/svelte-store) to update and manage the view
+model. Whenever `update()` gets called to send an event to the core, we are
+fetching the updated view model via `view()` and are updating the value in the
+store. Svelte components can import and use the store values.
 
 Notice that we have to serialize and deserialize the data that we pass between
 the core and the shell. This is because the core is running in a separate

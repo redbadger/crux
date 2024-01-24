@@ -6,8 +6,9 @@ members = [
   "crux_kv",
   "crux_macros",
   "crux_platform",
-  "crux_time"
-, "doctest_support"]
+  "crux_time",
+  "doctest_support"
+]
 resolver = "1"
 
 [workspace.package]
