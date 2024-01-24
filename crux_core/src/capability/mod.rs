@@ -218,6 +218,35 @@ pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
     type Output: serde::de::DeserializeOwned + Send + 'static;
 }
 
+/// A type that can be used as a capability operation, but which will never be sent to the shell.
+/// This type is useful for capabilities that don't request effects.
+/// For example, you can use this type as the Operation for a
+/// capability that just composes other capabilities.
+///
+/// e.g.
+/// ```rust
+///# use crux_core::capability::{CapabilityContext, Never};
+///# use crux_macros::Capability;
+/// #[derive(Capability)]
+/// pub struct Orchestrate<E> {
+///     context: CapabilityContext<Never, E>,
+/// }
+///# impl<E> Orchestrate<E> {
+///#     pub fn new(context: CapabilityContext<Never, E>) -> Self {
+///#         Self { context }
+///#     }
+///# }
+///
+/// ```
+
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum Never {}
+
+/// Implement `Operation` for `Never` to allow using it as a capability operation.
+impl Operation for Never {
+    type Output = ();
+}
+
 /// Implement the `Capability` trait for your capability. This will allow
 /// mapping events when composing apps from submodules.
 ///

@@ -51,7 +51,7 @@ mod app {
             }
         }
 
-        fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
             todo!()
         }
     }
@@ -182,16 +182,8 @@ pub mod capabilities {
 }
 
 mod orchestrator {
-    use crux_core::capability::{CapabilityContext, Operation};
+    use crux_core::capability::{CapabilityContext, Never};
     use crux_macros::Capability;
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, PartialEq, Serialize, Deserialize)]
-    pub enum Never {}
-
-    impl Operation for Never {
-        type Output = ();
-    }
 
     #[derive(Capability)]
     pub struct Orchestrate<E> {
