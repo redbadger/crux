@@ -328,10 +328,10 @@ pub trait Capability<Ev> {
 /// #     type ViewModel = ();
 /// #     type Capabilities = Capabilities;
 /// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) {
-/// #         todo!()
+/// #         unimplemented!()
 /// #     }
 /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-/// #         todo!()
+/// #         unimplemented!()
 /// #     }
 /// # }
 /// # impl crux_core::Effect for Effect {
@@ -544,10 +544,10 @@ where
     /// #         _model: &mut Self::Model,
     /// #         _caps: &Self::Capabilities,
     /// #     ) {
-    /// #         todo!()
+    /// #         unimplemented!()
     /// #     }
     /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-    /// #         todo!()
+    /// #         unimplemented!()
     /// #     }
     /// # }
     ///impl From<&Capabilities> for child::Capabilities {
@@ -578,10 +578,10 @@ where
     /// #             _model: &mut Self::Model,
     /// #             _caps: &Self::Capabilities,
     /// #         ) {
-    /// #             todo!()
+    /// #             unimplemented!()
     /// #         }
     /// #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-    /// #             todo!()
+    /// #             unimplemented!()
     /// #         }
     /// #     }
     /// # }

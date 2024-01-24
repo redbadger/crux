@@ -39,10 +39,10 @@ use syn::parse_macro_input;
 /// #         _model: &mut Self::Model,
 /// #         _caps: &Self::Capabilities,
 /// #     ) {
-/// #         todo!()
+/// #         unimplemented!()
 /// #     }
 /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-/// #         todo!()
+/// #         unimplemented!()
 /// #     }
 /// # }
 /// #[derive(Effect)]
