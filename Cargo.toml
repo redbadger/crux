@@ -6,7 +6,8 @@ members = [
   "crux_kv",
   "crux_macros",
   "crux_platform",
-  "crux_time"
+  "crux_time",
+  "doctest_support"
 ]
 resolver = "1"
 
