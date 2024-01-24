@@ -225,17 +225,17 @@ pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
 ///
 /// e.g.
 /// ```rust
-///# use crux_core::capability::{CapabilityContext, Never};
-///# use crux_macros::Capability;
+/// # use crux_core::capability::{CapabilityContext, Never};
+/// # use crux_macros::Capability;
 /// #[derive(Capability)]
-/// pub struct Orchestrate<E> {
+/// pub struct Compose<E> {
 ///     context: CapabilityContext<Never, E>,
 /// }
-///# impl<E> Orchestrate<E> {
-///#     pub fn new(context: CapabilityContext<Never, E>) -> Self {
-///#         Self { context }
-///#     }
-///# }
+/// # impl<E> Compose<E> {
+/// #     pub fn new(context: CapabilityContext<Never, E>) -> Self {
+/// #         Self { context }
+/// #     }
+/// # }
 ///
 /// ```
 
@@ -255,19 +255,19 @@ impl Operation for Never {
 /// Example:
 ///
 /// ```rust
-///# use crux_core::{Capability, capability::{CapabilityContext, Operation}};
-///# pub struct Http<Ev> {
-///#     context: CapabilityContext<HttpOperation, Ev>,
-///# }
-///# #[derive(serde::Serialize, PartialEq, Eq)] pub struct HttpOperation;
-///# impl Operation for HttpOperation {
-///#     type Output = ();
-///# }
-///# impl<Ev> Http<Ev> where Ev: 'static, {
-///#     pub fn new(context: CapabilityContext<HttpOperation, Ev>) -> Self {
-///#         Self { context }
-///#     }
-///# }
+/// # use crux_core::{Capability, capability::{CapabilityContext, Operation}};
+/// # pub struct Http<Ev> {
+/// #     context: CapabilityContext<HttpOperation, Ev>,
+/// # }
+/// # #[derive(serde::Serialize, PartialEq, Eq)] pub struct HttpOperation;
+/// # impl Operation for HttpOperation {
+/// #     type Output = ();
+/// # }
+/// # impl<Ev> Http<Ev> where Ev: 'static, {
+/// #     pub fn new(context: CapabilityContext<HttpOperation, Ev>) -> Self {
+/// #         Self { context }
+/// #     }
+/// # }
 /// impl<Ev> Capability<Ev> for Http<Ev> {
 ///     type Operation = HttpOperation;
 ///     type MappedSelf<MappedEv> = Http<MappedEv>;

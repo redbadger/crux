@@ -526,12 +526,15 @@ dependencies = [
 name = "crux_macros"
 version = "0.3.5"
 dependencies = [
+ "crux_core",
+ "crux_http",
  "darling 0.20.3",
  "insta",
  "prettyplease",
  "proc-macro-error",
  "proc-macro2",
  "quote",
+ "serde",
  "syn 2.0.48",
 ]
 
