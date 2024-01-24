@@ -33,7 +33,7 @@ mod app {
         fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
             match event {
                 Event::Trigger => caps.compose.spawn(|context| {
-                    let caps = Clone::clone(caps);
+                    let caps = caps.clone();
 
                     async move {
                         let (result_one, result_two) =
