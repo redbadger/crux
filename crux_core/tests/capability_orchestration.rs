@@ -21,6 +21,7 @@ mod app {
     pub struct Capabilities {
         one: super::capabilities::one::CapabilityOne<Event>,
         two: super::capabilities::two::CapabilityTwo<Event>,
+        #[effect(skip)]
         compose: crux_core::compose::Compose<Event>,
     }
 
@@ -208,7 +209,6 @@ mod tests {
 
                 assert!(update.events.is_empty());
             }
-            Effect::Compose(_) => unreachable!(),
         }
 
         // Resolve the second effect
@@ -224,7 +224,6 @@ mod tests {
 
                 update.events
             }
-            Effect::Compose(_) => unreachable!(),
         };
 
         assert_eq!(events, vec![Event::Finished(1, 2)]);

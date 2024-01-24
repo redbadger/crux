@@ -15,9 +15,18 @@ struct EffectStructReceiver {
 }
 
 #[derive(FromField, Debug)]
+#[darling(attributes(effect))]
 pub struct EffectFieldReceiver {
     ident: Option<Ident>,
     ty: Type,
+    skip: Option<bool>,
+}
+
+struct Field {
+    capability: Type,
+    variant: Ident,
+    event: Type,
+    skip: bool,
 }
 
 impl ToTokens for EffectStructReceiver {
@@ -49,12 +58,23 @@ impl ToTokens for EffectStructReceiver {
             .expect_or_abort("should be a struct")
             .fields;
 
-        let fields: BTreeMap<Ident, (Type, Ident, Type)> = fields
+        let fields: BTreeMap<Ident, Field> = fields
             .iter()
-            .map(|f| (f.ident.clone().unwrap(), split_on_generic(&f.ty)))
+            .map(|f| {
+                let (capability, variant, event) = split_on_generic(&f.ty);
+                (
+                    f.ident.clone().unwrap(),
+                    Field {
+                        capability,
+                        variant,
+                        event,
+                        skip: f.skip.unwrap_or(false),
+                    },
+                )
+            })
             .collect();
 
-        let events: Vec<_> = fields.values().map(|(_, _, t)| t).collect();
+        let events: Vec<_> = fields.values().map(|Field { event, .. }| event).collect();
         if !events
             .windows(2)
             .all(|win| win[0].to_token_stream().to_string() == win[1].to_token_stream().to_string())
@@ -71,32 +91,55 @@ impl ToTokens for EffectStructReceiver {
         let mut match_arms = Vec::new();
         let mut filters = Vec::new();
 
-        for (field_name, (capability, variant, event)) in fields.iter() {
-            variants.push(quote! { #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) });
-            with_context_fields.push(quote! { #field_name: #capability::new(context.specialize(#effect_name::#variant)) });
-            ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
-            match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+        for (
+            field_name,
+            Field {
+                capability,
+                variant,
+                event,
+                skip,
+            },
+        ) in fields.iter()
+        {
+            if *skip {
+                let msg = format!("Requesting effects from capability \"{variant}\" is impossible because it was skipped",);
+                with_context_fields.push(quote! {
+                    #field_name: #capability::new(context.specialize(|_| unreachable!(#msg)))
+                });
+            } else {
+                with_context_fields.push(quote! {
+                    #field_name: #capability::new(context.specialize(#effect_name::#variant))
+                });
 
-            let filter_fn = format_ident!("is_{}", field_name);
-            let map_fn = format_ident!("into_{}", field_name);
-            filters.push(quote! {
-                impl #effect_name {
-                    pub fn #filter_fn(&self) -> bool {
-                        if let #effect_name::#variant(_) = self {
-                            true
-                        } else {
-                            false
+                variants.push(quote! {
+                    #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>)
+                });
+
+                ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
+
+                match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+
+                let filter_fn = format_ident!("is_{}", field_name);
+                let map_fn = format_ident!("into_{}", field_name);
+                filters.push(quote! {
+                    impl #effect_name {
+                        pub fn #filter_fn(&self) -> bool {
+                            if let #effect_name::#variant(_) = self {
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        pub fn #map_fn(self) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
+                            if let #effect_name::#variant(request) = self {
+                                Some(request)
+                            } else {
+                                None
+                            }
                         }
                     }
-                    pub fn #map_fn(self) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
-                        if let #effect_name::#variant(request) = self {
-                            Some(request)
-                        } else {
-                            None
-                        }
-                    }
-                }
-            });
+                });
+            }
         }
 
         tokens.extend(quote! {
@@ -244,22 +287,74 @@ mod tests {
     }
 
     #[test]
-    fn split_event_types_preserves_path() {
-        let ty = Type::from_string("crux_core::render::Render<Event>").unwrap();
+    fn effect_skip() {
+        let input = r#"
+            #[derive(Effect)]
+            pub struct Capabilities {
+                pub render: Render<Event>,
+                #[effect(skip)]
+                pub compose: Compose<Event>,
+            }
+        "#;
+        let input = parse_str(input).unwrap();
+        let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 
-        let (actual_type, actual_ident, actual_event) = split_on_generic(&ty);
+        let actual = quote!(#input);
 
-        assert_eq!(
-            quote!(#actual_type).to_string(),
-            quote!(crux_core::render::Render).to_string()
-        );
-
-        assert_eq!(
-            quote!(#actual_ident).to_string(),
-            quote!(Render).to_string()
-        );
-
-        assert_eq!(quote!(#actual_event).to_string(), quote!(Event).to_string());
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        #[derive(Debug)]
+        pub enum Effect {
+            Render(
+                ::crux_core::Request<
+                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                >,
+            ),
+        }
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "Effect")]
+        pub enum EffectFfi {
+            Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
+        }
+        impl ::crux_core::Effect for Effect {
+            type Ffi = EffectFfi;
+            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
+                match self {
+                    Effect::Render(request) => request.serialize(EffectFfi::Render),
+                }
+            }
+        }
+        impl ::crux_core::WithContext<App, Effect> for Capabilities {
+            fn new_with_context(
+                context: ::crux_core::capability::ProtoContext<Effect, Event>,
+            ) -> Capabilities {
+                Capabilities {
+                    compose: Compose::new(
+                        context
+                            .specialize(|_| {
+                                unreachable!(
+                                    "Requesting effects from capability \"Compose\" is impossible because it was skipped"
+                                )
+                            }),
+                    ),
+                    render: Render::new(context.specialize(Effect::Render)),
+                }
+            }
+        }
+        impl Effect {
+            pub fn is_render(&self) -> bool {
+                if let Effect::Render(_) = self { true } else { false }
+            }
+            pub fn into_render(
+                self,
+            ) -> Option<
+                crux_core::Request<
+                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                >,
+            > {
+                if let Effect::Render(request) = self { Some(request) } else { None }
+            }
+        }
+        "###);
     }
 
     #[test]
@@ -456,5 +551,24 @@ mod tests {
     fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
         let file = syn::parse_file(&ts.to_string()).unwrap();
         prettyplease::unparse(&file)
+    }
+
+    #[test]
+    fn split_event_types_preserves_path() {
+        let ty = Type::from_string("crux_core::render::Render<Event>").unwrap();
+
+        let (actual_type, actual_ident, actual_event) = split_on_generic(&ty);
+
+        assert_eq!(
+            quote!(#actual_type).to_string(),
+            quote!(crux_core::render::Render).to_string()
+        );
+
+        assert_eq!(
+            quote!(#actual_ident).to_string(),
+            quote!(Render).to_string()
+        );
+
+        assert_eq!(quote!(#actual_event).to_string(), quote!(Event).to_string());
     }
 }
