@@ -98,4 +98,49 @@ The other nuance to be aware of is that the capability calls return immediately.
 
 That's generally all there is to it. What you'll notice is that most capabilities have essentially request/response semantics — you use their APIs, and provide an event you want back, and eventually your update function will get called with that event. Most capabilities take inputs for their effect, and return output in their outcomes, but some capabilities don't do one or either of those things. Render is an example of a capability which doesn't take payload and never calls back. You'll likely see all the different variations in Crux apps.
 
+## Orchestrating capability calls
+
+In more complex apps, you might run into situations where you need to run several effects in parallel, race them, run them in sequence or a combination of the above. In other words, in some scenarios, you really need the full control of `async`/`await` and the futures APIs.
+
+To support this case, Crux provids a built-in capability called `Compose`, which provides restricted but direct access to the capability runtime (more about the runtime in the next chapter), which supports `async`. To use it, first add it to your Capabilities struyct:
+
+
+```rust,noplayground
+use crux::compose::Compose;
+
+#[derive(Effect)]
+pub struct Capabilities {
+    pub http: Http<Event>,
+    pub render: Render<Event>,
+    #[effect(skip)] # skips the compose variant when deriving Effect
+    pub compose: Compose<Event>,
+}
+```
+
+Then, you can use it in your update function like this:
+
+```rust,noplayground
+    fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) {
+        match msg {
+            Event::GetDocuments => caps.compose.spawn(|context| {
+                let caps = caps.clone();
+
+                async move {
+                    let ids = caps.http.get(DOCS_URL).expect_json::<Vec<Id>>().await;
+                    let docs = futures::future::join_all(ids.map(|id| {
+                        caps.http.get(&format!("{}/{}", DOCS_URL, id)).expect_json::<Document>()
+                    })).await;
+
+                    context.update_app(Event::FetchedDocuments(docs))
+                }
+            }),
+    // ...
+```
+
+The above code first fetches a list of document IDs, then fetches each document in parallel, and finally returns the list of documents as an event.
+
+The `spawn` method takes a closure which is passed a `ComposeContext` argument. This is a handle to the capability runtime, which allows you to send events back to the app. The closure must return a future, which is then spawned on the runtime. The runtime will drive the future to completion. You can call `context.update_app` multiple times if necessary.
+
+One consideration of this style of orchestration is that the more effects you string together this way, the harder it will be to test the behaviour of this ad-hoc capability, because you can't start the transaction in the middle. Generally, if you find yourself sending events using `update_app` and then continuing to emit more effects, you should probably break the orchestration up into smaller blocks executed in response to the events in the update function instead.
+
 Now that we know how to use capabilities, we're ready to look at building our own ones. You may never need to do that, or it might be one of the first hurdles you'll come across (and if we're honest, given how young Crux is, it's more likely the latter). Either way, it's what we'll do in the next chapter.
