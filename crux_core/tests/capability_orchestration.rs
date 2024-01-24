@@ -3,7 +3,7 @@ mod app {
     use futures::future::join;
     use serde::Serialize;
 
-    #[derive(Default)]
+    #[derive(Default, Clone)]
     pub struct App;
 
     #[derive(Debug, PartialEq)]
@@ -21,7 +21,7 @@ mod app {
     pub struct Capabilities {
         one: super::capabilities::one::CapabilityOne<Event>,
         two: super::capabilities::two::CapabilityTwo<Event>,
-        orchestrate: super::orchestrator::Orchestrate<Event>,
+        compose: crux_core::compose::Compose<Event>,
     }
 
     impl crux_core::App for App {
@@ -32,18 +32,15 @@ mod app {
 
         fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
             match event {
-                Event::Trigger => caps.orchestrate.effects(|context| {
-                    context.spawn({
-                        let caps = Clone::clone(caps);
-                        let context = Clone::clone(&context);
+                Event::Trigger => caps.compose.spawn(|context| {
+                    let caps = Clone::clone(caps);
 
-                        async move {
-                            let (result_one, result_two) =
-                                join(caps.one.one_async(10), caps.two.two_async(20)).await;
+                    async move {
+                        let (result_one, result_two) =
+                            join(caps.one.one_async(10), caps.two.two_async(20)).await;
 
-                            context.update_app(Event::Finished(result_one, result_two))
-                        }
-                    })
+                        context.update_app(Event::Finished(result_one, result_two))
+                    }
                 }),
                 Event::Finished(one, two) => {
                     model.total = one + two;
@@ -181,37 +178,6 @@ pub mod capabilities {
     }
 }
 
-mod orchestrator {
-    use crux_core::capability::{CapabilityContext, Never};
-    use crux_macros::Capability;
-
-    #[derive(Capability)]
-    pub struct Orchestrate<E> {
-        context: CapabilityContext<Never, E>,
-    }
-
-    impl<E> Clone for Orchestrate<E> {
-        fn clone(&self) -> Self {
-            Self {
-                context: self.context.clone(),
-            }
-        }
-    }
-
-    impl<E> Orchestrate<E> {
-        pub fn new(context: CapabilityContext<Never, E>) -> Self {
-            Self { context }
-        }
-
-        pub fn effects<T>(&self, effects_task: T)
-        where
-            T: FnOnce(CapabilityContext<Never, E>),
-        {
-            effects_task(self.context.clone());
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crux_core::testing::AppTester;
@@ -242,7 +208,7 @@ mod tests {
 
                 assert!(update.events.is_empty());
             }
-            Effect::Orchestrate(_) => unreachable!(),
+            Effect::Compose(_) => unreachable!(),
         }
 
         // Resolve the second effect
@@ -258,7 +224,7 @@ mod tests {
 
                 update.events
             }
-            Effect::Orchestrate(_) => unreachable!(),
+            Effect::Compose(_) => unreachable!(),
         };
 
         assert_eq!(events, vec![Event::Finished(1, 2)]);
