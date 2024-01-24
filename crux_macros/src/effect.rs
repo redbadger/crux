@@ -19,7 +19,8 @@ struct EffectStructReceiver {
 pub struct EffectFieldReceiver {
     ident: Option<Ident>,
     ty: Type,
-    skip: Option<bool>,
+    #[darling(default)]
+    skip: bool,
 }
 
 struct Field {
@@ -27,6 +28,18 @@ struct Field {
     variant: Ident,
     event: Type,
     skip: bool,
+}
+
+impl From<&EffectFieldReceiver> for Field {
+    fn from(f: &EffectFieldReceiver) -> Self {
+        let (capability, variant, event) = split_on_generic(&f.ty);
+        Field {
+            capability,
+            variant,
+            event,
+            skip: f.skip,
+        }
+    }
 }
 
 impl ToTokens for EffectStructReceiver {
@@ -59,19 +72,8 @@ impl ToTokens for EffectStructReceiver {
             .fields;
 
         let fields: BTreeMap<Ident, Field> = fields
-            .iter()
-            .map(|f| {
-                let (capability, variant, event) = split_on_generic(&f.ty);
-                (
-                    f.ident.clone().unwrap(),
-                    Field {
-                        capability,
-                        variant,
-                        event,
-                        skip: f.skip.unwrap_or(false),
-                    },
-                )
-            })
+            .into_iter()
+            .map(|f| (f.ident.clone().unwrap(), f.into()))
             .collect();
 
         let events: Vec<_> = fields.values().map(|Field { event, .. }| event).collect();
