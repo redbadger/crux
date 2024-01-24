@@ -479,6 +479,7 @@ dependencies = [
  "crux_macros",
  "crux_time",
  "derive_more",
+ "doctest_support",
  "futures",
  "rand 0.8.5",
  "serde",
@@ -683,6 +684,14 @@ name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
+name = "doctest_support"
+version = "0.1.0"
+dependencies = [
+ "crux_core",
+ "serde",
+]
 
 [[package]]
 name = "encode_unicode"

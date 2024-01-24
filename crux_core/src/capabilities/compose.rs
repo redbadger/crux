@@ -49,23 +49,56 @@ impl<Ev> Compose<Ev> {
     ///
     /// For example:
     /// ```
-    /// fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
-    ///     match event {
-    ///        Event::Trigger => caps.compose.spawn(|context| {
-    ///             let caps = caps.clone();
+    /// # use crux_macros::Effect;
+    /// # use serde::Serialize;
+    /// # #[derive(Default, Clone)]
+    /// # pub struct App;
+    /// # #[derive(Debug, PartialEq)]
+    /// # pub enum Event {
+    /// #     Trigger,
+    /// #     Finished(usize, usize),
+    /// # }
+    /// # #[derive(Default, Serialize, Debug, PartialEq)]
+    /// # pub struct Model {
+    /// #     pub total: usize,
+    /// # }
+    /// # #[derive(Effect, Clone)]
+    /// # pub struct Capabilities {
+    /// #     one: doctest_support::compose::capabilities::capability_one::CapabilityOne<Event>,
+    /// #     two: doctest_support::compose::capabilities::capability_two::CapabilityTwo<Event>,
+    /// #     compose: crux_core::compose::Compose<Event>,
+    /// # }
+    /// # impl crux_core::App for App {
+    /// #    type Event = Event;
+    /// #    type Model = Model;
+    /// #    type ViewModel = Model;
+    /// #    type Capabilities = Capabilities;
+    /// #
+    ///     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    ///         match event {
+    ///             Event::Trigger => caps.compose.spawn(|context| {
+    ///                 let caps = caps.clone();
     ///
-    ///             async move {
-    ///                 let (result_one, result_two) =
-    ///                     join(caps.one.one_async(10), caps.two.two_async(20)).await;
+    ///                 async move {
+    ///                     let (result_one, result_two) =
+    ///                         futures::future::join(
+    ///                             caps.one.one_async(10),
+    ///                             caps.two.two_async(20)
+    ///                         ).await;
     ///
-    ///                 context.update_app(Event::Finished(result_one, result_two))
+    ///                     context.update_app(Event::Finished(result_one, result_two))
+    ///                 }
+    ///             }),
+    ///             Event::Finished(one, two) => {
+    ///                 model.total = one + two;
     ///             }
-    ///         }),
-    ///         Event::Finished(one, two) => {
-    ///             model.total = one + two;
     ///         }
     ///     }
-    /// }
+    /// #
+    /// #    fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+    /// #        todo!()
+    /// #    }
+    /// # }
     /// ```
     pub fn spawn<F, Fut>(&self, effects_task: F)
     where
