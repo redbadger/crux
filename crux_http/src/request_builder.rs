@@ -291,7 +291,9 @@ where
     }
 
     /// Decode a String from the response body prior to dispatching it to the apps `update`
-    /// function
+    /// function.
+    ///
+    /// This has no effect when used with the [async API](RequestBuilder::send_async).
     ///
     /// # Examples
     ///
@@ -317,7 +319,9 @@ where
     }
 
     /// Decode a `T` from a JSON response body prior to dispatching it to the apps `update`
-    /// function
+    /// function.
+    ///
+    /// This has no effect when used with the [async API](RequestBuilder::send_async).
     ///
     /// # Examples
     ///
@@ -391,20 +395,35 @@ where
                 .update_app(make_event(self.expectation.decode(resp)));
         });
     }
+
+    /// Sends the constructed `Request` and returns a future that resolves to [`ResponseAsync`].
+    /// but does not consume it or convert the body to an expected format.
+    ///
+    /// Note that this is equivalent to calling `.into_future()` on the `RequestBuilder`, which
+    /// will happen implicitly when calling `.await` on the builder, which does implement
+    /// [`IntoFuture`](std::future::IntoFuture). Calling `.await` on the builder is recommended.
+    ///
+    /// Not all code working with futures (such as the `join` macro) works with `IntoFuture` (yet?), so this
+    /// method is provided as a more discoverable `.into_future` alias, and may be deprecated later.
+    pub fn send_async(self) -> BoxFuture<'static, Result<ResponseAsync>> {
+        <Self as std::future::IntoFuture>::into_future(self)
+    }
 }
 
-impl std::future::IntoFuture for RequestBuilder<()> {
+impl<T, Eb> std::future::IntoFuture for RequestBuilder<T, Eb> {
     type Output = Result<ResponseAsync>;
 
     type IntoFuture = BoxFuture<'static, Result<ResponseAsync>>;
 
+    /// Sends the constructed `Request` and returns a future that resolves to the response
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(async move {
-            let CapOrClient::Client(client) = self.cap_or_client else {
-                panic!("Tried to await a RequestBuilder in a non-middleware context");
+        Box::pin({
+            let client = match self.cap_or_client {
+                CapOrClient::Client(c) => c,
+                CapOrClient::Capability(c) => c.client,
             };
 
-            client.send(self.req.unwrap()).await
+            async move { client.send(self.req.unwrap()).await }
         })
     }
 }
