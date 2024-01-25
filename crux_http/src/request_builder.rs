@@ -403,7 +403,7 @@ where
         // Note: doing an unwrap here, but since we're reading bytes from
         // a prepopulated buffer there should be no way for this to fail
         // currently.
-        let resp = Response::<Vec<u8>>::new(resp).await?;
+        let resp = Response::<Vec<u8>>::new(resp).await.unwrap();
 
         self.expectation.decode(resp)
     }
