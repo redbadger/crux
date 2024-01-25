@@ -392,7 +392,9 @@ where
         });
     }
 
-    /// FIXME: Test and document
+    /// Sends the constructed `Request` and returns a future that resolves to the response
+    ///
+    /// This is an async version of `send`, intended to be used in capability composition.
     pub async fn send_async(self) -> crate::Result<Response<ExpectBody>> {
         let CapOrClient::Capability(capability) = self.cap_or_client else {
             panic!("Called RequestBuilder::send_async in a middleware context");
@@ -400,10 +402,7 @@ where
 
         let resp = capability.client.send(self.req.unwrap()).await?;
 
-        // Note: doing an unwrap here, but since we're reading bytes from
-        // a prepopulated buffer there should be no way for this to fail
-        // currently.
-        let resp = Response::<Vec<u8>>::new(resp).await.unwrap();
+        let resp = Response::<Vec<u8>>::new(resp).await?;
 
         self.expectation.decode(resp)
     }
