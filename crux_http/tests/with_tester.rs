@@ -1,6 +1,6 @@
 mod shared {
 
-    use std::cmp::max;
+    use std::{cmp::max, future::IntoFuture};
 
     use crux_core::compose::Compose;
     use crux_http::Http;
@@ -62,19 +62,19 @@ mod shared {
                     let caps = caps.clone();
 
                     async move {
-                        let response = caps
+                        let mut response = caps
                             .http
                             .get("http://example.com")
-                            .expect_string()
-                            .send_async()
                             .await
                             .expect("Send async should succeed");
-                        let text = response.body().expect("response should have body");
+                        let text = response
+                            .body_string()
+                            .await
+                            .expect("response should have body");
 
                         let response = caps
                             .http
                             .post(format!("http://example.com/{}", text))
-                            .send_async()
                             .await
                             .expect("Send async should succeed");
 
@@ -85,16 +85,10 @@ mod shared {
                     let caps = caps.clone();
 
                     async move {
-                        let (response_one, response_two) = join!(
-                            caps.http
-                                .get("http://example.com/one")
-                                .expect_string()
-                                .send_async(),
-                            caps.http
-                                .get("http://example.com/two")
-                                .expect_string()
-                                .send_async(),
-                        );
+                        let one = caps.http.get("http://example.com/one").into_future();
+                        let two = caps.http.get("http://example.com/two").send_async();
+
+                        let (response_one, response_two) = join!(one, two);
 
                         let one = response_one.expect("Send async should succeed");
                         let two = response_two.expect("Send async should succeed");
