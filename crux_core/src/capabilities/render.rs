@@ -18,6 +18,14 @@ pub struct Render<Ev> {
     context: CapabilityContext<RenderOperation, Ev>,
 }
 
+impl<Ev> Clone for Render<Ev> {
+    fn clone(&self) -> Self {
+        Self {
+            context: self.context.clone(),
+        }
+    }
+}
+
 /// The single operation `Render` implements.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct RenderOperation;

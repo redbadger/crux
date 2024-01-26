@@ -62,7 +62,7 @@ impl<Ev> Compose<Ev> {
     /// # pub struct Model {
     /// #     pub total: usize,
     /// # }
-    /// # #[derive(Effect, Clone)]
+    /// # #[derive(Effect)]
     /// # pub struct Capabilities {
     /// #     one: doctest_support::compose::capabilities::capability_one::CapabilityOne<Event>,
     /// #     two: doctest_support::compose::capabilities::capability_two::CapabilityTwo<Event>,
@@ -77,13 +77,14 @@ impl<Ev> Compose<Ev> {
     ///     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
     ///         match event {
     ///             Event::Trigger => caps.compose.spawn(|context| {
-    ///                 let caps = caps.clone();
+    ///                 let one = caps.one.clone();
+    ///                 let two = caps.two.clone();
     ///
     ///                 async move {
     ///                     let (result_one, result_two) =
     ///                         futures::future::join(
-    ///                             caps.one.one_async(10),
-    ///                             caps.two.two_async(20)
+    ///                             one.one_async(10),
+    ///                             two.two_async(20)
     ///                         ).await;
     ///
     ///                     context.update_app(Event::Finished(result_one, result_two))

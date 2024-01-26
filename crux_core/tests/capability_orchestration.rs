@@ -17,7 +17,7 @@ mod app {
         pub total: usize,
     }
 
-    #[derive(Effect, Clone)]
+    #[derive(Effect)]
     pub struct Capabilities {
         one: super::capabilities::one::CapabilityOne<Event>,
         two: super::capabilities::two::CapabilityTwo<Event>,
@@ -34,11 +34,12 @@ mod app {
         fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
             match event {
                 Event::Trigger => caps.compose.spawn(|context| {
-                    let caps = caps.clone();
+                    let one = caps.one.clone();
+                    let two = caps.two.clone();
 
                     async move {
                         let (result_one, result_two) =
-                            join(caps.one.one_async(10), caps.two.two_async(20)).await;
+                            join(one.one_async(10), two.two_async(20)).await;
 
                         context.update_app(Event::Finished(result_one, result_two))
                     }

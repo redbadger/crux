@@ -59,11 +59,10 @@ mod shared {
                         .send(Event::Set);
                 }
                 Event::GetPostChain => caps.compose.spawn(|context| {
-                    let caps = caps.clone();
+                    let http = caps.http.clone();
 
                     async move {
-                        let mut response = caps
-                            .http
+                        let mut response = http
                             .get("http://example.com")
                             .await
                             .expect("Send async should succeed");
@@ -72,8 +71,7 @@ mod shared {
                             .await
                             .expect("response should have body");
 
-                        let response = caps
-                            .http
+                        let response = http
                             .post(format!("http://example.com/{}", text))
                             .await
                             .expect("Send async should succeed");
@@ -82,11 +80,11 @@ mod shared {
                     }
                 }),
                 Event::ConcurrentGets => caps.compose.spawn(|ctx| {
-                    let caps = caps.clone();
+                    let http = caps.http.clone();
 
                     async move {
-                        let one = caps.http.get("http://example.com/one").into_future();
-                        let two = caps.http.get("http://example.com/two").send_async();
+                        let one = http.get("http://example.com/one").into_future();
+                        let two = http.get("http://example.com/two").send_async();
 
                         let (response_one, response_two) = join!(one, two);
 
@@ -125,7 +123,7 @@ mod shared {
         }
     }
 
-    #[derive(Effect, Clone)]
+    #[derive(Effect)]
     pub(crate) struct Capabilities {
         pub http: Http<Event>,
         #[effect(skip)]

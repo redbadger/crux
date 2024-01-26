@@ -237,11 +237,10 @@ Then, you can use it in your update function like this:
 fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) {
     match msg {
         Event::GetDocuments => caps.compose.spawn(|context| {
-            let caps = caps.clone();
+            let http = caps.http.clone();
 
             async move {
-                let ids = caps
-                    .http
+                let ids = http
                     .get(DOCS_URL)
                     .await
                     .expect("Request should send")
@@ -252,7 +251,7 @@ fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) {
                 let futs: Vec<_> = ids
                     .iter()
                     .map(|id| {
-                        let http = caps.http.clone();
+                        let http = http.clone();
 
                         async move {
                             http.get(&format!("{}/{}", DOCS_URL, id))
