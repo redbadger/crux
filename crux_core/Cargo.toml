@@ -1,7 +1,7 @@
 [package]
 name = "crux_core"
 description = "Cross-platform app development in Rust"
-version = "0.7.1"
+version = "0.7.2"
 readme = "README.md"
 authors.workspace = true
 repository.workspace = true
@@ -36,7 +36,7 @@ assert_matches = "1.5"
 async-channel = "2.1"
 crux_macros = { version = "0.3", path = "../crux_macros" }
 crux_http = { version = "0.4", path = "../crux_http" }
-crux_time = { version = "0.1", path = "../crux_time" }
+crux_time = { version = "0.2", path = "../crux_time" }
 doctest_support = { path = "../doctest_support" }
 serde = { version = "1.0.195", features = ["derive"] }
 static_assertions = "1.1"

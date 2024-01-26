@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2](https://github.com/redbadger/crux/compare/crux_core-v0.7.1...crux_core-v0.7.2) - 2024-01-26
+
+### Fixed
+- fix clippy lints
+
+### Other
+- Capabilities don't need to be clone
+- Clone less, to lead by example
+- Make render capability Clone to suport composition
+- Test Compose::spawn example using local doctest support crate
+- unimplemented rather than todo
+- docs for effect macro
+- effect derive macro allows skipping  variants (e.g. for Never operations)
+- More straightforward version of clone
+- Introduce a new core capability which allows ad-hoc composition of other capabilities
+- introduce `Never` type for capabilities that don't request effects
+- tidy format strings
+- Add integration test that exposes async capability APIs to an orchestrator capability
+- update Rust deps
+- remove uuid unused wasm-bindgen feature flag
+
 ## [0.7.1](https://github.com/redbadger/crux/compare/crux_core-v0.7.0...crux_core-v0.7.1) - 2024-01-11
 
 ### Other
