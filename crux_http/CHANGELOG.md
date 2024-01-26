@@ -12,13 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix clippy lints
 
 ### Other
-- Capabilities don't need to be clone
-- Clone less, to lead by example
-- Prefer IntoFuture as the main RequestBuilder async API
-- Doc comment
-- Remove irrelevant comment
-- Add async API to crux_http
-- update Rust deps
+- Add async API support
 
 ## [0.4.5](https://github.com/redbadger/crux/compare/crux_http-v0.4.4...crux_http-v0.4.5) - 2024-01-11
 

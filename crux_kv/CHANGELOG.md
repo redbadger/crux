@@ -9,9 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.8](https://github.com/redbadger/crux/compare/crux_kv-v0.1.7...crux_kv-v0.1.8) - 2024-01-26
 
 ### Other
-- Capabilities don't need to be clone
-- Clone less, to lead by example
-- Add async API to crux_kv
+- Add async API
 
 ## [0.1.7](https://github.com/redbadger/crux/compare/crux_kv-v0.1.6...crux_kv-v0.1.7) - 2024-01-11
 
