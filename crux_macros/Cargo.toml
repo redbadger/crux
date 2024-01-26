@@ -21,8 +21,8 @@ quote = "1.0.35"
 syn = "2.0.48"
 
 [dev-dependencies]
-crux_core = { version = "0.7", path = "../crux_core" }
-crux_http = { version = "0.4", path = "../crux_http" }
+crux_core = { path = "../crux_core" }
+crux_http = { path = "../crux_http" }
 insta = "1.34"
 prettyplease = "0.2"
 serde = { version = "1.0.195", features = ["derive"] }

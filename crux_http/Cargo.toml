@@ -27,4 +27,4 @@ url = "2.5.0"
 assert_fs = "1.0.13"
 futures-test = "0.3"
 assert_matches = "1.5"
-crux_core = { version = "0.7", path = "../crux_core", features = ["typegen"] }
+crux_core = { path = "../crux_core", features = ["typegen"] }
