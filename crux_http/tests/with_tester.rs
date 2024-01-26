@@ -123,7 +123,7 @@ mod shared {
         }
     }
 
-    #[derive(Effect, Clone)]
+    #[derive(Effect)]
     pub(crate) struct Capabilities {
         pub http: Http<Event>,
         #[effect(skip)]

@@ -17,7 +17,7 @@ mod app {
         pub total: usize,
     }
 
-    #[derive(Effect, Clone)]
+    #[derive(Effect)]
     pub struct Capabilities {
         one: super::capabilities::one::CapabilityOne<Event>,
         two: super::capabilities::two::CapabilityTwo<Event>,

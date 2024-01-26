@@ -62,7 +62,7 @@ impl<Ev> Compose<Ev> {
     /// # pub struct Model {
     /// #     pub total: usize,
     /// # }
-    /// # #[derive(Effect, Clone)]
+    /// # #[derive(Effect)]
     /// # pub struct Capabilities {
     /// #     one: doctest_support::compose::capabilities::capability_one::CapabilityOne<Event>,
     /// #     two: doctest_support::compose::capabilities::capability_two::CapabilityTwo<Event>,

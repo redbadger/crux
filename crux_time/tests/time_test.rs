@@ -54,7 +54,7 @@ mod shared {
         }
     }
 
-    #[derive(Effect, Clone)]
+    #[derive(Effect)]
     pub struct Capabilities {
         pub time: Time<Event>,
         pub render: Render<Event>,

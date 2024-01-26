@@ -84,7 +84,7 @@ mod shared {
         }
     }
 
-    #[derive(Effect, Clone)]
+    #[derive(Effect)]
     pub struct Capabilities {
         pub key_value: KeyValue<Event>,
         pub render: Render<Event>,
