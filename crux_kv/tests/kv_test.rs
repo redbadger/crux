@@ -55,11 +55,10 @@ mod shared {
                     caps.render.render()
                 }
                 Event::ReadThenWrite => caps.compose.spawn(|ctx| {
-                    let caps = caps.clone();
+                    let kv = caps.key_value.clone();
 
                     async move {
-                        let KeyValueOutput::Read(out) = caps.key_value.read_async("test_num").await
-                        else {
+                        let KeyValueOutput::Read(out) = kv.read_async("test_num").await else {
                             panic!("Expected read and got write");
                         };
 
@@ -68,8 +67,7 @@ mod shared {
                         };
 
                         let num = i32::from_ne_bytes(out.try_into().unwrap());
-                        let result = caps
-                            .key_value
+                        let result = kv
                             .write_async("test_num", (num + 1).to_ne_bytes().to_vec())
                             .await;
 

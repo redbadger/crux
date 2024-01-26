@@ -34,10 +34,10 @@ mod shared {
             match event {
                 Event::Get => caps.time.now(Event::Set),
                 Event::GetAsync => caps.compose.spawn(|ctx| {
-                    let caps = caps.clone();
+                    let time = caps.time.clone();
 
                     async move {
-                        ctx.update_app(Event::Set(caps.time.now_async().await));
+                        ctx.update_app(Event::Set(time.now_async().await));
                     }
                 }),
                 Event::Set(time) => {
