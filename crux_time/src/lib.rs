@@ -4,7 +4,7 @@
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
 //!
-//! This is still work in progress and as such very basic. It returns time as an IS08601 string.
+//! This is still work in progress and as such very basic.
 use chrono::{DateTime, Utc};
 use crux_core::capability::{CapabilityContext, Operation};
 use crux_macros::Capability;
