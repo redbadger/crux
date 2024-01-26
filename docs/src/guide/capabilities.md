@@ -240,14 +240,32 @@ fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) {
             let caps = caps.clone();
 
             async move {
-                let ids = caps.http.get(DOCS_URL).expect_json::<Vec<Id>>().await;
+                let ids = caps
+                    .http
+                    .get(DOCS_URL)
+                    .await
+                    .expect("Request should send")
+                    .body_json::<Vec<Id>>()
+                    .await
+                    .expect("Ids failed to parse as JSON");
 
-                let docs = futures::future::join_all(ids.map(|id| {
-                    caps.http
-                        .get(&format!("{}/{}", DOCS_URL, id))
-                        .expect_json::<Document>()
-                }))
-                .await;
+                let futs: Vec<_> = ids
+                    .iter()
+                    .map(|id| {
+                        let http = caps.http.clone();
+
+                        async move {
+                            http.get(&format!("{}/{}", DOCS_URL, id))
+                                .await
+                                .expect("request did not send")
+                                .body_json::<Doc>()
+                                .await
+                                .expect("doc failed to parse as JSON")
+                        }
+                    })
+                    .collect();
+
+                let docs = futures::future::join_all(futs).await;
 
                 context.update_app(Event::FetchedDocuments(docs))
             }
