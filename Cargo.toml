@@ -6,7 +6,8 @@ members = [
   "crux_kv",
   "crux_macros",
   "crux_platform",
-  "crux_time"
+  "crux_time",
+  "doctest_support"
 ]
 resolver = "1"
 
@@ -19,5 +20,11 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 rust-version = "1.66"
 
 [workspace.dependencies]
-anyhow = "1.0.75"
-serde = "1.0.193"
+anyhow = "1.0.79"
+serde = "1.0.195"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = "warn"

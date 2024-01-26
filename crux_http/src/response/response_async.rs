@@ -16,10 +16,8 @@ use std::task::{Context, Poll};
 use super::decode::decode_body;
 
 pin_project_lite::pin_project! {
-    /// An HTTP response that exposes async methods, for use inside middleware.
-    ///
-    /// If you're not writing middleware you'll never need to interact with
-    /// this type and can probably ignore it.
+    /// An HTTP response that exposes async methods. This is to support async
+    /// use and middleware.
     pub struct ResponseAsync {
         #[pin]
         res: crate::http::Response,

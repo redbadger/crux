@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6](https://github.com/redbadger/crux/compare/crux_macros-v0.3.5...crux_macros-v0.3.6) - 2024-01-26
+
+### Other
+- darling default
+- unimplemented rather than todo
+- docs for effect macro
+- effect derive macro allows skipping  variants (e.g. for Never operations)
+- update Rust deps
+
+## [0.3.5](https://github.com/redbadger/crux/compare/crux_macros-v0.3.4...crux_macros-v0.3.5) - 2024-01-11
+
+### Other
+- update deps for Rust, Web, iOS and Android
+
 ## [0.3.4](https://github.com/redbadger/crux/compare/crux_macros-v0.3.3...crux_macros-v0.3.4) - 2023-11-29
 
 ### Other

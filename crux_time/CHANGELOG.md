@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/redbadger/crux/compare/crux_time-v0.1.8...crux_time-v0.2.0) - 2024-01-26
+
+### Breaking change
+- Move to using `chrono::DateTime<Utc>` as representation
+- The main method is now called `now` instead of `get` and has a different return type
+
+### Other
+- Add async API to crux_time
+
+## [0.1.8](https://github.com/redbadger/crux/compare/crux_time-v0.1.7...crux_time-v0.1.8) - 2024-01-11
+
+### Other
+- update Cargo.toml dependencies
+
 ## [0.1.7](https://github.com/redbadger/crux/compare/crux_time-v0.1.6...crux_time-v0.1.7) - 2023-12-03
 
 ### Other

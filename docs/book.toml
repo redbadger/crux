@@ -7,7 +7,7 @@ title = "Crux: Cross-platform app development in Rust"
 
 [preprocessor.admonish]
 command = "mdbook-admonish"
-assets_version = "3.0.0" # do not edit: managed by `mdbook-admonish install`
+assets_version = "3.0.2" # do not edit: managed by `mdbook-admonish install`
 
 [output]
 

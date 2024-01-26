@@ -28,7 +28,7 @@ pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()>
     debug!("event: {:?}", event);
 
     for effect in core.process_event(event) {
-        process_effect(core, effect, &tx)?;
+        process_effect(core, effect, tx)?;
     }
     Ok(())
 }
@@ -100,7 +100,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
             let response = PlatformResponse("cli".to_string());
 
             for effect in core.resolve(&mut request, response) {
-                process_effect(&core, effect, &tx)?;
+                process_effect(core, effect, tx)?;
             }
         }
 
@@ -110,7 +110,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
             let response = TimeResponse(iso_time);
 
             for effect in core.resolve(&mut request, response) {
-                process_effect(&core, effect, &tx)?;
+                process_effect(core, effect, tx)?;
             }
         }
     }

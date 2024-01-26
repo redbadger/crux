@@ -218,6 +218,35 @@ pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
     type Output: serde::de::DeserializeOwned + Send + 'static;
 }
 
+/// A type that can be used as a capability operation, but which will never be sent to the shell.
+/// This type is useful for capabilities that don't request effects.
+/// For example, you can use this type as the Operation for a
+/// capability that just composes other capabilities.
+///
+/// e.g.
+/// ```rust
+/// # use crux_core::capability::{CapabilityContext, Never};
+/// # use crux_macros::Capability;
+/// #[derive(Capability)]
+/// pub struct Compose<E> {
+///     context: CapabilityContext<Never, E>,
+/// }
+/// # impl<E> Compose<E> {
+/// #     pub fn new(context: CapabilityContext<Never, E>) -> Self {
+/// #         Self { context }
+/// #     }
+/// # }
+///
+/// ```
+
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum Never {}
+
+/// Implement `Operation` for `Never` to allow using it as a capability operation.
+impl Operation for Never {
+    type Output = ();
+}
+
 /// Implement the `Capability` trait for your capability. This will allow
 /// mapping events when composing apps from submodules.
 ///
@@ -226,19 +255,19 @@ pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
 /// Example:
 ///
 /// ```rust
-///# use crux_core::{Capability, capability::{CapabilityContext, Operation}};
-///# pub struct Http<Ev> {
-///#     context: CapabilityContext<HttpOperation, Ev>,
-///# }
-///# #[derive(serde::Serialize, PartialEq, Eq)] pub struct HttpOperation;
-///# impl Operation for HttpOperation {
-///#     type Output = ();
-///# }
-///# impl<Ev> Http<Ev> where Ev: 'static, {
-///#     pub fn new(context: CapabilityContext<HttpOperation, Ev>) -> Self {
-///#         Self { context }
-///#     }
-///# }
+/// # use crux_core::{Capability, capability::{CapabilityContext, Operation}};
+/// # pub struct Http<Ev> {
+/// #     context: CapabilityContext<HttpOperation, Ev>,
+/// # }
+/// # #[derive(serde::Serialize, PartialEq, Eq)] pub struct HttpOperation;
+/// # impl Operation for HttpOperation {
+/// #     type Output = ();
+/// # }
+/// # impl<Ev> Http<Ev> where Ev: 'static, {
+/// #     pub fn new(context: CapabilityContext<HttpOperation, Ev>) -> Self {
+/// #         Self { context }
+/// #     }
+/// # }
 /// impl<Ev> Capability<Ev> for Http<Ev> {
 ///     type Operation = HttpOperation;
 ///     type MappedSelf<MappedEv> = Http<MappedEv>;
@@ -299,10 +328,10 @@ pub trait Capability<Ev> {
 /// #     type ViewModel = ();
 /// #     type Capabilities = Capabilities;
 /// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) {
-/// #         todo!()
+/// #         unimplemented!()
 /// #     }
 /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-/// #         todo!()
+/// #         unimplemented!()
 /// #     }
 /// # }
 /// # impl crux_core::Effect for Effect {
@@ -515,10 +544,10 @@ where
     /// #         _model: &mut Self::Model,
     /// #         _caps: &Self::Capabilities,
     /// #     ) {
-    /// #         todo!()
+    /// #         unimplemented!()
     /// #     }
     /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-    /// #         todo!()
+    /// #         unimplemented!()
     /// #     }
     /// # }
     ///impl From<&Capabilities> for child::Capabilities {
@@ -549,10 +578,10 @@ where
     /// #             _model: &mut Self::Model,
     /// #             _caps: &Self::Capabilities,
     /// #         ) {
-    /// #             todo!()
+    /// #             unimplemented!()
     /// #         }
     /// #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-    /// #             todo!()
+    /// #             unimplemented!()
     /// #         }
     /// #     }
     /// # }

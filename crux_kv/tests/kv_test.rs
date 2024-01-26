@@ -11,6 +11,7 @@ mod shared {
     pub enum Event {
         Write,
         Read,
+        ReadThenWrite,
         Set(KeyValueOutput),
     }
 
@@ -53,6 +54,26 @@ mod shared {
                     }
                     caps.render.render()
                 }
+                Event::ReadThenWrite => caps.compose.spawn(|ctx| {
+                    let kv = caps.key_value.clone();
+
+                    async move {
+                        let KeyValueOutput::Read(out) = kv.read_async("test_num").await else {
+                            panic!("Expected read and got write");
+                        };
+
+                        let Some(out) = out else {
+                            panic!("Read failed;");
+                        };
+
+                        let num = i32::from_ne_bytes(out.try_into().unwrap());
+                        let result = kv
+                            .write_async("test_num", (num + 1).to_ne_bytes().to_vec())
+                            .await;
+
+                        ctx.update_app(Event::Set(result))
+                    }
+                }),
             }
         }
 
@@ -67,6 +88,8 @@ mod shared {
     pub struct Capabilities {
         pub key_value: KeyValue<Event>,
         pub render: Render<Event>,
+        #[effect(skip)]
+        pub compose: crux_core::compose::Compose<Event>,
     }
 }
 
@@ -143,9 +166,14 @@ mod shell {
 }
 
 mod tests {
-    use crate::{shared::App, shared::Effect, shell::run};
+    use crate::{
+        shared::App,
+        shared::{Effect, Event, Model},
+        shell::run,
+    };
     use anyhow::Result;
-    use crux_core::Core;
+    use crux_core::{testing::AppTester, Core};
+    use crux_kv::{KeyValueOperation, KeyValueOutput};
 
     #[test]
     pub fn test_kv() -> Result<()> {
@@ -156,6 +184,55 @@ mod tests {
         run(&core);
 
         assert_eq!(core.view().result, "Success: true, Value: 42");
+
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_kv_async() -> Result<()> {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::ReadThenWrite, &mut model);
+
+        let effect = update.into_effects().next().unwrap();
+        let Effect::KeyValue(mut request) = effect else {
+            panic!("Expected KeyValue effect");
+        };
+
+        let KeyValueOperation::Read(key) = request.operation.clone() else {
+            panic!("Expected read operation");
+        };
+
+        assert_eq!(key, "test_num");
+
+        let update = app
+            .resolve(
+                &mut request,
+                KeyValueOutput::Read(Some(17u32.to_ne_bytes().to_vec())),
+            )
+            .unwrap();
+
+        let effect = update.into_effects().next().unwrap();
+        let Effect::KeyValue(mut request) = effect else {
+            panic!("Expected KeyValue effect");
+        };
+
+        let KeyValueOperation::Write(key, value) = request.operation.clone() else {
+            panic!("Expected read operation");
+        };
+
+        assert_eq!(key, "test_num".to_string());
+        assert_eq!(value, 18u32.to_ne_bytes().to_vec());
+
+        let update = app
+            .resolve(&mut request, KeyValueOutput::Write(true))
+            .unwrap();
+
+        let event = update.events.into_iter().next().unwrap();
+        app.update(event, &mut model);
+
+        assert!(model.successful);
 
         Ok(())
     }

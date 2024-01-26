@@ -19,7 +19,7 @@ pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()>
     debug!("event: {:?}", event);
 
     for effect in core.process_event(event) {
-        process_effect(core, effect, &tx)?;
+        process_effect(core, effect, tx)?;
     }
     Ok(())
 }

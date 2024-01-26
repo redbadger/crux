@@ -29,9 +29,9 @@ pub(crate) fn doctor(
     let current_dir = &env::current_dir()?;
     let template_root = current_dir.join(template_dir).canonicalize()?;
 
-    for (_, core) in &workspace.cores {
+    for core in workspace.cores.values() {
         let (do_core, do_typegen) = match path {
-            Some(path) => (path == &core.source, Some(path) == core.type_gen.as_deref()),
+            Some(path) => (path == core.source, Some(path) == core.type_gen.as_deref()),
             None => (true, true),
         };
 
@@ -39,7 +39,7 @@ pub(crate) fn doctor(
             compare(
                 &current_dir.join(&core.source),
                 &template_root.join("shared"),
-                &CoreContext::new(&workspace, core),
+                &Context::Core(CoreContext::new(&workspace, core)),
                 verbosity,
                 include_source_code,
             )?;
@@ -52,7 +52,7 @@ pub(crate) fn doctor(
                     compare(
                         &current_dir.join(type_gen),
                         &templates_typegen,
-                        &CoreContext::new(&workspace, core),
+                        &Context::Core(CoreContext::new(&workspace, core)),
                         verbosity,
                         include_source_code,
                     )?;
@@ -64,17 +64,14 @@ pub(crate) fn doctor(
     if let Some(shells) = &workspace.shells {
         for (name, shell) in shells {
             let do_shell = match path {
-                Some(path) => path == &shell.source,
+                Some(path) => path == shell.source,
                 None => true,
             };
 
             if do_shell {
                 // TODO support shell having multiple cores
                 if shell.cores.len() > 1 {
-                    eprintln!(
-                        "Warning: shell {} has multiple cores, only checking first",
-                        name
-                    );
+                    eprintln!("Warning: shell {name} has multiple cores, only checking first",);
                 }
                 let core = workspace
                     .cores
@@ -86,7 +83,7 @@ pub(crate) fn doctor(
                     compare(
                         &current_dir.join(&shell.source),
                         &template_root,
-                        &ShellContext::new(&workspace, core, shell),
+                        &Context::Shell(ShellContext::new(&workspace, core, shell)),
                         verbosity,
                         include_source_code,
                     )?;
@@ -111,13 +108,8 @@ fn compare(
         root.display(),
         template_root.display()
     );
-    let (actual, desired) = &read_files(
-        &root,
-        &template_root,
-        context,
-        verbosity,
-        include_source_code,
-    )?;
+    let (actual, desired) =
+        &read_files(root, template_root, context, verbosity, include_source_code)?;
     missing(actual, desired);
     common(actual, desired);
     Ok(())
@@ -134,7 +126,7 @@ fn read_files(
     validate_path(template_root)?;
 
     let mut actual = FileMap::new();
-    for entry in Walk::new(root).into_iter().filter_map(|e| e.ok()) {
+    for entry in Walk::new(root).filter_map(Result::ok) {
         if entry.file_type().expect("should have a file type").is_dir() {
             continue;
         }
@@ -164,7 +156,7 @@ fn read_files(
     }
 
     let mut desired = FileMap::new();
-    for entry in Walk::new(template_root).into_iter().filter_map(|e| e.ok()) {
+    for entry in Walk::new(template_root).filter_map(Result::ok) {
         if entry.file_type().expect("should have a file type").is_dir() {
             continue;
         }
@@ -205,14 +197,14 @@ fn validate_path(path: &Path) -> Result<()> {
 
 fn missing(actual: &FileMap, desired: &FileMap) {
     let missing = difference(actual, desired);
-    if missing.len() == 0 {
+    if missing.is_empty() {
         println!("No missing files");
     } else {
         println!("Missing files:");
         for file_name in missing {
             println!("  {}", file_name.to_string_lossy());
         }
-        println!("");
+        println!();
     }
 }
 
@@ -234,7 +226,7 @@ fn ensure_trailing_newline(s: &str) -> String {
 /// files in second but not in first
 fn difference(first: &FileMap, second: &FileMap) -> Vec<PathBuf> {
     let mut missing = Vec::new();
-    for (k, _) in second {
+    for k in second.keys() {
         if !first.contains_key(k) {
             missing.push(k.clone());
         }
@@ -245,7 +237,7 @@ fn difference(first: &FileMap, second: &FileMap) -> Vec<PathBuf> {
 /// files in both first and second
 fn intersection(first: &FileMap, second: &FileMap) -> Vec<PathBuf> {
     let mut common = Vec::new();
-    for (k, _) in first {
+    for k in first.keys() {
         if second.contains_key(k) {
             common.push(k.clone());
         }

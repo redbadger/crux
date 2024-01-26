@@ -34,6 +34,14 @@ pub struct KeyValue<Ev> {
     context: CapabilityContext<KeyValueOperation, Ev>,
 }
 
+impl<Ev> Clone for KeyValue<Ev> {
+    fn clone(&self) -> Self {
+        Self {
+            context: self.context.clone(),
+        }
+    }
+}
+
 impl<Ev> KeyValue<Ev>
 where
     Ev: 'static,
@@ -57,6 +65,14 @@ where
         });
     }
 
+    /// Read a value under `key`, while in an async context. This is used together with
+    /// [`crux_core::compose::Compose`].
+    pub async fn read_async(&self, key: &str) -> KeyValueOutput {
+        self.context
+            .request_from_shell(KeyValueOperation::Read(key.to_string()))
+            .await
+    }
+
     /// Set `key` to be the provided `value`. Typically the bytes would be
     /// a value serialized/deserialized by the app.
     ///
@@ -76,5 +92,13 @@ where
                 context.update_app(make_event(resp))
             }
         });
+    }
+
+    /// Set `key` to be the provided `value`, while in an async context. This is used together with
+    /// [`crux_core::compose::Compose`].
+    pub async fn write_async(&self, key: &str, value: Vec<u8>) -> KeyValueOutput {
+        self.context
+            .request_from_shell(KeyValueOperation::Write(key.to_string(), value))
+            .await
     }
 }

@@ -54,7 +54,7 @@ mod tests {
     #[test]
     fn hello_says_hello_world() {
         let hello = AppTester::<Hello, _>::default();
-        let mut model = Model::default();
+        let mut model = Model;
 
         // Call 'update' and request effects
         let update = hello.update(Event::None, &mut model);

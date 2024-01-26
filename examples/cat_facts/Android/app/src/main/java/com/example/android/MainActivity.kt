@@ -71,7 +71,7 @@ fun CatFacts(core: MyCore = viewModel()) {
             .padding(10.dp),
     ) {
         Icon(Icons.Filled.Public, "Platform")
-        Text(text = core.view.platform, modifier = Modifier.padding(10.dp))
+        Text(text = core.view?.platform ?: "", modifier = Modifier.padding(10.dp))
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
@@ -79,7 +79,7 @@ fun CatFacts(core: MyCore = viewModel()) {
                 .height(250.dp)
                 .padding(10.dp)
         ) {
-            core.view.image.getOrNull()?.let {
+            core.view?.image?.getOrNull()?.let {
                 Image(
                     painter = rememberAsyncImagePainter(it.href),
                     contentDescription = "cat image",
@@ -89,7 +89,7 @@ fun CatFacts(core: MyCore = viewModel()) {
                 )
             }
         }
-        Text(text = core.view.fact, modifier = Modifier.padding(10.dp))
+        Text(text = core.view?.fact ?: "", modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = { coroutineScope.launch { core.update(Clear()) } },

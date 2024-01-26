@@ -200,7 +200,7 @@ mod tests {
         assert_effect!(update, Effect::Render(_));
 
         // check that the view has been updated correctly
-        insta::assert_yaml_snapshot!(app.view(&mut model), @r###"
+        insta::assert_yaml_snapshot!(app.view(&model), @r###"
         ---
         text: "1 (2023-01-01 00:00:00 UTC)"
         confirmed: true

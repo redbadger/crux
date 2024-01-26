@@ -3,7 +3,7 @@ name = "crux_macros"
 description = "Macros for use with crux_core"
 authors = ["Red Badger Consulting Limited"]
 repository = "https://github.com/redbadger/crux/"
-version = "0.3.4"
+version = "0.3.6"
 edition = "2021"
 readme = "README.md"
 license = "Apache-2.0"
@@ -16,10 +16,13 @@ proc-macro = true
 [dependencies]
 darling = "0.20.3"
 proc-macro-error = "1.0.4"
-proc-macro2 = "1.0.70"
-quote = "1.0.33"
-syn = "2.0.39"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+syn = "2.0.48"
 
 [dev-dependencies]
+crux_core = { path = "../crux_core" }
+crux_http = { path = "../crux_http" }
 insta = "1.34"
 prettyplease = "0.2"
+serde = { version = "1.0.195", features = ["derive"] }

@@ -239,7 +239,7 @@ Effect::into_key_value(self) -> Option<Request<KeyValueOperation>>
 
 We want to check that the first request is a `Start` operation, and that the
 timer is set to fire in 1000 milliseconds. The macro
-[`assert_let!()`](https://docs.rs/assert_let/0.1.0/assert_let/) does a pattern
+[`assert_let!()`](https://docs.rs/assert_let_bind/0.1.1/assert_let_bind/) does a pattern
 match for us and assigns the `id` to a local variable called `first_id`, which
 we'll use later. Finally, we don't expect any more timer requests to have been
 generated.
