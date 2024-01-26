@@ -16,11 +16,11 @@ crux_core = "0.7"
 crux_macros = "0.3"
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"
-uniffi = "0.25.3"
+uniffi = "0.26.1"
 wasm-bindgen = "0.2.90"
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.25.3", features = ["cli"] }
+uniffi = { version = "0.26.1", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.25.3", features = ["build"] }
+uniffi = { version = "0.26.1", features = ["build"] }

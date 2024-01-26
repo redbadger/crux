@@ -22,7 +22,7 @@
     "ua-parser-js": "^1.0.37"
   },
   "devDependencies": {
-    "@types/node": "20.11.5",
+    "@types/node": "20.11.7",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
     "@types/ua-parser-js": "^0.7.39"
