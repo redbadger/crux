@@ -68,6 +68,50 @@
 //!    gen.typescript("shared_types", output_root.join("typescript"))?;
 //!}
 //! ```
+//!
+//! ## Custom extensions
+//!
+//! May you need to use customized files for one of:
+//!
+//! - `generated/typescript/*`,
+//! - `generated/swift/(requests | Package).swift` -
+//! - `generated/java/Requests.java`
+//!
+//! Then create the `typegen_extensions/{target}/{target-file}`
+//! with the desired content next to your `build.rs` file.
+//!
+//! For example `typegen_extensions/swift/Package.swift`:
+//!
+//! ```swift
+//! // swift-tools-version: 5.7.1
+//! // The swift-tools-version declares the minimum version of Swift required to build this package.
+//!
+//! import PackageDescription
+//!
+//! let package = Package(
+//!     name: "SharedTypes",
+//!     products: [
+//!         // Products define the executables and libraries a package produces, and make them visible to other packages.
+//!         .library(
+//!             name: "SharedTypes",
+//!             targets: ["SharedTypes"]),
+//!     ],
+//!     dependencies: [
+//!         // Dependencies declare other packages that this package depends on.
+//!         // .package(url: /* package url */, from: "1.0.0"),
+//!     ],
+//!     targets: [
+//!         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
+//!         // Targets can depend on other targets in this package, and on products in packages this package depends on.
+//!         .target(
+//!             name: "Serde",
+//!             dependencies: []),
+//!         .target(
+//!             name: "SharedTypes",
+//!             dependencies: ["Serde"]),
+//!     ]
+//! )
+//! ```
 
 use serde::Deserialize;
 use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
@@ -332,19 +376,24 @@ impl TypeGen {
                 .join(module_name)
                 .join("Requests.swift"),
         )?;
-        write!(
-            output,
-            "{}",
-            include_str!("../typegen_extensions/swift/requests.swift")
-        )?;
+
+        let requests_path = self.extensions_path("swift/requests.swift");
+
+        let requests_data = fs::read_to_string(requests_path)?;
+
+        write!(output, "{}", requests_data)?;
 
         // wrap it all up in a swift package
         let mut output = File::create(path.join("Package.swift"))?;
+
+        let package_path = self.extensions_path("swift/Package.swift");
+
+        let package_data = fs::read_to_string(package_path)?;
+
         write!(
             output,
             "{}",
-            include_str!("../typegen_extensions/swift/Package.swift")
-                .replace("SharedTypes", module_name)
+            package_data.replace("SharedTypes", module_name)
         )?;
 
         Ok(())
@@ -393,10 +442,11 @@ impl TypeGen {
             .install_module(&config, registry)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let requests = format!(
-            "package {package_name};\n\n{}",
-            include_str!("../typegen_extensions/java/Requests.java")
-        );
+        let requests_path = self.extensions_path("java/Requests.java");
+
+        let requests_data = fs::read_to_string(requests_path)?;
+
+        let requests = format!("package {package_name};\n\n{}", requests_data);
 
         fs::write(
             path.as_ref()
@@ -433,8 +483,7 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let extensions_dir =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("typegen_extensions/typescript");
+        let extensions_dir = self.extensions_path("typescript");
         copy(extensions_dir, path)?;
 
         let registry = match &self.state {
@@ -504,6 +553,22 @@ impl TypeGen {
             }
         }
         Ok(())
+    }
+
+    fn extensions_path(&self, path: &str) -> PathBuf {
+        let custom = PathBuf::from("./typegen_extensions").join(path);
+        let default = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("typegen_extensions")
+            .join(path);
+
+        match custom.try_exists() {
+            Ok(true) => custom,
+            Ok(false) => default,
+            Err(e) => {
+                println!("cant check typegen extensions override: {}", e);
+                default
+            }
+        }
     }
 }
 
