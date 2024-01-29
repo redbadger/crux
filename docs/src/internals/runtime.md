@@ -50,18 +50,22 @@ responsible for scheduling the futures and `poll`ing them _at the right time_ to
 drive their execution forward. Most "grown up" runtimes will do this on a number
 of threads in a thread pool, but for Crux, we run in the context of a single
 function call (of the app's `update` function) and potentially in a webassembly
-context which is single threaded anyway, so our runtime only needs to poll all the in-flight tasks sequentially, to see if any of them need to continue.
+context which is single threaded anyway, so our runtime only needs to poll all
+the tasks sequentially, to see if any of them need to continue.
 
-This would work, and in our case wouldn't even be that inefficient, but the
-async system is set up to avoid unnecessary polling of futures with one
-additional concept - wakers. A waker is a mechanism which can be used to signal
-the executor that something a given task is waiting on has changed, and the
-task's future should be polled, because it will be able to proceed.
+Polling all the tasks would work, and in our case wouldn't even be that
+inefficient, but the async system is set up to avoid unnecessary polling of
+futures with one additional concept - wakers. A waker is a mechanism which can
+be used to signal the executor that something a given task is waiting on has
+changed, and the task's future should be polled, because it will be able to
+proceed. This is how "at the right time" is decided.
 
 In our case there's a single situation which causes such a change - a result has
 arrived from the shell, for a particular effect requested earlier.
 
-So, in broad strokes, our strategy for the capability runtime is as follows:
+## One effect's life cycle
+
+So, step by step, our strategy for the capabilities to handle effects is:
 
 1. A capability `spawn`s a task and submits a future with some code to run
 1. The new task is scheduled to be polled next time the executor runs
@@ -70,32 +74,30 @@ So, in broad strokes, our strategy for the capability runtime is as follows:
 capabilities, this can only be a future returned from one of the calls to
 request something from the shell, or a future resulting from a composition of
 such futures (with combinators like `select` or `join`).
-1. The shell request future's first job is to create and send the request. We
-will look at the mechanics of the sending in a minute, but for now it's only
-important that this is part of the future's state, so that it can be used on
-the next poll, and that part of this request is a callback used to resolve it.
-1. The task's future is now waiting on the shell request future, and the last
-thing the task will do is poll it, to see if it can potentially continue
-straight away.
-1. The request future, as part of its poll, sees there's a request to send and
-does so. It doesn't yet have a result, so it returns a pending state to the parent future and ultimately the executor and the task is suspended.
+1. The shell request future's first step is to create the request and prepare
+it to be sent. We will look at the mechanics of the sending in a minute, but
+for now it's only important that part of this request is a callback used to
+resolve it.
+1. The request future, as part of the first poll by the executor, sends the
+request does so. As there is no result from the shell yet, it returns a pending state and the task is suspended.
 1. The request is passed on to the shell to resolve (as a return from `process_event` or `resolve`)
 1. Eventually, the shell has a result ready for the request and asks the core to
-resolve the request.
-1. The callback mentiond above is executed, putting the provided result onto the
-future's state, and calling the associated waker, also stored on the state, to
-wake the future up.
-1. The waker schedules the future for execution next time the executor runs, by
-putting it on the ready list.
+`resolve` the request.
+1. The request callback mentiond above is executed, puts the provided result
+onto the future's state, and calls the future's waker, also stored in the future's state, to wake the future up.
 1. The executor runs again (asked to do so by the core `resolve` API after
-calling the callback), and polls the future.
-1. the inner future sees there is now a result available and returns a ready result, resuming the execution of the original task.
+calling the callback), and polls the awakened future.
+1. the future sees there is now a result available and returns a ready result,
+continuing the execution of the original task.
 
 The cycle may repeat a few times, but eventually the original task completes and
 is removed.
 
 This is probably a lot to take in, but the basic gist is that capability futures
-always pause on request futures, which submit requests. Resolving requests updates the state of the original future and wakes it up to continue execution.
+(the ones submitted to `spawn`) always pause on request futures (the ones
+returned from `request_from_shell` et al.), which submit requests. Resolving
+requests updates the state of the original future and wakes it up to continue
+execution.
 
 With that in mind we can look at the individual moving parts and how they
 communicate.
@@ -146,12 +148,13 @@ this method on the task:
 this simply enqueues the task again for processing on the next run.
 
 The only missing piece is when does the `run_all` get called, and the answer is
-in the `Core` API implementation. Both `process_event` and `resolve` call run
-all after their respective task - calling the app's `update` function, or
+in the `Core` API implementation. Both `process_event` and `resolve` call
+`run_all` after their respective task - calling the app's `update` function, or
 resolving the given task.
 
-Now we see how the futures get executed, we can examine the flow of information
-between capabilities and the Core API calls
+Now we know how the futures get executed, suspended and resumed, we can examine
+the flow of information between capabilities and the Core API calls layered on
+top.
 
 ## Requests flow from capabilities to the core
 
