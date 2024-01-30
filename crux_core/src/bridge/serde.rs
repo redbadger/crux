@@ -6,10 +6,10 @@ pub use serde::{Deserialize, Serialize};
 /// A serializer for data across the FFI boundary. This allows
 /// you to choose a different serialization format than bincode.
 ///
-/// *Warning*: that support for custom serialization is *experimental* and
+/// **Warning**: the support for custom serialization is **experimental** and
 /// does not have a corresponding type generation support - you will need
 /// to write deserialization code on the shell side yourself, or generate
-/// it using other tooling.
+/// it using separate tooling.
 pub trait Serializer: Clone {
     type Error: Error;
 

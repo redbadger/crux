@@ -27,7 +27,7 @@ where
 }
 
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
-/// serialized form
+/// serialized form, using bincode as the serialization format.
 pub struct Bridge<Eff, A>
 where
     Eff: Effect,
@@ -81,10 +81,10 @@ where
 /// This is exactly the same as [`Bridge`], except instead of using the default
 /// bincode serialization, you can provide your own [`Serializer`].
 ///
-/// *Warning*: that support for custom serialization is *experimental* and
+/// **Warning**: the support for custom serialization is **experimental** and
 /// does not have a corresponding type generation support - you will need
 /// to write deserialization code on the shell side yourself, or generate
-/// it using other tooling.
+/// it using separate tooling.
 pub struct BridgeWithSerializer<Eff, A, S>
 where
     Eff: Effect,

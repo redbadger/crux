@@ -14,6 +14,9 @@ pub trait Effect: Send + 'static {
     /// Converts the `Effect` into its FFI counterpart and returns it alongside
     /// a deserializing version of the resolve callback for the request that the
     /// original `Effect` was carrying.
+    ///
+    /// You should not need to call this method directly. It is called by
+    /// the [`Bridge`](crate::bridge::Bridge), which also supplies the `serializer`.
     fn serialize<S>(self, serializer: S) -> (Self::Ffi, ResolveBytes)
     where
         S: Serializer + Send + Sync + 'static;
