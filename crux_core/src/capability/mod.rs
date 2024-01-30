@@ -338,7 +338,7 @@ pub trait Capability<Ev> {
 /// #     type Ffi = EffectFfi;
 /// #     fn serialize<'out, S>(self, serializer: S) -> (Self::Ffi, crux_core::bridge::ResolveBytes)
 /// #     where
-/// #          S: crux_core::bridge::serde::Serializer + Send + Sync + 'static,
+/// #          S: crux_core::bridge::Serializer + Send + Sync + 'static,
 /// #     {
 /// #         match self {
 /// #             Effect::Http(request) => request.serialize(EffectFfi::Http, serializer),

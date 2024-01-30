@@ -1,7 +1,7 @@
 use serde::Serialize;
 
-use crate::bridge::serde::Serializer;
 use crate::bridge::ResolveBytes;
+use crate::bridge::Serializer;
 
 /// Implemented automatically with the Effect macro from `crux_macros`.
 /// This is used by the [`Bridge`](crate::bridge::Bridge) to serialize effects going across the

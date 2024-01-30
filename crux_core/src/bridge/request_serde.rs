@@ -4,8 +4,6 @@ use crate::{
     Request,
 };
 
-use super::serde::Serializer;
-
 type ResolveOnceBytes = Box<dyn FnOnce(&[u8]) + Send>;
 type ResolveManyBytes = Box<dyn Fn(&[u8]) -> Result<(), ()> + Send>;
 
@@ -43,11 +41,15 @@ where
     Op: Operation,
 {
     /// Serialize this effect request using `effect` as a constructor
-    /// for a serializable Effect `Eff`
+    /// for a serializable Effect `Eff` using serializer `S`.
+    ///
+    /// You should never need to call this method yourself, it will be called
+    /// by the generated implementation of [`Effect::serialize`], which in turn
+    /// is used by the Bridge implementation.
     pub fn serialize<F, Eff, S>(self, effect: F, serializer: S) -> (Eff, ResolveBytes)
     where
         F: Fn(Op) -> Eff,
-        S: Serializer + Send + Sync + 'static,
+        S: super::serde::Serializer + Send + Sync + 'static,
     {
         // FIXME should Eff be bound as `Serializable`?
         let (operation, resolve) = (self.operation, self.resolve);

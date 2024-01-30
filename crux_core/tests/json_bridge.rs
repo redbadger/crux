@@ -35,7 +35,7 @@ mod app {
 }
 
 mod core {
-    use crux_core::bridge::{serde::Serializer, BridgeInner};
+    use crux_core::bridge::{BridgeWithSerializer, Serializer};
     use serde::Serialize;
 
     use crate::app::{App, Effect};
@@ -59,7 +59,7 @@ mod core {
         }
     }
 
-    pub type Bridge = BridgeInner<Effect, App, Json>;
+    pub type Bridge = BridgeWithSerializer<Effect, App, Json>;
 }
 
 mod tests {

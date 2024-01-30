@@ -160,7 +160,7 @@ impl ToTokens for EffectStructReceiver {
                 type Ffi = #ffi_effect_name;
 
                 fn serialize<'out, S>(self, serializer: S) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) where
-                    S: ::crux_core::bridge::serde::Serializer + Send + Sync + 'static {
+                    S: ::crux_core::bridge::Serializer + Send + Sync + 'static {
                     match self {
                         #(#match_arms ,)*
                     }
@@ -262,7 +262,7 @@ mod tests {
                 serializer: S,
             ) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes)
             where
-                S: ::crux_core::bridge::serde::Serializer + Send + Sync + 'static,
+                S: ::crux_core::bridge::Serializer + Send + Sync + 'static,
             {
                 match self {
                     Effect::Render(request) => request.serialize(EffectFfi::Render, serializer),
@@ -331,7 +331,7 @@ mod tests {
                 serializer: S,
             ) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes)
             where
-                S: ::crux_core::bridge::serde::Serializer + Send + Sync + 'static,
+                S: ::crux_core::bridge::Serializer + Send + Sync + 'static,
             {
                 match self {
                     Effect::Render(request) => request.serialize(EffectFfi::Render, serializer),
@@ -449,7 +449,7 @@ mod tests {
                 serializer: S,
             ) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes)
             where
-                S: ::crux_core::bridge::serde::Serializer + Send + Sync + 'static,
+                S: ::crux_core::bridge::Serializer + Send + Sync + 'static,
             {
                 match self {
                     MyEffect::Http(request) => request.serialize(MyEffectFfi::Http, serializer),

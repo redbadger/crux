@@ -1,6 +1,6 @@
 mod registry;
 mod request_serde;
-pub mod serde;
+mod serde;
 
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +12,7 @@ use registry::ResolveRegistry;
 pub use request_serde::ResolveBytes;
 
 use self::serde::Bincode;
+pub use self::serde::Serializer;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
@@ -32,7 +33,7 @@ where
     Eff: Effect,
     A: App,
 {
-    inner: BridgeInner<Eff, A, Bincode>,
+    inner: BridgeWithSerializer<Eff, A, Bincode>,
 }
 
 impl<Eff, A> Bridge<Eff, A>
@@ -43,7 +44,7 @@ where
     /// Create a new Bridge using the provided `core`.
     pub fn new(core: Core<Eff, A>) -> Self {
         Self {
-            inner: BridgeInner::new(core, Bincode),
+            inner: BridgeWithSerializer::new(core, Bincode),
         }
     }
 
@@ -75,9 +76,16 @@ where
     }
 }
 
-/// A bridge with a pluggable serializer
-// FIXME: name this better
-pub struct BridgeInner<Eff, A, S>
+/// A bridge with a user supplied serializer
+///
+/// This is exactly the same as [`Bridge`], except instead of using the default
+/// bincode serialization, you can provide your own [`Serializer`].
+///
+/// *Warning*: that support for custom serialization is *experimental* and
+/// does not have a corresponding type generation support - you will need
+/// to write deserialization code on the shell side yourself, or generate
+/// it using other tooling.
+pub struct BridgeWithSerializer<Eff, A, S>
 where
     Eff: Effect,
     A: App,
@@ -88,7 +96,7 @@ where
     serializer: S,
 }
 
-impl<Eff, A, S> BridgeInner<Eff, A, S>
+impl<Eff, A, S> BridgeWithSerializer<Eff, A, S>
 where
     Eff: Effect,
     A: App,
