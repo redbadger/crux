@@ -314,25 +314,6 @@ impl Request {
         self.set_body(Body::from(bytes.as_ref()))
     }
 
-    /// Pass a file as the request body.
-    ///
-    /// # Mime
-    ///
-    /// The `content-type` is set based on the file extension using [`mime_guess`] if the operation was
-    /// successful. If `path` has no extension, or its extension has no known MIME type mapping,
-    /// then `None` is returned.
-    ///
-    /// [`mime_guess`]: https://docs.rs/mime_guess
-    ///
-    /// # Errors
-    ///
-    /// This method will return an error if the file couldn't be read.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn body_file(&mut self, path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
-        self.set_body(Body::from_file(path).await?);
-        Ok(())
-    }
-
     /// Pass a form as the request body.
     ///
     /// # Mime
