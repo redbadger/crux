@@ -5,7 +5,7 @@ use std::{
 
 use uuid::Uuid;
 
-use super::Request;
+use super::{serde::Deserializer, serde::Serializer, Request};
 use crate::bridge::request_serde::ResolveBytes;
 use crate::core::ResolveError;
 use crate::Effect;
@@ -26,12 +26,13 @@ impl ResolveRegistry {
     ///
     /// The `effect` will be serialized into its FFI counterpart before being stored
     /// and wrapped in a [`Request`].
-    pub fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
+    pub fn register<Eff, S>(&self, effect: Eff, serializer: S) -> Request<Eff::Ffi>
     where
         Eff: Effect,
+        S: Serializer + Deserializer + Send + Sync + 'static,
     {
         let uuid = *Uuid::new_v4().as_bytes();
-        let (effect, resolve) = effect.serialize();
+        let (effect, resolve) = effect.serialize(serializer);
 
         self.0
             .lock()

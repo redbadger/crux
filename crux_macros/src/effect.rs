@@ -119,7 +119,7 @@ impl ToTokens for EffectStructReceiver {
 
                 ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
 
-                match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+                match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant, serializer) });
 
                 let filter_fn = format_ident!("is_{}", field_name);
                 let map_fn = format_ident!("into_{}", field_name);
@@ -159,7 +159,10 @@ impl ToTokens for EffectStructReceiver {
             impl ::crux_core::Effect for #effect_name {
                 type Ffi = #ffi_effect_name;
 
-                fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
+                fn serialize<'out, S>(self, serializer: S) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) where
+                    S: ::crux_core::bridge::serde::Serializer +
+                       ::crux_core::bridge::serde::Deserializer +
+                       Send + Sync + 'static {
                     match self {
                         #(#match_arms ,)*
                     }
@@ -256,9 +259,16 @@ mod tests {
         }
         impl ::crux_core::Effect for Effect {
             type Ffi = EffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
+            fn serialize<'out, S>(
+                self,
+                serializer: S,
+            ) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes)
+            where
+                S: ::crux_core::bridge::serde::Serializer
+                    + ::crux_core::bridge::serde::Deserializer + Send + Sync + 'static,
+            {
                 match self {
-                    Effect::Render(request) => request.serialize(EffectFfi::Render),
+                    Effect::Render(request) => request.serialize(EffectFfi::Render, serializer),
                 }
             }
         }
@@ -319,9 +329,16 @@ mod tests {
         }
         impl ::crux_core::Effect for Effect {
             type Ffi = EffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
+            fn serialize<'out, S>(
+                self,
+                serializer: S,
+            ) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes)
+            where
+                S: ::crux_core::bridge::serde::Serializer
+                    + ::crux_core::bridge::serde::Deserializer + Send + Sync + 'static,
+            {
                 match self {
-                    Effect::Render(request) => request.serialize(EffectFfi::Render),
+                    Effect::Render(request) => request.serialize(EffectFfi::Render, serializer),
                 }
             }
         }
@@ -431,13 +448,26 @@ mod tests {
         }
         impl ::crux_core::Effect for MyEffect {
             type Ffi = MyEffectFfi;
-            fn serialize<'out>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes) {
+            fn serialize<'out, S>(
+                self,
+                serializer: S,
+            ) -> (Self::Ffi, ::crux_core::bridge::ResolveBytes)
+            where
+                S: ::crux_core::bridge::serde::Serializer
+                    + ::crux_core::bridge::serde::Deserializer + Send + Sync + 'static,
+            {
                 match self {
-                    MyEffect::Http(request) => request.serialize(MyEffectFfi::Http),
-                    MyEffect::KeyValue(request) => request.serialize(MyEffectFfi::KeyValue),
-                    MyEffect::Platform(request) => request.serialize(MyEffectFfi::Platform),
-                    MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
-                    MyEffect::Time(request) => request.serialize(MyEffectFfi::Time),
+                    MyEffect::Http(request) => request.serialize(MyEffectFfi::Http, serializer),
+                    MyEffect::KeyValue(request) => {
+                        request.serialize(MyEffectFfi::KeyValue, serializer)
+                    }
+                    MyEffect::Platform(request) => {
+                        request.serialize(MyEffectFfi::Platform, serializer)
+                    }
+                    MyEffect::Render(request) => {
+                        request.serialize(MyEffectFfi::Render, serializer)
+                    }
+                    MyEffect::Time(request) => request.serialize(MyEffectFfi::Time, serializer),
                 }
             }
         }

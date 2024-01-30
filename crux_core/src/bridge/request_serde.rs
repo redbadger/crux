@@ -4,6 +4,8 @@ use crate::{
     Request,
 };
 
+use super::serde::{Deserializer, Serializer};
+
 type ResolveOnceBytes = Box<dyn FnOnce(&[u8]) + Send>;
 type ResolveManyBytes = Box<dyn Fn(&[u8]) -> Result<(), ()> + Send>;
 
@@ -42,15 +44,19 @@ where
 {
     /// Serialize this effect request using `effect` as a constructor
     /// for a serializable Effect `Eff`
-    pub fn serialize<F, Eff>(self, effect: F) -> (Eff, ResolveBytes)
+    pub fn serialize<F, Eff, S>(self, effect: F, serializer: S) -> (Eff, ResolveBytes)
     where
         F: Fn(Op) -> Eff,
+        S: Serializer + Deserializer + Send + Sync + 'static,
     {
         // FIXME should Eff be bound as `Serializable`?
         let (operation, resolve) = (self.operation, self.resolve);
 
-        let resolve = resolve
-            .deserializing(|bytes| bincode::deserialize(bytes).expect("Deserialization failed"));
+        let resolve = resolve.deserializing(move |bytes| {
+            serializer
+                .deserialize(bytes)
+                .expect("Deserialization failed")
+        });
 
         (effect(operation), resolve)
     }

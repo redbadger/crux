@@ -1,5 +1,6 @@
 mod registry;
 mod request_serde;
+pub mod serde;
 
 use serde::{Deserialize, Serialize};
 
@@ -9,6 +10,8 @@ use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveBytes;
+
+use self::serde::Bincode;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
@@ -29,8 +32,7 @@ where
     Eff: Effect,
     A: App,
 {
-    core: Core<Eff, A>,
-    registry: ResolveRegistry,
+    inner: BridgeInner<Eff, A, Bincode>,
 }
 
 impl<Eff, A> Bridge<Eff, A>
@@ -41,8 +43,70 @@ where
     /// Create a new Bridge using the provided `core`.
     pub fn new(core: Core<Eff, A>) -> Self {
         Self {
+            inner: BridgeInner::new(core, Bincode),
+        }
+    }
+
+    /// Receive an event from the shell.
+    ///
+    /// The `event` is serialized and will be deserialized by the core before it's passed
+    /// to your app.
+    pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
+    where
+        A::Event: Deserialize<'de>,
+    {
+        self.inner.process_event(event)
+    }
+
+    /// Receive a response to a capability request from the shell.
+    ///
+    /// The `output` is serialized capability output. It will be deserialized by the core.
+    /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
+    pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
+    where
+        A::Event: Deserialize<'de>,
+    {
+        self.inner.handle_response(uuid, output)
+    }
+
+    /// Get the current state of the app's view model (serialized).
+    pub fn view(&self) -> Vec<u8> {
+        self.inner.view()
+    }
+}
+
+/// A bridge with a pluggable serializer
+// FIXME: name this better
+pub struct BridgeInner<Eff, A, S>
+where
+    Eff: Effect,
+    A: App,
+    S: crate::bridge::serde::Serializer
+        + crate::bridge::serde::Deserializer
+        + Send
+        + Sync
+        + 'static,
+{
+    core: Core<Eff, A>,
+    registry: ResolveRegistry,
+    serializer: S,
+}
+
+impl<Eff, A, S> BridgeInner<Eff, A, S>
+where
+    Eff: Effect,
+    A: App,
+    S: crate::bridge::serde::Serializer
+        + crate::bridge::serde::Deserializer
+        + Send
+        + Sync
+        + 'static,
+{
+    pub fn new(core: Core<Eff, A>, serializer: S) -> Self {
+        Self {
             core,
             registry: Default::default(),
+            serializer,
         }
     }
 
@@ -74,8 +138,10 @@ where
     {
         let effects = match uuid {
             None => {
-                let shell_event =
-                    bincode::deserialize(data).expect("Message deserialization failed.");
+                let shell_event = self
+                    .serializer
+                    .deserialize(data)
+                    .expect("Message deserialization failed.");
 
                 self.core.process_event(shell_event)
             }
@@ -90,14 +156,18 @@ where
 
         let requests: Vec<_> = effects
             .into_iter()
-            .map(|eff| self.registry.register(eff))
+            .map(|eff| self.registry.register(eff, self.serializer.clone()))
             .collect();
 
-        bincode::serialize(&requests).expect("Request serialization failed.")
+        self.serializer
+            .serialize(&requests)
+            .expect("Request serialization failed.")
     }
 
     /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
-        bincode::serialize(&self.core.view()).expect("View should serialize")
+        self.serializer
+            .serialize(&self.core.view())
+            .expect("View should serialize")
     }
 }
