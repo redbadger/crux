@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::bridge::serde::{Deserializer, Serializer};
+use crate::bridge::serde::Serializer;
 use crate::bridge::ResolveBytes;
 
 /// Implemented automatically with the Effect macro from `crux_macros`.
@@ -16,5 +16,5 @@ pub trait Effect: Send + 'static {
     /// original `Effect` was carrying.
     fn serialize<S>(self, serializer: S) -> (Self::Ffi, ResolveBytes)
     where
-        S: Serializer + Deserializer + Send + Sync + 'static;
+        S: Serializer + Send + Sync + 'static;
 }

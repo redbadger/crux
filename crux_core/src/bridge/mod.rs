@@ -81,11 +81,7 @@ pub struct BridgeInner<Eff, A, S>
 where
     Eff: Effect,
     A: App,
-    S: crate::bridge::serde::Serializer
-        + crate::bridge::serde::Deserializer
-        + Send
-        + Sync
-        + 'static,
+    S: crate::bridge::serde::Serializer + Send + Sync + 'static,
 {
     core: Core<Eff, A>,
     registry: ResolveRegistry,
@@ -96,11 +92,7 @@ impl<Eff, A, S> BridgeInner<Eff, A, S>
 where
     Eff: Effect,
     A: App,
-    S: crate::bridge::serde::Serializer
-        + crate::bridge::serde::Deserializer
-        + Send
-        + Sync
-        + 'static,
+    S: crate::bridge::serde::Serializer + Send + Sync + 'static,
 {
     pub fn new(core: Core<Eff, A>, serializer: S) -> Self {
         Self {
