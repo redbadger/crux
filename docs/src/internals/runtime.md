@@ -158,4 +158,94 @@ top.
 
 ## Requests flow from capabilities to the core
 
-TODO
+The key to understanding how the effects get processed and executed is to name
+all the various pieces of information, and discuss how they are wrapped in each
+other.
+
+The basic inner piece of the effect request is an *operation*. This is the
+intent which the capability is submitting to the shell. Each operation has an
+associated *output* value, with which the operation request can be resolved.
+There are multiple capabilities in each app, and in order for the shell to
+easily tell which capability's effect it needs to handle, we wrap the
+operation in an *effect*. The `Effect` type is a generated enum serving this
+"dispatch" purpose.
+
+Finally, the effect is wrapped in a *request* which carries the effect, and an
+associated callback to which the output will eventually be given. We discussed
+this callback in the previous section - its job is to update the paused future's
+state and resume it. The request is the value passed to the shell, and used as
+both the description of the effect, and the "token" used to resolve it.
+
+Now we can look at how all this wrapping is facilitated. Recall from the
+previous section that each capability has access to a `CapabilityContext`, which
+holds a sending end of two channels, one for events - the `app_channel` and one
+for requests - the `shell_channel`, whos type is `Sender<Request<Op>>`. These
+channels serve both as thread synchronisation and queueing mechanism between
+the capabilities and the core of crux. As you can see, the requests expected are typed for the capability's operation type.
+
+Looking at the core itself, we see their `Receiver` ends.
+
+```rust,no_run,noplayground
+{{#include ../../../crux_core/src/core/mod.rs:24:34}}
+```
+
+One detail to note is that the receiving end of the requests channel is a
+`Receiver<Ef>`. The channel has an additional feature - it can map between the
+input types and output types, and, in this case, serve as a multiplexer. Each
+sending end is specialised for the respective capability, but the receiving end
+gets already wrapped `Effect`.
+
+## A single update cycle
+
+To piece all these things together, lets look at processing a single call from
+the shell. Both `process_event` and `resolve` share a common step advancing the
+capability runtime.
+
+Here is `process_event`:
+
+```rust,no_run,noplayground
+{{#include ../../../crux_core/src/core/mod.rs:68:74}}
+```
+
+and here is `resolve`:
+
+```rust,no_run,noplayground
+{{#include ../../../crux_core/src/core/mod.rs:81:89}}
+```
+
+The interesting things happen in the common `process` method:
+
+```rust,no_run,noplayground
+{{#include ../../../crux_core/src/core/mod.rs:91:103}}
+```
+
+First, we run all ready tasks in the executor. There can be new tasks ready
+because we just ran the app's update function (which may have spawned some task
+via capability calls) or resolved some effects (which woke up their suspended
+futures).
+
+Next, we drain the events channel and one by one, send them to the `update`
+function, running the executor after each one.
+
+Finally, we collect all of the effects submitted in the process and return them to the shell.
+
+## Resolving requests
+
+We've now seen everything other than the mechanics of resolving requests. This
+is ultimately just a callback carried by the request, but for additional type
+safety, it is tagged by the expected number of resolutions
+
+```rust,no_run,noplayground
+{{#include ../../../crux_core/src/core/resolve.rs:3:12}}
+```
+
+We've already mentioned the resolve function itself briefly, but for
+completeness, here's an example:
+
+```rust,no_run,noplayground
+{{#include ../../../crux_core/src/capability/shell_request.rs:72:87}}
+```
+
+Bar the locking and sharing mechanics, all it does is update the state of the
+future (`shared_state`) and then calls `wake` on the future's waker to schedule
+it on the executor.
