@@ -6,13 +6,13 @@ use std::{
 use uuid::Uuid;
 
 use super::Request;
-use crate::bridge::request_serde::ResolveBytes;
+use crate::bridge::request_serde::ResolveSerialized;
 use crate::core::ResolveError;
 use crate::Effect;
 
 type Store<T> = HashMap<[u8; 16], T>;
 
-pub struct ResolveRegistry(Mutex<Store<ResolveBytes>>);
+pub struct ResolveRegistry(Mutex<Store<ResolveSerialized>>);
 
 impl Default for ResolveRegistry {
     fn default() -> Self {

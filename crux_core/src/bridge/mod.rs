@@ -10,7 +10,7 @@ use crate::{App, Core};
 use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
-pub use request_serde::ResolveBytes;
+pub use request_serde::ResolveSerialized;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
@@ -142,17 +142,17 @@ where
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
-    pub fn process_event<'de, D, S>(&self, de: D, ser: S)
+    pub fn process_event<'de, D, S>(&self, event: D, requests_out: S)
     where
         for<'a> A::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de> + 'de,
         S: ::serde::ser::Serializer,
     {
-        let mut erased_de = <dyn erased_serde::Deserializer>::erase(de);
+        let mut erased_de = <dyn erased_serde::Deserializer>::erase(event);
         self.process(
             None,
             &mut erased_de,
-            &mut <dyn erased_serde::Serializer>::erase(ser),
+            &mut <dyn erased_serde::Serializer>::erase(requests_out),
         );
     }
 
@@ -160,37 +160,37 @@ where
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de, D, S>(&self, uuid: &[u8], de: D, ser: S)
+    pub fn handle_response<'de, D, S>(&self, uuid: &[u8], response: D, requests_out: S)
     where
         for<'a> A::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de>,
         S: ::serde::ser::Serializer,
     {
-        let mut erased_de = <dyn erased_serde::Deserializer>::erase(de);
+        let mut erased_response = <dyn erased_serde::Deserializer>::erase(response);
         self.process(
             Some(uuid),
-            &mut erased_de,
-            &mut <dyn erased_serde::Serializer>::erase(ser),
+            &mut erased_response,
+            &mut <dyn erased_serde::Serializer>::erase(requests_out),
         );
     }
 
     fn process(
         &self,
         uuid: Option<&[u8]>,
-        deser: &mut dyn erased_serde::Deserializer,
-        ser: &mut dyn erased_serde::Serializer,
+        data: &mut dyn erased_serde::Deserializer,
+        requests_out: &mut dyn erased_serde::Serializer,
     ) where
         A::Event: for<'a> Deserialize<'a>,
     {
         let effects = match uuid {
             None => {
                 let shell_event =
-                    erased_serde::deserialize(deser).expect("Message deserialization failed.");
+                    erased_serde::deserialize(data).expect("Message deserialization failed.");
 
                 self.core.process_event(shell_event)
             }
             Some(uuid) => {
-                self.registry.resume(uuid, deser).expect(
+                self.registry.resume(uuid, data).expect(
                     "Response could not be handled. The request did not expect a response.",
                 );
 
@@ -204,7 +204,7 @@ where
             .collect();
 
         requests
-            .erased_serialize(ser)
+            .erased_serialize(requests_out)
             .expect("Request serialization failed.")
     }
 

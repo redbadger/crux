@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::bridge::ResolveBytes;
+use crate::bridge::ResolveSerialized;
 
 /// Implemented automatically with the Effect macro from `crux_macros`.
 /// This is used by the [`Bridge`](crate::bridge::Bridge) to serialize effects going across the
@@ -16,5 +16,5 @@ pub trait Effect: Send + 'static {
     ///
     /// You should not need to call this method directly. It is called by
     /// the [`Bridge`](crate::bridge::Bridge)
-    fn serialize(self) -> (Self::Ffi, ResolveBytes);
+    fn serialize(self) -> (Self::Ffi, ResolveSerialized);
 }
