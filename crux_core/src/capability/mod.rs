@@ -336,13 +336,10 @@ pub trait Capability<Ev> {
 /// # }
 /// # impl crux_core::Effect for Effect {
 /// #     type Ffi = EffectFfi;
-/// #     fn serialize<'out, S>(self, serializer: S) -> (Self::Ffi, crux_core::bridge::ResolveBytes)
-/// #     where
-/// #          S: crux_core::bridge::Serializer + Send + Sync + 'static,
-/// #     {
+/// #     fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
 /// #         match self {
-/// #             Effect::Http(request) => request.serialize(EffectFfi::Http, serializer),
-/// #             Effect::Render(request) => request.serialize(EffectFfi::Render, serializer),
+/// #             Effect::Http(request) => request.serialize(EffectFfi::Http),
+/// #             Effect::Render(request) => request.serialize(EffectFfi::Render),
 /// #         }
 /// #     }
 /// # }

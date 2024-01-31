@@ -4,8 +4,8 @@ use crate::{
     Request,
 };
 
-type ResolveOnceBytes = Box<dyn FnOnce(&[u8]) + Send>;
-type ResolveManyBytes = Box<dyn Fn(&[u8]) -> Result<(), ()> + Send>;
+type ResolveOnceBytes = Box<dyn FnOnce(&mut dyn erased_serde::Deserializer) + Send>;
+type ResolveManyBytes = Box<dyn Fn(&mut dyn erased_serde::Deserializer) -> Result<(), ()> + Send>;
 
 /// A deserializing version of Resolve
 ///
@@ -20,7 +20,10 @@ pub enum ResolveBytes {
 }
 
 impl ResolveBytes {
-    pub(crate) fn resolve(&mut self, bytes: &[u8]) -> Result<(), ResolveError> {
+    pub(crate) fn resolve(
+        &mut self,
+        bytes: &mut dyn erased_serde::Deserializer,
+    ) -> Result<(), ResolveError> {
         match self {
             ResolveBytes::Never => Err(ResolveError::Never),
             ResolveBytes::Many(f) => f(bytes).map_err(|_| ResolveError::FinishedMany),
@@ -41,23 +44,20 @@ where
     Op: Operation,
 {
     /// Serialize this effect request using `effect` as a constructor
-    /// for a serializable Effect `Eff` using serializer `S`.
+    /// for a serializable Effect `Eff`
     ///
     /// You should never need to call this method yourself, it will be called
     /// by the generated implementation of [`Effect::serialize`](crate::Effect::serialize),
     /// which is used by the Bridge implementation.
-    pub fn serialize<F, Eff, S>(self, effect: F, serializer: S) -> (Eff, ResolveBytes)
+    pub fn serialize<F, Eff>(self, effect: F) -> (Eff, ResolveBytes)
     where
         F: Fn(Op) -> Eff,
-        S: super::serde::Serializer + Send + Sync + 'static,
     {
         // FIXME should Eff be bound as `Serializable`?
         let (operation, resolve) = (self.operation, self.resolve);
 
-        let resolve = resolve.deserializing(move |bytes| {
-            serializer
-                .deserialize(bytes)
-                .expect("Deserialization failed")
+        let resolve = resolve.deserializing(move |deserializer| {
+            erased_serde::deserialize(deserializer).expect("Deserialization failed")
         });
 
         (effect(operation), resolve)
@@ -69,7 +69,7 @@ impl<Out> Resolve<Out> {
     /// The `func` argument is a 'deserializer' converting from bytes into the `Out` type.
     fn deserializing<F>(self, func: F) -> ResolveBytes
     where
-        F: (Fn(&[u8]) -> Out) + Send + Sync + 'static,
+        F: (Fn(&mut dyn erased_serde::Deserializer) -> Out) + Send + Sync + 'static,
         Out: 'static,
     {
         match self {
