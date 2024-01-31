@@ -875,8 +875,7 @@ checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 [[package]]
 name = "http-types"
 version = "2.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e9b187a72d63adbfba487f48095306ac823049cb504ee195541e91c7775f5ad"
+source = "git+https://github.com/redbadger/http-types.git?branch=v2.x.x-backports#c8eb9f241e39c55e88a46b5e5152794497519dd3"
 dependencies = [
  "anyhow",
  "async-channel 1.9.0",
