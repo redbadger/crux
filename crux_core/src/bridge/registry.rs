@@ -5,7 +5,7 @@ use std::{
 
 use uuid::Uuid;
 
-use super::{serde::Serializer, Request};
+use super::Request;
 use crate::bridge::request_serde::ResolveBytes;
 use crate::core::ResolveError;
 use crate::Effect;
@@ -26,13 +26,12 @@ impl ResolveRegistry {
     ///
     /// The `effect` will be serialized into its FFI counterpart before being stored
     /// and wrapped in a [`Request`].
-    pub fn register<Eff, S>(&self, effect: Eff, serializer: S) -> Request<Eff::Ffi>
+    pub fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
     where
         Eff: Effect,
-        S: Serializer + Send + Sync + 'static,
     {
         let uuid = *Uuid::new_v4().as_bytes();
-        let (effect, resolve) = effect.serialize(serializer);
+        let (effect, resolve) = effect.serialize();
 
         self.0
             .lock()
@@ -47,7 +46,11 @@ impl ResolveRegistry {
 
     /// Resume a previously registered effect. This may fail, either because UUID wasn't
     /// found or because this effect was not expected to be resumed again.
-    pub fn resume(&self, uuid: &[u8], body: &[u8]) -> Result<(), ResolveError> {
+    pub fn resume(
+        &self,
+        uuid: &[u8],
+        body: &mut dyn erased_serde::Deserializer,
+    ) -> Result<(), ResolveError> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
         let entry = {

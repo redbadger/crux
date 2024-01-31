@@ -1,7 +1,8 @@
 mod registry;
 mod request_serde;
-mod serde;
 
+use bincode::{DefaultOptions, Options};
+use erased_serde::Serialize as _;
 use serde::{Deserialize, Serialize};
 
 use crate::Effect;
@@ -10,9 +11,6 @@ use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveBytes;
-
-use self::serde::Bincode;
-pub use self::serde::Serializer;
 
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
@@ -33,7 +31,7 @@ where
     Eff: Effect,
     A: App,
 {
-    inner: BridgeWithSerializer<Eff, A, Bincode>,
+    inner: BridgeWithSerializer<Eff, A>,
 }
 
 impl<Eff, A> Bridge<Eff, A>
@@ -44,7 +42,7 @@ where
     /// Create a new Bridge using the provided `core`.
     pub fn new(core: Core<Eff, A>) -> Self {
         Self {
-            inner: BridgeWithSerializer::new(core, Bincode),
+            inner: BridgeWithSerializer::new(core),
         }
     }
 
@@ -52,27 +50,61 @@ where
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
-    pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
+    pub fn process_event(&self, event: &[u8]) -> Vec<u8>
     where
-        A::Event: Deserialize<'de>,
+        A::Event: for<'a> Deserialize<'a>,
     {
-        self.inner.process_event(event)
+        let options = DefaultOptions::new()
+            .with_fixint_encoding()
+            .allow_trailing_bytes();
+
+        let mut deser = bincode::Deserializer::from_slice(event, options);
+
+        let mut return_buffer = vec![];
+        let mut ser = bincode::Serializer::new(&mut return_buffer, options);
+
+        self.inner.process_event(&mut deser, &mut ser);
+
+        return_buffer
     }
 
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
+    pub fn handle_response(&self, uuid: &[u8], output: &[u8]) -> Vec<u8>
     where
-        A::Event: Deserialize<'de>,
+        A::Event: for<'a> Deserialize<'a>,
     {
-        self.inner.handle_response(uuid, output)
+        let options = Self::bincode_options();
+
+        let mut deser = bincode::Deserializer::from_slice(output, options);
+
+        let mut return_buffer = vec![];
+        let mut ser = bincode::Serializer::new(&mut return_buffer, options);
+
+        self.inner.handle_response(uuid, &mut deser, &mut ser);
+
+        return_buffer
     }
 
     /// Get the current state of the app's view model (serialized).
     pub fn view(&self) -> Vec<u8> {
-        self.inner.view()
+        let options = Self::bincode_options();
+
+        let mut return_buffer = vec![];
+
+        self.inner.view(&mut <dyn erased_serde::Serializer>::erase(
+            &mut bincode::Serializer::new(&mut return_buffer, options),
+        ));
+
+        return_buffer
+    }
+
+    fn bincode_options() -> impl bincode::Options + Copy {
+        DefaultOptions::new()
+            .with_fixint_encoding()
+            .allow_trailing_bytes()
     }
 }
 
@@ -85,28 +117,24 @@ where
 /// does not have a corresponding type generation support - you will need
 /// to write deserialization code on the shell side yourself, or generate
 /// it using separate tooling.
-pub struct BridgeWithSerializer<Eff, A, S>
+pub struct BridgeWithSerializer<Eff, A>
 where
     Eff: Effect,
     A: App,
-    S: crate::bridge::serde::Serializer + Send + Sync + 'static,
 {
     core: Core<Eff, A>,
     registry: ResolveRegistry,
-    serializer: S,
 }
 
-impl<Eff, A, S> BridgeWithSerializer<Eff, A, S>
+impl<Eff, A> BridgeWithSerializer<Eff, A>
 where
     Eff: Effect,
     A: App,
-    S: crate::bridge::serde::Serializer + Send + Sync + 'static,
 {
-    pub fn new(core: Core<Eff, A>, serializer: S) -> Self {
+    pub fn new(core: Core<Eff, A>) -> Self {
         Self {
             core,
             registry: Default::default(),
-            serializer,
         }
     }
 
@@ -114,39 +142,55 @@ where
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
-    pub fn process_event<'de>(&self, event: &'de [u8]) -> Vec<u8>
+    pub fn process_event<'de, D, S>(&self, de: D, ser: S)
     where
-        A::Event: Deserialize<'de>,
+        for<'a> A::Event: Deserialize<'a>,
+        D: ::serde::de::Deserializer<'de> + 'de,
+        S: ::serde::ser::Serializer,
     {
-        self.process(None, event)
+        let mut erased_de = <dyn erased_serde::Deserializer>::erase(de);
+        self.process(
+            None,
+            &mut erased_de,
+            &mut <dyn erased_serde::Serializer>::erase(ser),
+        );
     }
 
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de>(&self, uuid: &[u8], output: &'de [u8]) -> Vec<u8>
+    pub fn handle_response<'de, D, S>(&self, uuid: &[u8], de: D, ser: S)
     where
-        A::Event: Deserialize<'de>,
+        for<'a> A::Event: Deserialize<'a>,
+        D: ::serde::de::Deserializer<'de>,
+        S: ::serde::ser::Serializer,
     {
-        self.process(Some(uuid), output)
+        let mut erased_de = <dyn erased_serde::Deserializer>::erase(de);
+        self.process(
+            Some(uuid),
+            &mut erased_de,
+            &mut <dyn erased_serde::Serializer>::erase(ser),
+        );
     }
 
-    fn process<'de>(&self, uuid: Option<&[u8]>, data: &'de [u8]) -> Vec<u8>
-    where
-        A::Event: Deserialize<'de>,
+    fn process(
+        &self,
+        uuid: Option<&[u8]>,
+        deser: &mut dyn erased_serde::Deserializer,
+        ser: &mut dyn erased_serde::Serializer,
+    ) where
+        A::Event: for<'a> Deserialize<'a>,
     {
         let effects = match uuid {
             None => {
-                let shell_event = self
-                    .serializer
-                    .deserialize(data)
-                    .expect("Message deserialization failed.");
+                let shell_event =
+                    erased_serde::deserialize(deser).expect("Message deserialization failed.");
 
                 self.core.process_event(shell_event)
             }
             Some(uuid) => {
-                self.registry.resume(uuid, data).expect(
+                self.registry.resume(uuid, deser).expect(
                     "Response could not be handled. The request did not expect a response.",
                 );
 
@@ -156,18 +200,19 @@ where
 
         let requests: Vec<_> = effects
             .into_iter()
-            .map(|eff| self.registry.register(eff, self.serializer.clone()))
+            .map(|eff| self.registry.register(eff))
             .collect();
 
-        self.serializer
-            .serialize(&requests)
+        requests
+            .erased_serialize(ser)
             .expect("Request serialization failed.")
     }
 
     /// Get the current state of the app's view model (serialized).
-    pub fn view(&self) -> Vec<u8> {
-        self.serializer
-            .serialize(&self.core.view())
+    pub fn view(&self, ser: &mut dyn erased_serde::Serializer) {
+        self.core
+            .view()
+            .erased_serialize(ser)
             .expect("View should serialize")
     }
 }
