@@ -3,8 +3,8 @@ mod shared {
     use std::{cmp::max, future::IntoFuture};
 
     use crux_core::compose::Compose;
-    use crux_http::Http;
     use crux_core::macros::Effect;
+    use crux_http::Http;
     use futures_util::join;
     use http_types::StatusCode;
     use serde::{Deserialize, Serialize};
