@@ -17,7 +17,7 @@ crux_core = { version = "0.7", path = "../crux_core" }
 crux_macros = { version = "0.3", path = "../crux_macros" }
 derive_builder = "0.13.0"
 futures-util = "0.3"
-http-types = { version = "2.12", default-features = false }
+http-types = { git = "https://github.com/redbadger/http-types.git", branch = "v2.x.x-backports", default-features = false }
 pin-project-lite = "0.2.13"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.111"
