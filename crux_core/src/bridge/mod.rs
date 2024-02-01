@@ -54,9 +54,7 @@ where
     where
         A::Event: for<'a> Deserialize<'a>,
     {
-        let options = DefaultOptions::new()
-            .with_fixint_encoding()
-            .allow_trailing_bytes();
+        let options = Self::bincode_options();
 
         let mut deser = bincode::Deserializer::from_slice(event, options);
 
@@ -94,9 +92,8 @@ where
 
         let mut return_buffer = vec![];
 
-        self.inner.view(&mut <dyn erased_serde::Serializer>::erase(
-            &mut bincode::Serializer::new(&mut return_buffer, options),
-        ));
+        self.inner
+            .view(&mut bincode::Serializer::new(&mut return_buffer, options));
 
         return_buffer
     }
@@ -209,10 +206,13 @@ where
     }
 
     /// Get the current state of the app's view model (serialized).
-    pub fn view(&self, ser: &mut dyn erased_serde::Serializer) {
+    pub fn view<S>(&self, ser: S)
+    where
+        S: ::serde::ser::Serializer,
+    {
         self.core
             .view()
-            .erased_serialize(ser)
+            .erased_serialize(&mut <dyn erased_serde::Serializer>::erase(ser))
             .expect("View should serialize")
     }
 }
