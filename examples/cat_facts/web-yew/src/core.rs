@@ -1,8 +1,8 @@
+use chrono::{DateTime, Utc};
 use gloo_console::log;
 use shared::{
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
-    time::TimeResponse,
     CatFactCapabilities, CatFacts, Effect, Event,
 };
 use std::rc::Rc;
@@ -68,9 +68,9 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
         }
 
         Effect::Time(mut request) => {
-            let response = TimeResponse(time::get().unwrap());
+            let response: DateTime<Utc> = time::get().unwrap().parse().unwrap();
 
-            for effect in core.resolve(&mut request, response) {
+            for effect in core.resolve(&mut request, response.to_rfc3339()) {
                 process_effect(core, effect, callback);
             }
         }

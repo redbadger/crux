@@ -139,9 +139,9 @@ This might be because you attempted to pass types with custom serialization acro
 
 #[derive(Error, Debug)]
 pub enum TypeGenError {
-    #[error("type tracing failed {0}")]
+    #[error("type tracing failed: {0}")]
     TypeTracing(String),
-    #[error("value tracing failed {0}")]
+    #[error("value tracing failed: {0}")]
     ValueTracing(String),
     #[error("type tracing failed: {0} {}", DESERIALIZATION_ERROR_HINT)]
     Deserialization(String),
@@ -216,14 +216,19 @@ impl TypeGen {
     /// which the deserialization will use instead.
     pub fn register_samples<'de, T>(&mut self, sample_data: Vec<T>) -> Result
     where
-        T: serde::Deserialize<'de> + serde::Serialize,
+        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
     {
         match &mut self.state {
             State::Registering(tracer, samples) => {
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(e) => return Err(TypeGenError::ValueTracing(e.explanation())),
+                        Err(e) => {
+                            return Err(TypeGenError::ValueTracing(format!(
+                                "[{sample:?}] {}",
+                                e.explanation()
+                            )))
+                        }
                     }
                 }
                 Ok(())
@@ -259,7 +264,14 @@ impl TypeGen {
                     TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
                 ),
                 Err(e) => Err(TypeGenError::TypeTracing(format!(
-                    "{e}: {exp}",
+                    r#"{e}:
+{exp}
+HINT: This may be because you are trying to trace a generic type,
+which is currently not supported.
+The 2 common cases are:
+    * Capability output types
+    * Event variants which could have a `#[serde(skip)]` because they don't leave the core
+"#,
                     exp = e.explanation()
                 ))),
             },
@@ -296,7 +308,7 @@ impl TypeGen {
     /// that does not use custom deserialization.
     pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result
     where
-        T: serde::Deserialize<'de> + serde::Serialize,
+        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
     {
         match &mut self.state {
             State::Registering(tracer, samples) => {
@@ -305,13 +317,13 @@ impl TypeGen {
                         Ok(_) => {}
                         Err(e @ serde_reflection::Error::DeserializationError(_)) => {
                             return Err(TypeGenError::ValueTracing(format!(
-                                "{e}: {exp}",
+                                "[{sample:?}] {e}: {exp}",
                                 exp = e.explanation()
                             )))
                         }
                         Err(e) => {
                             return Err(TypeGenError::ValueTracing(format!(
-                                "{e}: {exp}",
+                                "[{sample:?}] {e}: {exp}",
                                 exp = e.explanation()
                             )))
                         }

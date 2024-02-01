@@ -65,13 +65,12 @@ mod shared {
 
 mod shell {
     use super::shared::{App, Effect, Event};
-    use chrono::{DateTime, Utc};
     use crux_core::{Core, Request};
     use crux_time::TimeRequest;
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Time(Request<TimeRequest>, DateTime<Utc>),
+        Time(Request<TimeRequest>, String),
     }
 
     enum CoreMessage {
@@ -99,7 +98,7 @@ mod shell {
                 if let Effect::Time(request) = effect {
                     queue.push_back(CoreMessage::Response(Outcome::Time(
                         request,
-                        "2022-12-01T01:47:12.746202562+00:00".parse().unwrap(),
+                        "2022-12-01T01:47:12.746202562+00:00".to_string(),
                     )));
                 }
             }
@@ -112,7 +111,6 @@ mod tests {
         shared::{App, Effect, Event, Model},
         shell::run,
     };
-    use chrono::{DateTime, Utc};
     use crux_core::{testing::AppTester, Core};
 
     #[test]
@@ -136,7 +134,7 @@ mod tests {
             panic!("Expected Time effect");
         };
 
-        let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
+        let now = "2022-12-01T01:47:12.746202562+00:00".to_string();
         let update = app.resolve(&mut request, now).unwrap();
 
         let event = update.events.into_iter().next().unwrap();

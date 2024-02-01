@@ -7,21 +7,20 @@
 //! This is still work in progress and as such very basic.
 use chrono::{DateTime, Utc};
 use crux_core::capability::{CapabilityContext, Operation};
-use crux_core::macros::Capability;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeRequest;
 
 impl Operation for TimeRequest {
-    type Output = DateTime<Utc>;
+    type Output = String;
 }
 
 /// The Time capability API. Uses the `chrono` crate's timezone aware representation
 /// of the current date and time.
 ///
 /// The time value serializes as an RFC3339 string across the FFI boundary.
-#[derive(Capability)]
+#[derive(crux_core::macros::Capability)]
 pub struct Time<Ev> {
     context: CapabilityContext<TimeRequest, Ev>,
 }
@@ -52,7 +51,9 @@ where
             let context = self.context.clone();
             async move {
                 let response = context.request_from_shell(TimeRequest).await;
-
+                let response = response
+                    .parse::<DateTime<Utc>>()
+                    .expect("invalid time format");
                 context.update_app(callback(response));
             }
         });
@@ -61,6 +62,10 @@ where
     /// Request current time, which will be returned as `chrono::DateTime<Utc>`.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub async fn now_async(&self) -> DateTime<Utc> {
-        self.context.request_from_shell(TimeRequest).await
+        self.context
+            .request_from_shell(TimeRequest)
+            .await
+            .parse::<DateTime<Utc>>()
+            .expect("invalid time format")
     }
 }

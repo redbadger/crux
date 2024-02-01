@@ -1,3 +1,4 @@
+#[cfg(feature = "typegen")]
 mod shared {
     use crux_core::macros::{Effect, Export};
     use crux_core::render::Render;
@@ -31,6 +32,7 @@ mod shared {
     }
 }
 
+#[cfg(feature = "typegen")]
 mod test {
     use super::shared::{App, Event};
     use crux_core::typegen::TypeGen;
