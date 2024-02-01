@@ -49,7 +49,7 @@ impl<Ev> Compose<Ev> {
     ///
     /// For example:
     /// ```
-    /// # use crux_macros::Effect;
+    /// # use crux_core::macros::Effect;
     /// # use serde::Serialize;
     /// # #[derive(Default, Clone)]
     /// # pub struct App;

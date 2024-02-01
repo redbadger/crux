@@ -5,7 +5,7 @@
 //!
 //! This is still work in progress and extremely basic.
 use crux_core::capability::{CapabilityContext, Operation};
-use crux_macros::Capability;
+use crux_core::macros::Capability;
 use serde::{Deserialize, Serialize};
 
 /// Supported operations

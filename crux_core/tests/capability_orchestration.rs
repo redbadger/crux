@@ -1,5 +1,5 @@
 mod app {
-    use crux_macros::Effect;
+    use crux_core::macros::Effect;
     use futures::future::join;
     use serde::Serialize;
 
@@ -59,7 +59,7 @@ mod app {
 pub mod capabilities {
     pub mod one {
         use crux_core::capability::{CapabilityContext, Operation};
-        use crux_macros::Capability;
+        use crux_core::macros::Capability;
         use serde::{Deserialize, Serialize};
 
         #[derive(PartialEq, Serialize, Deserialize, Debug)]
@@ -120,7 +120,7 @@ pub mod capabilities {
 
     pub mod two {
         use crux_core::capability::{CapabilityContext, Operation};
-        use crux_macros::Capability;
+        use crux_core::macros::Capability;
         use serde::{Deserialize, Serialize};
 
         #[derive(PartialEq, Serialize, Deserialize, Debug)]

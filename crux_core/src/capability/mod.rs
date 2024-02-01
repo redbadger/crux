@@ -12,7 +12,7 @@
 //!# use url::Url;
 //!# const API_URL: &str = "";
 //!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
-//!# #[derive(crux_macros::Effect)]
+//!# #[derive(crux_core::macros::Effect)]
 //!# pub struct Capabilities {
 //!#     pub render: crux_core::render::Render<Event>,
 //!#     pub http: crux_http::Http<Event>,
@@ -59,7 +59,7 @@
 //! // An app module which can be reused in different apps
 //! mod my_app {
 //!     use crux_core::{capability::CapabilityContext, App, render::Render};
-//!     use crux_macros::Effect;
+//!     use crux_core::macros::Effect;
 //!     use serde::{Serialize, Deserialize};
 //!
 //!     #[derive(Default)]
@@ -119,7 +119,7 @@
 //! use crux_core::{
 //!     capability::{CapabilityContext, Operation},
 //! };
-//! use crux_macros::Capability;
+//! use crux_core::macros::Capability;
 //! use serde::{Serialize, Deserialize};
 //!
 //! // A duck
@@ -226,7 +226,7 @@ pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
 /// e.g.
 /// ```rust
 /// # use crux_core::capability::{CapabilityContext, Never};
-/// # use crux_macros::Capability;
+/// # use crux_core::macros::Capability;
 /// #[derive(Capability)]
 /// pub struct Compose<E> {
 ///     context: CapabilityContext<Never, E>,
@@ -336,7 +336,7 @@ pub trait Capability<Ev> {
 /// # }
 /// # impl crux_core::Effect for Effect {
 /// #     type Ffi = EffectFfi;
-/// #     fn serialize<'out>(self) -> (Self::Ffi, crux_core::bridge::ResolveBytes) {
+/// #     fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
 /// #         match self {
 /// #             Effect::Http(request) => request.serialize(EffectFfi::Http),
 /// #             Effect::Render(request) => request.serialize(EffectFfi::Render),
@@ -528,7 +528,7 @@ where
     /// # pub enum Event {
     /// #     Submodule(child::Event),
     /// # }
-    /// # #[derive(crux_macros::Effect)]
+    /// # #[derive(crux_core::macros::Effect)]
     /// # pub struct Capabilities {
     /// #     some_capability: crux_time::Time<Event>,
     /// #     render: crux_core::render::Render<Event>,
@@ -562,7 +562,7 @@ where
     /// #     #[derive(Default)]
     /// #     struct App;
     /// #     pub struct Event;
-    /// #     #[derive(crux_macros::Effect)]
+    /// #     #[derive(crux_core::macros::Effect)]
     /// #     pub struct Capabilities {
     /// #         pub some_capability: crux_time::Time<Event>,
     /// #         pub render: crux_core::render::Render<Event>,

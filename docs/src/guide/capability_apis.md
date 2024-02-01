@@ -60,7 +60,7 @@ Now we can implement the capability:
 
 ```rust,noplayground
 use crux_core::capability::CapabilityContext;
-use crux_macros::Capability;
+use crux_core::macros::Capability;
 
 #[derive(Capability)]
 struct Delay<Ev> {

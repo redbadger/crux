@@ -1,6 +1,6 @@
 mod shared {
+    use crux_core::macros::Effect;
     use crux_core::render::Render;
-    use crux_macros::Effect;
     use crux_time::Time;
     use serde::{Deserialize, Serialize};
 

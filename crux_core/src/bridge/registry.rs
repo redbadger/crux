@@ -6,13 +6,13 @@ use std::{
 use uuid::Uuid;
 
 use super::Request;
-use crate::bridge::request_serde::ResolveBytes;
+use crate::bridge::request_serde::ResolveSerialized;
 use crate::core::ResolveError;
 use crate::Effect;
 
 type Store<T> = HashMap<[u8; 16], T>;
 
-pub struct ResolveRegistry(Mutex<Store<ResolveBytes>>);
+pub struct ResolveRegistry(Mutex<Store<ResolveSerialized>>);
 
 impl Default for ResolveRegistry {
     fn default() -> Self {
@@ -46,7 +46,11 @@ impl ResolveRegistry {
 
     /// Resume a previously registered effect. This may fail, either because UUID wasn't
     /// found or because this effect was not expected to be resumed again.
-    pub fn resume(&self, uuid: &[u8], body: &[u8]) -> Result<(), ResolveError> {
+    pub fn resume(
+        &self,
+        uuid: &[u8],
+        body: &mut dyn erased_serde::Deserializer,
+    ) -> Result<(), ResolveError> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
         let entry = {

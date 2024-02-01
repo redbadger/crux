@@ -40,8 +40,7 @@
 //!
 //! ```rust
 //!// src/app.rs
-//!use crux_core::{render::Render, App};
-//!use crux_macros::Effect;
+//!use crux_core::{render::Render, App, macros::Effect};
 //!use serde::{Deserialize, Serialize};
 //!
 //!// Model describing the application state
@@ -167,6 +166,7 @@ pub use self::{
     capability::{Capability, WithContext},
     core::{Core, Effect, Request},
 };
+pub use crux_macros as macros;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).

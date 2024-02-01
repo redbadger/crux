@@ -1,6 +1,6 @@
 mod shared {
+    use crux_core::macros::{Effect, Export};
     use crux_core::render::Render;
-    use crux_macros::{Effect, Export};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
