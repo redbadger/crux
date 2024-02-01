@@ -24,7 +24,7 @@ use syn::parse_macro_input;
 /// e.g.
 /// ```rust
 /// # use crux_core::{Capability, render::Render, compose::Compose};
-/// # use crux_macros::Effect;
+/// # use crux_core::macros::Effect;
 /// # #[derive(Default)]
 /// # struct MyApp;
 /// # pub enum MyEvent {None}

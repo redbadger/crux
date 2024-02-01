@@ -1,7 +1,7 @@
 mod capability {
     use async_channel::Sender;
     use crux_core::capability::{CapabilityContext, Operation};
-    use crux_macros::Capability;
+    use crux_core::macros::Capability;
     use futures::StreamExt;
     use serde::{Deserialize, Serialize};
 
@@ -82,7 +82,7 @@ mod capability {
 
 mod app {
     use crux_core::App;
-    use crux_macros::Effect;
+    use crux_core::macros::Effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]

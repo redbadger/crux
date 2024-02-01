@@ -406,7 +406,6 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "crux_core",
- "crux_macros",
  "derive_builder",
  "futures-test",
  "futures-util",
@@ -423,7 +422,6 @@ version = "0.1.8"
 dependencies = [
  "anyhow",
  "crux_core",
- "crux_macros",
  "serde",
 ]
 
@@ -449,7 +447,6 @@ version = "0.1.7"
 dependencies = [
  "anyhow",
  "crux_core",
- "crux_macros",
  "serde",
 ]
 
@@ -460,7 +457,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "crux_core",
- "crux_macros",
  "serde",
 ]
 

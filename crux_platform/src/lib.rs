@@ -1,7 +1,7 @@
 //! TODO mod docs
 
 use crux_core::capability::{CapabilityContext, Operation};
-use crux_macros::Capability;
+use crux_core::macros::Capability;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

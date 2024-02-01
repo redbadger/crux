@@ -1,7 +1,7 @@
 mod shared {
     use crux_core::render::Render;
     use crux_kv::{KeyValue, KeyValueOutput};
-    use crux_macros::Effect;
+    use crux_core::macros::Effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]

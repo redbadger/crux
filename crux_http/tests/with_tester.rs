@@ -4,7 +4,7 @@ mod shared {
 
     use crux_core::compose::Compose;
     use crux_http::Http;
-    use crux_macros::Effect;
+    use crux_core::macros::Effect;
     use futures_util::join;
     use http_types::StatusCode;
     use serde::{Deserialize, Serialize};

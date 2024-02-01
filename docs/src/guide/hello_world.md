@@ -92,7 +92,7 @@ unnecessary mistakes, we can use the `Effect` derive macro from the
 
 ```rust,noplayground
 use crux_core::render::Render;
-use crux_macros::Effect;
+use crux_core::macros::Effect;
 
 #[derive(Effect)]
 #[effect(app = "Hello")]
@@ -114,7 +114,7 @@ to be serializable. The resulting code will end up looking like this:
 
 ```rust,noplayground
 use crux_core::{render::Render, App};
-use crux_macros::Effect;
+use crux_core::macros::Effect;
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]

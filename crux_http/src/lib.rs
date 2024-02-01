@@ -6,7 +6,7 @@
 // #![warn(missing_docs)]
 
 use crux_core::capability::CapabilityContext;
-use crux_macros::Capability;
+use crux_core::macros::Capability;
 use http::Method;
 use url::Url;
 
