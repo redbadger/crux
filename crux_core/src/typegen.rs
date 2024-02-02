@@ -216,7 +216,7 @@ impl TypeGen {
     /// which the deserialization will use instead.
     pub fn register_samples<'de, T>(&mut self, sample_data: Vec<T>) -> Result
     where
-        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
+        T: serde::Deserialize<'de> + serde::Serialize,
     {
         match &mut self.state {
             State::Registering(tracer, samples) => {
@@ -225,9 +225,9 @@ impl TypeGen {
                         Ok(_) => {}
                         Err(e) => {
                             return Err(TypeGenError::ValueTracing(format!(
-                                "[{sample:?}] {}",
-                                e.explanation()
-                            )))
+                                "{e}: {exp}",
+                                exp = e.explanation()
+                            )));
                         }
                     }
                 }
@@ -269,7 +269,7 @@ impl TypeGen {
 HINT: This may be because you are trying to trace a generic type,
 which is currently not supported.
 The 2 common cases are:
-    * Capability output types
+    * Capability output types. It's generally recommended to wrap them in your own type.
     * Event variants which could have a `#[serde(skip)]` because they don't leave the core
 "#,
                     exp = e.explanation()
@@ -308,7 +308,7 @@ The 2 common cases are:
     /// that does not use custom deserialization.
     pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result
     where
-        T: serde::Deserialize<'de> + serde::Serialize + std::fmt::Debug,
+        T: serde::Deserialize<'de> + serde::Serialize,
     {
         match &mut self.state {
             State::Registering(tracer, samples) => {
@@ -317,15 +317,15 @@ The 2 common cases are:
                         Ok(_) => {}
                         Err(e @ serde_reflection::Error::DeserializationError(_)) => {
                             return Err(TypeGenError::ValueTracing(format!(
-                                "[{sample:?}] {e}: {exp}",
+                                "{e}: {exp}",
                                 exp = e.explanation()
-                            )))
+                            )));
                         }
                         Err(e) => {
                             return Err(TypeGenError::ValueTracing(format!(
-                                "[{sample:?}] {e}: {exp}",
+                                "{e}: {exp}",
                                 exp = e.explanation()
-                            )))
+                            )));
                         }
                     }
                 }
