@@ -1,6 +1,8 @@
-use crux_core::typegen::TypeGen;
-use shared::CatFacts;
 use std::path::PathBuf;
+
+use crux_core::typegen::TypeGen;
+
+use shared::CatFacts;
 
 fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../shared");

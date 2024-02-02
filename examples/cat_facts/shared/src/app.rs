@@ -1,5 +1,6 @@
 pub mod platform;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 pub use crux_core::App;
@@ -8,7 +9,7 @@ use crux_http::Http;
 use crux_kv::{KeyValue, KeyValueOutput};
 use crux_macros::Effect;
 use crux_platform::Platform;
-use crux_time::{Time, TimeResponse};
+use crux_time::Time;
 
 use platform::Capabilities;
 
@@ -67,9 +68,12 @@ pub enum Event {
     Restore, // restore state
 
     // events local to the core
+    #[serde(skip)]
     Platform(platform::Event),
+    #[serde(skip)]
     SetState(KeyValueOutput), // receive the data to restore state with
-    CurrentTime(TimeResponse),
+    #[serde(skip)]
+    CurrentTime(DateTime<Utc>),
     #[serde(skip)]
     SetFact(crux_http::Result<crux_http::Response<CatFact>>),
     #[serde(skip)]
@@ -152,7 +156,7 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.write("state", bytes, |_| Event::None);
 
-                caps.time.get(Event::CurrentTime);
+                caps.time.now(Event::CurrentTime);
             }
             Event::SetImage(Ok(mut response)) => {
                 if response.status().is_success() {
@@ -177,7 +181,7 @@ impl App for CatFacts {
                 // TODO: Display an error or something?
             }
             Event::CurrentTime(iso_time) => {
-                model.time = Some(iso_time.0);
+                model.time = Some(iso_time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.write("state", bytes, |_| Event::None);
 

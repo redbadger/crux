@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::macros::{Effect, Export};
+    use crux_core::macros::Effect;
     use crux_core::render::Render;
     use serde::{Deserialize, Serialize};
 
@@ -28,7 +28,7 @@ mod app {
         }
     }
 
-    #[derive(Effect, Export)]
+    #[derive(Effect)]
     pub struct Capabilities {
         pub render: Render<Event>,
     }

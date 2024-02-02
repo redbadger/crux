@@ -106,8 +106,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
 
         Effect::Time(mut request) => {
             let now: DateTime<Utc> = SystemTime::now().into();
-            let iso_time = now.to_rfc3339();
-            let response = TimeResponse(iso_time);
+            let response = TimeResponse(now.to_rfc3339());
 
             for effect in core.resolve(&mut request, response) {
                 process_effect(core, effect, tx)?;

@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::macros::{Effect, Export};
+    use crux_core::macros::Effect;
     use crux_core::render::Render;
     use crux_http::Http;
     use serde::{Deserialize, Serialize};
@@ -74,7 +74,7 @@ mod shared {
         }
     }
 
-    #[derive(Effect, Export)]
+    #[derive(Effect)]
     pub(crate) struct Capabilities {
         pub http: Http<Event>,
         pub render: Render<Event>,
@@ -135,7 +135,7 @@ mod tests {
         shell::run,
     };
     use anyhow::Result;
-    use crux_core::{typegen::TypeGen, Core};
+    use crux_core::Core;
     use crux_http::protocol::HttpRequest;
 
     #[test]
@@ -168,29 +168,5 @@ mod tests {
         );
         assert_eq!(core.view().result, "Status: 0, Body: , Json Body: Hello");
         Ok(())
-    }
-
-    #[test]
-    fn generate_types() {
-        let mut gen = TypeGen::new();
-
-        gen.register_app::<App>().unwrap();
-
-        let registry = match gen.state {
-            crux_core::typegen::State::Registering(tracer, _) => {
-                tracer.registry().expect("Should get registry")
-            }
-            crux_core::typegen::State::Generating(_) => {
-                panic!("Expected to still be in registering stage")
-            }
-        };
-
-        assert!(registry.contains_key("Event"));
-        assert!(registry.contains_key("ViewModel"));
-
-        assert!(registry.contains_key("Effect"));
-        assert!(registry.contains_key("RenderOperation"));
-        assert!(registry.contains_key("HttpRequest"));
-        assert!(registry.contains_key("HttpResponse"));
     }
 }

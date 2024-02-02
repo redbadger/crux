@@ -139,9 +139,9 @@ This might be because you attempted to pass types with custom serialization acro
 
 #[derive(Error, Debug)]
 pub enum TypeGenError {
-    #[error("type tracing failed {0}")]
+    #[error("type tracing failed: {0}")]
     TypeTracing(String),
-    #[error("value tracing failed {0}")]
+    #[error("value tracing failed: {0}")]
     ValueTracing(String),
     #[error("type tracing failed: {0} {}", DESERIALIZATION_ERROR_HINT)]
     Deserialization(String),
@@ -223,7 +223,12 @@ impl TypeGen {
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(e) => return Err(TypeGenError::ValueTracing(e.explanation())),
+                        Err(e) => {
+                            return Err(TypeGenError::ValueTracing(format!(
+                                "{e}: {exp}",
+                                exp = e.explanation()
+                            )));
+                        }
                     }
                 }
                 Ok(())
@@ -259,7 +264,14 @@ impl TypeGen {
                     TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
                 ),
                 Err(e) => Err(TypeGenError::TypeTracing(format!(
-                    "{e}: {exp}",
+                    r#"{e}:
+{exp}
+HINT: This may be because you are trying to trace a generic type,
+which is currently not supported.
+The 2 common cases are:
+    * Capability output types. It's generally recommended to wrap them in your own type.
+    * Event variants which could have a `#[serde(skip)]` because they don't leave the core
+"#,
                     exp = e.explanation()
                 ))),
             },
@@ -307,13 +319,13 @@ impl TypeGen {
                             return Err(TypeGenError::ValueTracing(format!(
                                 "{e}: {exp}",
                                 exp = e.explanation()
-                            )))
+                            )));
                         }
                         Err(e) => {
                             return Err(TypeGenError::ValueTracing(format!(
                                 "{e}: {exp}",
                                 exp = e.explanation()
-                            )))
+                            )));
                         }
                     }
                 }

@@ -65,13 +65,12 @@ mod shared {
 
 mod shell {
     use super::shared::{App, Effect, Event};
-    use chrono::{DateTime, Utc};
     use crux_core::{Core, Request};
-    use crux_time::TimeRequest;
+    use crux_time::{TimeRequest, TimeResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Time(Request<TimeRequest>, DateTime<Utc>),
+        Time(Request<TimeRequest>, String),
     }
 
     enum CoreMessage {
@@ -90,7 +89,7 @@ mod shell {
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
                 Some(CoreMessage::Response(Outcome::Time(mut request, result))) => {
-                    core.resolve(&mut request, result)
+                    core.resolve(&mut request, TimeResponse(result))
                 }
                 _ => vec![],
             };
@@ -99,7 +98,7 @@ mod shell {
                 if let Effect::Time(request) = effect {
                     queue.push_back(CoreMessage::Response(Outcome::Time(
                         request,
-                        "2022-12-01T01:47:12.746202562+00:00".parse().unwrap(),
+                        "2022-12-01T01:47:12.746202562+00:00".to_string(),
                     )));
                 }
             }
@@ -112,8 +111,8 @@ mod tests {
         shared::{App, Effect, Event, Model},
         shell::run,
     };
-    use chrono::{DateTime, Utc};
     use crux_core::{testing::AppTester, Core};
+    use crux_time::TimeResponse;
 
     #[test]
     pub fn test_time() {
@@ -136,8 +135,9 @@ mod tests {
             panic!("Expected Time effect");
         };
 
-        let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
-        let update = app.resolve(&mut request, now).unwrap();
+        let now = "2022-12-01T01:47:12.746202562+00:00".to_string();
+        let response = TimeResponse(now);
+        let update = app.resolve(&mut request, response).unwrap();
 
         let event = update.events.into_iter().next().unwrap();
         app.update(event, &mut model);

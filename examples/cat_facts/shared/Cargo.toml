@@ -14,16 +14,17 @@ typegen = ["crux_core/typegen"]
 [dependencies]
 anyhow.workspace = true
 bincode = "1.3.3"
-crux_core = "0.7"
-crux_http = "0.4"
-crux_kv = "0.1"
-crux_macros = "0.3"
-crux_platform = "0.1"
-crux_time = "0.1"
+chrono = { version = "0.4.33", features = ["serde"] }
+crux_core = { workspace = true }
+crux_http = { workspace = true }
+crux_kv = { workspace = true }
+crux_macros = { workspace = true }
+crux_platform = { workspace = true }
+crux_time = { workspace = true }
 derive_more = "0.99.17"
 lazy_static = "1.4.0"
 serde = { workspace = true, features = ["derive"] }
-serde_json = "1.0.111"
+serde_json = "1.0.113"
 thiserror = "1.0.56"
 uniffi = "0.26.1"
 url = "2.5.0"
