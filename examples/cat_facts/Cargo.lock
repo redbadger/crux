@@ -3525,7 +3525,6 @@ name = "web-yew"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "gloo-console 0.3.0",
  "gloo-net 0.5.0",
  "js-sys",

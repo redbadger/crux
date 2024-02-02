@@ -10,7 +10,6 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-chrono = "0.4.33"
 gloo-console = "0.3.0"
 gloo-net = { version = "0.5.0", features = ["http"] }
 js-sys = "0.3.67"
