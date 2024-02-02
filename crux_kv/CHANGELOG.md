@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9](https://github.com/redbadger/crux/compare/crux_kv-v0.1.8...crux_kv-v0.1.9) - 2024-02-02
+
+### Fixed
+- fix doc test deps
+
+### Other
+- Make rust fmt happy
+- Export crux_macros from crux_core and change docs
+- More human readable change logs
+
 ## [0.1.8](https://github.com/redbadger/crux/compare/crux_kv-v0.1.7...crux_kv-v0.1.8) - 2024-01-26
 
 ### Other

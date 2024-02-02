@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7](https://github.com/redbadger/crux/compare/crux_macros-v0.3.6...crux_macros-v0.3.7) - 2024-02-02
+
+### Fixed
+- fix doc test deps
+
+### Other
+- update `crux_time` to not use generic response type + overall deps
+- Export crux_macros from crux_core and change docs
+- Rename a bunch of things to better reflect how they work
+- fun with erased_serde
+- Better names, mod structure, and documentation with plentiful warnings
+- Merge serialization traits into one
+- Initial cut of allowing bridge to use different serialization
+
 ## [0.3.6](https://github.com/redbadger/crux/compare/crux_macros-v0.3.5...crux_macros-v0.3.6) - 2024-01-26
 
 ### Other

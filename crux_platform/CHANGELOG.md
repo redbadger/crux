@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8](https://github.com/redbadger/crux/compare/crux_platform-v0.1.7...crux_platform-v0.1.8) - 2024-02-02
+
+### Fixed
+- fix doc test deps
+
+### Other
+- Export crux_macros from crux_core and change docs
+
 ## [0.1.7](https://github.com/redbadger/crux/compare/crux_platform-v0.1.6...crux_platform-v0.1.7) - 2024-01-11
 
 ### Other

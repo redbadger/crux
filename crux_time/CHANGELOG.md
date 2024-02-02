@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/redbadger/crux/compare/crux_time-v0.2.0...crux_time-v0.2.1) - 2024-02-02
+
+### Fixed
+- fix doc test deps
+
+### Other
+- TimeResponse(String) and fix up cat_facts examples
+- update `crux_time` to not use generic response type + overall deps
+- Export crux_macros from crux_core and change docs
+- More human readable change logs
+
 ## [0.2.0](https://github.com/redbadger/crux/compare/crux_time-v0.1.8...crux_time-v0.2.0) - 2024-01-26
 
 ### Breaking change
