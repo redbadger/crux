@@ -409,7 +409,7 @@ dependencies = [
  "derive_builder",
  "futures-test",
  "futures-util",
- "http-types",
+ "http-types-red-badger-temporary-fork",
  "pin-project-lite",
  "serde",
  "serde_json",
@@ -879,9 +879,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
-name = "http-types"
+name = "http-types-red-badger-temporary-fork"
 version = "2.12.0"
-source = "git+https://github.com/redbadger/http-types.git?branch=v2.x.x-backports#c8eb9f241e39c55e88a46b5e5152794497519dd3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "667889388f104630be2d14a09cd78f4867ddb54787c6c83366cbfb72fa3ce793"
 dependencies = [
  "anyhow",
  "async-channel 1.9.0",
