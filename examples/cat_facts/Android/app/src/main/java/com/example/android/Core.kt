@@ -43,46 +43,39 @@ open class Core : androidx.lifecycle.ViewModel() {
             is Effect.Render -> {
                 this.view = ViewModel.bincodeDeserialize(view())
             }
-
             is Effect.Http -> {
                 val response = requestHttp(httpClient, effect.value)
 
                 val effects =
-                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                        handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
-
             is Effect.Time -> {
                 val response =
-                    TimeResponse(
-                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
-                    )
+                        TimeResponse(ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT))
 
-                val effects =
-                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                val effects = handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
-
             is Effect.Platform -> {
                 val response = PlatformResponse(Build.BRAND + " " + Build.VERSION.RELEASE)
 
                 val effects =
-                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                        handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
-
             is Effect.KeyValue -> {}
         }
     }

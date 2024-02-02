@@ -31,18 +31,6 @@ typedef struct RustBuffer
 
 typedef int32_t (*ForeignCallback)(uint64_t, int32_t, const uint8_t *_Nonnull, int32_t, RustBuffer *_Nonnull);
 
-// Task defined in Rust that Swift executes
-typedef void (*UniFfiRustTaskCallback)(const void * _Nullable, int8_t);
-
-// Callback to execute Rust tasks using a Swift Task
-//
-// Args:
-//   executor: ForeignExecutor lowered into a size_t value
-//   delay: Delay in MS
-//   task: UniFfiRustTaskCallback to call
-//   task_data: data to pass the task callback
-typedef int8_t (*UniFfiForeignExecutorCallback)(size_t, uint32_t, UniFfiRustTaskCallback _Nullable, const void * _Nullable);
-
 typedef struct ForeignBytes
 {
     int32_t len;
@@ -78,9 +66,7 @@ void ffi_shared_rustbuffer_free(RustBuffer buf, RustCallStatus *_Nonnull out_sta
 );
 RustBuffer ffi_shared_rustbuffer_reserve(RustBuffer buf, int32_t additional, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_continuation_callback_set(UniFfiRustFutureContinuation _Nonnull callback
-);
-void ffi_shared_rust_future_poll_u8(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_u8(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_u8(void* _Nonnull handle
 );
@@ -88,7 +74,7 @@ void ffi_shared_rust_future_free_u8(void* _Nonnull handle
 );
 uint8_t ffi_shared_rust_future_complete_u8(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_i8(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_i8(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_i8(void* _Nonnull handle
 );
@@ -96,7 +82,7 @@ void ffi_shared_rust_future_free_i8(void* _Nonnull handle
 );
 int8_t ffi_shared_rust_future_complete_i8(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_u16(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_u16(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_u16(void* _Nonnull handle
 );
@@ -104,7 +90,7 @@ void ffi_shared_rust_future_free_u16(void* _Nonnull handle
 );
 uint16_t ffi_shared_rust_future_complete_u16(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_i16(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_i16(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_i16(void* _Nonnull handle
 );
@@ -112,7 +98,7 @@ void ffi_shared_rust_future_free_i16(void* _Nonnull handle
 );
 int16_t ffi_shared_rust_future_complete_i16(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_u32(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_u32(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_u32(void* _Nonnull handle
 );
@@ -120,7 +106,7 @@ void ffi_shared_rust_future_free_u32(void* _Nonnull handle
 );
 uint32_t ffi_shared_rust_future_complete_u32(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_i32(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_i32(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_i32(void* _Nonnull handle
 );
@@ -128,7 +114,7 @@ void ffi_shared_rust_future_free_i32(void* _Nonnull handle
 );
 int32_t ffi_shared_rust_future_complete_i32(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_u64(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_u64(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_u64(void* _Nonnull handle
 );
@@ -136,7 +122,7 @@ void ffi_shared_rust_future_free_u64(void* _Nonnull handle
 );
 uint64_t ffi_shared_rust_future_complete_u64(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_i64(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_i64(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_i64(void* _Nonnull handle
 );
@@ -144,7 +130,7 @@ void ffi_shared_rust_future_free_i64(void* _Nonnull handle
 );
 int64_t ffi_shared_rust_future_complete_i64(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_f32(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_f32(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_f32(void* _Nonnull handle
 );
@@ -152,7 +138,7 @@ void ffi_shared_rust_future_free_f32(void* _Nonnull handle
 );
 float ffi_shared_rust_future_complete_f32(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_f64(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_f64(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_f64(void* _Nonnull handle
 );
@@ -160,7 +146,7 @@ void ffi_shared_rust_future_free_f64(void* _Nonnull handle
 );
 double ffi_shared_rust_future_complete_f64(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_pointer(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_pointer(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_pointer(void* _Nonnull handle
 );
@@ -168,7 +154,7 @@ void ffi_shared_rust_future_free_pointer(void* _Nonnull handle
 );
 void*_Nonnull ffi_shared_rust_future_complete_pointer(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_rust_buffer(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_rust_buffer(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_rust_buffer(void* _Nonnull handle
 );
@@ -176,7 +162,7 @@ void ffi_shared_rust_future_free_rust_buffer(void* _Nonnull handle
 );
 RustBuffer ffi_shared_rust_future_complete_rust_buffer(void* _Nonnull handle, RustCallStatus *_Nonnull out_status
 );
-void ffi_shared_rust_future_poll_void(void* _Nonnull handle, void* _Nonnull uniffi_callback
+void ffi_shared_rust_future_poll_void(void* _Nonnull handle, UniFfiRustFutureContinuation _Nonnull callback, void* _Nonnull callback_data
 );
 void ffi_shared_rust_future_cancel_void(void* _Nonnull handle
 );

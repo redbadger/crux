@@ -1,30 +1,28 @@
 import type { Dispatch, SetStateAction } from "react";
 import UAParser from "ua-parser-js";
 
-import { process_event, handle_response, view } from "shared/shared";
-import type {
+import { handle_response, process_event, view } from "shared/shared";
+import {
+  BincodeDeserializer,
+  BincodeSerializer,
+} from "shared_types/bincode/mod";
+import {
   Effect,
   Event,
   HttpResponse,
   KeyValueOutput,
-} from "shared_types/types/shared_types";
-import {
-  PlatformResponse,
   TimeResponse,
 } from "shared_types/types/shared_types";
 import {
-  EffectVariantRender,
-  ViewModel,
   EffectVariantHttp,
-  Request,
-  EffectVariantTime,
   EffectVariantKeyValue,
   EffectVariantPlatform,
+  EffectVariantRender,
+  EffectVariantTime,
+  PlatformResponse,
+  Request,
+  ViewModel,
 } from "shared_types/types/shared_types";
-import {
-  BincodeSerializer,
-  BincodeDeserializer,
-} from "shared_types/bincode/mod";
 
 import { request as http } from "./http";
 

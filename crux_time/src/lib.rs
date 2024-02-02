@@ -12,8 +12,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeRequest;
 
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TimeResponse(pub String);
+
 impl Operation for TimeRequest {
-    type Output = String;
+    type Output = TimeResponse;
 }
 
 /// The Time capability API. Uses the `chrono` crate's timezone aware representation
@@ -52,6 +55,7 @@ where
             async move {
                 let response = context.request_from_shell(TimeRequest).await;
                 let response = response
+                    .0
                     .parse::<DateTime<Utc>>()
                     .expect("invalid time format");
                 context.update_app(callback(response));
@@ -65,6 +69,7 @@ where
         self.context
             .request_from_shell(TimeRequest)
             .await
+            .0
             .parse::<DateTime<Utc>>()
             .expect("invalid time format")
     }

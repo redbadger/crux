@@ -710,7 +710,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "crossbeam-channel",
- "crux_macros 0.3.6",
+ "crux_macros",
  "derive_more",
  "erased-serde",
  "futures",
@@ -724,30 +724,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "crux_core"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec3d3d92fa133ed376b7287be3c992bc29bf0927f6c1bff19a918686be97a635"
-dependencies = [
- "anyhow",
- "bincode",
- "crossbeam-channel",
- "derive_more",
- "futures",
- "serde",
- "serde_json",
- "thiserror",
- "uuid",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "crux_http"
 version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "crux_core 0.7.2",
+ "crux_core",
  "derive_builder",
  "futures-util",
  "http-types 2.12.0 (git+https://github.com/redbadger/http-types.git?branch=v2.x.x-backports)",
@@ -758,42 +740,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "crux_http"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19d7eca4e37245c92391792371b3151ac80adb951356db56cb26d25f2ef4a82e"
-dependencies = [
- "anyhow",
- "async-trait",
- "crux_core 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "crux_macros 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "derive_builder",
- "futures-util",
- "http-types 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "pin-project-lite",
- "serde",
- "serde_json",
- "url",
-]
-
-[[package]]
 name = "crux_kv"
 version = "0.1.8"
 dependencies = [
  "anyhow",
- "crux_core 0.7.2",
- "serde",
-]
-
-[[package]]
-name = "crux_kv"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ca80048149c4e9e0185310dc7ff354c0c8eab1d3479416cb236863d94916c6c"
-dependencies = [
- "anyhow",
- "crux_core 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "crux_macros 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crux_core",
  "serde",
 ]
 
@@ -809,36 +760,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "crux_macros"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c44b2eed1191fadc2e1fdcc3d35e8b13f95b34ae964236e0f14bcfdb386529dd"
-dependencies = [
- "darling 0.20.5",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 2.0.48",
-]
-
-[[package]]
 name = "crux_platform"
 version = "0.1.7"
 dependencies = [
  "anyhow",
- "crux_core 0.7.2",
- "serde",
-]
-
-[[package]]
-name = "crux_platform"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c84cc62033922b6466e7594224abc1c42d2edba8a425f622d7193514af867f5d"
-dependencies = [
- "anyhow",
- "crux_core 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "crux_macros 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crux_core",
  "serde",
 ]
 
@@ -848,20 +774,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
- "crux_core 0.7.2",
- "serde",
-]
-
-[[package]]
-name = "crux_time"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "213ba72f68d03f54d39070d37634ba02a5c0d795a8b7c3e76d21f904aaf986e4"
-dependencies = [
- "anyhow",
- "chrono",
- "crux_core 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "crux_macros 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crux_core",
  "serde",
 ]
 
@@ -2832,12 +2745,12 @@ dependencies = [
  "assert_let_bind",
  "bincode",
  "chrono",
- "crux_core 0.7.2",
- "crux_http 0.5.0",
- "crux_kv 0.1.8",
- "crux_macros 0.3.6",
- "crux_platform 0.1.7",
- "crux_time 0.2.0",
+ "crux_core",
+ "crux_http",
+ "crux_kv",
+ "crux_macros",
+ "crux_platform",
+ "crux_time",
  "derive_more",
  "lazy_static",
  "serde",
@@ -2853,11 +2766,11 @@ name = "shared_types"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "crux_core 0.7.2",
- "crux_http 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "crux_kv 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "crux_platform 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "crux_time 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crux_core",
+ "crux_http",
+ "crux_kv",
+ "crux_platform",
+ "crux_time",
  "shared",
 ]
 
