@@ -4,6 +4,16 @@ pub struct Error {
     code: Option<crate::http::StatusCode>,
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(code) = self.code {
+            write!(f, "{}: {}", code, self.message)
+        } else {
+            write!(f, "{}", self.message)
+        }
+    }
+}
+
 impl Error {
     pub fn new(code: Option<crate::http::StatusCode>, message: impl Into<String>) -> Self {
         Error {
@@ -37,5 +47,19 @@ impl From<url::ParseError> for Error {
             message: e.to_string(),
             code: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_display() {
+        let error = Error::new(Some(crate::http::StatusCode::BadRequest), "Bad Request");
+        assert_eq!(error.to_string(), "400: Bad Request");
+
+        let error = Error::new(None, "internal server error");
+        assert_eq!(error.to_string(), "internal server error");
     }
 }
