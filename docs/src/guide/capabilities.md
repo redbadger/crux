@@ -222,7 +222,7 @@ add it to your Capabilities struct:
 ```rust,noplayground
 use crux::compose::Compose;
 
-#[derive(Effect)]
+#[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
     pub http: Http<Event>,
     pub render: Render<Event>,
