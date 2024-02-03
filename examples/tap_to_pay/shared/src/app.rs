@@ -1,7 +1,6 @@
 mod payment;
 
 use crux_core::render::Render;
-use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::delay::Delay;
@@ -36,9 +35,9 @@ pub enum Screen {
     // TODO Settings
 }
 
-#[derive(Effect)]
+#[derive(crux_core::macros::Effect)]
 #[effect(app = "App")]
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 pub struct Capabilities {
     render: Render<Event>,
     delay: Delay<Event>,

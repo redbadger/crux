@@ -87,8 +87,7 @@ That means the core can produce a single `Effect`. It will soon be more than
 one, so we'll wrap it in an enum to give ourselves space. The `Effect` enum
 corresponds one to one to the `Capabilities` we're using, and rather than typing
 it (and its associated trait implementations) by hand and open ourselves to
-unnecessary mistakes, we can use the `Effect` derive macro from the
-`crux_macros` crate.
+unnecessary mistakes, we can use the `crux_core::macros::Effect` derive macro.
 
 ```rust,noplayground
 use crux_core::render::Render;
@@ -117,7 +116,7 @@ use crux_core::{render::Render, App};
 use crux_core::macros::Effect;
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(Effect)]
 #[effect(app = "Hello")]
 pub struct Capabilities {

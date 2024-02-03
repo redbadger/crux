@@ -35,7 +35,7 @@ and this project adheres to
 - Introduce `Never` type for capabilities that don't request effects
 - Effect derive macro now allows skipping variants (to support `Never`
   operations)
-- Make render capability is now Clone to suport composition
+- Make render capability is now Clone to support composition
 - remove uuid unused wasm-bindgen feature flag
 
 ## [0.7.1](https://github.com/redbadger/crux/compare/crux_core-v0.7.0...crux_core-v0.7.1) - 2024-01-11

@@ -59,7 +59,7 @@
 //!
 //!// Capabilities listing the side effects the Core
 //!// will use to request side effects from the Shell
-//!#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+//!#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 //!#[derive(Effect)]
 //!#[effect(app = "Hello")]
 //!pub struct Capabilities {

@@ -1,5 +1,4 @@
 use crux_core::capability::{CapabilityContext, Operation};
-use crux_macros::Capability;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +17,7 @@ impl Operation for PubSubOperation {
     type Output = Message;
 }
 
-#[derive(Capability)]
+#[derive(crux_core::macros::Capability)]
 pub struct PubSub<Event> {
     context: CapabilityContext<PubSubOperation, Event>,
 }

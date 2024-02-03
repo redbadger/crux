@@ -1,5 +1,4 @@
 use crux_core::render::Render;
-use crux_macros::Effect;
 use crux_platform::{Platform, PlatformResponse};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +16,7 @@ pub enum Event {
     Set(PlatformResponse),
 }
 
-#[derive(Effect)]
+#[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
     pub platform: Platform<Event>,
     pub render: Render<Event>,

@@ -12,6 +12,6 @@ rust-version.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
-crux_core = { version = "0.7", features = ["typegen"] }
-crux_http = "0.5"
+crux_core = { workspace = true, features = ["typegen"] }
+crux_http.workspace = true
 shared = { path = "../shared", features = ["typegen"] }

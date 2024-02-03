@@ -1,5 +1,4 @@
 use crux_core::capability::{CapabilityContext, Operation};
-use crux_macros::Capability;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +18,7 @@ impl Operation for TimerOperation {
     type Output = TimerOutput;
 }
 
-#[derive(Capability)]
+#[derive(crux_core::macros::Capability)]
 pub struct Timer<Event> {
     context: CapabilityContext<TimerOperation, Event>,
 }

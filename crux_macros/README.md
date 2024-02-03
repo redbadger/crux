@@ -107,7 +107,7 @@ To use it, declare a feature `typegen` in your `shared` crate, and then annotate
 your `Capabilities` struct with the `Export` derive macro:
 
 ```rust
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(Effect)]
 pub struct Capabilities {
     pub render: Render<Event>,

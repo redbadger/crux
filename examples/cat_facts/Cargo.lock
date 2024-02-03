@@ -705,7 +705,9 @@ checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 
 [[package]]
 name = "crux_core"
-version = "0.7.2"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d2d2e0e23e29fc322a8666f34ee8b201b2f72488662e3eddb3cc8ee57105dd8"
 dependencies = [
  "anyhow",
  "bincode",
@@ -725,14 +727,16 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.5.0"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "191c55316d5176d9fce9f041c155ba84d117ee7a854448c208fa592d3d0649fb"
 dependencies = [
  "anyhow",
  "async-trait",
  "crux_core",
  "derive_builder",
  "futures-util",
- "http-types 2.12.0 (git+https://github.com/redbadger/http-types.git?branch=v2.x.x-backports)",
+ "http-types-red-badger-temporary-fork",
  "pin-project-lite",
  "serde",
  "serde_json",
@@ -741,7 +745,9 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.1.8"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "177df429bf04328c9af094305c3bcbd1dcb83aa70ce23524655efcd3ad631fa4"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -750,7 +756,9 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.3.6"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d60c832f2e2d924ea8e6e5a918dc725aa3fa245e30379411e4930df855628313"
 dependencies = [
  "darling 0.20.5",
  "proc-macro-error",
@@ -761,7 +769,9 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.1.7"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b53c906c2bc75a9ad54876d833e17b1194fd76d1f64d485e2b54439bf806625"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -770,7 +780,9 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04d07e963a623738d42db4994ff81f84d7cd4e1f72ba02eb55db59791723bf6c"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1689,7 +1701,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "cfg-if",
- "http-types 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http-types",
  "isahc",
  "log",
 ]
@@ -1717,9 +1729,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-types"
+name = "http-types-red-badger-temporary-fork"
 version = "2.12.0"
-source = "git+https://github.com/redbadger/http-types.git?branch=v2.x.x-backports#c8eb9f241e39c55e88a46b5e5152794497519dd3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "667889388f104630be2d14a09cd78f4867ddb54787c6c83366cbfb72fa3ce793"
 dependencies = [
  "anyhow",
  "async-channel 1.9.0",
@@ -2748,7 +2761,6 @@ dependencies = [
  "crux_core",
  "crux_http",
  "crux_kv",
- "crux_macros",
  "crux_platform",
  "crux_time",
  "derive_more",
@@ -2920,7 +2932,7 @@ dependencies = [
  "futures-util",
  "getrandom 0.2.12",
  "http-client",
- "http-types 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http-types",
  "log",
  "mime_guess",
  "once_cell",
@@ -3058,9 +3070,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.35.1"
+version = "1.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c89b4efa943be685f629b149f53829423f8f5531ea21249408e8e2f8671ec104"
+checksum = "61285f6515fa018fb2d1e46eb21223fff441ee8db5d0f1435e8ab4f5cdb80931"
 dependencies = [
  "backtrace",
  "pin-project-lite",
@@ -3710,9 +3722,9 @@ checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winnow"
-version = "0.5.36"
+version = "0.5.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "818ce546a11a9986bc24f93d0cdf38a8a1a400f1473ea8c82e59f6e0ffab9249"
+checksum = "a7cad8365489051ae9f054164e459304af2e7e9bb407c958076c8bf4aef52da5"
 dependencies = [
  "memchr",
 ]
