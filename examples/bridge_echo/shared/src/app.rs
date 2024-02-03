@@ -1,6 +1,5 @@
 // ANCHOR: app
 use crux_core::render::Render;
-use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -20,8 +19,8 @@ pub struct ViewModel {
     pub count: usize,
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
-#[derive(Effect)]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
     render: Render<Event>,
 }

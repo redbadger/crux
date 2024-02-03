@@ -240,14 +240,16 @@ checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 
 [[package]]
 name = "crux_core"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec3d3d92fa133ed376b7287be3c992bc29bf0927f6c1bff19a918686be97a635"
+checksum = "2d2d2e0e23e29fc322a8666f34ee8b201b2f72488662e3eddb3cc8ee57105dd8"
 dependencies = [
  "anyhow",
  "bincode",
  "crossbeam-channel",
+ "crux_macros",
  "derive_more",
+ "erased-serde",
  "futures",
  "serde",
  "serde-generate",
@@ -260,9 +262,9 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c44b2eed1191fadc2e1fdcc3d35e8b13f95b34ae964236e0f14bcfdb386529dd"
+checksum = "d60c832f2e2d924ea8e6e5a918dc725aa3fa245e30379411e4930df855628313"
 dependencies = [
  "darling",
  "proc-macro-error",
@@ -317,6 +319,15 @@ dependencies = [
  "quote",
  "rustc_version",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "erased-serde"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55d05712b2d8d88102bc9868020c9e5c7a1f5527c452b9b97450a1d006140ba7"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -838,7 +849,6 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "crux_core",
- "crux_macros",
  "lazy_static",
  "serde",
  "uniffi",

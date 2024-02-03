@@ -20,9 +20,8 @@ name = "shared"
 [dependencies]
 anyhow.workspace = true
 serde = { workspace = true, features = ["derive"] }
-crux_core = "0.7"
-crux_kv = "0.1"
-crux_macros = "0.3"
+crux_core.workspace = true
+crux_kv.workspace = true
 bincode = "1.3.3"
 lazy_static = "1.4"
 uniffi = "0.26.1"

@@ -1,7 +1,6 @@
 // ANCHOR: app
 
 use crux_core::{render::Render, App};
-use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -17,7 +16,7 @@ pub struct ViewModel {
     data: String,
 }
 
-#[derive(Effect)]
+#[derive(crux_core::macros::Effect)]
 #[effect(app = "Hello")]
 pub struct Capabilities {
     render: Render<Event>,

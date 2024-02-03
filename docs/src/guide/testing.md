@@ -211,7 +211,7 @@ our `Capabilities` struct looked like this...
 
 ```rust,ignore,no_run
 
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(Effect)]
 #[effect(app = "NoteEditor")]
 pub struct Capabilities {
@@ -239,10 +239,10 @@ Effect::into_key_value(self) -> Option<Request<KeyValueOperation>>
 
 We want to check that the first request is a `Start` operation, and that the
 timer is set to fire in 1000 milliseconds. The macro
-[`assert_let!()`](https://docs.rs/assert_let_bind/0.1.1/assert_let_bind/) does a pattern
-match for us and assigns the `id` to a local variable called `first_id`, which
-we'll use later. Finally, we don't expect any more timer requests to have been
-generated.
+[`assert_let!()`](https://docs.rs/assert_let_bind/0.1.1/assert_let_bind/) does a
+pattern match for us and assigns the `id` to a local variable called `first_id`,
+which we'll use later. Finally, we don't expect any more timer requests to have
+been generated.
 
 ```rust,ignore,no_run
 let mut request = requests.next().unwrap(); // this is mutable so we can resolve it later

@@ -2,7 +2,6 @@ use crate::capabilities::sse::ServerSentEvents;
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
-use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -43,8 +42,8 @@ pub enum Event {
     Update(Count),
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
-#[derive(Effect)]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
     pub render: Render<Event>,
     pub http: Http<Event>,

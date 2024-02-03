@@ -166,7 +166,10 @@ languages.
   [shared_types](https://github.com/redbadger/crux/tree/master/examples/counter/shared_types)
   folder from the counter example.
 
-- Edit the `build.rs` file and make sure that your app type is registered. In our previous example, the app type is `Counter`, so make sure you include this statement in your `build.rs`
+- Edit the `build.rs` file and make sure that your app type is registered. In
+  our previous example, the app type is `Counter`, so make sure you include this
+  statement in your `build.rs`
+
 ```rust,ignore
  gen.register_app::<Counter>()?;
 ```
@@ -184,7 +187,7 @@ Here is an example of this from the [`build.rs`](https://github.com/redbadger/cr
 For the above to compile, your `Capabilities` struct must implement the `Export` trait. There is a derive macro that can do this for you, e.g.:
 
 ```rust,ignore
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 pub struct Capabilities {
     pub render: Render<Event>,
     pub http: Http<Event>,
@@ -194,8 +197,7 @@ pub struct Capabilities {
 ````
 
 - Make sure everything builds and foreign types get generated into the
-  `generated` folder.
-  This step needs pnpm installed and on your `$PATH`.
+  `generated` folder. This step needs pnpm installed and on your `$PATH`.
 
   ```sh
   cargo build

@@ -12,6 +12,8 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0"
+crux_core = "0.7"
+crux_kv = "0.1"
 serde = "1.0"
 
 [workspace.metadata.bin]

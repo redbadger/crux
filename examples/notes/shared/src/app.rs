@@ -5,7 +5,6 @@ use std::ops::Range;
 use automerge::Change;
 use crux_core::{render::Render, App};
 use crux_kv::{KeyValue, KeyValueOutput};
-use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::{
@@ -100,8 +99,8 @@ impl From<&Model> for ViewModel {
     }
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
-#[derive(Effect)]
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(crux_core::macros::Effect)]
 #[effect(app = "NoteEditor")]
 pub struct Capabilities {
     timer: Timer<Event>,

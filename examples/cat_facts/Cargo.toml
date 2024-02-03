@@ -12,13 +12,12 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.79"
-crux_core = { version = "0.7", path = "../../crux_core" }
-crux_http = { version = "0.5", path = "../../crux_http" }
-crux_kv = { version = "0.1", path = "../../crux_kv" }
-crux_macros = { version = "0.3", path = "../../crux_macros" }
-crux_platform = { version = "0.1", path = "../../crux_platform" }
-crux_time = { version = "0.3", path = "../../crux_time" }
+crux_core = "0.7"
+crux_http = "0.5"
+crux_kv = "0.1"
+crux_platform = "0.1"
+crux_time = "0.3"
 serde = "1.0.196"
 
 [workspace.metadata.bin]
-cargo-xcode = { version = "=1.7.0" }
+cargo-xcode = "=1.7.0"

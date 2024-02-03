@@ -1,6 +1,5 @@
 use async_sse::{decode, Event};
 use async_std::io::Cursor;
-use crux_macros::Capability;
 use futures::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -21,7 +20,7 @@ impl Operation for SseRequest {
     type Output = SseResponse;
 }
 
-#[derive(Capability)]
+#[derive(crux_core::macros::Capability)]
 pub struct ServerSentEvents<Ev> {
     context: CapabilityContext<SseRequest, Ev>,
 }

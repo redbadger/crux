@@ -1,5 +1,4 @@
 use crux_core::capability::{CapabilityContext, Operation};
-use crux_macros::Capability;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -11,7 +10,7 @@ impl Operation for DelayOperation {
     type Output = ();
 }
 
-#[derive(Capability)]
+#[derive(crux_core::macros::Capability)]
 pub struct Delay<Event> {
     context: CapabilityContext<DelayOperation, Event>,
 }
