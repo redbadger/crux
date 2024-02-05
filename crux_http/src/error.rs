@@ -1,22 +1,26 @@
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
-pub struct Error {
-    message: String,
-    code: Option<crate::http::StatusCode>,
+use serde::{Deserialize, Serialize};
+use thiserror::Error as ThisError;
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
+pub enum Error {
+    #[error("HTTP error {0}")]
+    Http(HttpError),
+    #[error("JSON serialisation error: {0}")]
+    Json(String),
+    #[error("URL parse error: {0}")]
+    Url(String),
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(code) = self.code {
-            write!(f, "{}: {}", code, self.message)
-        } else {
-            write!(f, "{}", self.message)
-        }
-    }
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, ThisError)]
+#[error("{code}: {message}")]
+pub struct HttpError {
+    pub message: String,
+    pub code: crate::http::StatusCode,
 }
 
-impl Error {
-    pub fn new(code: Option<crate::http::StatusCode>, message: impl Into<String>) -> Self {
-        Error {
+impl HttpError {
+    pub fn new(code: crate::http::StatusCode, message: impl Into<String>) -> Self {
+        Self {
             message: message.into(),
             code,
         }
@@ -25,28 +29,22 @@ impl Error {
 
 impl From<crate::http::Error> for Error {
     fn from(e: crate::http::Error) -> Self {
-        Error {
+        Error::Http(HttpError {
             message: e.to_string(),
-            code: Some(e.status()),
-        }
+            code: e.status(),
+        })
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
-        Error {
-            message: e.to_string(),
-            code: None,
-        }
+        Error::Json(e.to_string())
     }
 }
 
 impl From<url::ParseError> for Error {
     fn from(e: url::ParseError) -> Self {
-        Error {
-            message: e.to_string(),
-            code: None,
-        }
+        Error::Url(e.to_string())
     }
 }
 
@@ -56,10 +54,10 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let error = Error::new(Some(crate::http::StatusCode::BadRequest), "Bad Request");
-        assert_eq!(error.to_string(), "400: Bad Request");
-
-        let error = Error::new(None, "internal server error");
-        assert_eq!(error.to_string(), "internal server error");
+        let error = Error::Http(HttpError::new(
+            crate::http::StatusCode::BadRequest,
+            "Bad Request",
+        ));
+        assert_eq!(error.to_string(), "HTTP error 400: Bad Request");
     }
 }

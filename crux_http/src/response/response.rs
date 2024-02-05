@@ -1,8 +1,11 @@
 use super::{decode::decode_body, new_headers};
-use crate::http::{
-    self,
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-    Mime, StatusCode, Version,
+use crate::{
+    error::HttpError,
+    http::{
+        self,
+        headers::{self, HeaderName, HeaderValues, ToHeaderValues},
+        Mime, StatusCode, Version,
+    },
 };
 
 use http::{headers::CONTENT_TYPE, Headers};
@@ -198,7 +201,7 @@ impl Response<Vec<u8>> {
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
         self.body
             .take()
-            .ok_or_else(|| crate::Error::new(Some(self.status()), "Body had no bytes"))
+            .ok_or_else(|| crate::Error::Http(HttpError::new(self.status(), "Body had no bytes")))
     }
 
     /// Reads the entire response body into a string.
