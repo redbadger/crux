@@ -16,13 +16,19 @@ pub enum Error {
 pub struct HttpError {
     pub message: String,
     pub code: crate::http::StatusCode,
+    pub body: Option<Vec<u8>>,
 }
 
 impl HttpError {
-    pub fn new(code: crate::http::StatusCode, message: impl Into<String>) -> Self {
+    pub fn new(
+        code: crate::http::StatusCode,
+        message: impl Into<String>,
+        body: Option<Vec<u8>>,
+    ) -> Self {
         Self {
             message: message.into(),
             code,
+            body,
         }
     }
 }
@@ -32,6 +38,7 @@ impl From<crate::http::Error> for Error {
         Error::Http(HttpError {
             message: e.to_string(),
             code: e.status(),
+            body: None,
         })
     }
 }
@@ -57,6 +64,7 @@ mod tests {
         let error = Error::Http(HttpError::new(
             crate::http::StatusCode::BadRequest,
             "Bad Request",
+            None,
         ));
         assert_eq!(error.to_string(), "HTTP error 400: Bad Request");
     }

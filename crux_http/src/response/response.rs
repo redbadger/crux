@@ -28,6 +28,15 @@ impl<Body> Response<Body> {
     /// Create a new instance.
     pub(crate) async fn new(mut res: super::ResponseAsync) -> crate::Result<Response<Vec<u8>>> {
         let body = res.body_bytes().await?;
+        let status = res.status();
+
+        if status.is_client_error() || status.is_server_error() {
+            return Err(crate::Error::Http(HttpError::new(
+                status,
+                status.to_string(),
+                Some(body),
+            )));
+        }
 
         let headers: &Headers = res.as_ref();
         let headers = headers.clone();
@@ -50,19 +59,6 @@ impl<Body> Response<Body> {
     /// ```
     pub fn status(&self) -> StatusCode {
         self.status
-    }
-
-    /// Consume the response and return a success if the status code is a 2xx, or 3xx,
-    /// and an error otherwise.
-    pub fn error_for_status(self) -> crate::Result<Response<Body>> {
-        if self.status.is_client_error() || self.status.is_server_error() {
-            return Err(crate::Error::Http(HttpError::new(
-                self.status,
-                self.status.to_string(),
-            )));
-        }
-
-        Ok(self)
     }
 
     /// Get the HTTP protocol version.
@@ -212,9 +208,9 @@ impl Response<Vec<u8>> {
     /// # Ok(()) }
     /// ```
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
-        self.body
-            .take()
-            .ok_or_else(|| crate::Error::Http(HttpError::new(self.status(), "Body had no bytes")))
+        self.body.take().ok_or_else(|| {
+            crate::Error::Http(HttpError::new(self.status(), "Body had no bytes", None))
+        })
     }
 
     /// Reads the entire response body into a string.
