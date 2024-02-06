@@ -52,6 +52,19 @@ impl<Body> Response<Body> {
         self.status
     }
 
+    /// Consume the response and return a success if the status code is a 2xx, or 3xx,
+    /// and an error otherwise.
+    pub fn error_for_status(self) -> crate::Result<Response<Body>> {
+        if self.status.is_client_error() || self.status.is_server_error() {
+            return Err(crate::Error::Http(HttpError::new(
+                self.status,
+                self.status.to_string(),
+            )));
+        }
+
+        Ok(self)
+    }
+
     /// Get the HTTP protocol version.
     ///
     /// # Examples

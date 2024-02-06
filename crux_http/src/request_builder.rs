@@ -390,9 +390,12 @@ where
             // currently.
             let resp = Response::<Vec<u8>>::new(resp).await.unwrap();
 
-            capability
-                .context
-                .update_app(make_event(self.expectation.decode(resp)));
+            // Turn the response into the final result
+            let resp = resp
+                .error_for_status()
+                .and_then(|r| self.expectation.decode(r));
+
+            capability.context.update_app(make_event(resp));
         });
     }
 
