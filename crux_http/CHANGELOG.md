@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/redbadger/crux/compare/crux_http-v0.5.1...crux_http-v0.6.0) - 2024-02-06
+
+### Breaking changes
+
+- **When using the (sync) APIs which return response in an Event, HTTP responses
+with status code in the 4xx and 5xx range are now considered an error.**
+- Better Error type with more detail, allowing apps to handle HTTP errors with more specificity
+- When handling error such error responses, `crux_http` won't attempt to
+deserialize the body into the expected type, which would almost certainly fail
+and obscure the actual cause of the error with a serde error
+- Http errors now contain the body bytes if present
+
 ## [0.5.1](https://github.com/redbadger/crux/compare/crux_http-v0.5.0...crux_http-v0.5.1) - 2024-02-02
 
 ### Changed
