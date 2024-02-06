@@ -385,14 +385,11 @@ where
                 }
             };
 
-            // Note: doing an unwrap here, but since we're reading bytes from
-            // a prepopulated buffer there should be no way for this to fail
-            // currently.
-            let resp = Response::<Vec<u8>>::new(resp).await.unwrap();
+            let resp = Response::<Vec<u8>>::new(resp)
+                .await
+                .and_then(|r| self.expectation.decode(r));
 
-            capability
-                .context
-                .update_app(make_event(self.expectation.decode(resp)));
+            capability.context.update_app(make_event(resp));
         });
     }
 

@@ -1,8 +1,11 @@
 use super::{decode::decode_body, new_headers};
-use crate::http::{
-    self,
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-    Mime, StatusCode, Version,
+use crate::{
+    error::HttpError,
+    http::{
+        self,
+        headers::{self, HeaderName, HeaderValues, ToHeaderValues},
+        Mime, StatusCode, Version,
+    },
 };
 
 use http::{headers::CONTENT_TYPE, Headers};
@@ -25,6 +28,15 @@ impl<Body> Response<Body> {
     /// Create a new instance.
     pub(crate) async fn new(mut res: super::ResponseAsync) -> crate::Result<Response<Vec<u8>>> {
         let body = res.body_bytes().await?;
+        let status = res.status();
+
+        if status.is_client_error() || status.is_server_error() {
+            return Err(crate::Error::Http(HttpError::new(
+                status,
+                status.to_string(),
+                Some(body),
+            )));
+        }
 
         let headers: &Headers = res.as_ref();
         let headers = headers.clone();
@@ -196,9 +208,9 @@ impl Response<Vec<u8>> {
     /// # Ok(()) }
     /// ```
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
-        self.body
-            .take()
-            .ok_or_else(|| crate::Error::new(Some(self.status()), "Body had no bytes"))
+        self.body.take().ok_or_else(|| {
+            crate::Error::Http(HttpError::new(self.status(), "Body had no bytes", None))
+        })
     }
 
     /// Reads the entire response body into a string.
