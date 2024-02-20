@@ -303,4 +303,40 @@ mod tests {
             assert_eq!(*status, 200);
         });
     }
+
+    #[test]
+    fn test_shell_error() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let mut update = app.update(Event::Get, &mut model);
+
+        let mut effects = update.effects_mut();
+        let Effect::Http(request) = effects.next().unwrap();
+        let http_request = &request.operation;
+
+        assert_eq!(
+            *http_request,
+            HttpRequest::get("http://example.com/")
+                .header("authorization", "secret-token")
+                .build()
+        );
+
+        let update = app
+            .resolve(
+                request,
+                HttpResult::Err(crux_http::Error::Io(
+                    "Socket shenanigans prevented the request".to_string(),
+                )),
+            )
+            .expect("Resolves successfully");
+
+        let actual = update.events.clone();
+
+        let Event::Set(Err(crux_http::Error::Io(error))) = &actual[0] else {
+            panic!("Expected original error back")
+        };
+
+        assert_eq!(error, "Socket shenanigans prevented the request")
+    }
 }
