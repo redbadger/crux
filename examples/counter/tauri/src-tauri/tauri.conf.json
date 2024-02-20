@@ -1,41 +1,14 @@
 {
+  "productName": "tauri",
+  "version": "0.0.0",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": false
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
-  "package": {
-    "productName": "tauri",
-    "version": "0.0.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "com.tauri.dev",
-      "targets": "all"
-    },
-    "security": {
-      "csp": null
-    },
-    "updater": {
-      "active": false
-    },
+  "app": {
+    "withGlobalTauri": false,
     "windows": [
       {
         "fullscreen": false,
@@ -44,6 +17,20 @@
         "width": 800,
         "height": 600
       }
-    ]
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": "all"
   }
 }

@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@tauri-apps/api':
-    specifier: ^1.5.1
-    version: 1.5.1
+    specifier: 2.0.0-beta.1
+    version: 2.0.0-beta.1
   react:
     specifier: ^18.2.0
     version: 18.2.0

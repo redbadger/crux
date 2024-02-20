@@ -35,7 +35,7 @@ fn process_effect(
     match effect {
         Effect::Render(_) => {
             let view = core.view();
-            tauri_app.emit_all("render", view)?
+            tauri_app.emit("render", view)?
         }
         Effect::Http(mut request) => {
             tauri::async_runtime::spawn({
