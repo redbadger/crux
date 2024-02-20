@@ -5,7 +5,7 @@ use std::{
 
 use async_trait::async_trait;
 
-use crate::protocol::{EffectSender, HttpRequest, HttpResponse};
+use crate::protocol::{EffectSender, HttpRequest, HttpResponse, HttpResult};
 
 /// FakeShell implements EffectSender for use in our internal tests.
 #[derive(Clone, Default)]
@@ -36,12 +36,15 @@ impl FakeShell {
 
 #[async_trait]
 impl EffectSender for FakeShell {
-    async fn send(&self, effect: HttpRequest) -> HttpResponse {
+    async fn send(&self, effect: HttpRequest) -> HttpResult {
         let mut inner = self.inner.lock().unwrap();
         inner.requests_received.push(effect);
-        inner
-            .responses_to_provide
-            .pop_back()
-            .expect("test tried to send an unexpected HttpRequest")
+
+        HttpResult::Ok(
+            inner
+                .responses_to_provide
+                .pop_back()
+                .expect("test tried to send an unexpected HttpRequest"),
+        )
     }
 }

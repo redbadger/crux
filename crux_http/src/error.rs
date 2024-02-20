@@ -9,6 +9,10 @@ pub enum Error {
     Json(String),
     #[error("URL parse error: {0}")]
     Url(String),
+    #[error("IO error: {0}")]
+    Io(String),
+    #[error("Timeout")]
+    Timeout,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, ThisError)]
