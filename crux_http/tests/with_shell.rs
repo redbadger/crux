@@ -85,7 +85,7 @@ mod shell {
     use super::shared::{App, Effect, Event};
     use anyhow::Result;
     use crux_core::Core;
-    use crux_http::protocol::{HttpRequest, HttpResponse};
+    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use std::collections::VecDeque;
 
     enum Task {
@@ -115,7 +115,10 @@ mod shell {
                         received.push(http_request.clone());
                         let response = HttpResponse::ok().json("Hello").build();
 
-                        enqueue_effects(&mut queue, core.resolve(&mut request, response));
+                        enqueue_effects(
+                            &mut queue,
+                            core.resolve(&mut request, HttpResult::Ok(response)),
+                        );
                     }
                 },
             };

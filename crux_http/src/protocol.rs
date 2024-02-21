@@ -117,13 +117,19 @@ impl HttpResponseBuilder {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum HttpResult {
+    Ok(HttpResponse),
+    Err(crate::Error),
+}
+
 impl crux_core::capability::Operation for HttpRequest {
-    type Output = HttpResponse;
+    type Output = HttpResult;
 }
 
 #[async_trait]
 pub(crate) trait EffectSender {
-    async fn send(&self, effect: HttpRequest) -> HttpResponse;
+    async fn send(&self, effect: HttpRequest) -> HttpResult;
 }
 
 #[async_trait]
@@ -131,7 +137,7 @@ impl<Ev> EffectSender for crux_core::capability::CapabilityContext<HttpRequest, 
 where
     Ev: 'static,
 {
-    async fn send(&self, effect: HttpRequest) -> HttpResponse {
+    async fn send(&self, effect: HttpRequest) -> HttpResult {
         crux_core::capability::CapabilityContext::request_from_shell(self, effect).await
     }
 }

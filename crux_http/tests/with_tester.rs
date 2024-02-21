@@ -136,7 +136,7 @@ mod tests {
 
     use crate::shared::{App, Effect, Event, Model};
     use crux_core::testing::AppTester;
-    use crux_http::protocol::{HttpRequest, HttpResponse};
+    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     #[test]
     fn get() {
@@ -158,11 +158,13 @@ mod tests {
         let update = app
             .resolve(
                 request,
-                HttpResponse::ok()
-                    .json("hello")
-                    .header("my_header", "my_value1")
-                    .header("my_header", "my_value2")
-                    .build(),
+                HttpResult::Ok(
+                    HttpResponse::ok()
+                        .json("hello")
+                        .header("my_header", "my_value1")
+                        .header("my_header", "my_value2")
+                        .build(),
+                ),
             )
             .expect("Resolves successfully");
 
@@ -199,7 +201,10 @@ mod tests {
         );
 
         let update = app
-            .resolve(request, HttpResponse::ok().json("The Body").build())
+            .resolve(
+                request,
+                HttpResult::Ok(HttpResponse::ok().json("The Body").build()),
+            )
             .expect("Resolves successfully");
 
         let actual = update.events;
@@ -224,7 +229,10 @@ mod tests {
         );
 
         let mut update = app
-            .resolve(request, HttpResponse::ok().body("secret_place").build())
+            .resolve(
+                request,
+                HttpResult::Ok(HttpResponse::ok().body("secret_place").build()),
+            )
             .expect("Resolves successfully");
 
         assert!(update.events.is_empty());
@@ -238,7 +246,7 @@ mod tests {
         );
 
         let update = app
-            .resolve(request, HttpResponse::status(201).build())
+            .resolve(request, HttpResult::Ok(HttpResponse::status(201).build()))
             .expect("Resolves successfully");
 
         let actual = update.events.clone();
@@ -273,7 +281,10 @@ mod tests {
 
         // Resolve second request first, should not matter
         let update = app
-            .resolve(request_two, HttpResponse::ok().body("one").build())
+            .resolve(
+                request_two,
+                HttpResult::Ok(HttpResponse::ok().body("one").build()),
+            )
             .expect("Resolves successfully");
 
         // Nothing happens yet
@@ -281,12 +292,51 @@ mod tests {
         assert!(update.events.is_empty());
 
         let update = app
-            .resolve(request_one, HttpResponse::ok().body("one").build())
+            .resolve(
+                request_one,
+                HttpResult::Ok(HttpResponse::ok().body("one").build()),
+            )
             .expect("Resolves successfully");
 
         let actual = update.events.clone();
         assert_matches!(&actual[..], [Event::ComposeComplete(status)] => {
             assert_eq!(*status, 200);
         });
+    }
+
+    #[test]
+    fn test_shell_error() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let mut update = app.update(Event::Get, &mut model);
+
+        let mut effects = update.effects_mut();
+        let Effect::Http(request) = effects.next().unwrap();
+        let http_request = &request.operation;
+
+        assert_eq!(
+            *http_request,
+            HttpRequest::get("http://example.com/")
+                .header("authorization", "secret-token")
+                .build()
+        );
+
+        let update = app
+            .resolve(
+                request,
+                HttpResult::Err(crux_http::Error::Io(
+                    "Socket shenanigans prevented the request".to_string(),
+                )),
+            )
+            .expect("Resolves successfully");
+
+        let actual = update.events.clone();
+
+        let Event::Set(Err(crux_http::Error::Io(error))) = &actual[0] else {
+            panic!("Expected original error back")
+        };
+
+        assert_eq!(error, "Socket shenanigans prevented the request")
     }
 }
