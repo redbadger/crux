@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.0](https://github.com/redbadger/crux/compare/crux_http-v0.6.0...crux_http-v0.7.0) - 2024-02-21
+
+### Breaking changes
+- **The protocol between shell and core has changed. Core now expects a `HttpResult` rather than a `HttpResponse`**
+
 ## [0.6.0](https://github.com/redbadger/crux/compare/crux_http-v0.5.1...crux_http-v0.6.0) - 2024-02-06
 
 ### Breaking changes
