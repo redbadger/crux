@@ -1,4 +1,5 @@
 use crux_core::typegen::TypeGen;
+use crux_http::HttpError;
 use shared::App;
 use std::path::PathBuf;
 
@@ -8,6 +9,7 @@ fn main() -> anyhow::Result<()> {
     let mut gen = TypeGen::new();
 
     gen.register_app::<App>()?;
+    gen.register_type::<HttpError>()?;
 
     let output_root = PathBuf::from("./generated");
 

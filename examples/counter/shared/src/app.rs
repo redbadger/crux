@@ -130,6 +130,7 @@ mod tests {
     use assert_let_bind::assert_let;
     use chrono::{TimeZone, Utc};
     use crux_core::{assert_effect, testing::AppTester};
+    use crux_http::protocol::HttpResult;
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
@@ -162,7 +163,9 @@ mod tests {
         let response = HttpResponse::ok()
             .body(r#"{ "value": 1, "updated_at": 1672531200000 }"#)
             .build();
-        let update = app.resolve(request, response).expect("an update");
+        let update = app
+            .resolve(request, HttpResult::Ok(response))
+            .expect("an update");
 
         // check that the app emitted an (internal) event to update the model
         let actual = update.events;
@@ -250,7 +253,9 @@ mod tests {
         let response = HttpResponse::ok()
             .body(r#"{ "value": 2, "updated_at": 1672531200000 }"#)
             .build();
-        let update = app.resolve(request, response).expect("Update to succeed");
+        let update = app
+            .resolve(request, HttpResult::Ok(response))
+            .expect("Update to succeed");
 
         // send the generated (internal) `Set` event back into the app
         app.update(update.events[0].clone(), &mut model);
@@ -307,7 +312,9 @@ mod tests {
         let response = HttpResponse::ok()
             .body(r#"{ "value": -1, "updated_at": 1672531200000 }"#)
             .build();
-        let update = app.resolve(request, response).expect("a successful update");
+        let update = app
+            .resolve(request, HttpResult::Ok(response))
+            .expect("a successful update");
 
         // run the event loop in order to send the (internal) `Set` event
         // back into the app

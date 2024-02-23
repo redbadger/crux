@@ -5,7 +5,7 @@ use futures::TryStreamExt;
 use std::sync::Arc;
 use tracing::debug;
 
-use shared::{App, Capabilities, Effect, Event};
+use shared::{http::protocol::HttpResult, App, Capabilities, Effect, Event};
 
 use crate::{http, sse};
 
@@ -40,7 +40,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                 async move {
                     let response = http::request(&request.operation).await?;
 
-                    for effect in core.resolve(&mut request, response) {
+                    for effect in core.resolve(&mut request, HttpResult::Ok(response)) {
                         process_effect(&core, effect, &tx)?;
                     }
                     Result::<()>::Ok(())
