@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.1](https://github.com/redbadger/crux/compare/crux_http-v0.7.0...crux_http-v0.7.1) - 2024-02-23
+
+### Changes
+- Fixes a type generation problem with the newly exposed `HttpResult` and `HttpError`
+- **Requires explicit tracing of crux_http::HttpError when using typegen**
+
 ## [0.7.0](https://github.com/redbadger/crux/compare/crux_http-v0.6.0...crux_http-v0.7.0) - 2024-02-21
 
 ### Breaking changes
