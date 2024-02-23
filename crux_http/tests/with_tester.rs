@@ -325,7 +325,7 @@ mod tests {
         let update = app
             .resolve(
                 request,
-                HttpResult::Err(crux_http::Error::Io(
+                HttpResult::Err(crux_http::HttpError::Io(
                     "Socket shenanigans prevented the request".to_string(),
                 )),
             )
@@ -333,7 +333,7 @@ mod tests {
 
         let actual = update.events.clone();
 
-        let Event::Set(Err(crux_http::Error::Io(error))) = &actual[0] else {
+        let Event::Set(Err(crux_http::HttpError::Io(error))) = &actual[0] else {
             panic!("Expected original error back")
         };
 

@@ -120,7 +120,7 @@ impl HttpResponseBuilder {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum HttpResult {
     Ok(HttpResponse),
-    Err(crate::Error),
+    Err(crate::HttpError),
 }
 
 impl crux_core::capability::Operation for HttpRequest {

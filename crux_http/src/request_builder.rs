@@ -7,7 +7,7 @@ use crate::{
         Body, Method, Mime, Url,
     },
 };
-use crate::{Client, Error, Request, Response, ResponseAsync, Result};
+use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
 use http_types::convert::DeserializeOwned;
@@ -250,7 +250,7 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn query(mut self, query: &impl Serialize) -> std::result::Result<Self, Error> {
+    pub fn query(mut self, query: &impl Serialize) -> std::result::Result<Self, HttpError> {
         self.req.as_mut().unwrap().set_query(query)?;
 
         Ok(self)
