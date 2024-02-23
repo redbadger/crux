@@ -1,10 +1,24 @@
 # Crux HTTP capability
 
+[![Crate version](https://img.shields.io/crates/v/crux_http.svg)](https://crates.io/crates/crux_http)
+[![Docs](https://img.shields.io/badge/docs.rs-crux_http-green)](https://docs.rs/crux_http/)
+
 This crate contains the `Http` capability, which can be used to ask the Shell to make an HTTP request.
 
 For an example of how to use the capability, see the [integration test](./tests/with_shell.rs).
 
 The code for this was largely copied from [`surf`](https://github.com/http-rs/surf) with some modifications made to fit into the crux paradigm.
+
+## Getting Started
+
+Add `crux_http` as a dependency.
+
+Additionally, if using crux type generation, include this line in your shared
+types generation script (e.g. `shared_types/build.rs`):
+
+```rust
+gen.register_type::<HttpError>()?;
+```
 
 ## About Crux Capabilities
 
