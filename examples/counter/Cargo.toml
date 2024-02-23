@@ -1,12 +1,12 @@
 [workspace]
 members = [
-  "cli",
-  "shared_types",
-  "shared",
-  "tauri/src-tauri",
-  "web-dioxus",
-  "web-leptos",
-  "web-yew",
+    "cli",
+    "shared_types",
+    "shared",
+    "tauri/src-tauri",
+    "web-dioxus",
+    "web-leptos",
+    "web-yew",
 ]
 resolver = "1"
 
@@ -21,7 +21,7 @@ rust-version = "1.66"
 [workspace.dependencies]
 anyhow = "1.0.79"
 crux_core = "0.7"
-crux_http = "0.5"
+crux_http = "0.7"
 serde = "1.0.196"
 
 [workspace.metadata.bin]

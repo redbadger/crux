@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 use std::sync::Arc;
 use tauri::Manager;
 
-use shared::{App, Capabilities, Core, Effect, Event};
+use shared::{http::protocol::HttpResult, App, Capabilities, Core, Effect, Event};
 
 use error::Error;
 
@@ -46,7 +46,7 @@ fn process_effect(
                         .await
                         .expect("error processing Http effect");
 
-                    for effect in core.resolve(&mut request, response) {
+                    for effect in core.resolve(&mut request, HttpResult::Ok(response)) {
                         let _ = process_effect(effect, &core, tauri_app.clone());
                     }
                 }
