@@ -26,7 +26,7 @@ pub use http_types::{self as http};
 
 pub use self::{
     config::Config,
-    error::Error,
+    error::HttpError,
     request::Request,
     request_builder::RequestBuilder,
     response::{Response, ResponseAsync},
@@ -34,7 +34,7 @@ pub use self::{
 
 use client::Client;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, HttpError>;
 
 /// The Http capability API.
 #[derive(Capability)]
