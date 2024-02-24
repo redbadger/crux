@@ -40,10 +40,25 @@ cargo new --lib shared
 We'll be adding a bunch of other folders into the monorepo, so we are choosing
 to use Cargo Workspaces. Edit the workspace `/Cargo.toml` file, at the monorepo
 root, to add the new library to our workspace. It should look something like
-this (the `package` and `dependencies` fields are just examples):
+this:
 
 ```toml
-{{#include ../../../examples/simple_counter/Cargo.toml}}
+[workspace]
+members = ["shared"]
+resolver = "1"
+
+[workspace.package]
+authors = ["Red Badger Consulting Limited"]
+edition = "2021"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+rust-version = "1.66"
+
+[workspace.dependencies]
+anyhow = "1.0.79"
+crux_core = "0.7"
+serde = "1.0.196"
 ```
 
 The library's manifest, at `/shared/Cargo.toml`, should look something like the
@@ -57,12 +72,9 @@ following, but there are a few things to note:
   - `cdylib` is a C-ABI dynamic library (`libshared.so`) for use with JNA when
     included in the Kotlin Android app variant
 - we need to declare a feature called `typegen` that depends on the feature with
-  the same name in the `crux_core` crate. This is used by its sister library
-  (often called `shared_types`) that will generate types for use across the FFI
-  boundary (see the section below on generating shared types).
-- the `path` fields on the crux dependencies are for the
-  [examples in the Crux repo](https://github.com/redbadger/crux/tree/master/examples)
-  and so you will probably not need them
+  the same name in the `crux_core` crate. This is used by this crate's sister
+  library (often called `shared_types`) that will generate types for use across
+  the FFI boundary (see the section below on generating shared types).
 - the uniffi dependencies and `uniffi-bindgen` target should make sense after
   you read the next section
 
@@ -111,7 +123,7 @@ own file format (similar to WebIDL) that has a `.udl` extension. You can create
 one at `/shared/src/shared.udl`, like this:
 
 ```txt
-{{#include ../../../examples/counter/shared/src/shared.udl}}
+{{#include ../../../examples/simple_counter/shared/src/shared.udl}}
 ```
 
 There are also a few additional parameters to tell Uniffi how to create bindings
@@ -119,14 +131,14 @@ for Kotlin and Swift. They live in the file `/shared/uniffi.toml`, like this
 (feel free to adjust accordingly):
 
 ```toml
-{{#include ../../../examples/counter/shared/uniffi.toml}}
+{{#include ../../../examples/simple_counter/shared/uniffi.toml}}
 ```
 
 Finally, we need a `build.rs` file in the root of the crate
 (`/shared/build.rs`), to generate the bindings:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/counter/shared/build.rs}}
+{{#include ../../../examples/simple_counter/shared/build.rs}}
 ```
 
 ### Scaffolding
@@ -163,15 +175,43 @@ This crate serves as the container for type generation for the foreign
 languages.
 
 - Copy over the
-  [shared_types](https://github.com/redbadger/crux/tree/master/examples/counter/shared_types)
+  [shared_types](https://github.com/redbadger/crux/tree/master/examples/simple_counter/shared_types)
   folder from the counter example.
 
+- Add the shared types crate to the workspace in the `/Cargo.toml` file at the
+  monorepo root. It should look something like this:
+
+```toml
+[workspace]
+members = ["shared", "shared_types"]
+resolver = "1"
+
+[workspace.package]
+authors = ["Red Badger Consulting Limited"]
+edition = "2021"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+rust-version = "1.66"
+
+[workspace.dependencies]
+anyhow = "1.0.79"
+crux_core = "0.7"
+serde = "1.0.196"
+```
+
 - Edit the `build.rs` file and make sure that your app type is registered. In
-  our previous example, the app type is `Counter`, so make sure you include this
+  our example, the app type is `Counter`, so make sure you include this
   statement in your `build.rs`
 
 ```rust,ignore
  gen.register_app::<Counter>()?;
+```
+
+The `build.rs` file should now look like this:
+
+```rust,no_run,noplayground
+{{#include ../../../examples/simple_counter/shared_types/build.rs}}
 ```
 
 ````admonish tip
