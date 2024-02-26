@@ -8,27 +8,32 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.7.1](https://github.com/redbadger/crux/compare/crux_http-v0.7.0...crux_http-v0.7.1) - 2024-02-23
+## [0.8.0](https://github.com/redbadger/crux/compare/crux_http-v0.7.0...crux_http-v0.8.0) - 2024-02-26
 
-### Changes
-- Fixes a type generation problem with the newly exposed `HttpResult` and `HttpError`
+### Breaking Changes
+
+- Fixes a type generation problem with the newly exposed `HttpResult` and
+  `HttpError`
 - **Requires explicit tracing of crux_http::HttpError when using typegen**
 
 ## [0.7.0](https://github.com/redbadger/crux/compare/crux_http-v0.6.0...crux_http-v0.7.0) - 2024-02-21
 
 ### Breaking changes
-- **The protocol between shell and core has changed. Core now expects a `HttpResult` rather than a `HttpResponse`**
+
+- **The protocol between shell and core has changed. Core now expects a
+  `HttpResult` rather than a `HttpResponse`**
 
 ## [0.6.0](https://github.com/redbadger/crux/compare/crux_http-v0.5.1...crux_http-v0.6.0) - 2024-02-06
 
 ### Breaking changes
 
 - **When using the (sync) APIs which return response in an Event, HTTP responses
-with status code in the 4xx and 5xx range are now considered an error.**
-- Better Error type with more detail, allowing apps to handle HTTP errors with more specificity
+  with status code in the 4xx and 5xx range are now considered an error.**
+- Better Error type with more detail, allowing apps to handle HTTP errors with
+  more specificity
 - When handling error such error responses, `crux_http` won't attempt to
-deserialize the body into the expected type, which would almost certainly fail
-and obscure the actual cause of the error with a serde error
+  deserialize the body into the expected type, which would almost certainly fail
+  and obscure the actual cause of the error with a serde error
 - Http errors now contain the body bytes if present
 
 ## [0.5.1](https://github.com/redbadger/crux/compare/crux_http-v0.5.0...crux_http-v0.5.1) - 2024-02-02
