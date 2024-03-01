@@ -12,7 +12,7 @@ project.
 ## Creating an app
 
 ```admonish example
-You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/hello_world.rs)
+You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/app.rs)
 ```
 
 To start with, we need a `struct` to be the root of our app.
