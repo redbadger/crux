@@ -1,6 +1,5 @@
 use gloo_console::log;
 use shared::{
-    http::HttpError,
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::TimeResponse,
@@ -39,12 +38,9 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
                 let callback = callback.clone();
 
                 async move {
-                    let response = http::request(&request.operation)
-                        .await
-                        .map(|response| response.into())
-                        .map_err(|e| HttpError::Io(e.to_string()));
+                    let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, response) {
+                    for effect in core.resolve(&mut request, response.into()) {
                         process_effect(&core, effect, &callback);
                     }
                 }

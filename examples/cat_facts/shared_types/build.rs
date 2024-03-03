@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crux_core::typegen::TypeGen;
 
-use shared::CatFacts;
+use shared::{http::HttpError, CatFacts};
 
 fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../shared");
@@ -10,6 +10,7 @@ fn main() -> anyhow::Result<()> {
     let mut gen = TypeGen::new();
 
     gen.register_app::<CatFacts>()?;
+    gen.register_type::<HttpError>()?;
 
     let output_root = PathBuf::from("./generated");
 

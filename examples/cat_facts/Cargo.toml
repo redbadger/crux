@@ -12,11 +12,16 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.80"
-crux_core = "0.7"
-crux_http = "0.8"
-crux_kv = "0.1"
-crux_platform = "0.1"
-crux_time = "0.3"
+# crux_core = "0.7"
+# crux_http = "0.8"
+# crux_kv = "0.1"
+# crux_platform = "0.1"
+# crux_time = "0.3"
+crux_core = { path = "../../crux_core" }
+crux_http = { path = "../../crux_http" }
+crux_kv = { path = "../../crux_kv" }
+crux_platform = { path = "../../crux_platform" }
+crux_time = { path = "../../crux_time" }
 serde = "1.0.197"
 
 [workspace.metadata.bin]

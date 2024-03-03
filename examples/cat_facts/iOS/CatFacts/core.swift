@@ -27,7 +27,12 @@ class Core: ObservableObject {
             Task {
                 let response = try! await requestHttp(req).get()
 
-                let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+                let effects = [UInt8](
+                    handleResponse(
+                        Data(request.uuid),
+                        Data(try! HttpResult.ok(response).bincodeSerialize())
+                    )
+                )
 
                 let requests: [Request] = try! .bincodeDeserialize(input: effects)
                 for request in requests {

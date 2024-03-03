@@ -12,6 +12,7 @@ import com.redbadger.catfacts.shared.processEvent
 import com.redbadger.catfacts.shared.view
 import com.redbadger.catfacts.shared_types.Effect
 import com.redbadger.catfacts.shared_types.Event
+import com.redbadger.catfacts.shared_types.HttpResult
 import com.redbadger.catfacts.shared_types.PlatformResponse
 import com.redbadger.catfacts.shared_types.Request
 import com.redbadger.catfacts.shared_types.Requests
@@ -43,39 +44,49 @@ open class Core : androidx.lifecycle.ViewModel() {
             is Effect.Render -> {
                 this.view = ViewModel.bincodeDeserialize(view())
             }
+
             is Effect.Http -> {
                 val response = requestHttp(httpClient, effect.value)
 
                 val effects =
-                        handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                    handleResponse(
+                        request.uuid.toByteArray(),
+                        HttpResult.Ok(response).bincodeSerialize()
+                    )
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
+
             is Effect.Time -> {
                 val response =
-                        TimeResponse(ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT))
+                    TimeResponse(
+                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+                    )
 
-                val effects = handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                val effects =
+                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
+
             is Effect.Platform -> {
                 val response = PlatformResponse(Build.BRAND + " " + Build.VERSION.RELEASE)
 
                 val effects =
-                        handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
+
             is Effect.KeyValue -> {}
         }
     }

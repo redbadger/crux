@@ -1,12 +1,12 @@
 use anyhow::{anyhow, Result};
-use async_std::{
-    fs::{File, OpenOptions},
-    io::{ReadExt, WriteExt},
-    task::spawn,
-};
 use chrono::{DateTime, Utc};
 use crossbeam_channel::Sender;
 use std::{sync::Arc, time::SystemTime};
+use tokio::{
+    fs::{File, OpenOptions},
+    io::{AsyncReadExt, AsyncWriteExt},
+    spawn,
+};
 use tracing::debug;
 
 use shared::{
@@ -47,9 +47,9 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                 let tx = tx.clone();
 
                 async move {
-                    let response = http::request(&request.operation).await?;
+                    let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, response) {
+                    for effect in core.resolve(&mut request, response.into()) {
                         process_effect(&core, effect, &tx)?;
                     }
                     Result::<()>::Ok(())
