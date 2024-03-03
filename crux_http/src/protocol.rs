@@ -8,6 +8,8 @@ use async_trait::async_trait;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
+use crate::HttpError;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpHeader {
     pub name: String,
@@ -120,7 +122,16 @@ impl HttpResponseBuilder {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum HttpResult {
     Ok(HttpResponse),
-    Err(crate::HttpError),
+    Err(HttpError),
+}
+
+impl From<crate::Result<HttpResponse>> for HttpResult {
+    fn from(result: Result<HttpResponse, HttpError>) -> Self {
+        match result {
+            Ok(response) => HttpResult::Ok(response),
+            Err(err) => HttpResult::Err(err),
+        }
+    }
 }
 
 impl crux_core::capability::Operation for HttpRequest {

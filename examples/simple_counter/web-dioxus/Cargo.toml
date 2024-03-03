@@ -10,5 +10,5 @@ dioxus = "0.4"
 dioxus-logger = "0.4.1"
 dioxus-web = "0.4"
 futures-util = "0.3.30"
-log = "0.4.20"
+log = "0.4.21"
 shared = { path = "../shared" }

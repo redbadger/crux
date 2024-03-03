@@ -26,7 +26,7 @@ pub use http_types::{self as http};
 
 pub use self::{
     config::Config,
-    error::HttpError,
+    error::{HttpError, HttpErrorHttp},
     request::Request,
     request_builder::RequestBuilder,
     response::{Response, ResponseAsync},

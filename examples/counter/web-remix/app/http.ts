@@ -1,11 +1,15 @@
-import type { HttpRequest } from "shared_types/types/shared_types";
-import { HttpResponse, HttpHeader } from "shared_types/types/shared_types";
+import type { HttpRequest, HttpResult } from "shared_types/types/shared_types";
+import {
+  HttpResponse,
+  HttpHeader,
+  HttpResultVariantOk,
+} from "shared_types/types/shared_types";
 
 export async function request({
   url,
   method,
   headers,
-}: HttpRequest): Promise<HttpResponse> {
+}: HttpRequest): Promise<HttpResult> {
   const request = new Request(url, {
     method,
     headers: headers.map((header) => [header.name, header.value]),
@@ -20,10 +24,11 @@ export async function request({
 
   const body = await response.arrayBuffer();
 
-  const httpResponse = new HttpResponse(
-    response.status,
-    responseHeaders,
-    Array.from(new Uint8Array(body))
+  return new HttpResultVariantOk(
+    new HttpResponse(
+      response.status,
+      responseHeaders,
+      Array.from(new Uint8Array(body))
+    )
   );
-  return httpResponse;
 }

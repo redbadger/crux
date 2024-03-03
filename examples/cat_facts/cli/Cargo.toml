@@ -12,9 +12,9 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-std = { version = "1.12.0", features = ["std", "attributes"] }
-chrono = "0.4.33"
+chrono = "0.4.34"
 clap = { version = "4.3.24", features = ["derive"] }
-crossbeam-channel = "0.5.11"
+crossbeam-channel = "0.5.12"
 serde = { workspace = true, features = ["derive"] }
 shared = { path = "../shared" }
 surf = "2.3.2"
