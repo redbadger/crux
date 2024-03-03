@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Result};
-use async_std::task::spawn;
 use crossbeam_channel::Sender;
 use futures::TryStreamExt;
 use std::sync::Arc;
+use tokio::spawn;
 use tracing::debug;
 
-use shared::{http::protocol::HttpResult, App, Capabilities, Effect, Event};
+use shared::{App, Capabilities, Effect, Event};
 
 use crate::{http, sse};
 
@@ -38,9 +38,9 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                 let tx = tx.clone();
 
                 async move {
-                    let response = http::request(&request.operation).await?;
+                    let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, HttpResult::Ok(response)) {
+                    for effect in core.resolve(&mut request, response.into()) {
                         process_effect(&core, effect, &tx)?;
                     }
                     Result::<()>::Ok(())

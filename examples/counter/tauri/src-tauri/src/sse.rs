@@ -1,5 +1,4 @@
-use async_std::stream::StreamExt;
-use futures::stream;
+use futures::{stream, StreamExt};
 
 use reqwest::{Client, Method};
 use shared::{
