@@ -22,6 +22,6 @@ syn = "2.0.52"
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
-insta = "1.35"
+insta = "1.36"
 prettyplease = "0.2"
 serde = { version = "1.0.197", features = ["derive"] }

@@ -12,10 +12,10 @@ rust-version.workspace = true
 anyhow.workspace = true
 gloo-console = "0.3.0"
 gloo-net = { version = "0.5.0", features = ["http"] }
-js-sys = "0.3.68"
+js-sys = "0.3.69"
 shared = { path = "../shared" }
-wasm-bindgen = "0.2.91"
-wasm-bindgen-futures = "0.4.41"
-web-sys = { version = "0.3.68", features = ["Navigator"] }
+wasm-bindgen = "0.2.92"
+wasm-bindgen-futures = "0.4.42"
+web-sys = { version = "0.3.69", features = ["Navigator"] }
 woothee = "0.13.0"
 yew = { version = "0.21.0", features = ["csr"] }
