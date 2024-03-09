@@ -2,7 +2,7 @@
 
 This crate contains the `Time` capability, which can be used to ask the current time from the Shell.
 
-For an example of how to use the capability, see the [integration test](./tests/platform_test.rs).
+For an example of how to use the capability, see the [integration test](./tests/time_test.rs).
 
 ## About Crux Capabilities
 
