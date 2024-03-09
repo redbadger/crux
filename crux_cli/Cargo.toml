@@ -7,7 +7,7 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
-rust-version.workspace = true
+rust-version = "1.70"
 
 [[bin]]
 name = "crux"
@@ -19,6 +19,9 @@ clap = { version = "4.5.35", features = ["derive"] }
 console = "0.15.11"
 ignore = "0.4.23"
 ramhorns = "1.0.1"
+libc = "0.2.155"
 serde = { workspace = true, features = ["derive"] }
 similar = { version = "2.7.0", features = ["inline"] }
 toml = "0.8.20"
+tokio = { version = "1.37.0", features = ["full"] }
+tokio-fd = "0.3.0"

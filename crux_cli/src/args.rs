@@ -19,6 +19,21 @@ pub(crate) struct Cli {
 
     #[arg(long, short, action = ArgAction::Count)]
     pub verbose: u8,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum Commands {
+    #[command(visible_alias = "doc")]
+    Doctor(DoctorArgs),
+
+    #[command(visible_alias = "gen")]
+    Codegen(CodegenArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct DoctorArgs {
+    #[arg(long, short)]
+    pub(crate) fix: Option<PathBuf>,
 
     #[arg(long, short, default_value = "false")]
     pub include_source_code: bool,
@@ -31,16 +46,11 @@ pub(crate) struct Cli {
     pub path: Option<PathBuf>,
 }
 
-#[derive(Subcommand)]
-pub(crate) enum Commands {
-    #[command(visible_alias = "doc")]
-    Doctor(DoctorArgs),
-}
-
 #[derive(Args)]
-pub(crate) struct DoctorArgs {
+pub(crate) struct CodegenArgs {
+    /// path to the directory containing the Cargo.toml manifest
     #[arg(long, short)]
-    pub(crate) fix: Option<PathBuf>,
+    pub path: PathBuf,
 }
 
 #[cfg(test)]
