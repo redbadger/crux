@@ -10,6 +10,7 @@ mod command_runner;
 mod config;
 mod diff;
 mod doctor;
+mod graph;
 mod template;
 mod workspace;
 
