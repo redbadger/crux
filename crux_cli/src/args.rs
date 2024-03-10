@@ -48,9 +48,9 @@ pub(crate) struct DoctorArgs {
 
 #[derive(Args)]
 pub(crate) struct CodegenArgs {
-    /// path to the directory containing the Cargo.toml manifest
+    /// name of the library containing your Crux App
     #[arg(long, short)]
-    pub path: PathBuf,
+    pub lib: String,
 }
 
 #[cfg(test)]
