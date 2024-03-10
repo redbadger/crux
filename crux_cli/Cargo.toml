@@ -17,10 +17,13 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { version = "4.3.24", features = ["derive"] }
 console = "0.15.8"
+guppy = "0.17.5"
 ignore = "0.4.22"
 libc = "0.2.155"
 ramhorns = "1.0.0"
+rustdoc-types = "0.24.0"
 serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0.114"
 similar = { version = "2.5.0", features = ["inline"] }
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-fd = "0.3.0"
