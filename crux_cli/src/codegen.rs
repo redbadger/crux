@@ -35,10 +35,10 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
     let target_directory = graph.workspace().target_directory().as_std_path();
     let json_path = target_directory
         .join("doc")
-        .join(format!("{}.json", lib.name().replace("-", "_")));
+        .join(format!("{}.json", lib.name().replace('-', "_")));
 
     let rustdoc: Crate = spawn_blocking(move || {
-        let file = File::open(&json_path)?;
+        let file = File::open(json_path)?;
         let crate_: Crate = serde_json::from_reader(file)?;
         Ok::<rustdoc_types::Crate, anyhow::Error>(crate_)
     })
@@ -53,7 +53,7 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
             ..
         }) = &v.inner
         {
-            (trait_name == &"App".to_string()).then(|| name)
+            (trait_name == &"App".to_string()).then_some(name)
         } else {
             None
         }
