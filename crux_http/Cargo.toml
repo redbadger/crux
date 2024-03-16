@@ -20,7 +20,7 @@ http-types = { package = "http-types-red-badger-temporary-fork", version = "2.12
 pin-project-lite = "0.2.13"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.114"
-thiserror = "1.0.57"
+thiserror = "1.0.58"
 url = "2.5.0"
 
 [dev-dependencies]

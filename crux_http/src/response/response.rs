@@ -1,11 +1,8 @@
 use super::{decode::decode_body, new_headers};
-use crate::{
-    error::HttpErrorHttp,
-    http::{
-        self,
-        headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-        Mime, StatusCode, Version,
-    },
+use crate::http::{
+    self,
+    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
+    Mime, StatusCode, Version,
 };
 
 use http::{headers::CONTENT_TYPE, Headers};
@@ -31,11 +28,11 @@ impl<Body> Response<Body> {
         let status = res.status();
 
         if status.is_client_error() || status.is_server_error() {
-            return Err(crate::HttpError::Http(HttpErrorHttp::new(
-                status,
-                status.to_string(),
-                Some(body),
-            )));
+            return Err(crate::HttpError::Http {
+                code: status,
+                message: status.to_string(),
+                body: Some(body),
+            });
         }
 
         let headers: &Headers = res.as_ref();
@@ -208,8 +205,10 @@ impl Response<Vec<u8>> {
     /// # Ok(()) }
     /// ```
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
-        self.body.take().ok_or_else(|| {
-            crate::HttpError::Http(HttpErrorHttp::new(self.status(), "Body had no bytes", None))
+        self.body.take().ok_or_else(|| crate::HttpError::Http {
+            code: self.status(),
+            message: "Body had no bytes".to_string(),
+            body: None,
         })
     }
 
