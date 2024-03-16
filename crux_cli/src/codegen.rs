@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use rustdoc_types::{Crate, Impl, ItemEnum, Path};
+use rustdoc_types::{Crate, Impl, ItemEnum, Path, Type};
 use std::{
     fs::File,
     io::{stdout, IsTerminal},
@@ -35,33 +35,49 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
     let target_directory = graph.workspace().target_directory().as_std_path();
     let json_path = target_directory
         .join("doc")
-        .join(format!("{}.json", lib.name().replace("-", "_")));
+        .join(format!("{}.json", lib.name().replace('-', "_")));
 
-    let rustdoc: Crate = spawn_blocking(move || {
-        let file = File::open(&json_path)?;
+    let crate_: Crate = spawn_blocking(move || {
+        let file = File::open(json_path)?;
         let crate_: Crate = serde_json::from_reader(file)?;
         Ok::<rustdoc_types::Crate, anyhow::Error>(crate_)
     })
     .await??;
 
-    if let Some(name) = rustdoc.index.iter().find_map(|(_k, v)| {
+    if let Some((id, items)) = crate_.index.iter().find_map(|(_k, v)| {
         if let ItemEnum::Impl(Impl {
             trait_: Some(rustdoc_types::Path {
                 name: trait_name, ..
             }),
-            for_: rustdoc_types::Type::ResolvedPath(Path { name, .. }),
+            for_: rustdoc_types::Type::ResolvedPath(Path { id, .. }),
+            items,
             ..
         }) = &v.inner
         {
-            (trait_name == &"App".to_string()).then(|| name)
+            (trait_name.as_str() == "App").then_some((id, items))
         } else {
             None
         }
     }) {
         println!(
-            "The struct that implements crux_core::App is called {:?}",
-            name
+            "The struct that implements crux_core::App is {}",
+            crate_.paths[id].path.join("::")
         );
+
+        for item in items {
+            let assoc = &crate_.index[item];
+            for name in &["Event", "ViewModel", "Capabilities"] {
+                if assoc.name == Some(name.to_string()) {
+                    if let ItemEnum::AssocType {
+                        default: Some(Type::ResolvedPath(path)),
+                        ..
+                    } = &assoc.inner
+                    {
+                        println!("{name} type is {}", crate_.paths[&path.id].path.join("::"))
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
