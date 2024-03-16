@@ -1,36 +1,42 @@
-use futures::{stream, AsyncReadExt};
+use futures::{stream, StreamExt};
 
-use shared::sse::{SseRequest, SseResponse};
-
-use crate::error::Error;
+use reqwest::{Client, Method};
+use shared::{
+    http::{HttpError, Result},
+    sse::{SseRequest, SseResponse},
+};
 
 pub async fn request(
     SseRequest { url }: &SseRequest,
-) -> Result<impl futures::TryStream<Ok = SseResponse>, Error> {
-    let mut response = surf::get(url).await?;
-    let status = response.status().into();
+) -> Result<impl futures::TryStream<Ok = SseResponse>> {
+    let client = Client::new();
+    let method = Method::from_bytes(b"GET").unwrap();
 
-    let body = if let 200..=299 = status {
-        response.take_body()
-    } else {
-        return Err(Error::HttpResponse(status, "SSE error".to_string()));
-    };
+    let request = client
+        .request(method, url)
+        .build()
+        .map_err(|e| HttpError::Url(e.to_string()))?;
 
-    let body = body.into_reader();
+    let response = client
+        .execute(request)
+        .await
+        .map_err(|e| HttpError::Io(e.to_string()))?;
+
+    let body = response.bytes_stream();
 
     Ok(Box::pin(stream::try_unfold(body, |mut body| async {
-        let mut buf = [0; 1024];
-
-        match body.read(&mut buf).await {
-            Ok(0) => Ok(None),
-            Ok(n) => {
-                let chunk = SseResponse::Chunk(buf[0..n].to_vec());
-                Ok(Some((chunk, body)))
-            }
-            Err(e) => Err(Error::HttpDecode(format!(
-                "failed to read from http response; err = {:?}",
-                e
-            ))),
+        match body.next().await {
+            Some(chunk) => match chunk {
+                Ok(bytes) => {
+                    let chunk = SseResponse::Chunk(bytes.to_vec());
+                    Ok(Some((chunk, body)))
+                }
+                Err(e) => Err(HttpError::Json(format!(
+                    "failed to read from http response; err = {:?}",
+                    e
+                ))),
+            },
+            None => Ok(None),
         }
     })))
 }

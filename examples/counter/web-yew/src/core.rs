@@ -1,6 +1,6 @@
 use futures_util::TryStreamExt;
 use gloo_console::log;
-use shared::{http::protocol::HttpResult, App, Capabilities, Effect, Event};
+use shared::{App, Capabilities, Effect, Event};
 use std::rc::Rc;
 use yew::{platform::spawn_local, Callback};
 
@@ -36,9 +36,9 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
                 let callback = callback.clone();
 
                 async move {
-                    let response = http::request(&request.operation).await.unwrap();
+                    let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, HttpResult::Ok(response)) {
+                    for effect in core.resolve(&mut request, response.into()) {
                         process_effect(&core, effect, &callback);
                     }
                 }

@@ -9,11 +9,11 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@remix-run/css-bundle": "^2.5.1",
-    "@remix-run/node": "^2.5.1",
-    "@remix-run/react": "^2.5.1",
-    "@remix-run/serve": "^2.5.1",
-    "isbot": "^4.4.0",
+    "@remix-run/css-bundle": "^2.8.1",
+    "@remix-run/node": "^2.8.1",
+    "@remix-run/react": "^2.8.1",
+    "@remix-run/serve": "^2.8.1",
+    "isbot": "^5.1.1",
     "pkg": "link:../shared/pkg",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -21,12 +21,12 @@
     "shared_types": "link:../shared_types/generated/typescript"
   },
   "devDependencies": {
-    "@remix-run/dev": "^2.5.1",
-    "@remix-run/eslint-config": "^2.5.1",
-    "@types/react": "^18.2.51",
-    "@types/react-dom": "^18.2.18",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3"
+    "@remix-run/dev": "^2.8.1",
+    "@remix-run/eslint-config": "^2.8.1",
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.2"
   },
   "engines": {
     "node": ">=14.0.0"

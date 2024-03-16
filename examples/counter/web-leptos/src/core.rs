@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use futures_util::TryStreamExt;
 use leptos::{spawn_local, SignalUpdate, WriteSignal};
-use shared::{http::protocol::HttpResult, App, Capabilities, Effect, Event, ViewModel};
+use shared::{App, Capabilities, Effect, Event, ViewModel};
 
 use crate::{http, sse};
 
@@ -33,9 +33,9 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
                 let core = core.clone();
 
                 async move {
-                    let response = http::request(&request.operation).await.unwrap();
+                    let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, HttpResult::Ok(response)) {
+                    for effect in core.resolve(&mut request, response.into()) {
                         process_effect(&core, effect, render);
                     }
                 }

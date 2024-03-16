@@ -1,6 +1,5 @@
 use crux_core::typegen::TypeGen;
-use crux_http::HttpError;
-use shared::App;
+use shared::{http::HttpError, App};
 use std::path::PathBuf;
 
 fn main() -> anyhow::Result<()> {

@@ -1,37 +1,63 @@
-use std::{str::FromStr, time::Duration};
-
-use surf::{http::Method, Client, Config, Url};
-
-use shared::http::protocol::{HttpRequest, HttpResponse};
-
-use crate::error::Error;
+use reqwest::{Client, Method};
+use shared::http::{
+    protocol::{HttpHeader, HttpRequest, HttpResponse},
+    HttpError, Result,
+};
 
 pub async fn request(
     HttpRequest {
         method,
         url,
         headers,
-        ..
+        body,
     }: &HttpRequest,
-) -> Result<HttpResponse, Error> {
-    let method = Method::from_str(method).expect("unknown http method");
-    let url = Url::parse(url)?;
-    let headers = headers.clone();
+) -> Result<HttpResponse> {
+    let client = Client::new();
+    let method =
+        Method::from_bytes(method.as_bytes()).map_err(|e| HttpError::Url(e.to_string()))?;
 
-    let client: Client = Config::new()
-        .set_timeout(Some(Duration::from_secs(5)))
-        .try_into()
-        .map_err(|_e| Error::HttpConfig("Http client config error".to_string()))?;
+    let headers = headers.iter().map(|header| {
+        let name = reqwest::header::HeaderName::from_bytes(header.name.as_bytes())
+            .expect("Invalid header name");
+        let value = reqwest::header::HeaderValue::from_bytes(header.value.as_bytes())
+            .expect("Invalid header value");
 
-    let mut request = client.request(method, &url);
+        (name, value)
+    });
 
-    for header in headers {
-        request = request.header(header.name.as_str(), &header.value);
-    }
+    let request = client
+        .request(method, url)
+        .headers(reqwest::header::HeaderMap::from_iter(headers))
+        .body(body.to_vec())
+        .build()
+        .map_err(|e| HttpError::Url(e.to_string()))?;
 
-    let mut response = request.await?;
-    let status = response.status().into();
+    let response = client
+        .execute(request)
+        .await
+        .map_err(|e| HttpError::Io(e.to_string()))?;
 
-    let body = response.body_bytes().await?;
-    Ok(HttpResponse::status(status).body(body).build())
+    let headers = response
+        .headers()
+        .iter()
+        .map(|(name, value)| {
+            value
+                .to_str()
+                .map(|v| HttpHeader {
+                    name: name.to_string(),
+                    value: v.to_string(),
+                })
+                .map_err(|e| HttpError::Io(e.to_string()))
+        })
+        .collect::<Result<Vec<HttpHeader>>>()?;
+
+    Ok(HttpResponse {
+        status: response.status().as_u16(),
+        headers,
+        body: response
+            .bytes()
+            .await
+            .map_err(|e| HttpError::Io(e.to_string()))?
+            .to_vec(),
+    })
 }

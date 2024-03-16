@@ -1,6 +1,6 @@
 use dioxus::prelude::{to_owned, UnboundedReceiver, UseState};
 use futures_util::{StreamExt, TryStreamExt};
-use shared::{http::protocol::HttpResult, App, Capabilities, Effect, Event, ViewModel};
+use shared::{App, Capabilities, Effect, Event, ViewModel};
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
 
@@ -40,9 +40,9 @@ pub fn process_effect(core: &Core, effect: Effect, view: &UseState<ViewModel>) {
             spawn_local({
                 to_owned![core, view];
                 async move {
-                    let response = http::request(&request.operation).await.unwrap();
+                    let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, HttpResult::Ok(response)) {
+                    for effect in core.resolve(&mut request, response.into()) {
                         process_effect(&core, effect, &view);
                     }
                 }

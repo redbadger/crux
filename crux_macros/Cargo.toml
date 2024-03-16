@@ -13,15 +13,15 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
-darling = "0.20.5"
+darling = "0.20.8"
 proc-macro-error = "1.0.4"
-proc-macro2 = "1.0.78"
+proc-macro2 = "1.0.79"
 quote = "1.0.35"
-syn = "2.0.48"
+syn = "2.0.52"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
-insta = "1.34"
+insta = "1.36"
 prettyplease = "0.2"
-serde = { version = "1.0.196", features = ["derive"] }
+serde = { version = "1.0.197", features = ["derive"] }

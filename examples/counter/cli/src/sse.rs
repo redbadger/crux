@@ -1,35 +1,42 @@
-use anyhow::{anyhow, bail, Result};
-use futures::{stream, AsyncReadExt};
+use futures::{stream, StreamExt};
 
-use shared::sse::{SseRequest, SseResponse};
+use reqwest::{Client, Method};
+use shared::{
+    http::{HttpError, Result},
+    sse::{SseRequest, SseResponse},
+};
 
 pub async fn request(
     SseRequest { url }: &SseRequest,
 ) -> Result<impl futures::TryStream<Ok = SseResponse>> {
-    let mut response = surf::get(url)
+    let client = Client::new();
+    let method = Method::from_bytes(b"GET").unwrap();
+
+    let request = client
+        .request(method, url)
+        .build()
+        .map_err(|e| HttpError::Url(e.to_string()))?;
+
+    let response = client
+        .execute(request)
         .await
-        .map_err(|e| anyhow!("get {url}: error {e}"))?;
+        .map_err(|e| HttpError::Io(e.to_string()))?;
 
-    let status = response.status().into();
-
-    let body = if let 200..=299 = status {
-        response.take_body()
-    } else {
-        bail!("get {url}: status {status}");
-    };
-
-    let body = body.into_reader();
+    let body = response.bytes_stream();
 
     Ok(Box::pin(stream::try_unfold(body, |mut body| async {
-        let mut buf = [0; 1024];
-
-        match body.read(&mut buf).await {
-            Ok(0) => Ok(None),
-            Ok(n) => {
-                let chunk = SseResponse::Chunk(buf[0..n].to_vec());
-                Ok(Some((chunk, body)))
-            }
-            Err(e) => bail!("failed to read from http response; err = {:?}", e),
+        match body.next().await {
+            Some(chunk) => match chunk {
+                Ok(bytes) => {
+                    let chunk = SseResponse::Chunk(bytes.to_vec());
+                    Ok(Some((chunk, body)))
+                }
+                Err(e) => Err(HttpError::Json(format!(
+                    "failed to read from http response; err = {:?}",
+                    e
+                ))),
+            },
+            None => Ok(None),
         }
     })))
 }

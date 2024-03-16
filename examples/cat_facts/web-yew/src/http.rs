@@ -1,7 +1,9 @@
-use anyhow::Result;
 use gloo_net::http;
 
-use shared::http::protocol::{HttpRequest, HttpResponse};
+use shared::http::{
+    protocol::{HttpRequest, HttpResponse},
+    HttpError, Result,
+};
 
 pub async fn request(
     HttpRequest {
@@ -21,8 +23,14 @@ pub async fn request(
         request = request.header(&header.name, &header.value);
     }
 
-    let response = request.send().await?;
-    let body = response.binary().await?;
+    let response = request
+        .send()
+        .await
+        .map_err(|error| HttpError::Io(error.to_string()))?;
+    let body = response
+        .binary()
+        .await
+        .map_err(|error| HttpError::Io(error.to_string()))?;
 
     Ok(HttpResponse::status(response.status()).body(body).build())
 }

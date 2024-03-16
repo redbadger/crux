@@ -37,8 +37,9 @@ struct Args {
     cmd: Command,
 }
 
-fn main() -> Result<()> {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,surf=warn".into());
+#[tokio::main]
+async fn main() -> Result<()> {
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into());
     let format = tracing_subscriber::fmt::layer();
     tracing_subscriber::registry()
         .with(filter)

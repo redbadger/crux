@@ -9,9 +9,9 @@ keywords = ["tap-to-pay"]
 rust-version = "1.68"
 
 [workspace.dependencies]
-anyhow = "1.0.79"
+anyhow = "1.0.81"
 crux_core = "0.7"
-serde = "1.0.196"
+serde = "1.0.197"
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }

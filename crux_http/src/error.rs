@@ -3,9 +3,13 @@ use thiserror::Error as ThisError;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
 pub enum HttpError {
-    #[error("HTTP error {0}")]
+    #[error("HTTP error {code}: {message}")]
     #[serde(skip)]
-    Http(HttpErrorHttp),
+    Http {
+        code: crate::http::StatusCode,
+        message: String,
+        body: Option<Vec<u8>>,
+    },
     #[error("JSON serialisation error: {0}")]
     #[serde(skip)]
     Json(String),
@@ -17,35 +21,13 @@ pub enum HttpError {
     Timeout,
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, ThisError)]
-#[error("{code}: {message}")]
-pub struct HttpErrorHttp {
-    pub message: String,
-    pub code: crate::http::StatusCode,
-    pub body: Option<Vec<u8>>,
-}
-
-impl HttpErrorHttp {
-    pub fn new(
-        code: crate::http::StatusCode,
-        message: impl Into<String>,
-        body: Option<Vec<u8>>,
-    ) -> Self {
-        Self {
-            message: message.into(),
-            code,
-            body,
-        }
-    }
-}
-
 impl From<crate::http::Error> for HttpError {
     fn from(e: crate::http::Error) -> Self {
-        HttpError::Http(HttpErrorHttp {
-            message: e.to_string(),
+        HttpError::Http {
             code: e.status(),
+            message: e.to_string(),
             body: None,
-        })
+        }
     }
 }
 
@@ -67,11 +49,11 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let error = HttpError::Http(HttpErrorHttp::new(
-            crate::http::StatusCode::BadRequest,
-            "Bad Request",
-            None,
-        ));
+        let error = HttpError::Http {
+            code: crate::http::StatusCode::BadRequest,
+            message: "Bad Request".to_string(),
+            body: None,
+        };
         assert_eq!(error.to_string(), "HTTP error 400: Bad Request");
     }
 }

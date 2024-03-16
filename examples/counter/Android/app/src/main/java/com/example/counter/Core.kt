@@ -11,6 +11,7 @@ import com.example.counter.shared.processEvent
 import com.example.counter.shared.view
 import com.example.counter.shared_types.Effect
 import com.example.counter.shared_types.Event
+import com.example.counter.shared_types.HttpResult
 import com.example.counter.shared_types.Request
 import com.example.counter.shared_types.Requests
 import com.example.counter.shared_types.ViewModel
@@ -60,7 +61,10 @@ class Core : androidx.lifecycle.ViewModel() {
                 val response = requestHttp(httpClient, effect.value)
 
                 val effects =
-                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                    handleResponse(
+                        request.uuid.toByteArray(),
+                        HttpResult.Ok(response).bincodeSerialize()
+                    )
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {

@@ -149,7 +149,6 @@ impl App for CatFacts {
                 caps.render.render();
             }
             Event::SetFact(Ok(mut response)) => {
-                // TODO check status
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
@@ -158,23 +157,12 @@ impl App for CatFacts {
                 caps.time.now(Event::CurrentTime);
             }
             Event::SetImage(Ok(mut response)) => {
-                if response.status().is_success() {
-                    model.cat_image = Some(response.take_body().unwrap());
+                model.cat_image = Some(response.take_body().unwrap());
 
-                    let bytes = serde_json::to_vec(&model).unwrap();
-                    caps.key_value.write("state", bytes, |_| Event::None);
+                let bytes = serde_json::to_vec(&model).unwrap();
+                caps.key_value.write("state", bytes, |_| Event::None);
 
-                    caps.render.render();
-                } else {
-                    self.update(
-                        Event::SetImage(Err(crux_http::Error::new(
-                            Some(response.status()),
-                            "fetching cat image failed",
-                        ))),
-                        model,
-                        caps,
-                    );
-                }
+                caps.render.render();
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
                 // TODO: Display an error or something?
@@ -225,7 +213,7 @@ mod tests {
     use assert_let_bind::assert_let;
     use crux_core::testing::AppTester;
     use crux_http::{
-        protocol::{HttpRequest, HttpResponse},
+        protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
     };
 
@@ -265,9 +253,11 @@ mod tests {
             length: 13,
         };
 
-        let response = HttpResponse::ok()
-            .body(r#"{ "fact": "cats are good", "length": 13 }"#)
-            .build();
+        let response = HttpResult::Ok(
+            HttpResponse::ok()
+                .body(r#"{ "fact": "cats are good", "length": 13 }"#)
+                .build(),
+        );
         let update = app
             .resolve(request, response)
             .expect("should resolve successfully");
@@ -288,7 +278,7 @@ mod tests {
             href: "image_url".to_string(),
         };
 
-        let response = HttpResponse::ok().body(r#"{"href":"image_url"}"#).build();
+        let response = HttpResult::Ok(HttpResponse::ok().body(r#"{"href":"image_url"}"#).build());
         let update = app
             .resolve(request, response)
             .expect("should resolve successfully");
