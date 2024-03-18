@@ -357,7 +357,7 @@ In a real-world app, it's likely that this information would be captured in a
 struct rather than converted to string inside the core, so that the UI can
 decide how to present it. The date formatting, however, is an example of
 something you may want to do consistently across all platforms and keep inside
-the Core. When making these choices, think about who's decisions they are, and
+the Core. When making these choices, think about whose decisions they are, and
 do they need to be consistent across platforms or flexible. You will no doubt
 get a number of those calls wrong, but that's ok, the type system is here to
 help you refactor later and update the shells to work with the changes.
