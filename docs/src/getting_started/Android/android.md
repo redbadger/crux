@@ -16,9 +16,13 @@ We want to make setting up Android Studio to work with Crux really easy. As time
 The first thing we need to do is create a new Android app in Android Studio.
 
 Open Android Studio and create a new project, for "Phone and Tablet", of type
-"Empty Compose Activity (Material3)". In this walk-through, we'll call it
-"Counter", use a minimum SDK of API 34, and save it in a directory called
-`Android`.
+"Empty Activity". In this walk-through, we'll call it "Counter"
+
+* "Name": `Counter`
+* "Package name": `com.example.simple_counter`
+* "Save Location": a directory called `Android` at the root of our monorepo
+* "Minimum SDK" `API 34`
+* "Build configuration language": `Groovy DSL (build.gradle)`
 
 Your repo's directory structure might now look something like this (some files
 elided):
@@ -35,7 +39,7 @@ elided):
 │  │        └── java
 │  │           └── com
 │  │              └── example
-│  │                 └── counter
+│  │                 └── simple_counter
 │  │                    └── MainActivity.kt
 │  ├── build.gradle
 │  ├── gradle.properties
@@ -47,7 +51,7 @@ elided):
 │  ├── build.rs
 │  ├── Cargo.toml
 │  ├── src
-│  │  ├── counter.rs
+│  │  ├── app.rs
 │  │  ├── lib.rs
 │  │  └── shared.udl
 │  └── uniffi.toml
@@ -63,9 +67,11 @@ elided):
 
 This shared Android library (`aar`) is going to wrap our shared Rust library.
 
-Under `File -> New -> New Module`, choose "Android Library" and call it
-something like `shared`. Set the "Package name" to match the one from your
-`/shared/uniffi.toml`, e.g. `com.example.counter.shared`.
+Under `File -> New -> New Module`, choose "Android Library" and give it the "Module name"
+`shared`. Set the "Package name" to match the one from your
+`/shared/uniffi.toml`, which in this example is `com.example.simple_counter.shared`.
+
+Again set the "Build configuration language" to `Groovy DSL (build.gradle)`.
 
 For more information on how to add an Android library see
 <https://developer.android.com/studio/projects/android-library>.
@@ -88,8 +94,11 @@ dynamic library and generating the runtime bindings and the shared types.
 - The [Android NDK](https://developer.android.com/ndk)
 - Mozilla's [Rust gradle plugin](https://github.com/mozilla/rust-android-gradle)
   for Android
+   - This plugin depends on Python 3, make sure you have a version installed
 - [Java Native Access](https://github.com/java-native-access/jna)
 - [Uniffi](https://mozilla.github.io/uniffi-rs/) to generate Java bindings
+
+The NDK can be installed from "**Tools, SDK Manager, SDK Tools**" in Android Studio.
 
 Let's get started.
 
@@ -112,6 +121,10 @@ like this:
 ```gradle
 {{#include ../../../../examples/simple_counter/Android/shared/build.gradle}}
 
+```
+
+```admonish warning title="Sharp edge"
+You will need to set the `ndkVersion` to one you have installed, go to "**Tools, SDK Manager, SDK Tooks**" and check "**Show Package Details**" to get your installed version, or to install the version matching `build.gradle` above.
 ```
 
 ```admonish tip
@@ -201,6 +214,8 @@ A simple app that increments, decrements and resets a counter.
 First, let's add some boilerplate code to wrap our core and handle the
 capabilities that we are using. For this example, we only need to support the
 `Render` capability, which triggers a render of the UI.
+
+Let's create a file "**File, New, Kotlin Class/File, File**" called `Core`.
 
 ```admonish
 This code that wraps the core only needs to be written once — it only grows when

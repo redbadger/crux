@@ -99,8 +99,11 @@ $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
 $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h
 ```
 
-Now go to "**Build Phases, Compile Sources**", and add `/shared/src/shared.udl`
+Now go to the project settings, "**Build Phases, Compile Sources**", and add `/shared/src/shared.udl`
 using the "add other" button, selecting "Create folder references".
+
+You may also need to go to "**Build Settings, User Script Sandboxing**" and set this
+to `No` to give the script permission to create files.
 
 Build the project (cmd-B), which will fail, but the above script should run
 successfully and the "generated" folder should contain the generated Swift types
