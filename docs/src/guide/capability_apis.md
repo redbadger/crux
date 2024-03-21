@@ -109,7 +109,7 @@ You can see we use two APIs to orchestrate the interaction. First
 This call returns a future, which we can `.await`. Once done, we use the other
 API `update_app` to dispatch the event we were given. At the `.await`, the task
 will be suspended, Crux will pass the operation to the Shell wrapped in the
-`Effect` type we talked about in the last chapter and the Shell will use it's
+`Effect` type we talked about in the last chapter and the Shell will use its
 native APIs to wait for the given duration, and eventually respond. This will
 wake our task up again and we can continue working.
 
