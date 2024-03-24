@@ -1,7 +1,7 @@
 [package]
 name = "crux_http"
 description = "HTTP capability for use with crux_core"
-version = "0.8.1"
+version = "0.9.0"
 readme = "README.md"
 authors.workspace = true
 repository.workspace = true
