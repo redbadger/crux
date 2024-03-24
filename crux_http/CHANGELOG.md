@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.8.1](https://github.com/redbadger/crux/compare/crux_http-v0.8.0...crux_http-v0.8.1) - 2024-03-24
+
+### Other
+- deps
+- make http error a struct variant
+- update counter example to new crux_http, WIP
+
 ## [0.8.0](https://github.com/redbadger/crux/compare/crux_http-v0.7.0...crux_http-v0.8.0) - 2024-02-26
 
 ### Breaking Changes

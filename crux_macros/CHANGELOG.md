@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.3.8](https://github.com/redbadger/crux/compare/crux_macros-v0.3.7...crux_macros-v0.3.8) - 2024-03-24
+
+### Other
+- deps
+- make http error a struct variant
+- rust deps
+- update counter example to new crux_http, WIP
+- update examples to latest crux
+
 ## [0.3.7](https://github.com/redbadger/crux/compare/crux_macros-v0.3.6...crux_macros-v0.3.7) - 2024-02-02
 
 ### Changed
