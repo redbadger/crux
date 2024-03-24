@@ -20,7 +20,7 @@ tauri-build = { version = "1.5", features = [] }
 anyhow.workspace = true
 futures = "0.3.30"
 lazy_static = "1.4.0"
-reqwest = { version = "0.11.26", features = ["stream"] }
+reqwest = { version = "0.12.1", features = ["stream"] }
 shared = { path = "../../shared" }
 tauri = { version = "1.6", features = ["shell-open"] }
 
