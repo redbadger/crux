@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["crux","crux_core","crux_http","crux_kv","crux_macros","crux_platform","crux_time","doctest_support"];
