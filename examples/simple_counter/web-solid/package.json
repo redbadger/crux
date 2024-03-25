@@ -1,0 +1,24 @@
+{
+  "name": "web-solid",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run wasm:build && pnpm install && vite",
+    "build": "pnpm run wasm:build && pnpm install && tsc && vite build",
+    "preview": "pnpm run wasm:build && pnpm install && vite preview",
+    "wasm:build": "cd ../shared && wasm-pack build --target web"
+  },
+  "dependencies": {
+    "bulma": "^0.9.4",
+    "shared": "file:../shared/pkg",
+    "shared_types": "file:../shared_types/generated/typescript",
+    "solid-js": "^1.8.7",
+    "svelte": "^4.2.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vite-plugin-solid": "^2.8.0"
+  }
+}
