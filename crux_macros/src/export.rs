@@ -5,10 +5,12 @@ use quote::{format_ident, quote};
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
 #[derive(FromDeriveInput, Debug)]
-#[darling(supports(struct_named))]
+#[darling(attributes(effect), supports(struct_named))]
 struct ExportStructReceiver {
     ident: Ident,
-    name: Option<Ident>,
+    name: Option<Ident>, // also used by the effect derive macro to name the effect
+    #[allow(dead_code)] // `app` is used by the effect derive macro only
+    app: Option<Type>,
     data: ast::Data<util::Ignored, ExportFieldReceiver>,
 }
 
