@@ -32,8 +32,7 @@
 
 # Internals
 
-1. [Capability runtime](./internals/runtime.md)
-1. [Effect handling](./internals/effect.md)
-1. [FFI interface](./internals/uniffi.md)
-1. [Serialization](./internals/serialization.md)
+1. [Capability runtime and Effects](./internals/runtime.md)
+1. [FFI bridge](./internals/bridge.md)
+1. [The Effect type](./internals/effect.md)
 1. [Type generation](./internals/typegen.md)
