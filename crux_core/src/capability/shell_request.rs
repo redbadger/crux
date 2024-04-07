@@ -69,6 +69,8 @@ where
         // from shared_state -> send_request -> request -> shared_state
         let callback_shared_state = Arc::downgrade(&shared_state);
 
+        // used in docs/internals/runtime.md
+        // ANCHOR: resolve
         let request = Request::resolves_once(operation, move |result| {
             let Some(shared_state) = callback_shared_state.upgrade() else {
                 // The ShellRequest was dropped before we were called, so just
@@ -85,6 +87,7 @@ where
                 waker.wake()
             }
         });
+        // ANCHOR_END: resolve
 
         // Send the request on the next poll of the ShellRequest future
         let send_req_context = self.clone();

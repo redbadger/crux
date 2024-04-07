@@ -125,7 +125,7 @@ The first step for anything to happen is spawning a task from a capability.
 Each capability is created with a `CapabilityContext`. This is the definition:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/mod.rs:399:413}}
+{{#include ../../../crux_core/src/capability/mod.rs:capability_context}}
 ```
 
 There are a couple sending ends of channels for requests and events, which we
@@ -133,7 +133,7 @@ will get to soon, and also a spawner, from the executor module. The `Spawner`
 looks like this:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:17:20}}
+{{#include ../../../crux_core/src/capability/executor.rs:spawner}}
 ```
 
 also holding a sending end of a channel, this one for `Task`s.
@@ -143,13 +143,13 @@ end of the tasks channel, because tasks need to be able to submit themselves
 when awoken.
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:22:26}}
+{{#include ../../../crux_core/src/capability/executor.rs:task}}
 ```
 
 Tasks are spawned by the Spawner as follows:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:34:46}}
+{{#include ../../../crux_core/src/capability/executor.rs:spawning}}
 ```
 
 after constructing a task, it is submitted using the task sender.
@@ -157,7 +157,7 @@ after constructing a task, it is submitted using the task sender.
 The final piece of the puzzle is the executor itself:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:13:15}}
+{{#include ../../../crux_core/src/capability/executor.rs:executor}}
 ```
 
 This is the receiving end of the channel from the spawner.
@@ -165,7 +165,7 @@ This is the receiving end of the channel from the spawner.
 The executor has a single method, `run_all`:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:58:79}}
+{{#include ../../../crux_core/src/capability/executor.rs:run_all}}
 ```
 
 besides the locking and waker mechanics, the gist is quite simple - while there
@@ -176,7 +176,7 @@ call. The `waker_ref` creates a waker which, when asked to wake up, will call
 this method on the task:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:48:56}}
+{{#include ../../../crux_core/src/capability/executor.rs:arc_wake}}
 ```
 
 this is where the task resubmits itself for processing on the next run.
@@ -226,7 +226,7 @@ the capabilities and the core of crux. As you can see, the requests expected are
 Looking at the core itself, we see their `Receiver` ends.
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/core/mod.rs:24:34}}
+{{#include ../../../crux_core/src/core/mod.rs:core}}
 ```
 
 One detail to note is that the receiving end of the requests channel is a
@@ -244,19 +244,19 @@ capability runtime.
 Here is `process_event`:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/core/mod.rs:68:74}}
+{{#include ../../../crux_core/src/core/mod.rs:process_event}}
 ```
 
 and here is `resolve`:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/core/mod.rs:81:89}}
+{{#include ../../../crux_core/src/core/mod.rs:resolve}}
 ```
 
 The interesting things happen in the common `process` method:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/core/mod.rs:91:103}}
+{{#include ../../../crux_core/src/core/mod.rs:process}}
 ```
 
 First, we run all ready tasks in the executor. There can be new tasks ready
@@ -277,14 +277,14 @@ is ultimately just a callback carried by the request, but for additional type
 safety, it is tagged by the expected number of resolutions
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/core/resolve.rs:3:12}}
+{{#include ../../../crux_core/src/core/resolve.rs:resolve}}
 ```
 
 We've already mentioned the resolve function itself briefly, but for
-completeness, here's an example:
+completeness, here's an example from `request_from_shell`:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/shell_request.rs:72:87}}
+{{#include ../../../crux_core/src/capability/shell_request.rs:resolve}}
 ```
 
 Bar the locking and sharing mechanics, all it does is update the state of the

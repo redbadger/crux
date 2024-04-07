@@ -21,6 +21,8 @@ use crate::{App, WithContext};
 ///
 /// The result of the capability's work can then be sent back to the core using [`Core::resolve`], passing
 /// in the request and the corresponding capability output type.
+// used in docs/internals/runtime.md
+// ANCHOR: core
 pub struct Core<Ef, A>
 where
     A: App,
@@ -32,6 +34,7 @@ where
     capability_events: Receiver<A::Event>,
     app: A,
 }
+// ANCHOR_END: core
 
 impl<Ef, A> Core<Ef, A>
 where
@@ -65,6 +68,8 @@ where
 
     /// Run the app's `update` function with a given `event`, returning a vector of
     /// effect requests.
+    // used in docs/internals/runtime.md
+    // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<Ef> {
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
@@ -72,12 +77,15 @@ where
 
         self.process()
     }
+    // ANCHOR_END: process_event
 
     /// Resolve an effect `request` for operation `Op` with the corresponding result.
     ///
     /// Note that the `request` is borrowed mutably. When a request that is expected to
     /// only be resolved once is passed in, it will be consumed and changed to a request
     /// which can no longer be resolved.
+    // used in docs/internals/runtime.md
+    // ANCHOR: resolve
     pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<Ef>
     where
         Op: Operation,
@@ -87,7 +95,10 @@ where
 
         self.process()
     }
+    // ANCHOR_END: resolve
 
+    // used in docs/internals/runtime.md
+    // ANCHOR: process
     pub(crate) fn process(&self) -> Vec<Ef> {
         self.executor.run_all();
 
@@ -101,6 +112,7 @@ where
 
         self.requests.drain().collect()
     }
+    // ANCHOR_END: process
 
     /// Get the current state of the app's view model.
     pub fn view(&self) -> A::ViewModel {

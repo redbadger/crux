@@ -396,6 +396,8 @@ where
 /// # }
 /// ```
 ///
+// used in docs/internals/runtime.md
+// ANCHOR: capability_context
 pub struct CapabilityContext<Op, Event>
 where
     Op: Operation,
@@ -411,6 +413,7 @@ where
     app_channel: Sender<Event>,
     spawner: executor::Spawner,
 }
+// ANCHOR_END: capability_context
 
 /// Initial version of capability Context which has not yet been specialized to a chosen capability
 pub struct ProtoContext<Eff, Event> {

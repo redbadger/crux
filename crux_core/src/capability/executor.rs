@@ -10,20 +10,29 @@ use futures::{
     Future, FutureExt,
 };
 
+// used in docs/internals/runtime.md
+// ANCHOR: executor
 pub(crate) struct QueuingExecutor {
     ready_queue: Receiver<Arc<Task>>,
 }
+// ANCHOR_END: executor
 
+// used in docs/internals/runtime.md
+// ANCHOR: spawner
 #[derive(Clone)]
 pub struct Spawner {
     task_sender: Sender<Arc<Task>>,
 }
+// ANCHOR_END: spawner
 
+// used in docs/internals/runtime.md
+// ANCHOR: task
 struct Task {
     future: Mutex<Option<future::BoxFuture<'static, ()>>>,
 
     task_sender: Sender<Arc<Task>>,
 }
+// ANCHOR_END: task
 
 pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
     let (task_sender, ready_queue) = crossbeam_channel::unbounded();
@@ -31,6 +40,8 @@ pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
     (QueuingExecutor { ready_queue }, Spawner { task_sender })
 }
 
+// used in docs/internals/runtime.md
+// ANCHOR: spawning
 impl Spawner {
     pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
         let future = future.boxed();
@@ -44,7 +55,10 @@ impl Spawner {
             .expect("to be able to send tasks on an unbounded queue")
     }
 }
+// ANCHOR_END: spawning
 
+// used in docs/internals/runtime.md
+// ANCHOR: arc_wake
 impl ArcWake for Task {
     fn wake_by_ref(arc_self: &Arc<Self>) {
         let cloned = arc_self.clone();
@@ -54,7 +68,10 @@ impl ArcWake for Task {
             .expect("to be able to send tasks on an unbounded queue")
     }
 }
+// ANCHOR_END: arc_wake
 
+// used in docs/internals/runtime.md
+// ANCHOR: run_all
 impl QueuingExecutor {
     pub fn run_all(&self) {
         // While there are tasks to be processed
@@ -76,3 +93,4 @@ impl QueuingExecutor {
         }
     }
 }
+// ANCHOR_END: run_all

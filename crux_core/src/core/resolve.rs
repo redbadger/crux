@@ -5,11 +5,14 @@ type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 
 /// Resolve is a callback used to resolve an effect request and continue
 /// one of the capability Tasks running on the executor.
+// used in docs/internals/runtime.md
+// ANCHOR: resolve
 pub(crate) enum Resolve<Out> {
     Never,
     Once(ResolveOnce<Out>),
     Many(ResolveMany<Out>),
 }
+// ANCHOR_END: resolve
 
 impl<Out> Resolve<Out> {
     pub fn resolve(&mut self, output: Out) -> Result<(), ResolveError> {
