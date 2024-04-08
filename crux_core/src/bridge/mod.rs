@@ -15,6 +15,8 @@ pub use request_serde::ResolveSerialized;
 /// Request for a side-effect passed from the Core to the Shell. The `uuid` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
 /// to the [`App::update`] function (wrapped in the event provided to the capability originating the effect).
+// used in docs/internals/bridge.md
+// ANCHOR: request
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request<Eff>
 where
@@ -23,6 +25,7 @@ where
     pub uuid: Vec<u8>,
     pub effect: Eff,
 }
+// ANCHOR_END: request
 
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
 /// serialized form, using bincode as the serialization format.
@@ -70,7 +73,10 @@ where
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
+    // used in docs/internals/bridge.md
+    // ANCHOR: handle_response_sig
     pub fn handle_response(&self, uuid: &[u8], output: &[u8]) -> Vec<u8>
+    // ANCHOR_END: handle_response_sig
     where
         A::Event: for<'a> Deserialize<'a>,
     {
@@ -114,6 +120,8 @@ where
 /// does not have a corresponding type generation support - you will need
 /// to write deserialization code on the shell side yourself, or generate
 /// it using separate tooling.
+// used in docs/internals/bridge.md
+// ANCHOR: bridge_with_serializer
 pub struct BridgeWithSerializer<Eff, A>
 where
     Eff: Effect,
@@ -122,6 +130,7 @@ where
     core: Core<Eff, A>,
     registry: ResolveRegistry,
 }
+// ANCHOR_END: bridge_with_serializer
 
 impl<Eff, A> BridgeWithSerializer<Eff, A>
 where

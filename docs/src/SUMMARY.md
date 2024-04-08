@@ -27,14 +27,12 @@
 1. [Capabilities](./guide/capabilities.md)
    1. [Capability APIs](./guide/capability_apis.md)
 1. [Testing](./guide/testing.md)
-1. [Core API](./guide/core_api.md)
-1. [Message interface between core and shell](./guide/message_interface.md)
+1. [Interface between core and shell](./guide/message_interface.md)
 1. [Composable Applications](./guide/composing.md)
 
 # Internals
 
-1. [Capability runtime](./internals/runtime.md)
-1. [Effect handling](./internals/effect.md)
-1. [FFI interface](./internals/uniffi.md)
-1. [Serialization](./internals/serialization.md)
+1. [Capability runtime and Effects](./internals/runtime.md)
+1. [FFI bridge](./internals/bridge.md)
+1. [The Effect type](./internals/effect.md)
 1. [Type generation](./internals/typegen.md)

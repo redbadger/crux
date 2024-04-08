@@ -26,6 +26,8 @@ impl ResolveRegistry {
     ///
     /// The `effect` will be serialized into its FFI counterpart before being stored
     /// and wrapped in a [`Request`].
+    // used in docs/internals/bridge.md
+    // ANCHOR: register
     pub fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
     where
         Eff: Effect,
@@ -43,6 +45,7 @@ impl ResolveRegistry {
             effect,
         }
     }
+    // ANCHOR_END: register
 
     /// Resume a previously registered effect. This may fail, either because UUID wasn't
     /// found or because this effect was not expected to be resumed again.

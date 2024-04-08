@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+// used in docs/internals/runtime.md
+// ANCHOR: resolve
 type ResolveOnce<Out> = Box<dyn FnOnce(Out) + Send>;
 type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 
@@ -10,6 +12,7 @@ pub(crate) enum Resolve<Out> {
     Once(ResolveOnce<Out>),
     Many(ResolveMany<Out>),
 }
+// ANCHOR_END: resolve
 
 impl<Out> Resolve<Out> {
     pub fn resolve(&mut self, output: Out) -> Result<(), ResolveError> {

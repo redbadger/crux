@@ -4,6 +4,8 @@ use crate::{
     Request,
 };
 
+// used in docs/internals/bridge.md
+// ANCHOR: resolve_serialized
 type ResolveOnceSerialized = Box<dyn FnOnce(&mut dyn erased_serde::Deserializer) + Send>;
 type ResolveManySerialized =
     Box<dyn Fn(&mut dyn erased_serde::Deserializer) -> Result<(), ()> + Send>;
@@ -19,6 +21,7 @@ pub enum ResolveSerialized {
     Once(ResolveOnceSerialized),
     Many(ResolveManySerialized),
 }
+// ANCHOR_END: resolve_serialized
 
 impl ResolveSerialized {
     pub(crate) fn resolve(
