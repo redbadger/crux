@@ -21,11 +21,11 @@ The examples will assume a Rust based shell.
 
 One of the fairly unique aspects of Rust's async is the fact that it doesn't come with a bundled runtime. This is recognising that asynchronous execution is useful in various different scenarios, and no one runtime can serve all of them. Crux takes advantage of this and brings it's own runtime, tailored to the execution of side-effects on top of a message based interface.
 
-For a deeper background on Rust's async architecture, we recommend the [Asynchronous Programming in Rust](https://rust-lang.github.io/async-book/) book, especially the chapter about [executing futured and tasks](https://rust-lang.github.io/async-book/02_execution/01_chapter.html) We will assume you are familiar with the basic ideas and mechanics of async here.
+For a deeper background on Rust's async architecture, we recommend the [Asynchronous Programming in Rust](https://rust-lang.github.io/async-book/) book, especially the chapter about [executing futures and tasks](https://rust-lang.github.io/async-book/02_execution/01_chapter.html). We will assume you are familiar with the basic ideas and mechanics of async here.
 
-The job of an async runtime is to manage a number of tasks, each driving one future to completion. This management is done by an executor, which is responsible for scheduling the futures and `poll`ing them _at the right time_ to drive their execution forward. Most "grown up" runtimes will do this on a number of threads in a thread pool, but for Crux, we run in the context of a single function call (of the app's `update` function) and potentially in a webassembly context which is single threaded anyway, so our baby runtime only needs to poll all the tasks sequentially, to see if any of them need to continue.
+The job of an async runtime is to manage a number of tasks, each driving one future to completion. This management is done by an executor, which is responsible for scheduling the futures and `poll`ing them _at the right time_ to drive their execution forward. Most "grown up" runtimes will do this on a number of threads in a thread pool, but in Crux, we run in the context of a single function call (of the app's `update` function) and potentially in a webassembly context which is single threaded anyway, so our baby runtime only needs to poll all the tasks sequentially, to see if any of them need to continue.
 
-Polling all the tasks would work, and in our case wouldn't even be that inefficient, but the async system is set up to avoid unnecessary polling of futures with one additional concept - wakers. A waker is a mechanism which can be used to signal to the executor that something a given task is waiting on has changed, and the task's future should be polled, because it will be able to proceed. This is how "at the right time" from the above paragraph is decided.
+Polling all the tasks would work, and in our case wouldn't even be that inefficient, but the async system is set up to avoid unnecessary polling of futures with one additional concept - wakers. A waker is a mechanism which can be used to signal to the executor that something that a given task is waiting on has changed, and the task's future should be polled, because it will be able to proceed. This is how "at the right time" from the above paragraph is decided.
 
 In our case there's a single situation which causes such a change - a result has arrived from the shell, for a particular effect requested earlier.
 
@@ -46,11 +46,11 @@ So, step by step, our strategy for the capabilities to handle effects is:
 1. The new task is scheduled to be polled next time the executor runs
 1. The executor goes through the list of ready tasks until it gets to our task and polls it
 1. The future runs to the point where the first async call is `await`ed. In capabilities, this _should_ only be a future returned from one of the calls to request something from the shell, or a future resulting from a composition of such futures (through async method calls or combinators like `select` or `join`).
-1. The shell request future's first step is to create the request and prepare it to be sent. We will look at the mechanics of the sending in a minute, but for now it's only important that part of this request is a callback used to resolve it.
+1. The shell request future's first step is to create the request and prepare it to be sent. We will look at the mechanics of the sending shortly, but for now it's only important that part of this request is a callback used to resolve it.
 1. The request future, as part of the first poll by the executor, sends the request to be handed to the shell. As there is no result from the shell yet, it returns a pending state and the task is suspended.
-1. The request is passed on to the shell to resolve (as a return from `process_event` or `resolve`)
+1. The request is passed on to the shell to resolve (as a return value from `process_event` or `resolve`)
 1. Eventually, the shell has a result ready for the request and asks the core to `resolve` the request.
-1. The request callback mentioned above is executed, and puts the provided result in the future's mutable state, and calls the future's waker, also stored in the future's state, to wake the future up. The waker enqueues the future for processing on th executor.
+1. The request callback mentioned above is executed, puts the provided result in the future's mutable state, and calls the future's waker, also stored in the future's state, to wake the future up. The waker enqueues the future for processing on th executor.
 1. The executor runs again (asked to do so by the core's `resolve` API after calling the callback), and polls the awoken future.
 1. the future sees there is now a result available and continues the execution of the original task until a further await or until completion.
 
@@ -122,9 +122,9 @@ Now we know how the futures get executed, suspended and resumed, we can examine 
 
 The key to understanding how the effects get processed and executed is to name all the various pieces of information, and discuss how they are wrapped in each other.
 
-The basic inner piece of the effect request is an _operation_. This is the intent which the capability is submitting to the shell. Each operation has an associated _output_ value, with which the operation request can be resolved. There are multiple capabilities in each app, and in order for the shell to easily tell which capability's effect it needs to handle, we wrap the operation in an _effect_. The `Effect` type is a generated enum serving this purpose. It allows us to multiplex (or type erase) the different typed operations into a single type, which can be `match`ed on to process the operations.
+The basic inner piece of the effect request is an _operation_. This is the intent which the capability is submitting to the shell. Each operation has an associated _output_ value, with which the operation request can be resolved. There are multiple capabilities in each app, and in order for the shell to easily tell which capability's effect it needs to handle, we wrap the operation in an _effect_. The `Effect` type is a generated enum based on the app's set of capabilities, with one variant per capability. It allows us to multiplex (or type erase) the different typed operations into a single type, which can be `match`ed on to process the operations.
 
-Finally, the effect is wrapped in a _request_ which carries the effect, and an associated _resolve_ callback to which the output will eventually be given. We discussed this callback in the previous section - its job is to update the paused future's state and resume it. The request is the value passed to the shell, and used as both the description of the effect, and the "token" used to resolve it.
+Finally, the effect is wrapped in a _request_ which carries the effect, and an associated _resolve_ callback to which the output will eventually be given. We discussed this callback in the previous section - its job is to update the paused future's state and resume it. The request is the value passed to the shell, and used as both the description of the effect intent, and the "token" used to resolve it.
 
 Now we can look at how all this wrapping is facilitated. Recall from the previous section that each capability has access to a `CapabilityContext`, which holds a sending end of two channels, one for events - the `app_channel` and one for requests - the `shell_channel`, whose type is `Sender<Request<Op>>`. These channels serve both as thread synchronisation and queueing mechanism between the capabilities and the core of crux. As you can see, the requests expected are typed for the capability's operation type.
 
@@ -134,7 +134,7 @@ Looking at the core itself, we see their `Receiver` ends.
 {{#include ../../../crux_core/src/core/mod.rs:core}}
 ```
 
-One detail to note is that the receiving end of the requests channel is a `Receiver<Ef>`. The channel has an additional feature - it can map between the input types and output types, and, in this case, serve as a multiplexer. Each sending end is specialised for the respective capability, but the receiving end gets already wrapped `Effect`.
+One detail to note is that the receiving end of the requests channel is a `Receiver<Ef>`. The channel has an additional feature - it can map between the input types and output types, and, in this case, serve as a multiplexer, wrapping the operation in the corresponding Effect variant. Each sending end is specialised for the respective capability, but the receiving end gets an already wrapped `Effect`.
 
 ## A single update cycle
 
@@ -162,7 +162,7 @@ First, we run all ready tasks in the executor. There can be new tasks ready beca
 
 Next, we drain the events channel (where events are submitted from capabilities by `context.update_app`) and one by one, send them to the `update` function, running the executor after each one.
 
-Finally, we collect all of the effects submitted in the process and return them to the shell.
+Finally, we collect all of the effect requests submitted in the process and return them to the shell.
 
 ## Resolving requests
 

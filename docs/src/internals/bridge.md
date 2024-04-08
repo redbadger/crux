@@ -6,7 +6,7 @@ In the previous chapter, we saw how the capability runtime facilitates the orche
 
 The FFI bridge has two key parts, the serialisation part converting from typed effect requests to serializable types, and the FFI implementation itself, facilitated by [UniFFI](https://github.com/mozilla/uniffi-rs).
 
-The serialisation part is the `Bridge` type, defined in the `bridge` module of `crux_core`. It is a wrapper for the `Core` with its own definition of `Request`. Its API is very similar to the `Core` API - it has an identical set of methods, but their type signatures are different.
+The serialisation part is facilitated by the `Bridge`. It is a wrapper for the `Core` with its own definition of `Request`. Its API is very similar to the `Core` API - it has an identical set of methods, but their type signatures are different.
 
 For example, here is `Core::resolve`
 
@@ -22,7 +22,7 @@ and here's its counterpart, `Bridge::handle_response`
 
 where the core expects to be given a `Request<Op>` to resolve, the bridge expects a `uuid` - a unique identifier of the request being resolved.
 
-This makes sense - the `Request`s include callback closures working with the capability runtime, they can't be easily serialised and sent back and forth across the language boundary. Instead, the bridge "parks" them in a registry, to be picked up later. Like in a coat in a theatre cloakroom, the registry returns a unique number under which the request is stored.
+This makes sense - the `Request`s include callback closures working with the capability runtime, they can't be easily serialised and sent back and forth across the language boundary. Instead, the bridge "parks" them in a registry, to be picked up later. Like in a theatre cloakroom, the registry returns a unique number under which the request is stored.
 
 The implementation of the serialization/deserialization process is slightly complicated by the fact that Crux allows you to supply your own serializer and deserializaer should you need to, so the actual bridge implementation does not work on bytes but on serializers. The `Bridge` type used in examples and all the documentation is a default implementation, which uses bincode serialization, which is also supported by the [type generation subsystem](./typegen.md).
 
@@ -45,7 +45,7 @@ You may remember that both these calls return effect requests. The remaining ste
 {{#include ../../../crux_core/src/bridge/mod.rs:request}}
 ```
 
-Unlike the core request, this does nto include any closures or other difficult data, and is fully serializable.
+Unlike the core request, this does not include any closures and is fully serializable.
 
 ## ResolveRegistry
 
@@ -63,7 +63,7 @@ this is named based on our intent, not really based on what actually happens. Th
 
 Like the `Effect` type which implements this trait, the implementation is macro generated, based on the Capabilities used by your application. We will look at how this works in the [`Effect type`](./effect.md) chapter.
 
-The type signature of the method gives us a hint though - it converts the normal `Effect` into an serializable counterpart, and something of a `ResolveSerialized` type. This is stored in the registry under a randomly generated uuid, and the effect and the uuid are return as the bridge version of a `Request`.
+The type signature of the method gives us a hint though - it converts the normal `Effect` into a serializable counterpart, alongside something with a `ResolveSerialized` type. This is stored in the registry under a randomly generated uuid, and the effect and the uuid are returned as the bridge version of a `Request`.
 
 The definition of the `ResolveSerialized` type is a little bit convoluted:
 
@@ -79,7 +79,7 @@ The final piece of the puzzle is the FFI interface itself. All it does is expose
 
 ```admonish note
 You will see that this part, alongside the type generation, is a fairly
-complicated mixture of various existing tools and libraries, which has
+complicated constellation of various existing tools and libraries, which has
 a number of rough edges. It is likely that we will explore replacing this
 part of Crux with a tailor made FFI bridge in the future. If/when we do, we will
 do our best to provide a smooth migration path.
@@ -119,4 +119,4 @@ The foreign language code is built by an additional binary target for the same c
 
 this builds a CLI which can be used as part of the build process for clients of the library to generate the code.
 
-The details of this process are well documented [in UniFFI's tutorial](https://mozilla.github.io/uniffi-rs/Getting_started.html)
+The details of this process are well documented [in UniFFI's tutorial](https://mozilla.github.io/uniffi-rs/Getting_started.html).
