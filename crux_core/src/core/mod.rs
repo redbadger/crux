@@ -84,11 +84,13 @@ where
     /// Note that the `request` is borrowed mutably. When a request that is expected to
     /// only be resolved once is passed in, it will be consumed and changed to a request
     /// which can no longer be resolved.
-    // used in docs/internals/runtime.md
+    // used in docs/internals/runtime.md and docs/internals/bridge.md
     // ANCHOR: resolve
+    // ANCHOR: resolve_sig
     pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<Ef>
     where
         Op: Operation,
+        // ANCHOR_END: resolve_sig
     {
         let resolve_result = request.resolve(result);
         debug_assert!(resolve_result.is_ok());

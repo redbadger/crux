@@ -20,13 +20,13 @@ of methods, but their type signatures are different.
 For example, here is `Core::resolve`
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/core/mod.rs:81:83}}
+{{#include ../../../crux_core/src/core/mod.rs:resolve_sig}}
 ```
 
 and here's its counterpart, `Bridge::handle_response`
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/bridge/mod.rs:73}}
+{{#include ../../../crux_core/src/bridge/mod.rs:handle_response_sig}}
 ```
 
 where the core expects to be given a `Request<Op>` to resolve, the bridge
@@ -49,7 +49,7 @@ subsystem](./typegen.md).
 We won't go into the detial of working with Serde and the [`erased_serde`](https://docs.rs/erased-serde/) crate to make all the serialization happen without leaking deserialzation lifetimes out of the bridge. You can read the implemantation of `BridgeWithSerializer` if you're interested in the gory details. For our purposes, the type definition will suffice.
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/bridge/mod.rs:117:124}}
+{{#include ../../../crux_core/src/bridge/mod.rs:bridge_with_serializer}}
 ```
 
 The bridge holds an instance of the `Core` and a `ResolveRegistry` to store the
@@ -64,7 +64,7 @@ You may remember that both these calls return effect requests. The remaining ste
 exchanging the core `Request` for a bridge variant, which looks like this:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/bridge/mod.rs:18:25}}
+{{#include ../../../crux_core/src/bridge/mod.rs:request}}
 ```
 
 Unlike the core request, this does nto include any closures or other difficult data, and is fully serializable.
@@ -77,14 +77,14 @@ get around this by making the `register` method generic and asking the effect
 to "serialize" itself.
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/bridge/registry.rs:29:45}}
+{{#include ../../../crux_core/src/bridge/registry.rs:register}}
 ```
 
 this is named based on our intent, not really based on what actually happens.
 The method comes from an `Effect` trait:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/core/effect.rs:5:20}}
+{{#include ../../../crux_core/src/core/effect.rs:effect}}
 ```
 
 Like the `Effect` type which implements this trait, the implementation is macro
@@ -100,7 +100,7 @@ a `Request`.
 The definition of the `ResolveSerialized` type is a little bit convoluted:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/bridge/request_serde.rs:7:21}}
+{{#include ../../../crux_core/src/bridge/request_serde.rs:resolve_serialized}}
 ```
 
 but the gist of it is that it is a mirror of the `Resolve` type we already know,
