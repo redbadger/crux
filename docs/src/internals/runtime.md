@@ -14,7 +14,7 @@ the two perspectives we previously mentioned:
 
 There are a few challenges to solve in order to facilitate this interface.
 First, each run of the `update` function can call several capabilities. The
-requested effects are expected to be emitted together, and each group of effects
+requested effects are expected to be emitted together, and each batch of effects
 will be processed concurrently, so the calls can't be blocking. Second, each effect requested from
 a capability may require multiple round-trips between the core and shell to
 conclude and we don't want to require a call to `update` per round trip, so we
