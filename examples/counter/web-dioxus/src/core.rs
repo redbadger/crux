@@ -1,4 +1,7 @@
-use dioxus::prelude::{to_owned, UnboundedReceiver, UseState};
+use dioxus::{
+    prelude::{Signal, UnboundedReceiver},
+    signals::Writable,
+};
 use futures_util::{StreamExt, TryStreamExt};
 use shared::{App, Capabilities, Effect, Event, ViewModel};
 use std::rc::Rc;
@@ -6,44 +9,56 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::{http, sse};
 
-pub type Core = Rc<shared::Core<Effect, App>>;
+type Core = Rc<shared::Core<Effect, App>>;
 
-pub fn new() -> Core {
-    Rc::new(shared::Core::new::<Capabilities>())
+pub struct CoreService {
+    core: Core,
+    view: Signal<ViewModel>,
 }
 
-pub async fn core_service(
-    core: &Core,
-    mut rx: UnboundedReceiver<Event>,
-    view: UseState<ViewModel>,
-) {
-    while let Some(event) = rx.next().await {
-        update(core, event, &view);
+impl CoreService {
+    pub fn new(view: Signal<ViewModel>) -> Self {
+        log::debug!("initializing core service");
+        Self {
+            core: Rc::new(shared::Core::new::<Capabilities>()),
+            view,
+        }
+    }
+
+    pub async fn run(&self, rx: &mut UnboundedReceiver<Event>) {
+        let mut view = self.view;
+        *view.write() = self.core.view();
+        while let Some(event) = rx.next().await {
+            self.update(event, &mut view);
+        }
+    }
+
+    fn update(&self, event: Event, view: &mut Signal<ViewModel>) {
+        log::debug!("event: {:?}", event);
+
+        for effect in self.core.process_event(event) {
+            process_effect(&self.core, effect, view);
+        }
     }
 }
 
-pub fn update(core: &Core, event: Event, view: &UseState<ViewModel>) {
-    log::debug!("event: {:?}", event);
-    for effect in core.process_event(event) {
-        process_effect(core, effect, view);
-    }
-}
-
-pub fn process_effect(core: &Core, effect: Effect, view: &UseState<ViewModel>) {
+fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
     log::debug!("effect: {:?}", effect);
     match effect {
         Effect::Render(_) => {
-            view.set(core.view());
+            *view.write() = core.view();
         }
 
         Effect::Http(mut request) => {
             spawn_local({
-                to_owned![core, view];
+                let mut view = view.to_owned();
+                let core = core.clone();
+
                 async move {
                     let response = http::request(&request.operation).await;
 
                     for effect in core.resolve(&mut request, response.into()) {
-                        process_effect(&core, effect, &view);
+                        process_effect(&core, effect, &mut view);
                     }
                 }
             });
@@ -51,13 +66,15 @@ pub fn process_effect(core: &Core, effect: Effect, view: &UseState<ViewModel>) {
 
         Effect::ServerSentEvents(mut request) => {
             spawn_local({
-                to_owned![core, view];
+                let mut view = view.to_owned();
+                let core = core.clone();
+
                 async move {
                     let mut stream = sse::request(&request.operation).await.unwrap();
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core.resolve(&mut request, response) {
-                            process_effect(&core, effect, &view);
+                            process_effect(&core, effect, &mut view);
                         }
                     }
                 }

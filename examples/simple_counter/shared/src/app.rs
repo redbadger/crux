@@ -14,7 +14,7 @@ pub struct Model {
     count: isize,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct ViewModel {
     pub count: String,
 }
