@@ -4,8 +4,8 @@ In the previous sections we focused on building applications in Crux and using
 its public APIs to do so. In this and the following chapters, we'll look at how
 the internals of Crux work, starting with the capability runtime.
 
-The capability runtime is a set of components whose job it is to facilitate the
-processing of effects to present the two perspectives we previously mentioned:
+The capability runtime is a set of components that processes effects, presenting
+the two perspectives we previously mentioned:
 
 - For the core, the shell appears to be a platform with a message based system
   interface
@@ -13,9 +13,9 @@ processing of effects to present the two perspectives we previously mentioned:
   with request for side-effects
 
 There are a few challenges to solve in order to facilitate this interface.
-First, each run of the `update` function can call several capabilities, and the
-requested effects are expected to be emitted together and processed
-concurrently, so the calls can't be blocking. Second, each effect requested from
+First, each run of the `update` function can call several capabilities. The
+requested effects are expected to be emitted together, and each group of effects
+will be processed concurrently, so the calls can't be blocking. Second, each effect requested from
 a capability may require multiple round-trips between the core and shell to
 conclude and we don't want to require a call to `update` per round trip, so we
 need some ability to "suspend" execution in capabilities while waiting for an
@@ -76,8 +76,9 @@ when futures with different wakers are submitted onto the runtime. Trying to do
 so will either simply not work on some platforms where the given type of waker
 (e.g. network I/O) is not available, or the futures will eventually proceed,
 but only when one of the Crux core APIs are called, because that's when the
-executor runs, as we will see below. Instead, implement your async work in
-a separate capability (see the [capabilities](../guide/capability_apis.md) chapter).
+executor runs, as we will see below. Don't implement async work in your core code.
+Instead, implement your async work in a separate capability, always using the
+capability API (see the [capabilities](../guide/capability_apis.md) chapter).
 ```
 
 ## One effect's life cycle
