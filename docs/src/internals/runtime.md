@@ -71,14 +71,11 @@ In our case there's a single situation which causes such a change - a result has
 arrived from the shell, for a particular effect requested earlier.
 
 ```admonish warning
-This is a strong assumption Crux makes, and can lead to unexpected behaviour
-when futures with different wakers are submitted onto the runtime. Trying to do
-so will either simply not work on some platforms where the given type of waker
-(e.g. network I/O) is not available, or the futures will eventually proceed,
-but only when one of the Crux core APIs are called, because that's when the
-executor runs, as we will see below. Don't implement async work in your core code.
-Instead, implement your async work in a separate capability, always using the
-capability API (see the [capabilities](../guide/capability_apis.md) chapter).
+Always use the capability APIs provided by Crux for async work (see the
+[capabilities](../guide/capability_apis.md) chapter). Using other async APIs can
+lead to unexpected behaviour, because the resulting futures are not tied to crux
+effects. Such futures will resolve, but only after the next shell request causes
+the crux executor to execute.
 ```
 
 ## One effect's life cycle
