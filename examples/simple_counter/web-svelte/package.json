@@ -13,17 +13,17 @@
     "concurrently": "^8.2.2",
     "parcel": "^2.12.0",
     "parcel-transformer-svelte3-plus": "^0.2.10",
-    "reflect-metadata": "^0.2.1",
+    "reflect-metadata": "^0.2.2",
     "shared": "file:../shared/pkg",
     "shared_types": "file:../shared_types/generated/typescript",
-    "svelte": "^4.2.12",
-    "typescript": "^5.4.3"
+    "svelte": "^4.2.14",
+    "typescript": "^5.4.5"
   },
   "devDependencies": {
     "@parcel/config-default": "^2.12.0",
     "@parcel/transformer-inline-string": "^2.12.0",
     "@parcel/transformer-webmanifest": "^2.12.0",
-    "@types/node": "^20.11.30",
+    "@types/node": "^20.12.7",
     "@types/webpack": "^5.28.5",
     "process": "^0.11.10"
   },

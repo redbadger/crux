@@ -16,12 +16,12 @@ proc-macro = true
 darling = "0.20.8"
 proc-macro-error = "1.0.4"
 proc-macro2 = "1.0.79"
-quote = "1.0.35"
-syn = "2.0.55"
+quote = "1.0.36"
+syn = "2.0.58"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
-insta = "1.36"
+insta = "1.38"
 prettyplease = "0.2"
 serde = { version = "1.0.197", features = ["derive"] }

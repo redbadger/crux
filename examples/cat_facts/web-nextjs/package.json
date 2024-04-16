@@ -11,20 +11,20 @@
   },
   "dependencies": {
     "bulma": "^1.0.0",
-    "eslint": "8.57.0",
-    "eslint-config-next": "14.1.4",
-    "next": "14.1.4",
+    "eslint": "9.0.0",
+    "eslint-config-next": "14.2.1",
+    "next": "14.2.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "shared": "link:../shared/pkg",
     "shared_types": "link:../shared_types/generated/typescript",
-    "typescript": "5.4.3",
+    "typescript": "5.4.5",
     "ua-parser-js": "^1.0.37"
   },
   "devDependencies": {
-    "@types/node": "20.11.30",
-    "@types/react": "18.2.69",
-    "@types/react-dom": "18.2.22",
+    "@types/node": "20.12.7",
+    "@types/react": "18.2.78",
+    "@types/react-dom": "18.2.25",
     "@types/ua-parser-js": "^0.7.39"
   }
 }

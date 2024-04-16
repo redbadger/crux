@@ -50,7 +50,7 @@ android {
 }
 
 dependencies {
-    def composeBom = platform('androidx.compose:compose-bom:2022.10.00')
+    def composeBom = platform('androidx.compose:compose-bom:2024.04.00')
     implementation composeBom
     androidTestImplementation composeBom
 
@@ -74,7 +74,7 @@ dependencies {
 
 
     implementation project(path: ':shared')
-    implementation "androidx.compose.material:material-icons-extended:1.6.2"
+    implementation "androidx.compose.material:material-icons-extended:1.6.5"
 
     implementation "io.ktor:ktor-client-cio:2.2.2"
 

@@ -1,39 +1,51 @@
-use dioxus::prelude::{UnboundedReceiver, UseState};
+use dioxus::{
+    prelude::{Signal, UnboundedReceiver},
+    signals::Writable,
+};
 use futures_util::StreamExt;
 use std::rc::Rc;
 
 use shared::{Capabilities, Counter, Effect, Event, ViewModel};
 
-pub type Core = Rc<shared::Core<Effect, Counter>>;
+type Core = Rc<shared::Core<Effect, Counter>>;
 
-pub fn new() -> Core {
-    Rc::new(shared::Core::new::<Capabilities>())
+pub struct CoreService {
+    core: Core,
+    view: Signal<ViewModel>,
 }
 
-pub async fn core_service(
-    core: &Core,
-    mut rx: UnboundedReceiver<Event>,
-    view: UseState<ViewModel>,
-) {
-    while let Some(event) = rx.next().await {
-        update(core, event, &view);
+impl CoreService {
+    pub fn new(view: Signal<ViewModel>) -> Self {
+        log::debug!("initializing core service");
+        Self {
+            core: Rc::new(shared::Core::new::<Capabilities>()),
+            view,
+        }
+    }
+
+    pub async fn run(&self, rx: &mut UnboundedReceiver<Event>) {
+        let mut view = self.view;
+        *view.write() = self.core.view();
+        while let Some(event) = rx.next().await {
+            self.update(event, &mut view);
+        }
+    }
+
+    fn update(&self, event: Event, view: &mut Signal<ViewModel>) {
+        log::debug!("event: {:?}", event);
+
+        for effect in self.core.process_event(event) {
+            process_effect(&self.core, effect, view);
+        }
     }
 }
 
-pub fn update(core: &Core, event: Event, view: &UseState<ViewModel>) {
-    log::debug!("event: {:?}", event);
-
-    for effect in core.process_event(event) {
-        process_effect(core, effect, view);
-    }
-}
-
-pub fn process_effect(core: &Core, effect: Effect, view: &UseState<ViewModel>) {
+fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
     log::debug!("effect: {:?}", effect);
 
     match effect {
         Effect::Render(_) => {
-            view.set(core.view());
+            *view.write() = core.view();
         }
     };
 }

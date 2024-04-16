@@ -25,7 +25,7 @@ derive_more = "0.99.17"
 erased-serde = "0.4"
 futures = "0.3.30"
 serde = { workspace = true, features = ["derive"] }
-serde_json = "1.0.114"
+serde_json = "1.0.115"
 serde-generate = { version = "0.25.1", optional = true }
 serde-reflection = { version = "0.3.6", optional = true }
 thiserror = "1.0.58"

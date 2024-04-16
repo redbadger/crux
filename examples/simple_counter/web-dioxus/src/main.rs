@@ -1,41 +1,41 @@
 mod core;
 
 use dioxus::prelude::*;
-use dioxus_web::Config;
 use log::LevelFilter;
 
-use shared::Event;
+use shared::{Event, ViewModel};
 
-use crate::core::Core;
+use core::CoreService;
 
-fn app(cx: Scope<Core>) -> Element {
-    let core = cx.props;
-    let view = use_state(cx, || core.view());
-    let dispatcher = use_coroutine(cx, |rx| {
-        to_owned![core, view];
-        async move { core::core_service(&core, rx, view).await }
+#[component]
+fn App() -> Element {
+    let view = use_signal(ViewModel::default);
+
+    let core = use_coroutine(|mut rx| {
+        let svc = CoreService::new(view);
+        async move { svc.run(&mut rx).await }
     });
 
-    render! {
+    rsx! {
         main {
             section { class: "section has-text-centered",
-                p { class: "is-size-5", "{view.count}" }
+                p { class: "is-size-5", "{view().count}" }
                 div { class: "buttons section is-centered",
                     button { class:"button is-primary is-danger",
                         onclick: move |_| {
-                            dispatcher.send(Event::Reset);
+                            core.send(Event::Reset);
                         },
                         "Reset"
                     }
                     button { class:"button is-primary is-success",
                         onclick: move |_| {
-                            dispatcher.send(Event::Increment);
+                            core.send(Event::Increment);
                         },
                         "Increment"
                     }
                     button { class:"button is-primary is-warning",
                         onclick: move |_| {
-                            dispatcher.send(Event::Decrement);
+                            core.send(Event::Decrement);
                         },
                         "Decrement"
                     }
@@ -49,5 +49,5 @@ fn main() {
     dioxus_logger::init(LevelFilter::Debug).expect("failed to init logger");
     console_error_panic_hook::set_once();
 
-    dioxus_web::launch_with_props(app, core::new(), Config::new());
+    launch(App);
 }
