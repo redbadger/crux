@@ -1,3 +1,4 @@
+#[cfg(feature = "chrono")]
 mod shared {
     use chrono::{DateTime, Utc};
     use crux_core::macros::Effect;
@@ -25,7 +26,7 @@ mod shared {
 
     impl Debounce {
         fn start(&mut self) -> usize {
-            self.pending += 1;
+            self.pending = self.pending.wrapping_add(1);
             self.pending
         }
 
@@ -71,8 +72,9 @@ mod shared {
                 }
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
+
                     caps.time.subscribe_duration(
-                        1_000_000_000, // nano seconds
+                        crux_time::Duration::from_secs(1).expect("valid duration"),
                         event_with_user_info(pending, Event::DurationElapsed),
                     );
                 }
@@ -113,6 +115,7 @@ mod shared {
     }
 }
 
+#[cfg(feature = "chrono")]
 mod shell {
     use super::shared::{App, Effect, Event};
     use chrono::{DateTime, Utc};
@@ -159,6 +162,7 @@ mod shell {
     }
 }
 
+#[cfg(feature = "chrono")]
 mod tests {
     use crate::{
         shared::{App, Effect, Event, Model},

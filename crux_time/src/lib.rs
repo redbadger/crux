@@ -3,62 +3,29 @@
 //! Current time (on a wall clock) is considered a side-effect (although if we were to get pedantic, it's
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
-//!
-//! This is still work in progress and as such very basic.
 
-use chrono::{DateTime, Utc};
+pub mod duration;
+pub mod error;
+pub mod instant;
+
+pub use duration::Duration;
+pub use error::TimeError;
+pub use instant::Instant;
+
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
 use crux_core::capability::{CapabilityContext, Operation};
 
-/// Error type for time operations
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Error)]
-pub enum TimeError {
-    #[error("invalid time")]
-    InvalidTime,
-}
-
-/// Represents a point in time:
-///
-/// - seconds: number of seconds since the Unix epoch (1970-01-01T00:00:00Z)
-/// - sub_nanos: number of nanoseconds since the last second
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Instant {
-    pub seconds: u64,
-    pub sub_nanos: u32,
-}
-
-impl TryFrom<Instant> for DateTime<Utc> {
-    type Error = TimeError;
-
-    fn try_from(time: Instant) -> Result<Self, Self::Error> {
-        let seconds = i64::try_from(time.seconds).map_err(|_| TimeError::InvalidTime)?;
-        DateTime::<Utc>::from_timestamp(seconds, time.sub_nanos).ok_or(TimeError::InvalidTime)
-    }
-}
-
-impl TryFrom<DateTime<Utc>> for Instant {
-    type Error = TimeError;
-
-    fn try_from(time: DateTime<Utc>) -> Result<Self, Self::Error> {
-        let seconds = time.timestamp();
-        let sub_nanos = time.timestamp_subsec_nanos();
-        Ok(Instant {
-            seconds: seconds.try_into().map_err(|_| TimeError::InvalidTime)?,
-            sub_nanos,
-        })
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TimeRequest {
     Now,
     SubscribeInstant(Instant),
-    SubscribeDuration(u64),
+    SubscribeDuration(Duration),
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TimeResponse {
     Now(Instant),
     InstantArrived,
@@ -140,7 +107,7 @@ where
     }
 
     /// Subscribe to receive a notification when the specified duration has elapsed.
-    pub fn subscribe_duration<F>(&self, duration: u64, callback: F)
+    pub fn subscribe_duration<F>(&self, duration: Duration, callback: F)
     where
         F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
@@ -158,9 +125,71 @@ where
 
     /// Subscribe to receive a notification when the specified duration has elapsed.
     /// This is an async call to use with [`crux_core::compose::Compose`].
-    pub async fn subscribe_duration_async(&self, duration: u64) -> TimeResponse {
+    pub async fn subscribe_duration_async(&self, duration: Duration) -> TimeResponse {
         self.context
             .request_from_shell(TimeRequest::SubscribeDuration(duration))
             .await
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_serializing_the_request_types_as_json() {
+        let now = TimeRequest::Now;
+
+        let serialized = serde_json::to_string(&now).unwrap();
+        assert_eq!(&serialized, "\"now\"");
+
+        let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(now, deserialized);
+
+        let now = TimeRequest::SubscribeInstant(Instant::new(1, 2).expect("valid instant"));
+
+        let serialized = serde_json::to_string(&now).unwrap();
+        assert_eq!(
+            &serialized,
+            r#"{"subscribeInstant":{"seconds":1,"nanos":2}}"#
+        );
+
+        let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(now, deserialized);
+
+        let now = TimeRequest::SubscribeDuration(Duration::from_secs(1).expect("valid duration"));
+
+        let serialized = serde_json::to_string(&now).unwrap();
+        assert_eq!(&serialized, r#"{"subscribeDuration":{"nanos":1000000000}}"#);
+
+        let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(now, deserialized);
+    }
+
+    #[test]
+    fn test_serializing_the_response_types_as_json() {
+        let now = TimeResponse::Now(Instant::new(1, 2).expect("valid instant"));
+
+        let serialized = serde_json::to_string(&now).unwrap();
+        assert_eq!(&serialized, r#"{"now":{"seconds":1,"nanos":2}}"#);
+
+        let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(now, deserialized);
+
+        let now = TimeResponse::DurationElapsed;
+
+        let serialized = serde_json::to_string(&now).unwrap();
+        assert_eq!(&serialized, r#""durationElapsed""#);
+
+        let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(now, deserialized);
+
+        let now = TimeResponse::InstantArrived;
+
+        let serialized = serde_json::to_string(&now).unwrap();
+        assert_eq!(&serialized, r#""instantArrived""#);
+
+        let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(now, deserialized);
     }
 }
