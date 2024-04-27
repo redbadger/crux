@@ -73,7 +73,7 @@ mod shared {
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
 
-                    caps.time.subscribe_duration(
+                    caps.time.notify_after(
                         crux_time::Duration::from_millis(300).expect("valid duration"),
                         event_with_user_info(pending, Event::DurationElapsed),
                     );

@@ -20,8 +20,8 @@ use crux_core::capability::{CapabilityContext, Operation};
 #[serde(rename_all = "camelCase")]
 pub enum TimeRequest {
     Now,
-    SubscribeInstant(Instant),
-    SubscribeDuration(Duration),
+    NotifyAt(Instant),
+    NotifyAfter(Duration),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ impl Operation for TimeRequest {
 
 /// The Time capability API
 ///
-/// This capability provides access to the current time and allows the app to subscribe to
+/// This capability provides access to the current time and allows the app to ask for
 /// notifications when a specific instant has arrived or a duration has elapsed.
 #[derive(crux_core::macros::Capability)]
 pub struct Time<Ev> {
@@ -81,8 +81,8 @@ where
         self.context.request_from_shell(TimeRequest::Now).await
     }
 
-    /// Subscribe to receive a notification when the specified [`Instant`] has arrived.
-    pub fn subscribe_instant<F>(&self, instant: Instant, callback: F)
+    /// Ask to receive a notification when the specified [`Instant`] has arrived.
+    pub fn notify_at<F>(&self, instant: Instant, callback: F)
     where
         F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
@@ -91,23 +91,23 @@ where
             async move {
                 context.update_app(callback(
                     context
-                        .request_from_shell(TimeRequest::SubscribeInstant(instant))
+                        .request_from_shell(TimeRequest::NotifyAt(instant))
                         .await,
                 ));
             }
         });
     }
 
-    /// Subscribe to receive a notification when the specified [`Instant`] has arrived.
+    /// Ask to receive a notification when the specified [`Instant`] has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
-    pub async fn subscribe_instant_async(&self, instant: Instant) -> TimeResponse {
+    pub async fn notify_at_async(&self, instant: Instant) -> TimeResponse {
         self.context
-            .request_from_shell(TimeRequest::SubscribeInstant(instant))
+            .request_from_shell(TimeRequest::NotifyAt(instant))
             .await
     }
 
-    /// Subscribe to receive a notification when the specified duration has elapsed.
-    pub fn subscribe_duration<F>(&self, duration: Duration, callback: F)
+    /// Ask to receive a notification when the specified duration has elapsed.
+    pub fn notify_after<F>(&self, duration: Duration, callback: F)
     where
         F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
     {
@@ -116,18 +116,18 @@ where
             async move {
                 context.update_app(callback(
                     context
-                        .request_from_shell(TimeRequest::SubscribeDuration(duration))
+                        .request_from_shell(TimeRequest::NotifyAfter(duration))
                         .await,
                 ));
             }
         });
     }
 
-    /// Subscribe to receive a notification when the specified duration has elapsed.
+    /// Ask to receive a notification when the specified duration has elapsed.
     /// This is an async call to use with [`crux_core::compose::Compose`].
-    pub async fn subscribe_duration_async(&self, duration: Duration) -> TimeResponse {
+    pub async fn notify_after_async(&self, duration: Duration) -> TimeResponse {
         self.context
-            .request_from_shell(TimeRequest::SubscribeDuration(duration))
+            .request_from_shell(TimeRequest::NotifyAfter(duration))
             .await
     }
 }
@@ -146,21 +146,18 @@ mod test {
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
 
-        let now = TimeRequest::SubscribeInstant(Instant::new(1, 2).expect("valid instant"));
+        let now = TimeRequest::NotifyAt(Instant::new(1, 2).expect("valid instant"));
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(
-            &serialized,
-            r#"{"subscribeInstant":{"seconds":1,"nanos":2}}"#
-        );
+        assert_eq!(&serialized, r#"{"notifyAt":{"seconds":1,"nanos":2}}"#);
 
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
 
-        let now = TimeRequest::SubscribeDuration(Duration::from_secs(1).expect("valid duration"));
+        let now = TimeRequest::NotifyAfter(Duration::from_secs(1).expect("valid duration"));
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"subscribeDuration":{"nanos":1000000000}}"#);
+        assert_eq!(&serialized, r#"{"notifyAfter":{"nanos":1000000000}}"#);
 
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
