@@ -4,6 +4,8 @@ use crate::{error::TimeResult, TimeError};
 
 /// The number of nanoseconds in seconds.
 pub(crate) const NANOS_PER_SEC: u32 = 1_000_000_000;
+/// The number of nanoseconds in a millisecond.
+const NANOS_PER_MILLI: u32 = 1_000_000;
 
 /// Represents a duration of time, internally stored as nanoseconds
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,6 +18,17 @@ impl Duration {
     /// Create a new `Duration` from the given number of nanoseconds.
     pub fn new(nanos: u64) -> Self {
         Self { nanos }
+    }
+
+    /// Create a new `Duration` from the given number of milliseconds.
+    ///
+    /// Errors with [`TimeError::InvalidDuration`] if the number of milliseconds
+    /// would overflow when converted to nanoseconds.
+    pub fn from_millis(millis: u64) -> TimeResult<Self> {
+        let nanos = millis
+            .checked_mul(NANOS_PER_MILLI as u64)
+            .ok_or(TimeError::InvalidDuration)?;
+        Ok(Self { nanos })
     }
 
     /// Create a new `Duration` from the given number of seconds.
@@ -53,9 +66,26 @@ impl TryFrom<Duration> for chrono::TimeDelta {
     }
 }
 
-#[cfg(feature = "chrono")]
 #[cfg(test)]
 mod test {
+    use super::*;
+
+    #[test]
+    fn duration_from_millis() {
+        let duration = Duration::from_millis(1_000).unwrap();
+        assert_eq!(duration.nanos, 1_000_000_000);
+    }
+
+    #[test]
+    fn duration_from_secs() {
+        let duration = Duration::from_secs(1).unwrap();
+        assert_eq!(duration.nanos, 1_000_000_000);
+    }
+}
+
+#[cfg(feature = "chrono")]
+#[cfg(test)]
+mod chrono_test {
     use super::*;
 
     #[test]

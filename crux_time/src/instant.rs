@@ -54,6 +54,24 @@ impl TryFrom<chrono::DateTime<chrono::Utc>> for Instant {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn new_instant() {
+        let instant = Instant::new(1_000_000_000, 10).unwrap();
+        assert_eq!(instant.seconds, 1_000_000_000);
+        assert_eq!(instant.nanos, 10);
+    }
+
+    #[test]
+    fn new_instant_invalid_nanos() {
+        let instant = Instant::new(1_000_000_000, 1_000_000_000);
+        assert_eq!(instant.unwrap_err(), TimeError::InvalidInstant);
+    }
+}
+
 #[cfg(feature = "chrono")]
 #[cfg(test)]
 mod chrono_test {
