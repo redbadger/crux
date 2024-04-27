@@ -13,6 +13,13 @@ pub struct Instant {
     pub nanos: u32,
 }
 
+/// Create a new `Instant` from the given number of seconds and nanoseconds.
+///
+/// - seconds: number of seconds since the Unix epoch (1970-01-01T00:00:00Z)
+/// - nanos: number of nanoseconds since the last second
+///
+/// Errors with [`TimeError::InvalidDuration`] if the number of seconds
+/// would overflow when converted to nanoseconds.
 impl Instant {
     pub fn new(seconds: u64, nanos: u32) -> TimeResult<Self> {
         if nanos >= NANOS_PER_SEC {

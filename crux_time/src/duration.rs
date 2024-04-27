@@ -20,7 +20,8 @@ impl Duration {
 
     /// Create a new `Duration` from the given number of seconds.
     ///
-    /// Returns `None` if the number of seconds would overflow when converted to nanoseconds.
+    /// Errors with [`TimeError::InvalidDuration`] if the number of seconds
+    /// would overflow when converted to nanoseconds.
     pub fn from_secs(seconds: u64) -> TimeResult<Self> {
         let nanos = seconds
             .checked_mul(NANOS_PER_SEC as u64)
