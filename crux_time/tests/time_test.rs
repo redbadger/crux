@@ -1,7 +1,9 @@
+#[cfg(feature = "chrono")]
 mod shared {
+    use chrono::{DateTime, Utc};
     use crux_core::macros::Effect;
     use crux_core::render::Render;
-    use crux_time::Time;
+    use crux_time::{Time, TimeResponse};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -11,12 +13,33 @@ mod shared {
     pub enum Event {
         Get,
         GetAsync,
-        Set(chrono::DateTime<chrono::Utc>),
+        Set(TimeResponse),
+
+        StartDebounce,
+        DurationElapsed(usize, TimeResponse),
     }
 
-    #[derive(Default, Serialize, Deserialize)]
+    #[derive(Default)]
+    struct Debounce {
+        pending: usize,
+    }
+
+    impl Debounce {
+        fn start(&mut self) -> usize {
+            self.pending = self.pending.wrapping_add(1);
+            self.pending
+        }
+
+        fn resolve(&mut self, pending: usize) -> bool {
+            self.pending == pending
+        }
+    }
+
+    #[derive(Default)]
     pub struct Model {
         pub time: String,
+        debounce: Debounce,
+        pub debounce_complete: bool,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -41,8 +64,27 @@ mod shared {
                     }
                 }),
                 Event::Set(time) => {
-                    model.time = time.to_rfc3339();
-                    caps.render.render()
+                    if let TimeResponse::Now(time) = time {
+                        let time: DateTime<Utc> = time.try_into().unwrap();
+                        model.time = time.to_rfc3339();
+                        caps.render.render()
+                    }
+                }
+                Event::StartDebounce => {
+                    let pending = model.debounce.start();
+
+                    caps.time.notify_after(
+                        crux_time::Duration::from_millis(300).expect("valid duration"),
+                        event_with_user_info(pending, Event::DurationElapsed),
+                    );
+                }
+                Event::DurationElapsed(pending, TimeResponse::DurationElapsed) => {
+                    if model.debounce.resolve(pending) {
+                        model.debounce_complete = true;
+                    }
+                }
+                Event::DurationElapsed(_, _) => {
+                    panic!("Unexpected debounce event")
                 }
             }
         }
@@ -61,16 +103,28 @@ mod shared {
         #[effect(skip)]
         pub compose: crux_core::compose::Compose<Event>,
     }
+
+    /// Helper to create an event with additional user info captured
+    /// this is effectively partially applying the event constructor
+    pub fn event_with_user_info<E, F, U, T>(user_info: U, make_event: F) -> impl Fn(T) -> E
+    where
+        F: Fn(U, T) -> E,
+        U: Clone,
+    {
+        move |response| make_event(user_info.clone(), response)
+    }
 }
 
+#[cfg(feature = "chrono")]
 mod shell {
     use super::shared::{App, Effect, Event};
+    use chrono::{DateTime, Utc};
     use crux_core::{Core, Request};
-    use crux_time::{TimeRequest, TimeResponse};
+    use crux_time::{Instant, TimeRequest, TimeResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
-        Time(Request<TimeRequest>, String),
+        Time(Request<TimeRequest>, Instant),
     }
 
     enum CoreMessage {
@@ -89,16 +143,18 @@ mod shell {
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
                 Some(CoreMessage::Response(Outcome::Time(mut request, result))) => {
-                    core.resolve(&mut request, TimeResponse(result))
+                    core.resolve(&mut request, TimeResponse::Now(result))
                 }
                 _ => vec![],
             };
 
             for effect in effs {
                 if let Effect::Time(request) = effect {
+                    let time: DateTime<Utc> =
+                        "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
                     queue.push_back(CoreMessage::Response(Outcome::Time(
                         request,
-                        "2022-12-01T01:47:12.746202562+00:00".to_string(),
+                        time.try_into().unwrap(),
                     )));
                 }
             }
@@ -106,11 +162,13 @@ mod shell {
     }
 }
 
+#[cfg(feature = "chrono")]
 mod tests {
     use crate::{
         shared::{App, Effect, Event, Model},
         shell::run,
     };
+    use chrono::{DateTime, Utc};
     use crux_core::{testing::AppTester, Core};
     use crux_time::TimeResponse;
 
@@ -135,13 +193,58 @@ mod tests {
             panic!("Expected Time effect");
         };
 
-        let now = "2022-12-01T01:47:12.746202562+00:00".to_string();
-        let response = TimeResponse(now);
+        let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
+        let response = TimeResponse::Now(now.try_into().unwrap());
         let update = app.resolve(&mut request, response).unwrap();
 
         let event = update.events.into_iter().next().unwrap();
         app.update(event, &mut model);
 
         assert_eq!(app.view(&model).time, "2022-12-01T01:47:12.746202562+00:00");
+    }
+
+    #[test]
+    pub fn test_debounce_timer() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let update1 = app.update(Event::StartDebounce, &mut model);
+        let update2 = app.update(Event::StartDebounce, &mut model);
+
+        let Effect::Time(mut request1) = update1.into_effects().next().unwrap() else {
+            panic!("Expected Time effect");
+        };
+
+        // resolve and run loop
+        app.update(
+            app.resolve(&mut request1, TimeResponse::DurationElapsed)
+                .unwrap()
+                .events
+                .into_iter()
+                .next()
+                .unwrap(),
+            &mut model,
+        );
+
+        // resolving the first debounce should not set the debounce_complete flag
+        assert!(!model.debounce_complete);
+
+        let Effect::Time(mut request2) = update2.into_effects().next().unwrap() else {
+            panic!("Expected Time effect");
+        };
+
+        // resolve and run loop
+        app.update(
+            app.resolve(&mut request2, TimeResponse::DurationElapsed)
+                .unwrap()
+                .events
+                .into_iter()
+                .next()
+                .unwrap(),
+            &mut model,
+        );
+
+        // resolving the second debounce should set the debounce_complete flag
+        assert!(model.debounce_complete);
     }
 }
