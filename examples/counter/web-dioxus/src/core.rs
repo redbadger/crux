@@ -1,10 +1,12 @@
+use std::rc::Rc;
+
 use dioxus::{
     prelude::{Signal, UnboundedReceiver},
     signals::Writable,
 };
 use futures_util::{StreamExt, TryStreamExt};
 use shared::{App, Capabilities, Effect, Event, ViewModel};
-use std::rc::Rc;
+use tracing::debug;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::{http, sse};
@@ -18,7 +20,7 @@ pub struct CoreService {
 
 impl CoreService {
     pub fn new(view: Signal<ViewModel>) -> Self {
-        log::debug!("initializing core service");
+        debug!("initializing core service");
         Self {
             core: Rc::new(shared::Core::new::<Capabilities>()),
             view,
@@ -34,7 +36,7 @@ impl CoreService {
     }
 
     fn update(&self, event: Event, view: &mut Signal<ViewModel>) {
-        log::debug!("event: {:?}", event);
+        debug!("event: {:?}", event);
 
         for effect in self.core.process_event(event) {
             process_effect(&self.core, effect, view);
@@ -43,7 +45,7 @@ impl CoreService {
 }
 
 fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
-    log::debug!("effect: {:?}", effect);
+    debug!("effect: {:?}", effect);
     match effect {
         Effect::Render(_) => {
             *view.write() = core.view();

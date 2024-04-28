@@ -1,11 +1,12 @@
+use std::rc::Rc;
+
 use dioxus::{
     prelude::{Signal, UnboundedReceiver},
     signals::Writable,
 };
 use futures_util::StreamExt;
-use std::rc::Rc;
-
 use shared::{Capabilities, Counter, Effect, Event, ViewModel};
+use tracing::debug;
 
 type Core = Rc<shared::Core<Effect, Counter>>;
 
@@ -16,7 +17,7 @@ pub struct CoreService {
 
 impl CoreService {
     pub fn new(view: Signal<ViewModel>) -> Self {
-        log::debug!("initializing core service");
+        debug!("initializing core service");
         Self {
             core: Rc::new(shared::Core::new::<Capabilities>()),
             view,
@@ -32,7 +33,7 @@ impl CoreService {
     }
 
     fn update(&self, event: Event, view: &mut Signal<ViewModel>) {
-        log::debug!("event: {:?}", event);
+        debug!("event: {:?}", event);
 
         for effect in self.core.process_event(event) {
             process_effect(&self.core, effect, view);
@@ -41,7 +42,7 @@ impl CoreService {
 }
 
 fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
-    log::debug!("effect: {:?}", effect);
+    debug!("effect: {:?}", effect);
 
     match effect {
         Effect::Render(_) => {

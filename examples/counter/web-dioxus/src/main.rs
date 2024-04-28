@@ -3,7 +3,7 @@ mod http;
 mod sse;
 
 use dioxus::prelude::*;
-use log::LevelFilter;
+use tracing::Level;
 
 use shared::{Event, ViewModel};
 
@@ -50,7 +50,7 @@ fn App() -> Element {
 
 fn main() {
     // Init debug
-    dioxus_logger::init(LevelFilter::Debug).expect("failed to init logger");
+    dioxus_logger::init(Level::DEBUG).expect("failed to init logger");
     console_error_panic_hook::set_once();
 
     launch(App);
