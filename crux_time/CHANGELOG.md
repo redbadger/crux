@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/redbadger/crux/compare/crux_time-v0.3.1...crux_time-v0.4.0) - 2024-04-29
+
+### Other
+- some better names
+- add duration from millis
+- update doc comments
+- chrono behind feature, more conversions
+- add subscribe_instant and subscribe_duration to crux_time
+
 ## [0.3.1](https://github.com/redbadger/crux/compare/crux_time-v0.3.0...crux_time-v0.3.1) - 2024-03-24
 
 ### Fixed
