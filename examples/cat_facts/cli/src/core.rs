@@ -12,7 +12,7 @@ use tracing::debug;
 use shared::{
     key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
-    time::TimeResponse,
+    time::{Instant, TimeResponse},
     CatFactCapabilities, CatFacts, Effect, Event,
 };
 
@@ -106,7 +106,9 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
 
         Effect::Time(mut request) => {
             let now: DateTime<Utc> = SystemTime::now().into();
-            let response = TimeResponse(now.to_rfc3339());
+            let response = TimeResponse::Now(
+                Instant::new(now.timestamp() as u64, now.timestamp_subsec_nanos()).unwrap(),
+            );
 
             for effect in core.resolve(&mut request, response) {
                 process_effect(core, effect, tx)?;

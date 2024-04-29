@@ -8,7 +8,7 @@ use crux_core::{render::Render, Capability};
 use crux_http::Http;
 use crux_kv::{KeyValue, KeyValueOutput};
 use crux_platform::Platform;
-use crux_time::Time;
+use crux_time::{Time, TimeResponse};
 
 use platform::Capabilities;
 
@@ -72,7 +72,7 @@ pub enum Event {
     #[serde(skip)]
     SetState(KeyValueOutput), // receive the data to restore state with
     #[serde(skip)]
-    CurrentTime(DateTime<Utc>),
+    CurrentTime(TimeResponse),
     #[serde(skip)]
     SetFact(crux_http::Result<crux_http::Response<CatFact>>),
     #[serde(skip)]
@@ -165,15 +165,17 @@ impl App for CatFacts {
                 caps.render.render();
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
-                // TODO: Display an error or something?
+                // TODO: Display an error
             }
-            Event::CurrentTime(iso_time) => {
-                model.time = Some(iso_time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
+            Event::CurrentTime(TimeResponse::Now(instant)) => {
+                let time: DateTime<Utc> = instant.try_into().unwrap();
+                model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.write("state", bytes, |_| Event::None);
 
                 caps.render.render();
             }
+            Event::CurrentTime(_) => panic!("Unexpected time response"),
             Event::Restore => {
                 caps.key_value.read("state", Event::SetState);
             }

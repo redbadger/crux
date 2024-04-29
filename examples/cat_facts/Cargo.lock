@@ -505,14 +505,15 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e99e3ea7aea0df2bf5b5a1689c349f0f502bd0a83f0a51977eb3ad79a29c9f58"
+checksum = "2bc44936c3bc4a42f61fd0c781e28b6843c83593b5d4938dd4bbc084ec1429be"
 dependencies = [
  "anyhow",
  "chrono",
  "crux_core",
  "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -1228,9 +1229,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.14.3"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
+checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
 name = "heck"
