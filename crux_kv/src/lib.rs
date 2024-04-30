@@ -4,25 +4,35 @@
 //! persist the data using platform native capabilities (e.g. disk or web localStorage)
 //!
 //! This is still work in progress and extremely basic.
+pub mod error;
+
 use crux_core::capability::{CapabilityContext, Operation};
 use crux_core::macros::Capability;
+use error::KeyValueResult;
 use serde::{Deserialize, Serialize};
 
 /// Supported operations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum KeyValueOperation {
     /// Read bytes stored under a key
-    Read(String),
+    Get { key: String },
     /// Write bytes under a key
-    Write(String, Vec<u8>),
+    Set { key: String, value: Vec<u8> },
+    /// Remove a key and its value
+    Delete { key: String },
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum KeyValueOutput {
-    // TODO: Add support for errors
-    Read(Option<Vec<u8>>),
-    // TODO: Add support for errors
-    Write(bool),
+    Get {
+        value: KeyValueResult<Option<Vec<u8>>>,
+    },
+    Set {
+        result: KeyValueResult<()>,
+    },
+    Delete {
+        result: KeyValueResult<()>,
+    },
 }
 
 impl Operation for KeyValueOperation {
@@ -51,15 +61,15 @@ where
     }
 
     /// Read a value under `key`, will dispatch the event with a
-    /// `KeyValueOutput::Read(Option<Vec<u8>>)` as payload
-    pub fn read<F>(&self, key: &str, make_event: F)
+    /// `KeyValueOutput::Get(KeyValueResult<Option<Vec<u8>>>)` as payload
+    pub fn get<F>(&self, key: &str, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
         let ctx = self.context.clone();
         let key = key.to_string();
         self.context.spawn(async move {
-            let output = ctx.request_from_shell(KeyValueOperation::Read(key)).await;
+            let output = ctx.request_from_shell(KeyValueOperation::Get { key }).await;
 
             ctx.update_app(make_event(output))
         });
@@ -67,17 +77,19 @@ where
 
     /// Read a value under `key`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn read_async(&self, key: &str) -> KeyValueOutput {
+    pub async fn get_async(&self, key: &str) -> KeyValueOutput {
         self.context
-            .request_from_shell(KeyValueOperation::Read(key.to_string()))
+            .request_from_shell(KeyValueOperation::Get {
+                key: key.to_string(),
+            })
             .await
     }
 
     /// Set `key` to be the provided `value`. Typically the bytes would be
     /// a value serialized/deserialized by the app.
     ///
-    /// Will dispatch the event with a `KeyValueOutput::Write(bool)` as payload
-    pub fn write<F>(&self, key: &str, value: Vec<u8>, make_event: F)
+    /// Will dispatch the event with a `KeyValueOutput::Set { result: KeyValueResult<()> }` as payload
+    pub fn set<F>(&self, key: &str, value: Vec<u8>, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
@@ -86,7 +98,7 @@ where
             let key = key.to_string();
             async move {
                 let resp = context
-                    .request_from_shell(KeyValueOperation::Write(key, value))
+                    .request_from_shell(KeyValueOperation::Set { key, value })
                     .await;
 
                 context.update_app(make_event(resp))
@@ -96,9 +108,39 @@ where
 
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn write_async(&self, key: &str, value: Vec<u8>) -> KeyValueOutput {
+    pub async fn set_async(&self, key: &str, value: Vec<u8>) -> KeyValueOutput {
         self.context
-            .request_from_shell(KeyValueOperation::Write(key.to_string(), value))
+            .request_from_shell(KeyValueOperation::Set {
+                key: key.to_string(),
+                value,
+            })
+            .await
+    }
+
+    /// Remove a `key` and its value, will dispatch the event with a
+    /// `KeyValueOutput::Delete(KeyValueResult<()>)` as payload
+    pub fn delete<F>(&self, key: &str, make_event: F)
+    where
+        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
+    {
+        let ctx = self.context.clone();
+        let key = key.to_string();
+        self.context.spawn(async move {
+            let output = ctx
+                .request_from_shell(KeyValueOperation::Delete { key })
+                .await;
+
+            ctx.update_app(make_event(output))
+        });
+    }
+
+    /// Remove a `key` and its value, while in an async context. This is used together with
+    /// [`crux_core::compose::Compose`].
+    pub async fn delete_async(&self, key: &str) -> KeyValueOutput {
+        self.context
+            .request_from_shell(KeyValueOperation::Delete {
+                key: key.to_string(),
+            })
             .await
     }
 }

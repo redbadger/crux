@@ -415,6 +415,7 @@ dependencies = [
  "anyhow",
  "crux_core",
  "serde",
+ "thiserror",
 ]
 
 [[package]]

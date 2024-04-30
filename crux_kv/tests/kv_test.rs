@@ -9,8 +9,9 @@ mod shared {
 
     #[derive(Debug, Serialize, Deserialize)]
     pub enum Event {
-        Write,
         Read,
+        Write,
+        Delete,
         ReadThenWrite,
         Set(KeyValueOutput),
     }
@@ -37,43 +38,47 @@ mod shared {
             println!("Update: {event:?}. Model: {model:?}");
 
             match event {
-                Event::Write => {
-                    caps.key_value
-                        .write("test", 42i32.to_ne_bytes().to_vec(), Event::Set);
-                }
-                Event::Set(KeyValueOutput::Write(success)) => {
-                    model.successful = success;
-                    caps.render.render()
-                }
-                Event::Read => caps.key_value.read("test", Event::Set),
-                Event::Set(KeyValueOutput::Read(value)) => {
-                    if let Some(value) = value {
-                        // TODO: should KeyValueOutput::Read be generic over the value type?
+                Event::Read => caps.key_value.get("test", Event::Set),
+                Event::Set(KeyValueOutput::Get { value }) => {
+                    if let Some(value) = value.unwrap() {
+                        // TODO: should KeyValueOutput::Get be generic over the value type?
                         let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                         model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
                     }
+                    caps.render.render()
+                }
+                Event::Write => {
+                    caps.key_value
+                        .set("test", 42i32.to_ne_bytes().to_vec(), Event::Set);
+                }
+                Event::Set(KeyValueOutput::Set { result })
+                | Event::Set(KeyValueOutput::Delete { result }) => {
+                    model.successful = result.is_ok();
                     caps.render.render()
                 }
                 Event::ReadThenWrite => caps.compose.spawn(|ctx| {
                     let kv = caps.key_value.clone();
 
                     async move {
-                        let KeyValueOutput::Read(out) = kv.read_async("test_num").await else {
+                        let KeyValueOutput::Get { value } = kv.get_async("test_num").await else {
                             panic!("Expected read and got write");
                         };
 
-                        let Some(out) = out else {
+                        let Some(value) = value.unwrap() else {
                             panic!("Read failed;");
                         };
 
-                        let num = i32::from_ne_bytes(out.try_into().unwrap());
+                        let num = i32::from_ne_bytes(value.try_into().unwrap());
                         let result = kv
-                            .write_async("test_num", (num + 1).to_ne_bytes().to_vec())
+                            .set_async("test_num", (num + 1).to_ne_bytes().to_vec())
                             .await;
 
                         ctx.update_app(Event::Set(result))
                     }
                 }),
+                Event::Delete => {
+                    caps.key_value.delete("test", Event::Set);
+                }
             }
         }
 
@@ -133,28 +138,42 @@ mod shell {
                     Effect::Render(_) => (),
                     Effect::KeyValue(request) => {
                         match request.operation {
-                            KeyValueOperation::Write(ref k, ref v) => {
+                            KeyValueOperation::Set { ref key, ref value } => {
                                 // received.push(effect);
 
                                 // do work
-                                kv_store.insert(k.clone(), v.clone());
+                                kv_store.insert(key.clone(), value.clone());
 
                                 queue.push_back(CoreMessage::Response(Outcome::KeyValue(
                                     request,
-                                    KeyValueOutput::Write(true),
+                                    KeyValueOutput::Set { result: Ok(()) },
                                 )));
 
                                 // now trigger a read
                                 queue.push_back(CoreMessage::Event(Event::Read));
                             }
-                            KeyValueOperation::Read(ref k) => {
+                            KeyValueOperation::Get { ref key } => {
                                 // received.push(effect);
 
                                 // do work
-                                let v = kv_store.get(k).unwrap();
+                                let value = Ok(Some(kv_store.get(key).unwrap().to_vec()));
                                 queue.push_back(CoreMessage::Response(Outcome::KeyValue(
                                     request,
-                                    KeyValueOutput::Read(Some(v.to_vec())),
+                                    KeyValueOutput::Get { value },
+                                )));
+
+                                // now trigger a delete
+                                queue.push_back(CoreMessage::Event(Event::Delete));
+                            }
+                            KeyValueOperation::Delete { ref key } => {
+                                // received.push(effect);
+
+                                // do work
+                                kv_store.remove(key);
+
+                                queue.push_back(CoreMessage::Response(Outcome::KeyValue(
+                                    request,
+                                    KeyValueOutput::Delete { result: Ok(()) },
                                 )));
                             }
                         }
@@ -200,7 +219,7 @@ mod tests {
             panic!("Expected KeyValue effect");
         };
 
-        let KeyValueOperation::Read(key) = request.operation.clone() else {
+        let KeyValueOperation::Get { key } = request.operation.clone() else {
             panic!("Expected read operation");
         };
 
@@ -209,7 +228,9 @@ mod tests {
         let update = app
             .resolve(
                 &mut request,
-                KeyValueOutput::Read(Some(17u32.to_ne_bytes().to_vec())),
+                KeyValueOutput::Get {
+                    value: Ok(Some(17u32.to_ne_bytes().to_vec())),
+                },
             )
             .unwrap();
 
@@ -218,7 +239,7 @@ mod tests {
             panic!("Expected KeyValue effect");
         };
 
-        let KeyValueOperation::Write(key, value) = request.operation.clone() else {
+        let KeyValueOperation::Set { key, value } = request.operation.clone() else {
             panic!("Expected read operation");
         };
 
@@ -226,7 +247,7 @@ mod tests {
         assert_eq!(value, 18u32.to_ne_bytes().to_vec());
 
         let update = app
-            .resolve(&mut request, KeyValueOutput::Write(true))
+            .resolve(&mut request, KeyValueOutput::Set { result: Ok(()) })
             .unwrap();
 
         let event = update.events.into_iter().next().unwrap();
