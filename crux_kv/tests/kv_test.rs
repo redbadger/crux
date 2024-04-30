@@ -1,210 +1,227 @@
-mod shared {
-    use crux_core::macros::Effect;
-    use crux_core::render::Render;
-    use crux_kv::{KeyValue, KeyValueOutput};
-    use serde::{Deserialize, Serialize};
+use crux_core::macros::Effect;
+use crux_core::render::Render;
+use crux_kv::{KeyValue, KeyValueOutput};
+use serde::{Deserialize, Serialize};
 
-    #[derive(Default)]
-    pub struct App;
+#[derive(Default)]
+pub struct App;
 
-    #[derive(Debug, Serialize, Deserialize)]
-    pub enum Event {
-        Read,
-        Write,
-        Delete,
-        ReadThenWrite,
-        Set(KeyValueOutput),
-    }
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Event {
+    Get,
+    Set,
+    Delete,
+    Exists,
+    GetThenSet,
 
-    #[derive(Debug, Default, Serialize, Deserialize)]
-    pub struct Model {
-        pub value: i32,
-        pub successful: bool,
-    }
+    Response(KeyValueOutput),
+}
 
-    #[derive(Serialize, Deserialize, Default)]
-    pub struct ViewModel {
-        pub result: String,
-    }
+#[derive(Debug, Default)]
+pub struct Model {
+    pub value: i32,
+    pub successful: bool,
+}
 
-    impl crux_core::App for App {
-        type Event = Event;
-        type Model = Model;
-        type ViewModel = ViewModel;
+#[derive(Serialize, Deserialize, Default)]
+pub struct ViewModel {
+    pub result: String,
+}
 
-        type Capabilities = Capabilities;
+impl crux_core::App for App {
+    type Event = Event;
+    type Model = Model;
+    type ViewModel = ViewModel;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
-            println!("Update: {event:?}. Model: {model:?}");
+    type Capabilities = Capabilities;
 
-            match event {
-                Event::Read => caps.key_value.get("test", Event::Set),
-                Event::Set(KeyValueOutput::Get { value }) => {
-                    if let Some(value) = value.unwrap() {
-                        // TODO: should KeyValueOutput::Get be generic over the value type?
-                        let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
-                        model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
-                    }
-                    caps.render.render()
-                }
-                Event::Write => {
-                    caps.key_value
-                        .set("test", 42i32.to_ne_bytes().to_vec(), Event::Set);
-                }
-                Event::Set(KeyValueOutput::Set { result })
-                | Event::Set(KeyValueOutput::Delete { result }) => {
-                    model.successful = result.is_ok();
-                    caps.render.render()
-                }
-                Event::ReadThenWrite => caps.compose.spawn(|ctx| {
-                    let kv = caps.key_value.clone();
-
-                    async move {
-                        let KeyValueOutput::Get { value } = kv.get_async("test_num").await else {
-                            panic!("Expected read and got write");
-                        };
-
-                        let Some(value) = value.unwrap() else {
-                            panic!("Read failed;");
-                        };
-
-                        let num = i32::from_ne_bytes(value.try_into().unwrap());
-                        let result = kv
-                            .set_async("test_num", (num + 1).to_ne_bytes().to_vec())
-                            .await;
-
-                        ctx.update_app(Event::Set(result))
-                    }
-                }),
-                Event::Delete => {
-                    caps.key_value.delete("test", Event::Set);
-                }
+    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        match event {
+            Event::Get => caps.key_value.get("test", Event::Response),
+            Event::Set => {
+                caps.key_value
+                    .set("test", 42i32.to_ne_bytes().to_vec(), Event::Response);
             }
-        }
+            Event::Delete => caps.key_value.delete("test", Event::Response),
+            Event::Exists => caps.key_value.exists("test", Event::Response),
 
-        fn view(&self, model: &Self::Model) -> Self::ViewModel {
-            ViewModel {
-                result: format!("Success: {}, Value: {}", model.successful, model.value),
+            Event::GetThenSet => caps.compose.spawn(|ctx| {
+                let kv = caps.key_value.clone();
+
+                async move {
+                    let KeyValueOutput::Get { value } = kv.get_async("test_num").await else {
+                        panic!("Expected get and got set");
+                    };
+
+                    let Some(value) = value.unwrap() else {
+                        panic!("Get failed;");
+                    };
+
+                    let num = i32::from_ne_bytes(value.try_into().unwrap());
+                    let result = kv
+                        .set_async("test_num", (num + 1).to_ne_bytes().to_vec())
+                        .await;
+
+                    ctx.update_app(Event::Response(result))
+                }
+            }),
+
+            Event::Response(KeyValueOutput::Get { value }) => {
+                if let Some(value) = value.unwrap() {
+                    let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
+                    model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
+                }
+                caps.render.render()
+            }
+            Event::Response(KeyValueOutput::Set { result })
+            | Event::Response(KeyValueOutput::Delete { result }) => {
+                model.successful = result.is_ok();
+                caps.render.render()
+            }
+            Event::Response(KeyValueOutput::Exists { result }) => {
+                model.successful = result.is_ok();
+                caps.render.render()
             }
         }
     }
 
-    #[derive(Effect)]
-    pub struct Capabilities {
-        pub key_value: KeyValue<Event>,
-        pub render: Render<Event>,
-        #[effect(skip)]
-        pub compose: crux_core::compose::Compose<Event>,
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        ViewModel {
+            result: format!("Success: {}, Value: {}", model.successful, model.value),
+        }
     }
 }
 
-mod shell {
-    use super::shared::{App, Effect, Event};
-    use crux_core::{Core, Request};
-    use crux_kv::{KeyValueOperation, KeyValueOutput};
-    use std::collections::{HashMap, VecDeque};
-
-    #[derive(Debug)]
-    pub enum Outcome {
-        KeyValue(Request<KeyValueOperation>, KeyValueOutput),
-    }
-
-    #[derive(Debug)]
-    enum CoreMessage {
-        Event(Event),
-        Response(Outcome),
-    }
-
-    pub fn run(core: &Core<Effect, App>) {
-        let mut queue: VecDeque<CoreMessage> = VecDeque::new();
-
-        queue.push_back(CoreMessage::Event(Event::Write));
-
-        let mut kv_store = HashMap::new();
-
-        while !queue.is_empty() {
-            let msg = queue.pop_front();
-
-            let effects = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::KeyValue(mut request, output))) => {
-                    core.resolve(&mut request, output)
-                }
-                _ => vec![],
-            };
-
-            for effect in effects {
-                match effect {
-                    Effect::Render(_) => (),
-                    Effect::KeyValue(request) => {
-                        match request.operation {
-                            KeyValueOperation::Set { ref key, ref value } => {
-                                // received.push(effect);
-
-                                // do work
-                                kv_store.insert(key.clone(), value.clone());
-
-                                queue.push_back(CoreMessage::Response(Outcome::KeyValue(
-                                    request,
-                                    KeyValueOutput::Set { result: Ok(()) },
-                                )));
-
-                                // now trigger a read
-                                queue.push_back(CoreMessage::Event(Event::Read));
-                            }
-                            KeyValueOperation::Get { ref key } => {
-                                // received.push(effect);
-
-                                // do work
-                                let value = Ok(Some(kv_store.get(key).unwrap().to_vec()));
-                                queue.push_back(CoreMessage::Response(Outcome::KeyValue(
-                                    request,
-                                    KeyValueOutput::Get { value },
-                                )));
-
-                                // now trigger a delete
-                                queue.push_back(CoreMessage::Event(Event::Delete));
-                            }
-                            KeyValueOperation::Delete { ref key } => {
-                                // received.push(effect);
-
-                                // do work
-                                kv_store.remove(key);
-
-                                queue.push_back(CoreMessage::Response(Outcome::KeyValue(
-                                    request,
-                                    KeyValueOutput::Delete { result: Ok(()) },
-                                )));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+#[derive(Effect)]
+pub struct Capabilities {
+    pub key_value: KeyValue<Event>,
+    pub render: Render<Event>,
+    #[effect(skip)]
+    pub compose: crux_core::compose::Compose<Event>,
 }
 
 mod tests {
-    use crate::{
-        shared::App,
-        shared::{Effect, Event, Model},
-        shell::run,
-    };
+    use super::*;
     use anyhow::Result;
-    use crux_core::{testing::AppTester, Core};
+    use crux_core::testing::AppTester;
     use crux_kv::{KeyValueOperation, KeyValueOutput};
 
     #[test]
-    pub fn test_kv() -> Result<()> {
-        let core: Core<Effect, App> = Core::default();
+    fn test_get() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
 
-        assert_eq!(core.view().result, "Success: false, Value: 0");
+        let updated = app.update(Event::Get, &mut model);
 
-        run(&core);
+        let effect = updated.into_effects().next().unwrap();
+        let Effect::KeyValue(mut request) = effect else {
+            panic!("Expected KeyValue effect");
+        };
 
-        assert_eq!(core.view().result, "Success: true, Value: 42");
+        let KeyValueOperation::Get { key } = request.operation.clone() else {
+            panic!("Expected get operation");
+        };
 
-        Ok(())
+        assert_eq!(key, "test");
+
+        let updated = app
+            .resolve(
+                &mut request,
+                KeyValueOutput::Get {
+                    value: Ok(Some(42i32.to_ne_bytes().to_vec())),
+                },
+            )
+            .unwrap();
+
+        let event = updated.events.into_iter().next().unwrap();
+        app.update(event, &mut model);
+
+        assert_eq!(model.value, 42);
+    }
+
+    #[test]
+    fn test_set() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let updated = app.update(Event::Set, &mut model);
+
+        let effect = updated.into_effects().next().unwrap();
+        let Effect::KeyValue(mut request) = effect else {
+            panic!("Expected KeyValue effect");
+        };
+
+        let KeyValueOperation::Set { key, value } = request.operation.clone() else {
+            panic!("Expected set operation");
+        };
+
+        assert_eq!(key, "test");
+        assert_eq!(value, 42i32.to_ne_bytes().to_vec());
+
+        let updated = app
+            .resolve(&mut request, KeyValueOutput::Set { result: Ok(()) })
+            .unwrap();
+
+        let event = updated.events.into_iter().next().unwrap();
+        app.update(event, &mut model);
+
+        assert!(model.successful);
+    }
+
+    #[test]
+    fn test_delete() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let updated = app.update(Event::Delete, &mut model);
+
+        let effect = updated.into_effects().next().unwrap();
+        let Effect::KeyValue(mut request) = effect else {
+            panic!("Expected KeyValue effect");
+        };
+
+        let KeyValueOperation::Delete { key } = request.operation.clone() else {
+            panic!("Expected delete operation");
+        };
+
+        assert_eq!(key, "test");
+
+        let updated = app
+            .resolve(&mut request, KeyValueOutput::Delete { result: Ok(()) })
+            .unwrap();
+
+        let event = updated.events.into_iter().next().unwrap();
+        app.update(event, &mut model);
+
+        assert!(model.successful);
+    }
+
+    #[test]
+    fn test_exists() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let updated = app.update(Event::Exists, &mut model);
+
+        let effect = updated.into_effects().next().unwrap();
+        let Effect::KeyValue(mut request) = effect else {
+            panic!("Expected KeyValue effect");
+        };
+
+        let KeyValueOperation::Exists { key } = request.operation.clone() else {
+            panic!("Expected exists operation");
+        };
+
+        assert_eq!(key, "test");
+
+        let updated = app
+            .resolve(&mut request, KeyValueOutput::Exists { result: Ok(true) })
+            .unwrap();
+
+        let event = updated.events.into_iter().next().unwrap();
+        app.update(event, &mut model);
+
+        assert!(model.successful);
     }
 
     #[test]
@@ -212,7 +229,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::ReadThenWrite, &mut model);
+        let update = app.update(Event::GetThenSet, &mut model);
 
         let effect = update.into_effects().next().unwrap();
         let Effect::KeyValue(mut request) = effect else {
@@ -220,7 +237,7 @@ mod tests {
         };
 
         let KeyValueOperation::Get { key } = request.operation.clone() else {
-            panic!("Expected read operation");
+            panic!("Expected get operation");
         };
 
         assert_eq!(key, "test_num");
@@ -240,7 +257,7 @@ mod tests {
         };
 
         let KeyValueOperation::Set { key, value } = request.operation.clone() else {
-            panic!("Expected read operation");
+            panic!("Expected get operation");
         };
 
         assert_eq!(key, "test_num".to_string());

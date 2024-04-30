@@ -20,6 +20,8 @@ pub enum KeyValueOperation {
     Set { key: String, value: Vec<u8> },
     /// Remove a key and its value
     Delete { key: String },
+    /// Test if a key exists
+    Exists { key: String },
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -32,6 +34,9 @@ pub enum KeyValueOutput {
     },
     Delete {
         result: KeyValueResult<()>,
+    },
+    Exists {
+        result: KeyValueResult<bool>,
     },
 }
 
@@ -78,10 +83,9 @@ where
     /// Read a value under `key`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
     pub async fn get_async(&self, key: &str) -> KeyValueOutput {
+        let key = key.to_string();
         self.context
-            .request_from_shell(KeyValueOperation::Get {
-                key: key.to_string(),
-            })
+            .request_from_shell(KeyValueOperation::Get { key })
             .await
     }
 
@@ -109,11 +113,9 @@ where
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
     pub async fn set_async(&self, key: &str, value: Vec<u8>) -> KeyValueOutput {
+        let key = key.to_string();
         self.context
-            .request_from_shell(KeyValueOperation::Set {
-                key: key.to_string(),
-                value,
-            })
+            .request_from_shell(KeyValueOperation::Set { key, value })
             .await
     }
 
@@ -137,10 +139,35 @@ where
     /// Remove a `key` and its value, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
     pub async fn delete_async(&self, key: &str) -> KeyValueOutput {
+        let key = key.to_string();
         self.context
-            .request_from_shell(KeyValueOperation::Delete {
-                key: key.to_string(),
-            })
+            .request_from_shell(KeyValueOperation::Delete { key })
+            .await
+    }
+
+    /// Check to see if a `key` exists, will dispatch the event with a
+    /// `KeyValueOutput::Exists(KeyValueResult<bool>)` as payload
+    pub fn exists<F>(&self, key: &str, make_event: F)
+    where
+        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
+    {
+        let ctx = self.context.clone();
+        let key = key.to_string();
+        self.context.spawn(async move {
+            let output = ctx
+                .request_from_shell(KeyValueOperation::Exists { key })
+                .await;
+
+            ctx.update_app(make_event(output))
+        });
+    }
+
+    /// Check to see if a `key` exists, while in an async context. This is used together with
+    /// [`crux_core::compose::Compose`].
+    pub async fn exists_async(&self, key: &str) -> KeyValueOutput {
+        let key = key.to_string();
+        self.context
+            .request_from_shell(KeyValueOperation::Exists { key })
             .await
     }
 }
