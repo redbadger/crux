@@ -13,6 +13,67 @@ From the perspective of the app, you can think of capabilities as an equivalent
 to SDKs. And a lot of them will provide an interface to the actual platform
 specific SDKs.
 
+## Quick overview
+
+Capabilities are likely the topic that will not be very familiar from any other
+framework. The closest equivalent are [Elm's ports](https://guide.elm-lang.org/interop/ports.html).
+
+Before we dive into the motivation and division of responsibilities, let's look at
+a quick example of using capabilities.
+
+Here is a Crux app (from the [Counter example](https://github.com/redbadger/crux/tree/master/examples/counter/src/shared/))
+using the http capability to send a get request, then storing the response in the model:
+
+```rust,noplayground
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(crux_core::macros::Effect)]
+pub struct Capabilities {
+    pub render: Render<Event>,
+    pub http: Http<Event>,
+    pub sse: ServerSentEvents<Event>,
+}
+
+#[derive(Default)]
+pub struct App;
+
+impl crux_core::App for App {
+    type Model = Model;
+    type Event = Event;
+    type ViewModel = ViewModel;
+    type Capabilities = Capabilities;
+
+    fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+        match msg {
+            Event::Get => {
+                caps.http.get(API_URL).expect_json().send(Event::Set);
+            }
+            Event::Set(Ok(mut response)) => {
+                let count = response.take_body().unwrap();
+                self.update(Event::Update(count), model, caps);
+            }
+            Event::Set(Err(e)) => {
+                panic!("Oh no something went wrong: {e:?}");
+            }
+            // (...)
+        }
+    }
+}
+```
+
+The app declares capabilities to use with the `Capabilities` associated type, which Crux
+then injects into the update function on every call.
+
+It's quite typical for capabilities to take a single value callback function which returns
+the app's `Event` type. Generally, these are designed to take one of the variant constructors
+like `Event::Set` in the example above.
+
+The event returned by the function is how the result of the HTTP request will be delivered
+back to the app, and in the above example, we handle the success and error cases in separate
+match arms.
+
+For a more step-by-step example of using Capabilities, see the latter sections of the
+[Hello World chapter](./hello_world.md#remote-api).
+
 ## Intent and execution
 
 The Capabilities are the key to Crux being portable across as many platforms as

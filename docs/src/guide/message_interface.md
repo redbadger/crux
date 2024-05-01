@@ -42,7 +42,7 @@ It is likely that this will become an implementation detail and instead, Crux wi
 
 There are only three touch-points with the core.
 
-```rust
+```rust,noplayground
 pub fn process_event(data: &[u8]) -> Vec<u8> { todo!() }
 pub fn handle_response(uuid: &[u8], data: &[u8]) -> Vec<u8> { todo!() }
 pub fn view() -> Vec<u8> { todo!() }

@@ -19,7 +19,7 @@
 //!
 //! * Core - the shared core written in Rust
 //!
-//! * Shell - the native side of the app on each platform handling UI and executing side effects
+// * Shell - the native side of the app on each platform handling UI and executing side effects
 //!
 //! * App - the main module of the core containing the application logic, especially model changes
 //!   and side-effects triggered by events. App can be composed from modules, each resembling a smaller, simpler app.
