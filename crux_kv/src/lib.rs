@@ -2,8 +2,7 @@
 //!
 //! `crux_kv` allows Crux apps to store and retrieve arbitrary data by asking the Shell to
 //! persist the data using platform native capabilities (e.g. disk or web localStorage)
-//!
-//! This is still work in progress and extremely basic.
+
 pub mod error;
 
 use crux_core::capability::{CapabilityContext, Operation};
@@ -13,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 /// Supported operations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum KeyValueOperation {
     /// Read bytes stored under a key
     Get { key: String },
@@ -25,6 +25,7 @@ pub enum KeyValueOperation {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum KeyValueOutput {
     Get {
         value: KeyValueResult<Option<Vec<u8>>>,
@@ -171,3 +172,6 @@ where
             .await
     }
 }
+
+#[cfg(test)]
+mod tests;
