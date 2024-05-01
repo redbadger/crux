@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crux_core::capability::{CapabilityContext, Operation};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum TimeRequest {
     Now,
     NotifyAt(Instant),
@@ -25,7 +25,7 @@ pub enum TimeRequest {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum TimeResponse {
     Now(Instant),
     InstantArrived,
@@ -141,26 +141,27 @@ mod test {
         let now = TimeRequest::Now;
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, "\"now\"");
+        assert_eq!(&serialized, r#"{"type":"now"}"#);
 
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
 
-        let now = TimeRequest::NotifyAt(Instant::new(1, 2).expect("valid instant"));
+        let notify_at = TimeRequest::NotifyAt(Instant::new(1, 2).expect("valid instant"));
 
-        let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"notifyAt":{"seconds":1,"nanos":2}}"#);
-
-        let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(now, deserialized);
-
-        let now = TimeRequest::NotifyAfter(Duration::from_secs(1).expect("valid duration"));
-
-        let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"notifyAfter":{"nanos":1000000000}}"#);
+        let serialized = serde_json::to_string(&notify_at).unwrap();
+        assert_eq!(&serialized, r#"{"type":"notifyAt","seconds":1,"nanos":2}"#);
 
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(now, deserialized);
+        assert_eq!(notify_at, deserialized);
+
+        let notify_after =
+            TimeRequest::NotifyAfter(Duration::from_secs(1).expect("valid duration"));
+
+        let serialized = serde_json::to_string(&notify_after).unwrap();
+        assert_eq!(&serialized, r#"{"type":"notifyAfter","nanos":1000000000}"#);
+
+        let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(notify_after, deserialized);
     }
 
     #[test]
@@ -168,25 +169,25 @@ mod test {
         let now = TimeResponse::Now(Instant::new(1, 2).expect("valid instant"));
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"now":{"seconds":1,"nanos":2}}"#);
+        assert_eq!(&serialized, r#"{"type":"now","seconds":1,"nanos":2}"#);
 
         let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
 
-        let now = TimeResponse::DurationElapsed;
+        let notify_after = TimeResponse::DurationElapsed;
 
-        let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#""durationElapsed""#);
-
-        let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(now, deserialized);
-
-        let now = TimeResponse::InstantArrived;
-
-        let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#""instantArrived""#);
+        let serialized = serde_json::to_string(&notify_after).unwrap();
+        assert_eq!(&serialized, r#"{"type":"durationElapsed"}"#);
 
         let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(now, deserialized);
+        assert_eq!(notify_after, deserialized);
+
+        let instant_arrived = TimeResponse::InstantArrived;
+
+        let serialized = serde_json::to_string(&instant_arrived).unwrap();
+        assert_eq!(&serialized, r#"{"type":"instantArrived"}"#);
+
+        let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(instant_arrived, deserialized);
     }
 }
