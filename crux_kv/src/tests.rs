@@ -37,20 +37,22 @@ impl crux_core::App for App {
     type Capabilities = Capabilities;
 
     fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        let key = "test".to_string();
         match event {
-            Event::Get => caps.key_value.get("test", Event::Response),
+            Event::Get => caps.key_value.get(key, Event::Response),
             Event::Set => {
                 caps.key_value
-                    .set("test", 42i32.to_ne_bytes().to_vec(), Event::Response);
+                    .set(key, 42i32.to_ne_bytes().to_vec(), Event::Response);
             }
-            Event::Delete => caps.key_value.delete("test", Event::Response),
-            Event::Exists => caps.key_value.exists("test", Event::Response),
+            Event::Delete => caps.key_value.delete(key, Event::Response),
+            Event::Exists => caps.key_value.exists(key, Event::Response),
 
             Event::GetThenSet => caps.compose.spawn(|ctx| {
                 let kv = caps.key_value.clone();
 
                 async move {
-                    let KeyValueOutput::Get { value } = kv.get_async("test_num").await else {
+                    let KeyValueOutput::Get { value } = kv.get_async("test_num".to_string()).await
+                    else {
                         panic!("Expected get and got set");
                     };
 
@@ -60,7 +62,7 @@ impl crux_core::App for App {
 
                     let num = i32::from_ne_bytes(value.try_into().unwrap());
                     let result = kv
-                        .set_async("test_num", (num + 1).to_ne_bytes().to_vec())
+                        .set_async("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
                         .await;
 
                     ctx.update_app(Event::Response(result))

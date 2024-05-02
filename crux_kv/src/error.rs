@@ -12,5 +12,5 @@ pub enum KeyValueError {
     #[error("timeout")]
     Timeout,
     #[error("other error: {message}")]
-    OtherError { message: String },
+    Other { message: String },
 }

@@ -68,22 +68,24 @@ where
 
     /// Read a value under `key`, will dispatch the event with a
     /// `KeyValueOutput::Get(KeyValueResult<Option<Vec<u8>>>)` as payload
-    pub fn get<F>(&self, key: &str, make_event: F)
+    pub fn get<F>(&self, key: String, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
-        let ctx = self.context.clone();
-        let key = key.to_string();
-        self.context.spawn(async move {
-            let output = ctx.request_from_shell(KeyValueOperation::Get { key }).await;
+        self.context.spawn({
+            let context = self.context.clone();
+            let this = self.clone();
 
-            ctx.update_app(make_event(output))
+            async move {
+                let output = this.get_async(key).await;
+                context.update_app(make_event(output))
+            }
         });
     }
 
     /// Read a value under `key`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn get_async(&self, key: &str) -> KeyValueOutput {
+    pub async fn get_async(&self, key: String) -> KeyValueOutput {
         let key = key.to_string();
         self.context
             .request_from_shell(KeyValueOperation::Get { key })
@@ -94,27 +96,24 @@ where
     /// a value serialized/deserialized by the app.
     ///
     /// Will dispatch the event with a `KeyValueOutput::Set { result: KeyValueResult<()> }` as payload
-    pub fn set<F>(&self, key: &str, value: Vec<u8>, make_event: F)
+    pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
-            let key = key.to_string();
-            async move {
-                let resp = context
-                    .request_from_shell(KeyValueOperation::Set { key, value })
-                    .await;
+            let this = self.clone();
 
-                context.update_app(make_event(resp))
+            async move {
+                let output = this.set_async(key, value).await;
+                context.update_app(make_event(output))
             }
         });
     }
 
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn set_async(&self, key: &str, value: Vec<u8>) -> KeyValueOutput {
-        let key = key.to_string();
+    pub async fn set_async(&self, key: String, value: Vec<u8>) -> KeyValueOutput {
         self.context
             .request_from_shell(KeyValueOperation::Set { key, value })
             .await
@@ -122,25 +121,22 @@ where
 
     /// Remove a `key` and its value, will dispatch the event with a
     /// `KeyValueOutput::Delete(KeyValueResult<()>)` as payload
-    pub fn delete<F>(&self, key: &str, make_event: F)
+    pub fn delete<F>(&self, key: String, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
-        let ctx = self.context.clone();
-        let key = key.to_string();
-        self.context.spawn(async move {
-            let output = ctx
-                .request_from_shell(KeyValueOperation::Delete { key })
-                .await;
+        let context = self.context.clone();
+        let this = self.clone();
 
-            ctx.update_app(make_event(output))
+        self.context.spawn(async move {
+            let output = this.delete_async(key).await;
+            context.update_app(make_event(output))
         });
     }
 
     /// Remove a `key` and its value, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn delete_async(&self, key: &str) -> KeyValueOutput {
-        let key = key.to_string();
+    pub async fn delete_async(&self, key: String) -> KeyValueOutput {
         self.context
             .request_from_shell(KeyValueOperation::Delete { key })
             .await
@@ -148,25 +144,22 @@ where
 
     /// Check to see if a `key` exists, will dispatch the event with a
     /// `KeyValueOutput::Exists(KeyValueResult<bool>)` as payload
-    pub fn exists<F>(&self, key: &str, make_event: F)
+    pub fn exists<F>(&self, key: String, make_event: F)
     where
         F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
-        let ctx = self.context.clone();
-        let key = key.to_string();
-        self.context.spawn(async move {
-            let output = ctx
-                .request_from_shell(KeyValueOperation::Exists { key })
-                .await;
+        let context = self.context.clone();
+        let this = self.clone();
 
-            ctx.update_app(make_event(output))
+        self.context.spawn(async move {
+            let output = this.exists_async(key).await;
+            context.update_app(make_event(output))
         });
     }
 
     /// Check to see if a `key` exists, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn exists_async(&self, key: &str) -> KeyValueOutput {
-        let key = key.to_string();
+    pub async fn exists_async(&self, key: String) -> KeyValueOutput {
         self.context
             .request_from_shell(KeyValueOperation::Exists { key })
             .await
