@@ -8,7 +8,7 @@ use crate::{
 // ANCHOR: resolve_serialized
 type ResolveOnceSerialized = Box<dyn FnOnce(&mut dyn erased_serde::Deserializer) + Send>;
 type ResolveManySerialized =
-    Box<dyn Fn(&mut dyn erased_serde::Deserializer) -> Result<(), ()> + Send>;
+    Box<dyn FnMut(&mut dyn erased_serde::Deserializer) -> Result<(), ()> + Send>;
 
 /// A deserializing version of Resolve
 ///
@@ -57,7 +57,7 @@ where
     /// which is used by the Bridge implementation.
     pub fn serialize<F, Eff>(self, effect: F) -> (Eff, ResolveSerialized)
     where
-        F: Fn(Op) -> Eff,
+        F: FnOnce(Op) -> Eff,
     {
         // FIXME should Eff be bound as `Serializable`?
         let (operation, resolve) = (self.operation, self.resolve);
@@ -73,9 +73,9 @@ where
 impl<Out> Resolve<Out> {
     /// Convert this Resolve into a version which deserializes from bytes, consuming it.
     /// The `func` argument is a 'deserializer' converting from bytes into the `Out` type.
-    fn deserializing<F>(self, func: F) -> ResolveSerialized
+    fn deserializing<F>(self, mut func: F) -> ResolveSerialized
     where
-        F: (Fn(&mut dyn erased_serde::Deserializer) -> Out) + Send + Sync + 'static,
+        F: (FnMut(&mut dyn erased_serde::Deserializer) -> Out) + Send + Sync + 'static,
         Out: 'static,
     {
         match self {

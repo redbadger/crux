@@ -54,7 +54,7 @@ where
     /// `KeyValueOutput::Read(Option<Vec<u8>>)` as payload
     pub fn read<F>(&self, key: &str, make_event: F)
     where
-        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
+        F: FnOnce(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
         let ctx = self.context.clone();
         let key = key.to_string();
@@ -79,7 +79,7 @@ where
     /// Will dispatch the event with a `KeyValueOutput::Write(bool)` as payload
     pub fn write<F>(&self, key: &str, value: Vec<u8>, make_event: F)
     where
-        F: Fn(KeyValueOutput) -> Ev + Send + Sync + 'static,
+        F: FnOnce(KeyValueOutput) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();

@@ -60,7 +60,7 @@ mod capability {
 
         pub fn fetch_tree<F>(&self, id: usize, ev: F)
         where
-            F: Fn(Vec<usize>) -> Ev + Send + 'static,
+            F: FnOnce(Vec<usize>) -> Ev + Send + 'static,
         {
             let (results_tx, results_rx) = async_channel::unbounded::<usize>();
             let tasks_tx = self.tasks_tx.clone();

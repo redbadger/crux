@@ -157,7 +157,7 @@
 //!     pub fn get_in_a_row<F>(&self, number_of_ducks: usize, event: F)
 //!     where
 //!         Event: 'static,
-//!         F: Fn(Vec<Duck>) -> Event + Send + 'static,
+//!         F: FnOnce(Vec<Duck>) -> Event + Send + 'static,
 //!     {
 //!         let ctx = self.context.clone();
 //!         // Start a shell interaction
@@ -384,7 +384,7 @@ where
 ///
 /// pub fn get<F>(&self, callback: F)
 /// where
-///     F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
+///     F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
 /// {
 ///     let ctx = self.context.clone();
 ///     self.context.spawn(async move {

@@ -106,10 +106,9 @@ mod shared {
 
     /// Helper to create an event with additional user info captured
     /// this is effectively partially applying the event constructor
-    pub fn event_with_user_info<E, F, U, T>(user_info: U, make_event: F) -> impl Fn(T) -> E
+    pub fn event_with_user_info<E, F, U, T>(user_info: U, make_event: F) -> impl FnOnce(T) -> E
     where
-        F: Fn(U, T) -> E,
-        U: Clone,
+        F: FnOnce(U, T) -> E,
     {
         move |response| make_event(user_info.clone(), response)
     }

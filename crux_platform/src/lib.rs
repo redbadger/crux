@@ -30,7 +30,7 @@ where
 
     pub fn get<F>(&self, callback: F)
     where
-        F: Fn(PlatformResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(PlatformResponse) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();

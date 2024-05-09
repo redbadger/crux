@@ -65,7 +65,7 @@ where
     /// wrapped in the event produced by the `callback`.
     pub fn now<F>(&self, callback: F)
     where
-        F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -84,7 +84,7 @@ where
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
     pub fn notify_at<F>(&self, instant: Instant, callback: F)
     where
-        F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -109,7 +109,7 @@ where
     /// Ask to receive a notification when the specified duration has elapsed.
     pub fn notify_after<F>(&self, duration: Duration, callback: F)
     where
-        F: Fn(TimeResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
