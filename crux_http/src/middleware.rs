@@ -82,6 +82,7 @@ where
 
 /// The remainder of a middleware chain, including the endpoint.
 #[allow(missing_debug_implementations)]
+#[derive(Copy, Clone)]
 pub struct Next<'a> {
     next_middleware: &'a [Arc<dyn Middleware>],
     endpoint: &'a (dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
@@ -89,14 +90,6 @@ pub struct Next<'a> {
              + Sync
              + 'static),
 }
-
-impl Clone for Next<'_> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl Copy for Next<'_> {}
 
 impl<'a> Next<'a> {
     /// Create a new instance

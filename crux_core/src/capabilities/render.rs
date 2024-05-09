@@ -59,7 +59,7 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 
     fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
+        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
         Ev: 'static,
         NewEv: 'static,
     {

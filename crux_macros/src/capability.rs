@@ -38,7 +38,7 @@ impl ToTokens for CapabilityStructReceiver {
 
             fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
             where
-                F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
+                F: Fn(NewEv) -> Ev + Send + Sync + 'static,
                 Ev: 'static,
                 NewEv: 'static,
             {
@@ -115,7 +115,7 @@ mod tests {
             type MappedSelf<MappedEv> = Render<MappedEv>;
             fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
             where
-                F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
+                F: Fn(NewEv) -> Ev + Send + Sync + 'static,
                 Ev: 'static,
                 NewEv: 'static,
             {
