@@ -2,7 +2,7 @@ use anyhow::Result;
 use crux_core::{macros::Effect, render::Render, testing::AppTester};
 use serde::{Deserialize, Serialize};
 
-use crate::{KeyValue, KeyValueOperation, KeyValueOutput};
+use crate::{KeyValue, KeyValueReadResult, KeyValueRequest, KeyValueResponse, KeyValueWriteResult};
 
 #[derive(Default)]
 pub struct App;
@@ -15,7 +15,7 @@ pub enum Event {
     Exists,
     GetThenSet,
 
-    Response(KeyValueOutput),
+    Response(KeyValueResponse),
 }
 
 #[derive(Debug, Default)]
@@ -51,12 +51,13 @@ impl crux_core::App for App {
                 let kv = caps.key_value.clone();
 
                 async move {
-                    let KeyValueOutput::Get { value } = kv.get_async("test_num".to_string()).await
+                    let KeyValueResponse::Get { result } =
+                        kv.get_async("test_num".to_string()).await
                     else {
-                        panic!("Expected get and got set");
+                        panic!("expected get response");
                     };
 
-                    let Some(value) = value.unwrap() else {
+                    let KeyValueReadResult::Data { value } = result else {
                         panic!("Get failed;");
                     };
 
@@ -69,20 +70,20 @@ impl crux_core::App for App {
                 }
             }),
 
-            Event::Response(KeyValueOutput::Get { value }) => {
-                if let Some(value) = value.unwrap() {
+            Event::Response(KeyValueResponse::Get { result }) => {
+                if let KeyValueReadResult::Data { value } = result {
                     let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                     model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
                 }
                 caps.render.render()
             }
-            Event::Response(KeyValueOutput::Set { result })
-            | Event::Response(KeyValueOutput::Delete { result }) => {
-                model.successful = result.is_ok();
+            Event::Response(KeyValueResponse::Set { result })
+            | Event::Response(KeyValueResponse::Delete { result }) => {
+                model.successful = matches!(result, KeyValueWriteResult::Ok { .. });
                 caps.render.render()
             }
-            Event::Response(KeyValueOutput::Exists { result }) => {
-                model.successful = result.is_ok();
+            Event::Response(KeyValueResponse::Exists { result }) => {
+                model.successful = matches!(result, KeyValueReadResult::Exists { .. });
                 caps.render.render()
             }
         }
@@ -115,7 +116,7 @@ fn test_get() {
         panic!("Expected KeyValue effect");
     };
 
-    let KeyValueOperation::Get { key } = request.operation.clone() else {
+    let KeyValueRequest::Get { key } = request.operation.clone() else {
         panic!("Expected get operation");
     };
 
@@ -124,8 +125,10 @@ fn test_get() {
     let updated = app
         .resolve(
             &mut request,
-            KeyValueOutput::Get {
-                value: Ok(Some(42i32.to_ne_bytes().to_vec())),
+            KeyValueResponse::Get {
+                result: KeyValueReadResult::Data {
+                    value: 42i32.to_ne_bytes().to_vec(),
+                },
             },
         )
         .unwrap();
@@ -148,7 +151,7 @@ fn test_set() {
         panic!("Expected KeyValue effect");
     };
 
-    let KeyValueOperation::Set { key, value } = request.operation.clone() else {
+    let KeyValueRequest::Set { key, value } = request.operation.clone() else {
         panic!("Expected set operation");
     };
 
@@ -156,7 +159,12 @@ fn test_set() {
     assert_eq!(value, 42i32.to_ne_bytes().to_vec());
 
     let updated = app
-        .resolve(&mut request, KeyValueOutput::Set { result: Ok(()) })
+        .resolve(
+            &mut request,
+            KeyValueResponse::Set {
+                result: KeyValueWriteResult::Ok { previous: vec![] },
+            },
+        )
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
@@ -177,14 +185,19 @@ fn test_delete() {
         panic!("Expected KeyValue effect");
     };
 
-    let KeyValueOperation::Delete { key } = request.operation.clone() else {
+    let KeyValueRequest::Delete { key } = request.operation.clone() else {
         panic!("Expected delete operation");
     };
 
     assert_eq!(key, "test");
 
     let updated = app
-        .resolve(&mut request, KeyValueOutput::Delete { result: Ok(()) })
+        .resolve(
+            &mut request,
+            KeyValueResponse::Delete {
+                result: KeyValueWriteResult::Ok { previous: vec![] },
+            },
+        )
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
@@ -205,14 +218,19 @@ fn test_exists() {
         panic!("Expected KeyValue effect");
     };
 
-    let KeyValueOperation::Exists { key } = request.operation.clone() else {
+    let KeyValueRequest::Exists { key } = request.operation.clone() else {
         panic!("Expected exists operation");
     };
 
     assert_eq!(key, "test");
 
     let updated = app
-        .resolve(&mut request, KeyValueOutput::Exists { result: Ok(true) })
+        .resolve(
+            &mut request,
+            KeyValueResponse::Exists {
+                result: KeyValueReadResult::Exists { value: true },
+            },
+        )
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
@@ -233,7 +251,7 @@ pub fn test_kv_async() -> Result<()> {
         panic!("Expected KeyValue effect");
     };
 
-    let KeyValueOperation::Get { key } = request.operation.clone() else {
+    let KeyValueRequest::Get { key } = request.operation.clone() else {
         panic!("Expected get operation");
     };
 
@@ -242,8 +260,10 @@ pub fn test_kv_async() -> Result<()> {
     let update = app
         .resolve(
             &mut request,
-            KeyValueOutput::Get {
-                value: Ok(Some(17u32.to_ne_bytes().to_vec())),
+            KeyValueResponse::Get {
+                result: KeyValueReadResult::Data {
+                    value: 17u32.to_ne_bytes().to_vec(),
+                },
             },
         )
         .unwrap();
@@ -253,7 +273,7 @@ pub fn test_kv_async() -> Result<()> {
         panic!("Expected KeyValue effect");
     };
 
-    let KeyValueOperation::Set { key, value } = request.operation.clone() else {
+    let KeyValueRequest::Set { key, value } = request.operation.clone() else {
         panic!("Expected get operation");
     };
 
@@ -261,7 +281,12 @@ pub fn test_kv_async() -> Result<()> {
     assert_eq!(value, 18u32.to_ne_bytes().to_vec());
 
     let update = app
-        .resolve(&mut request, KeyValueOutput::Set { result: Ok(()) })
+        .resolve(
+            &mut request,
+            KeyValueResponse::Set {
+                result: KeyValueWriteResult::Ok { previous: vec![] },
+            },
+        )
         .unwrap();
 
     let event = update.events.into_iter().next().unwrap();

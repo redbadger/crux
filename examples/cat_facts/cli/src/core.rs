@@ -10,7 +10,10 @@ use tokio::{
 use tracing::debug;
 
 use shared::{
-    key_value::{KeyValueOperation, KeyValueOutput},
+    key_value::{
+        error::KeyValueError, KeyValueReadResult, KeyValueRequest, KeyValueResponse,
+        KeyValueWriteResult,
+    },
     platform::PlatformResponse,
     time::{Instant, TimeResponse},
     CatFactCapabilities, CatFacts, Effect, Event,
@@ -58,15 +61,25 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
         }
 
         Effect::KeyValue(mut request) => match request.operation {
-            KeyValueOperation::Read(ref key) => {
+            KeyValueRequest::Get { ref key } => {
                 spawn({
                     let core = core.clone();
                     let tx = tx.clone();
                     let key = key.clone();
 
                     async move {
-                        let bytes = read_state(&key).await.ok();
-                        let response = KeyValueOutput::Read(bytes);
+                        let response = match read_state(&key).await {
+                            Ok(value) => KeyValueResponse::Get {
+                                result: KeyValueReadResult::Data { value },
+                            },
+                            Err(err) => KeyValueResponse::Get {
+                                result: KeyValueReadResult::Err {
+                                    error: KeyValueError::Io {
+                                        message: err.to_string(),
+                                    },
+                                },
+                            },
+                        };
 
                         for effect in core.resolve(&mut request, response) {
                             process_effect(&core, effect, &tx)?;
@@ -76,7 +89,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                 });
             }
 
-            KeyValueOperation::Write(ref key, ref value) => {
+            KeyValueRequest::Set { ref key, ref value } => {
                 spawn({
                     let core = core.clone();
                     let tx = tx.clone();
@@ -84,8 +97,18 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                     let value = value.clone();
 
                     async move {
-                        let success = write_state(&key, &value).await.is_ok();
-                        let response = KeyValueOutput::Write(success);
+                        let response = match write_state(&key, &value).await {
+                            Ok(()) => KeyValueResponse::Set {
+                                result: KeyValueWriteResult::Ok { previous: vec![] },
+                            },
+                            Err(err) => KeyValueResponse::Set {
+                                result: KeyValueWriteResult::Err {
+                                    error: KeyValueError::Io {
+                                        message: err.to_string(),
+                                    },
+                                },
+                            },
+                        };
 
                         for effect in core.resolve(&mut request, response) {
                             process_effect(&core, effect, &tx)?;
@@ -94,6 +117,8 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                     }
                 });
             }
+            KeyValueRequest::Delete { key: _ } => unimplemented!("delete"),
+            KeyValueRequest::Exists { key: _ } => unimplemented!("exists"),
         },
 
         Effect::Platform(mut request) => {
