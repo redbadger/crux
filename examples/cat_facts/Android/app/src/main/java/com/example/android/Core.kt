@@ -13,6 +13,7 @@ import com.redbadger.catfacts.shared.view
 import com.redbadger.catfacts.shared_types.Effect
 import com.redbadger.catfacts.shared_types.Event
 import com.redbadger.catfacts.shared_types.HttpResult
+import com.redbadger.catfacts.shared_types.Instant
 import com.redbadger.catfacts.shared_types.PlatformResponse
 import com.redbadger.catfacts.shared_types.Request
 import com.redbadger.catfacts.shared_types.Requests
@@ -22,7 +23,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 open class Core : androidx.lifecycle.ViewModel() {
     var view: ViewModel? by mutableStateOf(null)
@@ -61,10 +61,8 @@ open class Core : androidx.lifecycle.ViewModel() {
             }
 
             is Effect.Time -> {
-                val response =
-                    TimeResponse(
-                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
-                    )
+                val now = ZonedDateTime.now(ZoneOffset.UTC)
+                val response = TimeResponse.now(Instant(now.toEpochSecond(), now.nano))
 
                 val effects =
                     handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())

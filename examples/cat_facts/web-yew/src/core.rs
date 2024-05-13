@@ -1,6 +1,5 @@
 use gloo_console::log;
 use shared::{
-    key_value::{KeyValueOperation, KeyValueOutput},
     platform::PlatformResponse,
     time::{Instant, TimeResponse},
     CatFactCapabilities, CatFacts, Effect, Event,
@@ -47,16 +46,7 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
             });
         }
 
-        Effect::KeyValue(mut request) => {
-            let response = match request.operation {
-                KeyValueOperation::Read(_) => KeyValueOutput::Read(None),
-                KeyValueOperation::Write(_, _) => KeyValueOutput::Write(false),
-            };
-
-            for effect in core.resolve(&mut request, response) {
-                process_effect(core, effect, callback);
-            }
-        }
+        Effect::KeyValue(..) => {}
 
         Effect::Platform(mut request) => {
             let response =
