@@ -263,6 +263,46 @@ mod tests {
         "###);
     }
 
+    #[test]
+    fn export_macro_respects_an_effect_name_override() {
+        let input = r#"
+            #[derive(Export, Effect)]
+            #[effect(name = "MyEffect")]
+            pub struct Capabilities {
+                render: Render<Event>,
+            }
+        "#;
+
+        let input = parse_str(input).unwrap();
+        let input = ExportStructReceiver::from_derive_input(&input).unwrap();
+
+        let actual = quote!(#input);
+
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        impl ::crux_core::typegen::Export for Capabilities {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                generator
+                    .register_type::<
+                        <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<Render<
+                            Event,
+                        > as ::crux_core::capability::Capability<
+                            Event,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator.register_type::<MyEffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "###);
+    }
+
     fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
         let file = syn::parse_file(&ts.to_string()).unwrap();
         prettyplease::unparse(&file)

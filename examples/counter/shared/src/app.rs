@@ -44,7 +44,6 @@ pub enum Event {
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
-// #[effect(name = "MyEffect")]
 pub struct Capabilities {
     pub render: Render<Event>,
     pub http: Http<Event>,
