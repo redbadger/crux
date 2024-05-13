@@ -110,7 +110,7 @@ mod shared {
     where
         F: FnOnce(U, T) -> E,
     {
-        move |response| make_event(user_info.clone(), response)
+        move |response| make_event(user_info, response)
     }
 }
 

@@ -35,7 +35,7 @@ where
 
     pub fn get_json<F, T>(&self, url: impl AsRef<str>, make_event: F)
     where
-        F: FnOnce(T) -> Ev + Clone + Send + 'static,
+        F: Fn(T) -> Ev + Clone + Send + 'static,
         T: DeserializeOwned,
     {
         self.context.spawn({
