@@ -58,42 +58,7 @@ class Core: ObservableObject {
             for request in requests {
                 processEffect(request)
             }
-        case .keyValue(.get(key: _)):
-            let response = KeyValueResponse.get(result: .data(value: []))
-
-            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-
-            let requests: [Request] = try! .bincodeDeserialize(input: effects)
-            for request in requests {
-                processEffect(request)
-            }
-        case .keyValue(.set(key: _, value: _)):
-            let response = KeyValueResponse.set(result: .ok(previous: []))
-
-            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-
-            let requests: [Request] = try! .bincodeDeserialize(input: effects)
-            for request in requests {
-                processEffect(request)
-            }
-        case .keyValue(.delete(key: _)):
-            let response = KeyValueResponse.delete(result: .ok(previous: []))
-
-            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-
-            let requests: [Request] = try! .bincodeDeserialize(input: effects)
-            for request in requests {
-                processEffect(request)
-            }
-        case .keyValue(.exists(key: _)):
-            let response = KeyValueResponse.exists(result: .exists(value: false))
-
-            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
-
-            let requests: [Request] = try! .bincodeDeserialize(input: effects)
-            for request in requests {
-                processEffect(request)
-            }
+        case .keyValue: ()
         }
     }
 }

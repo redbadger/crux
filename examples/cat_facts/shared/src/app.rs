@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub use crux_core::App;
 use crux_core::{render::Render, Capability};
 use crux_http::Http;
-use crux_kv::{KeyValue, KeyValueReadResult, KeyValueResponse};
+use crux_kv::{KeyValue, KeyValueResponse, KeyValueResult};
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
@@ -71,7 +71,7 @@ pub enum Event {
     #[serde(skip)]
     Platform(platform::Event),
     #[serde(skip)]
-    SetState(KeyValueResponse), // receive the data to restore state with
+    SetState(KeyValueResult), // receive the data to restore state with
     #[serde(skip)]
     CurrentTime(TimeResponse),
     #[serde(skip)]
@@ -180,17 +180,16 @@ impl App for CatFacts {
             Event::Restore => {
                 caps.key_value.get(KEY.to_string(), Event::SetState);
             }
-            Event::SetState(response) => {
-                if let KeyValueResponse::Get {
-                    result: KeyValueReadResult::Data { value },
-                } = response
-                {
+            Event::SetState(KeyValueResult::Ok { response }) => {
+                if let KeyValueResponse::Get { value } = response {
                     if let Ok(m) = serde_json::from_slice::<Model>(&value) {
-                        *model = m
+                        *model = m;
+                        caps.render.render();
                     };
-                }
-
-                caps.render.render()
+                };
+            }
+            Event::SetState(KeyValueResult::Err { .. }) => {
+                // handle error
             }
             Event::None => {}
         }

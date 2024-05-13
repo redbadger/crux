@@ -4,7 +4,7 @@ use crux_core::typegen::TypeGen;
 
 use shared::{
     http::HttpError,
-    key_value::{error::KeyValueError, KeyValueReadResult, KeyValueWriteResult},
+    key_value::{error::KeyValueError, KeyValueResponse},
     CatFacts,
 };
 
@@ -16,9 +16,8 @@ fn main() -> anyhow::Result<()> {
     gen.register_app::<CatFacts>()?;
 
     gen.register_type::<HttpError>()?;
+    gen.register_type::<KeyValueResponse>()?;
     gen.register_type::<KeyValueError>()?;
-    gen.register_type::<KeyValueReadResult>()?;
-    gen.register_type::<KeyValueWriteResult>()?;
 
     let output_root = PathBuf::from("./generated");
 

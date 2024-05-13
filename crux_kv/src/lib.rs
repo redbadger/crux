@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 /// Supported operations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum KeyValueRequest {
+pub enum KeyValueOperation {
     /// Read bytes stored under a key
     Get { key: String },
     /// Write bytes under a key
@@ -23,47 +23,39 @@ pub enum KeyValueRequest {
     Exists { key: String },
 }
 
-/// The result of reading from the key value store.
+/// The result of an operation on the store.
 ///
 /// Note: we can't use `Result` and `Option` here because generics are not currently
 /// supported across the FFI boundary, when using the builtin typegen.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum KeyValueReadResult {
-    /// the value stored under the key, may be empty
-    Data { value: Vec<u8> },
-    /// whether the key exists or not
-    Exists { value: bool },
-    /// an error occurred
-    Err { error: KeyValueError },
-}
-
-/// The result of writing to the key value store.
-///
-/// Note: we can't use `Result` and `Option` here because generics are not currently
-/// supported across the FFI boundary, when using the builtin typegen.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum KeyValueWriteResult {
-    /// the previous value stored under the key, may be empty
-    Ok { previous: Vec<u8> },
-    /// an error occurred
-    Err { error: KeyValueError },
-}
-
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum KeyValueResponse {
-    Exists { result: KeyValueReadResult },
-    Get { result: KeyValueReadResult },
-    Set { result: KeyValueWriteResult },
-    Delete { result: KeyValueWriteResult },
+pub enum KeyValueResult {
+    Ok { response: KeyValueResponse },
+    Err { error: KeyValueError },
 }
 
-impl Operation for KeyValueRequest {
-    type Output = KeyValueResponse;
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum KeyValueResponse {
+    /// Response to a `KeyValueOperation::Get`,
+    /// returning the value stored under the key, which may be empty
+    Get { value: Vec<u8> },
+    /// Response to a `KeyValueOperation::Set`,
+    /// returning the value that was previously stored under the key, may be empty
+    Set { previous: Vec<u8> },
+    /// Response to a `KeyValueOperation::Delete`,
+    /// returning the value that was previously stored under the key, may be empty
+    Delete { previous: Vec<u8> },
+    /// Response to a `KeyValueOperation::Exists`,
+    /// returning whether the key is present in the store
+    Exists { is_present: bool },
+}
+
+impl Operation for KeyValueOperation {
+    type Output = KeyValueResult;
 }
 
 #[derive(Capability)]
 pub struct KeyValue<Ev> {
-    context: CapabilityContext<KeyValueRequest, Ev>,
+    context: CapabilityContext<KeyValueOperation, Ev>,
 }
 
 impl<Ev> Clone for KeyValue<Ev> {
@@ -78,7 +70,7 @@ impl<Ev> KeyValue<Ev>
 where
     Ev: 'static,
 {
-    pub fn new(context: CapabilityContext<KeyValueRequest, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<KeyValueOperation, Ev>) -> Self {
         Self { context }
     }
 
@@ -86,7 +78,7 @@ where
     /// `KeyValueOutput::Get(KeyValueResult<Option<Vec<u8>>>)` as payload
     pub fn get<F>(&self, key: String, make_event: F)
     where
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -101,17 +93,17 @@ where
 
     /// Read a value under `key`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn get_async(&self, key: String) -> KeyValueResponse {
+    pub async fn get_async(&self, key: String) -> KeyValueResult {
         let response = self
             .context
-            .request_from_shell(KeyValueRequest::Get { key })
+            .request_from_shell(KeyValueOperation::Get { key })
             .await;
 
-        assert!(
-            matches!(response, KeyValueResponse::Get { .. }),
-            "unexpected response: {:?}",
-            response
-        );
+        if let KeyValueResult::Ok { response } = &response {
+            let KeyValueResponse::Get { .. } = response else {
+                panic!("unexpected response: {:?}", response)
+            };
+        }
 
         response
     }
@@ -122,7 +114,7 @@ where
     /// Will dispatch the event with a `KeyValueOutput::Set { result: KeyValueResult<()> }` as payload
     pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
     where
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -137,17 +129,17 @@ where
 
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn set_async(&self, key: String, value: Vec<u8>) -> KeyValueResponse {
+    pub async fn set_async(&self, key: String, value: Vec<u8>) -> KeyValueResult {
         let response = self
             .context
-            .request_from_shell(KeyValueRequest::Set { key, value })
+            .request_from_shell(KeyValueOperation::Set { key, value })
             .await;
 
-        assert!(
-            matches!(response, KeyValueResponse::Set { .. }),
-            "unexpected response: {:?}",
-            response
-        );
+        if let KeyValueResult::Ok { response } = &response {
+            let KeyValueResponse::Set { .. } = response else {
+                panic!("unexpected response: {:?}", response)
+            };
+        }
 
         response
     }
@@ -156,7 +148,7 @@ where
     /// `KeyValueOutput::Delete(KeyValueResult<()>)` as payload
     pub fn delete<F>(&self, key: String, make_event: F)
     where
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
@@ -169,17 +161,17 @@ where
 
     /// Remove a `key` and its value, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn delete_async(&self, key: String) -> KeyValueResponse {
+    pub async fn delete_async(&self, key: String) -> KeyValueResult {
         let response = self
             .context
-            .request_from_shell(KeyValueRequest::Delete { key })
+            .request_from_shell(KeyValueOperation::Delete { key })
             .await;
 
-        assert!(
-            matches!(response, KeyValueResponse::Delete { .. }),
-            "unexpected response: {:?}",
-            response
-        );
+        if let KeyValueResult::Ok { response } = &response {
+            let KeyValueResponse::Delete { .. } = response else {
+                panic!("unexpected response: {:?}", response)
+            };
+        }
 
         response
     }
@@ -188,7 +180,7 @@ where
     /// `KeyValueOutput::Exists(KeyValueResult<bool>)` as payload
     pub fn exists<F>(&self, key: String, make_event: F)
     where
-        F: Fn(KeyValueResponse) -> Ev + Send + Sync + 'static,
+        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
@@ -201,17 +193,17 @@ where
 
     /// Check to see if a `key` exists, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn exists_async(&self, key: String) -> KeyValueResponse {
+    pub async fn exists_async(&self, key: String) -> KeyValueResult {
         let response = self
             .context
-            .request_from_shell(KeyValueRequest::Exists { key })
+            .request_from_shell(KeyValueOperation::Exists { key })
             .await;
 
-        assert!(
-            matches!(response, KeyValueResponse::Exists { .. }),
-            "unexpected response: {:?}",
-            response
-        );
+        if let KeyValueResult::Ok { response } = &response {
+            let KeyValueResponse::Exists { .. } = response else {
+                panic!("unexpected response: {:?}", response)
+            };
+        }
 
         response
     }
