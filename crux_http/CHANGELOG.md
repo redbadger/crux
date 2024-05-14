@@ -8,9 +8,21 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.1](https://github.com/redbadger/crux/compare/crux_http-v0.9.0...crux_http-v0.9.1) - 2024-05-14
+
+Minor maintenance release
+
+### Other
+
+- deps
+- remove Copy ound from map_event
+- deps
+- update all deps and dioxus examples
+
 ## [0.8.1](https://github.com/redbadger/crux/compare/crux_http-v0.8.0...crux_http-v0.8.1) - 2024-03-24
 
 ### Other
+
 - deps
 - make http error a struct variant
 - update counter example to new crux_http, WIP

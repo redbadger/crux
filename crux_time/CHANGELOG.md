@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.1](https://github.com/redbadger/crux/compare/crux_time-v0.4.0...crux_time-v0.4.1) - 2024-05-14
+
+### Other
+- deps
+- Merge branch 'master' into relax-callback-bounds
+- address comments
+- relax vaious func traits from Fn to FnOnce
+
 ## [0.4.0](https://github.com/redbadger/crux/compare/crux_time-v0.3.1...crux_time-v0.4.0) - 2024-04-29
 
 ### Other

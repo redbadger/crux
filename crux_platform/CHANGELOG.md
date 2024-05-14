@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10](https://github.com/redbadger/crux/compare/crux_platform-v0.1.9...crux_platform-v0.1.10) - 2024-05-14
+
+### Other
+- relax vaious func traits from Fn to FnOnce
+
 ## [0.1.9](https://github.com/redbadger/crux/compare/crux_platform-v0.1.8...crux_platform-v0.1.9) - 2024-03-24
 
 ### Other
