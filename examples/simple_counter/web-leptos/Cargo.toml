@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 leptos = { version = "0.6.11", features = ["csr"] }
 shared = { path = "../shared" }
+
+[lints.clippy]
+empty_docs = "allow"

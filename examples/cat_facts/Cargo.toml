@@ -11,7 +11,7 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 rust-version = "1.66"
 
 [workspace.dependencies]
-anyhow = "1.0.82"
+anyhow = "1.0.83"
 # crux_core = "0.7"
 # crux_http = "0.9"
 # crux_kv = "0.1"
@@ -22,7 +22,7 @@ crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }
 crux_platform = { path = "../../crux_platform" }
 crux_time = { path = "../../crux_time", features = ["chrono"] }
-serde = "1.0.199"
+serde = "1.0.201"
 
 [workspace.metadata.bin]
 cargo-xcode = "=1.7.0"

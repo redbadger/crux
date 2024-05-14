@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "bulma": "^1.0.0",
-    "eslint": "9.1.1",
+    "eslint": "9.2.0",
     "eslint-config-next": "14.2.3",
     "next": "14.2.3",
     "react": "18.3.1",
@@ -22,8 +22,8 @@
     "ua-parser-js": "^1.0.37"
   },
   "devDependencies": {
-    "@types/node": "20.12.7",
-    "@types/react": "18.3.1",
+    "@types/node": "20.12.12",
+    "@types/react": "18.3.2",
     "@types/react-dom": "18.3.0",
     "@types/ua-parser-js": "^0.7.39"
   }

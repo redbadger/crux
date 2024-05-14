@@ -9,3 +9,6 @@ console_log = "1.0.0"
 leptos = { version = "0.6.11", features = ["csr"] }
 log = "0.4.21"
 shared = { path = "../shared" }
+
+[lints.clippy]
+empty_docs = "allow"
