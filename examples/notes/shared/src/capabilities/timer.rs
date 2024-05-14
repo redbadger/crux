@@ -33,7 +33,7 @@ where
 
     pub fn start<F>(&self, id: u64, millis: usize, make_event: F)
     where
-        F: Fn(TimerOutput) -> Ev + Clone + Send + 'static,
+        F: FnOnce(TimerOutput) -> Ev + Clone + Send + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();

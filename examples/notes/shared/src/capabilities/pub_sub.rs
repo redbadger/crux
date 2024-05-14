@@ -32,7 +32,7 @@ where
 
     pub fn subscribe<F>(&self, make_event: F)
     where
-        F: Fn(Vec<u8>) -> Ev + Clone + Send + 'static,
+        F: FnOnce(Vec<u8>) -> Ev + Clone + Send + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();

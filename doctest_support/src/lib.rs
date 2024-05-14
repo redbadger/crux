@@ -36,7 +36,7 @@ pub mod compose {
 
                 pub fn one<F>(&self, number: usize, event: F)
                 where
-                    F: Fn(usize) -> E + Send + 'static,
+                    F: FnOnce(usize) -> E + Send + 'static,
                     E: 'static,
                 {
                     let this = Clone::clone(self);
@@ -66,7 +66,7 @@ pub mod compose {
 
                 fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
                 where
-                    F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
+                    F: Fn(NewEv) -> Ev + Send + Sync + 'static,
                     Ev: 'static,
                     NewEv: 'static,
                 {
@@ -110,7 +110,7 @@ pub mod compose {
 
                 pub fn two<F>(&self, number: usize, event: F)
                 where
-                    F: Fn(usize) -> E + Send + 'static,
+                    F: FnOnce(usize) -> E + Send + 'static,
                     E: 'static,
                 {
                     let this = Clone::clone(self);
@@ -140,7 +140,7 @@ pub mod compose {
 
                 fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
                 where
-                    F: Fn(NewEv) -> Ev + Send + Sync + Copy + 'static,
+                    F: Fn(NewEv) -> Ev + Send + Sync + 'static,
                     Ev: 'static,
                     NewEv: 'static,
                 {

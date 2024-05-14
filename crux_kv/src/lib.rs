@@ -78,7 +78,7 @@ where
     /// `KeyValueOutput::Get(KeyValueResult<Option<Vec<u8>>>)` as payload
     pub fn get<F>(&self, key: String, make_event: F)
     where
-        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
+        F: FnOnce(KeyValueResult) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -114,7 +114,7 @@ where
     /// Will dispatch the event with a `KeyValueOutput::Set { result: KeyValueResult<()> }` as payload
     pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
     where
-        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
+        F: FnOnce(KeyValueResult) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
