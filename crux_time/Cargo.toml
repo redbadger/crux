@@ -11,7 +11,6 @@ keywords.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 crux_core = { version = "0.7", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
 chrono = { version = "0.4.38", features = ["serde"], optional = true }

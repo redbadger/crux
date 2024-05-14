@@ -1,13 +1,13 @@
 [workspace]
 members = [
-  "crux_cli",
-  "crux_core",
-  "crux_http",
-  "crux_kv",
-  "crux_macros",
-  "crux_platform",
-  "crux_time",
-  "doctest_support"
+    "crux_cli",
+    "crux_core",
+    "crux_http",
+    "crux_kv",
+    "crux_macros",
+    "crux_platform",
+    "crux_time",
+    "doctest_support",
 ]
 resolver = "1"
 
@@ -28,3 +28,6 @@ unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 pedantic = "warn"
+
+[profile.dev]
+split-debuginfo = "unpacked"
