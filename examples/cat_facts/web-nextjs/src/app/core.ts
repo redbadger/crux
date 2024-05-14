@@ -8,29 +8,33 @@ import {
 } from "shared_types/bincode/mod";
 import {
   Effect,
-  Event,
-  HttpResponse,
-  KeyValueOutput,
-  TimeResponse,
-} from "shared_types/types/shared_types";
-import {
   EffectVariantHttp,
   EffectVariantKeyValue,
   EffectVariantPlatform,
   EffectVariantRender,
   EffectVariantTime,
+  Event,
+  HttpResponse,
+  Instant,
+  KeyValueResponse,
   PlatformResponse,
   Request,
+  TimeResponse,
+  TimeResponseVariantnow,
   ViewModel,
 } from "shared_types/types/shared_types";
 
 import { request as http } from "./http";
 
-type Response = PlatformResponse | TimeResponse | HttpResponse | KeyValueOutput;
+type Response =
+  | PlatformResponse
+  | TimeResponse
+  | HttpResponse
+  | KeyValueResponse;
 
 export function update(
   event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   console.log("event", event);
 
@@ -48,7 +52,7 @@ export function update(
 async function processEffect(
   uuid: number[],
   effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   console.log("effect", effect);
 
@@ -64,13 +68,15 @@ async function processEffect(
       break;
     }
     case EffectVariantTime: {
-      const response = new TimeResponse(new Date().toISOString());
+      const now = new Date();
+      const instant = new Instant(BigInt(now.getSeconds()), 0);
+      const response = new TimeResponseVariantnow(instant);
       respond(uuid, response, callback);
       break;
     }
     case EffectVariantPlatform: {
       const response = new PlatformResponse(
-        new UAParser(navigator.userAgent).getBrowser().name || "Unknown"
+        new UAParser(navigator.userAgent).getBrowser().name || "Unknown",
       );
       respond(uuid, response, callback);
       break;
@@ -83,7 +89,7 @@ async function processEffect(
 function respond(
   uuid: number[],
   response: Response,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   const serializer = new BincodeSerializer();
   response.serialize(serializer);

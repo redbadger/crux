@@ -69,8 +69,10 @@ where
     {
         self.context.spawn({
             let context = self.context.clone();
+            let this = self.clone();
+
             async move {
-                context.update_app(callback(context.request_from_shell(TimeRequest::Now).await));
+                context.update_app(callback(this.now_async().await));
             }
         });
     }
@@ -88,12 +90,10 @@ where
     {
         self.context.spawn({
             let context = self.context.clone();
+            let this = self.clone();
+
             async move {
-                context.update_app(callback(
-                    context
-                        .request_from_shell(TimeRequest::NotifyAt(instant))
-                        .await,
-                ));
+                context.update_app(callback(this.notify_at_async(instant).await));
             }
         });
     }
@@ -113,12 +113,10 @@ where
     {
         self.context.spawn({
             let context = self.context.clone();
+            let this = self.clone();
+
             async move {
-                context.update_app(callback(
-                    context
-                        .request_from_shell(TimeRequest::NotifyAfter(duration))
-                        .await,
-                ));
+                context.update_app(callback(this.notify_after_async(duration).await));
             }
         });
     }

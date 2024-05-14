@@ -14,3 +14,4 @@ rust-version.workspace = true
 anyhow.workspace = true
 crux_core = { version = "0.7", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
+thiserror = "1.0.59"

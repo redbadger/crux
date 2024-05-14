@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub use crux_core::App;
 use crux_core::{render::Render, Capability};
 use crux_http::Http;
-use crux_kv::{KeyValue, KeyValueOutput};
+use crux_kv::{KeyValue, KeyValueResponse, KeyValueResult};
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
@@ -15,6 +15,7 @@ use platform::Capabilities;
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://crux-counter.fly.dev/cat";
+const KEY: &str = "state";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
@@ -70,7 +71,7 @@ pub enum Event {
     #[serde(skip)]
     Platform(platform::Event),
     #[serde(skip)]
-    SetState(KeyValueOutput), // receive the data to restore state with
+    SetState(KeyValueResult), // receive the data to restore state with
     #[serde(skip)]
     CurrentTime(TimeResponse),
     #[serde(skip)]
@@ -123,7 +124,7 @@ impl App for CatFacts {
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                caps.key_value.write("state", bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
                 caps.render.render();
             }
             Event::Get => {
@@ -152,7 +153,7 @@ impl App for CatFacts {
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.write("state", bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
                 caps.time.now(Event::CurrentTime);
             }
@@ -160,7 +161,7 @@ impl App for CatFacts {
                 model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.write("state", bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
                 caps.render.render();
             }
@@ -171,22 +172,24 @@ impl App for CatFacts {
                 let time: DateTime<Utc> = instant.try_into().unwrap();
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.write("state", bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
                 caps.render.render();
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
             Event::Restore => {
-                caps.key_value.read("state", Event::SetState);
+                caps.key_value.get(KEY.to_string(), Event::SetState);
             }
-            Event::SetState(response) => {
-                if let KeyValueOutput::Read(Some(bytes)) = response {
-                    if let Ok(m) = serde_json::from_slice::<Model>(&bytes) {
-                        *model = m
+            Event::SetState(KeyValueResult::Ok { response }) => {
+                if let KeyValueResponse::Get { value } = response {
+                    if let Ok(m) = serde_json::from_slice::<Model>(&value) {
+                        *model = m;
+                        caps.render.render();
                     };
-                }
-
-                caps.render.render()
+                };
+            }
+            Event::SetState(KeyValueResult::Err { .. }) => {
+                // handle error
             }
             Event::None => {}
         }

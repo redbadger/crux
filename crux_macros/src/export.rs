@@ -5,10 +5,12 @@ use quote::{format_ident, quote};
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
 #[derive(FromDeriveInput, Debug)]
-#[darling(supports(struct_named))]
+#[darling(attributes(effect), supports(struct_named))]
 struct ExportStructReceiver {
     ident: Ident,
-    name: Option<Ident>,
+    name: Option<Ident>, // also used by the effect derive macro to name the effect
+    #[allow(dead_code)] // `app` is used by the effect derive macro only
+    app: Option<Type>,
     data: ast::Data<util::Ignored, ExportFieldReceiver>,
 }
 
@@ -255,6 +257,46 @@ mod tests {
                     >()?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "###);
+    }
+
+    #[test]
+    fn export_macro_respects_an_effect_name_override() {
+        let input = r#"
+            #[derive(Export, Effect)]
+            #[effect(name = "MyEffect")]
+            pub struct Capabilities {
+                render: Render<Event>,
+            }
+        "#;
+
+        let input = parse_str(input).unwrap();
+        let input = ExportStructReceiver::from_derive_input(&input).unwrap();
+
+        let actual = quote!(#input);
+
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        impl ::crux_core::typegen::Export for Capabilities {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                generator
+                    .register_type::<
+                        <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                    >()?;
+                generator
+                    .register_type::<
+                        <<Render<
+                            Event,
+                        > as ::crux_core::capability::Capability<
+                            Event,
+                        >>::Operation as ::crux_core::capability::Operation>::Output,
+                    >()?;
+                generator.register_type::<MyEffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
                 Ok(())
             }
         }

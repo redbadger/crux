@@ -2,7 +2,7 @@
 
 This crate contains the `KeyValue` capability, which can be used to ask the Shell to read from, and write to, a key-value store.
 
-For an example of how to use the capability, see the [integration test](./tests/kv_test.rs).
+Currently it provides an interface for getting, setting, and deleting keys, and checking if keys exists in the store.
 
 ## About Crux Capabilities
 
