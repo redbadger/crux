@@ -228,9 +228,22 @@ For the above to compile, your `Capabilities` struct must implement the `Export`
 
 ```rust,ignore
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
-    pub render: Render<Event>,
-    pub http: Http<Event>,
+    render: Render<Event>,
+    http: Http<Event>,
+}
+```
+
+The `Export` and `Effect` derive macros can be configured with the `effect` attribute if you need to specify the name of the effect type, and/or the name of your `App` e.g.:
+
+```rust,ignore
+#[cfg_attr(feature = "typegen", derive(Export))]
+#[derive(Effect)]
+#[effect(name = "MyEffect", app = "MyApp")]
+pub struct Capabilities {
+    render: Render<Event>,
+    pub_sub: PubSub<Event>,
 }
 ```
 
