@@ -1121,9 +1121,9 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "crux_core"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c147374b8d0d0ae2ba52f9de4d44dbe6e592e66e14b20a8dd36375f02e924dce"
+checksum = "3db554a7b76b00437e79f4a732db8d096bb3d1bb85f6543f2d52e2dbe752b9df"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1143,9 +1143,9 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83f3acdffe433af554c00bd6e5faf854ea928d46fb5364e721de4b42e91e11da"
+checksum = "62a4dbfdbff69fe1e76d5667514afb52fab334878f8727f5790133490d1911e6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1162,9 +1162,9 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdb3a1d3dc8a5b380a5cbc438b8a41223217faaf7501b0fa25142809aac26499"
+checksum = "83cbfd17dc6f5f03e077b76a554a451ec432614933057fd8687a3bf9f8c9b527"
 dependencies = [
  "darling",
  "proc-macro-error",

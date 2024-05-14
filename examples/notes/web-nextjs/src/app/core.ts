@@ -6,7 +6,7 @@ import {
 import type {
   Effect,
   Event,
-  KeyValueOutput,
+  KeyValueResult,
   Message,
   TimerOutput,
 } from "shared_types/types/shared_types";
@@ -15,10 +15,6 @@ import {
   ViewModel,
   Request,
   EffectVariantKeyValue,
-  KeyValueOperationVariantRead,
-  KeyValueOutputVariantRead,
-  KeyValueOperationVariantWrite,
-  KeyValueOutputVariantWrite,
   EffectVariantPubSub,
   EffectVariantTimer,
   PubSubOperationVariantPublish,
@@ -27,6 +23,11 @@ import {
   TimerOutputVariantFinished,
   TimerOutputVariantCreated,
   TimerOperationVariantCancel,
+  KeyValueOperationVariantGet,
+  KeyValueOperationVariantSet,
+  KeyValueResultVariantOk,
+  KeyValueResponseVariantGet,
+  KeyValueResponseVariantSet,
 } from "shared_types/types/shared_types";
 import {
   BincodeSerializer,
@@ -34,7 +35,7 @@ import {
 } from "shared_types/bincode/mod";
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
 
-type Response = Message | TimerOutput | KeyValueOutput;
+type Response = Message | TimerOutput | KeyValueResult;
 
 export type Timers = {
   [key: number]: number;
@@ -55,7 +56,7 @@ export class Core {
     setState: Dispatch<SetStateAction<ViewModel>>,
     setTimers: Dispatch<SetStateAction<Timers>>,
     channel: MutableRefObject<BroadcastChannel>,
-    subscriptionId: MutableRefObject<number[] | null>
+    subscriptionId: MutableRefObject<number[] | null>,
   ) {
     this.setState = setState;
     this.setTimers = setTimers;
@@ -153,27 +154,35 @@ export class Core {
       case EffectVariantKeyValue: {
         const request = (effect as EffectVariantKeyValue).value;
         switch (request.constructor) {
-          case KeyValueOperationVariantRead: {
-            const { value: readKey } = request as KeyValueOperationVariantRead;
+          case KeyValueOperationVariantGet: {
+            const { key: readKey } = request as KeyValueOperationVariantGet;
 
             let data = window.localStorage.getItem(readKey);
             let bytes: number[] | null = data == null ? data : JSON.parse(data);
 
-            console.log(`Loaded document (${bytes?.length} bytes)`);
-            this.respond(uuid, new KeyValueOutputVariantRead(bytes));
+            console.log(`Loaded document (${bytes?.length || 0} bytes)`);
+            this.respond(
+              uuid,
+              new KeyValueResultVariantOk(
+                new KeyValueResponseVariantGet(bytes || []),
+              ),
+            );
 
             break;
           }
 
-          case KeyValueOperationVariantWrite: {
-            const { field0: writeKey, field1: writeValue } =
-              request as KeyValueOperationVariantWrite;
+          case KeyValueOperationVariantSet: {
+            const { key: writeKey, value: writeValue } =
+              request as KeyValueOperationVariantSet;
 
             console.log(`Saving document (${writeValue.length} bytes)`);
             // FIXME JSON is not exactly a space efficient format
             window.localStorage.setItem(writeKey, JSON.stringify(writeValue));
 
-            this.respond(uuid, new KeyValueOutputVariantWrite(true));
+            this.respond(
+              uuid,
+              new KeyValueResultVariantOk(new KeyValueResponseVariantSet([])),
+            );
 
             break;
           }
@@ -189,7 +198,7 @@ export class Core {
 
     const effects = handle_response(
       new Uint8Array(uuid),
-      serializer.getBytes()
+      serializer.getBytes(),
     );
     const requests = deserializeRequests(effects);
 

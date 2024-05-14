@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use automerge::Change;
 use crux_core::{render::Render, App};
-use crux_kv::{KeyValue, KeyValueOutput};
+use crux_kv::{KeyValue, KeyValueResult};
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::{
@@ -30,8 +30,8 @@ pub enum Event {
     Delete,
     ReceiveChanges(Vec<u8>),
     EditTimer(TimerOutput),
-    Written(KeyValueOutput),
-    Load(KeyValueOutput),
+    Written(KeyValueResult),
+    Load(KeyValueResult),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -215,28 +215,29 @@ impl App for NoteEditor {
                 model.edit_timer.finished(id);
 
                 caps.key_value
-                    .write("note", model.note.save(), Event::Written);
+                    .set("note".to_string(), model.note.save(), Event::Written);
             }
             Event::Written(_) => {
                 // FIXME assuming successful write
             }
-            Event::Open => caps.key_value.read("note", Event::Load),
-            Event::Load(KeyValueOutput::Read(Some(data))) => {
-                model.note = Note::load(&data);
+            Event::Open => caps.key_value.get("note".to_string(), Event::Load),
+            Event::Load(KeyValueResult::Ok { response }) => {
+                if let crux_kv::KeyValueResponse::Get { value } = response {
+                    if value.is_empty() {
+                        model.note = Note::new();
 
-                caps.pub_sub.subscribe(Event::ReceiveChanges);
-                caps.render.render();
+                        caps.key_value
+                            .set("note".to_string(), model.note.save(), Event::Written);
+                    } else {
+                        model.note = Note::load(&value);
+                    }
+                    caps.pub_sub.subscribe(Event::ReceiveChanges);
+                    caps.render.render();
+                };
             }
-            Event::Load(KeyValueOutput::Read(None)) => {
-                model.note = Note::new();
-
-                caps.key_value
-                    .write("note", model.note.save(), Event::Written);
-                caps.pub_sub.subscribe(Event::ReceiveChanges);
-
-                caps.render.render();
+            Event::Load(KeyValueResult::Err { .. }) => {
+                // FIXME handle error
             }
-            Event::Load(KeyValueOutput::Write(_)) => unreachable!(),
         }
     }
 
@@ -536,7 +537,7 @@ mod editing_tests {
 mod save_load_tests {
     use assert_let_bind::assert_let;
     use crux_core::{assert_effect, testing::AppTester};
-    use crux_kv::KeyValueOperation;
+    use crux_kv::{KeyValueOperation, KeyValueResponse};
 
     use crate::capabilities::timer::{TimerOperation, TimerOutput};
 
@@ -558,13 +559,15 @@ mod save_load_tests {
         let requests = &mut update.into_effects().filter_map(Effect::into_key_value);
 
         let mut request = requests.next().unwrap();
-        assert_let!(KeyValueOperation::Read(key), &request.operation);
+        assert_let!(KeyValueOperation::Get { key }, &request.operation);
         assert_eq!(key, "note");
 
         assert!(requests.next().is_none());
 
         // Read was successful
-        let response = KeyValueOutput::Read(Some(note.save()));
+        let response = KeyValueResult::Ok {
+            response: KeyValueResponse::Get { value: note.save() },
+        };
         let update = app.resolve(&mut request, response).unwrap();
         assert_eq!(update.events.len(), 1);
 
@@ -593,14 +596,19 @@ mod save_load_tests {
             .filter_map(Effect::into_key_value);
 
         let mut request = requests.next().unwrap();
-        assert_let!(KeyValueOperation::Read(key), &request.operation);
+        assert_let!(KeyValueOperation::Get { key }, &request.operation);
         assert_eq!(key, "note");
 
         assert!(requests.next().is_none());
 
         // Read was unsuccessful
         let update = app
-            .resolve(&mut request, KeyValueOutput::Read(None))
+            .resolve(
+                &mut request,
+                KeyValueResult::Ok {
+                    response: KeyValueResponse::Get { value: vec![] },
+                },
+            )
             .unwrap();
         assert_eq!(update.events.len(), 1);
 
@@ -611,7 +619,7 @@ mod save_load_tests {
                 .find_map(Effect::into_key_value)
                 .unwrap();
 
-            assert_let!(KeyValueOperation::Write(key, _), &save.operation);
+            assert_let!(KeyValueOperation::Set { key, value: _ }, &save.operation);
             assert_eq!(key, "note");
         }
     }
@@ -737,7 +745,7 @@ mod save_load_tests {
             .unwrap();
 
         assert_let!(
-            KeyValueOperation::Write(key, value),
+            KeyValueOperation::Set { key, value },
             &write_request.operation
         );
 
@@ -751,6 +759,7 @@ mod sync_tests {
     use std::collections::VecDeque;
 
     use crux_core::{testing::AppTester, Request};
+    use crux_kv::KeyValueResponse;
 
     use crate::capabilities::pub_sub::{Message, PubSubOperation};
 
@@ -838,8 +847,14 @@ mod sync_tests {
         let mut alice = Peer::new();
         let mut bob = Peer::new();
 
-        alice.update(Event::Load(KeyValueOutput::Read(Some(note.clone()))));
-        bob.update(Event::Load(KeyValueOutput::Read(Some(note))));
+        alice.update(Event::Load(KeyValueResult::Ok {
+            response: KeyValueResponse::Get {
+                value: note.clone(),
+            },
+        }));
+        bob.update(Event::Load(KeyValueResult::Ok {
+            response: KeyValueResponse::Get { value: note },
+        }));
 
         (alice, bob)
     }
