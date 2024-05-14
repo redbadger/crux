@@ -8,9 +8,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.5](https://github.com/redbadger/crux/compare/crux_core-v0.7.4...crux_core-v0.7.5) - 2024-05-14
+
+This is a minor maintenance release, with the most interesting change being a
+relaxation of the `Fn` trait bound to `FnOnce`/`FnMut` in capability event callbacks. (see https://github.com/redbadger/crux/pull/229 for more info)
+
+### Other
+
+- deps
+- remove Copy ound from map_event
+- relax vaious func traits from Fn to FnOnce
+- deps
+- update all deps and dioxus examples
+- typos
+- Proof-read internals docs
+- Convert bridges docs to anchors
+- Convert runtime docs to anchors
+
 ## [0.7.4](https://github.com/redbadger/crux/compare/crux_core-v0.7.3...crux_core-v0.7.4) - 2024-03-24
 
 ### Other
+
 - deps
 - make http error a struct variant
 - rust deps
