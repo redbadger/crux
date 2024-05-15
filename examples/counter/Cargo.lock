@@ -294,23 +294,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-process"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea6438ba0a08d81529c69b36700fa2f95837bfe3e776ab39cde9c14d9149da88"
-dependencies = [
- "async-io 1.13.0",
- "async-lock 2.8.0",
- "async-signal",
- "blocking",
- "cfg-if",
- "event-listener 3.1.0",
- "futures-lite 1.13.0",
- "rustix 0.38.34",
- "windows-sys 0.48.0",
-]
-
-[[package]]
 name = "async-recursion"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -319,24 +302,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.63",
-]
-
-[[package]]
-name = "async-signal"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afe66191c335039c7bb78f99dc7520b0cbb166b3a1cb33a03f53d8a1c6f2afda"
-dependencies = [
- "async-io 2.3.2",
- "async-lock 3.3.0",
- "atomic-waker",
- "cfg-if",
- "futures-core",
- "futures-io",
- "rustix 0.38.34",
- "signal-hook-registry",
- "slab",
- "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -363,7 +328,6 @@ dependencies = [
  "async-global-executor",
  "async-io 1.13.0",
  "async-lock 2.8.0",
- "async-process",
  "crossbeam-utils",
  "futures-channel",
  "futures-core",
@@ -385,15 +349,6 @@ name = "async-task"
 version = "4.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b75356056920673b02621b35afd0f7dda9306d03c79a30f5c56c44cf256e3de"
-
-[[package]]
-name = "async-task-group"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78749a286ab14b2b4cb01670e9664fa895823a9de7101e4a8603cf1bf5e27922"
-dependencies = [
- "async-std",
-]
 
 [[package]]
 name = "async-trait"
@@ -843,7 +798,6 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-task-group",
  "clap",
  "crossbeam-channel",
  "futures",
@@ -1806,17 +1760,6 @@ name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
-
-[[package]]
-name = "event-listener"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d93877bcde0eb80ca09131a08d23f0a5c18a620b01db137dba666d18cd9b30c2"
-dependencies = [
- "concurrent-queue",
- "parking",
- "pin-project-lite",
-]
 
 [[package]]
 name = "event-listener"
@@ -5249,21 +5192,17 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "assert_let_bind",
  "async-sse",
  "async-std",
- "bincode",
  "chrono",
  "crux_core",
  "crux_http",
- "derive_more",
  "futures",
  "insta",
  "lazy_static",
  "serde",
  "serde_json",
- "thiserror",
  "uniffi",
  "url",
  "wasm-bindgen",
@@ -5276,15 +5215,6 @@ dependencies = [
  "anyhow",
  "crux_core",
  "shared",
-]
-
-[[package]]
-name = "signal-hook-registry"
-version = "1.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1"
-dependencies = [
- "libc",
 ]
 
 [[package]]
@@ -6645,7 +6575,6 @@ dependencies = [
  "futures-util",
  "gloo-net 0.5.0",
  "js-sys",
- "log",
  "shared",
  "tracing",
  "wasm-bindgen",
@@ -6660,7 +6589,6 @@ dependencies = [
  "anyhow",
  "console_error_panic_hook",
  "console_log",
- "futures",
  "futures-util",
  "gloo-net 0.5.0",
  "js-sys",
@@ -6668,7 +6596,6 @@ dependencies = [
  "log",
  "shared",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "wasm-streams",
 ]
 
@@ -6687,14 +6614,12 @@ name = "web-yew"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "futures",
  "futures-util",
  "gloo-console 0.3.0",
  "gloo-net 0.5.0",
  "js-sys",
  "shared",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "wasm-streams",
  "yew",
 ]

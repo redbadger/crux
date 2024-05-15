@@ -2319,22 +2319,17 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "assert_let_bind",
- "bincode",
  "chrono",
  "crux_core",
  "crux_http",
  "crux_kv",
  "crux_platform",
  "crux_time",
- "derive_more",
  "lazy_static",
  "serde",
  "serde_json",
- "thiserror",
  "uniffi",
- "url",
  "wasm-bindgen",
 ]
 
@@ -3066,8 +3061,6 @@ dependencies = [
  "gloo-net 0.5.0",
  "js-sys",
  "shared",
- "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
  "woothee",
  "yew",

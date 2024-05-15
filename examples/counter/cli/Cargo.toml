@@ -11,7 +11,6 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 anyhow.workspace = true
-async-task-group = "0.2.1"
 clap = { version = "4.3.24", features = ["derive"] }
 crossbeam-channel = "0.5.12"
 futures = "0.3"
