@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11](https://github.com/redbadger/crux/compare/crux_platform-v0.1.10...crux_platform-v0.1.11) - 2024-05-15
+
+### Other
+- remove unused deps
+
 ## [0.1.10](https://github.com/redbadger/crux/compare/crux_platform-v0.1.9...crux_platform-v0.1.10) - 2024-05-14
 
 ### Other

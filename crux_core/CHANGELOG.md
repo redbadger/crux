@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.6](https://github.com/redbadger/crux/compare/crux_core-v0.7.5...crux_core-v0.7.6) - 2024-05-15
+
+### Other
+- remove unused deps
+
 ## [0.7.5](https://github.com/redbadger/crux/compare/crux_core-v0.7.4...crux_core-v0.7.5) - 2024-05-14
 
 This is a minor maintenance release, with the most interesting change being a

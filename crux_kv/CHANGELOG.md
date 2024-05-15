@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/redbadger/crux/compare/crux_kv-v0.2.0...crux_kv-v0.3.0) - 2024-05-15
+
+Hot on the heels of the last release, we've added a an [operation to list keys](https://github.com/redbadger/crux/pull/232), and [improved the app-facing API of crux_kv](https://github.com/redbadger/crux/pull/231). The latter means that there is now a much more idiomatic Rust API for interacting with the key-value store.
+
+### Other
+
+- KeyValueErro::CursorNotFound, and doc comments to describe semantics
+- list keys
+- unwrap methods
+- Simplify app-facing API of crux_kv
+
 ## [0.2.0](https://github.com/redbadger/crux/compare/crux_kv-v0.1.10...crux_kv-v0.2.0) - 2024-05-14
 
 ### Breaking Changes
