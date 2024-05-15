@@ -112,6 +112,10 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
             }
             KeyValueOperation::Delete { key: _ } => unimplemented!("delete"),
             KeyValueOperation::Exists { key: _ } => unimplemented!("exists"),
+            KeyValueOperation::ListKeys {
+                prefix: _,
+                cursor: _,
+            } => unimplemented!("list_keys"),
         },
 
         Effect::Platform(mut request) => {
