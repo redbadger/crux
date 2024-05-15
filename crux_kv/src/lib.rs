@@ -78,7 +78,7 @@ where
     /// `KeyValueOutput::Get(KeyValueResult<Option<Vec<u8>>>)` as payload
     pub fn get<F>(&self, key: String, make_event: F)
     where
-        F: FnOnce(KeyValueResult) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -93,7 +93,7 @@ where
 
     /// Read a value under `key`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn get_async(&self, key: String) -> KeyValueResult {
+    pub async fn get_async(&self, key: String) -> Result<Vec<u8>, KeyValueError> {
         let response = self
             .context
             .request_from_shell(KeyValueOperation::Get { key })
@@ -105,7 +105,7 @@ where
             };
         }
 
-        response
+        response.into()
     }
 
     /// Set `key` to be the provided `value`. Typically the bytes would be
@@ -114,7 +114,7 @@ where
     /// Will dispatch the event with a `KeyValueOutput::Set { result: KeyValueResult<()> }` as payload
     pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
     where
-        F: FnOnce(KeyValueResult) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -129,7 +129,7 @@ where
 
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn set_async(&self, key: String, value: Vec<u8>) -> KeyValueResult {
+    pub async fn set_async(&self, key: String, value: Vec<u8>) -> Result<Vec<u8>, KeyValueError> {
         let response = self
             .context
             .request_from_shell(KeyValueOperation::Set { key, value })
@@ -141,14 +141,14 @@ where
             };
         }
 
-        response
+        response.into()
     }
 
     /// Remove a `key` and its value, will dispatch the event with a
     /// `KeyValueOutput::Delete(KeyValueResult<()>)` as payload
     pub fn delete<F>(&self, key: String, make_event: F)
     where
-        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
+        F: Fn(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
@@ -161,7 +161,7 @@ where
 
     /// Remove a `key` and its value, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn delete_async(&self, key: String) -> KeyValueResult {
+    pub async fn delete_async(&self, key: String) -> Result<Vec<u8>, KeyValueError> {
         let response = self
             .context
             .request_from_shell(KeyValueOperation::Delete { key })
@@ -173,14 +173,14 @@ where
             };
         }
 
-        response
+        response.into()
     }
 
     /// Check to see if a `key` exists, will dispatch the event with a
     /// `KeyValueOutput::Exists(KeyValueResult<bool>)` as payload
     pub fn exists<F>(&self, key: String, make_event: F)
     where
-        F: Fn(KeyValueResult) -> Ev + Send + Sync + 'static,
+        F: Fn(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
@@ -193,7 +193,7 @@ where
 
     /// Check to see if a `key` exists, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn exists_async(&self, key: String) -> KeyValueResult {
+    pub async fn exists_async(&self, key: String) -> Result<bool, KeyValueError> {
         let response = self
             .context
             .request_from_shell(KeyValueOperation::Exists { key })
@@ -205,7 +205,34 @@ where
             };
         }
 
-        response
+        response.into()
+    }
+}
+
+impl From<KeyValueResult> for Result<bool, KeyValueError> {
+    fn from(result: KeyValueResult) -> Self {
+        match result {
+            KeyValueResult::Ok { response } => match response {
+                KeyValueResponse::Exists { is_present } => Ok(is_present),
+                _ => panic!("attempt to convert KeyValueResponse other than Exist to bool"),
+            },
+            KeyValueResult::Err { error } => Err(error),
+        }
+    }
+}
+impl From<KeyValueResult> for Result<Vec<u8>, KeyValueError> {
+    fn from(result: KeyValueResult) -> Self {
+        match result {
+            KeyValueResult::Ok { response } => Ok(match response {
+                KeyValueResponse::Get { value } => value,
+                KeyValueResponse::Set { previous } => previous,
+                KeyValueResponse::Delete { previous } => previous,
+                KeyValueResponse::Exists { .. } => {
+                    panic!("attempt to convert KeyValueResponse::Exists to Vec<u8>")
+                }
+            }),
+            KeyValueResult::Err { error } => Err(error),
+        }
     }
 }
 

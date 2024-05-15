@@ -2,7 +2,7 @@ use anyhow::Result;
 use crux_core::{macros::Effect, render::Render, testing::AppTester};
 use serde::{Deserialize, Serialize};
 
-use crate::{KeyValue, KeyValueOperation, KeyValueResponse, KeyValueResult};
+use crate::{error::KeyValueError, KeyValue, KeyValueOperation, KeyValueResponse, KeyValueResult};
 
 #[derive(Default)]
 pub struct App;
@@ -15,7 +15,9 @@ pub enum Event {
     Exists,
     GetThenSet,
 
-    Response(KeyValueResult),
+    ReadResponse(Result<Vec<u8>, KeyValueError>),
+    WriteResponse(Result<Vec<u8>, KeyValueError>),
+    ExistResponse(Result<bool, KeyValueError>),
 }
 
 #[derive(Debug, Default)]
@@ -39,26 +41,20 @@ impl crux_core::App for App {
     fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
         let key = "test".to_string();
         match event {
-            Event::Get => caps.key_value.get(key, Event::Response),
+            Event::Get => caps.key_value.get(key, Event::ReadResponse),
             Event::Set => {
                 caps.key_value
-                    .set(key, 42i32.to_ne_bytes().to_vec(), Event::Response);
+                    .set(key, 42i32.to_ne_bytes().to_vec(), Event::WriteResponse);
             }
-            Event::Delete => caps.key_value.delete(key, Event::Response),
-            Event::Exists => caps.key_value.exists(key, Event::Response),
+            Event::Delete => caps.key_value.delete(key, Event::WriteResponse),
+            Event::Exists => caps.key_value.exists(key, Event::ExistResponse),
 
             Event::GetThenSet => caps.compose.spawn(|ctx| {
                 let kv = caps.key_value.clone();
 
                 async move {
-                    let KeyValueResult::Ok { response } =
-                        kv.get_async("test_num".to_string()).await
-                    else {
+                    let Result::Ok(value) = kv.get_async("test_num".to_string()).await else {
                         panic!("expected get response");
-                    };
-
-                    let KeyValueResponse::Get { value } = response else {
-                        panic!("expected data response");
                     };
 
                     let num = i32::from_ne_bytes(value.try_into().unwrap());
@@ -66,31 +62,33 @@ impl crux_core::App for App {
                         .set_async("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
                         .await;
 
-                    ctx.update_app(Event::Response(result))
+                    ctx.update_app(Event::WriteResponse(result))
                 }
             }),
 
-            Event::Response(KeyValueResult::Ok { response }) => {
-                match response {
-                    KeyValueResponse::Get { value } => {
-                        let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
-                        model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
-                    }
-                    KeyValueResponse::Set { previous: _ } => {
-                        model.successful = true;
-                    }
-                    KeyValueResponse::Delete { previous: _ } => {
-                        model.successful = true;
-                    }
-                    KeyValueResponse::Exists { is_present: _ } => {
-                        model.successful = true;
-                    }
-                }
+            Event::ReadResponse(Ok(value)) => {
+                let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
+                model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
+            }
+
+            Event::WriteResponse(Ok(_response)) => {
+                model.successful = true;
                 caps.render.render()
             }
 
-            Event::Response(KeyValueResult::Err { error }) => {
+            Event::ExistResponse(Ok(_response)) => {
+                model.successful = true;
+                caps.render.render()
+            }
+
+            Event::ExistResponse(Err(error)) => {
                 panic!("Error: {:?}", error);
+            }
+            Event::ReadResponse(Err(error)) => {
+                panic!("error: {:?}", error);
+            }
+            Event::WriteResponse(Err(error)) => {
+                panic!("error: {:?}", error);
             }
         }
     }
