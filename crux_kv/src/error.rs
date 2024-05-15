@@ -9,6 +9,8 @@ pub enum KeyValueError {
     Io { message: String },
     #[error("timeout")]
     Timeout,
+    #[error("cursor not found")]
+    CursorNotFound,
     #[error("other error: {message}")]
     Other { message: String },
 }

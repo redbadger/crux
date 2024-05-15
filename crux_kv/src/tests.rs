@@ -285,7 +285,7 @@ fn test_list_keys() {
             KeyValueResult::Ok {
                 response: KeyValueResponse::ListKeys {
                     keys: vec!["test:1".to_string(), "test:2".to_string()],
-                    cursor: 2,
+                    next_cursor: 2,
                 },
             },
         )

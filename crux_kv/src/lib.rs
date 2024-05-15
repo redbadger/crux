@@ -25,7 +25,13 @@ pub enum KeyValueOperation {
     ListKeys {
         /// The prefix to list keys for, or an empty string to list all keys
         prefix: String,
-        /// The cursor to start listing from, or 0 to start from the beginning
+        /// The cursor to start listing from, or 0 to start from the beginning.
+        /// If there are more keys to list, the response will include a new cursor.
+        /// If there are no more keys, the response will include a cursor of 0.
+        /// The cursor is opaque to the caller, and should be passed back to the
+        /// `ListKeys` operation to continue listing keys.
+        /// If the cursor is not found for the specified prefix, the response will include
+        /// a `KeyValueError::CursorNotFound` error.
         cursor: u64,
     },
 }
@@ -59,7 +65,13 @@ pub enum KeyValueResponse {
     /// if there are more keys
     ///
     /// Note: the cursor is 0 if there are no more keys
-    ListKeys { keys: Vec<String>, cursor: u64 },
+    ListKeys {
+        keys: Vec<String>,
+        /// The cursor to continue listing keys, or 0 if there are no more keys.
+        /// If the cursor is not found for the specified prefix, the response should instead
+        /// include a `KeyValueError::CursorNotFound` error.
+        next_cursor: u64,
+    },
 }
 
 impl Operation for KeyValueOperation {
@@ -192,6 +204,14 @@ where
     /// List keys that start with the provided `prefix`, starting from the provided `cursor`.
     /// Will dispatch the event with a `KeyValueResult::ListKeys { keys: Vec<String>, cursor: u64 }`
     /// as payload.
+    ///
+    /// A cursor is an opaque value that points to the first key in the next page of keys.
+    ///
+    /// If the cursor is not found for the specified prefix, the response will include
+    /// a `KeyValueError::CursorNotFound` error.
+    ///
+    /// If the cursor is found the result will be a tuple of the keys and the next cursor
+    /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
     pub fn list_keys<F>(&self, prefix: String, cursor: u64, make_event: F)
     where
         F: Fn(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
@@ -207,6 +227,14 @@ where
 
     /// List keys that start with the provided `prefix`, starting from the provided `cursor`,
     /// while in an async context. This is used together with [`crux_core::compose::Compose`].
+    ///
+    /// A cursor is an opaque value that points to the first key in the next page of keys.
+    ///
+    /// If the cursor is not found for the specified prefix, the response will include
+    /// a `KeyValueError::CursorNotFound` error.
+    ///
+    /// If the cursor is found the result will be a tuple of the keys and the next cursor
+    /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
     pub async fn list_keys_async(
         &self,
         prefix: String,
@@ -263,7 +291,10 @@ impl KeyValueResult {
     fn unwrap_list_keys(self) -> Result<(Vec<String>, u64), KeyValueError> {
         match self {
             KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::ListKeys { keys, cursor } => Ok((keys, cursor)),
+                KeyValueResponse::ListKeys {
+                    keys,
+                    next_cursor: cursor,
+                } => Ok((keys, cursor)),
                 _ => panic!(
                     "attempt to convert KeyValueResponse other than ListKeys to (Vec<String>, u64)"
                 ),
