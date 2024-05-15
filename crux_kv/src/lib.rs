@@ -94,18 +94,10 @@ where
     /// Read a value under `key`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
     pub async fn get_async(&self, key: String) -> Result<Vec<u8>, KeyValueError> {
-        let response = self
-            .context
+        self.context
             .request_from_shell(KeyValueOperation::Get { key })
-            .await;
-
-        if let KeyValueResult::Ok { response } = &response {
-            let KeyValueResponse::Get { .. } = response else {
-                panic!("unexpected response: {:?}", response)
-            };
-        }
-
-        response.into()
+            .await
+            .unwrap_get()
     }
 
     /// Set `key` to be the provided `value`. Typically the bytes would be
@@ -130,18 +122,10 @@ where
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
     pub async fn set_async(&self, key: String, value: Vec<u8>) -> Result<Vec<u8>, KeyValueError> {
-        let response = self
-            .context
+        self.context
             .request_from_shell(KeyValueOperation::Set { key, value })
-            .await;
-
-        if let KeyValueResult::Ok { response } = &response {
-            let KeyValueResponse::Set { .. } = response else {
-                panic!("unexpected response: {:?}", response)
-            };
-        }
-
-        response.into()
+            .await
+            .unwrap_set()
     }
 
     /// Remove a `key` and its value, will dispatch the event with a
@@ -162,18 +146,10 @@ where
     /// Remove a `key` and its value, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
     pub async fn delete_async(&self, key: String) -> Result<Vec<u8>, KeyValueError> {
-        let response = self
-            .context
+        self.context
             .request_from_shell(KeyValueOperation::Delete { key })
-            .await;
-
-        if let KeyValueResult::Ok { response } = &response {
-            let KeyValueResponse::Delete { .. } = response else {
-                panic!("unexpected response: {:?}", response)
-            };
-        }
-
-        response.into()
+            .await
+            .unwrap_delete()
     }
 
     /// Check to see if a `key` exists, will dispatch the event with a
@@ -194,44 +170,51 @@ where
     /// Check to see if a `key` exists, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
     pub async fn exists_async(&self, key: String) -> Result<bool, KeyValueError> {
-        let response = self
-            .context
+        self.context
             .request_from_shell(KeyValueOperation::Exists { key })
-            .await;
-
-        if let KeyValueResult::Ok { response } = &response {
-            let KeyValueResponse::Exists { .. } = response else {
-                panic!("unexpected response: {:?}", response)
-            };
-        }
-
-        response.into()
+            .await
+            .unwrap_exists()
     }
 }
 
-impl From<KeyValueResult> for Result<bool, KeyValueError> {
-    fn from(result: KeyValueResult) -> Self {
-        match result {
+impl KeyValueResult {
+    fn unwrap_get(self) -> Result<Vec<u8>, KeyValueError> {
+        match self {
+            KeyValueResult::Ok { response } => match response {
+                KeyValueResponse::Get { value } => Ok(value),
+                _ => panic!("attempt to convert KeyValueResponse other than Get to Vec<u8>"),
+            },
+            KeyValueResult::Err { error } => Err(error.clone()),
+        }
+    }
+
+    fn unwrap_set(self) -> Result<Vec<u8>, KeyValueError> {
+        match self {
+            KeyValueResult::Ok { response } => match response {
+                KeyValueResponse::Set { previous } => Ok(previous),
+                _ => panic!("attempt to convert KeyValueResponse other than Set to Vec<u8>"),
+            },
+            KeyValueResult::Err { error } => Err(error.clone()),
+        }
+    }
+
+    fn unwrap_delete(self) -> Result<Vec<u8>, KeyValueError> {
+        match self {
+            KeyValueResult::Ok { response } => match response {
+                KeyValueResponse::Delete { previous } => Ok(previous),
+                _ => panic!("attempt to convert KeyValueResponse other than Delete to Vec<u8>"),
+            },
+            KeyValueResult::Err { error } => Err(error.clone()),
+        }
+    }
+
+    fn unwrap_exists(self) -> Result<bool, KeyValueError> {
+        match self {
             KeyValueResult::Ok { response } => match response {
                 KeyValueResponse::Exists { is_present } => Ok(is_present),
-                _ => panic!("attempt to convert KeyValueResponse other than Exist to bool"),
+                _ => panic!("attempt to convert KeyValueResponse other than Exists to bool"),
             },
-            KeyValueResult::Err { error } => Err(error),
-        }
-    }
-}
-impl From<KeyValueResult> for Result<Vec<u8>, KeyValueError> {
-    fn from(result: KeyValueResult) -> Self {
-        match result {
-            KeyValueResult::Ok { response } => Ok(match response {
-                KeyValueResponse::Get { value } => value,
-                KeyValueResponse::Set { previous } => previous,
-                KeyValueResponse::Delete { previous } => previous,
-                KeyValueResponse::Exists { .. } => {
-                    panic!("attempt to convert KeyValueResponse::Exists to Vec<u8>")
-                }
-            }),
-            KeyValueResult::Err { error } => Err(error),
+            KeyValueResult::Err { error } => Err(error.clone()),
         }
     }
 }
