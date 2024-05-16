@@ -105,17 +105,14 @@ where
 
     /// Read a value under `key`, will dispatch the event with a
     /// `KeyValueResult::Get { value: Vec<u8> }` as payload
-    pub fn get<F>(&self, key: String, make_event: F)
+    pub fn get<F>(self, key: String, make_event: F)
     where
         F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            let this = self.clone();
-
+        self.context.clone().spawn({
             async move {
-                let response = this.get_async(key).await;
-                context.update_app(make_event(response));
+                let response = self.get_async(key).await;
+                self.context.update_app(make_event(response));
             }
         });
     }
@@ -135,17 +132,14 @@ where
     /// a value serialized/deserialized by the app.
     ///
     /// Will dispatch the event with a `KeyValueResult::Set { previous: Vec<u8> }` as payload
-    pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
+    pub fn set<F>(self, key: String, value: Vec<u8>, make_event: F)
     where
         F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            let this = self.clone();
-
+        self.context.clone().spawn({
             async move {
-                let response = this.set_async(key, value).await;
-                context.update_app(make_event(response))
+                let response = self.set_async(key, value).await;
+                self.context.update_app(make_event(response))
             }
         });
     }
@@ -167,16 +161,13 @@ where
 
     /// Remove a `key` and its value, will dispatch the event with a
     /// `KeyValueResult::Delete { previous: Vec<u8> }` as payload
-    pub fn delete<F>(&self, key: String, make_event: F)
+    pub fn delete<F>(self, key: String, make_event: F)
     where
         F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        let context = self.context.clone();
-        let this = self.clone();
-
-        self.context.spawn(async move {
-            let response = this.delete_async(key).await;
-            context.update_app(make_event(response))
+        self.context.clone().spawn(async move {
+            let response = self.delete_async(key).await;
+            self.context.update_app(make_event(response))
         });
     }
 
@@ -193,16 +184,13 @@ where
 
     /// Check to see if a `key` exists, will dispatch the event with a
     /// `KeyValueResult::Exists { is_present: bool }` as payload
-    pub fn exists<F>(&self, key: String, make_event: F)
+    pub fn exists<F>(self, key: String, make_event: F)
     where
         F: FnOnce(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        let context = self.context.clone();
-        let this = self.clone();
-
-        self.context.spawn(async move {
-            let response = this.exists_async(key).await;
-            context.update_app(make_event(response))
+        self.context.clone().spawn(async move {
+            let response = self.exists_async(key).await;
+            self.context.update_app(make_event(response))
         });
     }
 
@@ -228,16 +216,13 @@ where
     ///
     /// If the cursor is found the result will be a tuple of the keys and the next cursor
     /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
-    pub fn list_keys<F>(&self, prefix: String, cursor: u64, make_event: F)
+    pub fn list_keys<F>(self, prefix: String, cursor: u64, make_event: F)
     where
         F: FnOnce(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        let context = self.context.clone();
-        let this = self.clone();
-
-        self.context.spawn(async move {
-            let response = this.list_keys_async(prefix, cursor).await;
-            context.update_app(make_event(response))
+        self.context.clone().spawn(async move {
+            let response = self.list_keys_async(prefix, cursor).await;
+            self.context.update_app(make_event(response))
         });
     }
 

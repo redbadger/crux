@@ -48,15 +48,17 @@ impl crux_core::App for App {
     fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
         let key = "test".to_string();
         match event {
-            Event::Get => caps.key_value.get(key, Event::GetResponse),
+            Event::Get => caps.key_value.clone().get(key, Event::GetResponse),
             Event::Set => {
                 caps.key_value
+                    .clone()
                     .set(key, 42i32.to_ne_bytes().to_vec(), Event::SetResponse);
             }
-            Event::Delete => caps.key_value.delete(key, Event::SetResponse),
-            Event::Exists => caps.key_value.exists(key, Event::ExistsResponse),
+            Event::Delete => caps.key_value.clone().delete(key, Event::SetResponse),
+            Event::Exists => caps.key_value.clone().exists(key, Event::ExistsResponse),
             Event::ListKeys => {
                 caps.key_value
+                    .clone()
                     .list_keys("test:".to_string(), 0, Event::ListKeysResponse)
             }
 
