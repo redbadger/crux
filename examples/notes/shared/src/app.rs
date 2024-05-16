@@ -34,9 +34,9 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
-    Written(Result<Vec<u8>, KeyValueError>),
+    Written(Result<Option<Vec<u8>>, KeyValueError>),
     #[serde(skip)]
-    Load(Result<Vec<u8>, KeyValueError>),
+    Load(Result<Option<Vec<u8>>, KeyValueError>),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -227,13 +227,13 @@ impl App for NoteEditor {
             }
             Event::Open => caps.key_value.get("note".to_string(), Event::Load),
             Event::Load(Ok(value)) => {
-                if value.is_empty() {
+                if value.is_none() {
                     model.note = Note::new();
 
                     caps.key_value
                         .set("note".to_string(), model.note.save(), Event::Written);
                 } else {
-                    model.note = Note::load(&value);
+                    model.note = Note::load(&value.unwrap_or_default());
                 }
                 caps.pub_sub.subscribe(Event::ReceiveChanges);
                 caps.render.render();
@@ -540,7 +540,7 @@ mod editing_tests {
 mod save_load_tests {
     use assert_let_bind::assert_let;
     use crux_core::{assert_effect, testing::AppTester};
-    use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult};
+    use crux_kv::{value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult};
 
     use crate::capabilities::timer::{TimerOperation, TimerOutput};
 
@@ -569,7 +569,9 @@ mod save_load_tests {
 
         // Read was successful
         let response = KeyValueResult::Ok {
-            response: KeyValueResponse::Get { value: note.save() },
+            response: KeyValueResponse::Get {
+                value: note.save().into(),
+            },
         };
         let update = app.resolve(&mut request, response).unwrap();
         assert_eq!(update.events.len(), 1);
@@ -609,7 +611,7 @@ mod save_load_tests {
             .resolve(
                 &mut request,
                 KeyValueResult::Ok {
-                    response: KeyValueResponse::Get { value: vec![] },
+                    response: KeyValueResponse::Get { value: Value::None },
                 },
             )
             .unwrap();
@@ -849,8 +851,8 @@ mod sync_tests {
         let mut alice = Peer::new();
         let mut bob = Peer::new();
 
-        alice.update(Event::Load(Ok(note.clone())));
-        bob.update(Event::Load(Ok(note)));
+        alice.update(Event::Load(Ok(Some(note.clone()))));
+        bob.update(Event::Load(Ok(Some(note))));
 
         (alice, bob)
     }

@@ -4,11 +4,15 @@
 //! persist the data using platform native capabilities (e.g. disk or web localStorage)
 
 pub mod error;
+pub mod value;
+
+use serde::{Deserialize, Serialize};
 
 use crux_core::capability::{CapabilityContext, Operation};
 use crux_core::macros::Capability;
+
 use error::KeyValueError;
-use serde::{Deserialize, Serialize};
+use value::Value;
 
 /// Supported operations
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -50,13 +54,13 @@ pub enum KeyValueResult {
 pub enum KeyValueResponse {
     /// Response to a `KeyValueOperation::Get`,
     /// returning the value stored under the key, which may be empty
-    Get { value: Vec<u8> },
+    Get { value: Value },
     /// Response to a `KeyValueOperation::Set`,
     /// returning the value that was previously stored under the key, may be empty
-    Set { previous: Vec<u8> },
+    Set { previous: Value },
     /// Response to a `KeyValueOperation::Delete`,
     /// returning the value that was previously stored under the key, may be empty
-    Delete { previous: Vec<u8> },
+    Delete { previous: Value },
     /// Response to a `KeyValueOperation::Exists`,
     /// returning whether the key is present in the store
     Exists { is_present: bool },
@@ -103,7 +107,7 @@ where
     /// `KeyValueResult::Get { value: Vec<u8> }` as payload
     pub fn get<F>(&self, key: String, make_event: F)
     where
-        F: FnOnce(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -118,7 +122,9 @@ where
 
     /// Read a value under `key`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn get_async(&self, key: String) -> Result<Vec<u8>, KeyValueError> {
+    ///
+    /// Returns the value stored under the key, or `None` if the key is not present.
+    pub async fn get_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
         self.context
             .request_from_shell(KeyValueOperation::Get { key })
             .await
@@ -131,7 +137,7 @@ where
     /// Will dispatch the event with a `KeyValueResult::Set { previous: Vec<u8> }` as payload
     pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
     where
-        F: FnOnce(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -146,7 +152,13 @@ where
 
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn set_async(&self, key: String, value: Vec<u8>) -> Result<Vec<u8>, KeyValueError> {
+    ///
+    /// Returns the previous value stored under the key, if any.
+    pub async fn set_async(
+        &self,
+        key: String,
+        value: Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, KeyValueError> {
         self.context
             .request_from_shell(KeyValueOperation::Set { key, value })
             .await
@@ -157,7 +169,7 @@ where
     /// `KeyValueResult::Delete { previous: Vec<u8> }` as payload
     pub fn delete<F>(&self, key: String, make_event: F)
     where
-        F: FnOnce(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
@@ -170,7 +182,9 @@ where
 
     /// Remove a `key` and its value, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
-    pub async fn delete_async(&self, key: String) -> Result<Vec<u8>, KeyValueError> {
+    ///
+    /// Returns the previous value stored under the key, if any.
+    pub async fn delete_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
         self.context
             .request_from_shell(KeyValueOperation::Delete { key })
             .await
@@ -194,6 +208,8 @@ where
 
     /// Check to see if a `key` exists, while in an async context. This is used together with
     /// [`crux_core::compose::Compose`].
+    ///
+    /// Returns `true` if the key exists, `false` otherwise.
     pub async fn exists_async(&self, key: String) -> Result<bool, KeyValueError> {
         self.context
             .request_from_shell(KeyValueOperation::Exists { key })
@@ -248,31 +264,37 @@ where
 }
 
 impl KeyValueResult {
-    fn unwrap_get(self) -> Result<Vec<u8>, KeyValueError> {
+    fn unwrap_get(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
             KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::Get { value } => Ok(value),
-                _ => panic!("attempt to convert KeyValueResponse other than Get to Vec<u8>"),
+                KeyValueResponse::Get { value } => Ok(value.into()),
+                _ => {
+                    panic!("attempt to convert KeyValueResponse other than Get to Option<Vec<u8>>")
+                }
             },
             KeyValueResult::Err { error } => Err(error.clone()),
         }
     }
 
-    fn unwrap_set(self) -> Result<Vec<u8>, KeyValueError> {
+    fn unwrap_set(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
             KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::Set { previous } => Ok(previous),
-                _ => panic!("attempt to convert KeyValueResponse other than Set to Vec<u8>"),
+                KeyValueResponse::Set { previous } => Ok(previous.into()),
+                _ => {
+                    panic!("attempt to convert KeyValueResponse other than Set to Option<Vec<u8>>")
+                }
             },
             KeyValueResult::Err { error } => Err(error.clone()),
         }
     }
 
-    fn unwrap_delete(self) -> Result<Vec<u8>, KeyValueError> {
+    fn unwrap_delete(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
             KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::Delete { previous } => Ok(previous),
-                _ => panic!("attempt to convert KeyValueResponse other than Delete to Vec<u8>"),
+                KeyValueResponse::Delete { previous } => Ok(previous.into()),
+                _ => panic!(
+                    "attempt to convert KeyValueResponse other than Delete to Option<Vec<u8>>"
+                ),
             },
             KeyValueResult::Err { error } => Err(error.clone()),
         }

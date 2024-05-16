@@ -1,5 +1,5 @@
 use crux_core::typegen::TypeGen;
-use crux_kv::{error::KeyValueError, KeyValueResponse};
+use crux_kv::{error::KeyValueError, value::Value, KeyValueResponse};
 use shared::{NoteEditor, TextCursor};
 use std::path::PathBuf;
 
@@ -15,6 +15,7 @@ fn main() -> anyhow::Result<()> {
     gen.register_type::<TextCursor>()?;
     gen.register_type::<KeyValueResponse>()?;
     gen.register_type::<KeyValueError>()?;
+    gen.register_type::<Value>()?;
 
     let output_root = PathBuf::from("./generated");
 

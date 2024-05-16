@@ -71,7 +71,7 @@ pub enum Event {
     #[serde(skip)]
     Platform(platform::Event),
     #[serde(skip)]
-    SetState(Result<Vec<u8>, KeyValueError>), // receive the data to restore state with
+    SetState(Result<Option<Vec<u8>>, KeyValueError>), // receive the data to restore state with
     #[serde(skip)]
     CurrentTime(TimeResponse),
     #[serde(skip)]
@@ -180,11 +180,14 @@ impl App for CatFacts {
             Event::Restore => {
                 caps.key_value.get(KEY.to_string(), Event::SetState);
             }
-            Event::SetState(Ok(value)) => {
+            Event::SetState(Ok(Some(value))) => {
                 if let Ok(m) = serde_json::from_slice::<Model>(&value) {
                     *model = m;
                     caps.render.render();
                 };
+            }
+            Event::SetState(Ok(None)) => {
+                // no state to restore
             }
             Event::SetState(Err(_)) => {
                 // handle error
