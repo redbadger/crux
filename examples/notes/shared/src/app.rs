@@ -220,22 +220,18 @@ impl App for NoteEditor {
                 model.edit_timer.finished(id);
 
                 caps.key_value
-                    .clone()
                     .set("note".to_string(), model.note.save(), Event::Written);
             }
             Event::Written(_) => {
                 // FIXME assuming successful write
             }
-            Event::Open => caps.key_value.clone().get("note".to_string(), Event::Load),
+            Event::Open => caps.key_value.get("note".to_string(), Event::Load),
             Event::Load(Ok(value)) => {
                 if value.is_none() {
                     model.note = Note::new();
 
-                    caps.key_value.clone().set(
-                        "note".to_string(),
-                        model.note.save(),
-                        Event::Written,
-                    );
+                    caps.key_value
+                        .set("note".to_string(), model.note.save(), Event::Written);
                 } else {
                     model.note = Note::load(&value.unwrap_or_default());
                 }

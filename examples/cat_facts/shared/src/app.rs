@@ -124,9 +124,7 @@ impl App for CatFacts {
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                caps.key_value
-                    .clone()
-                    .set(KEY.to_string(), bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
                 caps.render.render();
             }
             Event::Get => {
@@ -155,9 +153,7 @@ impl App for CatFacts {
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value
-                    .clone()
-                    .set(KEY.to_string(), bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
                 caps.time.now(Event::CurrentTime);
             }
@@ -165,9 +161,7 @@ impl App for CatFacts {
                 model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value
-                    .clone()
-                    .set(KEY.to_string(), bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
                 caps.render.render();
             }
@@ -178,15 +172,13 @@ impl App for CatFacts {
                 let time: DateTime<Utc> = instant.try_into().unwrap();
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value
-                    .clone()
-                    .set(KEY.to_string(), bytes, |_| Event::None);
+                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
                 caps.render.render();
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
             Event::Restore => {
-                caps.key_value.clone().get(KEY.to_string(), Event::SetState);
+                caps.key_value.get(KEY.to_string(), Event::SetState);
             }
             Event::SetState(Ok(Some(value))) => {
                 if let Ok(m) = serde_json::from_slice::<Model>(&value) {
