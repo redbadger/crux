@@ -157,7 +157,7 @@ where
     /// `KeyValueResult::Delete { previous: Vec<u8> }` as payload
     pub fn delete<F>(&self, key: String, make_event: F)
     where
-        F: Fn(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Vec<u8>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
@@ -181,7 +181,7 @@ where
     /// `KeyValueResult::Exists { is_present: bool }` as payload
     pub fn exists<F>(&self, key: String, make_event: F)
     where
-        F: Fn(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
@@ -214,7 +214,7 @@ where
     /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
     pub fn list_keys<F>(&self, prefix: String, cursor: u64, make_event: F)
     where
-        F: Fn(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
     {
         let context = self.context.clone();
         let this = self.clone();
