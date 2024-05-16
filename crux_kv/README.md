@@ -2,7 +2,7 @@
 
 This crate contains the `KeyValue` capability, which can be used to ask the Shell to read from, and write to, a key-value store.
 
-Currently it provides an interface for getting, setting, and deleting keys, and checking if keys exists in the store.
+Currently it provides an interface for getting, setting, and deleting keys, checking if keys exists in the store, and listing keys that start with a prefix.
 
 ## About Crux Capabilities
 

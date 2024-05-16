@@ -2,7 +2,10 @@ use anyhow::Result;
 use crux_core::{macros::Effect, render::Render, testing::AppTester};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::KeyValueError, KeyValue, KeyValueOperation, KeyValueResponse, KeyValueResult};
+use crate::{
+    error::KeyValueError, value::Value, KeyValue, KeyValueOperation, KeyValueResponse,
+    KeyValueResult,
+};
 
 #[derive(Default)]
 pub struct App;
@@ -16,8 +19,8 @@ pub enum Event {
     ListKeys,
     GetThenSet,
 
-    GetResponse(Result<Vec<u8>, KeyValueError>),
-    SetResponse(Result<Vec<u8>, KeyValueError>),
+    GetResponse(Result<Option<Vec<u8>>, KeyValueError>),
+    SetResponse(Result<Option<Vec<u8>>, KeyValueError>),
     ExistsResponse(Result<bool, KeyValueError>),
     ListKeysResponse(Result<(Vec<String>, u64), KeyValueError>),
 }
@@ -61,8 +64,8 @@ impl crux_core::App for App {
                 let kv = caps.key_value.clone();
 
                 async move {
-                    let Result::Ok(value) = kv.get_async("test_num".to_string()).await else {
-                        panic!("expected get response");
+                    let Result::Ok(Some(value)) = kv.get_async("test_num".to_string()).await else {
+                        panic!("expected get response with a value");
                     };
 
                     let num = i32::from_ne_bytes(value.try_into().unwrap());
@@ -74,9 +77,13 @@ impl crux_core::App for App {
                 }
             }),
 
-            Event::GetResponse(Ok(value)) => {
+            Event::GetResponse(Ok(Some(value))) => {
                 let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                 model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
+            }
+
+            Event::GetResponse(Ok(None)) => {
+                panic!("expected value");
             }
 
             Event::SetResponse(Ok(_response)) => {
@@ -148,7 +155,7 @@ fn test_get() {
             &mut request,
             KeyValueResult::Ok {
                 response: KeyValueResponse::Get {
-                    value: 42i32.to_ne_bytes().to_vec(),
+                    value: 42i32.to_ne_bytes().to_vec().into(),
                 },
             },
         )
@@ -183,7 +190,9 @@ fn test_set() {
         .resolve(
             &mut request,
             KeyValueResult::Ok {
-                response: KeyValueResponse::Set { previous: vec![] },
+                response: KeyValueResponse::Set {
+                    previous: Value::None,
+                },
             },
         )
         .unwrap();
@@ -216,7 +225,9 @@ fn test_delete() {
         .resolve(
             &mut request,
             KeyValueResult::Ok {
-                response: KeyValueResponse::Delete { previous: vec![] },
+                response: KeyValueResponse::Delete {
+                    previous: Value::None,
+                },
             },
         )
         .unwrap();
@@ -321,7 +332,7 @@ pub fn test_kv_async() -> Result<()> {
             &mut request,
             KeyValueResult::Ok {
                 response: KeyValueResponse::Get {
-                    value: 17u32.to_ne_bytes().to_vec(),
+                    value: 17u32.to_ne_bytes().to_vec().into(),
                 },
             },
         )
@@ -343,7 +354,9 @@ pub fn test_kv_async() -> Result<()> {
         .resolve(
             &mut request,
             KeyValueResult::Ok {
-                response: KeyValueResponse::Set { previous: vec![] },
+                response: KeyValueResponse::Set {
+                    previous: Value::None,
+                },
             },
         )
         .unwrap();

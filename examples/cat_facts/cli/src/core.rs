@@ -10,7 +10,9 @@ use tokio::{
 use tracing::debug;
 
 use shared::{
-    key_value::{error::KeyValueError, KeyValueOperation, KeyValueResponse, KeyValueResult},
+    key_value::{
+        error::KeyValueError, value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult,
+    },
     platform::PlatformResponse,
     time::{Instant, TimeResponse},
     CatFactCapabilities, CatFacts, Effect, Event,
@@ -67,7 +69,9 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                     async move {
                         let response = match read_state(&key).await {
                             Ok(value) => KeyValueResult::Ok {
-                                response: KeyValueResponse::Get { value },
+                                response: KeyValueResponse::Get {
+                                    value: value.into(),
+                                },
                             },
                             Err(err) => KeyValueResult::Err {
                                 error: KeyValueError::Io {
@@ -94,7 +98,9 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                     async move {
                         let response = match write_state(&key, &value).await {
                             Ok(()) => KeyValueResult::Ok {
-                                response: KeyValueResponse::Set { previous: vec![] },
+                                response: KeyValueResponse::Set {
+                                    previous: Value::None,
+                                },
                             },
                             Err(err) => KeyValueResult::Err {
                                 error: KeyValueError::Io {

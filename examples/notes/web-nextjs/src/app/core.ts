@@ -28,6 +28,8 @@ import {
   KeyValueResultVariantOk,
   KeyValueResponseVariantGet,
   KeyValueResponseVariantSet,
+  ValueVariantNone,
+  ValueVariantBytes,
 } from "shared_types/types/shared_types";
 import {
   BincodeSerializer,
@@ -157,14 +159,19 @@ export class Core {
           case KeyValueOperationVariantGet: {
             const { key: readKey } = request as KeyValueOperationVariantGet;
 
-            let data = window.localStorage.getItem(readKey);
-            let bytes: number[] | null = data == null ? data : JSON.parse(data);
+            const data = window.localStorage.getItem(readKey);
+            const bytes: number[] | null =
+              data == null ? data : JSON.parse(data);
+            const value =
+              bytes == null
+                ? new ValueVariantNone()
+                : new ValueVariantBytes(bytes);
 
             console.log(`Loaded document (${bytes?.length || 0} bytes)`);
             this.respond(
               uuid,
               new KeyValueResultVariantOk(
-                new KeyValueResponseVariantGet(bytes || []),
+                new KeyValueResponseVariantGet(value),
               ),
             );
 
@@ -181,7 +188,9 @@ export class Core {
 
             this.respond(
               uuid,
-              new KeyValueResultVariantOk(new KeyValueResponseVariantSet([])),
+              new KeyValueResultVariantOk(
+                new KeyValueResponseVariantSet(new ValueVariantNone()),
+              ),
             );
 
             break;

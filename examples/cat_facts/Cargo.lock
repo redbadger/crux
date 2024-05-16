@@ -392,12 +392,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "convert_case"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -430,13 +424,12 @@ checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 
 [[package]]
 name = "crux_core"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "bincode",
  "crossbeam-channel",
  "crux_macros",
- "derive_more",
  "erased-serde",
  "futures",
  "serde",
@@ -445,7 +438,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "uuid",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -467,7 +459,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -488,18 +480,16 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
- "anyhow",
  "crux_core",
  "serde",
 ]
 
 [[package]]
 name = "crux_time"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
- "anyhow",
  "chrono",
  "crux_core",
  "serde",
@@ -570,19 +560,6 @@ checksum = "206868b8242f27cecce124c19fd88157fbd0dd334df2587f36417bafbc85097b"
 dependencies = [
  "derive_builder_core",
  "syn 2.0.63",
-]
-
-[[package]]
-name = "derive_more"
-version = "0.99.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
-dependencies = [
- "convert_case",
- "proc-macro2",
- "quote",
- "rustc_version",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -2093,15 +2070,6 @@ name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
-
-[[package]]
-name = "rustc_version"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
-dependencies = [
- "semver",
-]
 
 [[package]]
 name = "rustix"
