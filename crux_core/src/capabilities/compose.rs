@@ -27,6 +27,14 @@ pub struct ComposeContext<Ev> {
     context: CapabilityContext<Never, Ev>,
 }
 
+impl<Ev> Clone for ComposeContext<Ev> {
+    fn clone(&self) -> Self {
+        Self {
+            context: self.context.clone(),
+        }
+    }
+}
+
 impl<Ev> ComposeContext<Ev> {
     /// Update the app with an event. This forwards to [`CapabilityContext::update_app`].
     pub fn update_app(&self, event: Ev)
