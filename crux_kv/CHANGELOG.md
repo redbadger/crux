@@ -33,7 +33,7 @@ interacting with the key-value store.
 
 ### Other
 
-- KeyValueErro::CursorNotFound, and doc comments to describe semantics
+- KeyValueError::CursorNotFound, and doc comments to describe semantics
 - list keys
 - unwrap methods
 - Simplify app-facing API of crux_kv

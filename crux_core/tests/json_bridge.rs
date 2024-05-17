@@ -68,10 +68,10 @@ mod tests {
             panic!("Expected request to be an object")
         };
 
-        let Value::Array(uuid) = &request["uuid"] else {
-            panic!("Expected uuid to be an array, got: {:?}", &request["uuid"])
+        let Value::Number(id) = &request["id"] else {
+            panic!("Expected id to be a number, got: {:?}", &request["id"])
         };
-        assert_eq!(uuid.len(), 16);
+        assert_eq!(id.as_u64().unwrap(), 0);
 
         let Value::Object(effect) = &request["effect"] else {
             panic!(

@@ -21,8 +21,8 @@ pub fn process_event(data: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
-pub fn handle_response(uuid: &[u8], data: &[u8]) -> Vec<u8> {
-    CORE.handle_response(uuid, data)
+pub fn handle_response(id: u32, data: &[u8]) -> Vec<u8> {
+    CORE.handle_response(id, data)
 }
 
 #[wasm_bindgen]

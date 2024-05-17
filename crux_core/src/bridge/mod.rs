@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::Effect;
 use crate::{App, Core};
-use registry::ResolveRegistry;
+use registry::{EffectId, ResolveRegistry};
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveSerialized;
 
-/// Request for a side-effect passed from the Core to the Shell. The `uuid` links
+/// Request for a side-effect passed from the Core to the Shell. The `EffectId` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
 /// to the [`App::update`] function (wrapped in the event provided to the capability originating the effect).
 // used in docs/internals/bridge.md
@@ -22,7 +22,7 @@ pub struct Request<Eff>
 where
     Eff: Serialize,
 {
-    pub uuid: Vec<u8>,
+    pub id: EffectId,
     pub effect: Eff,
 }
 // ANCHOR_END: request
@@ -72,10 +72,10 @@ where
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
-    /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
+    /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
     // used in docs/internals/bridge.md
     // ANCHOR: handle_response_sig
-    pub fn handle_response(&self, uuid: &[u8], output: &[u8]) -> Vec<u8>
+    pub fn handle_response(&self, id: u32, output: &[u8]) -> Vec<u8>
     // ANCHOR_END: handle_response_sig
     where
         A::Event: for<'a> Deserialize<'a>,
@@ -87,7 +87,8 @@ where
         let mut return_buffer = vec![];
         let mut ser = bincode::Serializer::new(&mut return_buffer, options);
 
-        self.inner.handle_response(uuid, &mut deser, &mut ser);
+        self.inner
+            .handle_response(EffectId(id), &mut deser, &mut ser);
 
         return_buffer
     }
@@ -165,8 +166,8 @@ where
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
-    /// The `uuid` MUST match the `uuid` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de, D, S>(&self, uuid: &[u8], response: D, requests_out: S)
+    /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
+    pub fn handle_response<'de, D, S>(&self, id: EffectId, response: D, requests_out: S)
     where
         for<'a> A::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de>,
@@ -174,7 +175,7 @@ where
     {
         let mut erased_response = <dyn erased_serde::Deserializer>::erase(response);
         self.process(
-            Some(uuid),
+            Some(id),
             &mut erased_response,
             &mut <dyn erased_serde::Serializer>::erase(requests_out),
         );
@@ -182,21 +183,21 @@ where
 
     fn process(
         &self,
-        uuid: Option<&[u8]>,
+        id: Option<EffectId>,
         data: &mut dyn erased_serde::Deserializer,
         requests_out: &mut dyn erased_serde::Serializer,
     ) where
         A::Event: for<'a> Deserialize<'a>,
     {
-        let effects = match uuid {
+        let effects = match id {
             None => {
                 let shell_event =
                     erased_serde::deserialize(data).expect("Message deserialization failed.");
 
                 self.core.process_event(shell_event)
             }
-            Some(uuid) => {
-                self.registry.resume(uuid, data).expect(
+            Some(id) => {
+                self.registry.resume(id, data).expect(
                     "Response could not be handled. The request did not expect a response.",
                 );
 

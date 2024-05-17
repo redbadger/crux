@@ -31,7 +31,7 @@ and here's its counterpart, `Bridge::handle_response`
 ```
 
 where the core expects to be given a `Request<Op>` to resolve, the bridge
-expects a `uuid` - a unique identifier of the request being resolved.
+expects a `id` - a unique identifier of the request being resolved.
 
 This makes sense - the `Request`s include callback closures working with the
 capability runtime, they can't be easily serialised and sent back and forth
@@ -64,7 +64,7 @@ The processing of the update loop is quite similar to the Core update loop:
 
 - When a serialized event arrives, it is deserialized and passed to the `Core`'s
   `process_event`
-- When a request response arrives, the uuid is forwarded to the
+- When a request response arrives, its id is forwarded to the
   `ResolveRegistry`'s `resume` method, and the `Core`'s `process` method is
   called to run the capability runtime
 
@@ -103,8 +103,7 @@ how this works in the [`Effect type`](./effect.md) chapter.
 
 The type signature of the method gives us a hint though - it converts the normal
 `Effect` into a serializable counterpart, alongside something with a
-`ResolveSerialized` type. This is stored in the registry under a randomly
-generated uuid, and the effect and the uuid are returned as the bridge version
+`ResolveSerialized` type. This is stored in the registry under an id, and the effect and the id are returned as the bridge version
 of a `Request`.
 
 The definition of the `ResolveSerialized` type is a little bit convoluted:

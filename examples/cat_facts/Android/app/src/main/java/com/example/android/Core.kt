@@ -44,47 +44,43 @@ open class Core : androidx.lifecycle.ViewModel() {
             is Effect.Render -> {
                 this.view = ViewModel.bincodeDeserialize(view())
             }
-
             is Effect.Http -> {
                 val response = requestHttp(httpClient, effect.value)
 
                 val effects =
-                    handleResponse(
-                        request.uuid.toByteArray(),
-                        HttpResult.Ok(response).bincodeSerialize()
-                    )
+                        handleResponse(
+                                request.id.toUInt(),
+                                HttpResult.Ok(response).bincodeSerialize()
+                        )
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
-
             is Effect.Time -> {
                 val now = ZonedDateTime.now(ZoneOffset.UTC)
                 val response = TimeResponse.now(Instant(now.toEpochSecond(), now.nano))
 
                 val effects =
-                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                        handleResponse(request.id.toUInt(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
-
             is Effect.Platform -> {
                 val response = PlatformResponse(Build.BRAND + " " + Build.VERSION.RELEASE)
 
                 val effects =
-                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                        handleResponse(request.id.toUInt(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
-
             is Effect.KeyValue -> {}
         }
     }

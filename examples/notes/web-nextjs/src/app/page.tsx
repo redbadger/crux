@@ -58,7 +58,7 @@ function cursorToSelection(cursor: TextCursor): Selection {
 
 const Home: NextPage = () => {
   const [view, setView] = useState<ViewModel>(
-    new ViewModel("", new TextCursorVariantPosition(BigInt(0)))
+    new ViewModel("", new TextCursorVariantPosition(BigInt(0))),
   );
 
   const [_, setTimers] = useState<Timers>({});
@@ -66,11 +66,11 @@ const Home: NextPage = () => {
   // TODO the state and channel handling should probably get
   // packaged up as a custom hook or something
 
-  const subscriptionId = useRef<number[] | null>(null);
+  const subscriptionId = useRef<number | null>(null);
   const channel = useRef(new BroadcastChannel("crux-note"));
 
   const core = useRef<Core>(
-    new Core(setView, setTimers, channel, subscriptionId)
+    new Core(setView, setTimers, channel, subscriptionId),
   );
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
@@ -116,7 +116,7 @@ const Home: NextPage = () => {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    /*once*/ []
+    /*once*/ [],
   );
 
   // Event handlers
@@ -125,7 +125,7 @@ const Home: NextPage = () => {
     log(`onChange ${start} ${end} "${text}"`);
 
     core.current.update(
-      new EventVariantReplace(BigInt(start), BigInt(end), text)
+      new EventVariantReplace(BigInt(start), BigInt(end), text),
     );
   };
 

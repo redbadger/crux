@@ -26,7 +26,7 @@ class Core: ObservableObject {
             Task.init {
                 try? await Task.sleep(for: .milliseconds(Double(ms)))
 
-                let effects = [UInt8](TapToPay.handleResponse(Data(request.uuid), Data([])))
+                let effects = [UInt8](TapToPay.handleResponse(request.id, Data([])))
 
                 let requests: [Request] = try! .bincodeDeserialize(input: effects)
                 for request in requests {

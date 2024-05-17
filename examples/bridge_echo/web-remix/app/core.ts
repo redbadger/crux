@@ -14,7 +14,7 @@ import {
 
 export function update(
   event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   const serializer = new BincodeSerializer();
   event.serialize(serializer);
@@ -22,15 +22,15 @@ export function update(
   const effects = process_event(serializer.getBytes());
 
   const requests = deserializeRequests(effects);
-  for (const { uuid, effect } of requests) {
-    processEffect(uuid, effect, callback);
+  for (const { id, effect } of requests) {
+    processEffect(id, effect, callback);
   }
 }
 
 function processEffect(
-  _uuid: number[],
+  _id: number,
   effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   switch (effect.constructor) {
     case EffectVariantRender: {

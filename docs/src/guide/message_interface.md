@@ -27,15 +27,15 @@ created on the shell side with safety.
 An `Event` can be passed in directly, as-is. Processing of `Effect`s is a little
 more complicated, because the core needs to be able to pair the outcomes of the
 effects with the original capability call, so it can return them to the right
-caller. To do that, effects are wrapped in a `Request`, which tags them with a
-UUID. To respond, the same UUID needs to be passed back in.
+caller. To do that, effects are wrapped in a `Request`, which tags them with an
+Id. To respond, the same Id needs to be passed back in.
 
 Requests from the core are emitted serialized, and need to be deserialized
 first. Both events and effect outputs need to be serialized before being passed
 back to the core.
 
 ```admonish warning title="Sharp edge"
-It is likely that this will become an implementation detail and instead, Crux will provide a more ergonomic shell-side API for the interaction, hiding both the UUID pairing and the serialization (and allowing us to iterate on the FFI implementation which, we think, could work better).
+It is likely that this will become an implementation detail and instead, Crux will provide a more ergonomic shell-side API for the interaction, hiding both the EffectId pairing and the serialization (and allowing us to iterate on the FFI implementation which, we think, could work better).
 ```
 
 ## The core interface
@@ -44,7 +44,7 @@ There are only three touch-points with the core.
 
 ```rust
 pub fn process_event(data: &[u8]) -> Vec<u8> { todo!() }
-pub fn handle_response(uuid: &[u8], data: &[u8]) -> Vec<u8> { todo!() }
+pub fn handle_response(id: u32, data: &[u8]) -> Vec<u8> { todo!() }
 pub fn view() -> Vec<u8> { todo!() }
 ```
 
@@ -54,7 +54,7 @@ relevant capability's shell-side code (see the section below on how the shell
 handles capabilities).
 
 The `handle_response` function, used to return capability output back into the
-core, is similar to `process_event` except that it also takes a `uuid`, which
+core, is similar to `process_event` except that it also takes a `id`, which
 ties the output (for example a HTTP response) being submitted with it's original
 `Effect` which started it (and the corresponding request which the core wrapped
 it in).
@@ -76,7 +76,7 @@ For now we have to manually invoke the serialization code in the shell. At some 
 ```
 
 In this code snippet from the
-[Counter example](https://github.com/redbadger/crux/blob/master/examples/counter/Android/app/src/main/java/com/example/counter/MainActivity.kt),
+[Counter example](https://github.com/redbadger/crux/blob/master/examples/counter/Android/app/src/main/java/com/example/counter/Core.kt),
 notice that we call `processEvent` and `handleResponse` on the core depending on
 whether we received an `Event` from the UI or from a capability, respectively.
 Regardless of which core function we call, we get back a bunch of requests,
@@ -85,63 +85,66 @@ triggers a render of the UI, or makes an HTTP call, or launches a task to wait
 for Server Sent Events, depending on what the core requested):
 
 ```kotlin
-sealed class Outcome {
-    data class Http(val res: HttpResponse) : Outcome()
-    data class Sse(val res: SseResponse) : Outcome()
-}
-
-sealed class CoreMessage {
-    data class Event(val event: Evt) : CoreMessage()
-    data class Response(val uuid: List<UByte>, val outcome: Outcome) : CoreMessage()
-}
-
-class Model : ViewModel() {
-    var view: MyViewModel by mutableStateOf(MyViewModel("", false))
+class Core : androidx.lifecycle.ViewModel() {
+    var view: ViewModel? by mutableStateOf(null)
         private set
 
-    suspend fun update(msg: CoreMessage) {
-        val requests: List<Req> =
-            when (msg) {
-                is CoreMessage.Event ->
-                    Requests.bincodeDeserialize(
-                    processEvent(msg.event.bincodeSerialize().toUByteArray().toList())
-                            .toUByteArray()
-                            .toByteArray()
-                    )
-                is CoreMessage.Response ->
-                    Requests.bincodeDeserialize(
-                        handleResponse(
-                            msg.uuid.toList(),
-                            when (msg.outcome) {
-                                is Outcome.Http -> msg.outcome.res.bincodeSerialize()
-                                is Outcome.Sse -> msg.outcome.res.bincodeSerialize()
-                            }.toUByteArray().toList()
-                        ).toUByteArray().toByteArray()
-                    )
+    private val httpClient = HttpClient(CIO)
+    private val sseClient = HttpClient(CIO) {
+        engine {
+            endpoint {
+                keepAliveTime = 5000
+                connectTimeout = 5000
+                connectAttempts = 5
+                requestTimeout = 0
+            }
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            update(Event.StartWatch())
+        }
+    }
+
+    suspend fun update(event: Event) {
+        val effects = processEvent(event.bincodeSerialize())
+
+        val requests = Requests.bincodeDeserialize(effects)
+        for (request in requests) {
+            processEffect(request)
+        }
+    }
+
+    private suspend fun processEffect(request: Request) {
+        when (val effect = request.effect) {
+            is Effect.Render -> {
+                this.view = ViewModel.bincodeDeserialize(view())
             }
 
-        for (req in requests) when (val effect = req.effect) {
-            is Effect.Render -> {
-                this.view = MyViewModel.bincodeDeserialize(view().toUByteArray().toByteArray())
-            }
             is Effect.Http -> {
-                val response = http(httpClient, HttpMethod(effect.value.method), effect.value.url)
-                update(
-                    CoreMessage.Response(
-                        req.uuid.toByteArray().toUByteArray().toList(),
-                        Outcome.Http(response)
+                val response = requestHttp(httpClient, effect.value)
+
+                val effects =
+                    handleResponse(
+                        request.id.toUInt(),
+                        HttpResult.Ok(response).bincodeSerialize()
                     )
-                )
+
+                val requests = Requests.bincodeDeserialize(effects)
+                for (request in requests) {
+                    processEffect(request)
+                }
             }
+
             is Effect.ServerSentEvents -> {
-                viewModelScope.launch {
-                    sse(sseClient, effect.value.url) { event ->
-                        update(
-                            CoreMessage.Response(
-                                req.uuid.toByteArray().toUByteArray().toList(),
-                                Outcome.Sse(event)
-                            )
-                        )
+                requestSse(sseClient, effect.value) { response ->
+                    val effects =
+                        handleResponse(request.id.toUInt(), response.bincodeSerialize())
+
+                    val requests = Requests.bincodeDeserialize(effects)
+                    for (request in requests) {
+                        processEffect(request)
                     }
                 }
             }
@@ -244,23 +247,24 @@ reason).
 
 The above function can then be called by the shell when an effect is emitted
 requesting an HTTP call. It can then post the response back to the core (along
-with the `uuid` that is used by the core to tie the response up to its original
+with the `id` that is used by the core to tie the response up to its original
 request):
 
 ```kotlin
 for (req in requests) when (val effect = req.effect) {
     is Effect.Http -> {
-        val response = http(
-            httpClient,
-            HttpMethod(effect.value.method),
-            effect.value.url
-        )
-        update(
-            CoreMessage.Response(
-                req.uuid.toByteArray().toUByteArray().toList(),
-                Outcome.Http(response)
+        val response = requestHttp(httpClient, effect.value)
+
+        val effects =
+            handleResponse(
+                request.id.toUInt(),
+                HttpResult.Ok(response).bincodeSerialize()
             )
-        )
+
+        val requests = Requests.bincodeDeserialize(effects)
+        for (request in requests) {
+            processEffect(request)
+        }
     }
     // ...
 }

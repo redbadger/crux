@@ -29,7 +29,7 @@ class Core: ObservableObject {
 
                 let effects = [UInt8](
                     handleResponse(
-                        Data(request.uuid),
+                        request.id,
                         Data(try! HttpResult.ok(response).bincodeSerialize())
                     )
                 )
@@ -43,7 +43,7 @@ class Core: ObservableObject {
             let now = Date().timeIntervalSince1970;
             let response = TimeResponse.now(Instant(seconds: UInt64(now), nanos: 0))
 
-            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+            let effects = [UInt8](handleResponse(request.id, Data(try! response.bincodeSerialize())))
 
             let requests: [Request] = try! .bincodeDeserialize(input: effects)
             for request in requests {
@@ -52,7 +52,7 @@ class Core: ObservableObject {
         case .platform:
             let response = PlatformResponse(value: get_platform())
 
-            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+            let effects = [UInt8](handleResponse(request.id, Data(try! response.bincodeSerialize())))
 
             let requests: [Request] = try! .bincodeDeserialize(input: effects)
             for request in requests {
