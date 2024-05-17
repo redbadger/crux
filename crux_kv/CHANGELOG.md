@@ -3,13 +3,33 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/redbadger/crux/compare/crux_kv-v0.3.0...crux_kv-v0.4.0) - 2024-05-17
+
+### Breaking Changes
+
+Introduces a `Value` enum, which can be `None` for a key that _doesn't_ exist,
+or where there is no `previous_value`. See
+https://github.com/redbadger/crux/pull/235.
+
+### Other
+
+- avoid clones of capability
+- crux_kv take methods by move
+- update API for crux_kv
+- relax callback bounds in crux_kv
+
 ## [0.3.0](https://github.com/redbadger/crux/compare/crux_kv-v0.2.0...crux_kv-v0.3.0) - 2024-05-15
 
-Hot on the heels of the last release, we've added a an [operation to list keys](https://github.com/redbadger/crux/pull/232), and [improved the app-facing API of crux_kv](https://github.com/redbadger/crux/pull/231). The latter means that there is now a much more idiomatic Rust API for interacting with the key-value store.
+Hot on the heels of the last release, we've added a an
+[operation to list keys](https://github.com/redbadger/crux/pull/232), and
+[improved the app-facing API of crux_kv](https://github.com/redbadger/crux/pull/231).
+The latter means that there is now a much more idiomatic Rust API for
+interacting with the key-value store.
 
 ### Other
 
@@ -22,7 +42,12 @@ Hot on the heels of the last release, we've added a an [operation to list keys](
 
 ### Breaking Changes
 
-This is a breaking change release. We've added `delete` and `exists` operations and renamed `read` to `get` and `write` to `set`, amongst other renames and type changes. We've also improved error handling and tests. See https://github.com/redbadger/crux/pull/227 for more information. However, there are sadly still no atomic or batch operations, which will follow in a future release.
+This is a breaking change release. We've added `delete` and `exists` operations
+and renamed `read` to `get` and `write` to `set`, amongst other renames and type
+changes. We've also improved error handling and tests. See
+https://github.com/redbadger/crux/pull/227 for more information. However, there
+are sadly still no atomic or batch operations, which will follow in a future
+release.
 
 ### Other
 
