@@ -111,10 +111,8 @@ where
     {
         self.context.spawn({
             let context = self.context.clone();
-            let this = self.clone();
-
             async move {
-                let response = this.get_async(key).await;
+                let response = get(&context, key).await;
                 context.update_app(make_event(response));
             }
         });
@@ -125,10 +123,7 @@ where
     ///
     /// Returns the value stored under the key, or `None` if the key is not present.
     pub async fn get_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
-        self.context
-            .request_from_shell(KeyValueOperation::Get { key })
-            .await
-            .unwrap_get()
+        get(&self.context, key).await
     }
 
     /// Set `key` to be the provided `value`. Typically the bytes would be
@@ -141,10 +136,8 @@ where
     {
         self.context.spawn({
             let context = self.context.clone();
-            let this = self.clone();
-
             async move {
-                let response = this.set_async(key, value).await;
+                let response = set(&context, key, value).await;
                 context.update_app(make_event(response))
             }
         });
@@ -159,10 +152,7 @@ where
         key: String,
         value: Vec<u8>,
     ) -> Result<Option<Vec<u8>>, KeyValueError> {
-        self.context
-            .request_from_shell(KeyValueOperation::Set { key, value })
-            .await
-            .unwrap_set()
+        set(&self.context, key, value).await
     }
 
     /// Remove a `key` and its value, will dispatch the event with a
@@ -171,12 +161,12 @@ where
     where
         F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        let context = self.context.clone();
-        let this = self.clone();
-
-        self.context.spawn(async move {
-            let response = this.delete_async(key).await;
-            context.update_app(make_event(response))
+        self.context.spawn({
+            let context = self.context.clone();
+            async move {
+                let response = delete(&context, key).await;
+                context.update_app(make_event(response))
+            }
         });
     }
 
@@ -185,10 +175,7 @@ where
     ///
     /// Returns the previous value stored under the key, if any.
     pub async fn delete_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
-        self.context
-            .request_from_shell(KeyValueOperation::Delete { key })
-            .await
-            .unwrap_delete()
+        delete(&self.context, key).await
     }
 
     /// Check to see if a `key` exists, will dispatch the event with a
@@ -197,12 +184,12 @@ where
     where
         F: FnOnce(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        let context = self.context.clone();
-        let this = self.clone();
-
-        self.context.spawn(async move {
-            let response = this.exists_async(key).await;
-            context.update_app(make_event(response))
+        self.context.spawn({
+            let context = self.context.clone();
+            async move {
+                let response = exists(&context, key).await;
+                context.update_app(make_event(response))
+            }
         });
     }
 
@@ -211,10 +198,7 @@ where
     ///
     /// Returns `true` if the key exists, `false` otherwise.
     pub async fn exists_async(&self, key: String) -> Result<bool, KeyValueError> {
-        self.context
-            .request_from_shell(KeyValueOperation::Exists { key })
-            .await
-            .unwrap_exists()
+        exists(&self.context, key).await
     }
 
     /// List keys that start with the provided `prefix`, starting from the provided `cursor`.
@@ -232,12 +216,12 @@ where
     where
         F: FnOnce(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        let context = self.context.clone();
-        let this = self.clone();
-
-        self.context.spawn(async move {
-            let response = this.list_keys_async(prefix, cursor).await;
-            context.update_app(make_event(response))
+        self.context.spawn({
+            let context = self.context.clone();
+            async move {
+                let response = list_keys(&context, prefix, cursor).await;
+                context.update_app(make_event(response))
+            }
         });
     }
 
@@ -256,11 +240,60 @@ where
         prefix: String,
         cursor: u64,
     ) -> Result<(Vec<String>, u64), KeyValueError> {
-        self.context
-            .request_from_shell(KeyValueOperation::ListKeys { prefix, cursor })
-            .await
-            .unwrap_list_keys()
+        list_keys(&self.context, prefix, cursor).await
     }
+}
+
+async fn get<Ev: 'static>(
+    context: &CapabilityContext<KeyValueOperation, Ev>,
+    key: String,
+) -> Result<Option<Vec<u8>>, KeyValueError> {
+    context
+        .request_from_shell(KeyValueOperation::Get { key })
+        .await
+        .unwrap_get()
+}
+
+async fn set<Ev: 'static>(
+    context: &CapabilityContext<KeyValueOperation, Ev>,
+    key: String,
+    value: Vec<u8>,
+) -> Result<Option<Vec<u8>>, KeyValueError> {
+    context
+        .request_from_shell(KeyValueOperation::Set { key, value })
+        .await
+        .unwrap_set()
+}
+
+async fn delete<Ev: 'static>(
+    context: &CapabilityContext<KeyValueOperation, Ev>,
+    key: String,
+) -> Result<Option<Vec<u8>>, KeyValueError> {
+    context
+        .request_from_shell(KeyValueOperation::Delete { key })
+        .await
+        .unwrap_delete()
+}
+
+async fn exists<Ev: 'static>(
+    context: &CapabilityContext<KeyValueOperation, Ev>,
+    key: String,
+) -> Result<bool, KeyValueError> {
+    context
+        .request_from_shell(KeyValueOperation::Exists { key })
+        .await
+        .unwrap_exists()
+}
+
+async fn list_keys<Ev: 'static>(
+    context: &CapabilityContext<KeyValueOperation, Ev>,
+    prefix: String,
+    cursor: u64,
+) -> Result<(Vec<String>, u64), KeyValueError> {
+    context
+        .request_from_shell(KeyValueOperation::ListKeys { prefix, cursor })
+        .await
+        .unwrap_list_keys()
 }
 
 impl KeyValueResult {
