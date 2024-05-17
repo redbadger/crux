@@ -18,11 +18,11 @@ The first thing we need to do is create a new Android app in Android Studio.
 Open Android Studio and create a new project, for "Phone and Tablet", of type
 "Empty Activity". In this walk-through, we'll call it "Counter"
 
-* "Name": `Counter`
-* "Package name": `com.example.simple_counter`
-* "Save Location": a directory called `Android` at the root of our monorepo
-* "Minimum SDK" `API 34`
-* "Build configuration language": `Groovy DSL (build.gradle)`
+- "Name": `Counter`
+- "Package name": `com.example.simple_counter`
+- "Save Location": a directory called `Android` at the root of our monorepo
+- "Minimum SDK" `API 34`
+- "Build configuration language": `Groovy DSL (build.gradle)`
 
 Your repo's directory structure might now look something like this (some files
 elided):
@@ -94,7 +94,7 @@ dynamic library and generating the runtime bindings and the shared types.
 - The [Android NDK](https://developer.android.com/ndk)
 - Mozilla's [Rust gradle plugin](https://github.com/mozilla/rust-android-gradle)
   for Android
-   - This plugin depends on Python 3, make sure you have a version installed
+  - This plugin depends on Python 3, make sure you have a version installed
 - [Java Native Access](https://github.com/java-native-access/jna)
 - [Uniffi](https://mozilla.github.io/uniffi-rs/) to generate Java bindings
 
@@ -113,6 +113,12 @@ this:
 
 ```gradle
 {{#include ../../../../examples/simple_counter/Android/build.gradle}}
+```
+
+```admonish
+The code fence above uses AGP version `8.3.2`.
+
+Currently there is an incompatibiliity between the latest version (`8.4.0`) of the Android Gradle Plugin (AGP) and the Rust Gradle Plugin, which fails with a `duplicate resources` issue when building your shared library for multiple targets. For now, either just target one archtecture or stick with AGP version `8.3.2` until this is resolved.
 ```
 
 Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
