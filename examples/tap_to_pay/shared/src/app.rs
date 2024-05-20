@@ -36,7 +36,6 @@ pub enum Screen {
 }
 
 #[derive(crux_core::macros::Effect)]
-#[effect(app = "App")]
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 pub struct Capabilities {
     render: Render<Event>,

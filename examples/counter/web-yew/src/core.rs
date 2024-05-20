@@ -1,6 +1,6 @@
 use futures_util::TryStreamExt;
 use gloo_console::log;
-use shared::{App, Capabilities, Effect, Event};
+use shared::{App, Effect, Event};
 use std::rc::Rc;
 use yew::{platform::spawn_local, Callback};
 
@@ -14,7 +14,7 @@ pub enum Message {
 }
 
 pub fn new() -> Core {
-    Rc::new(shared::Core::new::<Capabilities>())
+    Rc::new(shared::Core::new())
 }
 
 pub fn update(core: &Core, event: Event, callback: &Callback<Message>) {

@@ -7,10 +7,10 @@ use lazy_static::lazy_static;
 use std::sync::Arc;
 use tauri::Manager;
 
-use shared::{App, Capabilities, Core, Effect, Event};
+use shared::{App, Core, Effect, Event};
 
 lazy_static! {
-    static ref CORE: Arc<Core<Effect, App>> = Arc::new(Core::new::<Capabilities>());
+    static ref CORE: Arc<Core<Effect, App>> = Arc::new(Core::new());
 }
 
 fn handle_event(

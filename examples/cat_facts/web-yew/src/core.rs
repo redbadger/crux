@@ -2,7 +2,7 @@ use gloo_console::log;
 use shared::{
     platform::PlatformResponse,
     time::{Instant, TimeResponse},
-    CatFactCapabilities, CatFacts, Effect, Event,
+    CatFacts, Effect, Event,
 };
 use std::rc::Rc;
 use yew::{platform::spawn_local, Callback};
@@ -17,7 +17,7 @@ pub enum Message {
 }
 
 pub fn new() -> Core {
-    Rc::new(shared::Core::new::<CatFactCapabilities>())
+    Rc::new(shared::Core::new())
 }
 
 pub fn update(core: &Core, event: Event, callback: &Callback<Message>) {

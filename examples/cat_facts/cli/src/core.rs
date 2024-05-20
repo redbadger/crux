@@ -15,7 +15,7 @@ use shared::{
     },
     platform::PlatformResponse,
     time::{Instant, TimeResponse},
-    CatFactCapabilities, CatFacts, Effect, Event,
+    CatFacts, Effect, Event,
 };
 
 use crate::http;
@@ -23,7 +23,7 @@ use crate::http;
 pub type Core = Arc<shared::Core<Effect, CatFacts>>;
 
 pub fn new() -> Core {
-    Arc::new(shared::Core::new::<CatFactCapabilities>())
+    Arc::new(shared::Core::new())
 }
 
 pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()> {

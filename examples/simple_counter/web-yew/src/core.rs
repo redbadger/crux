@@ -1,4 +1,4 @@
-use shared::{Capabilities, Counter, Effect, Event};
+use shared::{Counter, Effect, Event};
 use std::rc::Rc;
 use yew::Callback;
 
@@ -10,7 +10,7 @@ pub enum Message {
 }
 
 pub fn new() -> Core {
-    Rc::new(shared::Core::new::<Capabilities>())
+    Rc::new(shared::Core::new())
 }
 
 pub fn update(core: &Core, event: Event, callback: &Callback<Message>) {

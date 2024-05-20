@@ -5,7 +5,7 @@ use dioxus::{
     signals::Writable,
 };
 use futures_util::StreamExt;
-use shared::{Capabilities, Counter, Effect, Event, ViewModel};
+use shared::{Counter, Effect, Event, ViewModel};
 use tracing::debug;
 
 type Core = Rc<shared::Core<Effect, Counter>>;
@@ -19,7 +19,7 @@ impl CoreService {
     pub fn new(view: Signal<ViewModel>) -> Self {
         debug!("initializing core service");
         Self {
-            core: Rc::new(shared::Core::new::<Capabilities>()),
+            core: Rc::new(shared::Core::new()),
             view,
         }
     }

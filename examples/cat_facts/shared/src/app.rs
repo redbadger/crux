@@ -87,7 +87,6 @@ pub struct CatFacts {
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
-#[effect(app = "CatFacts")]
 pub struct CatFactCapabilities {
     pub http: Http<Event>,
     pub key_value: KeyValue<Event>,
