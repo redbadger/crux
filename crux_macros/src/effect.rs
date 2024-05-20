@@ -56,14 +56,6 @@ impl ToTokens for EffectStructReceiver {
             None => (quote!(Effect), quote!(EffectFfi), quote!("Effect")),
         };
 
-        let app = match self.app {
-            Some(ref app) => quote!(#app),
-            None => {
-                let x = Type::from_string("App").unwrap();
-                quote!(#x)
-            }
-        };
-
         let fields = self
             .data
             .as_ref()
@@ -166,7 +158,7 @@ impl ToTokens for EffectStructReceiver {
                 }
             }
 
-            impl ::crux_core::WithContext<#app, #effect_name> for #ident {
+            impl ::crux_core::WithContext<#event, #effect_name> for #ident {
                 fn new_with_context(context: ::crux_core::capability::ProtoContext<#effect_name, #event>) -> #ident {
                     #ident {
                         #(#with_context_fields ,)*
@@ -262,7 +254,7 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<App, Effect> for Capabilities {
+        impl ::crux_core::WithContext<Event, Effect> for Capabilities {
             fn new_with_context(
                 context: ::crux_core::capability::ProtoContext<Effect, Event>,
             ) -> Capabilities {
@@ -325,7 +317,7 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<App, Effect> for Capabilities {
+        impl ::crux_core::WithContext<Event, Effect> for Capabilities {
             fn new_with_context(
                 context: ::crux_core::capability::ProtoContext<Effect, Event>,
             ) -> Capabilities {
@@ -441,7 +433,7 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<MyApp, MyEffect> for MyCapabilities {
+        impl ::crux_core::WithContext<MyEvent, MyEffect> for MyCapabilities {
             fn new_with_context(
                 context: ::crux_core::capability::ProtoContext<MyEffect, MyEvent>,
             ) -> MyCapabilities {

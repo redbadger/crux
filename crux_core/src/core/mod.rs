@@ -47,9 +47,9 @@ where
     /// let core: Core<HelloEffect, Hello> = Core::new::<HelloCapabilities>();
     /// ```
     ///
-    pub fn new<Capabilities>() -> Self
+    pub fn new() -> Self
     where
-        Capabilities: WithContext<A, Ef>,
+        A::Capabilities: WithContext<A::Event, Ef>,
     {
         let (request_sender, request_receiver) = capability::channel();
         let (event_sender, event_receiver) = capability::channel();
@@ -60,7 +60,7 @@ where
             model: Default::default(),
             executor,
             app: Default::default(),
-            capabilities: Capabilities::new_with_context(capability_context),
+            capabilities: <<A as App>::Capabilities>::new_with_context(capability_context),
             requests: request_receiver,
             capability_events: event_receiver,
         }
@@ -128,9 +128,9 @@ impl<Ef, A> Default for Core<Ef, A>
 where
     Ef: Effect,
     A: App,
-    A::Capabilities: WithContext<A, Ef>,
+    A::Capabilities: WithContext<A::Event, Ef>,
 {
     fn default() -> Self {
-        Self::new::<A::Capabilities>()
+        Self::new()
     }
 }

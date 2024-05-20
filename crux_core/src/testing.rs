@@ -72,7 +72,7 @@ where
 impl<App, Ef> Default for AppTester<App, Ef>
 where
     App: crate::App,
-    App::Capabilities: WithContext<App, Ef>,
+    App::Capabilities: WithContext<App::Event, Ef>,
     App::Event: Send,
     Ef: Send + 'static,
 {

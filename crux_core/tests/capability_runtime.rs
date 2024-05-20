@@ -129,11 +129,11 @@ mod tests {
     use crux_core::Core;
     use rand::prelude::*;
 
-    use super::app::{Capabilities, Effect, Event, MyApp};
+    use super::app::{Effect, Event, MyApp};
 
     #[test]
     fn fetches_a_tree() {
-        let core: Core<Effect, MyApp> = Core::new::<Capabilities>();
+        let core: Core<Effect, MyApp> = Core::new();
 
         let mut effects: VecDeque<Effect> = core.process_event(Event::Fetch).into();
 
