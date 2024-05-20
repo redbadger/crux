@@ -235,7 +235,7 @@ checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 
 [[package]]
 name = "crux_core"
-version = "0.7.6"
+version = "0.8.0-rc.1"
 dependencies = [
  "anyhow",
  "bincode",
@@ -253,7 +253,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.3.9"
+version = "0.3.10-rc.1"
 dependencies = [
  "darling",
  "proc-macro-error",

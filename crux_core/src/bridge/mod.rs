@@ -87,8 +87,7 @@ where
         let mut return_buffer = vec![];
         let mut ser = bincode::Serializer::new(&mut return_buffer, options);
 
-        self.inner
-            .handle_response(EffectId(id), &mut deser, &mut ser);
+        self.inner.handle_response(id, &mut deser, &mut ser);
 
         return_buffer
     }
@@ -167,7 +166,7 @@ where
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de, D, S>(&self, id: EffectId, response: D, requests_out: S)
+    pub fn handle_response<'de, D, S>(&self, id: u32, response: D, requests_out: S)
     where
         for<'a> A::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de>,
@@ -175,7 +174,7 @@ where
     {
         let mut erased_response = <dyn erased_serde::Deserializer>::erase(response);
         self.process(
-            Some(id),
+            Some(EffectId(id)),
             &mut erased_response,
             &mut <dyn erased_serde::Serializer>::erase(requests_out),
         );
