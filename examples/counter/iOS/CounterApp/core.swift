@@ -27,7 +27,7 @@ class Core: ObservableObject {
                 let response = try! await requestHttp(req).get()
                 
                 let effects = [UInt8](handleResponse(
-                    Data(request.uuid),
+                    request.id,
                     Data(try! HttpResult.ok(response).bincodeSerialize()))
                 )
                 
@@ -41,7 +41,7 @@ class Core: ObservableObject {
                 for await result in await requestSse(req) {
                     let response = try result.get()
                     
-                    let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+                    let effects = [UInt8](handleResponse(request.id, Data(try! response.bincodeSerialize())))
                     
                     let requests: [Request] = try! .bincodeDeserialize(input: effects)
                     for request in requests {

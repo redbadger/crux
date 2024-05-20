@@ -62,7 +62,7 @@ class Core : androidx.lifecycle.ViewModel() {
 
                 val effects =
                     handleResponse(
-                        request.uuid.toByteArray(),
+                        request.id.toUInt(),
                         HttpResult.Ok(response).bincodeSerialize()
                     )
 
@@ -75,7 +75,7 @@ class Core : androidx.lifecycle.ViewModel() {
             is Effect.ServerSentEvents -> {
                 requestSse(sseClient, effect.value) { response ->
                     val effects =
-                        handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+                        handleResponse(request.id.toUInt(), response.bincodeSerialize())
 
                     val requests = Requests.bincodeDeserialize(effects)
                     for (request in requests) {

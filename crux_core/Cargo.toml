@@ -24,11 +24,11 @@ crux_macros = { version = "0.3.9", path = "../crux_macros" }
 erased-serde = "0.4"
 futures = "0.3.30"
 serde = { workspace = true, features = ["derive"] }
-serde_json = "1.0.117"
 serde-generate = { version = "0.25.1", optional = true }
 serde-reflection = { version = "0.3.6", optional = true }
+serde_json = "1.0.117"
+slab = "0.4.9"
 thiserror = "1.0.60"
-uuid = { version = "1.8.0", features = ["v4", "js", "serde"] }
 
 [dev-dependencies]
 assert_fs = "1.0.13"
@@ -41,3 +41,4 @@ serde = { version = "1.0.201", features = ["derive"] }
 static_assertions = "1.1"
 rand = "0.8"
 url = "2.5.0"
+uuid = { version = "1.8.0", features = ["v4", "serde"] }

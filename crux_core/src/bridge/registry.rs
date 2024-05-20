@@ -1,22 +1,22 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::Mutex,
-};
+use std::sync::Mutex;
 
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
+use slab::Slab;
 
 use super::Request;
 use crate::bridge::request_serde::ResolveSerialized;
 use crate::core::ResolveError;
 use crate::Effect;
 
-type Store<T> = HashMap<[u8; 16], T>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct EffectId(pub u32);
 
-pub struct ResolveRegistry(Mutex<Store<ResolveSerialized>>);
+pub struct ResolveRegistry(Mutex<Slab<ResolveSerialized>>);
 
 impl Default for ResolveRegistry {
     fn default() -> Self {
-        Self(Mutex::new(Store::new()))
+        Self(Mutex::new(Slab::with_capacity(1024)))
     }
 }
 
@@ -32,44 +32,43 @@ impl ResolveRegistry {
     where
         Eff: Effect,
     {
-        let uuid = *Uuid::new_v4().as_bytes();
         let (effect, resolve) = effect.serialize();
 
-        self.0
+        let id = self
+            .0
             .lock()
             .expect("Registry Mutex poisoned.")
-            .insert(uuid, resolve);
+            .insert(resolve);
 
         Request {
-            uuid: uuid.to_vec(),
+            id: EffectId(id.try_into().expect("EffectId overflow")),
             effect,
         }
     }
     // ANCHOR_END: register
 
-    /// Resume a previously registered effect. This may fail, either because UUID wasn't
+    /// Resume a previously registered effect. This may fail, either because EffectId wasn't
     /// found or because this effect was not expected to be resumed again.
     pub fn resume(
         &self,
-        uuid: &[u8],
+        id: EffectId,
         body: &mut dyn erased_serde::Deserializer,
     ) -> Result<(), ResolveError> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
-        let entry = {
-            let mut uuid_buf = [0; 16];
-            uuid_buf.copy_from_slice(uuid);
+        let entry = registry_lock.get_mut(id.0 as usize);
 
-            registry_lock.entry(uuid_buf)
-        };
-
-        let Entry::Occupied(mut entry) = entry else {
+        let Some(entry) = entry else {
             // FIXME return an Err instead of panicking here.
-            panic!("Request with UUID {uuid:?} not found.");
+            panic!("Request with {id:?} not found.");
         };
 
-        let resolve = entry.get_mut();
+        let resolved = entry.resolve(body);
 
-        resolve.resolve(body)
+        if let ResolveSerialized::Never = entry {
+            registry_lock.remove(id.0 as usize);
+        }
+
+        resolved
     }
 }

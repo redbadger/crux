@@ -18,14 +18,17 @@ name = "shared"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-serde = { workspace = true, features = ["derive"] }
+automerge = "0.4.1"
 crux_core.workspace = true
 crux_kv.workspace = true
-lazy_static = "1.4"
-uniffi = "0.27.1"
-automerge = "0.4.1"
 futures = "0.3"
+lazy_static = "1.4"
+serde = { workspace = true, features = ["derive"] }
+uniffi = "0.27.1"
 wasm-bindgen = "0.2"
+
+# see https://docs.rs/getrandom/latest/getrandom/#webassembly-support
+getrandom = { version = "0.2", features = ["js"] }
 
 [target.uniffi-bindgen.dependencies]
 uniffi = { version = "0.27.1", features = ["cli"] }

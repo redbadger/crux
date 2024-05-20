@@ -52,13 +52,13 @@ export class Core {
   setState: Dispatch<SetStateAction<ViewModel>>;
   setTimers: Dispatch<SetStateAction<Timers>>;
   channel: MutableRefObject<BroadcastChannel>;
-  subscriptionId: MutableRefObject<number[] | null>;
+  subscriptionId: MutableRefObject<number | null>;
 
   constructor(
     setState: Dispatch<SetStateAction<ViewModel>>,
     setTimers: Dispatch<SetStateAction<Timers>>,
     channel: MutableRefObject<BroadcastChannel>,
-    subscriptionId: MutableRefObject<number[] | null>,
+    subscriptionId: MutableRefObject<number | null>,
   ) {
     this.setState = setState;
     this.setTimers = setTimers;
@@ -79,12 +79,12 @@ export class Core {
     const effects = process_event(serializer.getBytes());
 
     const requests = deserializeRequests(effects);
-    for (const { uuid, effect } of requests) {
-      this.processEffect(uuid, effect);
+    for (const { id, effect } of requests) {
+      this.processEffect(id, effect);
     }
   }
 
-  private processEffect(uuid: number[], effect: Effect) {
+  private processEffect(id: number, effect: Effect) {
     console.log("effect", effect);
 
     switch (effect.constructor) {
@@ -108,7 +108,7 @@ export class Core {
 
             break;
           case PubSubOperationVariantSubscribe:
-            this.subscriptionId.current = uuid;
+            this.subscriptionId.current = id;
 
             break;
         }
@@ -130,11 +130,11 @@ export class Core {
                 return rest;
               });
 
-              this.respond(uuid, new TimerOutputVariantFinished(startId));
+              this.respond(id, new TimerOutputVariantFinished(startId));
             }, Number(millis));
             this.setTimers((ts) => ({ [Number(startId)]: handle, ...ts }));
 
-            this.respond(uuid, new TimerOutputVariantCreated(startId));
+            this.respond(id, new TimerOutputVariantCreated(startId));
 
             break;
           }
@@ -169,7 +169,7 @@ export class Core {
 
             console.log(`Loaded document (${bytes?.length || 0} bytes)`);
             this.respond(
-              uuid,
+              id,
               new KeyValueResultVariantOk(
                 new KeyValueResponseVariantGet(value),
               ),
@@ -187,7 +187,7 @@ export class Core {
             window.localStorage.setItem(writeKey, JSON.stringify(writeValue));
 
             this.respond(
-              uuid,
+              id,
               new KeyValueResultVariantOk(
                 new KeyValueResponseVariantSet(new ValueVariantNone()),
               ),
@@ -201,18 +201,15 @@ export class Core {
     }
   }
 
-  respond(uuid: number[], response: Response) {
+  respond(id: number, response: Response) {
     const serializer = new BincodeSerializer();
     response.serialize(serializer);
 
-    const effects = handle_response(
-      new Uint8Array(uuid),
-      serializer.getBytes(),
-    );
+    const effects = handle_response(id, serializer.getBytes());
     const requests = deserializeRequests(effects);
 
-    for (const { uuid, effect } of requests) {
-      this.processEffect(uuid, effect);
+    for (const { id, effect } of requests) {
+      this.processEffect(id, effect);
     }
   }
 }

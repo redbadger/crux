@@ -26,7 +26,7 @@ type Response = HttpResponse | SseResponse;
 
 export function update(
   event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   console.log("event", event);
 
@@ -36,15 +36,15 @@ export function update(
   const effects = process_event(serializer.getBytes());
 
   const requests = deserializeRequests(effects);
-  for (const { uuid, effect } of requests) {
-    processEffect(uuid, effect, callback);
+  for (const { id, effect } of requests) {
+    processEffect(id, effect, callback);
   }
 }
 
 async function processEffect(
-  uuid: number[],
+  id: number,
   effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   console.log("effect", effect);
 
@@ -56,13 +56,13 @@ async function processEffect(
     case EffectVariantHttp: {
       const request = (effect as EffectVariantHttp).value;
       const response = await http(request);
-      respond(uuid, response, callback);
+      respond(id, response, callback);
       break;
     }
     case EffectVariantServerSentEvents: {
       const request = (effect as EffectVariantServerSentEvents).value;
       for await (const response of sse(request)) {
-        respond(uuid, response, callback);
+        respond(id, response, callback);
       }
       break;
     }
@@ -70,18 +70,18 @@ async function processEffect(
 }
 
 function respond(
-  uuid: number[],
+  id: number,
   response: Response,
-  callback: Dispatch<SetStateAction<ViewModel>>
+  callback: Dispatch<SetStateAction<ViewModel>>,
 ) {
   const serializer = new BincodeSerializer();
   response.serialize(serializer);
 
-  const effects = handle_response(new Uint8Array(uuid), serializer.getBytes());
+  const effects = handle_response(id, serializer.getBytes());
 
   const requests = deserializeRequests(effects);
-  for (const { uuid, effect } of requests) {
-    processEffect(uuid, effect, callback);
+  for (const { id, effect } of requests) {
+    processEffect(id, effect, callback);
   }
 }
 
