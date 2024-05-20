@@ -21,7 +21,6 @@ pub struct ViewModel {
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
-#[effect(app = "Counter")]
 pub struct Capabilities {
     render: Render<Event>,
 }

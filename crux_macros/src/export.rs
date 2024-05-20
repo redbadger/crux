@@ -9,8 +9,6 @@ use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 struct ExportStructReceiver {
     ident: Ident,
     name: Option<Ident>, // also used by the effect derive macro to name the effect
-    #[allow(dead_code)] // `app` is used by the effect derive macro only
-    app: Option<Type>,
     data: ast::Data<util::Ignored, ExportFieldReceiver>,
 }
 

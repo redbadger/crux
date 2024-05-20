@@ -46,7 +46,7 @@ use syn::parse_macro_input;
 /// #     }
 /// # }
 /// #[derive(Effect)]
-/// #[effect(name = "MyEffect", app = "MyApp")]
+/// #[effect(name = "MyEffect")]
 /// pub struct MyCapabilities {
 ///     pub http: crux_http::Http<MyEvent>,
 ///     pub render: Render<MyEvent>,

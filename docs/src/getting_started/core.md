@@ -235,12 +235,12 @@ pub struct Capabilities {
 }
 ```
 
-The `Export` and `Effect` derive macros can be configured with the `effect` attribute if you need to specify the name of the effect type, and/or the name of your `App` e.g.:
+The `Export` and `Effect` derive macros can be configured with the `effect` attribute if you need to specify a different name for the Effect type e.g.:
 
 ```rust,ignore
 #[cfg_attr(feature = "typegen", derive(Export))]
 #[derive(Effect)]
-#[effect(name = "MyEffect", app = "MyApp")]
+#[effect(name = "MyEffect")]
 pub struct Capabilities {
     render: Render<Event>,
     pub_sub: PubSub<Event>,

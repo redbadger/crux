@@ -1,4 +1,4 @@
-use darling::{ast, util, FromDeriveInput, FromField, FromMeta, ToTokens};
+use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::{Literal, TokenStream};
 use proc_macro_error::{abort_call_site, OptionExt};
 use quote::{format_ident, quote};
@@ -10,7 +10,6 @@ use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 struct EffectStructReceiver {
     ident: Ident,
     name: Option<Ident>,
-    app: Option<Type>,
     data: ast::Data<util::Ignored, EffectFieldReceiver>,
 }
 
@@ -54,14 +53,6 @@ impl ToTokens for EffectStructReceiver {
                 (quote!(#name), quote!(#ffi_ef_name), quote!(#ffi_ef_rename))
             }
             None => (quote!(Effect), quote!(EffectFfi), quote!("Effect")),
-        };
-
-        let app = match self.app {
-            Some(ref app) => quote!(#app),
-            None => {
-                let x = Type::from_string("App").unwrap();
-                quote!(#x)
-            }
         };
 
         let fields = self
@@ -166,7 +157,7 @@ impl ToTokens for EffectStructReceiver {
                 }
             }
 
-            impl ::crux_core::WithContext<#app, #effect_name> for #ident {
+            impl ::crux_core::WithContext<#event, #effect_name> for #ident {
                 fn new_with_context(context: ::crux_core::capability::ProtoContext<#effect_name, #event>) -> #ident {
                     #ident {
                         #(#with_context_fields ,)*
@@ -262,7 +253,7 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<App, Effect> for Capabilities {
+        impl ::crux_core::WithContext<Event, Effect> for Capabilities {
             fn new_with_context(
                 context: ::crux_core::capability::ProtoContext<Effect, Event>,
             ) -> Capabilities {
@@ -325,7 +316,7 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<App, Effect> for Capabilities {
+        impl ::crux_core::WithContext<Event, Effect> for Capabilities {
             fn new_with_context(
                 context: ::crux_core::capability::ProtoContext<Effect, Event>,
             ) -> Capabilities {
@@ -363,7 +354,7 @@ mod tests {
     fn full() {
         let input = r#"
             #[derive(Effect)]
-            #[effect(name = "MyEffect", app = "MyApp")]
+            #[effect(name = "MyEffect")]
             pub struct MyCapabilities {
                 pub http: crux_http::Http<MyEvent>,
                 pub key_value: KeyValue<MyEvent>,
@@ -441,7 +432,7 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<MyApp, MyEffect> for MyCapabilities {
+        impl ::crux_core::WithContext<MyEvent, MyEffect> for MyCapabilities {
             fn new_with_context(
                 context: ::crux_core::capability::ProtoContext<MyEffect, MyEvent>,
             ) -> MyCapabilities {

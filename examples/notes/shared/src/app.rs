@@ -106,7 +106,6 @@ impl From<&Model> for ViewModel {
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
-#[effect(app = "NoteEditor")]
 pub struct Capabilities {
     timer: Timer<Event>,
     render: Render<Event>,

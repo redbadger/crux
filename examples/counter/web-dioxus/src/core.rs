@@ -5,7 +5,7 @@ use dioxus::{
     signals::Writable,
 };
 use futures_util::{StreamExt, TryStreamExt};
-use shared::{App, Capabilities, Effect, Event, ViewModel};
+use shared::{App, Effect, Event, ViewModel};
 use tracing::debug;
 use wasm_bindgen_futures::spawn_local;
 
@@ -22,7 +22,7 @@ impl CoreService {
     pub fn new(view: Signal<ViewModel>) -> Self {
         debug!("initializing core service");
         Self {
-            core: Rc::new(shared::Core::new::<Capabilities>()),
+            core: Rc::new(shared::Core::new()),
             view,
         }
     }

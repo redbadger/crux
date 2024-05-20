@@ -71,7 +71,6 @@
 //!     // Shell to dispatch side-effect requests to the right capability implementation
 //!     // (and, in some languages, checking that all necessary capabilities are implemented)
 //!     #[derive(Effect)]
-//!     #[effect(app = "MyApp")]
 //!     pub struct Capabilities {
 //!         pub render: Render<Event>
 //!     }
@@ -343,7 +342,7 @@ pub trait Capability<Ev> {
 /// #         }
 /// #     }
 /// # }
-/// impl crux_core::WithContext<App, Effect> for Capabilities {
+/// impl crux_core::WithContext<Event, Effect> for Capabilities {
 ///     fn new_with_context(
 ///         context: crux_core::capability::ProtoContext<Effect, Event>,
 ///     ) -> Capabilities {
@@ -354,11 +353,8 @@ pub trait Capability<Ev> {
 ///     }
 /// }
 /// ```
-pub trait WithContext<App, Ef>
-where
-    App: crate::App,
-{
-    fn new_with_context(context: ProtoContext<Ef, App::Event>) -> App::Capabilities;
+pub trait WithContext<Ev, Ef> {
+    fn new_with_context(context: ProtoContext<Ef, Ev>) -> Self;
 }
 
 /// An interface for capabilities to interact with the app and the shell.

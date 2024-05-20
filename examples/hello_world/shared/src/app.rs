@@ -17,7 +17,6 @@ pub struct ViewModel {
 }
 
 #[derive(crux_core::macros::Effect)]
-#[effect(app = "Hello")]
 pub struct Capabilities {
     render: Render<Event>,
 }
