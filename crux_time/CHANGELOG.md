@@ -8,14 +8,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.3-rc.0](https://github.com/redbadger/crux/compare/crux_time-v0.4.2...crux_time-v0.4.3-rc.0) - 2024-05-20
+
+### Other
+
+- Release crux_core v0.8.0-rc.0
+
 ## [0.4.2](https://github.com/redbadger/crux/compare/crux_time-v0.4.1...crux_time-v0.4.2) - 2024-05-15
 
 ### Other
+
 - remove unused deps
 
 ## [0.4.1](https://github.com/redbadger/crux/compare/crux_time-v0.4.0...crux_time-v0.4.1) - 2024-05-14
 
 ### Other
+
 - deps
 - Merge branch 'master' into relax-callback-bounds
 - address comments
@@ -24,6 +32,7 @@ and this project adheres to
 ## [0.4.0](https://github.com/redbadger/crux/compare/crux_time-v0.3.1...crux_time-v0.4.0) - 2024-04-29
 
 ### Other
+
 - some better names
 - add duration from millis
 - update doc comments
@@ -33,6 +42,7 @@ and this project adheres to
 ## [0.3.1](https://github.com/redbadger/crux/compare/crux_time-v0.3.0...crux_time-v0.3.1) - 2024-03-24
 
 ### Fixed
+
 - fix a link error in README
 
 ## [0.3.0](https://github.com/redbadger/crux/compare/crux_time-v0.2.0...crux_time-v0.3.0) - 2024-02-02
