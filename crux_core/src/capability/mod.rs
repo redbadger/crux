@@ -71,7 +71,6 @@
 //!     // Shell to dispatch side-effect requests to the right capability implementation
 //!     // (and, in some languages, checking that all necessary capabilities are implemented)
 //!     #[derive(Effect)]
-//!     #[effect(app = "MyApp")]
 //!     pub struct Capabilities {
 //!         pub render: Render<Event>
 //!     }

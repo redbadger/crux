@@ -1,4 +1,4 @@
-use darling::{ast, util, FromDeriveInput, FromField, FromMeta, ToTokens};
+use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::{Literal, TokenStream};
 use proc_macro_error::{abort_call_site, OptionExt};
 use quote::{format_ident, quote};
@@ -10,7 +10,6 @@ use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 struct EffectStructReceiver {
     ident: Ident,
     name: Option<Ident>,
-    app: Option<Type>,
     data: ast::Data<util::Ignored, EffectFieldReceiver>,
 }
 
@@ -355,7 +354,7 @@ mod tests {
     fn full() {
         let input = r#"
             #[derive(Effect)]
-            #[effect(name = "MyEffect", app = "MyApp")]
+            #[effect(name = "MyEffect")]
             pub struct MyCapabilities {
                 pub http: crux_http::Http<MyEvent>,
                 pub key_value: KeyValue<MyEvent>,

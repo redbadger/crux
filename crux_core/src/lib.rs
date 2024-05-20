@@ -61,7 +61,6 @@
 //!// will use to request side effects from the Shell
 //!#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 //!#[derive(Effect)]
-//!#[effect(app = "Hello")]
 //!pub struct Capabilities {
 //!    pub render: Render<Event>,
 //!}

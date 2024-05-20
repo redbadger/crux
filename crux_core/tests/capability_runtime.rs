@@ -92,7 +92,6 @@ mod app {
     }
 
     #[derive(Effect)]
-    #[effect(app = "MyApp")]
     pub struct Capabilities {
         crawler: super::capability::Crawler<Event>,
         render: crux_core::render::Render<Event>,
