@@ -56,7 +56,6 @@ than `App`, you can specify its name:
 
 ```rust
 #[derive(Effect)]
-#[effect(app = "MyApp")]
 pub struct Capabilities {
     pub render: Render<Event>,
 }
@@ -68,7 +67,6 @@ this:
 ```rust
 #[derive(Effect)]
 #[effect(name = "MyEffect")]
-#[effect(app = "MyApp")]
 pub struct Capabilities {
     pub render: Render<Event>,
 }
@@ -78,7 +76,7 @@ Or, more idiomatically, combine them into one usage, like this:
 
 ```rust
 #[derive(Effect)]
-#[effect(name = "MyEffect", app = "MyApp")]
+#[effect(name = "MyEffect")]
 pub struct Capabilities {
     pub render: Render<Event>,
 }
@@ -88,7 +86,7 @@ Full usage might look something like this:
 
 ```rust
 #[derive(Effect)]
-#[effect(name = "MyEffect", app = "MyApp")]
+#[effect(name = "MyEffect")]
 pub struct CatFactCapabilities {
     pub http: Http<MyEvent>,
     pub key_value: KeyValue<MyEvent>,

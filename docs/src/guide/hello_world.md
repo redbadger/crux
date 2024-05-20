@@ -94,7 +94,6 @@ use crux_core::render::Render;
 use crux_core::macros::Effect;
 
 #[derive(Effect)]
-#[effect(app = "Hello")]
 pub struct Capabilities {
     render: Render<Event>,
 }
@@ -118,7 +117,6 @@ use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(Effect)]
-#[effect(app = "Hello")]
 pub struct Capabilities {
     render: Render<Event>,
 }

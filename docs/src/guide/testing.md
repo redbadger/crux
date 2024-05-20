@@ -213,7 +213,6 @@ our `Capabilities` struct looked like this...
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(Effect)]
-#[effect(app = "NoteEditor")]
 pub struct Capabilities {
     timer: Timer<Event>,
     render: Render<Event>,
