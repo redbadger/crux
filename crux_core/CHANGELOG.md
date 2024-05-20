@@ -8,7 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.8.0-rc.0](https://github.com/redbadger/crux/compare/crux_core-v0.7.6...crux_core-v0.8.0-rc.0) - 2024-05-20
+## [0.8.0-rc.1](https://github.com/redbadger/crux/compare/crux_core-v0.7.6...crux_core-v0.8.0-rc.1) - 2024-05-20
 
 Release candidate for 0.8.0
 

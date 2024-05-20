@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.2-rc.1](https://github.com/redbadger/crux/compare/crux_http-v0.9.1...crux_http-v0.9.2-rc.1) - 2024-05-20
+
+### Other
+
+- Release crux_core v0.8.0-rc.1
+
 ## [0.9.1](https://github.com/redbadger/crux/compare/crux_http-v0.9.0...crux_http-v0.9.1) - 2024-05-14
 
 Minor maintenance release

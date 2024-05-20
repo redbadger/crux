@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.3.10-rc.1](https://github.com/redbadger/crux/compare/crux_macros-v0.3.9...crux_macros-v0.3.10-rc.1) - 2024-05-20
+
+### Other
+
+- update docs, comments and book
+- Remove remaining mentions of the app attribute for Effect macro
+- Make WithContext generic over Event, not App, enabling App types to be generic
+
 ## [0.3.9](https://github.com/redbadger/crux/compare/crux_macros-v0.3.8...crux_macros-v0.3.9) - 2024-05-14
 
 This is a minor maintenance release, with the most interesting change being a fix for the export derive macro to work with renamed `Effect` types. (see https://github.com/redbadger/crux/pull/221 for more info)
