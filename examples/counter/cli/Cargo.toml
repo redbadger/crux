@@ -12,7 +12,7 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap = { version = "4.3.24", features = ["derive"] }
-crossbeam-channel = "0.5.12"
+crossbeam-channel = "0.5.13"
 futures = "0.3"
 reqwest = { version = "0.12.4", features = ["stream"] }
 shared = { path = "../shared" }

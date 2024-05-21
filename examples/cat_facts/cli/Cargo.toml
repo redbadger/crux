@@ -13,7 +13,7 @@ rust-version.workspace = true
 anyhow.workspace = true
 chrono = "0.4.38"
 clap = { version = "4.3.24", features = ["derive"] }
-crossbeam-channel = "0.5.12"
+crossbeam-channel = "0.5.13"
 reqwest = { version = "0.12.4", features = ["stream"] }
 shared = { path = "../shared" }
 tokio = { version = "1.37.0", features = ["rt-multi-thread", "macros"] }
