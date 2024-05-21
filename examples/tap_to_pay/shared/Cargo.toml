@@ -17,13 +17,13 @@ typegen = ["crux_core/typegen"]
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.4.0"
-uniffi = "0.27.1"
+uniffi = "0.27.2"
 
 [dev-dependencies]
 assert_let_bind = { version = "0.1" }
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.27.1", features = ["cli"] }
+uniffi = { version = "0.27.2", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.27.1", features = ["build"] }
+uniffi = { version = "0.27.2", features = ["build"] }

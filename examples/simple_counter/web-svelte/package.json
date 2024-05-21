@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "bincode": "file:../shared_types/generated/typescript/bincode",
-    "bulma": "^1.0.0",
+    "bulma": "^1.0.1",
     "concurrently": "^8.2.2",
     "parcel": "^2.12.0",
     "parcel-transformer-svelte3-plus": "^0.2.10",

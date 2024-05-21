@@ -14,7 +14,7 @@ rust-version.workspace = true
 crux_core = { version = "0.8.0-rc.1", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
 chrono = { version = "0.4.38", features = ["serde"], optional = true }
-thiserror = "1.0.60"
+thiserror = "1.0.61"
 
 [dev-dependencies]
 serde_json = "1.0.117"
