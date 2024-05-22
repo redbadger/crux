@@ -47,7 +47,6 @@ where
     where
         Ef: Send + 'static,
         App::Capabilities: WithContext<App::Event, Ef>,
-        App::Event: Send,
     {
         Self {
             app,
@@ -88,7 +87,6 @@ impl<App, Ef> Default for AppTester<App, Ef>
 where
     App: crate::App,
     App::Capabilities: WithContext<App::Event, Ef>,
-    App::Event: Send,
     Ef: Send + 'static,
 {
     fn default() -> Self {
