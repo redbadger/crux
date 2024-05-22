@@ -8,11 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.4.1-rc.3](https://github.com/redbadger/crux/compare/crux_kv-v0.4.0...crux_kv-v0.4.1-rc.3) - 2024-05-21
+## [0.4.1](https://github.com/redbadger/crux/compare/crux_kv-v0.4.0...crux_kv-v0.4.1) - 2024-05-21
 
 ### Other
 
-- Release crux_core v0.8.0-rc.3
+- Release crux_core v0.8.0
 - registry now slab allocated with u32
 
 ## [0.4.0](https://github.com/redbadger/crux/compare/crux_kv-v0.3.0...crux_kv-v0.4.0) - 2024-05-17
