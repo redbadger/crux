@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.12-rc.2](https://github.com/redbadger/crux/compare/crux_platform-v0.1.11...crux_platform-v0.1.12-rc.2) - 2024-05-21
+## [0.1.12-rc.3](https://github.com/redbadger/crux/compare/crux_platform-v0.1.11...crux_platform-v0.1.12-rc.3) - 2024-05-21
 
 ### Other
 
-- Release crux_core v0.8.0-rc.2
+- Release crux_core v0.8.0-rc.3
 
 ## [0.1.11](https://github.com/redbadger/crux/compare/crux_platform-v0.1.10...crux_platform-v0.1.11) - 2024-05-15
 
