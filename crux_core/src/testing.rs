@@ -40,6 +40,20 @@ impl<App, Ef> AppTester<App, Ef>
 where
     App: crate::App,
 {
+    /// Create an `AppTester` instance for an existing app instance. This can be used if your App
+    /// has a constructor other than `Default`, for example when used as a child app and expecting
+    /// configuration from the parent
+    pub fn new(app: App) -> Self
+    where
+        Ef: Send + 'static,
+        App::Capabilities: WithContext<App::Event, Ef>,
+    {
+        Self {
+            app,
+            ..Default::default()
+        }
+    }
+
     /// Run the app's `update` function with an event and a model state
     ///
     /// You can use the resulting [`Update`] to inspect the effects which were requested
@@ -73,7 +87,6 @@ impl<App, Ef> Default for AppTester<App, Ef>
 where
     App: crate::App,
     App::Capabilities: WithContext<App::Event, Ef>,
-    App::Event: Send,
     Ef: Send + 'static,
 {
     fn default() -> Self {
