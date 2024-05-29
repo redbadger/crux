@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use rustdoc_types::{Crate, Impl, ItemEnum, Path, Type};
+use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, StructKind, Type, VariantKind};
 use std::{
     fs::File,
     io::{stdout, IsTerminal},
@@ -37,48 +37,181 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
         .join("doc")
         .join(format!("{}.json", lib.name().replace('-', "_")));
 
-    let crate_: Crate = spawn_blocking(move || {
+    let crate_: Crate = spawn_blocking(move || -> Result<Crate> {
         let file = File::open(json_path)?;
-        let crate_: Crate = serde_json::from_reader(file)?;
-        Ok::<rustdoc_types::Crate, anyhow::Error>(crate_)
+        let crate_ = serde_json::from_reader(file)?;
+        Ok(crate_)
     })
     .await??;
 
-    if let Some((id, items)) = crate_.index.iter().find_map(|(_k, v)| {
-        if let ItemEnum::Impl(Impl {
-            trait_: Some(rustdoc_types::Path {
-                name: trait_name, ..
-            }),
-            for_: rustdoc_types::Type::ResolvedPath(Path { id, .. }),
-            items,
-            ..
-        }) = &v.inner
-        {
-            (trait_name.as_str() == "App").then_some((id, items))
-        } else {
-            None
-        }
-    }) {
+    for (id, associated_items) in find_impls(&crate_, "Effect", &["Ffi"]) {
         println!(
-            "The struct that implements crux_core::App is {}",
+            "\nThe struct that implements crux_core::Effect is {}",
             crate_.paths[id].path.join("::")
         );
 
-        for item in items {
-            let assoc = &crate_.index[item];
-            for name in &["Event", "ViewModel", "Capabilities"] {
-                if assoc.name == Some(name.to_string()) {
-                    if let ItemEnum::AssocType {
-                        default: Some(Type::ResolvedPath(path)),
-                        ..
-                    } = &assoc.inner
-                    {
-                        println!("{name} type is {}", crate_.paths[&path.id].path.join("::"))
-                    }
-                }
-            }
+        for (name, id) in associated_items {
+            visit(0, name, id, &crate_)?;
+        }
+    }
+    println!();
+    for (id, associated_items) in find_impls(&crate_, "App", &["Event", "ViewModel"]) {
+        println!(
+            "\nThe struct that implements crux_core::App is {}",
+            crate_.paths[id].path.join("::")
+        );
+
+        for (name, id) in associated_items {
+            visit(0, name, id, &crate_)?;
         }
     }
 
     Ok(())
+}
+
+fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
+    let item = crate_.index.get(id);
+
+    print!(
+        "\n{level} {id:18} {} {name:20} ",
+        " ".repeat(level * 4),
+        id = format!("{:?}", id)
+    );
+
+    if let Some(summary) = crate_.paths.get(id) {
+        let path_str = summary.path.join("::");
+        print!("{path_str}");
+    }
+
+    if let Some(item) = item {
+        match &item.inner {
+            ItemEnum::Struct(ref struct_) => match &struct_.kind {
+                StructKind::Unit => {
+                    print!("unit struct");
+                }
+                StructKind::Tuple(fields) => {
+                    print!("tuple struct: {fields:?}");
+                }
+                StructKind::Plain {
+                    fields,
+                    fields_stripped,
+                } => {
+                    if *fields_stripped {
+                        anyhow::bail!("The {name} struct has private fields. You may need to make them public to use them in your code.");
+                    }
+                    for id in fields {
+                        let item = &crate_.index[id];
+                        if let Some(name) = &item.name {
+                            visit(level + 1, name, id, crate_)?;
+                        }
+                    }
+                }
+            },
+            ItemEnum::Enum(ref enum_) => {
+                for id in &enum_.variants {
+                    let item = &crate_.index[id];
+                    if let Some(name) = &item.name {
+                        visit(level + 1, name, id, crate_)?;
+                    }
+                }
+            }
+            ItemEnum::StructField(Type::ResolvedPath(path)) => {
+                visit(level, name, &path.id, crate_)?;
+            }
+            ItemEnum::StructField(Type::Primitive(name)) => {
+                print!("{name}");
+            }
+            ItemEnum::Module(_) => (),
+            ItemEnum::ExternCrate { .. } => (),
+            ItemEnum::Import(_) => (),
+            ItemEnum::Union(_) => (),
+            ItemEnum::Variant(v) => match &v.kind {
+                VariantKind::Plain => {}
+                VariantKind::Tuple(fields) => {
+                    for id in fields {
+                        let Some(id) = id else { continue };
+                        let item = &crate_.index[id];
+                        if let Some(name) = &item.name {
+                            visit(level + 1, name, id, crate_)?;
+                        }
+                    }
+                }
+                VariantKind::Struct {
+                    fields,
+                    fields_stripped,
+                } => {
+                    if *fields_stripped {
+                        anyhow::bail!("The {name} struct has private fields. You may need to make them public to use them in your code.");
+                    }
+                    for id in fields {
+                        let item = &crate_.index[id];
+                        if let Some(name) = &item.name {
+                            visit(level + 1, name, id, crate_)?;
+                        }
+                    }
+                }
+            },
+            ItemEnum::Function(_) => (),
+            ItemEnum::Trait(_) => (),
+            ItemEnum::TraitAlias(_) => (),
+            ItemEnum::Impl(_) => (),
+            ItemEnum::TypeAlias(_) => (),
+            ItemEnum::OpaqueTy(_) => (),
+            ItemEnum::Constant(_) => (),
+            ItemEnum::Static(_) => (),
+            ItemEnum::ForeignType => (),
+            ItemEnum::Macro(_) => (),
+            ItemEnum::ProcMacro(_) => (),
+            ItemEnum::Primitive(_) => (),
+            ItemEnum::AssocConst { .. } => (),
+            ItemEnum::AssocType { .. } => (),
+            _ => (),
+        }
+    }
+    Ok(())
+}
+
+fn find_impls<'a>(
+    crate_: &'a Crate,
+    trait_name: &'a str,
+    filter: &'a [&'a str],
+) -> impl Iterator<Item = (&'a Id, Vec<(&'a str, &'a Id)>)> {
+    crate_.index.iter().filter_map(move |(_k, v)| {
+        if let ItemEnum::Impl(Impl {
+            trait_: Some(Path { name, .. }),
+            for_: Type::ResolvedPath(Path { id, .. }),
+            items,
+            ..
+        }) = &v.inner
+        {
+            if name.as_str() == trait_name {
+                let assoc_types = items
+                    .iter()
+                    .filter_map(|id| {
+                        let item = &crate_.index[id];
+                        item.name.as_deref().and_then(|name| {
+                            if filter.contains(&name) {
+                                if let ItemEnum::AssocType {
+                                    default: Some(Type::ResolvedPath(Path { id, .. })),
+                                    ..
+                                } = &item.inner
+                                {
+                                    Some((name, id))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                    })
+                    .collect();
+                Some((id, assoc_types))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    })
 }
