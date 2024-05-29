@@ -60,11 +60,10 @@ pub struct Model {
     timer: Option<TimerHandle>,
 }
 
-// Same as Model for now, but may change
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ViewModel {
-    text: String,
-    cursor: TextCursor,
+    pub text: String,
+    pub cursor: TextCursor,
 }
 
 impl From<&Model> for ViewModel {
