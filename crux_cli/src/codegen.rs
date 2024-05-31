@@ -1,5 +1,7 @@
 use anyhow::{bail, Result};
-use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, StructKind, Type, VariantKind};
+use rustdoc_types::{
+    Crate, GenericArg, GenericArgs, Id, Impl, ItemEnum, Path, StructKind, Type, VariantKind,
+};
 use std::{
     fs::File,
     io::{stdout, IsTerminal},
@@ -51,7 +53,7 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
         );
 
         for (name, id) in associated_items {
-            visit(0, name, id, &crate_)?;
+            visit_item(0, name, id, &crate_)?;
         }
     }
     println!();
@@ -62,16 +64,14 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
         );
 
         for (name, id) in associated_items {
-            visit(0, name, id, &crate_)?;
+            visit_item(0, name, id, &crate_)?;
         }
     }
 
     Ok(())
 }
 
-fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
-    let item = crate_.index.get(id);
-
+fn visit_item(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
     print!(
         "\n{level} {id:18} {} {name:20} ",
         " ".repeat(level * 4),
@@ -83,7 +83,7 @@ fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
         print!("{path_str}");
     }
 
-    if let Some(item) = item {
+    if let Some(item) = crate_.index.get(id) {
         match &item.inner {
             ItemEnum::Struct(ref struct_) => match &struct_.kind {
                 StructKind::Unit => {
@@ -102,7 +102,7 @@ fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
                     for id in fields {
                         let item = &crate_.index[id];
                         if let Some(name) = &item.name {
-                            visit(level + 1, name, id, crate_)?;
+                            visit_item(level + 1, name, id, crate_)?;
                         }
                     }
                 }
@@ -111,15 +111,12 @@ fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
                 for id in &enum_.variants {
                     let item = &crate_.index[id];
                     if let Some(name) = &item.name {
-                        visit(level + 1, name, id, crate_)?;
+                        visit_item(level + 1, name, id, crate_)?;
                     }
                 }
             }
-            ItemEnum::StructField(Type::ResolvedPath(path)) => {
-                visit(level, name, &path.id, crate_)?;
-            }
-            ItemEnum::StructField(Type::Primitive(name)) => {
-                print!("{name}");
+            ItemEnum::StructField(ty) => {
+                visit_type(level, "", ty, crate_)?;
             }
             ItemEnum::Module(_) => (),
             ItemEnum::ExternCrate { .. } => (),
@@ -132,7 +129,7 @@ fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
                         let Some(id) = id else { continue };
                         let item = &crate_.index[id];
                         if let Some(name) = &item.name {
-                            visit(level + 1, name, id, crate_)?;
+                            visit_item(level + 1, name, id, crate_)?;
                         }
                     }
                 }
@@ -146,7 +143,7 @@ fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
                     for id in fields {
                         let item = &crate_.index[id];
                         if let Some(name) = &item.name {
-                            visit(level + 1, name, id, crate_)?;
+                            visit_item(level + 1, name, id, crate_)?;
                         }
                     }
                 }
@@ -165,8 +162,57 @@ fn visit(level: usize, name: &str, id: &Id, crate_: &Crate) -> Result<()> {
             ItemEnum::Primitive(_) => (),
             ItemEnum::AssocConst { .. } => (),
             ItemEnum::AssocType { .. } => (),
-            _ => (),
         }
+    }
+    Ok(())
+}
+
+fn visit_type(level: usize, name: &str, ty: &Type, crate_: &Crate) -> Result<()> {
+    match ty {
+        Type::ResolvedPath(path) => {
+            visit_item(level + 1, name, &path.id, crate_)?;
+            if let Some(args) = &path.args {
+                match args.as_ref() {
+                    GenericArgs::AngleBracketed { args, bindings: _ } => {
+                        for (i, arg) in args.iter().enumerate() {
+                            match arg {
+                                GenericArg::Lifetime(_) => todo!(),
+                                GenericArg::Type(ty) => {
+                                    print!("  ");
+                                    visit_type(level, &i.to_string(), ty, crate_)?;
+                                }
+                                GenericArg::Const(_) => todo!(),
+                                GenericArg::Infer => todo!(),
+                            }
+                        }
+                    }
+                    GenericArgs::Parenthesized { .. } => (),
+                }
+            }
+        }
+        Type::DynTrait(_) => (),
+        Type::Generic(s) => print!("{s}"),
+        Type::Primitive(name) => {
+            print!("{name}");
+        }
+        Type::FunctionPointer(_) => (),
+        Type::Tuple(types) => {
+            for (i, ty) in types.iter().enumerate() {
+                visit_type(level, &i.to_string(), ty, crate_)?;
+            }
+        }
+        Type::Slice(_) => (),
+        Type::Array { type_: _, len: _ } => (),
+        Type::ImplTrait(_) => (),
+        Type::Infer => (),
+        Type::RawPointer { .. } => (),
+        Type::BorrowedRef { .. } => (),
+        Type::QualifiedPath {
+            name: _,
+            args: _,
+            self_type: _,
+            trait_: _,
+        } => (),
     }
     Ok(())
 }
