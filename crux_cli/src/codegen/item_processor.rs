@@ -1,13 +1,10 @@
 use super::nameable_item::NameableItem;
 use super::CrateWrapper;
-use super::{
-    intermediate_public_item::IntermediatePublicItem, path_component::PathComponent,
-    public_item::PublicItem, render::RenderingContext,
-};
+use super::{intermediate_public_item::IntermediatePublicItem, path_component::PathComponent};
 use rustdoc_types::{
-    Crate, Id, Impl, Import, Item, ItemEnum, Module, Struct, StructKind, Type, Variant, VariantKind,
+    Crate, GenericArg, GenericArgs, Id, Impl, Import, Item, ItemEnum, Module, Path, Struct,
+    StructKind, Type, Variant, VariantKind,
 };
-use std::convert::identity;
 use std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -227,9 +224,6 @@ impl<'c> ItemProcessor<'c> {
         let children = children_for_item(item);
         let impls = impls_for_item(item).into_iter().flatten();
 
-        if item.id == Id("0:428:2145".to_string()) {
-            println!("Processing: {:?}", item.id);
-        }
         for id in children {
             let parent_path = finished_item.path().into();
             self.add_to_work_queue(parent_path, id);
@@ -419,9 +413,18 @@ fn children_for_item(item: &Item) -> Vec<&Id> {
         ItemEnum::Module(m) => m.items.iter().collect(),
         ItemEnum::Union(u) => u.fields.iter().collect(),
         ItemEnum::Struct(Struct {
+            kind: StructKind::Unit,
+            ..
+        }) => vec![],
+        ItemEnum::Struct(Struct {
+            kind: StructKind::Tuple(fields),
+            ..
+        }) => fields.iter().flatten().collect(),
+        ItemEnum::Struct(Struct {
             kind: StructKind::Plain { fields, .. },
             ..
         }) => fields.iter().collect(),
+
         ItemEnum::Variant(Variant {
             kind: VariantKind::Struct { fields, .. },
             ..
@@ -434,20 +437,42 @@ fn children_for_item(item: &Item) -> Vec<&Id> {
             kind: VariantKind::Tuple(fields),
             ..
         }) => fields.iter().flatten().collect(),
-        ItemEnum::Struct(Struct {
-            kind: StructKind::Unit,
-            ..
-        }) => vec![],
-        ItemEnum::Struct(Struct {
-            kind: StructKind::Tuple(fields),
-            ..
-        }) => fields.iter().flatten().collect(),
+
         ItemEnum::Enum(e) => e.variants.iter().collect(),
         ItemEnum::Trait(t) => t.items.iter().collect(),
         ItemEnum::Impl(i) => i.items.iter().collect(),
         ItemEnum::ExternCrate { .. } => vec![],
         ItemEnum::Import(_) => vec![],
-        ItemEnum::StructField(_) => vec![],
+        ItemEnum::StructField(ty) => match ty {
+            Type::ResolvedPath(Path {
+                args: Some(args), ..
+            }) => match args.as_ref() {
+                GenericArgs::AngleBracketed { args, .. } => args
+                    .iter()
+                    .filter_map(|a| {
+                        if let GenericArg::Type(Type::ResolvedPath(p)) = a {
+                            Some(&p.id)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+                GenericArgs::Parenthesized { .. } => vec![],
+            },
+            Type::ResolvedPath(_) => vec![],
+            Type::DynTrait(_) => vec![],
+            Type::Generic(_) => vec![],
+            Type::Primitive(_) => vec![],
+            Type::FunctionPointer(_) => vec![],
+            Type::Tuple(_) => vec![],
+            Type::Slice(_) => vec![],
+            Type::Array { .. } => vec![],
+            Type::ImplTrait(_) => vec![],
+            Type::Infer => vec![],
+            Type::RawPointer { .. } => vec![],
+            Type::BorrowedRef { .. } => vec![],
+            Type::QualifiedPath { .. } => vec![],
+        },
         ItemEnum::Function(_) => vec![],
         ItemEnum::TraitAlias(_) => vec![],
         ItemEnum::TypeAlias(_) => vec![],
