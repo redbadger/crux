@@ -413,10 +413,6 @@ fn children_for_item(item: &Item) -> Vec<&Id> {
         ItemEnum::Module(m) => m.items.iter().collect(),
         ItemEnum::Union(u) => u.fields.iter().collect(),
         ItemEnum::Struct(Struct {
-            kind: StructKind::Unit,
-            ..
-        }) => vec![],
-        ItemEnum::Struct(Struct {
             kind: StructKind::Tuple(fields),
             ..
         }) => fields.iter().flatten().collect(),
@@ -424,68 +420,45 @@ fn children_for_item(item: &Item) -> Vec<&Id> {
             kind: StructKind::Plain { fields, .. },
             ..
         }) => fields.iter().collect(),
-
         ItemEnum::Variant(Variant {
             kind: VariantKind::Struct { fields, .. },
             ..
         }) => fields.iter().collect(),
         ItemEnum::Variant(Variant {
-            kind: VariantKind::Plain,
-            ..
-        }) => vec![],
-        ItemEnum::Variant(Variant {
             kind: VariantKind::Tuple(fields),
             ..
         }) => fields.iter().flatten().collect(),
-
         ItemEnum::Enum(e) => e.variants.iter().collect(),
         ItemEnum::Trait(t) => t.items.iter().collect(),
         ItemEnum::Impl(i) => i.items.iter().collect(),
-        ItemEnum::ExternCrate { .. } => vec![],
-        ItemEnum::Import(_) => vec![],
-        ItemEnum::StructField(ty) => match ty {
-            Type::ResolvedPath(Path {
-                args: Some(args), ..
-            }) => match args.as_ref() {
-                GenericArgs::AngleBracketed { args, .. } => args
+        ItemEnum::StructField(ty) => items_for_type(ty),
+        _ => vec![],
+    }
+}
+
+fn items_for_type(ty: &Type) -> Vec<&Id> {
+    let mut ids = Vec::new();
+    if let Type::ResolvedPath(Path { id, args, name: _ }) = ty {
+        ids.push(id);
+        if let Some(args) = args {
+            if let GenericArgs::AngleBracketed { args, .. } = args.as_ref() {
+                let nested: Vec<&Id> = args
                     .iter()
                     .filter_map(|a| {
-                        if let GenericArg::Type(Type::ResolvedPath(p)) = a {
-                            Some(&p.id)
+                        if let GenericArg::Type(ty) = a {
+                            let ids = items_for_type(ty);
+                            (!ids.is_empty()).then_some(ids)
                         } else {
                             None
                         }
                     })
-                    .collect(),
-                GenericArgs::Parenthesized { .. } => vec![],
-            },
-            Type::ResolvedPath(_) => vec![],
-            Type::DynTrait(_) => vec![],
-            Type::Generic(_) => vec![],
-            Type::Primitive(_) => vec![],
-            Type::FunctionPointer(_) => vec![],
-            Type::Tuple(_) => vec![],
-            Type::Slice(_) => vec![],
-            Type::Array { .. } => vec![],
-            Type::ImplTrait(_) => vec![],
-            Type::Infer => vec![],
-            Type::RawPointer { .. } => vec![],
-            Type::BorrowedRef { .. } => vec![],
-            Type::QualifiedPath { .. } => vec![],
-        },
-        ItemEnum::Function(_) => vec![],
-        ItemEnum::TraitAlias(_) => vec![],
-        ItemEnum::TypeAlias(_) => vec![],
-        ItemEnum::OpaqueTy(_) => vec![],
-        ItemEnum::Constant(_) => vec![],
-        ItemEnum::Static(_) => vec![],
-        ItemEnum::ForeignType => vec![],
-        ItemEnum::Macro(_) => vec![],
-        ItemEnum::ProcMacro(_) => vec![],
-        ItemEnum::Primitive(_) => vec![],
-        ItemEnum::AssocConst { .. } => vec![],
-        ItemEnum::AssocType { .. } => vec![],
-    }
+                    .flatten()
+                    .collect();
+                ids.extend(nested)
+            }
+        }
+    };
+    ids
 }
 
 pub fn impls_for_item(item: &Item) -> Option<&[Id]> {
