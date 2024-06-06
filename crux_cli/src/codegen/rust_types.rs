@@ -1,8 +1,6 @@
 /// Identifier used in Rust structs, enums, and fields. It includes the `original` name and the `renamed` value after the transformation based on `serde` attributes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Id {
-    // the identifier from the rustdoc json
-    pub id: rustdoc_types::Id,
     /// The original identifier name
     pub original: String,
     /// The renamed identifier, based on serde attributes.
@@ -11,19 +9,13 @@ pub struct Id {
     pub renamed: String,
 }
 
-impl Id {
-    pub fn new(id: rustdoc_types::Id) -> Self {
-        Self {
-            id,
-            original: String::new(),
-            renamed: String::new(),
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.original == self.renamed {
+            write!(f, "({})", self.original)
+        } else {
+            write!(f, "({}, {})", self.original, self.renamed)
         }
-    }
-}
-
-impl From<rustdoc_types::Id> for Id {
-    fn from(id: rustdoc_types::Id) -> Self {
-        Self::new(id)
     }
 }
 
@@ -40,17 +32,6 @@ pub struct RustStruct {
     /// We copy comments over to the typeshared files,
     /// so we need to collect them here.
     pub comments: Vec<String>,
-}
-
-impl RustStruct {
-    pub fn new(id: Id) -> Self {
-        Self {
-            id,
-            generic_types: Vec::new(),
-            fields: Vec::new(),
-            comments: Vec::new(),
-        }
-    }
 }
 
 /// Rust type alias.
