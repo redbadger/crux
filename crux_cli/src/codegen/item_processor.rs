@@ -1,5 +1,5 @@
+use super::crate_wrapper::CrateWrapper;
 use super::nameable_item::NameableItem;
-use super::CrateWrapper;
 use super::{intermediate_public_item::IntermediatePublicItem, path_component::PathComponent};
 use rustdoc_types::{
     Crate, GenericArg, GenericArgs, Id, Impl, Import, Item, ItemEnum, Module, Path, Struct,
@@ -37,7 +37,7 @@ struct UnprocessedItem<'c> {
 /// supported.
 pub struct ItemProcessor<'c> {
     /// The original and unmodified rustdoc JSON, in deserialized form.
-    crate_: CrateWrapper<'c>,
+    pub crate_: CrateWrapper<'c>,
 
     /// A queue of unprocessed items to process.
     work_queue: VecDeque<UnprocessedItem<'c>>,

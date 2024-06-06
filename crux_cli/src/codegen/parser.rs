@@ -3,6 +3,10 @@ use std::collections::HashMap;
 use anyhow::Result;
 use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, Type};
 
+use super::{
+    public_api::PublicApi,
+    rust_types::{RustEnum, RustStruct, RustTypeAlias},
+};
 use crate::codegen::{
     item_processor::{sorting_prefix, ItemProcessor},
     nameable_item::NameableItem,
@@ -10,8 +14,6 @@ use crate::codegen::{
     public_item::PublicItem,
     render::RenderingContext,
 };
-
-use super::rust_types::{RustEnum, RustStruct, RustTypeAlias};
 
 /// The results of parsing Rust source input.
 #[derive(Default, Debug)]
@@ -40,7 +42,8 @@ pub fn parse(crate_: &Crate) -> Result<ParsedData> {
         crate_,
         id_to_items: item_processor.id_to_items(),
     };
-    let items: Vec<PublicItem> = item_processor
+
+    let items: Vec<_> = item_processor
         .output
         .iter()
         .filter_map(|item| {
@@ -58,8 +61,23 @@ pub fn parse(crate_: &Crate) -> Result<ParsedData> {
             .then_some(PublicItem::from_intermediate_public_item(&context, item))
         })
         .collect();
-    println!("{items:#?}");
-    Ok(ParsedData::new())
+
+    let mut public_api = PublicApi {
+        items,
+        missing_item_ids: item_processor.crate_.missing_item_ids(),
+    };
+
+    public_api.items.sort_by(PublicItem::grouping_cmp);
+
+    let mut parsed_data = ParsedData::new();
+
+    println!();
+
+    for item in public_api.items {
+        println!("{:?}", item.sortable_path);
+        println!("{}\n", item);
+    }
+    Ok(parsed_data)
 }
 
 fn add_items<'c: 'p, 'p>(
@@ -68,17 +86,13 @@ fn add_items<'c: 'p, 'p>(
     filter: &'c [&'c str],
     item_processor: &'p mut ItemProcessor<'c>,
 ) {
-    for (id, associated_items) in find_roots(crate_, trait_name, filter) {
-        let path = &crate_.paths[id].path;
-        println!("{} implements {trait_name}", path.join("::"));
-
-        let item = &crate_.index[id];
-        let module = path[..path.len() - 1].join("::");
-        for id in associated_items {
+    for root in find_roots(crate_, trait_name, filter) {
+        let item = &crate_.index[root.parent];
+        for id in root.assoc_types {
             let parent = PathComponent {
                 item: NameableItem {
                     item,
-                    overridden_name: Some(module.clone()),
+                    overridden_name: None,
                     sorting_prefix: sorting_prefix(item),
                 },
                 type_: None,
@@ -89,47 +103,58 @@ fn add_items<'c: 'p, 'p>(
     }
 }
 
+struct Root<'a> {
+    parent: &'a Id,
+    assoc_types: Vec<&'a Id>,
+}
+
 fn find_roots<'a>(
     crate_: &'a Crate,
     trait_name: &'a str,
     filter: &'a [&'a str],
-) -> impl Iterator<Item = (&'a Id, Vec<&'a Id>)> {
-    crate_.index.iter().filter_map(move |(_k, v)| {
-        if let ItemEnum::Impl(Impl {
-            trait_: Some(Path { name, .. }),
-            for_: Type::ResolvedPath(Path { id, .. }),
-            items,
-            ..
-        }) = &v.inner
-        {
-            if name.as_str() == trait_name {
-                let assoc_types = items
-                    .iter()
-                    .filter_map(|id| {
-                        let item = &crate_.index[id];
-                        item.name.as_deref().and_then(|name| {
-                            if filter.contains(&name) {
-                                if let ItemEnum::AssocType {
-                                    default: Some(Type::ResolvedPath(Path { id, .. })),
-                                    ..
-                                } = &item.inner
-                                {
-                                    Some(id)
+) -> impl Iterator<Item = Root<'a>> {
+    crate_
+        .index
+        .iter()
+        .filter_map(move |(parent, parent_item)| {
+            if let ItemEnum::Impl(Impl {
+                trait_: Some(Path { name, .. }),
+                // for_: Type::ResolvedPath(_),
+                items,
+                ..
+            }) = &parent_item.inner
+            {
+                if name.as_str() == trait_name {
+                    let assoc_types = items
+                        .iter()
+                        .filter_map(|id| {
+                            let item = &crate_.index[id];
+                            item.name.as_deref().and_then(|name| {
+                                if filter.contains(&name) {
+                                    if let ItemEnum::AssocType {
+                                        default: Some(Type::ResolvedPath(Path { id, .. })),
+                                        ..
+                                    } = &item.inner
+                                    {
+                                        Some(id)
+                                    } else {
+                                        None
+                                    }
                                 } else {
                                     None
                                 }
-                            } else {
-                                None
-                            }
+                            })
                         })
+                        .collect();
+                    Some(Root {
+                        parent,
+                        assoc_types,
                     })
-                    .collect();
-                Some((id, assoc_types))
+                } else {
+                    None
+                }
             } else {
                 None
             }
-        } else {
-            None
-        }
-    })
+        })
 }
