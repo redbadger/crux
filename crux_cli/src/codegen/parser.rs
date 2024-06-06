@@ -1,18 +1,13 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use rustdoc_types::{
-    Crate, GenericArg, GenericArgs, Id, Impl, ItemEnum, Path, StructKind, Type, VariantKind,
-};
+use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, Type};
 
 use crate::codegen::{
-    item_processor::ItemProcessor,
-    public_item::PublicItem,
-    render::RenderingContext,
-    rust_types::{RustField, SpecialRustType},
+    item_processor::ItemProcessor, public_item::PublicItem, render::RenderingContext,
 };
 
-use super::rust_types::{RustEnum, RustStruct, RustType, RustTypeAlias};
+use super::rust_types::{RustEnum, RustStruct, RustTypeAlias};
 
 /// The results of parsing Rust source input.
 #[derive(Default, Debug)]
@@ -61,41 +56,24 @@ pub fn parse(crate_: &Crate) -> Result<ParsedData> {
         crate_,
         id_to_items: item_processor.id_to_items(),
     };
-    let items = item_processor
+    let items: Vec<PublicItem> = item_processor
         .output
         .iter()
         .filter_map(|item| {
-            if match &item.item().inner {
-                ItemEnum::Union(_) => true,
-                ItemEnum::Struct(_) => true,
-                ItemEnum::StructField(_) => true,
-                ItemEnum::Enum(_) => true,
-                ItemEnum::Variant(_) => true,
-                ItemEnum::Primitive(_) => true,
-                ItemEnum::TypeAlias(_) => true,
-                ItemEnum::ForeignType => true,
-
-                ItemEnum::Module(_) => false,
-                ItemEnum::ExternCrate { .. } => false,
-                ItemEnum::Import(_) => false,
-                ItemEnum::Function(_) => false,
-                ItemEnum::Trait(_) => false,
-                ItemEnum::TraitAlias(_) => false,
-                ItemEnum::Impl(_) => false,
-                ItemEnum::OpaqueTy(_) => false,
-                ItemEnum::Constant(_) => true,
-                ItemEnum::Static(_) => false,
-                ItemEnum::Macro(_) => false,
-                ItemEnum::ProcMacro(_) => false,
-                ItemEnum::AssocConst { .. } => false,
-                ItemEnum::AssocType { .. } => false,
-            } {
-                Some(PublicItem::from_intermediate_public_item(&context, item))
-            } else {
-                None
-            }
+            matches!(
+                &item.item().inner,
+                ItemEnum::Union(_)
+                    | ItemEnum::Struct(_)
+                    | ItemEnum::StructField(_)
+                    | ItemEnum::Enum(_)
+                    | ItemEnum::Variant(_)
+                    | ItemEnum::Primitive(_)
+                    | ItemEnum::TypeAlias(_)
+                    | ItemEnum::ForeignType
+            )
+            .then_some(PublicItem::from_intermediate_public_item(&context, item))
         })
-        .collect::<Vec<_>>();
+        .collect();
     println!("{items:#?}");
     Ok(ParsedData::new())
 }

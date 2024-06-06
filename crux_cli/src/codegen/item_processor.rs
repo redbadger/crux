@@ -207,7 +207,9 @@ impl<'c> ItemProcessor<'c> {
         item: &'c Item,
         overridden_name: Option<String>,
     ) {
-        self.process_item_for_type(unprocessed_item, item, overridden_name, None);
+        if !item.attrs.contains(&"#[serde(skip)]".to_string()) {
+            self.process_item_for_type(unprocessed_item, item, overridden_name, None);
+        }
     }
 
     /// Process an item. Setup jobs for its children and impls and and then put
