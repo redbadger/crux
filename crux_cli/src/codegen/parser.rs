@@ -4,7 +4,11 @@ use anyhow::Result;
 use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, Type};
 
 use crate::codegen::{
-    item_processor::ItemProcessor, public_item::PublicItem, render::RenderingContext,
+    item_processor::{sorting_prefix, ItemProcessor},
+    nameable_item::NameableItem,
+    path_component::PathComponent,
+    public_item::PublicItem,
+    render::RenderingContext,
 };
 
 use super::rust_types::{RustEnum, RustStruct, RustTypeAlias};
@@ -28,28 +32,8 @@ impl ParsedData {
 
 pub fn parse(crate_: &Crate) -> Result<ParsedData> {
     let mut item_processor = ItemProcessor::new(crate_);
-    for (id, associated_items) in find_roots(crate_, "Effect", &["Ffi"]) {
-        println!(
-            "\nThe struct that implements crux_core::Effect is {}",
-            crate_.paths[id].path.join("::")
-        );
-
-        for id in associated_items {
-            item_processor.add_to_work_queue(vec![], id);
-        }
-    }
-
-    for (id, associated_items) in find_roots(crate_, "App", &["Event", "ViewModel"]) {
-        println!(
-            "\nThe struct that implements crux_core::App is {}",
-            crate_.paths[id].path.join("::")
-        );
-
-        for id in associated_items {
-            item_processor.add_to_work_queue(vec![], id);
-        }
-    }
-
+    add_items(crate_, "Effect", &["Ffi"], &mut item_processor);
+    add_items(crate_, "App", &["Event", "ViewModel"], &mut item_processor);
     item_processor.run();
 
     let context = RenderingContext {
@@ -76,6 +60,33 @@ pub fn parse(crate_: &Crate) -> Result<ParsedData> {
         .collect();
     println!("{items:#?}");
     Ok(ParsedData::new())
+}
+
+fn add_items<'c: 'p, 'p>(
+    crate_: &'c Crate,
+    trait_name: &'c str,
+    filter: &'c [&'c str],
+    item_processor: &'p mut ItemProcessor<'c>,
+) {
+    for (id, associated_items) in find_roots(crate_, trait_name, filter) {
+        let path = &crate_.paths[id].path;
+        println!("{} implements {trait_name}", path.join("::"));
+
+        let item = &crate_.index[id];
+        let module = path[..path.len() - 1].join("::");
+        for id in associated_items {
+            let parent = PathComponent {
+                item: NameableItem {
+                    item,
+                    overridden_name: Some(module.clone()),
+                    sorting_prefix: sorting_prefix(item),
+                },
+                type_: None,
+                hide: false,
+            };
+            item_processor.add_to_work_queue(vec![parent], id);
+        }
+    }
 }
 
 fn find_roots<'a>(
