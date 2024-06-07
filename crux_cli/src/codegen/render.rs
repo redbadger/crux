@@ -123,10 +123,10 @@ impl<'c> RenderingContext<'c> {
                 output
             }
             ItemEnum::OpaqueTy(_) => self.render_simple(&["opaque", "type"], item_path),
-            ItemEnum::Constant(con) => {
+            ItemEnum::Constant { const_, type_ } => {
                 let mut output = self.render_simple(&["const"], item_path);
                 output.extend(colon());
-                output.extend(self.render_constant(con));
+                output.extend(self.render_constant(const_, Some(type_)));
                 output
             }
             ItemEnum::AssocConst { type_, .. } => {
@@ -355,6 +355,9 @@ impl<'c> RenderingContext<'c> {
                 self_type,
                 trait_,
             } => self.render_qualified_path(self_type, trait_.as_ref(), name),
+            Type::Pat { .. } => vec![Token::symbol(
+                "https://github.com/rust-lang/rust/issues/123646 is unstable and not supported",
+            )],
         }
     }
 
@@ -742,7 +745,7 @@ impl<'c> RenderingContext<'c> {
     fn render_term(&self, term: &Term) -> Vec<Token> {
         match term {
             Term::Type(ty) => self.render_type(ty),
-            Term::Constant(c) => self.render_constant(c),
+            Term::Constant(c) => self.render_constant(c, None),
         }
     }
 
@@ -756,7 +759,7 @@ impl<'c> RenderingContext<'c> {
         match arg {
             GenericArg::Lifetime(name) => vec![Token::lifetime(name)],
             GenericArg::Type(ty) => self.render_type(ty),
-            GenericArg::Const(c) => self.render_constant(c),
+            GenericArg::Const(c) => self.render_constant(c, None),
             GenericArg::Infer => vec![Token::symbol("_")],
         }
     }
@@ -776,10 +779,10 @@ impl<'c> RenderingContext<'c> {
         output
     }
 
-    fn render_constant(&self, constant: &Constant) -> Vec<Token> {
+    fn render_constant(&self, constant: &Constant, type_: Option<&Type>) -> Vec<Token> {
         let mut output = vec![];
         if constant.is_literal {
-            output.extend(self.render_type(&constant.type_));
+            output.extend(self.render_type(type_.expect("constant literals have a type")));
             if let Some(value) = &constant.value {
                 output.extend(equals());
                 if constant.is_literal {

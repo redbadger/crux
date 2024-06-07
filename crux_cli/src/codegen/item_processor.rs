@@ -332,7 +332,7 @@ pub(crate) fn sorting_prefix(item: &Item) -> u8 {
         ItemEnum::StructField(_) => 10,
         ItemEnum::Variant(_) => 11,
 
-        ItemEnum::Constant(_) => 12,
+        ItemEnum::Constant { .. } => 12,
 
         ItemEnum::Static(_) => 13,
 
