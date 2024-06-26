@@ -13,6 +13,7 @@ pub type Core = Rc<shared::Core<Effect, CatFacts>>;
 
 pub enum Message {
     Event(Event),
+    #[allow(dead_code)]
     Effect(Effect),
 }
 

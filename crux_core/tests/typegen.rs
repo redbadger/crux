@@ -28,6 +28,7 @@ mod shared {
 
     #[derive(Effect, Export)]
     pub struct Capabilities {
+        #[allow(dead_code)]
         pub render: Render<Event>,
     }
 }

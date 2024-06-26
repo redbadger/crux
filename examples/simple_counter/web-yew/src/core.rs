@@ -6,6 +6,7 @@ pub type Core = Rc<shared::Core<Effect, Counter>>;
 
 pub enum Message {
     Event(Event),
+    #[allow(dead_code)]
     Effect(Effect),
 }
 
