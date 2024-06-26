@@ -121,10 +121,11 @@ you want to:
 2. `Http` (full HTTP implementation based on the
    [Surf](https://crates.io/crates/surf) API) — [source](./crux_http/README.md),
    [crate](https://crates.io/crates/crux_http), request/response
-3. `KeyValue` (very basic key-value store API) — [source](./crux_kv/README.md),
+3. `KeyValue` (basic key-value store API) — [source](./crux_kv/README.md),
    [crate](https://crates.io/crates/crux_kv), request/response
-4. `Time` (get the current time) — [source](./crux_time/README.md),
-   [crate](https://crates.io/crates/crux_time), request/response
+4. `Time` (get current time, notify after duration, notify at instant) —
+   [source](./crux_time/README.md), [crate](https://crates.io/crates/crux_time),
+   request/response
 5. `Platform` (get the current platform) — [source](./crux_platform/README.md),
    [crate](https://crates.io/crates/crux_platform), request/response
 6. `SSE` (basic Server-Sent Events) —
