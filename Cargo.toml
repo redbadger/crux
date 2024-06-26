@@ -21,7 +21,7 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.86"
-serde = "1.0.202"
+serde = "1.0.203"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

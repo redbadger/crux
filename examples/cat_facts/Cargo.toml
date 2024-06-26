@@ -22,7 +22,7 @@ crux_time = { version = "0.4", features = ["chrono"] }
 # crux_kv = { path = "../../crux_kv" }
 # crux_platform = { path = "../../crux_platform" }
 # crux_time = { path = "../../crux_time", features = ["chrono"] }
-serde = "1.0.202"
+serde = "1.0.203"
 
 [workspace.metadata.bin]
 cargo-xcode = "=1.7.0"

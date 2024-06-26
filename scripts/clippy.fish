@@ -2,7 +2,6 @@
 
 for dir in . examples/*
     echo $dir
-    pushd $dir
-    cargo update
-    popd
+    cd "$dir"
+    cargo clippy
 end

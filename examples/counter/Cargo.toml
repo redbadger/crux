@@ -24,7 +24,7 @@ crux_core = "0.8"
 crux_http = "0.9"
 # crux_core = { path = "../../crux_core" }
 # crux_http = { path = "../../crux_http" }
-serde = "1.0.202"
+serde = "1.0.203"
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }
