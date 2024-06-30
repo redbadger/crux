@@ -36,7 +36,7 @@ You can also join the friendly conversation on our [Zulip channel](https://crux-
 The architecture is event-driven, based on
 [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html). The Core
 holds the majority of state, which is updated in response to events happening in
-the Shell. The interface between the Core and the Shell is messaged based.
+the Shell. The interface between the Core and the Shell is message-based.
 
 The user interface layer is built natively, with modern declarative UI
 frameworks such as Swift UI, Jetpack Compose and React/Vue or a WASM based
