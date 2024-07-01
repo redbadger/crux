@@ -24,4 +24,4 @@ crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
 insta = "1.39"
 prettyplease = "0.2"
-serde = { version = "1.0.203", features = ["derive"] }
+serde = { version = "1.0.202", features = ["derive"] }
