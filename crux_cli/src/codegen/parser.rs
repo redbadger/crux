@@ -1,47 +1,20 @@
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    fmt::format,
+};
 
 use anyhow::{anyhow, bail, Result};
 use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, Type};
+use wit_encoder::{Interface, Package, PackageName};
 
-use super::{
-    public_api::PublicApi,
-    rust_types::{RustEnum, RustStruct, RustTypeAlias},
-};
+use super::public_api::PublicApi;
 use crate::codegen::{
     item_processor::{sorting_prefix, ItemProcessor},
     nameable_item::NameableItem,
     path_component::PathComponent,
     public_item::PublicItem,
     render::RenderingContext,
-    rust_types::{
-        self, RustEnumShared, RustEnumVariant, RustEnumVariantShared, RustField, RustType,
-    },
 };
-
-/// The results of parsing Rust source input.
-#[derive(Default, Debug)]
-pub struct ParsedData {
-    /// Structs defined in the source
-    pub structs: Vec<RustStruct>,
-    /// Enums defined in the source
-    pub enums: Vec<RustEnum>,
-    /// Type aliases defined in the source
-    pub aliases: Vec<RustTypeAlias>,
-}
-
-impl ParsedData {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-
-#[derive(Debug, Clone)]
-enum Value {
-    Namespace,
-    Struct(RustStruct),
-    Enum(RustEnum),
-    TypeAlias(RustTypeAlias),
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Component {
@@ -108,7 +81,7 @@ impl TryFrom<&str> for Component {
     }
 }
 
-pub fn parse(crate_: &Crate) -> Result<ParsedData> {
+pub fn parse(crate_: &Crate) -> Result<Vec<Package>> {
     let mut item_processor = ItemProcessor::new(crate_);
     add_items(crate_, &mut item_processor, "Effect", &["Ffi"]);
     add_items(crate_, &mut item_processor, "App", &["Event", "ViewModel"]);
@@ -147,124 +120,46 @@ pub fn parse(crate_: &Crate) -> Result<ParsedData> {
 
     println!();
 
-    let mut data = HashMap::new();
+    let mut packages = HashMap::new();
+    let mut seen = HashSet::new();
 
-    for item in public_api.items.iter().rev() {
-        println!("{}", item);
-        println!("{:?}", item.sortable_path);
+    for item in public_api.items {
+        // println!("{}", item);
+        // println!("{:?}", item.sortable_path);
 
         let (subject, object) = parse_sortable_path(item.sortable_path.as_slice())?;
-
         println!("{subject:?}\n{object:?}");
 
-        let entry = data.entry(subject.clone()).or_insert_with(|| {
-            let component = subject.last().unwrap();
-            let id = rust_types::Id {
-                original: component.name.clone(),
-                renamed: component.name.clone(), // TODO: serde rename
-            };
-            match component.type_ {
-                ComponentType::Enum => Value::Enum(RustEnum::Algebraic {
-                    tag_key: component.name.clone(),
-                    content_key: String::new(),
-                    shared: RustEnumShared {
-                        id,
-                        generic_types: Vec::new(),
-                        comments: Vec::new(),
-                        variants: Vec::new(),
-                        is_recursive: false,
-                    },
-                }),
-                ComponentType::Struct => Value::Struct(RustStruct {
-                    id,
-                    generic_types: Vec::new(),
-                    fields: Vec::new(),
-                    comments: Vec::new(),
-                }),
-                _ => unimplemented!(),
-            }
+        let (ns, pkg, int) = parse_ns(&subject[0]);
+
+        let key = format!("{}::{}", ns, pkg);
+        let package = packages.entry(key).or_insert_with(|| {
+            Package::new(PackageName::new(
+                ns.to_lowercase(),
+                pkg.to_lowercase(),
+                None,
+            ))
         });
 
-        let mut variant_type: Option<RustEnumVariant> = None;
-
-        for component in object.iter().rev() {
-            let id = rust_types::Id {
-                original: component.name.clone(),
-                renamed: component.name.clone(), // TODO: serde rename
-            };
-
-            match component.type_ {
-                ComponentType::StructField => {
-                    println!("adding StructField");
-                    let Value::Struct(ref mut value) = entry else {
-                        bail!("entry is not a struct {:#?}", entry);
-                    };
-
-                    value.fields.push(RustField {
-                        id,
-                        ty: RustType::Simple {
-                            id: component.name.clone(),
-                        },
-                        comments: Vec::new(),
-                        has_default: false,
-                    });
-                }
-                ComponentType::Variant => {
-                    println!("adding Variant");
-                    let Value::Enum(ref mut value) = entry else {
-                        bail!("entry is not an enum {:#?}", entry);
-                    };
-
-                    match value {
-                        RustEnum::Algebraic {
-                            shared:
-                                RustEnumShared {
-                                    id: _,
-                                    generic_types: _,
-                                    comments: _,
-                                    ref mut variants,
-                                    is_recursive: _,
-                                },
-                            ..
-                        } => {
-                            if !variants.iter().any(|v| v.shared().id == id) {
-                                if let Some(variant_type) = variant_type.take() {
-                                    variants.push(variant_type);
-                                } else {
-                                    variants.push(RustEnumVariant::AnonymousStruct {
-                                        fields: Vec::new(),
-                                        shared: RustEnumVariantShared {
-                                            id,
-                                            comments: Vec::new(),
-                                        },
-                                    });
-                                }
-                            }
-                        }
-                        _ => bail!("unexpected enum type"),
-                    }
-                }
-                ComponentType::TupleVariantField => {
-                    println!("adding TupleVariantField");
-                    variant_type = Some(RustEnumVariant::Tuple {
-                        ty: rust_types::RustType::Simple { id: id.to_string() },
-                        shared: RustEnumVariantShared {
-                            id,
-                            comments: Vec::new(),
-                        },
-                    });
-                }
-                _ => (),
-            }
+        let interface_key = format!("{ns}::{pkg}::{int}");
+        if seen.contains(&interface_key) {
+            continue;
         }
+        seen.insert(interface_key);
 
-        println!();
+        package.interface(Interface::new(int.to_lowercase()));
     }
 
-    println!("{:#?}", data);
+    Ok(packages.into_values().collect())
+}
 
-    let parsed_data = ParsedData::new();
-    Ok(parsed_data)
+fn parse_ns(ns: &Component) -> (String, String, String) {
+    let mut split: VecDeque<_> = ns.name.split("::").collect();
+    let first = split.pop_front().unwrap_or("").to_string();
+    let last = split.pop_back().unwrap_or("").to_string();
+    split.make_contiguous();
+    let middle = split.as_slices().0.join("-");
+    (first, middle, last)
 }
 
 fn parse_sortable_path(path: &[String]) -> Result<(Vec<Component>, Vec<Component>)> {
@@ -460,5 +355,26 @@ mod test {
                 }
             ]
         );
+    }
+
+    #[test]
+    fn test_parse_ns() {
+        let ns = Component {
+            type_: ComponentType::Namespace,
+            name: "shared::app::CatFacts".to_string(),
+        };
+        let (first, middle, last) = parse_ns(&ns);
+        assert_eq!(first, "shared");
+        assert_eq!(middle, "app");
+        assert_eq!(last, "CatFacts");
+
+        let ns = Component {
+            type_: ComponentType::Namespace,
+            name: "shared::app::platform::App".to_string(),
+        };
+        let (first, middle, last) = parse_ns(&ns);
+        assert_eq!(first, "shared");
+        assert_eq!(middle, "app-platform");
+        assert_eq!(last, "App");
     }
 }

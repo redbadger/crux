@@ -28,3 +28,4 @@ similar = { version = "2.5.0", features = ["inline"] }
 tokio = { version = "1.38.0", features = ["full"] }
 tokio-fd = "0.3.0"
 toml = "0.8.14"
+wit-encoder = "0.212.0"
