@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"derive":["Capability","Effect","Export"]};
