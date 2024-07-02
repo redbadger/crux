@@ -16,7 +16,7 @@ pub struct HttpHeader {
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq, Builder)]
+#[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq, Builder)]
 #[builder(
     custom_constructor,
     build_fn(private, name = "fallible_build"),
@@ -28,6 +28,30 @@ pub struct HttpRequest {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     pub body: Vec<u8>,
+}
+
+impl std::fmt::Debug for HttpRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let body_repr = if let Ok(s) = std::str::from_utf8(&self.body) {
+            if s.len() < 50 {
+                format!("\"{s}\"")
+            } else {
+                format!("\"{}\"...", &s[..50])
+            }
+        } else {
+            format!("<binary data - {} bytes>", self.body.len())
+        };
+        let mut builder = f.debug_struct("HttpReqeuest");
+        builder
+            .field("method", &self.method)
+            .field("url", &self.url);
+        if !self.headers.is_empty() {
+            builder.field("headers", &self.headers);
+        };
+        builder
+            .field("body", &format_args!("{}", body_repr))
+            .finish()
+    }
 }
 
 macro_rules! http_method {
@@ -266,5 +290,45 @@ mod tests {
                 body: "hello world".as_bytes().to_vec(),
             }
         );
+    }
+
+    #[test]
+    fn test_http_request_debug_repr() {
+        {
+            // small
+            let req = HttpRequest::post("http://example.com")
+                .header("foo", "bar")
+                .body("hello world!")
+                .build();
+            let repr = format!("{req:?}");
+            assert_eq!(
+                repr,
+                r#"HttpReqeuest { method: "POST", url: "http://example.com", headers: [HttpHeader { name: "foo", value: "bar" }], body: "hello world!" }"#
+            );
+        }
+
+        {
+            // big
+            let req = HttpRequest::post("http://example.com")
+                .body("abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz")
+                .build();
+            let repr = format!("{req:?}");
+            assert_eq!(
+                repr,
+                r#"HttpReqeuest { method: "POST", url: "http://example.com", body: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvw"... }"#
+            );
+        }
+
+        {
+            // binary
+            let req = HttpRequest::post("http://example.com")
+                .body(vec![255, 254, 253, 252])
+                .build();
+            let repr = format!("{req:?}");
+            assert_eq!(
+                repr,
+                r#"HttpReqeuest { method: "POST", url: "http://example.com", body: <binary data - 4 bytes> }"#
+            );
+        }
     }
 }
