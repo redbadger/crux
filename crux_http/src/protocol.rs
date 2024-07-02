@@ -293,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn test_http_request_repr() {
+    fn test_http_request_debug_repr() {
         {
             // small
             let req = HttpRequest::post("http://example.com")
