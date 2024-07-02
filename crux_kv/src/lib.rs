@@ -15,7 +15,7 @@ use error::KeyValueError;
 use value::Value;
 
 /// Supported operations
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum KeyValueOperation {
     /// Read bytes stored under a key
     Get { key: String },
@@ -38,6 +38,40 @@ pub enum KeyValueOperation {
         /// a `KeyValueError::CursorNotFound` error.
         cursor: u64,
     },
+}
+
+impl std::fmt::Debug for KeyValueOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyValueOperation::Get { key } => f.debug_struct("Get").field("key", key).finish(),
+            KeyValueOperation::Set { key, value } => {
+                let body_repr = if let Ok(s) = std::str::from_utf8(&value) {
+                    if s.len() < 50 {
+                        format!("\"{s}\"")
+                    } else {
+                        format!("\"{}\"...", &s[..50])
+                    }
+                } else {
+                    format!("<binary data - {} bytes>", value.len())
+                };
+                f.debug_struct("Set")
+                    .field("key", key)
+                    .field("value", &format_args!("{}", body_repr))
+                    .finish()
+            }
+            KeyValueOperation::Delete { key } => {
+                f.debug_struct("Delete").field("key", key).finish()
+            }
+            KeyValueOperation::Exists { key } => {
+                f.debug_struct("Exists").field("key", key).finish()
+            }
+            KeyValueOperation::ListKeys { prefix, cursor } => f
+                .debug_struct("ListKeys")
+                .field("prefix", prefix)
+                .field("cursor", cursor)
+                .finish(),
+        }
+    }
 }
 
 /// The result of an operation on the store.

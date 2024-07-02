@@ -368,3 +368,53 @@ pub fn test_kv_async() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_kv_operation_debug_repr() {
+    {
+        // get
+        let op = KeyValueOperation::Get {
+            key: "my key".into(),
+        };
+        let repr = format!("{op:?}");
+        assert_eq!(repr, r#"Get { key: "my key" }"#);
+    }
+
+    {
+        // set small
+        let op = KeyValueOperation::Set {
+            key: "my key".into(),
+            value: b"my value".to_vec(),
+        };
+        let repr = format!("{op:?}");
+        assert_eq!(repr, r#"Set { key: "my key", value: "my value" }"#);
+    }
+
+    {
+        // set big
+        let op = KeyValueOperation::Set {
+            key: "my key".into(),
+            value:
+                b"abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz"
+                    .to_vec(),
+        };
+        let repr = format!("{op:?}");
+        assert_eq!(
+            repr,
+            r#"Set { key: "my key", value: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvw"... }"#
+        );
+    }
+
+    {
+        // set binary
+        let op = KeyValueOperation::Set {
+            key: "my key".into(),
+            value: vec![255, 255],
+        };
+        let repr = format!("{op:?}");
+        assert_eq!(
+            repr,
+            r#"Set { key: "my key", value: <binary data - 2 bytes> }"#
+        );
+    }
+}
