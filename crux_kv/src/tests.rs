@@ -395,13 +395,13 @@ fn test_kv_operation_debug_repr() {
         let op = KeyValueOperation::Set {
             key: "my key".into(),
             value:
-                b"abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz"
-                    .to_vec(),
+                // we check that we handle unicode boundaries correctly
+                "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀😀😀😀😀".as_bytes().to_vec(),
         };
         let repr = format!("{op:?}");
         assert_eq!(
             repr,
-            r#"Set { key: "my key", value: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvw"... }"#
+            r#"Set { key: "my key", value: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀"... }"#
         );
     }
 
