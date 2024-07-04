@@ -36,7 +36,7 @@ impl std::fmt::Debug for HttpRequest {
             if s.len() < 50 {
                 format!("\"{s}\"")
             } else {
-                format!("\"{}\"...", &s[..50])
+                format!("\"{}\"...", &s.chars().take(50).collect::<String>())
             }
         } else {
             format!("<binary data - {} bytes>", self.body.len())
@@ -310,12 +310,13 @@ mod tests {
         {
             // big
             let req = HttpRequest::post("http://example.com")
-                .body("abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz")
+                // we check that we handle unicode boundaries correctly
+                .body("abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀😀😀😀😀")
                 .build();
             let repr = format!("{req:?}");
             assert_eq!(
                 repr,
-                r#"HttpReqeuest { method: "POST", url: "http://example.com", body: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvw"... }"#
+                r#"HttpReqeuest { method: "POST", url: "http://example.com", body: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀"... }"#
             );
         }
 

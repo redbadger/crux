@@ -49,7 +49,7 @@ impl std::fmt::Debug for KeyValueOperation {
                     if s.len() < 50 {
                         format!("\"{s}\"")
                     } else {
-                        format!("\"{}\"...", &s[..50])
+                        format!("\"{}\"...", &s.chars().take(50).collect::<String>())
                     }
                 } else {
                     format!("<binary data - {} bytes>", value.len())
