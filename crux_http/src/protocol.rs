@@ -36,7 +36,7 @@ impl std::fmt::Debug for HttpRequest {
             if s.len() < 50 {
                 format!("\"{s}\"")
             } else {
-                format!("\"{}\"...", &s.chars().take(50).collect::<String>())
+                format!("\"{}\"...", s.chars().take(50).collect::<String>())
             }
         } else {
             format!("<binary data - {} bytes>", self.body.len())

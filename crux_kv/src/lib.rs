@@ -45,11 +45,11 @@ impl std::fmt::Debug for KeyValueOperation {
         match self {
             KeyValueOperation::Get { key } => f.debug_struct("Get").field("key", key).finish(),
             KeyValueOperation::Set { key, value } => {
-                let body_repr = if let Ok(s) = std::str::from_utf8(&value) {
+                let body_repr = if let Ok(s) = std::str::from_utf8(value) {
                     if s.len() < 50 {
                         format!("\"{s}\"")
                     } else {
-                        format!("\"{}\"...", &s.chars().take(50).collect::<String>())
+                        format!("\"{}\"...", s.chars().take(50).collect::<String>())
                     }
                 } else {
                     format!("<binary data - {} bytes>", value.len())
