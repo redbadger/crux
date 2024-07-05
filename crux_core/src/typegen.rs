@@ -552,13 +552,13 @@ The 2 common cases are:
         let path = path.as_ref().join(package_name);
 
         fs::create_dir_all(&path)?;
-        
+
         let installer = csharp::Installer::new(path.clone());
-        
+
         installer
             .install_serde_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        
+
         installer
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -568,24 +568,24 @@ The 2 common cases are:
             _ => panic!("registry creation failed"),
         };
 
-    
-        let config = serde_generate::CodeGeneratorConfig::new(
-                package_name.to_string())
-                .with_encodings(vec![Encoding::Bincode]);
-            
+        let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
+            .with_encodings(vec![Encoding::Bincode])
+            .with_c_style_enums(true);
+
         installer
             .install_module(&config, registry)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let mut output = File::create(
-            path.join(package_name)
-                .join("Requests.cs")
-        )?;
+        let mut output = File::create(path.join(package_name).join("Requests.cs"))?;
 
         let requests_path = self.extensions_path("csharp/Requests.cs");
         let requests_data = fs::read_to_string(requests_path)?;
 
-        write!(output, "{}", requests_data)?;
+        write!(
+            output,
+            "{}",
+            requests_data.replace("SharedTypes", package_name)
+        )?;
 
         Ok(())
     }
