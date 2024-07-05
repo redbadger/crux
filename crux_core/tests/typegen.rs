@@ -60,6 +60,9 @@ mod test {
 
         gen.typescript("shared_types", output_root.join("typescript"))
             .expect("typescript type gen failed");
+
+        gen.csharp("SharedTypes", output_root.join("csharp"))
+            .expect("csharp type gen failed");
     }
 
     // TODO: instead of using the Render capability here, it would be better to also test against a custom

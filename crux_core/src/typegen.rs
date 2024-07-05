@@ -114,7 +114,7 @@
 //! ```
 
 use serde::Deserialize;
-use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
+use serde_generate::{csharp, java, swift, typescript, Encoding, SourceInstaller};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -542,6 +542,50 @@ The 2 common cases are:
             .arg("--build")
             .status()
             .map_err(TypeGenError::Io)?;
+
+        Ok(())
+    }
+
+    pub fn csharp(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
+        self.ensure_registry()?;
+
+        let path = path.as_ref().join(package_name);
+
+        fs::create_dir_all(&path)?;
+        
+        let installer = csharp::Installer::new(path.clone());
+        
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
+        let registry = match &self.state {
+            State::Generating(registry) => registry,
+            _ => panic!("registry creation failed"),
+        };
+
+    
+        let config = serde_generate::CodeGeneratorConfig::new(
+                package_name.to_string())
+                .with_encodings(vec![Encoding::Bincode]);
+            
+        installer
+            .install_module(&config, registry)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
+        let mut output = File::create(
+            path.join(package_name)
+                .join("Requests.cs")
+        )?;
+
+        let requests_path = self.extensions_path("csharp/Requests.cs");
+        let requests_data = fs::read_to_string(requests_path)?;
+
+        write!(output, "{}", requests_data)?;
 
         Ok(())
     }
