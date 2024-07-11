@@ -14,6 +14,23 @@ use futures::Future;
 /// * Implementing request timeouts by selecting across a HTTP effect and a time effect
 /// * Any arbitrary graph of effects which depend on each other (or not).
 ///
+/// The compose capability doesn't have any operations it emits to the shell, and type generation fails
+/// on its operation type ([`Never`](crate::capability::Never))). This is difficult for crux to detect
+/// at the moment. To avoid this problem until a better fix is found, use `#[effect(skip)]` to skip the
+/// generation of an effect variant for the compose capability. For example
+///
+/// ```rust
+/// # use crux_core::macros::Effect;
+/// # use crux_core::{compose::Compose, render::Render};
+/// # enum Event { Nothing }
+/// #[derive(Effect)]
+/// pub struct Capabilities {
+///     pub render: Render<Event>,
+///     #[effect(skip)]
+///     pub compose: Compose<Event>,
+/// }
+/// ```
+///
 /// Note that testing composed effects is more difficult, because it is not possible to enter the effect
 /// transaction "in the middle" - only from the beginning - or to ignore some of the effects with out
 /// stalling the entire downstream dependency chain.
