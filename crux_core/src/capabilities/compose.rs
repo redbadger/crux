@@ -157,4 +157,14 @@ impl<Ev> Capability<Ev> for Compose<Ev> {
     {
         Compose::new(self.context.map_event(f))
     }
+
+    #[cfg(feature = "typegen")]
+    fn register_types(_generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
+        panic!(
+            r#"
+            The Compose Capability should not be registered for type generation.
+            Instead, use #[effect(skip)] to skip the generation of an effect variant for the Compose Capability.
+            "#
+        )
+    }
 }
