@@ -11,14 +11,8 @@ The code for this was largely copied from [`surf`](https://github.com/http-rs/su
 
 ## Getting Started
 
-Add `crux_http` as a dependency.
-
-Additionally, if using crux type generation, include this line in your shared
-types generation script (e.g. `shared_types/build.rs`):
-
-```rust
-gen.register_type::<HttpError>()?;
-```
+Add `crux_http` as a dependency in your app's `Cargo.toml`.
+Add `crux_http`, with feature `typegen`, as a build dependency in your `share_types` crate's `Cargo.toml`.
 
 ## About Crux Capabilities
 

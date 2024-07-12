@@ -4,6 +4,11 @@ This crate contains the `KeyValue` capability, which can be used to ask the Shel
 
 Currently it provides an interface for getting, setting, and deleting keys, checking if keys exists in the store, and listing keys that start with a prefix.
 
+## Getting Started
+
+Add `crux_kv` as a dependency in your app's `Cargo.toml`.
+Add `crux_kv`, with feature `typegen`, as a build dependency in your `share_types` crate's `Cargo.toml`.
+
 ## About Crux Capabilities
 
 Crux capabilities teach Crux how to interact with the shell when performing side effects. They do the following:

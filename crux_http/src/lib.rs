@@ -6,7 +6,6 @@
 // #![warn(missing_docs)]
 
 use crux_core::capability::CapabilityContext;
-use crux_core::macros::Capability;
 use http::Method;
 use url::Url;
 
@@ -37,10 +36,33 @@ use client::Client;
 pub type Result<T> = std::result::Result<T, HttpError>;
 
 /// The Http capability API.
-#[derive(Capability)]
 pub struct Http<Ev> {
     context: CapabilityContext<protocol::HttpRequest, Ev>,
     client: Client,
+}
+
+impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
+    type Operation = protocol::HttpRequest;
+
+    type MappedSelf<MappedEv> = Http<MappedEv>;
+
+    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
+    where
+        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        Ev: 'static,
+        NewEv: 'static + Send,
+    {
+        Http::new(self.context.map_event(f))
+    }
+
+    #[cfg(feature = "typegen")]
+    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+        generator.register_type::<HttpError>()?;
+        generator.register_type::<Self::Operation>()?;
+        generator
+            .register_type::<<Self::Operation as crux_core::capability::Operation>::Output>()?;
+        Ok(())
+    }
 }
 
 impl<Ev> Clone for Http<Ev> {

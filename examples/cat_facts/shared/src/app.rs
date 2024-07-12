@@ -3,8 +3,9 @@ pub mod platform;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crux_core::render::Render;
 pub use crux_core::App;
-use crux_core::{render::Render, Capability};
+use crux_core::Capability;
 use crux_http::Http;
 use crux_kv::{error::KeyValueError, KeyValue};
 use crux_platform::Platform;

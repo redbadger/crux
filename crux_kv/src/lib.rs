@@ -9,7 +9,6 @@ pub mod value;
 use serde::{Deserialize, Serialize};
 
 use crux_core::capability::{CapabilityContext, Operation};
-use crux_core::macros::Capability;
 
 use error::KeyValueError;
 use value::Value;
@@ -116,9 +115,33 @@ impl Operation for KeyValueOperation {
     type Output = KeyValueResult;
 }
 
-#[derive(Capability)]
 pub struct KeyValue<Ev> {
     context: CapabilityContext<KeyValueOperation, Ev>,
+}
+
+impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
+    type Operation = KeyValueOperation;
+
+    type MappedSelf<MappedEv> = KeyValue<MappedEv>;
+
+    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
+    where
+        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        Ev: 'static,
+        NewEv: 'static + Send,
+    {
+        KeyValue::new(self.context.map_event(f))
+    }
+
+    #[cfg(feature = "typegen")]
+    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+        generator.register_type::<KeyValueResponse>()?;
+        generator.register_type::<KeyValueError>()?;
+        generator.register_type::<Value>()?;
+        generator.register_type::<Self::Operation>()?;
+        generator.register_type::<<Self::Operation as Operation>::Output>()?;
+        Ok(())
+    }
 }
 
 impl<Ev> Clone for KeyValue<Ev> {
