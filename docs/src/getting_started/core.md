@@ -247,6 +247,17 @@ pub struct Capabilities {
 }
 ```
 
+Additionally, if you are using a Capability that does not need to be exported to the foreign language, you can use the `#[effect(skip)]` attribute to skip exporting it, e.g.:
+
+```rust,ignore
+#[cfg_attr(feature = "typegen", derive(Export))]
+#[derive(Effect)]
+pub struct Capabilities {
+    render: Render<Event>,
+    #[effect(skip)]
+    compose: Compose<Event>,
+}
+```
 ````
 
 - Make sure everything builds and foreign types get generated into the
