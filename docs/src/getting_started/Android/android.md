@@ -118,7 +118,7 @@ this:
 ```admonish
 The code fence above uses AGP version `8.3.2`.
 
-Currently there is an incompatibiliity between the latest version (`8.4.0`) of the Android Gradle Plugin (AGP) and the Rust Gradle Plugin, which fails with a `duplicate resources` issue when building your shared library for multiple targets. For now, either just target one archtecture or stick with AGP version `8.3.2` until this is resolved.
+Currently there is an incompatibiliity between the latest version (`8.4.0`) of the Android Gradle Plugin (AGP) and the Rust Gradle Plugin, which fails with a `duplicate resources` issue when building your shared library for multiple targets. For now, either just target one architecture or stick with AGP version `8.3.2` until this is resolved.
 ```
 
 Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
@@ -130,7 +130,7 @@ like this:
 ```
 
 ```admonish warning title="Sharp edge"
-You will need to set the `ndkVersion` to one you have installed, go to "**Tools, SDK Manager, SDK Tooks**" and check "**Show Package Details**" to get your installed version, or to install the version matching `build.gradle` above.
+You will need to set the `ndkVersion` to one you have installed, go to "**Tools, SDK Manager, SDK Tools**" and check "**Show Package Details**" to get your installed version, or to install the version matching `build.gradle` above.
 ```
 
 ```admonish tip
