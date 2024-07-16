@@ -13,8 +13,11 @@ struct ExportStructReceiver {
 }
 
 #[derive(FromField, Debug)]
+#[darling(attributes(effect))]
 pub struct ExportFieldReceiver {
     ty: Type,
+    #[darling(default)]
+    skip: bool,
 }
 
 impl ToTokens for ExportStructReceiver {
@@ -30,25 +33,29 @@ impl ToTokens for ExportStructReceiver {
             None => quote!(EffectFfi),
         };
 
-        let fields = self
+        let fields: Vec<&ExportFieldReceiver> = self
             .data
             .as_ref()
             .take_struct()
             .expect_or_abort("should be a struct")
-            .fields;
+            .fields
+            .into_iter()
+            .filter(|e| !e.skip)
+            .collect();
 
         let mut output_type_exports = Vec::new();
 
         for (capability, event) in fields.iter().map(|f| split_on_generic(&f.ty)) {
             output_type_exports.push(quote! {
-                generator.register_type::<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>()?;
-                generator
-                    .register_type::<<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation as ::crux_core::capability::Operation>::Output>()?;
+                #capability::<#event>::register_types(generator)?;
             });
         }
 
         tokens.extend(quote! {
+            use ::crux_core::capability::Capability;
+
             impl ::crux_core::typegen::Export for #ident {
+                #[cfg(feature = "typegen")]
                 fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
                     #(#output_type_exports)*
 
@@ -123,22 +130,13 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
+        use ::crux_core::capability::Capability;
         impl ::crux_core::typegen::Export for Capabilities {
+            #[cfg(feature = "typegen")]
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
-                generator
-                    .register_type::<
-                        <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
-                        <<Render<
-                            Event,
-                        > as ::crux_core::capability::Capability<
-                            Event,
-                        >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
+                Render::<Event>::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
                 Ok(())
@@ -162,6 +160,43 @@ mod tests {
     }
 
     #[test]
+    fn export_macro_respects_an_skip_attr() {
+        let input = r#"
+            #[derive(Export)]
+            pub struct MyCapabilities {
+                pub http: crux_http::Http<MyEvent>,
+                pub key_value: KeyValue<MyEvent>,
+                pub platform: Platform<MyEvent>,
+                pub render: Render<MyEvent>,
+                #[effect(skip)]
+                pub time: Time<MyEvent>,
+            }
+        "#;
+        let input = parse_str(input).unwrap();
+        let input = ExportStructReceiver::from_derive_input(&input).unwrap();
+
+        let actual = quote!(#input);
+
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        use ::crux_core::capability::Capability;
+        impl ::crux_core::typegen::Export for MyCapabilities {
+            #[cfg(feature = "typegen")]
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                crux_http::Http::<MyEvent>::register_types(generator)?;
+                KeyValue::<MyEvent>::register_types(generator)?;
+                Platform::<MyEvent>::register_types(generator)?;
+                Render::<MyEvent>::register_types(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "###);
+    }
+
+    #[test]
     fn full() {
         let input = r#"
             #[derive(Export)]
@@ -179,80 +214,17 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
+        use ::crux_core::capability::Capability;
         impl ::crux_core::typegen::Export for MyCapabilities {
+            #[cfg(feature = "typegen")]
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
-                generator
-                    .register_type::<
-                        <crux_http::Http<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
-                        <<crux_http::Http<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<
-                            MyEvent,
-                        >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
-                generator
-                    .register_type::<
-                        <KeyValue<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
-                        <<KeyValue<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<
-                            MyEvent,
-                        >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
-                generator
-                    .register_type::<
-                        <Platform<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
-                        <<Platform<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<
-                            MyEvent,
-                        >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
-                generator
-                    .register_type::<
-                        <Render<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
-                        <<Render<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<
-                            MyEvent,
-                        >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
-                generator
-                    .register_type::<
-                        <Time<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
-                        <<Time<
-                            MyEvent,
-                        > as ::crux_core::capability::Capability<
-                            MyEvent,
-                        >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
+                crux_http::Http::<MyEvent>::register_types(generator)?;
+                KeyValue::<MyEvent>::register_types(generator)?;
+                Platform::<MyEvent>::register_types(generator)?;
+                Render::<MyEvent>::register_types(generator)?;
+                Time::<MyEvent>::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
                 Ok(())
@@ -277,22 +249,13 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
+        use ::crux_core::capability::Capability;
         impl ::crux_core::typegen::Export for Capabilities {
+            #[cfg(feature = "typegen")]
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
-                generator
-                    .register_type::<
-                        <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
-                    >()?;
-                generator
-                    .register_type::<
-                        <<Render<
-                            Event,
-                        > as ::crux_core::capability::Capability<
-                            Event,
-                        >>::Operation as ::crux_core::capability::Operation>::Output,
-                    >()?;
+                Render::<Event>::register_types(generator)?;
                 generator.register_type::<MyEffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
                 Ok(())

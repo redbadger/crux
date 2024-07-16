@@ -193,6 +193,7 @@ mod shell_request;
 mod shell_stream;
 
 use futures::Future;
+use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
 pub(crate) use channel::channel;
@@ -237,7 +238,6 @@ pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
 /// # }
 ///
 /// ```
-
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Never {}
 
@@ -256,19 +256,19 @@ impl Operation for Never {
 /// ```rust
 /// # use crux_core::{Capability, capability::{CapabilityContext, Operation}};
 /// # pub struct Http<Ev> {
-/// #     context: CapabilityContext<HttpOperation, Ev>,
+/// #     context: CapabilityContext<HttpRequest, Ev>,
 /// # }
-/// # #[derive(serde::Serialize, PartialEq, Eq)] pub struct HttpOperation;
-/// # impl Operation for HttpOperation {
+/// # #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq)] pub struct HttpRequest;
+/// # impl Operation for HttpRequest {
 /// #     type Output = ();
 /// # }
 /// # impl<Ev> Http<Ev> where Ev: 'static, {
-/// #     pub fn new(context: CapabilityContext<HttpOperation, Ev>) -> Self {
+/// #     pub fn new(context: CapabilityContext<HttpRequest, Ev>) -> Self {
 /// #         Self { context }
 /// #     }
 /// # }
 /// impl<Ev> Capability<Ev> for Http<Ev> {
-///     type Operation = HttpOperation;
+///     type Operation = HttpRequest;
 ///     type MappedSelf<MappedEv> = Http<MappedEv>;
 ///
 ///     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
@@ -282,7 +282,7 @@ impl Operation for Never {
 /// }
 /// ```
 pub trait Capability<Ev> {
-    type Operation: Operation;
+    type Operation: Operation + DeserializeOwned;
 
     type MappedSelf<MappedEv>;
 
@@ -291,6 +291,13 @@ pub trait Capability<Ev> {
         F: Fn(NewEv) -> Ev + Send + Sync + 'static,
         Ev: 'static,
         NewEv: 'static + Send;
+
+    #[cfg(feature = "typegen")]
+    fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
+        generator.register_type::<Self::Operation>()?;
+        generator.register_type::<<Self::Operation as Operation>::Output>()?;
+        Ok(())
+    }
 }
 
 /// Allows Crux to construct app's set of required capabilities, providing context

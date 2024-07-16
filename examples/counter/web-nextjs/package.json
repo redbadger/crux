@@ -24,5 +24,6 @@
     "@types/node": "20.14.9",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0"
-  }
+  },
+  "packageManager": "pnpm@7.28.0+sha1.48be3292711ad554fe944f6caaf9b0f5477524fe"
 }
