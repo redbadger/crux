@@ -2,7 +2,9 @@ use crux_core::typegen::TypeGen;
 use shared::Counter;
 use std::path::PathBuf;
 
-fn main() -> anyhow::Result<()> {
+#[cfg(feature = "typegen")]
+#[test]
+fn typegen() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../shared");
 
     let mut gen = TypeGen::new();

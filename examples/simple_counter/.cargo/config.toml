@@ -1,0 +1,3 @@
+[alias]
+uniffi-gen-swift = "run --bin uniffi-bindgen generate --library target/release/libshared.dylib --language swift --out-dir shared/generated/swift/SharedFFI"
+uniffi-gen-java = "run --bin uniffi-bindgen generate --library target/release/libshared.dylib --language kotlin --out-dir shared/generated/java"
