@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "shared_types", "web-dioxus", "web-leptos", "web-yew"]
+members = ["shared", "web-dioxus", "web-leptos", "web-yew"]
 resolver = "1"
 
 [workspace.package]
@@ -14,6 +14,7 @@ rust-version = "1.66"
 anyhow = "1.0.86"
 crux_core = "0.8"
 serde = "1.0.203"
+uniffi = { git = "https://github.com/mozilla/uniffi-rs.git", branch = "main" }
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }
