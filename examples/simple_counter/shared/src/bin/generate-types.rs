@@ -1,17 +1,15 @@
 use crux_core::typegen::TypeGen;
 use shared::Counter;
 use std::path::PathBuf;
+use uniffi::deps::anyhow;
 
 #[cfg(feature = "typegen")]
-#[test]
-fn typegen() -> anyhow::Result<()> {
-    println!("cargo:rerun-if-changed=../shared");
-
+fn main() -> anyhow::Result<()> {
     let mut gen = TypeGen::new();
 
     gen.register_app::<Counter>()?;
 
-    let output_root = PathBuf::from("./generated");
+    let output_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("generated");
 
     gen.swift("SharedTypes", output_root.join("swift"))?;
 

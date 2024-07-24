@@ -8,6 +8,10 @@ rust-version = "1.66"
 crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
+[[bin]]
+name = "generate-types"
+required-features = ["typegen"]
+
 [features]
 typegen = ["crux_core/typegen"]
 
@@ -20,6 +24,3 @@ wasm-bindgen = "0.2.92"
 
 [target.uniffi-bindgen.dependencies]
 uniffi = { workspace = true, features = ["cli"] }
-
-[dev-dependencies]
-anyhow.workspace = true
