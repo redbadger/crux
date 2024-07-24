@@ -8,6 +8,10 @@ rust-version = "1.66"
 crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
+[[bin]]
+name = "generate-types"
+required-features = ["typegen"]
+
 [features]
 typegen = ["crux_core/typegen"]
 

@@ -106,8 +106,8 @@ tasks.register('bindGen', Exec) {
 tasks.register('typesGen', Exec) {
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine("cmd", "/c", "cargo test -p shared --features typegen")
+        commandLine("cmd", "/c", "cargo run --bin generate-types --features typegen")
     } else {
-        commandLine("sh", "-c", "cargo test -p shared --features typegen")
+        commandLine("sh", "-c", "cargo run --bin generate-types --features typegen")
     }
 }
