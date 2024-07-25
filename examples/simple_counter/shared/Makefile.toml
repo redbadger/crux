@@ -1,0 +1,36 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+
+[tasks.build]
+command = "cargo"
+args = ["build", "-p", "shared", "--release"]
+
+[tasks.uniffi-gen-swift]
+command = "cargo"
+args = [
+  "uniffi-gen-swift",
+  "--library",
+  "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/release/libshared.dylib",
+  "--out-dir",
+  "generated/swift/SharedFFI",
+]
+dependencies = ["build"]
+
+[tasks.build-android]
+command = "cargo"
+args = ["build", "-p", "shared", "--target", "aarch64-linux-android"]
+
+[tasks.uniffi-gen-java]
+command = "cargo"
+args = [
+  "uniffi-gen-kotlin",
+  "--library",
+  "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/aarch64-linux-android/debug/libshared.so",
+  "--out-dir",
+  "generated/java",
+]
+dependencies = ["build-android"]
+
+[tasks.generate-types]
+command = "cargo"
+args = ["generate-types"]
