@@ -18,3 +18,4 @@ uniffi = { git = "https://github.com/mozilla/uniffi-rs.git", branch = "main" }
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }
+cargo-make = { version = "=0.37.14" }
