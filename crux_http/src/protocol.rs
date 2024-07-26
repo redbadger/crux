@@ -41,7 +41,7 @@ impl std::fmt::Debug for HttpRequest {
         } else {
             format!("<binary data - {} bytes>", self.body.len())
         };
-        let mut builder = f.debug_struct("HttpReqeuest");
+        let mut builder = f.debug_struct("HttpRequest");
         builder
             .field("method", &self.method)
             .field("url", &self.url);
@@ -303,7 +303,7 @@ mod tests {
             let repr = format!("{req:?}");
             assert_eq!(
                 repr,
-                r#"HttpReqeuest { method: "POST", url: "http://example.com", headers: [HttpHeader { name: "foo", value: "bar" }], body: "hello world!" }"#
+                r#"HttpRequest { method: "POST", url: "http://example.com", headers: [HttpHeader { name: "foo", value: "bar" }], body: "hello world!" }"#
             );
         }
 
@@ -316,7 +316,7 @@ mod tests {
             let repr = format!("{req:?}");
             assert_eq!(
                 repr,
-                r#"HttpReqeuest { method: "POST", url: "http://example.com", body: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀"... }"#
+                r#"HttpRequest { method: "POST", url: "http://example.com", body: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀"... }"#
             );
         }
 
@@ -328,7 +328,7 @@ mod tests {
             let repr = format!("{req:?}");
             assert_eq!(
                 repr,
-                r#"HttpReqeuest { method: "POST", url: "http://example.com", body: <binary data - 4 bytes> }"#
+                r#"HttpRequest { method: "POST", url: "http://example.com", body: <binary data - 4 bytes> }"#
             );
         }
     }

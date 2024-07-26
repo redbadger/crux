@@ -13,6 +13,9 @@ fn main() -> anyhow::Result<()> {
     // Note: currently required as we can't find enums inside enums, see:
     // https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features
     gen.register_type::<TextCursor>()?;
+
+    // Register types from crux_kv
+    // NOTE: in the next version of crux_kv, this will not be necessary
     gen.register_type::<KeyValueResponse>()?;
     gen.register_type::<KeyValueError>()?;
     gen.register_type::<Value>()?;

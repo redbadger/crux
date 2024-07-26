@@ -16,9 +16,11 @@ fn main() -> anyhow::Result<()> {
     gen.register_app::<CatFacts>()?;
 
     // types from `crux_http` that aren't automatically discovered
+    // NOTE: in the next version of `crux_http`, these will be automatically registered
     gen.register_type::<HttpError>()?;
 
     // types from `crux_kv` that aren't automatically discovered
+    // NOTE: in the next version of `crux_kv`, these will be automatically registered
     gen.register_type::<KeyValueResponse>()?;
     gen.register_type::<KeyValueError>()?;
     gen.register_type::<Value>()?;

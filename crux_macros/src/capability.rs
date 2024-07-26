@@ -40,7 +40,7 @@ impl ToTokens for CapabilityStructReceiver {
             where
                 F: Fn(NewEv) -> Ev + Send + Sync + 'static,
                 Ev: 'static,
-                NewEv: 'static,
+                NewEv: 'static + Send,
             {
               #name::new(self.context.map_event(f))
             }
@@ -117,7 +117,7 @@ mod tests {
             where
                 F: Fn(NewEv) -> Ev + Send + Sync + 'static,
                 Ev: 'static,
-                NewEv: 'static,
+                NewEv: 'static + Send,
             {
                 Render::new(self.context.map_event(f))
             }

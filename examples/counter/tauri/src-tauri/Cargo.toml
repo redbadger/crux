@@ -28,3 +28,9 @@ tauri = { version = "1.6", features = ["shell-open"] }
 # this feature is used for production builds or when `devPath` points to the filesystem
 # DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(mobile)',
+    'cfg(desktop)',
+] }
