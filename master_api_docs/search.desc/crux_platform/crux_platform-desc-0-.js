@@ -1,0 +1,1 @@
+searchState.loadedDescShard("crux_platform", 0, "TODO mod docs\nReturns the argument unchanged.\nReturns the argument unchanged.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.")
