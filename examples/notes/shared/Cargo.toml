@@ -10,7 +10,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [features]
-typegen = ["crux_core/typegen", "crux_kv/typegen"]
+typegen = ["crux_core/typegen"]
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]

@@ -9,7 +9,7 @@ crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
 [features]
-typegen = ["crux_core/typegen", "crux_http/typegen", "crux_kv/typegen"]
+typegen = ["crux_core/typegen"]
 
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }

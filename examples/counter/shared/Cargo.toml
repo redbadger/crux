@@ -9,7 +9,7 @@ crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
 [features]
-typegen = ["crux_core/typegen", "crux_http/typegen"]
+typegen = ["crux_core/typegen"]
 
 [dependencies]
 async-sse = "5.1.0"
