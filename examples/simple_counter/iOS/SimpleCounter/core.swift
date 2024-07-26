@@ -10,7 +10,7 @@ class Core: ObservableObject {
     }
     
     func update(_ event: Event) {
-        let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
+        let effects = [UInt8](processEvent(data: Data(try! event.bincodeSerialize())))
         
         let requests: [Request] = try! .bincodeDeserialize(input: effects)
         for request in requests {
