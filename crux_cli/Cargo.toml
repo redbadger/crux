@@ -7,7 +7,7 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
-rust-version.workspace = true
+rust-version = "1.70"
 
 [[bin]]
 name = "crux"
@@ -15,10 +15,17 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-clap = { version = "4.3.24", features = ["derive"] }
+clap = { version = "4.4.18", features = ["derive"] }
 console = "0.15.8"
+guppy = "0.17.4"
 ignore = "0.4.22"
+libc = "0.2.155"
 ramhorns = "1.0.0"
+rustdoc-types = "0.26.0"
 serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0.117"
 similar = { version = "2.5.0", features = ["inline"] }
+tokio = { version = "1.38.0", features = ["full"] }
+tokio-fd = "0.3.0"
 toml = "0.8.14"
+wit-encoder = "0.212.0"
