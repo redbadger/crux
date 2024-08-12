@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.8.1](https://github.com/redbadger/crux/compare/crux_core-v0.8.0...crux_core-v0.8.1) - 2024-08-12
+
+### Bug fixes
+- Fix a crash when dropping the core caused by the drop order interacting with async channels
+
 ## [0.8.0](https://github.com/redbadger/crux/compare/crux_core-v0.7.6...crux_core-v0.8.0) - 2024-05-21
 
 Note: this is a breaking change release.
