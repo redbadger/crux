@@ -27,12 +27,20 @@ pub struct Core<Ef, A>
 where
     A: App,
 {
+    // WARNING: The user controlled types _must_ be defined first
+    // so that they are dropped first, in case they contain coordination
+    // primitives which attempt to wake up a future when dropped. For that
+    // reason the executor _must_ outlive the user type instances
+
+    // user types
     model: RwLock<A::Model>,
-    executor: QueuingExecutor,
     capabilities: A::Capabilities,
+    app: A,
+
+    // internals
     requests: Receiver<Ef>,
     capability_events: Receiver<A::Event>,
-    app: A,
+    executor: QueuingExecutor,
 }
 // ANCHOR_END: core
 

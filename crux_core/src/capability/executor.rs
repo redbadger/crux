@@ -52,7 +52,7 @@ impl Spawner {
 
         self.task_sender
             .send(task)
-            .expect("to be able to send tasks on an unbounded queue")
+            .expect("unable to spawn an async task, task sender channel is disconnected.")
     }
 }
 // ANCHOR_END: spawning
@@ -65,7 +65,7 @@ impl ArcWake for Task {
         arc_self
             .task_sender
             .send(cloned)
-            .expect("to be able to send tasks on an unbounded queue")
+            .expect("unable to wake an async task, task sender channel is disconnected.")
     }
 }
 // ANCHOR_END: arc_wake
