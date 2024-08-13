@@ -176,7 +176,7 @@ languages.
 
 - Copy over the
   [shared_types](https://github.com/redbadger/crux/tree/master/examples/simple_counter/shared_types)
-  folder from the counter example.
+  folder from the simple_counter example.
 
 - Add the shared types crate to the workspace in the `/Cargo.toml` file at the
   monorepo root. It should look something like this:

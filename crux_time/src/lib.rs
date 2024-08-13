@@ -40,9 +40,31 @@ impl Operation for TimeRequest {
 ///
 /// This capability provides access to the current time and allows the app to ask for
 /// notifications when a specific instant has arrived or a duration has elapsed.
-#[derive(crux_core::macros::Capability)]
 pub struct Time<Ev> {
     context: CapabilityContext<TimeRequest, Ev>,
+}
+
+impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
+    type Operation = TimeRequest;
+    type MappedSelf<MappedEv> = Time<MappedEv>;
+
+    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
+    where
+        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        Ev: 'static,
+        NewEv: 'static + Send,
+    {
+        Time::new(self.context.map_event(f))
+    }
+
+    #[cfg(feature = "typegen")]
+    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+        generator.register_type::<Instant>()?;
+        generator.register_type::<Duration>()?;
+        generator.register_type::<Self::Operation>()?;
+        generator.register_type::<<Self::Operation as Operation>::Output>()?;
+        Ok(())
+    }
 }
 
 impl<Ev> Clone for Time<Ev> {

@@ -10,6 +10,9 @@ license.workspace = true
 keywords.workspace = true
 rust-version.workspace = true
 
+[features]
+typegen = []
+
 [dependencies]
 crux_core = { version = "0.8.1", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
