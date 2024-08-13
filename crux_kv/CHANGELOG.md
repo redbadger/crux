@@ -8,6 +8,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/redbadger/crux/compare/crux_kv-v0.4.2...crux_kv-v0.5.0) - 2024-08-13
+
+It is no longer necessary to register types separately for this capability.
+So you no longer need this in your `build.rs` file in the shared_types crate:
+
+```rust
+gen.register_type::<KeyValueResponse>()?;
+gen.register_type::<KeyValueError>()?;
+gen.register_type::<Value>()?;
+```
+
+### Other
+- merge 0.8.1 to master
+
 ## [0.4.2](https://github.com/redbadger/crux/compare/crux_kv-v0.4.1...crux_kv-v0.4.2) - 2024-08-12
 
 ### Other

@@ -22,7 +22,7 @@ rust-version = "1.66"
 anyhow = "1.0.86"
 crux_core = "0.8"
 crux_http = "0.9"
-serde = "1.0.203"
+serde = "1.0.208"
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }

@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/redbadger/crux/compare/crux_macros-v0.3.10...crux_macros-v0.4.0) - 2024-08-13
+
+### Other
+- capabilities can now do their own type registration, so it's no longer
+  necessary to register types in the `build.rs` in the `shared_types` crate.
+- crux_http and crux_kv now register their additional types
+- override typegen for Compose capability to panic with msg
+- Making #[effect(skip)] skip fields when serializing
+- rust deps
+
 ## [0.3.10](https://github.com/redbadger/crux/compare/crux_macros-v0.3.9...crux_macros-v0.3.10) - 2024-05-21
 
 ### Other

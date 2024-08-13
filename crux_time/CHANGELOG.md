@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/redbadger/crux/compare/crux_time-v0.4.4...crux_time-v0.5.0) - 2024-08-13
+
+### Other
+- merge 0.8.1 to master
+
 ## [0.4.4](https://github.com/redbadger/crux/compare/crux_time-v0.4.3...crux_time-v0.4.4) - 2024-08-12
 
 ### Other

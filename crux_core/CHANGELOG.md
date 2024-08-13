@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.0-rc.1](https://github.com/redbadger/crux/compare/crux_core-v0.8.1...crux_core-v0.9.0-rc.1) - 2024-08-13
+
+### Other
+- merge 0.8.1 to master
+
 ## [0.8.1](https://github.com/redbadger/crux/compare/crux_core-v0.8.0...crux_core-v0.8.1) - 2024-08-12
 
 ### Bug fixes
