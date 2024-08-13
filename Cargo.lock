@@ -355,7 +355,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "assert_fs",
@@ -383,7 +383,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.9.2"
+version = "0.9.3"
 dependencies = [
  "anyhow",
  "assert_fs",
@@ -405,7 +405,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -431,7 +431,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "crux_core",
  "serde",
@@ -439,7 +439,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
  "chrono",
  "crux_core",
