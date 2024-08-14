@@ -56,9 +56,9 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 rust-version = "1.66"
 
 [workspace.dependencies]
-anyhow = "1.0.79"
-crux_core = "0.7"
-serde = "1.0.196"
+anyhow = "1.0.86"
+crux_core = "0.8"
+serde = "1.0.203"
 ```
 
 The library's manifest, at `/shared/Cargo.toml`, should look something like the
@@ -89,7 +89,7 @@ the FFI bindings for iOS and Android.
 
 #### Generating the `uniffi-bindgen` CLI tool
 
-Since Mozilla released version `0.23.0` of Uniffi, we need to also generate the
+Since version `0.23.0` of Uniffi, we need to also generate the
 binary that generates these bindings. This avoids the possibility of getting a
 version mismatch between a separately installed binary and the crate's Uniffi
 version. You can read more about it
@@ -174,31 +174,15 @@ cargo build
 This crate serves as the container for type generation for the foreign
 languages.
 
+Work is being done to remove the need for this crate, but for now, it is needed
+in order to drive the generation of the types that cross the FFI boundary.
+
 - Copy over the
   [shared_types](https://github.com/redbadger/crux/tree/master/examples/simple_counter/shared_types)
-  folder from the counter example.
+  folder from the simple_counter example.
 
-- Add the shared types crate to the workspace in the `/Cargo.toml` file at the
-  monorepo root. It should look something like this:
-
-```toml
-[workspace]
-members = ["shared", "shared_types"]
-resolver = "1"
-
-[workspace.package]
-authors = ["Red Badger Consulting Limited"]
-edition = "2021"
-repository = "https://github.com/redbadger/crux/"
-license = "Apache-2.0"
-keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.66"
-
-[workspace.dependencies]
-anyhow = "1.0.79"
-crux_core = "0.7"
-serde = "1.0.196"
-```
+- Add the shared types crate to `workspace.members` in the `/Cargo.toml` file at the
+  monorepo root.
 
 - Edit the `build.rs` file and make sure that your app type is registered. In
   our example, the app type is `Counter`, so make sure you include this
@@ -214,17 +198,53 @@ The `build.rs` file should now look like this:
 {{#include ../../../examples/simple_counter/shared_types/build.rs}}
 ```
 
+If you are using the latest versions of the
+`crux_http` (>= `v0.10.0`), `crux_kv` (>= `v0.5.0`) or `crux_time` (>= `v0.5.0`)
+capabilities, you will need to add a build dependency to the capability crate,
+with the `typegen` feature enabled — so your `Cargo.toml` file may end up looking something like this
+(from the [`cat_facts`](https://github.com/redbadger/crux/tree/master/examples/cat_facts) example):
+
+```toml
+{{#include ../../../examples/cat_facts/shared_types/Cargo.toml}}
+```
+
 ````admonish tip
- You may also need to register any nested enum types (due to a current limitation with the reflection library, see <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>).
-Here is an example of this from the [`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs) file in the `shared_types` crate of the [notes example](https://github.com/redbadger/crux/tree/master/examples/notes):
+Due to a current limitation with the reflection library,
+you may need to manually register nested enum types in your `build.rs` file.
+(see <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>)
+
+
+*Note, you don't have to do this for the latest versions of the
+`crux_http` (>= `v0.10.0`), `crux_kv` (>= `v0.5.0`) or `crux_time` (>= `v0.5.0`)
+capabilities, which now do this registration for you — although you will need to add
+a build dependency to the capability crate, with the `typegen` feature enabled.*
+
+If you _do_ end up needing to register a type manually (you should get a helpful error to tell you this),
+you can use the `register_type` method (e.g. `gen.register_type::<TextCursor>()?;`) as
+shown in this
+[`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs)
+file from the `shared_types` crate of the
+[notes example](https://github.com/redbadger/crux/tree/master/examples/notes):
 
 ```rust,ignore
 {{#include ../../../examples/notes/shared_types/build.rs}}
 ```
 ````
 
+### Building your app
+
+Make sure everything builds and foreign types get generated into the
+`generated` folder.
+
+(If you're generating TypeScript, you may need `pnpm` to be installed and in your `$PATH`.)
+
+```sh
+cargo build
+```
+
 ````admonish tip
-For the above to compile, your `Capabilities` struct must implement the `Export` trait. There is a derive macro that can do this for you, e.g.:
+If you have problems building, make sure your `Capabilities` struct implements the `Export` trait.
+There is a derive macro that can do this for you, e.g.:
 
 ```rust,ignore
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
@@ -260,12 +280,6 @@ pub struct Capabilities {
 ```
 ````
 
-- Make sure everything builds and foreign types get generated into the
-  `generated` folder. This step needs pnpm installed and on your `$PATH`.
-
-  ```sh
-  cargo build
-  ```
 
 ```admonish success
 You should now be ready to set up [iOS](iOS/index.md), [Android](Android/index.md), or [web](web/index.md) specific builds.
