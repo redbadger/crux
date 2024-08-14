@@ -174,31 +174,15 @@ cargo build
 This crate serves as the container for type generation for the foreign
 languages.
 
+Work is being done to remove the need for this crate, but for now, it is needed
+in order to drive the generation of the types that cross the FFI boundary.
+
 - Copy over the
   [shared_types](https://github.com/redbadger/crux/tree/master/examples/simple_counter/shared_types)
   folder from the simple_counter example.
 
-- Add the shared types crate to the workspace in the `/Cargo.toml` file at the
-  monorepo root. It should look something like this:
-
-```toml
-[workspace]
-members = ["shared", "shared_types"]
-resolver = "1"
-
-[workspace.package]
-authors = ["Red Badger Consulting Limited"]
-edition = "2021"
-repository = "https://github.com/redbadger/crux/"
-license = "Apache-2.0"
-keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.66"
-
-[workspace.dependencies]
-anyhow = "1.0.86"
-crux_core = "0.8"
-serde = "1.0.203"
-```
+- Add the shared types crate to `workspace.members` in the `/Cargo.toml` file at the
+  monorepo root.
 
 - Edit the `build.rs` file and make sure that your app type is registered. In
   our example, the app type is `Counter`, so make sure you include this
@@ -214,16 +198,29 @@ The `build.rs` file should now look like this:
 {{#include ../../../examples/simple_counter/shared_types/build.rs}}
 ```
 
+If you are using the latest versions of the
+`crux_http` (>= `v0.10.0`), `crux_kv` (>= `v0.5.0`) or `crux_time` (>= `v0.5.0`)
+capabilities, you will need to add a build dependency to the capability crate,
+with the `typegen` feature enabled — so your `Cargo.toml` file may end up looking something like this
+(from the [`cat_facts`](https://github.com/redbadger/crux/tree/master/examples/cat_facts) example):
+
+```toml
+{{#include ../../../examples/cat_facts/shared_types/Cargo.toml}}
+```
+
 ````admonish tip
 Due to a current limitation with the reflection library,
 you may need to manually register nested enum types in your `build.rs` file.
 (see <https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features>)
 
 
-*Note, you don't have to do this for the latest versions of the `crux_http`, `crux_kv` or `crux_time`
-capabilities, which now do this registration for you.*
+*Note, you don't have to do this for the latest versions of the
+`crux_http` (>= `v0.10.0`), `crux_kv` (>= `v0.5.0`) or `crux_time` (>= `v0.5.0`)
+capabilities, which now do this registration for you — although you will need to add
+a build dependency to the capability crate, with the `typegen` feature enabled.*
 
-If you do need to register a type manually, you can use the `register_type` method (e.g. `gen.register_type::<TextCursor>()?;`) as
+If you _do_ end up needing to register a type manually (you should get a helpful error to tell you this),
+you can use the `register_type` method (e.g. `gen.register_type::<TextCursor>()?;`) as
 shown in this
 [`build.rs`](https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs)
 file from the `shared_types` crate of the
