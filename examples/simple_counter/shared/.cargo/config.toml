@@ -1,0 +1,5 @@
+[alias]
+generate-types = "run --bin generate-types --features typegen"
+uniffi-bindgen = "run --bin uniffi-bindgen"
+uniffi-gen-swift = "uniffi-bindgen generate --language swift"
+uniffi-gen-kotlin = "uniffi-bindgen generate --language kotlin"
