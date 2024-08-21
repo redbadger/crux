@@ -12,7 +12,6 @@ use core::CoreService;
 #[component]
 fn App() -> Element {
     let view = use_signal(ViewModel::default);
-
     let core = use_coroutine(|mut rx| {
         let svc = CoreService::new(view);
         async move { svc.run(&mut rx).await }

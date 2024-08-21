@@ -8,7 +8,7 @@ android {
     namespace 'com.example.simple_counter.shared'
     compileSdk 34
 
-    ndkVersion "27.0.11902837"
+    ndkVersion "27.0.12077973"
 
     defaultConfig {
         minSdk 33
