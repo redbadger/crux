@@ -6,7 +6,7 @@ use dioxus::{
 };
 use futures_util::{StreamExt, TryStreamExt};
 use shared::{App, Effect, Event, ViewModel};
-use tracing::{debug, info};
+use tracing::debug;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::{http, sse};
