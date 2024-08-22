@@ -3,7 +3,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 
 import init_core from "shared/shared";
 import {
@@ -34,7 +33,7 @@ const Home: NextPage = () => {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    /*once*/ []
+    /*once*/ [],
   );
 
   return (
