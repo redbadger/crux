@@ -6,6 +6,7 @@
 
 use async_trait::async_trait;
 use derive_builder::Builder;
+use http_types::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use crate::HttpError;
@@ -208,21 +209,30 @@ impl ProtocolRequestBuilder for crate::Request {
     }
 }
 
-impl From<HttpResponse> for crate::ResponseAsync {
-    fn from(effect_response: HttpResponse) -> Self {
+impl TryFrom<HttpResponse> for crate::ResponseAsync {
+    type Error = HttpError;
+
+    fn try_from(effect_response: HttpResponse) -> Result<Self, Self::Error> {
+        // Response::new panics on invalid status, great.
+        // let _status: StatusCode = effect_response.status.try_into()?;
+
         let mut res = crate::http::Response::new(effect_response.status);
         res.set_body(effect_response.body);
         for header in effect_response.headers {
             res.append_header(header.name.as_str(), header.value);
         }
 
-        crate::ResponseAsync::new(res)
+        Ok(crate::ResponseAsync::new(res))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use core::str;
+
     use super::*;
+    use crate::response::Response;
+    use crate::ResponseAsync;
 
     #[test]
     fn test_http_request_get() {
@@ -331,5 +341,119 @@ mod tests {
                 r#"HttpRequest { method: "POST", url: "http://example.com", body: <binary data - 4 bytes> }"#
             );
         }
+    }
+
+    #[test]
+    fn conversion_circuits() -> Result<(), anyhow::Error> {
+        let empty_body = HttpResponse {
+            status: 500,
+            headers: vec![],
+            body: vec![],
+        };
+
+        let empty_header_name = HttpResponse {
+            status: 500,
+            headers: vec![HttpHeader {
+                name: String::new(),
+                value: String::new(),
+            }],
+            body: vec![],
+        };
+
+        let empty_header_value = HttpResponse {
+            status: 500,
+            headers: vec![HttpHeader {
+                name: "content-type".to_string(),
+                value: String::new(),
+            }],
+            body: vec![],
+        };
+
+        let silly_body = HttpResponse {
+            status: 500,
+            headers: vec![],
+            body: vec![0, 13, 71],
+        };
+
+        let null_body = HttpResponse {
+            status: 500,
+            headers: vec![],
+            body: vec![0],
+        };
+
+        // try all byte values
+        let byte_bodies = (0..=255).map(|b| HttpResponse {
+            status: 500,
+            headers: vec![HttpHeader {
+                name: str::from_utf8(&[b]).unwrap_or("").to_string(),
+                value: str::from_utf8(&[b]).unwrap_or("").to_string(),
+            }],
+            body: vec![b],
+        });
+
+        for response in [
+            empty_body,
+            empty_header_name,
+            empty_header_value,
+            silly_body,
+            null_body,
+        ]
+        .into_iter()
+        .chain(byte_bodies)
+        {
+            let response_async: Result<ResponseAsync, _> = response.try_into();
+            let http_response: http_types::Response = response_async?.into();
+
+            ResponseAsync::new(http_response);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn deserialize_weird_responses() -> Result<(), anyhow::Error> {
+        let bad_jsons = [
+            r#""#,
+            r#""""#,
+            r#"ERROR"#,
+            r#"{}"#,
+            r#"{status:null,headers:null,body:null}"#,
+            r#"{"status":null,"headers":null,"body":null}"#,
+            r#"{"status":0,"headers":[],"body":""}"#,
+            r#"{"status":0,"headers":[{}],"body":""}"#,
+            r#"{"status":0,"headers":[{"":""}],"body":""}"#,
+            r#"{"status":0,"headers":[{"name":null}],"body":""}"#,
+            r#"{"status":0,"headers":[{"name":null,"value":null}],"body":""}"#,
+            r#"{"status":0,"headers":[{"name":"","value":""}],"body":""}"#,
+            r#"{"status":-1,"headers":[{"name":"","value":""}],"body":""}"#,
+        ];
+
+        let weird_jsons = [
+            r#"{"status":504,"headers":[{"name":"","value":""},{"name":"","value":""},{"name":"","value":""}],"body":[]}"#,
+            r#"{"status":504,"headers":[{"name":"blah","value":"7"},{"name":"blah","value":""},{"name":"blah","value":""}],"body":[]}"#,
+            r#"{"status":504,"headers":[{"name":"","value":""},{"name":"","value":""},{"name":"","value":""}],"body":[0, 0, 0, 0]}"#,
+            r#"{"status":504,"headers":[{"name":"","value":""},{"name":"","value":""},{"name":"","value":""}],"body":[255, 255, 0, 255, 67]}"#,
+            r#"{"status":504,"headers":[{"name":"Content-Length","value":"40"}],"body":[255, 255, 0, 255, 67]}"#,
+        ];
+
+        for json in bad_jsons {
+            let response: Result<HttpResponse, _> = serde_json::from_slice(json.as_bytes());
+            assert!(response.is_err());
+        }
+
+        for json in weird_jsons {
+            let response: Result<HttpResponse, _> = serde_json::from_slice(json.as_bytes());
+            assert!(response.is_ok());
+
+            let response_async: ResponseAsync = response?.try_into()?;
+            let http_response: http_types::Response = response_async.into();
+
+            eprintln!("{:?}", http_response);
+            ResponseAsync::new(http_response);
+        }
+
+        panic!();
+
+        Ok(())
     }
 }

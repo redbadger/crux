@@ -114,7 +114,7 @@ impl Client {
             Box::pin(async move {
                 let req = req.into_protocol_request().await.unwrap();
                 match client.effect_sender.send(req).await {
-                    HttpResult::Ok(res) => Ok(res.into()),
+                    HttpResult::Ok(res) => res.try_into(),
                     HttpResult::Err(e) => Err(e),
                 }
             })
@@ -129,7 +129,8 @@ impl Client {
         };
 
         let res = next.run(req, client).await?;
-        Ok(ResponseAsync::new(res.into()))
+        let res = res.into();
+        Ok(ResponseAsync::new(res)) // FIXME what? ResponseAsync -> Response –> ResponseAsync
     }
 
     /// Submit a `Request` and get the response body as bytes.
