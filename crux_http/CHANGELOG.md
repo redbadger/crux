@@ -8,7 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.10.0-rc.1](https://github.com/redbadger/crux/compare/crux_http-v0.9.3...crux_http-v0.10.0-rc.1) - 2024-08-13
+## [0.10.0](https://github.com/redbadger/crux/compare/crux_http-v0.9.3...crux_http-v0.10.0) - 2024-08-13
 
 It is no longer necessary to register types separately for this capability.
 So you no longer need this in your `build.rs` file in the `shared_types` crate:
