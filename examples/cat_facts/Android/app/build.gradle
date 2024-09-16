@@ -50,7 +50,7 @@ android {
 }
 
 dependencies {
-    def composeBom = platform('androidx.compose:compose-bom:2024.06.00')
+    def composeBom = platform('androidx.compose:compose-bom:2024.09.01')
     implementation composeBom
     androidTestImplementation composeBom
 
@@ -66,15 +66,15 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Optional - Integration with activities
-    implementation("androidx.activity:activity-compose:1.9.1")
+    implementation("androidx.activity:activity-compose:1.9.2")
     // Optional - Integration with ViewModels
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
     // Optional - Integration with LiveData
     implementation("androidx.compose.runtime:runtime-livedata")
 
 
     implementation project(path: ':shared')
-    implementation "androidx.compose.material:material-icons-extended:1.6.8"
+    implementation "androidx.compose.material:material-icons-extended:1.7.1"
 
     implementation "io.ktor:ktor-client-cio:2.2.2"
 
