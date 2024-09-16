@@ -8,13 +8,13 @@ edition = "2021"
 [dependencies]
 anyhow.workspace = true
 console_error_panic_hook = "0.1.7"
-dioxus = { version = "0.5", features = ["web"] }
+dioxus = { version = "0.6.0-alpha.2", features = ["web"] }
 dioxus-logger = "0.5.1"
 futures-util = "0.3.30"
-gloo-net = "0.5.0"
-js-sys = "0.3.69"
+gloo-net = "0.6.0"
+js-sys = "0.3.70"
 shared = { path = "../shared" }
 tracing = "0.1.40"
-wasm-bindgen = "0.2.92"
-wasm-bindgen-futures = "0.4.42"
+wasm-bindgen = "0.2.93"
+wasm-bindgen-futures = "0.4.43"
 wasm-streams = "0.4.0"

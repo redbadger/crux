@@ -29,7 +29,6 @@ impl CoreService {
 
     pub async fn run(&self, rx: &mut UnboundedReceiver<Event>) {
         let mut view = self.view;
-        *view.write() = self.core.view();
         while let Some(event) = rx.next().await {
             self.update(event, &mut view);
         }
@@ -48,7 +47,16 @@ fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
     debug!("effect: {:?}", effect);
     match effect {
         Effect::Render(_) => {
-            *view.write() = core.view();
+            // This currently issues a warning:
+            //
+            // "Write on signal happened while a component was running.
+            // Writing to signals during a render can cause infinite rerenders when you read
+            // the same signal in the component. Consider writing to the signal in an
+            // effect, future, or event handler if possible."
+            //
+            // I think this is a bug in Dioxus, as we are in a coroutine, which is a future.
+            // Anyway, it works.
+            view.set(core.view());
         }
 
         Effect::Http(mut request) => {

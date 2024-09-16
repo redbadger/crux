@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
-leptos = { version = "0.6.12", features = ["csr"] }
-log = "0.4.21"
+leptos = { version = "0.6.15", features = ["csr"] }
+log = "0.4.22"
 shared = { path = "../shared" }
 
 [lints.clippy]
