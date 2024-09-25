@@ -27,6 +27,7 @@ pub struct HttpRequest {
     pub url: String,
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
+    #[serde(with = "serde_bytes")]
     pub body: Vec<u8>,
 }
 
@@ -107,6 +108,7 @@ pub struct HttpResponse {
     pub status: u16, // FIXME this probably should be a giant enum instead.
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
+    #[serde(with = "serde_bytes")]
     pub body: Vec<u8>,
 }
 
