@@ -38,6 +38,7 @@ impl PublicItem {
     }
 
     /// The rendered item as a stream of [`Token`]s
+    #[allow(dead_code)]
     pub fn tokens(&self) -> impl Iterator<Item = &Token> {
         self.tokens.iter()
     }

@@ -47,6 +47,7 @@ pub struct PublicApi {
     pub(crate) items: Vec<PublicItem>,
 
     /// See [`Self::missing_item_ids()`]
+    #[allow(dead_code)]
     pub(crate) missing_item_ids: Vec<String>,
 }
 
@@ -58,6 +59,7 @@ impl PublicApi {
 
     /// Like [`Self::items()`], but ownership of all `PublicItem`s are
     /// transferred to the caller.
+    #[allow(dead_code)]
     pub fn into_items(self) -> impl Iterator<Item = PublicItem> {
         self.items.into_iter()
     }
@@ -73,6 +75,7 @@ impl PublicApi {
     ///
     /// The exact format of IDs are to be considered an implementation detail
     /// and must not be be relied on.
+    #[allow(dead_code)]
     pub fn missing_item_ids(&self) -> impl Iterator<Item = &String> {
         self.missing_item_ids.iter()
     }
