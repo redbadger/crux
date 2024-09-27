@@ -20,7 +20,6 @@ console = "0.15.8"
 guppy = "0.17.5"
 ignore = "0.4.23"
 libc = "0.2.155"
-public-api = "0.38.0"
 ramhorns = "1.0.0"
 rustdoc-types = "0.26.0"
 serde = { workspace = true, features = ["derive"] }

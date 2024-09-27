@@ -449,9 +449,8 @@ dependencies = [
  "guppy",
  "ignore",
  "libc",
- "public-api",
  "ramhorns",
- "rustdoc-types 0.26.0",
+ "rustdoc-types",
  "serde",
  "serde_json",
  "similar",
@@ -970,12 +969,6 @@ name = "guppy-workspace-hack"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92620684d99f750bae383ecb3be3748142d6095760afd5cbcf2261e9a279d780"
-
-[[package]]
-name = "hashbag"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98f494b2060b2a8f5e63379e1e487258e014cee1b1725a735816c0107a2e9d93"
 
 [[package]]
 name = "hashbrown"
@@ -1522,19 +1515,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "public-api"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb9c3424091bd95654453c01003276fb9f2690be8290e1f179018eefbea24b39"
-dependencies = [
- "hashbag",
- "rustdoc-types 0.30.0",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "pulldown-cmark"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1697,15 +1677,6 @@ name = "rustdoc-types"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b9be1bc4a0ec3445cfa2e4ba112827544890d43d68b7d1eda5359a9c09d2cd8"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "rustdoc-types"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89e3124c5a7883153fe3e762da9998cf36c302dbf1cc237869d297f9713e5655"
 dependencies = [
  "serde",
 ]
