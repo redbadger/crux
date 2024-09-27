@@ -1,6 +1,6 @@
 //! Contains all token handling logic.
 #[cfg(doc)]
-use crate::public_item::PublicItem;
+use super::public_item::PublicItem;
 
 /// A token in a rendered [`PublicItem`], used to apply syntax coloring in downstream applications.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -80,6 +80,7 @@ impl Token {
     }
     /// Give the length of the inner text of this token
     #[allow(clippy::len_without_is_empty)]
+    #[allow(dead_code)]
     #[must_use]
     pub fn len(&self) -> usize {
         self.text().len()

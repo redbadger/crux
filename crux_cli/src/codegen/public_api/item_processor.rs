@@ -1,9 +1,10 @@
-use super::crate_wrapper::CrateWrapper;
 use super::nameable_item::NameableItem;
-use super::{intermediate_public_item::IntermediatePublicItem, path_component::PathComponent};
+use super::{
+    crate_wrapper::CrateWrapper, intermediate_public_item::IntermediatePublicItem,
+    path_component::PathComponent,
+};
 use rustdoc_types::{
-    Crate, GenericArg, GenericArgs, Id, Impl, Import, Item, ItemEnum, Module, Path, Struct,
-    StructKind, Type, Variant, VariantKind,
+    Crate, Id, Impl, Import, Item, ItemEnum, Module, Struct, StructKind, Type, VariantKind,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -223,12 +224,11 @@ impl<'c> ItemProcessor<'c> {
     ) {
         let finished_item = unprocessed_item.finish(item, overridden_name, type_);
 
-        let children = children_for_item(item);
+        let children = children_for_item(item).into_iter().flatten();
         let impls = impls_for_item(item).into_iter().flatten();
 
         for id in children {
-            let parent_path = finished_item.path().into();
-            self.add_to_work_queue(parent_path, id);
+            self.add_to_work_queue(finished_item.path().into(), id);
         }
 
         // As usual, impls are special. We want impl items to appear grouped
@@ -410,57 +410,23 @@ impl ImplKind {
 
 /// Some items contain other items, which is relevant for analysis. Keep track
 /// of such relationships.
-fn children_for_item(item: &Item) -> Vec<&Id> {
+const fn children_for_item(item: &Item) -> Option<&Vec<Id>> {
     match &item.inner {
-        ItemEnum::Module(m) => m.items.iter().collect(),
-        ItemEnum::Union(u) => u.fields.iter().collect(),
-        ItemEnum::Struct(Struct {
-            kind: StructKind::Tuple(fields),
-            ..
-        }) => fields.iter().flatten().collect(),
+        ItemEnum::Module(m) => Some(&m.items),
+        ItemEnum::Union(u) => Some(&u.fields),
         ItemEnum::Struct(Struct {
             kind: StructKind::Plain { fields, .. },
             ..
-        }) => fields.iter().collect(),
-        ItemEnum::Variant(Variant {
+        })
+        | ItemEnum::Variant(rustdoc_types::Variant {
             kind: VariantKind::Struct { fields, .. },
             ..
-        }) => fields.iter().collect(),
-        ItemEnum::Variant(Variant {
-            kind: VariantKind::Tuple(fields),
-            ..
-        }) => fields.iter().flatten().collect(),
-        ItemEnum::Enum(e) => e.variants.iter().collect(),
-        ItemEnum::Trait(t) => t.items.iter().collect(),
-        ItemEnum::Impl(i) => i.items.iter().collect(),
-        ItemEnum::StructField(ty) => items_for_type(ty),
-        _ => vec![],
+        }) => Some(fields),
+        ItemEnum::Enum(e) => Some(&e.variants),
+        ItemEnum::Trait(t) => Some(&t.items),
+        ItemEnum::Impl(i) => Some(&i.items),
+        _ => None,
     }
-}
-
-fn items_for_type(ty: &Type) -> Vec<&Id> {
-    let mut ids = Vec::new();
-    if let Type::ResolvedPath(Path { id, args, name: _ }) = ty {
-        ids.push(id);
-        if let Some(args) = args {
-            if let GenericArgs::AngleBracketed { args, .. } = args.as_ref() {
-                let nested: Vec<&Id> = args
-                    .iter()
-                    .filter_map(|a| {
-                        if let GenericArg::Type(ty) = a {
-                            let ids = items_for_type(ty);
-                            (!ids.is_empty()).then_some(ids)
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten()
-                    .collect();
-                ids.extend(nested)
-            }
-        }
-    };
-    ids
 }
 
 pub fn impls_for_item(item: &Item) -> Option<&[Id]> {
