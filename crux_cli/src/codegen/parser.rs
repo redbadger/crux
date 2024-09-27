@@ -1,14 +1,14 @@
 use anyhow::Result;
 use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, Type};
 
-use super::public_api::PublicApi;
-use crate::codegen::{
+use super::public_api::{
     item_processor::{sorting_prefix, ItemProcessor},
     nameable_item::NameableItem,
     path_component::PathComponent,
     public_item::PublicItem,
-    render::RenderingContext,
+    PublicApi,
 };
+use crate::codegen::public_api::render::RenderingContext;
 
 pub fn parse(crate_: &Crate) -> Result<()> {
     let mut item_processor = ItemProcessor::new(crate_);
