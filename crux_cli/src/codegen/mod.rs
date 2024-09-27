@@ -8,7 +8,6 @@ mod path_component;
 mod public_api;
 mod public_item;
 mod render;
-mod rust_types;
 mod tokens;
 
 use std::{
@@ -58,8 +57,7 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
     })
     .await??;
 
-    let data = parser::parse(&crate_)?;
-    println!("\n\ndata: {data:?}");
+    parser::parse(&crate_)?;
 
     Ok(())
 }

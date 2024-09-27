@@ -1,12 +1,7 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use rustdoc_types::{Crate, Id, Impl, ItemEnum, Path, Type};
 
-use super::{
-    public_api::PublicApi,
-    rust_types::{RustEnum, RustStruct, RustTypeAlias},
-};
+use super::public_api::PublicApi;
 use crate::codegen::{
     item_processor::{sorting_prefix, ItemProcessor},
     nameable_item::NameableItem,
@@ -15,24 +10,7 @@ use crate::codegen::{
     render::RenderingContext,
 };
 
-/// The results of parsing Rust source input.
-#[derive(Default, Debug)]
-pub struct ParsedData {
-    /// Structs defined in the source
-    pub structs: HashMap<Id, RustStruct>,
-    /// Enums defined in the source
-    pub enums: HashMap<Id, RustEnum>,
-    /// Type aliases defined in the source
-    pub aliases: HashMap<Id, RustTypeAlias>,
-}
-
-impl ParsedData {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-
-pub fn parse(crate_: &Crate) -> Result<ParsedData> {
+pub fn parse(crate_: &Crate) -> Result<()> {
     let mut item_processor = ItemProcessor::new(crate_);
     add_items(crate_, "Effect", &["Ffi"], &mut item_processor);
     add_items(crate_, "App", &["Event", "ViewModel"], &mut item_processor);
@@ -69,15 +47,13 @@ pub fn parse(crate_: &Crate) -> Result<ParsedData> {
 
     public_api.items.sort_by(PublicItem::grouping_cmp);
 
-    let mut parsed_data = ParsedData::new();
-
     println!();
 
     for item in public_api.items {
         println!("{:?}", item.sortable_path);
         println!("{}\n", item);
     }
-    Ok(parsed_data)
+    Ok(())
 }
 
 fn add_items<'c: 'p, 'p>(
