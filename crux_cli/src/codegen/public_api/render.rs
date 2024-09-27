@@ -1012,7 +1012,7 @@ mod test {
         };
     }
 
-    use crate::codegen::tokens;
+    use crate::codegen::public_api::tokens;
 
     use super::*;
 

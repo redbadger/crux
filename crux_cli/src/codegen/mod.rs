@@ -1,14 +1,6 @@
-mod crate_wrapper;
 mod graph;
-mod intermediate_public_item;
-mod item_processor;
-mod nameable_item;
 mod parser;
-mod path_component;
 mod public_api;
-mod public_item;
-mod render;
-mod tokens;
 
 use std::{
     fs::File,

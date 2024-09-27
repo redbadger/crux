@@ -1,4 +1,13 @@
-use super::public_item::PublicItem;
+mod crate_wrapper;
+mod intermediate_public_item;
+pub mod item_processor;
+pub mod nameable_item;
+pub mod path_component;
+pub mod public_item;
+pub mod render;
+mod tokens;
+
+use public_item::PublicItem;
 
 /// The public API of a crate
 ///
