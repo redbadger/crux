@@ -51,7 +51,8 @@ impl<T> Future for ShellRequest<T> {
         match shared_state.result.take() {
             Some(result) => Poll::Ready(result),
             None => {
-                shared_state.waker = Some(cx.waker().clone());
+                let cloned_waker = cx.waker().clone();
+                shared_state.waker = Some(cloned_waker);
                 Poll::Pending
             }
         }
