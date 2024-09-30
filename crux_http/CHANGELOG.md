@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.1](https://github.com/redbadger/crux/compare/crux_http-v0.10.0...crux_http-v0.10.1) - 2024-09-30
+
+Serialization of bytes can now be more efficient with [`serde_bytes`](https://github.com/serde-rs/bytes).
+This should be a non-breaking change.
+
 ## [0.10.0](https://github.com/redbadger/crux/compare/crux_http-v0.9.3...crux_http-v0.10.0) - 2024-08-13
 
 It is no longer necessary to register types separately for this capability.
