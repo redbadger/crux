@@ -94,3 +94,32 @@ impl QueuingExecutor {
     }
 }
 // ANCHOR_END: run_all
+
+#[cfg(test)]
+mod tests {
+    use crate::capability::shell_request::ShellRequest;
+
+    use super::*;
+
+    #[test]
+    fn test_task_does_not_leak() {
+        let counter: Arc<()> = Arc::new(());
+        assert_eq!(Arc::strong_count(&counter), 1);
+
+        let (executor, spawner) = executor_and_spawner();
+
+        let future = {
+            let counter = counter.clone();
+            async move {
+                assert_eq!(Arc::strong_count(&counter), 2);
+                ShellRequest::<()>::new().await;
+            }
+        };
+
+        spawner.spawn(future);
+        executor.run_all();
+        drop(executor);
+        drop(spawner);
+        assert_eq!(Arc::strong_count(&counter), 1);
+    }
+}

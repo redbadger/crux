@@ -13,6 +13,19 @@ pub struct ShellRequest<T> {
     shared_state: Arc<Mutex<SharedState<T>>>,
 }
 
+#[cfg(test)]
+impl ShellRequest<()> {
+    pub(crate) fn new() -> Self {
+        Self {
+            shared_state: Arc::new(Mutex::new(SharedState {
+                result: None,
+                waker: None,
+                send_request: None,
+            })),
+        }
+    }
+}
+
 struct SharedState<T> {
     result: Option<T>,
     waker: Option<Waker>,
