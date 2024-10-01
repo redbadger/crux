@@ -93,13 +93,17 @@ impl QueuingExecutor {
         // we read off both queues and execute the tasks we receive.
         // Since either queue can generate work for the other queue,
         // we read from them in a loop until we are sure both queues
-        // are exhaused
+        // are exhausted
         let mut did_some_work = true;
 
         while did_some_work {
             did_some_work = false;
             while let Ok(task) = self.spawn_queue.try_recv() {
-                let task_id = self.tasks.lock().unwrap().insert(Some(task));
+                let task_id = self
+                    .tasks
+                    .lock()
+                    .expect("Task slab poisoned")
+                    .insert(Some(task));
                 self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
                 did_some_work = true;
             }
@@ -111,14 +115,13 @@ impl QueuingExecutor {
     }
 
     fn run_task(&self, task_id: TaskId) {
-        let mut tasks = self.tasks.lock().unwrap();
-        let mut task = tasks
+        let mut task = self
+            .tasks
+            .lock()
+            .expect("Task slab poisoned")
             .get_mut(*task_id as usize)
             .and_then(|task| task.take())
             .expect("Task is missing");
-
-        // free the lock
-        drop(tasks);
 
         let waker = Arc::new(TaskWaker {
             task_id,
@@ -130,12 +133,12 @@ impl QueuingExecutor {
         // ...and poll it
         if task.as_mut().poll(context).is_pending() {
             // If it's still pending, put the future back in the slot
-            *self
-                .tasks
+            self.tasks
                 .lock()
-                .unwrap()
+                .expect("Task slab poisoned")
                 .get_mut(*task_id as usize)
-                .expect("Task slot is misisng") = Some(task);
+                .expect("Task slot is missing")
+                .replace(task);
         } else {
             // otherwise the future is completed and we can free the slot
             self.tasks.lock().unwrap().remove(*task_id as usize);
