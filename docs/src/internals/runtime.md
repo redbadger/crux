@@ -166,7 +166,7 @@ The final piece of the puzzle is the executor itself:
 
 This is the receiving end of the channel from the spawner.
 
-The executor has a single method, `run_all`:
+The executor has a single public method, `run_all`:
 
 ```rust,no_run,noplayground
 {{#include ../../../crux_core/src/capability/executor.rs:run_all}}

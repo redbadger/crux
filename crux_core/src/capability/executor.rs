@@ -137,6 +137,8 @@ impl QueuingExecutor {
                 .unwrap()
                 .get_mut(*task_id as usize)
                 .expect("Task slot is misisng") = Some(task);
+        } else {
+            self.tasks.lock().unwrap().remove(*task_id as usize);
         }
     }
 }
