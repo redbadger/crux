@@ -1,23 +1,21 @@
 use std::{
-    collections::HashMap,
     sync::{Arc, Mutex},
-    task::Context,
+    task::{Context, Wake},
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use futures::{
-    future,
-    task::{waker_ref, ArcWake},
-    Future, FutureExt,
-};
-use uuid::Uuid;
+use futures::{future, Future, FutureExt};
+use slab::Slab;
+
+type BoxFuture = future::BoxFuture<'static, ()>;
 
 // used in docs/internals/runtime.md
 // ANCHOR: executor
 pub(crate) struct QueuingExecutor {
-    task_queue: Receiver<Task>,
-    ready_queue: Receiver<Uuid>,
-    tasks: Mutex<HashMap<Uuid, Task>>,
+    spawn_queue: Receiver<BoxFuture>,
+    ready_queue: Receiver<TaskId>,
+    ready_sender: Sender<TaskId>,
+    tasks: Mutex<Slab<Option<BoxFuture>>>,
 }
 // ANCHOR_END: executor
 
@@ -25,48 +23,33 @@ pub(crate) struct QueuingExecutor {
 // ANCHOR: spawner
 #[derive(Clone)]
 pub struct Spawner {
-    task_sender: Sender<Task>,
-    ready_sender: Sender<Uuid>,
+    future_sender: Sender<BoxFuture>,
 }
 // ANCHOR_END: spawner
 
-// used in docs/internals/runtime.md
-// ANCHOR: task
-struct Task {
-    id: Uuid,
-    future: future::BoxFuture<'static, ()>,
-    ready_sender: Sender<Uuid>,
-}
+#[derive(Clone, Copy, Debug)]
+struct TaskId(u32);
 
-impl Task {
-    fn id(&self) -> Uuid {
-        self.id
-    }
+impl std::ops::Deref for TaskId {
+    type Target = u32;
 
-    fn notify(&self) -> NotifyTask {
-        NotifyTask {
-            task_id: self.id,
-            sender: self.ready_sender.clone(),
-        }
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
-
-// ANCHOR_END: task
 
 pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
-    let (task_sender, task_queue) = crossbeam_channel::unbounded();
+    let (future_sender, spawn_queue) = crossbeam_channel::unbounded();
     let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
 
     (
         QueuingExecutor {
             ready_queue,
-            task_queue,
-            tasks: Mutex::new(HashMap::new()),
-        },
-        Spawner {
-            task_sender,
+            spawn_queue,
             ready_sender,
+            tasks: Mutex::new(Slab::new()),
         },
+        Spawner { future_sender },
     )
 }
 
@@ -75,33 +58,33 @@ pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
 impl Spawner {
     pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
         let future = future.boxed();
-        let task = Task {
-            id: Uuid::new_v4(),
-            future,
-            ready_sender: self.ready_sender.clone(),
-        };
-
-        self.task_sender
-            .send(task)
+        self.future_sender
+            .send(future)
             .expect("unable to spawn an async task, task sender channel is disconnected.")
     }
 }
 // ANCHOR_END: spawning
 
+#[derive(Clone)]
+struct TaskWaker {
+    task_id: TaskId,
+    sender: Sender<TaskId>,
+}
+
 // used in docs/internals/runtime.md
-// ANCHOR: arc_wake
-impl ArcWake for NotifyTask {
-    fn wake_by_ref(arc_self: &Arc<Self>) {
-        let _ = arc_self.sender.send(arc_self.task_id);
-        // TODO should we report an error if send fails?
+// ANCHOR: wake
+impl Wake for TaskWaker {
+    fn wake(self: Arc<Self>) {
+        self.wake_by_ref();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        // This send can fail if the executor has been dropped.
+        // In which case, nothing to do
+        let _ = self.sender.send(self.task_id);
     }
 }
-// ANCHOR_END: arc_wake
-
-struct NotifyTask {
-    task_id: Uuid,
-    sender: Sender<Uuid>,
-}
+// ANCHOR_END: wake
 
 // used in docs/internals/runtime.md
 // ANCHOR: run_all
@@ -116,10 +99,9 @@ impl QueuingExecutor {
         while did_some_work {
             did_some_work = false;
             // While there are tasks to be processed
-            while let Ok(task) = self.task_queue.try_recv() {
-                let task_id = task.id();
-                self.tasks.lock().unwrap().insert(task_id, task);
-                self.run_task(task_id);
+            while let Ok(task) = self.spawn_queue.try_recv() {
+                let task_id = self.tasks.lock().unwrap().insert(Some(task));
+                self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
                 did_some_work = true;
             }
             while let Ok(task_id) = self.ready_queue.try_recv() {
@@ -129,19 +111,32 @@ impl QueuingExecutor {
         }
     }
 
-    fn run_task(&self, task_id: Uuid) {
+    fn run_task(&self, task_id: TaskId) {
         let mut tasks = self.tasks.lock().unwrap();
-        let mut task = tasks.remove(&task_id).unwrap();
+        let mut task = tasks
+            .get_mut(*task_id as usize)
+            .and_then(|task| task.take())
+            .expect("Task is missing");
+
+        // free the lock
         drop(tasks);
 
-        let notify = Arc::new(task.notify());
-        let waker = waker_ref(&notify);
+        let waker = Arc::new(TaskWaker {
+            task_id,
+            sender: self.ready_sender.clone(),
+        })
+        .into();
         let context = &mut Context::from_waker(&waker);
 
         // ...and poll it
-        if task.future.as_mut().poll(context).is_pending() {
+        if task.as_mut().poll(context).is_pending() {
             // If it's still pending, put it back
-            self.tasks.lock().unwrap().insert(task.id, task);
+            *self
+                .tasks
+                .lock()
+                .unwrap()
+                .get_mut(*task_id as usize)
+                .expect("Task slot is misisng") = Some(task);
         }
     }
 }
@@ -149,13 +144,14 @@ impl QueuingExecutor {
 
 #[cfg(test)]
 mod tests {
-    use crate::capability::shell_request::ShellRequest;
 
     use super::*;
+    use crate::capability::shell_request::ShellRequest;
 
     #[test]
     fn test_task_does_not_leak() {
-        let counter: Arc<()> = Arc::new(());
+        // Arc is a convenient RAII counter
+        let counter = Arc::new(());
         assert_eq!(Arc::strong_count(&counter), 1);
 
         let (executor, spawner) = executor_and_spawner();

@@ -180,7 +180,7 @@ call. The `waker_ref` creates a waker which, when asked to wake up, will call
 this method on the task:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:arc_wake}}
+{{#include ../../../crux_core/src/capability/executor.rs:wake}}
 ```
 
 this is where the task resubmits itself for processing on the next run.
