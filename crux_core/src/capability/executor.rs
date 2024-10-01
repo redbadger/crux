@@ -107,14 +107,25 @@ struct NotifyTask {
 // ANCHOR: run_all
 impl QueuingExecutor {
     pub fn run_all(&self) {
-        // While there are tasks to be processed
-        while let Ok(task) = self.task_queue.try_recv() {
-            let task_id = task.id();
-            self.tasks.lock().unwrap().insert(task_id, task);
-            self.run_task(task_id);
-        }
-        while let Ok(task_id) = self.ready_queue.try_recv() {
-            self.run_task(task_id);
+        // we read off both queues and execute the tasks we receive.
+        // Since either queue can generate work for the other queue,
+        // we read from them in a loop until we are sure both queues
+        // are exhaused
+        let mut did_some_work = true;
+
+        while did_some_work {
+            did_some_work = false;
+            // While there are tasks to be processed
+            while let Ok(task) = self.task_queue.try_recv() {
+                let task_id = task.id();
+                self.tasks.lock().unwrap().insert(task_id, task);
+                self.run_task(task_id);
+                did_some_work = true;
+            }
+            while let Ok(task_id) = self.ready_queue.try_recv() {
+                self.run_task(task_id);
+                did_some_work = true;
+            }
         }
     }
 
