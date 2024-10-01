@@ -98,7 +98,6 @@ impl QueuingExecutor {
 
         while did_some_work {
             did_some_work = false;
-            // While there are tasks to be processed
             while let Ok(task) = self.spawn_queue.try_recv() {
                 let task_id = self.tasks.lock().unwrap().insert(Some(task));
                 self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
@@ -130,7 +129,7 @@ impl QueuingExecutor {
 
         // ...and poll it
         if task.as_mut().poll(context).is_pending() {
-            // If it's still pending, put it back
+            // If it's still pending, put the future back in the slot
             *self
                 .tasks
                 .lock()
@@ -138,6 +137,7 @@ impl QueuingExecutor {
                 .get_mut(*task_id as usize)
                 .expect("Task slot is misisng") = Some(task);
         } else {
+            // otherwise the future is completed and we can free the slot
             self.tasks.lock().unwrap().remove(*task_id as usize);
         }
     }
