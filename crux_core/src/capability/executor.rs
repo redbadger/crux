@@ -1,15 +1,11 @@
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
-    task::Context,
+    task::{Context, RawWaker, RawWakerVTable, Waker},
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use futures::{
-    future,
-    task::{waker_ref, ArcWake},
-    Future, FutureExt,
-};
+use futures::{future, Future, FutureExt};
 use uuid::Uuid;
 
 // used in docs/internals/runtime.md
@@ -88,19 +84,47 @@ impl Spawner {
 }
 // ANCHOR_END: spawning
 
-// used in docs/internals/runtime.md
-// ANCHOR: arc_wake
-impl ArcWake for NotifyTask {
-    fn wake_by_ref(arc_self: &Arc<Self>) {
-        let _ = arc_self.sender.send(arc_self.task_id);
-        // TODO should we report an error if send fails?
-    }
-}
-// ANCHOR_END: arc_wake
-
+#[derive(Clone)]
 struct NotifyTask {
     task_id: Uuid,
     sender: Sender<Uuid>,
+}
+
+impl NotifyTask {
+    fn notify(&self) {
+        let _ = self.sender.send(self.task_id);
+    }
+
+    fn raw_waker(self) -> RawWaker {
+        let data = Box::new(self);
+        let data = Box::into_raw(data) as *const _ as *const ();
+
+        fn clone(data: *const ()) -> RawWaker {
+            let data: &NotifyTask = unsafe { &*(data as *const NotifyTask) };
+            data.clone().raw_waker()
+        }
+
+        fn wake(data: *const ()) {
+            let data: Box<NotifyTask> =
+                unsafe { Box::from_raw(data as *const NotifyTask as *mut _) };
+            data.notify();
+        }
+
+        fn wake_by_ref(data: *const ()) {
+            let data: &NotifyTask = unsafe { &*(data as *const NotifyTask) };
+            data.notify();
+        }
+
+        fn drop(data: *const ()) {
+            let _: Box<NotifyTask> = unsafe { Box::from_raw(data as *const NotifyTask as *mut _) };
+        }
+
+        RawWaker::new(data, &RawWakerVTable::new(clone, wake, wake_by_ref, drop))
+    }
+
+    fn construct_waker(self) -> Waker {
+        unsafe { Waker::from_raw(self.raw_waker()) }
+    }
 }
 
 // used in docs/internals/runtime.md
@@ -134,8 +158,8 @@ impl QueuingExecutor {
         let mut task = tasks.remove(&task_id).unwrap();
         drop(tasks);
 
-        let notify = Arc::new(task.notify());
-        let waker = waker_ref(&notify);
+        let notify = task.notify();
+        let waker = notify.construct_waker();
         let context = &mut Context::from_waker(&waker);
 
         // ...and poll it
