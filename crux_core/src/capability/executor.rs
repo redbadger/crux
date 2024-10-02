@@ -108,20 +108,35 @@ impl QueuingExecutor {
                 did_some_work = true;
             }
             while let Ok(task_id) = self.ready_queue.try_recv() {
-                self.run_task(task_id);
-                did_some_work = true;
+                match self.run_task(task_id) {
+                    RunTask::Unavailable => {
+                        // We were unable to run the task as it is (presumably) being run on
+                        // another thread. We re-queue the task for 'later' and do NOT set
+                        // `did_some_work = true`. That way we will keep looping and doing work
+                        // until all remaining work is 'unavailable', at which point we will bail
+                        // out of the loop, leaving the queued work to be finished by another thread.
+                        // This strategy should avoid dropping work or busy-looping
+                        self.ready_sender.send(task_id).expect("could not requeue");
+                    }
+                    RunTask::Suspended | RunTask::Completed => did_some_work = true,
+                }
             }
         }
     }
 
-    fn run_task(&self, task_id: TaskId) {
-        let mut task = self
+    fn run_task(&self, task_id: TaskId) -> RunTask {
+        let task = self
             .tasks
             .lock()
             .expect("Task slab poisoned")
             .get_mut(*task_id as usize)
-            .and_then(|task| task.take())
-            .expect("Task is missing");
+            .expect("Task slot is missing")
+            .take();
+        let Some(mut task) = task else {
+            // the slot exists but the task is missing - presumably it
+            // is being executed on another thread
+            return RunTask::Unavailable;
+        };
 
         let waker = Arc::new(TaskWaker {
             task_id,
@@ -139,12 +154,21 @@ impl QueuingExecutor {
                 .get_mut(*task_id as usize)
                 .expect("Task slot is missing")
                 .replace(task);
+            RunTask::Suspended
         } else {
             // otherwise the future is completed and we can free the slot
             self.tasks.lock().unwrap().remove(*task_id as usize);
+            RunTask::Completed
         }
     }
 }
+
+enum RunTask {
+    Unavailable,
+    Suspended,
+    Completed,
+}
+
 // ANCHOR_END: run_all
 
 #[cfg(test)]
