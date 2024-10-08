@@ -166,7 +166,7 @@ The final piece of the puzzle is the executor itself:
 
 This is the receiving end of the channel from the spawner.
 
-The executor has a single method, `run_all`:
+The executor has a single public method, `run_all`:
 
 ```rust,no_run,noplayground
 {{#include ../../../crux_core/src/capability/executor.rs:run_all}}
@@ -180,7 +180,7 @@ call. The `waker_ref` creates a waker which, when asked to wake up, will call
 this method on the task:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:arc_wake}}
+{{#include ../../../crux_core/src/capability/executor.rs:wake}}
 ```
 
 this is where the task resubmits itself for processing on the next run.

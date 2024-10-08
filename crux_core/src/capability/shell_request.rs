@@ -13,6 +13,19 @@ pub struct ShellRequest<T> {
     shared_state: Arc<Mutex<SharedState<T>>>,
 }
 
+#[cfg(test)]
+impl ShellRequest<()> {
+    pub(crate) fn new() -> Self {
+        Self {
+            shared_state: Arc::new(Mutex::new(SharedState {
+                result: None,
+                waker: None,
+                send_request: None,
+            })),
+        }
+    }
+}
+
 struct SharedState<T> {
     result: Option<T>,
     waker: Option<Waker>,
@@ -38,7 +51,8 @@ impl<T> Future for ShellRequest<T> {
         match shared_state.result.take() {
             Some(result) => Poll::Ready(result),
             None => {
-                shared_state.waker = Some(cx.waker().clone());
+                let cloned_waker = cx.waker().clone();
+                shared_state.waker = Some(cloned_waker);
                 Poll::Pending
             }
         }
