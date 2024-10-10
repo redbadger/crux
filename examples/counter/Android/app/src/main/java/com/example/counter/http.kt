@@ -23,7 +23,7 @@ suspend fun requestHttp(
             }
         }
     }
-    val bytes: Bytes = response.body()
+    val bytes = Bytes.valueOf(response.body())
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
     return HttpResponse(response.status.value.toShort(), headers, bytes)
 }

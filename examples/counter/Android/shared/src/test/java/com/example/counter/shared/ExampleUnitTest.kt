@@ -1,4 +1,4 @@
-package com.example.shared
+package com.example.counter.shared
 
 import org.junit.Test
 
