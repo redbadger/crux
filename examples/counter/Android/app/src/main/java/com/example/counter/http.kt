@@ -3,6 +3,7 @@ package com.example.counter
 import com.example.counter.shared_types.HttpHeader
 import com.example.counter.shared_types.HttpRequest
 import com.example.counter.shared_types.HttpResponse
+import com.novi.serde.Bytes
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.headers
@@ -22,8 +23,8 @@ suspend fun requestHttp(
             }
         }
     }
-    val bytes: ByteArray = response.body()
+    val bytes: Bytes = response.body()
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
-    return HttpResponse(response.status.value.toShort(), headers, bytes.toList())
+    return HttpResponse(response.status.value.toShort(), headers, bytes)
 }
 

@@ -50,7 +50,7 @@ android {
 }
 
 dependencies {
-    def composeBom = platform('androidx.compose:compose-bom:2024.09.01')
+    def composeBom = platform('androidx.compose:compose-bom:2024.09.03')
     implementation composeBom
     androidTestImplementation composeBom
 
@@ -61,13 +61,13 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // UI Tests
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestUtil 'androidx.test:orchestrator:1.5.0'
 
     // Optional - Integration with activities
     implementation("androidx.activity:activity-compose:1.9.2")
     // Optional - Integration with ViewModels
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     // Optional - Integration with LiveData
     implementation("androidx.compose.runtime:runtime-livedata")
 
@@ -76,6 +76,6 @@ dependencies {
 
     implementation "io.ktor:ktor-client-cio:2.2.2"
 
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0'
 }

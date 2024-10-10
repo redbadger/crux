@@ -41,7 +41,7 @@ android {
 }
 
 dependencies {
-    implementation "net.java.dev.jna:jna:5.13.0@aar"
+    implementation 'net.java.dev.jna:jna:5.15.0@aar'
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
@@ -61,6 +61,7 @@ cargo {
     // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
     targets = ["arm", "arm64", "x86", "x86_64"]
     extraCargoBuildArguments = ['--package', 'shared']
+    pythonCommand = "python3"
 }
 
 afterEvaluate {
@@ -79,6 +80,12 @@ afterEvaluate {
         tasks.named("generate${productFlavor}${buildType}Assets") {
             it.dependsOn(tasks.named("cargoBuild"))
         }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
