@@ -1,5 +1,6 @@
-package com.example.counter
+package com.redbadger.catfacts
 
+import com.novi.serde.Bytes
 import com.redbadger.catfacts.shared_types.HttpHeader
 import com.redbadger.catfacts.shared_types.HttpRequest
 import com.redbadger.catfacts.shared_types.HttpResponse
@@ -22,8 +23,8 @@ suspend fun requestHttp(
             }
         }
     }
-    val bytes: ByteArray = response.body()
+    val bytes = Bytes.valueOf(response.body())
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
-    return HttpResponse(response.status.value.toShort(), headers, bytes.toList())
+    return HttpResponse(response.status.value.toShort(), headers, bytes)
 }
 

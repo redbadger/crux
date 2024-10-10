@@ -1,4 +1,4 @@
-package com.example.android.ui.theme
+package com.redbadger.catfacts.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

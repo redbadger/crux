@@ -1,4 +1,4 @@
-package com.example.android
+package com.redbadger.catfacts
 
 import org.junit.Test
 

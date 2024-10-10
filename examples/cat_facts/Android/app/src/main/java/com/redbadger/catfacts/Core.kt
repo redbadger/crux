@@ -1,12 +1,11 @@
 @file:Suppress("NAME_SHADOWING")
 
-package com.example.android
+package com.redbadger.catfacts
 
 import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.counter.requestHttp
 import com.redbadger.catfacts.shared.handleResponse
 import com.redbadger.catfacts.shared.processEvent
 import com.redbadger.catfacts.shared.view

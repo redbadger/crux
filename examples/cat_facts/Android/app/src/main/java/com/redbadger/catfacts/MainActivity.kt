@@ -1,8 +1,9 @@
-package com.example.android
+package com.redbadger.catfacts
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,19 +30,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.example.android.ui.theme.AndroidTheme
 import com.redbadger.catfacts.shared_types.Event
-import com.redbadger.catfacts.shared_types.Event.Clear
-import com.redbadger.catfacts.shared_types.Event.Fetch
-import com.redbadger.catfacts.shared_types.Event.Get
+import com.redbadger.catfacts.ui.theme.CatfactsTheme
 import kotlinx.coroutines.launch
 import kotlin.jvm.optionals.getOrNull
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
-            AndroidTheme {
+            CatfactsTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -54,7 +53,7 @@ class MainActivity : ComponentActivity() {
 class MyCore : Core() {
     init {
         viewModelScope.launch {
-            update(Get())
+            update(Event.Get())
             update(Event.GetPlatform())
         }
     }
@@ -92,21 +91,21 @@ fun CatFacts(core: MyCore = viewModel()) {
         Text(text = core.view?.fact ?: "", modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { coroutineScope.launch { core.update(Clear()) } },
+                onClick = { coroutineScope.launch { core.update(Event.Clear()) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                onClick = { coroutineScope.launch { core.update(Get()) } },
+                onClick = { coroutineScope.launch { core.update(Event.Get()) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) { Text(text = "Get", color = Color.White) }
             Button(
-                onClick = { coroutineScope.launch { core.update(Fetch()) } },
+                onClick = { coroutineScope.launch { core.update(Event.Fetch()) } },
                 colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary
@@ -119,5 +118,5 @@ fun CatFacts(core: MyCore = viewModel()) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    AndroidTheme { CatFacts() }
+    CatfactsTheme { CatFacts() }
 }
