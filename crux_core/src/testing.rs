@@ -1,7 +1,6 @@
 //! Testing support for unit testing Crux apps.
-use std::rc::Rc;
-
 use anyhow::Result;
+use std::sync::Arc;
 
 use crate::{
     capability::{
@@ -27,7 +26,7 @@ where
 {
     app: App,
     capabilities: App::Capabilities,
-    context: Rc<AppContext<Ef, App::Event>>,
+    context: Arc<AppContext<Ef, App::Event>>,
 }
 
 struct AppContext<Ef, Ev> {
@@ -98,7 +97,7 @@ where
         Self {
             app: App::default(),
             capabilities: App::Capabilities::new_with_context(capability_context),
-            context: Rc::new(AppContext {
+            context: Arc::new(AppContext {
                 commands,
                 events,
                 executor,
@@ -117,7 +116,7 @@ where
 }
 
 impl<Ef, Ev> AppContext<Ef, Ev> {
-    pub fn updates(self: &Rc<Self>) -> Update<Ef, Ev> {
+    pub fn updates(self: &Arc<Self>) -> Update<Ef, Ev> {
         self.executor.run_all();
         let effects = self.commands.drain().collect();
         let events = self.events.drain().collect();
