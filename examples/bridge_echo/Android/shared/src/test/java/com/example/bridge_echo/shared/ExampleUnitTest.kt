@@ -1,4 +1,4 @@
-package com.example.bridge_echo
+package com.example.bridge_echo.shared
 
 import org.junit.Test
 
