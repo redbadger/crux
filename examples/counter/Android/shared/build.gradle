@@ -62,6 +62,7 @@ cargo {
     extraCargoBuildArguments = ['--package', 'shared']
     cargoCommand = System.getProperty("user.home") + "/.cargo/bin/cargo"
     rustcCommand = System.getProperty("user.home") + "/.cargo/bin/rustc"
+    pythonCommand = "python3"
 }
 
 afterEvaluate {

@@ -1,18 +1,16 @@
 plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
-    id 'org.mozilla.rust-android-gradle.rust-android'
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
 }
 
 android {
     namespace 'com.example.simple_counter.shared'
     compileSdk 34
 
-    ndkVersion "27.0.12077973"
+    ndkVersion "27.1.12297006"
 
     defaultConfig {
-        minSdk 33
-        targetSdk 34
+        minSdk 34
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -21,35 +19,38 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles {
-                getDefaultProguardFile('proguard-android-optimize.txt')
-                'proguard-rules.pro'
-            }
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_20
+        targetCompatibility JavaVersion.VERSION_20
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '20'
     }
-
     sourceSets {
         main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
     }
 }
 
 dependencies {
-    implementation 'net.java.dev.jna:jna:5.15.0@aar'
+    // added
+    implementation(libs.jna) {
+        artifact {
+            type = "aar"
+        }
+    }
 
-    implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    // original
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.material
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.junit
+    androidTestImplementation libs.androidx.espresso.core
 }
+
 
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
@@ -61,6 +62,8 @@ cargo {
     // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
     targets = ["arm", "arm64", "x86", "x86_64"]
     extraCargoBuildArguments = ['--package', 'shared']
+    cargoCommand = System.getProperty("user.home") + "/.cargo/bin/cargo"
+    rustcCommand = System.getProperty("user.home") + "/.cargo/bin/rustc"
     pythonCommand = "python3"
 }
 
@@ -80,12 +83,6 @@ afterEvaluate {
         tasks.named("generate${productFlavor}${buildType}Assets") {
             it.dependsOn(tasks.named("cargoBuild"))
         }
-    }
-}
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
