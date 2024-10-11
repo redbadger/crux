@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["assert_effect"],"mod":["bridge","capability","compose","render","testing"],"struct":["Core","Request"],"trait":["App","Effect"]};

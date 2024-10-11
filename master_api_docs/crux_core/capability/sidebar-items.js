@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Never"],"struct":["CapabilityContext","ProtoContext"],"trait":["Capability","Operation","WithContext"]};
