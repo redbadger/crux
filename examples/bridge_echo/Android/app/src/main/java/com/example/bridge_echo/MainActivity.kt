@@ -3,6 +3,7 @@ package com.example.bridge_echo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,45 +20,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bridge_echo.shared_types.Event
-import com.example.bridge_echo.ui.theme.CounterTheme
+import com.example.bridge_echo.ui.theme.BridgeEchoTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MyCore : Core() {
-    init {
-        viewModelScope.launch {
-            clock()
-        }
-        viewModelScope.launch {
-            ticker()
-        }
-    }
-
-    private suspend fun ticker() {
-        withContext(Dispatchers.Default) {
-            while (true) {
-                update(Event.Tick())
-            }
-        }
-    }
-
-    private suspend fun clock() {
-        withContext(Dispatchers.Default) {
-            while (true) {
-                update(Event.NewPeriod())
-                delay(1000)
-            }
-        }
-    }
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
-            CounterTheme {
+            BridgeEchoTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
@@ -85,8 +59,36 @@ fun View(model: MyCore = viewModel()) {
 
 @Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
-    CounterTheme {
+fun GreetingPreview() {
+    BridgeEchoTheme {
         View()
+    }
+}
+
+class MyCore : Core() {
+    init {
+        viewModelScope.launch {
+            clock()
+        }
+        viewModelScope.launch {
+            ticker()
+        }
+    }
+
+    private suspend fun ticker() {
+        withContext(Dispatchers.Default) {
+            while (true) {
+                update(Event.Tick())
+            }
+        }
+    }
+
+    private suspend fun clock() {
+        withContext(Dispatchers.Default) {
+            while (true) {
+                update(Event.NewPeriod())
+                delay(1000)
+            }
+        }
     }
 }

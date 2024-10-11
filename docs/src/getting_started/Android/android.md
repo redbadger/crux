@@ -16,9 +16,9 @@ We want to make setting up Android Studio to work with Crux really easy. As time
 The first thing we need to do is create a new Android app in Android Studio.
 
 Open Android Studio and create a new project, for "Phone and Tablet", of type
-"Empty Activity". In this walk-through, we'll call it "Counter"
+"Empty Activity". In this walk-through, we'll call it "SimpleCounter"
 
-- "Name": `Counter`
+- "Name": `SimpleCounter`
 - "Package name": `com.example.simple_counter`
 - "Save Location": a directory called `Android` at the root of our monorepo
 - "Minimum SDK" `API 34`
@@ -71,7 +71,7 @@ Under `File -> New -> New Module`, choose "Android Library" and give it the "Mod
 `shared`. Set the "Package name" to match the one from your
 `/shared/uniffi.toml`, which in this example is `com.example.simple_counter.shared`.
 
-Again set the "Build configuration language" to `Groovy DSL (build.gradle)`.
+Again, set the "Build configuration language" to `Groovy DSL (build.gradle)`.
 
 For more information on how to add an Android library see
 <https://developer.android.com/studio/projects/android-library>.
@@ -84,6 +84,17 @@ this:
 ```gradle
 {{#include ../../../../examples/simple_counter/Android/app/build.gradle}}
 ```
+
+````admonish
+In our gradle files, we are referencing a "Version Catalog" to manage our dependency versions, so you
+will need to ensure this is kept up to date.
+
+Our catalog (`Android/gradle/libs.versions.toml`) will end up looking like this:
+
+```toml
+{{#include ../../../../examples/simple_counter/Android/gradle/libs.versions.toml}}
+```
+````
 
 ## The Rust shared library
 
@@ -113,12 +124,6 @@ this:
 
 ```gradle
 {{#include ../../../../examples/simple_counter/Android/build.gradle}}
-```
-
-```admonish
-The code fence above uses AGP version `8.3.2`.
-
-Currently there is an incompatibiliity between the latest version (`8.4.0`) of the Android Gradle Plugin (AGP) and the Rust Gradle Plugin, which fails with a `duplicate resources` issue when building your shared library for multiple targets. For now, either just target one architecture or stick with AGP version `8.3.2` until this is resolved.
 ```
 
 Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
@@ -163,7 +168,7 @@ $ ls --tree shared_types/generated/java
 shared_types/generated/java
 └── com
    ├── example
-   │  └── counter
+   │  └── simple_counter
    │     ├── shared
    │     │  └── shared.kt
    │     └── shared_types

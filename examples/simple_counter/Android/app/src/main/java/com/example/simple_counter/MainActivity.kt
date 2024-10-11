@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUnsignedTypes::class)
-
 package com.example.simple_counter
 
 import android.os.Bundle
@@ -23,13 +21,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simple_counter.shared_types.Event
-import com.example.simple_counter.ui.theme.CounterTheme
+import com.example.simple_counter.ui.theme.SimpleCounterTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CounterTheme {
+            SimpleCounterTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
@@ -73,7 +71,7 @@ fun View(core: Core = viewModel()) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    CounterTheme {
+    SimpleCounterTheme {
         View()
     }
 }

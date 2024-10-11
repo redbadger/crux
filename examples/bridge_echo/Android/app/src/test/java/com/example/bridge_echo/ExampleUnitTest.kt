@@ -1,4 +1,4 @@
-package com.example.bridge_perf
+package com.example.bridge_echo
 
 import org.junit.Test
 

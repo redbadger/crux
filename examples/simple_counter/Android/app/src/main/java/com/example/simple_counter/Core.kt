@@ -1,8 +1,8 @@
 package com.example.simple_counter
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.example.simple_counter.shared.processEvent
 import com.example.simple_counter.shared.view
 import com.example.simple_counter.shared_types.Effect
