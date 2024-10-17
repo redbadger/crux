@@ -7,7 +7,7 @@ android {
     namespace 'com.redbadger.catfacts.shared'
     compileSdk 34
 
-    ndkVersion "27.1.12297006"
+    ndkVersion "28.0.12433566"
 
     defaultConfig {
         minSdk 34
@@ -25,9 +25,6 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_20
         targetCompatibility JavaVersion.VERSION_20
-    }
-    kotlinOptions {
-        jvmTarget = '20'
     }
     sourceSets {
         main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
@@ -49,37 +46,16 @@ dependencies {
     androidTestImplementation libs.androidx.espresso.core
 }
 
-apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
+apply plugin: 'com.github.willir.rust.cargo-ndk-android'
 
-cargo {
-    module = "../.."
-    libname = "shared"
-    // these are the four recommended targets for Android that will ensure your library works on all mainline android devices
-    // make sure you have included the rust toolchain for each of these targets: \
-    // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
-    targets = ["arm", "arm64", "x86", "x86_64"]
-    extraCargoBuildArguments = ['--package', 'shared']
-    cargoCommand = System.getProperty("user.home") + "/.cargo/bin/cargo"
-    rustcCommand = System.getProperty("user.home") + "/.cargo/bin/rustc"
-    pythonCommand = "python3"
+cargoNdk {
+    module = "../shared"
+    targetDirectory = "../target"
 }
 
 afterEvaluate {
-    // The `cargoBuild` task isn't available until after evaluation.
-    android.libraryVariants.configureEach { variant ->
-        def productFlavor = ""
-        variant.productFlavors.each {
-            productFlavor += "${it.name.capitalize()}"
-        }
-        def buildType = "${variant.buildType.name.capitalize()}"
-
-        tasks.named("compileDebugKotlin") {
-            it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
-        }
-
-        tasks.named("generate${productFlavor}${buildType}Assets") {
-            it.dependsOn(tasks.named("cargoBuild"))
-        }
+    tasks.named("compileDebugKotlin") {
+        it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
     }
 }
 
@@ -88,11 +64,11 @@ tasks.register('bindGen', Exec) {
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine("cmd", "/c",
-                "cargo build -p shared && " + "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " + "--language kotlin " + "--out-dir " + outDir.replace('/', '\\'))
+                "cargo build --package shared --bin uniffi-bindgen && " + "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " + "--language kotlin " + "--out-dir " + outDir.replace('/', '\\'))
     } else {
         commandLine("sh", "-c",
                 """\
-                cargo build -p shared && \
+                cargo build --package shared --bin uniffi-bindgen && \
                 target/debug/uniffi-bindgen generate shared/src/shared.udl \
                 --language kotlin \
                 --out-dir $outDir
