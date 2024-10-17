@@ -1,13 +1,13 @@
 [versions]
-agp = "8.7.0"
+agp = "8.7.1"
 kotlin = "2.0.0"
 coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.6"
-activityCompose = "1.9.2"
-composeBom = "2024.09.03"
+activityCompose = "1.9.3"
+composeBom = "2024.10.00"
 
 # added
 jna = "5.15.0"
@@ -16,7 +16,7 @@ rustAndroid = "0.9.4"
 ktorClient = "2.2.2"
 appcompat = "1.7.0"
 material = "1.12.0"
-materialIconsExtended = "1.7.3"
+materialIconsExtended = "1.7.4"
 coilCompose = "2.0.0-rc01"
 
 [libraries]
@@ -50,5 +50,5 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
 # added
-rust-android = { id = "org.mozilla.rust-android-gradle.rust-android", version.ref = "rustAndroid" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+cargo-ndk = { id = "com.github.willir.rust.cargo-ndk-android", version = "0.3.4" }
