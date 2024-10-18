@@ -12,7 +12,8 @@ use core::CoreService;
 #[component]
 fn App() -> Element {
     let view = use_signal(ViewModel::default);
-    let core = use_coroutine(|mut rx| {
+
+    let core = use_coroutine(move |mut rx| {
         let svc = CoreService::new(view);
         async move { svc.run(&mut rx).await }
     });
@@ -21,6 +22,10 @@ fn App() -> Element {
     let _ = use_resource(move || async move { core.send(Event::StartWatch) });
 
     rsx! {
+        document::Link {
+            rel: "stylesheet",
+            href: asset!("./public/css/bulma.min.css")
+        }
         main {
             section { class: "section has-text-centered",
                 h1 { class: "title", "Crux Counter Example" }
