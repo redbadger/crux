@@ -1,0 +1,1 @@
+searchState.loadedDescShard("crux_macros", 0, "Procedural macro to derive an Effect enum, with a variant …")

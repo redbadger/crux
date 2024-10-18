@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["HttpError"],"mod":["client","middleware","protocol","testing"],"struct":["Config","Http","Request","RequestBuilder","Response","ResponseAsync"],"type":["Result"]};
