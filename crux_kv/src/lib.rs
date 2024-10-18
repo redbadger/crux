@@ -19,7 +19,11 @@ pub enum KeyValueOperation {
     /// Read bytes stored under a key
     Get { key: String },
     /// Write bytes under a key
-    Set { key: String, value: Vec<u8> },
+    Set {
+        key: String,
+        #[serde(with = "serde_bytes")]
+        value: Vec<u8>,
+    },
     /// Remove a key and its value
     Delete { key: String },
     /// Test if a key exists
