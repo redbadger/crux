@@ -192,7 +192,8 @@ mod tests {
 
         let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
         let response = TimeResponse::Now(now.try_into().unwrap());
-        app.resolve_to_event_then_update(&mut request, response, &mut model);
+        app.resolve_to_event_then_update(&mut request, response, &mut model)
+            .assert_empty();
 
         assert_eq!(app.view(&model).time, "2022-12-01T01:47:12.746202562+00:00");
     }
@@ -212,13 +213,15 @@ mod tests {
             .expect_time();
 
         // resolve and update
-        app.resolve_to_event_then_update(&mut request1, TimeResponse::DurationElapsed, &mut model);
+        app.resolve_to_event_then_update(&mut request1, TimeResponse::DurationElapsed, &mut model)
+            .assert_empty();
 
         // resolving the first debounce should not set the debounce_complete flag
         assert!(!model.debounce_complete);
 
         // resolve and update
-        app.resolve_to_event_then_update(&mut request2, TimeResponse::DurationElapsed, &mut model);
+        app.resolve_to_event_then_update(&mut request2, TimeResponse::DurationElapsed, &mut model)
+            .assert_empty();
 
         // resolving the second debounce should set the debounce_complete flag
         assert!(model.debounce_complete);

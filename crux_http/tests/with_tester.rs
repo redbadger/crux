@@ -177,7 +177,7 @@ mod tests {
         });
 
         for event in update.events {
-            app.update(event, &mut model);
+            app.update(event, &mut model).assert_empty();
         }
         assert_eq!(model.body, "\"hello\"");
         assert_eq!(model.values, vec!["my_value1", "my_value2"]);

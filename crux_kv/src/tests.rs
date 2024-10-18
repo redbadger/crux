@@ -162,7 +162,7 @@ fn test_get() {
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert_eq!(model.value, 42);
 }
@@ -198,7 +198,7 @@ fn test_set() {
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert!(model.successful);
 }
@@ -233,7 +233,7 @@ fn test_delete() {
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert!(model.successful);
 }
@@ -266,7 +266,7 @@ fn test_exists() {
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert!(model.successful);
 }
@@ -303,7 +303,7 @@ fn test_list_keys() {
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert_eq!(model.keys, vec!["test:1".to_string(), "test:2".to_string()]);
     assert_eq!(model.cursor, 2);
@@ -362,7 +362,7 @@ pub fn test_kv_async() -> Result<()> {
         .unwrap();
 
     let event = update.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert!(model.successful);
 

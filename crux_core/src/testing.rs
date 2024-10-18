@@ -143,6 +143,7 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
 /// Update test helper holds the result of running an app update using [`AppTester::update`]
 /// or resolving a request with [`AppTester::resolve`].
 #[derive(Debug)]
+#[must_use]
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run
     pub effects: Vec<Ef>,
