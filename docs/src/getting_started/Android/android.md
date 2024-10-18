@@ -11,6 +11,21 @@ This walk-through assumes you have already added the `shared` and `shared_types`
 We want to make setting up Android Studio to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below, please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
 ```
 
+```admonish bug title="Rust gradle plugin"
+This walkthrough uses Mozilla's excellent [Rust gradle plugin](https://github.com/mozilla/rust-android-gradle)
+for Android, which uses Python. However, `pipes` has recently been removed from Python (since Python 3.13)
+so you may encounter an error linking your shared library.
+
+If you hit this problem, you can either:
+
+1. use an older Python (<3.13)
+2. wait for a fix (see [this issue](https://github.com/mozilla/rust-android-gradle/issues/153))
+3. or use a different plugin — there is a [PR in the Crux repo](https://github.com/redbadger/crux/pull/274) that
+explores the use of [`cargo-ndk`](https://github.com/bbqsrc/cargo-ndk)
+and the [`cargo-ndk-android`](https://github.com/willir/cargo-ndk-android-gradle)
+plugin that may be useful.
+```
+
 ## Create an Android App
 
 The first thing we need to do is create a new Android app in Android Studio.
