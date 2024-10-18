@@ -162,7 +162,7 @@ fn test_get() {
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert_eq!(model.value, 42);
 }
@@ -198,7 +198,7 @@ fn test_set() {
         .unwrap();
 
     let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert!(model.successful);
 }
@@ -208,12 +208,10 @@ fn test_delete() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let updated = app.update(Event::Delete, &mut model);
-
-    let effect = updated.into_effects().next().unwrap();
-    let Effect::KeyValue(mut request) = effect else {
-        panic!("Expected KeyValue effect");
-    };
+    let mut request = app
+        .update(Event::Delete, &mut model)
+        .expect_one_effect()
+        .expect_key_value();
 
     let KeyValueOperation::Delete { key } = request.operation.clone() else {
         panic!("Expected delete operation");
@@ -221,19 +219,15 @@ fn test_delete() {
 
     assert_eq!(key, "test");
 
-    let updated = app
-        .resolve(
-            &mut request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Delete {
-                    previous: Value::None,
-                },
+    let _updated = app.resolve_to_event_then_update(
+        &mut request,
+        KeyValueResult::Ok {
+            response: KeyValueResponse::Delete {
+                previous: Value::None,
             },
-        )
-        .unwrap();
-
-    let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+        },
+        &mut model,
+    );
 
     assert!(model.successful);
 }
@@ -243,12 +237,10 @@ fn test_exists() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let updated = app.update(Event::Exists, &mut model);
-
-    let effect = updated.into_effects().next().unwrap();
-    let Effect::KeyValue(mut request) = effect else {
-        panic!("Expected KeyValue effect");
-    };
+    let mut request = app
+        .update(Event::Exists, &mut model)
+        .expect_one_effect()
+        .expect_key_value();
 
     let KeyValueOperation::Exists { key } = request.operation.clone() else {
         panic!("Expected exists operation");
@@ -256,17 +248,13 @@ fn test_exists() {
 
     assert_eq!(key, "test");
 
-    let updated = app
-        .resolve(
-            &mut request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Exists { is_present: true },
-            },
-        )
-        .unwrap();
-
-    let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _updated = app.resolve_to_event_then_update(
+        &mut request,
+        KeyValueResult::Ok {
+            response: KeyValueResponse::Exists { is_present: true },
+        },
+        &mut model,
+    );
 
     assert!(model.successful);
 }
@@ -276,12 +264,10 @@ fn test_list_keys() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let updated = app.update(Event::ListKeys, &mut model);
-
-    let effect = updated.into_effects().next().unwrap();
-    let Effect::KeyValue(mut request) = effect else {
-        panic!("Expected KeyValue effect");
-    };
+    let mut request = app
+        .update(Event::ListKeys, &mut model)
+        .expect_one_effect()
+        .expect_key_value();
 
     let KeyValueOperation::ListKeys { prefix, cursor } = request.operation.clone() else {
         panic!("Expected list keys operation");
@@ -290,20 +276,16 @@ fn test_list_keys() {
     assert_eq!(prefix, "test:");
     assert_eq!(cursor, 0);
 
-    let updated = app
-        .resolve(
-            &mut request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::ListKeys {
-                    keys: vec!["test:1".to_string(), "test:2".to_string()],
-                    next_cursor: 2,
-                },
+    let _update = app.resolve_to_event_then_update(
+        &mut request,
+        KeyValueResult::Ok {
+            response: KeyValueResponse::ListKeys {
+                keys: vec!["test:1".to_string(), "test:2".to_string()],
+                next_cursor: 2,
             },
-        )
-        .unwrap();
-
-    let event = updated.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+        },
+        &mut model,
+    );
 
     assert_eq!(model.keys, vec!["test:1".to_string(), "test:2".to_string()]);
     assert_eq!(model.cursor, 2);
@@ -362,7 +344,7 @@ pub fn test_kv_async() -> Result<()> {
         .unwrap();
 
     let event = update.events.into_iter().next().unwrap();
-    app.update(event, &mut model);
+    let _update = app.update(event, &mut model);
 
     assert!(model.successful);
 
