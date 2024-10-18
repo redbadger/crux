@@ -185,19 +185,14 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::GetAsync, &mut model);
-
-        let effect = update.into_effects().next().unwrap();
-        let Effect::Time(mut request) = effect else {
-            panic!("Expected Time effect");
-        };
+        let mut request = app
+            .update(Event::GetAsync, &mut model)
+            .expect_one_effect()
+            .expect_time();
 
         let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
         let response = TimeResponse::Now(now.try_into().unwrap());
-        let update = app.resolve(&mut request, response).unwrap();
-
-        let event = update.events.into_iter().next().unwrap();
-        app.update(event, &mut model);
+        app.resolve_to_event_then_update(&mut request, response, &mut model);
 
         assert_eq!(app.view(&model).time, "2022-12-01T01:47:12.746202562+00:00");
     }
@@ -207,41 +202,23 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update1 = app.update(Event::StartDebounce, &mut model);
-        let update2 = app.update(Event::StartDebounce, &mut model);
+        let mut request1 = app
+            .update(Event::StartDebounce, &mut model)
+            .expect_one_effect()
+            .expect_time();
+        let mut request2 = app
+            .update(Event::StartDebounce, &mut model)
+            .expect_one_effect()
+            .expect_time();
 
-        let Effect::Time(mut request1) = update1.into_effects().next().unwrap() else {
-            panic!("Expected Time effect");
-        };
-
-        // resolve and run loop
-        app.update(
-            app.resolve(&mut request1, TimeResponse::DurationElapsed)
-                .unwrap()
-                .events
-                .into_iter()
-                .next()
-                .unwrap(),
-            &mut model,
-        );
+        // resolve and update
+        app.resolve_to_event_then_update(&mut request1, TimeResponse::DurationElapsed, &mut model);
 
         // resolving the first debounce should not set the debounce_complete flag
         assert!(!model.debounce_complete);
 
-        let Effect::Time(mut request2) = update2.into_effects().next().unwrap() else {
-            panic!("Expected Time effect");
-        };
-
-        // resolve and run loop
-        app.update(
-            app.resolve(&mut request2, TimeResponse::DurationElapsed)
-                .unwrap()
-                .events
-                .into_iter()
-                .next()
-                .unwrap(),
-            &mut model,
-        );
+        // resolve and update
+        app.resolve_to_event_then_update(&mut request2, TimeResponse::DurationElapsed, &mut model);
 
         // resolving the second debounce should set the debounce_complete flag
         assert!(model.debounce_complete);
