@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api";
+import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
 type State = {
@@ -17,7 +17,7 @@ function App() {
     () => {
       invoke("watch");
     },
-    /*once*/ []
+    /*once*/ [],
   );
 
   useEffect(() => {
