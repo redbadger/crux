@@ -3,7 +3,7 @@ mod shared {
     use chrono::{DateTime, Utc};
     use crux_core::macros::Effect;
     use crux_core::render::Render;
-    use crux_time::{Time, TimeResponse};
+    use crux_time::{Time, TimeResponse, TimerId};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -16,6 +16,7 @@ mod shared {
         Set(TimeResponse),
 
         StartDebounce,
+        ClearDebounce,
         DurationElapsed(usize, TimeResponse),
     }
 
@@ -40,6 +41,7 @@ mod shared {
         pub time: String,
         debounce: Debounce,
         pub debounce_complete: bool,
+        pub debounce_time_id: Option<TimerId>,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -73,14 +75,28 @@ mod shared {
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
 
-                    caps.time.notify_after(
+                    let tid = caps.time.notify_after(
                         crux_time::Duration::from_millis(300).expect("valid duration"),
                         event_with_user_info(pending, Event::DurationElapsed),
                     );
+
+                    model.debounce_time_id = Some(tid);
                 }
-                Event::DurationElapsed(pending, TimeResponse::DurationElapsed) => {
+                Event::ClearDebounce => {
+                    if let Some(tid) = model.debounce_time_id {
+                        caps.time.clear(tid);
+                    }
+                }
+                Event::DurationElapsed(pending, TimeResponse::DurationElapsed { id: _ }) => {
                     if model.debounce.resolve(pending) {
                         model.debounce_complete = true;
+                    }
+                }
+                Event::DurationElapsed(_, TimeResponse::Cleared { id }) => {
+                    if let Some(tid) = model.debounce_time_id {
+                        if tid == id {
+                            model.debounce_time_id = None;
+                        }
                     }
                 }
                 Event::DurationElapsed(_, _) => {
@@ -212,17 +228,54 @@ mod tests {
             .expect_time();
 
         // resolve and update
-        app.resolve_to_event_then_update(&mut request1, TimeResponse::DurationElapsed, &mut model)
-            .assert_empty();
+        app.resolve_to_event_then_update(
+            &mut request1,
+            TimeResponse::DurationElapsed {
+                id: model.debounce_time_id.unwrap(),
+            },
+            &mut model,
+        )
+        .assert_empty();
 
         // resolving the first debounce should not set the debounce_complete flag
         assert!(!model.debounce_complete);
 
         // resolve and update
-        app.resolve_to_event_then_update(&mut request2, TimeResponse::DurationElapsed, &mut model)
-            .assert_empty();
+        app.resolve_to_event_then_update(
+            &mut request2,
+            TimeResponse::DurationElapsed {
+                id: model.debounce_time_id.unwrap(),
+            },
+            &mut model,
+        )
+        .assert_empty();
 
         // resolving the second debounce should set the debounce_complete flag
         assert!(model.debounce_complete);
+    }
+
+    #[test]
+    pub fn test_cancel_timer() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let mut request1 = app
+            .update(Event::StartDebounce, &mut model)
+            .expect_one_effect()
+            .expect_time();
+
+        assert!(model.debounce_time_id.is_some());
+
+        app.resolve_to_event_then_update(
+            &mut request1,
+            TimeResponse::Cleared {
+                id: model.debounce_time_id.unwrap(),
+            },
+            &mut model,
+        )
+        .assert_empty();
+
+        assert!(!model.debounce_complete);
+        assert!(model.debounce_time_id.is_none());
     }
 }
