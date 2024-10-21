@@ -76,6 +76,21 @@ where
         Ok(self.context.updates())
     }
 
+    /// Resolve an effect `request` from previous update, then run the resulting event
+    ///
+    /// This helper is useful for the common case where  one expects the effect to resolve
+    /// to exactly one event, which should then be run by the app.
+    pub fn resolve_to_event_then_update<Op: Operation>(
+        &self,
+        request: &mut Request<Op>,
+        value: Op::Output,
+        model: &mut App::Model,
+    ) -> Update<Ef, App::Event> {
+        request.resolve(value).expect("failed to resolve request");
+        let event = self.context.updates().expect_one_event();
+        self.update(event, model)
+    }
+
     /// Run the app's `view` function with a model state
     pub fn view(&self, model: &App::Model) -> App::ViewModel {
         self.app.view(model)
@@ -128,6 +143,7 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
 /// Update test helper holds the result of running an app update using [`AppTester::update`]
 /// or resolving a request with [`AppTester::resolve`].
 #[derive(Debug)]
+#[must_use]
 pub struct Update<Ef, Ev> {
     /// Effects requested from the update run
     pub effects: Vec<Ef>,
@@ -146,6 +162,46 @@ impl<Ef, Ev> Update<Ef, Ev> {
 
     pub fn effects_mut(&mut self) -> impl Iterator<Item = &mut Ef> {
         self.effects.iter_mut()
+    }
+
+    /// Assert that the update contains exactly one effect and zero events,
+    /// and return the effect
+    pub fn expect_one_effect(mut self) -> Ef {
+        if self.events.is_empty() && self.effects.len() == 1 {
+            self.effects.pop().unwrap()
+        } else {
+            panic!(
+                "Expected one effect but found {} effect(s) and {} event(s)",
+                self.effects.len(),
+                self.events.len()
+            );
+        }
+    }
+
+    /// Assert that the update contains exactly one event and zero effects,
+    /// and return the event
+    pub fn expect_one_event(mut self) -> Ev {
+        if self.effects.is_empty() && self.events.len() == 1 {
+            self.events.pop().unwrap()
+        } else {
+            panic!(
+                "Expected one event but found {} effect(s) and {} event(s)",
+                self.effects.len(),
+                self.events.len()
+            );
+        }
+    }
+
+    /// Assert that the update contains no effects or events
+    pub fn assert_empty(self) {
+        if self.effects.is_empty() && self.events.is_empty() {
+            return;
+        }
+        panic!(
+            "Expected empty update but found {} effect(s) and {} event(s)",
+            self.effects.len(),
+            self.events.len()
+        );
     }
 }
 
