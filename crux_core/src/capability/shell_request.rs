@@ -116,7 +116,10 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::capability::{channel, CapabilityContext, Operation, QueuingExecutor};
+    use crate::{
+        capability::{channel, CapabilityContext, Operation, QueuingExecutor},
+        Command,
+    };
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -143,11 +146,11 @@ mod tests {
         assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
-        todo!();
-        // spawner.spawn(async move {
-        //     future.await;
-        //     event_sender.send(());
-        // });
+        executor.spawn_task(Box::pin(async move {
+            future.await;
+            event_sender.send(());
+            Command::None
+        }));
 
         // We still shouldn't have any requests
         assert_matches!(requests.receive(), None);
@@ -166,6 +169,7 @@ mod tests {
         executor.run_all();
         assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), Some(()));
-        assert_matches!(events.receive(), None);
+        // future has completed and sender has now been dropped, so receive fails
+        assert_matches!(events.try_receive(), Err(()));
     }
 }

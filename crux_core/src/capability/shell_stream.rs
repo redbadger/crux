@@ -89,7 +89,10 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::capability::{channel, CapabilityContext, Operation, QueuingExecutor};
+    use crate::{
+        capability::{channel, CapabilityContext, Operation, QueuingExecutor},
+        Command,
+    };
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -118,17 +121,16 @@ mod tests {
         executor.run_all();
         assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
-
-        todo!();
-        // spawner.spawn(async move {
-        //     use futures::StreamExt;
-        //     while let Some(maybe_done) = stream.next().await {
-        //         event_sender.send(());
-        //         if maybe_done.is_some() {
-        //             break;
-        //         }
-        //     }
-        // });
+        executor.spawn_task(Box::pin(async move {
+            use futures::StreamExt;
+            while let Some(maybe_done) = stream.next().await {
+                event_sender.send(());
+                if maybe_done.is_some() {
+                    break;
+                }
+            }
+            Command::None
+        }));
 
         // We still shouldn't have any requests
         assert_matches!(requests.receive(), None);
@@ -160,7 +162,7 @@ mod tests {
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), Some(()));
-        assert_matches!(events.receive(), None);
+        assert_matches!(events.try_receive(), Err(()));
 
         // The next resolve should error as we've terminated the task
         request
