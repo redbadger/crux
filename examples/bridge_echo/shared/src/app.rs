@@ -58,7 +58,7 @@ impl crux_core::App for App {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crux_core::{assert_effect, testing::AppTester};
+    use crux_core::testing::AppTester;
 
     #[test]
     fn shows_initial_count() {
@@ -112,9 +112,9 @@ mod test {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::Tick, &mut model);
-
-        assert_effect!(update, Effect::Render(_));
+        app.update(Event::Tick, &mut model)
+            .expect_one_effect()
+            .expect_render();
     }
 
     #[test]
@@ -122,9 +122,9 @@ mod test {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::NewPeriod, &mut model);
-
-        assert_effect!(update, Effect::Render(_));
+        app.update(Event::NewPeriod, &mut model)
+            .expect_one_effect()
+            .expect_render();
     }
 }
 // ANCHOR_END: test
