@@ -661,7 +661,7 @@ mod save_load_tests {
             .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         // Before the timer fires, insert another character, which should
@@ -696,7 +696,7 @@ mod save_load_tests {
             .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         // Time passes
@@ -707,7 +707,7 @@ mod save_load_tests {
             .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         // One more edit. Should result in a timer, but not in cancellation

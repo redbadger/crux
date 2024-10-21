@@ -67,7 +67,7 @@ mod tests {
             .resolve(request, response)
             .expect("should resolve successfully");
         for event in update.events {
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         assert_eq!(model.platform, "platform");

@@ -271,7 +271,7 @@ mod tests {
         assert_eq!(update.events, vec![Event::SetFact(Ok(expected_response))]);
 
         for event in update.events {
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         assert_let!(Effect::Http(request), effects.next().unwrap());
@@ -288,7 +288,7 @@ mod tests {
             .resolve(request, response)
             .expect("should resolve successfully");
         for event in update.events {
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         assert_eq!(model.cat_fact, Some(a_fact));

@@ -168,7 +168,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::SetAmount(1000), &mut model);
+        let _ = app.update(Event::SetAmount(1000), &mut model);
         let view = app.view(&model);
 
         assert_eq!(
@@ -176,7 +176,7 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::New))
         );
 
-        app.update(Event::StartPayment, &mut model);
+        let _ = app.update(Event::StartPayment, &mut model);
         let view = app.view(&model);
 
         assert_eq!(
@@ -197,7 +197,7 @@ mod tests {
         // Time passed
         let update = app.resolve(request, ()).expect("should resolve");
         for event in update.events {
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         let view = app.view(&model);
@@ -206,7 +206,7 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::Completed(Receipt::default())))
         );
 
-        app.update(
+        let _ = app.update(
             Event::SetReceiptEmail("bob@fake.com".to_string()),
             &mut model,
         );
@@ -239,7 +239,7 @@ mod tests {
         // Time passed
         let update = app.resolve(request, ()).expect("should update");
         for event in update.events {
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         let view = app.view(&model);
@@ -253,7 +253,7 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::Completed(expected_receipt)))
         );
 
-        app.update(Event::CompletePayment, &mut model);
+        let _ = app.update(Event::CompletePayment, &mut model);
         let view = app.view(&model);
 
         assert_eq!(view.screen, Screen::Payment(Payment::default()));
@@ -264,8 +264,8 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::SetAmount(0), &mut model);
-        app.update(Event::StartPayment, &mut model);
+        let _ = app.update(Event::SetAmount(0), &mut model);
+        let _ = app.update(Event::StartPayment, &mut model);
 
         let actual = app.view(&model);
         let expected = ViewModel {

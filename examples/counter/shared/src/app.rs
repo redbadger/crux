@@ -258,7 +258,7 @@ mod tests {
             .expect("Update to succeed");
 
         // send the generated (internal) `Set` event back into the app
-        app.update(update.events[0].clone(), &mut model);
+        let _ = app.update(update.events[0].clone(), &mut model);
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
@@ -319,7 +319,7 @@ mod tests {
         // run the event loop in order to send the (internal) `Set` event
         // back into the app
         for event in update.events {
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         // check that the model has been updated correctly

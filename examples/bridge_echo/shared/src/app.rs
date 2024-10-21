@@ -76,9 +76,9 @@ mod test {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Tick, &mut model);
-        app.update(Event::Tick, &mut model);
-        app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
 
         let actual_view = app.view(&model);
         let expected_view = ViewModel { count: 3 };
@@ -91,14 +91,14 @@ mod test {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Tick, &mut model);
-        app.update(Event::Tick, &mut model);
-        app.update(Event::Tick, &mut model);
-        app.update(Event::NewPeriod, &mut model);
-        app.update(Event::Tick, &mut model);
-        app.update(Event::Tick, &mut model);
-        app.update(Event::NewPeriod, &mut model);
-        app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::NewPeriod, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::NewPeriod, &mut model);
+        let _ = app.update(Event::Tick, &mut model);
 
         let expected = Model {
             log: vec![3, 2],
