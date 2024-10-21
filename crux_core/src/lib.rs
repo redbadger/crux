@@ -158,6 +158,7 @@ pub mod typegen;
 mod capabilities;
 mod core;
 
+use futures::future::BoxFuture;
 use serde::Serialize;
 
 pub use self::{
@@ -166,6 +167,13 @@ pub use self::{
     core::{Core, Effect, Request},
 };
 pub use crux_macros as macros;
+
+#[must_use]
+pub enum Command<Event> {
+    None,
+    Event(Event),
+    Future(BoxFuture<'static, Self>),
+}
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
@@ -190,7 +198,12 @@ pub trait App: Default {
     /// effect completes.
     ///
     /// Typically, `update` should call at least [`Render::render`](crate::render::Render::render).
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities);
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Self::Event>;
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;

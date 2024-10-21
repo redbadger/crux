@@ -197,7 +197,7 @@ use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
 pub(crate) use channel::channel;
-pub(crate) use executor::{executor_and_spawner, QueuingExecutor};
+pub(crate) use executor::QueuingExecutor;
 
 use crate::Request;
 use channel::Sender;
@@ -414,7 +414,6 @@ where
 {
     shell_channel: Sender<Request<Op>>,
     app_channel: Sender<Event>,
-    spawner: executor::Spawner,
 }
 // ANCHOR_END: capability_context
 
@@ -422,7 +421,6 @@ where
 pub struct ProtoContext<Eff, Event> {
     shell_channel: Sender<Eff>,
     app_channel: Sender<Event>,
-    spawner: executor::Spawner,
 }
 
 impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
@@ -441,15 +439,10 @@ where
     Ev: 'static,
     Eff: 'static,
 {
-    pub(crate) fn new(
-        shell_channel: Sender<Eff>,
-        app_channel: Sender<Ev>,
-        spawner: executor::Spawner,
-    ) -> Self {
+    pub(crate) fn new(shell_channel: Sender<Eff>, app_channel: Sender<Ev>) -> Self {
         Self {
             shell_channel,
             app_channel,
-            spawner,
         }
     }
 
@@ -465,11 +458,7 @@ where
         F: Fn(Request<Op>) -> Eff + Sync + Send + Copy + 'static,
         Op: Operation,
     {
-        CapabilityContext::new(
-            self.shell_channel.map_input(func),
-            self.app_channel.clone(),
-            self.spawner.clone(),
-        )
+        CapabilityContext::new(self.shell_channel.map_input(func), self.app_channel.clone())
     }
 }
 
@@ -478,24 +467,13 @@ where
     Op: Operation,
     Ev: 'static,
 {
-    pub(crate) fn new(
-        shell_channel: Sender<Request<Op>>,
-        app_channel: Sender<Ev>,
-        spawner: executor::Spawner,
-    ) -> Self {
+    pub(crate) fn new(shell_channel: Sender<Request<Op>>, app_channel: Sender<Ev>) -> Self {
         let inner = Arc::new(ContextInner {
             shell_channel,
             app_channel,
-            spawner,
         });
 
         CapabilityContext { inner }
-    }
-
-    /// Spawn a task to do the asynchronous work. Within the task, async code
-    /// can be used to interact with the Shell and the App.
-    pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
-        self.inner.spawner.spawn(f);
     }
 
     /// Send an effect request to the shell in a fire and forget fashion. The
@@ -603,7 +581,6 @@ where
         CapabilityContext::new(
             self.inner.shell_channel.clone(),
             self.inner.app_channel.map_input(func),
-            self.inner.spawner.clone(),
         )
     }
 

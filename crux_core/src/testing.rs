@@ -92,7 +92,7 @@ where
         let (command_sender, commands) = crate::capability::channel();
         let (event_sender, events) = crate::capability::channel();
         let (executor, spawner) = executor_and_spawner();
-        let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
+        let capability_context = ProtoContext::new(command_sender, event_sender);
 
         Self {
             app: App::default(),

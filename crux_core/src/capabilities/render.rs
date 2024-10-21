@@ -1,5 +1,7 @@
 //! Built-in capability used to notify the Shell that a UI update is necessary.
 
+use std::future::Future;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -45,11 +47,11 @@ where
 
     /// Call `render` from [`App::update`](crate::App::update) to signal to the Shell that
     /// UI should be re-drawn.
-    pub fn render(&self) {
+    pub fn render(&self) -> impl Future<Output = ()> {
         let ctx = self.context.clone();
-        self.context.spawn(async move {
+        async move {
             ctx.notify_shell(RenderOperation).await;
-        });
+        }
     }
 }
 

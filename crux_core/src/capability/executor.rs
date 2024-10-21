@@ -12,20 +12,30 @@ type BoxFuture = future::BoxFuture<'static, ()>;
 // used in docs/internals/runtime.md
 // ANCHOR: executor
 pub(crate) struct QueuingExecutor {
-    spawn_queue: Receiver<BoxFuture>,
     ready_queue: Receiver<TaskId>,
     ready_sender: Sender<TaskId>,
     tasks: Mutex<Slab<Option<BoxFuture>>>,
 }
+
+impl QueuingExecutor {
+    fn new() -> Self {
+        let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
+        Self {
+            ready_queue,
+            ready_sender,
+            tasks: Mutex::new(Slab::new()),
+        }
+    }
+}
 // ANCHOR_END: executor
 
-// used in docs/internals/runtime.md
-// ANCHOR: spawner
-#[derive(Clone)]
-pub struct Spawner {
-    future_sender: Sender<BoxFuture>,
-}
-// ANCHOR_END: spawner
+// // used in docs/internals/runtime.md
+// // ANCHOR: spawner
+// #[derive(Clone)]
+// pub struct Spawner {
+//     future_sender: Sender<BoxFuture>,
+// }
+// // ANCHOR_END: spawner
 
 #[derive(Clone, Copy, Debug)]
 struct TaskId(u32);
@@ -38,32 +48,32 @@ impl std::ops::Deref for TaskId {
     }
 }
 
-pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
-    let (future_sender, spawn_queue) = crossbeam_channel::unbounded();
-    let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
+// pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
+//     let (future_sender, spawn_queue) = crossbeam_channel::unbounded();
+//     let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
 
-    (
-        QueuingExecutor {
-            ready_queue,
-            spawn_queue,
-            ready_sender,
-            tasks: Mutex::new(Slab::new()),
-        },
-        Spawner { future_sender },
-    )
-}
+//     (
+//         QueuingExecutor {
+//             ready_queue,
+//             spawn_queue,
+//             ready_sender,
+//             tasks: Mutex::new(Slab::new()),
+//         },
+//         Spawner { future_sender },
+//     )
+// }
 
-// used in docs/internals/runtime.md
-// ANCHOR: spawning
-impl Spawner {
-    pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
-        let future = future.boxed();
-        self.future_sender
-            .send(future)
-            .expect("unable to spawn an async task, task sender channel is disconnected.")
-    }
-}
-// ANCHOR_END: spawning
+// // used in docs/internals/runtime.md
+// // ANCHOR: spawning
+// impl Spawner {
+//     pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
+//         let future = future.boxed();
+//         self.future_sender
+//             .send(future)
+//             .expect("unable to spawn an async task, task sender channel is disconnected.")
+//     }
+// }
+// // ANCHOR_END: spawning
 
 #[derive(Clone)]
 struct TaskWaker {
@@ -94,39 +104,39 @@ impl QueuingExecutor {
         // Since either queue can generate work for the other queue,
         // we read from them in a loop until we are sure both queues
         // are exhausted
-        let mut did_some_work = true;
+        // let mut did_some_work = true;
 
-        while did_some_work {
-            did_some_work = false;
-            while let Ok(task) = self.spawn_queue.try_recv() {
-                let task_id = self
-                    .tasks
-                    .lock()
-                    .expect("Task slab poisoned")
-                    .insert(Some(task));
-                self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
-                did_some_work = true;
-            }
-            while let Ok(task_id) = self.ready_queue.try_recv() {
-                match self.run_task(task_id) {
-                    RunTask::Unavailable => {
-                        // We were unable to run the task as it is (presumably) being run on
-                        // another thread. We re-queue the task for 'later' and do NOT set
-                        // `did_some_work = true`. That way we will keep looping and doing work
-                        // until all remaining work is 'unavailable', at which point we will bail
-                        // out of the loop, leaving the queued work to be finished by another thread.
-                        // This strategy should avoid dropping work or busy-looping
-                        self.ready_sender.send(task_id).expect("could not requeue");
-                    }
-                    RunTask::Missing => {
-                        // This is possible if a naughty future sends a wake notification while
-                        // still running, then runs to completion and is evicted from the slab.
-                        // Nothing to be done.
-                    }
-                    RunTask::Suspended | RunTask::Completed => did_some_work = true,
+        // while did_some_work {
+        // did_some_work = false;
+        // while let Ok(task) = self.spawn_queue.try_recv() {
+        //     let task_id = self
+        //         .tasks
+        //         .lock()
+        //         .expect("Task slab poisoned")
+        //         .insert(Some(task));
+        //     self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
+        //     did_some_work = true;
+        // }
+        while let Ok(task_id) = self.ready_queue.try_recv() {
+            match self.run_task(task_id) {
+                RunTask::Unavailable => {
+                    // We were unable to run the task as it is (presumably) being run on
+                    // another thread. We re-queue the task for 'later' and do NOT set
+                    // `did_some_work = true`. That way we will keep looping and doing work
+                    // until all remaining work is 'unavailable', at which point we will bail
+                    // out of the loop, leaving the queued work to be finished by another thread.
+                    // This strategy should avoid dropping work or busy-looping
+                    self.ready_sender.send(task_id).expect("could not requeue");
                 }
+                RunTask::Missing => {
+                    // This is possible if a naughty future sends a wake notification while
+                    // still running, then runs to completion and is evicted from the slab.
+                    // Nothing to be done.
+                }
+                RunTask::Suspended | RunTask::Completed => {}
             }
         }
+        // }
     }
 
     fn run_task(&self, task_id: TaskId) -> RunTask {
