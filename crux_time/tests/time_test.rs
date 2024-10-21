@@ -16,7 +16,6 @@ mod shared {
         Set(TimeResponse),
 
         StartDebounce,
-        ClearDebounce,
         DurationElapsed(usize, TimeResponse),
     }
 
@@ -81,11 +80,6 @@ mod shared {
                     );
 
                     model.debounce_time_id = Some(tid);
-                }
-                Event::ClearDebounce => {
-                    if let Some(tid) = model.debounce_time_id {
-                        caps.time.clear(tid);
-                    }
                 }
                 Event::DurationElapsed(pending, TimeResponse::DurationElapsed { id: _ }) => {
                     if model.debounce.resolve(pending) {
