@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.2](https://github.com/redbadger/crux/compare/crux_http-v0.10.1...crux_http-v0.10.2) - 2024-20-21
+
+- Fixes a problem building the crate for the `typegen` feature, see https://github.com/redbadger/crux/pull/277.
+
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_http-v0.10.0...crux_http-v0.10.1) - 2024-09-30
 
 Serialization of bytes can now be more efficient with [`serde_bytes`](https://github.com/serde-rs/bytes).
