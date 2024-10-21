@@ -119,23 +119,12 @@ impl Operation for KeyValueOperation {
     type Output = KeyValueResult;
 }
 
-pub struct KeyValue<Ev> {
-    context: CapabilityContext<KeyValueOperation, Ev>,
+pub struct KeyValue {
+    context: CapabilityContext<KeyValueOperation>,
 }
 
-impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
+impl crux_core::Capability for KeyValue {
     type Operation = KeyValueOperation;
-
-    type MappedSelf<MappedEv> = KeyValue<MappedEv>;
-
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static + Send,
-    {
-        KeyValue::new(self.context.map_event(f))
-    }
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
@@ -148,7 +137,7 @@ impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
     }
 }
 
-impl<Ev> Clone for KeyValue<Ev> {
+impl Clone for KeyValue {
     fn clone(&self) -> Self {
         Self {
             context: self.context.clone(),
@@ -156,11 +145,8 @@ impl<Ev> Clone for KeyValue<Ev> {
     }
 }
 
-impl<Ev> KeyValue<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<KeyValueOperation, Ev>) -> Self {
+impl KeyValue {
+    pub fn new(context: CapabilityContext<KeyValueOperation>) -> Self {
         Self { context }
     }
 

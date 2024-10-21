@@ -2,10 +2,9 @@ mod shared {
 
     use std::{cmp::max, future::IntoFuture};
 
-    use crux_core::compose::Compose;
-    use crux_core::macros::Effect;
+    use crux_core::{macros::Effect, Command};
     use crux_http::Http;
-    use futures_util::join;
+    use futures_util::{join, FutureExt as _};
     use http_types::StatusCode;
     use serde::{Deserialize, Serialize};
 
@@ -42,15 +41,16 @@ mod shared {
 
         type Capabilities = Capabilities;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
             match event {
-                Event::Get => {
+                Event::Get => Command::effect(
                     caps.http
                         .get("http://example.com")
                         .header("Authorization", "secret-token")
                         .expect_string()
-                        .send(Event::Set);
-                }
+                        .send()
+                        .map(Event::Set),
+                ),
                 Event::Post => {
                     caps.http
                         .post("http://example.com")
@@ -125,9 +125,7 @@ mod shared {
 
     #[derive(Effect)]
     pub(crate) struct Capabilities {
-        pub http: Http<Event>,
-        #[effect(skip)]
-        pub compose: Compose<Event>,
+        pub http: Http,
     }
 }
 

@@ -1,6 +1,7 @@
 mod app {
     use crux_core::macros::Effect;
     use crux_core::render::Render;
+    use crux_core::Command;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -19,8 +20,13 @@ mod app {
         type ViewModel = ViewModel;
         type Capabilities = Capabilities;
 
-        fn update(&self, _event: Event, _model: &mut Self::Model, caps: &Capabilities) {
-            caps.render.render();
+        fn update(
+            &self,
+            _event: Event,
+            _model: &mut Self::Model,
+            caps: &Capabilities,
+        ) -> Command<Self::Event> {
+            Command::empty_effect(caps.render.render())
         }
 
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -30,7 +36,7 @@ mod app {
 
     #[derive(Effect)]
     pub struct Capabilities {
-        pub render: Render<Event>,
+        pub render: Render,
     }
 }
 

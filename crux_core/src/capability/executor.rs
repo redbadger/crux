@@ -155,8 +155,10 @@ enum RunTask<Event> {
 #[cfg(test)]
 mod tests {
 
+    use future::FutureExt as _;
     use rand::Rng;
     use std::{
+        future::Future,
         sync::atomic::{AtomicI32, Ordering},
         task::Poll,
     };
@@ -170,21 +172,22 @@ mod tests {
         let counter = Arc::new(());
         assert_eq!(Arc::strong_count(&counter), 1);
 
-        let (executor, spawner) = executor_and_spawner();
+        todo!()
+        // let (executor, spawner) = executor_and_spawner();
 
-        let future = {
-            let counter = counter.clone();
-            async move {
-                assert_eq!(Arc::strong_count(&counter), 2);
-                ShellRequest::<()>::new().await;
-            }
-        };
+        // let future = {
+        //     let counter = counter.clone();
+        //     async move {
+        //         assert_eq!(Arc::strong_count(&counter), 2);
+        //         ShellRequest::<()>::new().await;
+        //     }
+        // };
 
-        spawner.spawn(future);
-        executor.run_all();
-        drop(executor);
-        drop(spawner);
-        assert_eq!(Arc::strong_count(&counter), 1);
+        // spawner.spawn(future);
+        // executor.run_all();
+        // drop(executor);
+        // drop(spawner);
+        // assert_eq!(Arc::strong_count(&counter), 1);
     }
 
     #[test]
@@ -243,32 +246,33 @@ mod tests {
                 }
             }
         }
+        todo!()
 
-        let (executor, spawner) = executor_and_spawner();
-        // 100 futures with many (1957) children each equals lots of chaos
-        for _ in 0..100 {
-            let future = Chaotic::new_with_children(6);
-            spawner.spawn(future);
-        }
-        assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 195700);
-        let executor = Arc::new(executor);
-        assert_eq!(executor.spawn_queue.len(), 100);
+        // let (executor, spawner) = executor_and_spawner();
+        // // 100 futures with many (1957) children each equals lots of chaos
+        // for _ in 0..100 {
+        //     let future = Chaotic::new_with_children(6);
+        //     spawner.spawn(future);
+        // }
+        // assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 195700);
+        // let executor = Arc::new(executor);
+        // assert_eq!(executor.spawn_queue.len(), 100);
 
-        // Spawn 10 threads and run all
-        let handles = (0..10)
-            .map(|_| {
-                let executor = executor.clone();
-                std::thread::spawn(move || {
-                    executor.run_all();
-                })
-            })
-            .collect::<Vec<_>>();
-        for handle in handles {
-            handle.join().unwrap();
-        }
-        // nothing left in queue, all futures resolved
-        assert_eq!(executor.spawn_queue.len(), 0);
-        assert_eq!(executor.ready_queue.len(), 0);
-        assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 0);
+        // // Spawn 10 threads and run all
+        // let handles = (0..10)
+        //     .map(|_| {
+        //         let executor = executor.clone();
+        //         std::thread::spawn(move || {
+        //             executor.run_all();
+        //         })
+        //     })
+        //     .collect::<Vec<_>>();
+        // for handle in handles {
+        //     handle.join().unwrap();
+        // }
+        // // nothing left in queue, all futures resolved
+        // assert_eq!(executor.spawn_queue.len(), 0);
+        // assert_eq!(executor.ready_queue.len(), 0);
+        // assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 0);
     }
 }

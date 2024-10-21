@@ -160,7 +160,7 @@ mod core;
 
 use std::future::Future;
 
-use futures::future::BoxFuture;
+use futures::future::{BoxFuture, FutureExt};
 use serde::Serialize;
 
 pub use self::{
@@ -186,6 +186,10 @@ impl<Event> From<BoxFuture<'static, Self>> for Command<Event> {
 impl<Event> Command<Event> {
     pub fn effect(fut: impl Future<Output = Self> + Send + 'static) -> Self {
         Self::Effect(Box::pin(fut))
+    }
+
+    pub fn empty_effect(fut: impl Future<Output = ()> + Send + 'static) -> Self {
+        Self::Effect(Box::pin(fut.map(|()| Command::None)))
     }
 }
 

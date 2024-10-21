@@ -596,6 +596,6 @@ mod tests {
         type Output = ();
     }
 
-    assert_impl_all!(ProtoContext<Effect, Event>: Send, Sync);
-    assert_impl_all!(CapabilityContext<Op, Event>: Send, Sync);
+    assert_impl_all!(ProtoContext<Effect>: Send, Sync);
+    assert_impl_all!(CapabilityContext<Op>: Send, Sync);
 }

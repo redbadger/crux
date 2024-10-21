@@ -89,7 +89,7 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::capability::{channel, executor_and_spawner, CapabilityContext, Operation};
+    use crate::capability::{channel, CapabilityContext, Operation, QueuingExecutor};
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -105,7 +105,7 @@ mod tests {
     fn test_shell_stream() {
         let (request_sender, requests) = channel();
         let (event_sender, events) = channel::<()>();
-        let (executor, spawner) = executor_and_spawner();
+        let executor = QueuingExecutor::<()>::new();
         let capability_context = CapabilityContext::new(request_sender);
 
         let mut stream = capability_context.stream_from_shell(TestOperation);
@@ -119,15 +119,16 @@ mod tests {
         assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
-        spawner.spawn(async move {
-            use futures::StreamExt;
-            while let Some(maybe_done) = stream.next().await {
-                event_sender.send(());
-                if maybe_done.is_some() {
-                    break;
-                }
-            }
-        });
+        todo!();
+        // spawner.spawn(async move {
+        //     use futures::StreamExt;
+        //     while let Some(maybe_done) = stream.next().await {
+        //         event_sender.send(());
+        //         if maybe_done.is_some() {
+        //             break;
+        //         }
+        //     }
+        // });
 
         // We still shouldn't have any requests
         assert_matches!(requests.receive(), None);

@@ -129,7 +129,7 @@ mod tests {
     fn test_effect_future() {
         let (request_sender, requests) = channel();
         let (event_sender, events) = channel::<()>();
-        let executor = QueuingExecutor::new();
+        let executor = QueuingExecutor::<()>::new();
         let capability_context = CapabilityContext::new(request_sender);
 
         let future = capability_context.request_from_shell(TestOperation);

@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::macros::Effect;
+    use crux_core::{macros::Effect, Command};
     use futures::future::join;
     use serde::Serialize;
 
@@ -29,21 +29,26 @@ mod app {
         type ViewModel = Model;
         type Capabilities = Capabilities;
 
-        fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+        fn update(
+            &self,
+            event: Self::Event,
+            model: &mut Self::Model,
+            caps: &Self::Capabilities,
+        ) -> Command<Self::Event> {
             match event {
-                Event::Trigger => caps.compose.spawn(|context| {
+                Event::Trigger => Command::effect({
                     let one = caps.one.clone();
                     let two = caps.two.clone();
 
                     async move {
                         let (result_one, result_two) =
                             join(one.one_async(10), two.two_async(20)).await;
-
-                        context.update_app(Event::Finished(result_one, result_two))
+                        Command::Event(Event::Finished(result_one, result_two))
                     }
                 }),
                 Event::Finished(one, two) => {
                     model.total = one + two;
+                    Command::None
                 }
             }
         }
@@ -76,7 +81,7 @@ pub mod capabilities {
 
         // Needed to allow 'this = (*self).clone()' without requiring E: Clone
         // See https://github.com/rust-lang/rust/issues/26925
-        impl<E> Clone for CapabilityOne {
+        impl Clone for CapabilityOne {
             fn clone(&self) -> Self {
                 Self {
                     context: self.context.clone(),
@@ -84,15 +89,12 @@ pub mod capabilities {
             }
         }
 
-        impl<E> CapabilityOne {
+        impl CapabilityOne {
             pub fn new(context: CapabilityContext<OpOne>) -> Self {
                 Self { context }
             }
 
-            pub async fn one_async(&self, number: usize) -> usize
-            where
-                E: 'static,
-            {
+            pub async fn one_async(&self, number: usize) -> usize {
                 self.context.request_from_shell(OpOne { number }).await
             }
         }
@@ -119,7 +121,7 @@ pub mod capabilities {
 
         // Needed to allow 'this = (*self).clone()' without requiring E: Clone
         // See https://github.com/rust-lang/rust/issues/26925
-        impl<E> Clone for CapabilityTwo<E> {
+        impl Clone for CapabilityTwo {
             fn clone(&self) -> Self {
                 Self {
                     context: self.context.clone(),
@@ -127,33 +129,12 @@ pub mod capabilities {
             }
         }
 
-        impl<E> CapabilityTwo<E> {
-            pub fn new(context: CapabilityContext<OpTwo, E>) -> Self {
+        impl CapabilityTwo {
+            pub fn new(context: CapabilityContext<OpTwo>) -> Self {
                 Self { context }
             }
 
-            pub fn two<F>(&self, number: usize, event: F)
-            where
-                F: FnOnce(usize) -> E + Send + 'static,
-                E: 'static,
-            {
-                let this = Clone::clone(self);
-
-                this.context.spawn({
-                    let this = this.clone();
-
-                    async move {
-                        let result = this.two_async(number).await;
-
-                        this.context.update_app(event(result))
-                    }
-                });
-            }
-
-            pub async fn two_async(&self, number: usize) -> usize
-            where
-                E: 'static,
-            {
+            pub async fn two_async(&self, number: usize) -> usize {
                 self.context.request_from_shell(OpTwo { number }).await
             }
         }

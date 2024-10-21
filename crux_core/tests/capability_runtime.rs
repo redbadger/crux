@@ -1,4 +1,6 @@
 mod capability {
+    use std::future::Future;
+
     use async_channel::Sender;
     use crux_core::capability::{CapabilityContext, Operation};
     use crux_core::macros::Capability;
@@ -15,13 +17,13 @@ mod capability {
     }
 
     #[derive(Capability)]
-    pub struct Crawler<Ev> {
-        context: CapabilityContext<Fetch, Ev>,
+    pub struct Crawler {
+        context: CapabilityContext<Fetch>,
         tasks_tx: Sender<(usize, Sender<usize>)>,
         commands_tx: Sender<Command>,
     }
 
-    impl<Ev> Drop for Crawler<Ev> {
+    impl Drop for Crawler {
         fn drop(&mut self) {
             eprintln!("Dropping crawler");
         }
@@ -40,66 +42,62 @@ mod capability {
     //
     // We use this in the test to make sure the capability runtime supports
     // this type of use-case correctly.
-    impl<Ev> Crawler<Ev>
-    where
-        Ev: 'static,
-    {
-        pub fn new(context: CapabilityContext<Fetch, Ev>) -> Self {
+    impl Crawler {
+        pub fn new(context: CapabilityContext<Fetch>) -> Self {
             let (tasks_tx, tasks_rx) = async_channel::unbounded::<(usize, Sender<usize>)>();
             let (commands_tx, commands_rx) = async_channel::unbounded::<Command>();
 
             for n in 0..NUM_WORKERS {
-                context.spawn({
-                    let context = context.clone();
-                    let tasks_rx = tasks_rx.clone();
-                    let tasks_tx = tasks_tx.clone();
-                    let commands_rx = commands_rx.clone();
+                let context = context.clone();
+                let tasks_rx = tasks_rx.clone();
+                let tasks_tx = tasks_tx.clone();
+                let commands_rx = commands_rx.clone();
 
-                    let mut accepting_tasks = true;
+                let mut accepting_tasks = true;
 
-                    async move {
-                        loop {
-                            if accepting_tasks {
-                                eprintln!("Worker {n} awaiting command or task");
-                                futures::select! {
-                                    command = commands_rx.recv().fuse() => {
-                                        match command {
-                                            Ok(Command::Pause) => {
-                                                accepting_tasks = false
-                                            },
-                                            Ok(_) => {},
-                                            Err(_) => break,
-                                        }
-                                    }
-                                    task = tasks_rx.recv().fuse() => {
-                                         match task {
-                                             Ok((id, results_tx)) => {
-                                                 results_tx.send(id).await.unwrap();
-
-                                                 println!("Worker {n} fetching #{id}");
-                                                 let more_ids = context.request_from_shell(Fetch { id }).await;
-                                                 for id in more_ids {
-                                                     tasks_tx.send((id, results_tx.clone())).await.unwrap();
-                                                 }
-                                             },
-                                             Err(_) => break,
-                                         }
+                let fut = async move {
+                    loop {
+                        if accepting_tasks {
+                            eprintln!("Worker {n} awaiting command or task");
+                            futures::select! {
+                                command = commands_rx.recv().fuse() => {
+                                    match command {
+                                        Ok(Command::Pause) => {
+                                            accepting_tasks = false
+                                        },
+                                        Ok(_) => {},
+                                        Err(_) => break,
                                     }
                                 }
-                            } else {
-                                while let Ok(command) = commands_rx.recv().await {
-                                    if let Command::Resume = command {
-                                        accepting_tasks = true;
+                                task = tasks_rx.recv().fuse() => {
+                                     match task {
+                                         Ok((id, results_tx)) => {
+                                             results_tx.send(id).await.unwrap();
 
-                                        break;
-                                    }
+                                             println!("Worker {n} fetching #{id}");
+                                             let more_ids = context.request_from_shell(Fetch { id }).await;
+                                             for id in more_ids {
+                                                 tasks_tx.send((id, results_tx.clone())).await.unwrap();
+                                             }
+                                         },
+                                         Err(_) => break,
+                                     }
+                                }
+                            }
+                        } else {
+                            while let Ok(command) = commands_rx.recv().await {
+                                if let Command::Resume = command {
+                                    accepting_tasks = true;
+
+                                    break;
                                 }
                             }
                         }
-
-                        eprintln!("Worker {n} stopping");
                     }
-                });
+
+                    eprintln!("Worker {n} stopping");
+                };
+                todo!()
             }
 
             Crawler {
@@ -109,51 +107,35 @@ mod capability {
             }
         }
 
-        pub fn pause(&self) {
-            self.context.spawn({
-                let commands_tx = self.commands_tx.clone();
-
-                async move {
-                    let _ = commands_tx.send(Command::Pause).await;
-                }
-            })
+        pub fn pause(&self) -> impl Future<Output = ()> {
+            let commands_tx = self.commands_tx.clone();
+            async move {
+                let _ = commands_tx.send(Command::Pause).await;
+            }
         }
 
-        pub fn resume(&self) {
-            self.context.spawn({
-                let commands_tx = self.commands_tx.clone();
-
-                async move {
-                    let _ = commands_tx.send(Command::Resume).await;
-                }
-            })
+        pub fn resume(&self) -> impl Future<Output = ()> {
+            let commands_tx = self.commands_tx.clone();
+            async move {
+                let _ = commands_tx.send(Command::Resume).await;
+            }
         }
 
-        pub fn fetch_tree<F>(&self, id: usize, ev: F)
-        where
-            F: FnOnce(Vec<usize>) -> Ev + Send + 'static,
-        {
+        pub fn fetch_tree(&self, id: usize) -> impl Future<Output = Vec<usize>> {
             let (results_tx, results_rx) = async_channel::unbounded::<usize>();
             let tasks_tx = self.tasks_tx.clone();
 
-            self.context.spawn({
-                let context = self.context.clone();
-
-                async move {
-                    tasks_tx.send((id, results_tx)).await.unwrap();
-
-                    let results: Vec<_> = results_rx.collect().await;
-
-                    context.update_app(ev(results));
-                }
-            });
+            async move {
+                tasks_tx.send((id, results_tx)).await.unwrap();
+                results_rx.collect().await
+            }
         }
     }
 }
 
 mod app {
-    use crux_core::macros::Effect;
     use crux_core::App;
+    use crux_core::{macros::Effect, Command};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -166,8 +148,8 @@ mod app {
 
     #[derive(Effect)]
     pub struct Capabilities {
-        crawler: super::capability::Crawler<Event>,
-        render: crux_core::render::Render<Event>,
+        crawler: super::capability::Crawler,
+        render: crux_core::render::Render,
     }
 
     #[derive(Default)]
@@ -179,14 +161,22 @@ mod app {
         type ViewModel = Vec<usize>;
         type Capabilities = Capabilities;
 
-        fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+        fn update(
+            &self,
+            event: Self::Event,
+            model: &mut Self::Model,
+            caps: &Self::Capabilities,
+        ) -> Command<Self::Event> {
             match event {
-                Event::Fetch => caps.crawler.fetch_tree(0, Event::Done),
-                Event::Pause => caps.crawler.pause(),
-                Event::Resume => caps.crawler.resume(),
+                Event::Fetch => {
+                    let fut = caps.crawler.fetch_tree(0);
+                    Command::effect(async move { Command::Event(Event::Done(fut.await)) })
+                }
+                Event::Pause => Command::empty_effect(caps.crawler.pause()),
+                Event::Resume => Command::empty_effect(caps.crawler.resume()),
                 Event::Done(items) => {
                     *model = items;
-                    caps.render.render();
+                    Command::empty_effect(caps.render.render())
                 }
             }
         }
@@ -209,7 +199,8 @@ mod tests {
     fn fetches_a_tree() {
         let core: Core<Effect, MyApp> = Core::new();
 
-        let mut effects: VecDeque<Effect> = core.process_event(Event::Fetch).into();
+        core.process_event(Event::Fetch);
+        let mut effects: VecDeque<Effect> = todo!();
 
         let mut counter: usize = 1;
 
