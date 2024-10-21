@@ -11,7 +11,7 @@ keywords.workspace = true
 rust-version.workspace = true
 
 [features]
-typegen = []
+typegen = ["crux_core/typegen"]
 
 [dependencies]
 anyhow.workspace = true

@@ -14,7 +14,7 @@ rust-version.workspace = true
 default = ["encoding"]
 # requires web-sys for TextDecoder on wasm
 encoding = ["encoding_rs", "web-sys"]
-typegen = []
+typegen = ["crux_core/typegen"]
 
 [dependencies]
 anyhow.workspace = true
