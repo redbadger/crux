@@ -42,10 +42,9 @@ impl<T> Stream for ShellStream<T> {
     }
 }
 
-impl<Op, Ev> crate::capability::CapabilityContext<Op, Ev>
+impl<Op> crate::capability::CapabilityContext<Op>
 where
     Op: crate::capability::Operation,
-    Ev: 'static,
 {
     /// Send an effect request to the shell, expecting a stream of responses
     pub fn stream_from_shell(&self, operation: Op) -> ShellStream<Op::Output> {
@@ -107,8 +106,7 @@ mod tests {
         let (request_sender, requests) = channel();
         let (event_sender, events) = channel::<()>();
         let (executor, spawner) = executor_and_spawner();
-        let capability_context =
-            CapabilityContext::new(request_sender, event_sender.clone(), spawner.clone());
+        let capability_context = CapabilityContext::new(request_sender);
 
         let mut stream = capability_context.stream_from_shell(TestOperation);
 

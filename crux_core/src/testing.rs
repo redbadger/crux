@@ -3,9 +3,7 @@ use anyhow::Result;
 use std::sync::Arc;
 
 use crate::{
-    capability::{
-        channel::Receiver, executor_and_spawner, Operation, ProtoContext, QueuingExecutor,
-    },
+    capability::{channel::Receiver, Operation, ProtoContext, QueuingExecutor},
     Request, WithContext,
 };
 
@@ -31,8 +29,7 @@ where
 
 struct AppContext<Ef, Ev> {
     commands: Receiver<Ef>,
-    events: Receiver<Ev>,
-    executor: QueuingExecutor,
+    executor: QueuingExecutor<Ev>,
 }
 
 impl<App, Ef> AppTester<App, Ef>
@@ -45,7 +42,7 @@ where
     pub fn new(app: App) -> Self
     where
         Ef: Send + 'static,
-        App::Capabilities: WithContext<App::Event, Ef>,
+        App::Capabilities: WithContext<Ef>,
     {
         Self {
             app,
@@ -58,8 +55,16 @@ where
     /// You can use the resulting [`Update`] to inspect the effects which were requested
     /// and potential further events dispatched by capabilities.
     pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
-        self.app.update(event, model, &self.capabilities);
-        self.context.updates()
+        let command = self.app.update(event, model, &self.capabilities);
+        let event = match command {
+            crate::Command::None => None,
+            crate::Command::Event(event) => Some(event),
+            crate::Command::Effect(pin) => {
+                self.context.executor.spawn_task(pin);
+                None
+            }
+        };
+        self.context.updates(event)
     }
 
     /// Resolve an effect `request` from previous update with an operation output.
@@ -72,8 +77,7 @@ where
         value: Op::Output,
     ) -> Result<Update<Ef, App::Event>> {
         request.resolve(value)?;
-
-        Ok(self.context.updates())
+        Ok(self.context.updates(None))
     }
 
     /// Run the app's `view` function with a model state
@@ -85,23 +89,18 @@ where
 impl<App, Ef> Default for AppTester<App, Ef>
 where
     App: crate::App,
-    App::Capabilities: WithContext<App::Event, Ef>,
+    App::Capabilities: WithContext<Ef>,
     Ef: Send + 'static,
 {
     fn default() -> Self {
         let (command_sender, commands) = crate::capability::channel();
-        let (event_sender, events) = crate::capability::channel();
-        let (executor, spawner) = executor_and_spawner();
-        let capability_context = ProtoContext::new(command_sender, event_sender);
+        let executor = QueuingExecutor::new();
+        let capability_context = ProtoContext::new(command_sender);
 
         Self {
             app: App::default(),
             capabilities: App::Capabilities::new_with_context(capability_context),
-            context: Arc::new(AppContext {
-                commands,
-                events,
-                executor,
-            }),
+            context: Arc::new(AppContext { commands, executor }),
         }
     }
 }
@@ -116,11 +115,24 @@ where
 }
 
 impl<Ef, Ev> AppContext<Ef, Ev> {
-    pub fn updates(self: &Arc<Self>) -> Update<Ef, Ev> {
-        self.executor.run_all();
+    pub fn updates(self: &Arc<Self>, pending_event: Option<Ev>) -> Update<Ef, Ev> {
+        let mut events: Vec<Ev> = pending_event.into_iter().collect();
+        loop {
+            let commands = self.executor.run_all();
+            if commands.is_empty() {
+                break;
+            }
+            for c in commands {
+                match c {
+                    crate::Command::None => {}
+                    crate::Command::Event(ev) => events.push(ev),
+                    crate::Command::Effect(task) => {
+                        self.executor.spawn_task(task);
+                    }
+                }
+            }
+        }
         let effects = self.commands.drain().collect();
-        let events = self.events.drain().collect();
-
         Update { effects, events }
     }
 }

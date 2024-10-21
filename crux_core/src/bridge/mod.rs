@@ -188,21 +188,20 @@ where
     ) where
         A::Event: for<'a> Deserialize<'a>,
     {
-        let effects = match id {
+        match id {
             None => {
                 let shell_event =
                     erased_serde::deserialize(data).expect("Message deserialization failed.");
 
-                self.core.process_event(shell_event)
+                self.core.process_event(shell_event);
             }
             Some(id) => {
                 self.registry.resume(id, data).expect(
                     "Response could not be handled. The request did not expect a response.",
                 );
-
-                self.core.process()
             }
         };
+        let effects = self.core.process();
 
         let requests: Vec<_> = effects
             .into_iter()

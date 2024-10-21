@@ -40,22 +40,12 @@ impl Operation for TimeRequest {
 ///
 /// This capability provides access to the current time and allows the app to ask for
 /// notifications when a specific instant has arrived or a duration has elapsed.
-pub struct Time<Ev> {
-    context: CapabilityContext<TimeRequest, Ev>,
+pub struct Time {
+    context: CapabilityContext<TimeRequest>,
 }
 
-impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
+impl crux_core::Capability for Time {
     type Operation = TimeRequest;
-    type MappedSelf<MappedEv> = Time<MappedEv>;
-
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static + Send,
-    {
-        Time::new(self.context.map_event(f))
-    }
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
@@ -67,7 +57,7 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
     }
 }
 
-impl<Ev> Clone for Time<Ev> {
+impl Clone for Time {
     fn clone(&self) -> Self {
         Self {
             context: self.context.clone(),
@@ -75,28 +65,9 @@ impl<Ev> Clone for Time<Ev> {
     }
 }
 
-impl<Ev> Time<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<TimeRequest, Ev>) -> Self {
+impl Time {
+    pub fn new(context: CapabilityContext<TimeRequest>) -> Self {
         Self { context }
-    }
-
-    /// Request current time, which will be passed to the app as a [`TimeResponse`] containing an [`Instant`]
-    /// wrapped in the event produced by the `callback`.
-    pub fn now<F>(&self, callback: F)
-    where
-        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            let this = self.clone();
-
-            async move {
-                context.update_app(callback(this.now_async().await));
-            }
-        });
     }
 
     /// Request current time, which will be passed to the app as a [`TimeResponse`] containing an [`Instant`]
@@ -106,41 +77,11 @@ where
     }
 
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
-    pub fn notify_at<F>(&self, instant: Instant, callback: F)
-    where
-        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            let this = self.clone();
-
-            async move {
-                context.update_app(callback(this.notify_at_async(instant).await));
-            }
-        });
-    }
-
-    /// Ask to receive a notification when the specified [`Instant`] has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub async fn notify_at_async(&self, instant: Instant) -> TimeResponse {
         self.context
             .request_from_shell(TimeRequest::NotifyAt(instant))
             .await
-    }
-
-    /// Ask to receive a notification when the specified duration has elapsed.
-    pub fn notify_after<F>(&self, duration: Duration, callback: F)
-    where
-        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            let this = self.clone();
-
-            async move {
-                context.update_app(callback(this.notify_after_async(duration).await));
-            }
-        });
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.

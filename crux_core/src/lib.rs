@@ -158,6 +158,8 @@ pub mod typegen;
 mod capabilities;
 mod core;
 
+use std::future::Future;
+
 use futures::future::BoxFuture;
 use serde::Serialize;
 
@@ -172,7 +174,19 @@ pub use crux_macros as macros;
 pub enum Command<Event> {
     None,
     Event(Event),
-    Future(BoxFuture<'static, Self>),
+    Effect(BoxFuture<'static, Self>),
+}
+
+impl<Event> From<BoxFuture<'static, Self>> for Command<Event> {
+    fn from(value: BoxFuture<'static, Command<Event>>) -> Self {
+        Self::Effect(value)
+    }
+}
+
+impl<Event> Command<Event> {
+    pub fn effect(fut: impl Future<Output = Self> + Send + 'static) -> Self {
+        Self::Effect(Box::pin(fut))
+    }
 }
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]

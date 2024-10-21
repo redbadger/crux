@@ -25,17 +25,15 @@ pub struct EffectFieldReceiver {
 struct Field {
     capability: Type,
     variant: Ident,
-    event: Type,
     skip: bool,
 }
 
 impl From<&EffectFieldReceiver> for Field {
     fn from(f: &EffectFieldReceiver) -> Self {
-        let (capability, variant, event) = split_on_generic(&f.ty);
+        let (capability, variant) = split_on_generic(&f.ty);
         Field {
             capability,
             variant,
-            event,
             skip: f.skip,
         }
     }
@@ -67,17 +65,6 @@ impl ToTokens for EffectStructReceiver {
             .map(|f| (f.ident.clone().unwrap(), f.into()))
             .collect();
 
-        let events: Vec<_> = fields.values().map(|Field { event, .. }| event).collect();
-        if !events
-            .windows(2)
-            .all(|win| win[0].to_token_stream().to_string() == win[1].to_token_stream().to_string())
-        {
-            abort_call_site!("all fields should be generic over the same event type");
-        }
-        let event = events
-            .first()
-            .expect_or_abort("Capabilities struct has no fields");
-
         let mut variants = Vec::new();
         let mut with_context_fields = Vec::new();
         let mut ffi_variants = Vec::new();
@@ -89,7 +76,6 @@ impl ToTokens for EffectStructReceiver {
             Field {
                 capability,
                 variant,
-                event,
                 skip,
             },
         ) in fields.iter()
@@ -105,10 +91,10 @@ impl ToTokens for EffectStructReceiver {
                 });
 
                 variants.push(quote! {
-                    #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>)
+                    #variant(::crux_core::Request<<#capability as ::crux_core::capability::Capability>::Operation>)
                 });
 
-                ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
+                ffi_variants.push(quote! { #variant(<#capability as ::crux_core::capability::Capability>::Operation) });
 
                 match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
 
@@ -123,7 +109,7 @@ impl ToTokens for EffectStructReceiver {
                                 false
                             }
                         }
-                        pub fn #map_fn(self) -> Option<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> {
+                        pub fn #map_fn(self) -> Option<crux_core::Request<<#capability as ::crux_core::capability::Capability>::Operation>> {
                             if let #effect_name::#variant(request) = self {
                                 Some(request)
                             } else {
@@ -157,8 +143,8 @@ impl ToTokens for EffectStructReceiver {
                 }
             }
 
-            impl ::crux_core::WithContext<#event, #effect_name> for #ident {
-                fn new_with_context(context: ::crux_core::capability::ProtoContext<#effect_name, #event>) -> #ident {
+            impl ::crux_core::WithContext<#effect_name> for #ident {
+                fn new_with_context(context: ::crux_core::capability::ProtoContext<#effect_name>) -> #ident {
                     #ident {
                         #(#with_context_fields ,)*
                     }
@@ -181,27 +167,13 @@ pub(crate) fn effect_impl(input: &DeriveInput) -> TokenStream {
     quote!(#input)
 }
 
-fn split_on_generic(ty: &Type) -> (Type, Ident, Type) {
+fn split_on_generic(ty: &Type) -> (Type, Ident) {
     let ty = ty.clone();
     match ty {
         Type::Path(mut path) if path.qself.is_none() => {
-            // Get the last segment of the path where the generic parameter should be
-
             let last = path.path.segments.last_mut().expect("type has no segments");
             let type_name = last.ident.clone();
-            let type_params = std::mem::take(&mut last.arguments);
-
-            // It should have only one angle-bracketed param
-            let generic_arg = match type_params {
-                PathArguments::AngleBracketed(params) => params.args.first().cloned(),
-                _ => None,
-            };
-
-            // This argument must be a type
-            match generic_arg {
-                Some(GenericArgument::Type(t2)) => Some((Type::Path(path), type_name, t2)),
-                _ => None,
-            }
+            Some((Type::Path(path), type_name))
         }
         _ => None,
     }

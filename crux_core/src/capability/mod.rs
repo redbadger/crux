@@ -192,7 +192,6 @@ mod executor;
 mod shell_request;
 mod shell_stream;
 
-use futures::Future;
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
@@ -281,16 +280,14 @@ impl Operation for Never {
 ///     }
 /// }
 /// ```
-pub trait Capability<Ev> {
+pub trait Capability {
     type Operation: Operation + DeserializeOwned;
 
-    type MappedSelf<MappedEv>;
-
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static + Send;
+    // fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
+    // where
+    //     F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+    //     Ev: 'static,
+    //     NewEv: 'static + Send;
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
@@ -360,8 +357,8 @@ pub trait Capability<Ev> {
 ///     }
 /// }
 /// ```
-pub trait WithContext<Ev, Ef> {
-    fn new_with_context(context: ProtoContext<Ef, Ev>) -> Self;
+pub trait WithContext<Ef> {
+    fn new_with_context(context: ProtoContext<Ef>) -> Self;
 }
 
 /// An interface for capabilities to interact with the app and the shell.
@@ -401,29 +398,27 @@ pub trait WithContext<Ev, Ef> {
 ///
 // used in docs/internals/runtime.md
 // ANCHOR: capability_context
-pub struct CapabilityContext<Op, Event>
+pub struct CapabilityContext<Op>
 where
     Op: Operation,
 {
-    inner: std::sync::Arc<ContextInner<Op, Event>>,
+    inner: std::sync::Arc<ContextInner<Op>>,
 }
 
-struct ContextInner<Op, Event>
+struct ContextInner<Op>
 where
     Op: Operation,
 {
     shell_channel: Sender<Request<Op>>,
-    app_channel: Sender<Event>,
 }
 // ANCHOR_END: capability_context
 
 /// Initial version of capability Context which has not yet been specialized to a chosen capability
-pub struct ProtoContext<Eff, Event> {
+pub struct ProtoContext<Eff> {
     shell_channel: Sender<Eff>,
-    app_channel: Sender<Event>,
 }
 
-impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
+impl<Op> Clone for CapabilityContext<Op>
 where
     Op: Operation,
 {
@@ -434,16 +429,12 @@ where
     }
 }
 
-impl<Eff, Ev> ProtoContext<Eff, Ev>
+impl<Eff> ProtoContext<Eff>
 where
-    Ev: 'static,
     Eff: 'static,
 {
-    pub(crate) fn new(shell_channel: Sender<Eff>, app_channel: Sender<Ev>) -> Self {
-        Self {
-            shell_channel,
-            app_channel,
-        }
+    pub(crate) fn new(shell_channel: Sender<Eff>) -> Self {
+        Self { shell_channel }
     }
 
     /// Specialize the CapabilityContext to a specific capability, wrapping its operations into
@@ -453,25 +444,21 @@ where
     ///
     /// This will likely only be called from the implementation of [`WithContext`]
     /// for the app's `Capabilities` type. You should not need to call this function directly.
-    pub fn specialize<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
+    pub fn specialize<Op, F>(&self, func: F) -> CapabilityContext<Op>
     where
         F: Fn(Request<Op>) -> Eff + Sync + Send + Copy + 'static,
         Op: Operation,
     {
-        CapabilityContext::new(self.shell_channel.map_input(func), self.app_channel.clone())
+        CapabilityContext::new(self.shell_channel.map_input(func))
     }
 }
 
-impl<Op, Ev> CapabilityContext<Op, Ev>
+impl<Op> CapabilityContext<Op>
 where
     Op: Operation,
-    Ev: 'static,
 {
-    pub(crate) fn new(shell_channel: Sender<Request<Op>>, app_channel: Sender<Ev>) -> Self {
-        let inner = Arc::new(ContextInner {
-            shell_channel,
-            app_channel,
-        });
+    pub(crate) fn new(shell_channel: Sender<Request<Op>>) -> Self {
+        let inner = Arc::new(ContextInner { shell_channel });
 
         CapabilityContext { inner }
     }
@@ -488,13 +475,13 @@ where
             .send(Request::resolves_never(operation));
     }
 
-    /// Send an event to the app. The event will be processed on the next
-    /// run of the update loop. You can call `update_app` several times,
-    /// the events will be queued up and processed sequentially after your
-    /// async task either `await`s or finishes.
-    pub fn update_app(&self, event: Ev) {
-        self.inner.app_channel.send(event);
-    }
+    // /// Send an event to the app. The event will be processed on the next
+    // /// run of the update loop. You can call `update_app` several times,
+    // /// the events will be queued up and processed sequentially after your
+    // /// async task either `await`s or finishes.
+    // pub fn update_app(&self, event: Ev) {
+    //     self.inner.app_channel.send(event);
+    // }
 
     /// Transform the CapabilityContext into one which uses the provided function to
     /// map each event dispatched with `update_app` to a different event type.
@@ -573,16 +560,16 @@ where
     ///
     /// in the parent module's `update` function, you can then call `.into()` on the
     /// capabilities, before passing them down to the submodule.
-    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Op, NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Sync + Send + 'static,
-        NewEv: 'static,
-    {
-        CapabilityContext::new(
-            self.inner.shell_channel.clone(),
-            self.inner.app_channel.map_input(func),
-        )
-    }
+    // pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Op, NewEv>
+    // where
+    //     F: Fn(NewEv) -> Ev + Sync + Send + 'static,
+    //     NewEv: 'static,
+    // {
+    //     CapabilityContext::new(
+    //         self.inner.shell_channel.clone(),
+    //         self.inner.app_channel.map_input(func),
+    //     )
+    // }
 
     pub(crate) fn send_request(&self, request: Request<Op>) {
         self.inner.shell_channel.send(request);

@@ -179,7 +179,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn get(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn get(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Get, self.url(uri), self.clone())
     }
 
@@ -192,7 +192,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn head(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn head(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Head, self.url(uri), self.clone())
     }
 
@@ -205,7 +205,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn post(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn post(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Post, self.url(uri), self.clone())
     }
 
@@ -218,7 +218,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn put(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn put(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Put, self.url(uri), self.clone())
     }
 
@@ -231,7 +231,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn delete(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn delete(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Delete, self.url(uri), self.clone())
     }
 
@@ -244,7 +244,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn connect(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn connect(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Connect, self.url(uri), self.clone())
     }
 
@@ -257,7 +257,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn options(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn options(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Options, self.url(uri), self.clone())
     }
 
@@ -270,7 +270,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn trace(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn trace(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Trace, self.url(uri), self.clone())
     }
 
@@ -283,7 +283,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn patch(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn patch(&self, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(Method::Patch, self.url(uri), self.clone())
     }
 
@@ -296,7 +296,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
-    pub fn request(&self, verb: Method, uri: impl AsRef<str>) -> RequestBuilder<()> {
+    pub fn request(&self, verb: Method, uri: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new_for_middleware(verb, self.url(uri), self.clone())
     }
 

@@ -36,24 +36,13 @@ use client::Client;
 pub type Result<T> = std::result::Result<T, HttpError>;
 
 /// The Http capability API.
-pub struct Http<Ev> {
-    context: CapabilityContext<protocol::HttpRequest, Ev>,
+pub struct Http {
+    context: CapabilityContext<protocol::HttpRequest>,
     client: Client,
 }
 
-impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
+impl crux_core::Capability for Http {
     type Operation = protocol::HttpRequest;
-
-    type MappedSelf<MappedEv> = Http<MappedEv>;
-
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static + Send,
-    {
-        Http::new(self.context.map_event(f))
-    }
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
@@ -65,7 +54,7 @@ impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
     }
 }
 
-impl<Ev> Clone for Http<Ev> {
+impl Clone for Http {
     fn clone(&self) -> Self {
         Self {
             context: self.context.clone(),
@@ -74,11 +63,8 @@ impl<Ev> Clone for Http<Ev> {
     }
 }
 
-impl<Ev> Http<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<protocol::HttpRequest, Ev>) -> Self {
+impl Http {
+    pub fn new(context: CapabilityContext<protocol::HttpRequest>) -> Self {
         Self {
             client: Client::new(context.clone()),
             context,
@@ -106,7 +92,7 @@ where
     /// caps.http.get("https://httpbin.org/get").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn get(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn get(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -131,7 +117,7 @@ where
     /// caps.http.head("https://httpbin.org/get").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -156,7 +142,7 @@ where
     /// caps.http.post("https://httpbin.org/post").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -181,7 +167,7 @@ where
     /// caps.http.put("https://httpbin.org/post").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -206,7 +192,7 @@ where
     /// caps.http.delete("https://httpbin.org/post").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -231,7 +217,7 @@ where
     /// caps.http.connect("https://httpbin.org/get").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -256,7 +242,7 @@ where
     /// caps.http.options("https://httpbin.org/get").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -281,7 +267,7 @@ where
     /// caps.http.trace("https://httpbin.org/get").send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -296,7 +282,7 @@ where
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
-    pub fn patch(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
+    pub fn patch(&self, url: impl AsRef<str>) -> RequestBuilder {
         RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap(), self.clone())
     }
 
@@ -307,7 +293,7 @@ where
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
     /// the app's `update function.
-    pub fn request(&self, method: http::Method, url: Url) -> RequestBuilder<Ev> {
+    pub fn request(&self, method: http::Method, url: Url) -> RequestBuilder {
         RequestBuilder::new(method, url, self.clone())
     }
 }

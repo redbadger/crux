@@ -59,10 +59,9 @@ impl<T> Future for ShellRequest<T> {
     }
 }
 
-impl<Op, Ev> crate::capability::CapabilityContext<Op, Ev>
+impl<Op> crate::capability::CapabilityContext<Op>
 where
     Op: crate::capability::Operation,
-    Ev: 'static,
 {
     /// Send an effect request to the shell, expecting an output. The
     /// provided `operation` describes the effect input in a serialisable fashion,
@@ -117,7 +116,7 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::capability::{channel, executor_and_spawner, CapabilityContext, Operation};
+    use crate::capability::{channel, CapabilityContext, Operation, QueuingExecutor};
 
     #[derive(serde::Serialize, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -130,9 +129,8 @@ mod tests {
     fn test_effect_future() {
         let (request_sender, requests) = channel();
         let (event_sender, events) = channel::<()>();
-        let (executor, spawner) = executor_and_spawner();
-        let capability_context =
-            CapabilityContext::new(request_sender, event_sender.clone(), spawner.clone());
+        let executor = QueuingExecutor::new();
+        let capability_context = CapabilityContext::new(request_sender);
 
         let future = capability_context.request_from_shell(TestOperation);
 
@@ -145,10 +143,11 @@ mod tests {
         assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
 
-        spawner.spawn(async move {
-            future.await;
-            event_sender.send(());
-        });
+        todo!();
+        // spawner.spawn(async move {
+        //     future.await;
+        //     event_sender.send(());
+        // });
 
         // We still shouldn't have any requests
         assert_matches!(requests.receive(), None);

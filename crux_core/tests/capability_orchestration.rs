@@ -19,10 +19,8 @@ mod app {
 
     #[derive(Effect)]
     pub struct Capabilities {
-        one: super::capabilities::one::CapabilityOne<Event>,
-        two: super::capabilities::two::CapabilityTwo<Event>,
-        #[effect(skip)]
-        compose: crux_core::compose::Compose<Event>,
+        one: super::capabilities::one::CapabilityOne,
+        two: super::capabilities::two::CapabilityTwo,
     }
 
     impl crux_core::App for App {
@@ -72,13 +70,13 @@ pub mod capabilities {
         }
 
         #[derive(Capability)]
-        pub struct CapabilityOne<E> {
-            context: CapabilityContext<OpOne, E>,
+        pub struct CapabilityOne {
+            context: CapabilityContext<OpOne>,
         }
 
         // Needed to allow 'this = (*self).clone()' without requiring E: Clone
         // See https://github.com/rust-lang/rust/issues/26925
-        impl<E> Clone for CapabilityOne<E> {
+        impl<E> Clone for CapabilityOne {
             fn clone(&self) -> Self {
                 Self {
                     context: self.context.clone(),
@@ -86,27 +84,9 @@ pub mod capabilities {
             }
         }
 
-        impl<E> CapabilityOne<E> {
-            pub fn new(context: CapabilityContext<OpOne, E>) -> Self {
+        impl<E> CapabilityOne {
+            pub fn new(context: CapabilityContext<OpOne>) -> Self {
                 Self { context }
-            }
-
-            pub fn one<F>(&self, number: usize, event: F)
-            where
-                F: FnOnce(usize) -> E + Send + 'static,
-                E: 'static,
-            {
-                let this = Clone::clone(self);
-
-                this.context.spawn({
-                    let this = this.clone();
-
-                    async move {
-                        let result = this.one_async(number).await;
-
-                        this.context.update_app(event(result))
-                    }
-                });
             }
 
             pub async fn one_async(&self, number: usize) -> usize
@@ -133,8 +113,8 @@ pub mod capabilities {
         }
 
         #[derive(Capability)]
-        pub struct CapabilityTwo<E> {
-            context: CapabilityContext<OpTwo, E>,
+        pub struct CapabilityTwo {
+            context: CapabilityContext<OpTwo>,
         }
 
         // Needed to allow 'this = (*self).clone()' without requiring E: Clone

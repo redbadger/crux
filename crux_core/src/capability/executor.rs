@@ -1,24 +1,26 @@
 use std::{
     sync::{Arc, Mutex},
-    task::{Context, Wake},
+    task::{Context, Poll, Wake},
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use futures::{future, Future, FutureExt};
+use futures::future;
 use slab::Slab;
 
-type BoxFuture = future::BoxFuture<'static, ()>;
+use crate::Command;
+
+type BoxFuture<Event> = future::BoxFuture<'static, Command<Event>>;
 
 // used in docs/internals/runtime.md
 // ANCHOR: executor
-pub(crate) struct QueuingExecutor {
+pub(crate) struct QueuingExecutor<Event> {
     ready_queue: Receiver<TaskId>,
     ready_sender: Sender<TaskId>,
-    tasks: Mutex<Slab<Option<BoxFuture>>>,
+    tasks: Mutex<Slab<Option<BoxFuture<Event>>>>,
 }
 
-impl QueuingExecutor {
-    fn new() -> Self {
+impl<Event> QueuingExecutor<Event> {
+    pub(crate) fn new() -> Self {
         let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
         Self {
             ready_queue,
@@ -28,14 +30,6 @@ impl QueuingExecutor {
     }
 }
 // ANCHOR_END: executor
-
-// // used in docs/internals/runtime.md
-// // ANCHOR: spawner
-// #[derive(Clone)]
-// pub struct Spawner {
-//     future_sender: Sender<BoxFuture>,
-// }
-// // ANCHOR_END: spawner
 
 #[derive(Clone, Copy, Debug)]
 struct TaskId(u32);
@@ -47,33 +41,6 @@ impl std::ops::Deref for TaskId {
         &self.0
     }
 }
-
-// pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
-//     let (future_sender, spawn_queue) = crossbeam_channel::unbounded();
-//     let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
-
-//     (
-//         QueuingExecutor {
-//             ready_queue,
-//             spawn_queue,
-//             ready_sender,
-//             tasks: Mutex::new(Slab::new()),
-//         },
-//         Spawner { future_sender },
-//     )
-// }
-
-// // used in docs/internals/runtime.md
-// // ANCHOR: spawning
-// impl Spawner {
-//     pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
-//         let future = future.boxed();
-//         self.future_sender
-//             .send(future)
-//             .expect("unable to spawn an async task, task sender channel is disconnected.")
-//     }
-// }
-// // ANCHOR_END: spawning
 
 #[derive(Clone)]
 struct TaskWaker {
@@ -98,25 +65,19 @@ impl Wake for TaskWaker {
 
 // used in docs/internals/runtime.md
 // ANCHOR: run_all
-impl QueuingExecutor {
-    pub fn run_all(&self) {
-        // we read off both queues and execute the tasks we receive.
-        // Since either queue can generate work for the other queue,
-        // we read from them in a loop until we are sure both queues
-        // are exhausted
-        // let mut did_some_work = true;
+impl<Event> QueuingExecutor<Event> {
+    pub fn spawn_task(&self, task: BoxFuture<Event>) {
+        let task_id = self
+            .tasks
+            .lock()
+            .expect("Task slab poisoned")
+            .insert(Some(task));
+        self.ready_sender
+            .send(TaskId(task_id.try_into().expect("TaskId overflow")));
+    }
 
-        // while did_some_work {
-        // did_some_work = false;
-        // while let Ok(task) = self.spawn_queue.try_recv() {
-        //     let task_id = self
-        //         .tasks
-        //         .lock()
-        //         .expect("Task slab poisoned")
-        //         .insert(Some(task));
-        //     self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
-        //     did_some_work = true;
-        // }
+    pub fn run_all(&self) -> Vec<Command<Event>> {
+        let mut commands = Vec::new();
         while let Ok(task_id) = self.ready_queue.try_recv() {
             match self.run_task(task_id) {
                 RunTask::Unavailable => {
@@ -133,13 +94,14 @@ impl QueuingExecutor {
                     // still running, then runs to completion and is evicted from the slab.
                     // Nothing to be done.
                 }
-                RunTask::Suspended | RunTask::Completed => {}
+                RunTask::Suspended => {}
+                RunTask::Completed(command) => commands.push(command),
             }
         }
-        // }
+        commands
     }
 
-    fn run_task(&self, task_id: TaskId) -> RunTask {
+    fn run_task(&self, task_id: TaskId) -> RunTask<Event> {
         let mut lock = self.tasks.lock().expect("Task slab poisoned");
         let Some(task) = lock.get_mut(*task_id as usize) else {
             return RunTask::Missing;
@@ -161,28 +123,31 @@ impl QueuingExecutor {
         let context = &mut Context::from_waker(&waker);
 
         // poll the task
-        if task.as_mut().poll(context).is_pending() {
-            // If it's still pending, put the future back in the slot
-            self.tasks
-                .lock()
-                .expect("Task slab poisoned")
-                .get_mut(*task_id as usize)
-                .expect("Task slot is missing")
-                .replace(task);
-            RunTask::Suspended
-        } else {
-            // otherwise the future is completed and we can free the slot
-            self.tasks.lock().unwrap().remove(*task_id as usize);
-            RunTask::Completed
+        match task.as_mut().poll(context) {
+            Poll::Ready(command) => {
+                // otherwise the future is completed and we can free the slot
+                self.tasks.lock().unwrap().remove(*task_id as usize);
+                RunTask::Completed(command)
+            }
+            Poll::Pending => {
+                // If it's still pending, put the future back in the slot
+                self.tasks
+                    .lock()
+                    .expect("Task slab poisoned")
+                    .get_mut(*task_id as usize)
+                    .expect("Task slot is missing")
+                    .replace(task);
+                RunTask::Suspended
+            }
         }
     }
 }
 
-enum RunTask {
+enum RunTask<Event> {
     Missing,
     Unavailable,
     Suspended,
-    Completed,
+    Completed(Command<Event>),
 }
 
 // ANCHOR_END: run_all

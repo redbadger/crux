@@ -11,7 +11,7 @@ pub use resolve::ResolveError;
 pub(crate) use resolve::Resolve;
 
 use crate::capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor};
-use crate::{App, WithContext};
+use crate::{App, Command, WithContext};
 
 /// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
 ///
@@ -39,8 +39,7 @@ where
 
     // internals
     requests: Receiver<Ef>,
-    capability_events: Receiver<A::Event>,
-    executor: QueuingExecutor,
+    executor: QueuingExecutor<A::Event>,
 }
 // ANCHOR_END: core
 
@@ -57,12 +56,11 @@ where
     ///
     pub fn new() -> Self
     where
-        A::Capabilities: WithContext<A::Event, Ef>,
+        A::Capabilities: WithContext<Ef>,
     {
         let (request_sender, request_receiver) = capability::channel();
-        let (event_sender, event_receiver) = capability::channel();
-        let (executor, spawner) = capability::executor_and_spawner();
-        let capability_context = ProtoContext::new(request_sender, event_sender);
+        let executor = QueuingExecutor::new();
+        let capability_context = ProtoContext::new(request_sender);
 
         Self {
             model: Default::default(),
@@ -70,7 +68,6 @@ where
             app: Default::default(),
             capabilities: <<A as App>::Capabilities>::new_with_context(capability_context),
             requests: request_receiver,
-            capability_events: event_receiver,
         }
     }
 
@@ -78,14 +75,26 @@ where
     /// effect requests.
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
-    pub fn process_event(&self, event: A::Event) -> Vec<Ef> {
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
-        self.app.update(event, &mut model, &self.capabilities);
-
-        self.process()
+    pub fn process_event(&self, event: A::Event) {
+        self.process_command(Command::Event(event))
     }
     // ANCHOR_END: process_event
+
+    pub fn process_command(&self, mut command: Command<A::Event>) {
+        loop {
+            command = match command {
+                Command::None => break,
+                Command::Event(event) => {
+                    let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                    self.app.update(event, &mut model, &self.capabilities)
+                }
+                Command::Effect(effect) => {
+                    self.executor.spawn_task(effect);
+                    break;
+                }
+            }
+        }
+    }
 
     /// Resolve an effect `request` for operation `Op` with the corresponding result.
     ///
@@ -110,14 +119,19 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process
     pub(crate) fn process(&self) -> Vec<Ef> {
-        self.executor.run_all();
+        let mut more_work_to_do = true;
+        while more_work_to_do {
+            more_work_to_do = false;
 
-        while let Some(capability_event) = self.capability_events.receive() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app
-                .update(capability_event, &mut model, &self.capabilities);
-            drop(model);
-            self.executor.run_all();
+            let commands = self.executor.run_all();
+            for command in commands {
+                self.process_command(command);
+                more_work_to_do = true;
+            }
+            // while let Some(capability_event) = self.capability_events.receive() {
+            //     self.process_event(capability_event);
+            //     more_work_to_do = true;
+            // }
         }
 
         self.requests.drain().collect()
@@ -136,7 +150,7 @@ impl<Ef, A> Default for Core<Ef, A>
 where
     Ef: Effect,
     A: App,
-    A::Capabilities: WithContext<A::Event, Ef>,
+    A::Capabilities: WithContext<Ef>,
 {
     fn default() -> Self {
         Self::new()

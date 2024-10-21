@@ -16,11 +16,11 @@ use crate::{
 ///
 /// For imperative UIs, the Shell will need to understand the difference between the two
 /// view models and update the user interface accordingly.
-pub struct Render<Ev> {
-    context: CapabilityContext<RenderOperation, Ev>,
+pub struct Render {
+    context: CapabilityContext<RenderOperation>,
 }
 
-impl<Ev> Clone for Render<Ev> {
+impl Clone for Render {
     fn clone(&self) -> Self {
         Self {
             context: self.context.clone(),
@@ -37,11 +37,8 @@ impl Operation for RenderOperation {
 }
 
 /// Public API of the capability, called by App::update.
-impl<Ev> Render<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<RenderOperation, Ev>) -> Self {
+impl Render {
+    pub fn new(context: CapabilityContext<RenderOperation>) -> Self {
         Self { context }
     }
 
@@ -55,16 +52,15 @@ where
     }
 }
 
-impl<Ev> Capability<Ev> for Render<Ev> {
+impl Capability for Render {
     type Operation = RenderOperation;
-    type MappedSelf<MappedEv> = Render<MappedEv>;
 
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static,
-    {
-        Render::new(self.context.map_event(f))
-    }
+    // fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
+    // where
+    //     F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+    //     Ev: 'static,
+    //     NewEv: 'static,
+    // {
+    //     Render::new(self.context.map_event(f))
+    // }
 }

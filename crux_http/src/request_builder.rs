@@ -36,50 +36,43 @@ use std::{fmt, marker::PhantomData};
 /// # }
 /// ```
 #[must_use]
-pub struct RequestBuilder<Event, ExpectBody = Vec<u8>> {
+pub struct RequestBuilder<ExpectBody = Vec<u8>> {
     /// Holds the state of the request.
     req: Option<Request>,
-
-    cap_or_client: CapOrClient<Event>,
-
-    phantom: PhantomData<fn() -> Event>,
-
+    cap_or_client: CapOrClient,
     expectation: Box<dyn ResponseExpectation<Body = ExpectBody> + Send>,
 }
 
 // Middleware request builders won't have access to the capability, so they get a client
 // and therefore can't send events themselves.  Normal request builders get direct access
 // to the capability itself.
-enum CapOrClient<Event> {
+enum CapOrClient {
     Client(Client),
-    Capability(crate::Http<Event>),
+    Capability(crate::Http),
 }
 
-impl<Event> RequestBuilder<Event, Vec<u8>> {
-    pub(crate) fn new(method: Method, url: Url, capability: crate::Http<Event>) -> Self {
+impl RequestBuilder<Vec<u8>> {
+    pub(crate) fn new(method: Method, url: Url, capability: crate::Http) -> Self {
         Self {
             req: Some(Request::new(method, url)),
             cap_or_client: CapOrClient::Capability(capability),
-            phantom: PhantomData,
             expectation: Box::new(ExpectBytes),
         }
     }
 }
 
-impl RequestBuilder<(), Vec<u8>> {
+impl RequestBuilder<Vec<u8>> {
     pub(crate) fn new_for_middleware(method: Method, url: Url, client: Client) -> Self {
         Self {
             req: Some(Request::new(method, url)),
             cap_or_client: CapOrClient::Client(client),
-            phantom: PhantomData,
             expectation: Box::new(ExpectBytes),
         }
     }
 }
 
-impl<Event, ExpectBody> RequestBuilder<Event, ExpectBody>
+impl<ExpectBody> RequestBuilder<ExpectBody>
 where
-    Event: 'static,
     ExpectBody: 'static,
 {
     /// Sets a header on the request.
@@ -308,12 +301,11 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn expect_string(self) -> RequestBuilder<Event, String> {
+    pub fn expect_string(self) -> RequestBuilder<String> {
         let expectation = Box::<ExpectString>::default();
         RequestBuilder {
             req: self.req,
             cap_or_client: self.cap_or_client,
-            phantom: PhantomData,
             expectation,
         }
     }
@@ -347,7 +339,7 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
-    pub fn expect_json<T>(self) -> RequestBuilder<Event, T>
+    pub fn expect_json<T>(self) -> RequestBuilder<T>
     where
         T: DeserializeOwned + 'static,
     {
@@ -355,43 +347,42 @@ where
         RequestBuilder {
             req: self.req,
             cap_or_client: self.cap_or_client,
-            phantom: PhantomData,
             expectation,
         }
     }
 
-    /// Sends the constructed `Request` and returns its result as an update `Event`
-    ///
-    /// When finished, the response will wrapped in an event using `make_event` and
-    /// dispatched to the app's `update function.
-    pub fn send<F>(self, make_event: F)
-    where
-        F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
-    {
-        let CapOrClient::Capability(capability) = self.cap_or_client else {
-            panic!("Called RequestBuilder::send in a middleware context");
-        };
-        let request = self.req;
+    // /// Sends the constructed `Request` and returns its result as an update `Event`
+    // ///
+    // /// When finished, the response will wrapped in an event using `make_event` and
+    // /// dispatched to the app's `update function.
+    // pub fn send<F>(self, make_event: F)
+    // where
+    //     F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
+    // {
+    //     let CapOrClient::Capability(capability) = self.cap_or_client else {
+    //         panic!("Called RequestBuilder::send in a middleware context");
+    //     };
+    //     let request = self.req;
 
-        let ctx = capability.context.clone();
-        ctx.spawn(async move {
-            let result = capability.client.send(request.unwrap()).await;
+    //     let ctx = capability.context.clone();
+    //     ctx.spawn(async move {
+    //         let result = capability.client.send(request.unwrap()).await;
 
-            let resp = match result {
-                Ok(resp) => resp,
-                Err(e) => {
-                    capability.context.update_app(make_event(Err(e)));
-                    return;
-                }
-            };
+    //         let resp = match result {
+    //             Ok(resp) => resp,
+    //             Err(e) => {
+    //                 capability.context.update_app(make_event(Err(e)));
+    //                 return;
+    //             }
+    //         };
 
-            let resp = Response::<Vec<u8>>::new(resp)
-                .await
-                .and_then(|r| self.expectation.decode(r));
+    //         let resp = Response::<Vec<u8>>::new(resp)
+    //             .await
+    //             .and_then(|r| self.expectation.decode(r));
 
-            capability.context.update_app(make_event(resp));
-        });
-    }
+    //         capability.context.update_app(make_event(resp));
+    //     });
+    // }
 
     /// Sends the constructed `Request` and returns a future that resolves to [`ResponseAsync`].
     /// but does not consume it or convert the body to an expected format.
@@ -407,7 +398,7 @@ where
     }
 }
 
-impl<T, Eb> std::future::IntoFuture for RequestBuilder<T, Eb> {
+impl<Eb> std::future::IntoFuture for RequestBuilder<Eb> {
     type Output = Result<ResponseAsync>;
 
     type IntoFuture = BoxFuture<'static, Result<ResponseAsync>>;

@@ -14,13 +14,13 @@ pub mod compose {
                 type Output = usize;
             }
 
-            pub struct CapabilityOne<E> {
-                context: CapabilityContext<OpOne, E>,
+            pub struct CapabilityOne {
+                context: CapabilityContext<OpOne>,
             }
 
             // Needed to allow 'this = (*self).clone()' without requiring E: Clone
             // See https://github.com/rust-lang/rust/issues/26925
-            impl<E> Clone for CapabilityOne<E> {
+            impl Clone for CapabilityOne {
                 fn clone(&self) -> Self {
                     Self {
                         context: self.context.clone(),
@@ -28,50 +28,37 @@ pub mod compose {
                 }
             }
 
-            impl<E> CapabilityOne<E> {
+            impl CapabilityOne {
                 #[must_use]
-                pub fn new(context: CapabilityContext<OpOne, E>) -> Self {
+                pub fn new(context: CapabilityContext<OpOne>) -> Self {
                     Self { context }
                 }
 
-                pub fn one<F>(&self, number: usize, event: F)
-                where
-                    F: FnOnce(usize) -> E + Send + 'static,
-                    E: 'static,
-                {
-                    let this = Clone::clone(self);
+                // pub fn one<F>(&self, number: usize, event: F)
+                // where
+                //     F: FnOnce(usize) -> E + Send + 'static,
+                //     E: 'static,
+                // {
+                //     let this = Clone::clone(self);
 
-                    this.context.spawn({
-                        let this = this.clone();
+                //     this.context.spawn({
+                //         let this = this.clone();
 
-                        async move {
-                            let result = this.one_async(number).await;
+                //         async move {
+                //             let result = this.one_async(number).await;
 
-                            this.context.update_app(event(result));
-                        }
-                    });
-                }
+                //             this.context.update_app(event(result));
+                //         }
+                //     });
+                // }
 
-                pub async fn one_async(&self, number: usize) -> usize
-                where
-                    E: 'static,
-                {
+                pub async fn one_async(&self, number: usize) -> usize {
                     self.context.request_from_shell(OpOne { number }).await
                 }
             }
 
-            impl<Ev> crux_core::Capability<Ev> for CapabilityOne<Ev> {
+            impl crux_core::Capability for CapabilityOne {
                 type Operation = OpOne;
-                type MappedSelf<MappedEv> = CapabilityOne<MappedEv>;
-
-                fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-                where
-                    F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-                    Ev: 'static,
-                    NewEv: 'static,
-                {
-                    CapabilityOne::new(self.context.map_event(f))
-                }
             }
         }
 
@@ -88,13 +75,13 @@ pub mod compose {
                 type Output = usize;
             }
 
-            pub struct CapabilityTwo<E> {
-                context: CapabilityContext<OpTwo, E>,
+            pub struct CapabilityTwo {
+                context: CapabilityContext<OpTwo>,
             }
 
             // Needed to allow 'this = (*self).clone()' without requiring E: Clone
             // See https://github.com/rust-lang/rust/issues/26925
-            impl<E> Clone for CapabilityTwo<E> {
+            impl Clone for CapabilityTwo {
                 fn clone(&self) -> Self {
                     Self {
                         context: self.context.clone(),
@@ -102,50 +89,37 @@ pub mod compose {
                 }
             }
 
-            impl<E> CapabilityTwo<E> {
+            impl CapabilityTwo {
                 #[must_use]
-                pub fn new(context: CapabilityContext<OpTwo, E>) -> Self {
+                pub fn new(context: CapabilityContext<OpTwo>) -> Self {
                     Self { context }
                 }
 
-                pub fn two<F>(&self, number: usize, event: F)
-                where
-                    F: FnOnce(usize) -> E + Send + 'static,
-                    E: 'static,
-                {
-                    let this = Clone::clone(self);
+                // pub fn two<F>(&self, number: usize, event: F)
+                // where
+                //     F: FnOnce(usize) -> E + Send + 'static,
+                //     E: 'static,
+                // {
+                //     let this = Clone::clone(self);
 
-                    this.context.spawn({
-                        let this = this.clone();
+                //     this.context.spawn({
+                //         let this = this.clone();
 
-                        async move {
-                            let result = this.two_async(number).await;
+                //         async move {
+                //             let result = this.two_async(number).await;
 
-                            this.context.update_app(event(result));
-                        }
-                    });
-                }
+                //             this.context.update_app(event(result));
+                //         }
+                //     });
+                // }
 
-                pub async fn two_async(&self, number: usize) -> usize
-                where
-                    E: 'static,
-                {
+                pub async fn two_async(&self, number: usize) -> usize {
                     self.context.request_from_shell(OpTwo { number }).await
                 }
             }
 
-            impl<Ev> crux_core::Capability<Ev> for CapabilityTwo<Ev> {
+            impl crux_core::Capability for CapabilityTwo {
                 type Operation = OpTwo;
-                type MappedSelf<MappedEv> = CapabilityTwo<MappedEv>;
-
-                fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-                where
-                    F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-                    Ev: 'static,
-                    NewEv: 'static,
-                {
-                    CapabilityTwo::new(self.context.map_event(f))
-                }
             }
         }
     }
