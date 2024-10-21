@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.5.1](https://github.com/redbadger/crux/compare/crux_kv-v0.5.0...crux_kv-v0.5.1) - 2024-20-21
+
+- Serialization of bytes can now be more efficient with [`serde_bytes`](https://github.com/serde-rs/bytes).
+  see https://github.com/redbadger/crux/pull/273
+- Fixes a problem building the crate for the `typegen` feature, see https://github.com/redbadger/crux/pull/277
+
 ## [0.5.0](https://github.com/redbadger/crux/compare/crux_kv-v0.4.2...crux_kv-v0.5.0) - 2024-08-13
 
 It is no longer necessary to register types separately for this capability.

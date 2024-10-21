@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.1](https://github.com/redbadger/crux/compare/crux_core-v0.9.0...crux_core-v0.9.1) - 2024-10-21
+
+- Fixes a memory leak that affects tasks that contain futures, see https://github.com/redbadger/crux/issues/268.
+  This only affects tasks that contain futures, and only when the task is dropped before the future completes.
+
 ## [0.9.0](https://github.com/redbadger/crux/compare/crux_core-v0.8.1...crux_core-v0.9.0) - 2024-08-13
 
 ### Other
