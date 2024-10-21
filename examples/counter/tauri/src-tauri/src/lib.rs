@@ -4,10 +4,9 @@ mod sse;
 use anyhow::anyhow;
 use futures::TryStreamExt;
 use lazy_static::lazy_static;
-use std::sync::Arc;
-use tauri::Manager;
-
 use shared::{App, Core, Effect, Event};
+use std::sync::Arc;
+use tauri::Emitter;
 
 lazy_static! {
     static ref CORE: Arc<Core<Effect, App>> = Arc::new(Core::new());
@@ -33,7 +32,7 @@ fn process_effect(
     match effect {
         Effect::Render(_) => {
             let view = core.view();
-            tauri_app.emit_all("render", view).map_err(|e| anyhow!(e))
+            tauri_app.emit("render", view).map_err(|e| anyhow!(e))
         }
         Effect::Http(mut request) => {
             tauri::async_runtime::spawn({

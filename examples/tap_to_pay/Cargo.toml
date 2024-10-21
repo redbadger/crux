@@ -9,7 +9,7 @@ keywords = ["tap-to-pay"]
 rust-version = "1.68"
 
 [workspace.dependencies]
-anyhow = "1.0.89"
+anyhow = "1.0.90"
 crux_core = "0.9.0"
 serde = "1.0.210"
 

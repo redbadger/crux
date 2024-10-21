@@ -11,12 +11,15 @@ use core::CoreService;
 fn App() -> Element {
     let view = use_signal(ViewModel::default);
 
-    let core = use_coroutine(|mut rx| {
+    let core = use_coroutine(move |mut rx| {
         let svc = CoreService::new(view);
         async move { svc.run(&mut rx).await }
     });
-
     rsx! {
+        document::Link {
+            rel: "stylesheet",
+            href: asset!("./public/css/bulma.min.css")
+        }
         main {
             section { class: "section has-text-centered",
                 p { class: "is-size-5", "{view().count}" }

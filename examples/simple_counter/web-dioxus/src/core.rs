@@ -26,7 +26,7 @@ impl CoreService {
 
     pub async fn run(&self, rx: &mut UnboundedReceiver<Event>) {
         let mut view = self.view;
-        *view.write() = self.core.view();
+        view.set(self.core.view());
         while let Some(event) = rx.next().await {
             self.update(event, &mut view);
         }
@@ -46,7 +46,7 @@ fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
 
     match effect {
         Effect::Render(_) => {
-            *view.write() = core.view();
+            view.set(core.view());
         }
     };
 }
