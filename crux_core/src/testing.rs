@@ -78,8 +78,8 @@ where
 
     /// Resolve an effect `request` from previous update, then run the resulting event
     ///
-    /// This helper is useful for the comment case where  one expects the effect to resolve
-    ///  to exactly one event, which should then be run by the app.
+    /// This helper is useful for the common case where  one expects the effect to resolve
+    /// to exactly one event, which should then be run by the app.
     pub fn resolve_to_event_then_update<Op: Operation>(
         &self,
         request: &mut Request<Op>,
@@ -178,8 +178,8 @@ impl<Ef, Ev> Update<Ef, Ev> {
         }
     }
 
-    /// Assert that the update contains exactly one effect and zero events,
-    /// and return the effect
+    /// Assert that the update contains exactly one event and zero effects,
+    /// and return the event
     pub fn expect_one_event(mut self) -> Ev {
         if self.effects.is_empty() && self.events.len() == 1 {
             self.events.pop().unwrap()
