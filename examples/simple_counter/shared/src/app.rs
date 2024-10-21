@@ -116,8 +116,8 @@ mod test {
         let app = AppTester::<Counter, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Increment, &mut model);
-        app.update(Event::Reset, &mut model);
+        let _ = app.update(Event::Increment, &mut model);
+        let _ = app.update(Event::Reset, &mut model);
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 0";
@@ -129,11 +129,11 @@ mod test {
         let app = AppTester::<Counter, _>::default();
         let mut model = Model::default();
 
-        app.update(Event::Increment, &mut model);
-        app.update(Event::Reset, &mut model);
-        app.update(Event::Decrement, &mut model);
-        app.update(Event::Increment, &mut model);
-        app.update(Event::Increment, &mut model);
+        let _ = app.update(Event::Increment, &mut model);
+        let _ = app.update(Event::Reset, &mut model);
+        let _ = app.update(Event::Decrement, &mut model);
+        let _ = app.update(Event::Increment, &mut model);
+        let _ = app.update(Event::Increment, &mut model);
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";

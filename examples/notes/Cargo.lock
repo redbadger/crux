@@ -300,9 +300,9 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 
 [[package]]
 name = "crux_core"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b4f3d9faf1f5cbce21e41950cdcc9df9f6a946420a434737741b0e6b15aebbb"
+checksum = "f7254d2fca79de45e1e595fa7d32a0d3d8bfec85ee02b250cc216af6b7f01162"
 dependencies = [
  "anyhow",
  "bincode",
@@ -320,21 +320,22 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ed3640a5be1a460c6b258f5d30b6fbf9463eeadbea01368fc9600e726ac8d9c"
+checksum = "ce5b90cf04e92216c2a5c4a878bd832b220ca70238228f271323be95585d7c1d"
 dependencies = [
  "anyhow",
  "crux_core",
  "serde",
+ "serde_bytes",
  "thiserror",
 ]
 
 [[package]]
 name = "crux_macros"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0bd454f045322bf00e9618fdbcfe0ea8f12051ceacb67f244e7c79b4152d23e"
+checksum = "6628a214f3754bdea8f05bf9ebbe62cd6bff48f7a4bea52ecb14cbd1743484ad"
 dependencies = [
  "darling",
  "proc-macro-error",
@@ -957,6 +958,15 @@ dependencies = [
  "once_cell",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "serde_bytes"
+version = "0.11.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "387cc504cb06bb40a96c8e04e951fe01854cf6bc921053c954e4a606d9675c6a"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

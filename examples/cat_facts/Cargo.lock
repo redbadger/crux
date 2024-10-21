@@ -433,9 +433,9 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 
 [[package]]
 name = "crux_core"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b4f3d9faf1f5cbce21e41950cdcc9df9f6a946420a434737741b0e6b15aebbb"
+checksum = "f7254d2fca79de45e1e595fa7d32a0d3d8bfec85ee02b250cc216af6b7f01162"
 dependencies = [
  "anyhow",
  "bincode",
@@ -453,9 +453,9 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5fb65e45d44626e340b6605bb92c8d87b4342e090cfa548f913746a2ebdc999"
+checksum = "bf0c2c59aee43cfd5a02ddf3eea264e59bc8317b731fa57905bfd62c4eb84c80"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -475,21 +475,22 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ed3640a5be1a460c6b258f5d30b6fbf9463eeadbea01368fc9600e726ac8d9c"
+checksum = "ce5b90cf04e92216c2a5c4a878bd832b220ca70238228f271323be95585d7c1d"
 dependencies = [
  "anyhow",
  "crux_core",
  "serde",
+ "serde_bytes",
  "thiserror",
 ]
 
 [[package]]
 name = "crux_macros"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0bd454f045322bf00e9618fdbcfe0ea8f12051ceacb67f244e7c79b4152d23e"
+checksum = "6628a214f3754bdea8f05bf9ebbe62cd6bff48f7a4bea52ecb14cbd1743484ad"
 dependencies = [
  "darling",
  "proc-macro-error",
@@ -500,9 +501,9 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f429df9750ccf0a0d603888f1a88f84ea62a828fd3355ad16efc7411678efd7e"
+checksum = "ea670b8e6fa544ea8f9cd435624eea4d763d867298a8e7575ee71bcdd0859452"
 dependencies = [
  "crux_core",
  "serde",
@@ -510,9 +511,9 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12084e1472d98794210f5568edf69112e830a48ba7e7029a4d454433d643ef7b"
+checksum = "705d7974afd4343ae6f52dd588ff74b5a383c212232324be7449b6b7342ce08f"
 dependencies = [
  "chrono",
  "crux_core",
