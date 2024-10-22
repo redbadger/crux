@@ -8,7 +8,10 @@ pub mod value;
 
 use serde::{Deserialize, Serialize};
 
-use crux_core::capability::{CapabilityContext, Operation};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Command,
+};
 
 use error::KeyValueError;
 use value::Value;
@@ -152,17 +155,15 @@ impl KeyValue {
 
     /// Read a value under `key`, will dispatch the event with a
     /// `KeyValueResult::Get { value: Vec<u8> }` as payload
-    pub fn get<F>(&self, key: String, make_event: F)
+    pub fn get<F, Ev>(&self, key: String, make_event: F) -> Command<Ev>
     where
         F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = get(&context, key).await;
-                context.update_app(make_event(response));
-            }
-        });
+        let context = self.context.clone();
+        Command::effect(async move {
+            let response = get(&context, key).await;
+            Command::Event(make_event(response))
+        })
     }
 
     /// Read a value under `key`, while in an async context. This is used together with
@@ -177,17 +178,15 @@ impl KeyValue {
     /// a value serialized/deserialized by the app.
     ///
     /// Will dispatch the event with a `KeyValueResult::Set { previous: Vec<u8> }` as payload
-    pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
+    pub fn set<F, Ev>(&self, key: String, value: Vec<u8>, make_event: F) -> Command<Ev>
     where
         F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = set(&context, key, value).await;
-                context.update_app(make_event(response))
-            }
-        });
+        let context = self.context.clone();
+        Command::effect(async move {
+            let response = set(&context, key, value).await;
+            Command::Event(make_event(response))
+        })
     }
 
     /// Set `key` to be the provided `value`, while in an async context. This is used together with
@@ -204,17 +203,15 @@ impl KeyValue {
 
     /// Remove a `key` and its value, will dispatch the event with a
     /// `KeyValueResult::Delete { previous: Vec<u8> }` as payload
-    pub fn delete<F>(&self, key: String, make_event: F)
+    pub fn delete<F, Ev>(&self, key: String, make_event: F) -> Command<Ev>
     where
         F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = delete(&context, key).await;
-                context.update_app(make_event(response))
-            }
-        });
+        let context = self.context.clone();
+        Command::effect(async move {
+            let response = delete(&context, key).await;
+            Command::Event(make_event(response))
+        })
     }
 
     /// Remove a `key` and its value, while in an async context. This is used together with
@@ -227,17 +224,15 @@ impl KeyValue {
 
     /// Check to see if a `key` exists, will dispatch the event with a
     /// `KeyValueResult::Exists { is_present: bool }` as payload
-    pub fn exists<F>(&self, key: String, make_event: F)
+    pub fn exists<F, Ev>(&self, key: String, make_event: F) -> Command<Ev>
     where
         F: FnOnce(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = exists(&context, key).await;
-                context.update_app(make_event(response))
-            }
-        });
+        let context = self.context.clone();
+        Command::effect(async move {
+            let response = exists(&context, key).await;
+            Command::Event(make_event(response))
+        })
     }
 
     /// Check to see if a `key` exists, while in an async context. This is used together with
@@ -259,17 +254,15 @@ impl KeyValue {
     ///
     /// If the cursor is found the result will be a tuple of the keys and the next cursor
     /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
-    pub fn list_keys<F>(&self, prefix: String, cursor: u64, make_event: F)
+    pub fn list_keys<F, Ev>(&self, prefix: String, cursor: u64, make_event: F) -> Command<Ev>
     where
         F: FnOnce(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = list_keys(&context, prefix, cursor).await;
-                context.update_app(make_event(response))
-            }
-        });
+        let context = self.context.clone();
+        Command::effect(async move {
+            let response = list_keys(&context, prefix, cursor).await;
+            Command::Event(make_event(response))
+        })
     }
 
     /// List keys that start with the provided `prefix`, starting from the provided `cursor`,
@@ -291,8 +284,8 @@ impl KeyValue {
     }
 }
 
-async fn get<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
+async fn get(
+    context: &CapabilityContext<KeyValueOperation>,
     key: String,
 ) -> Result<Option<Vec<u8>>, KeyValueError> {
     context
@@ -301,8 +294,8 @@ async fn get<Ev: 'static>(
         .unwrap_get()
 }
 
-async fn set<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
+async fn set(
+    context: &CapabilityContext<KeyValueOperation>,
     key: String,
     value: Vec<u8>,
 ) -> Result<Option<Vec<u8>>, KeyValueError> {
@@ -312,8 +305,8 @@ async fn set<Ev: 'static>(
         .unwrap_set()
 }
 
-async fn delete<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
+async fn delete(
+    context: &CapabilityContext<KeyValueOperation>,
     key: String,
 ) -> Result<Option<Vec<u8>>, KeyValueError> {
     context
@@ -322,8 +315,8 @@ async fn delete<Ev: 'static>(
         .unwrap_delete()
 }
 
-async fn exists<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
+async fn exists(
+    context: &CapabilityContext<KeyValueOperation>,
     key: String,
 ) -> Result<bool, KeyValueError> {
     context
@@ -332,8 +325,8 @@ async fn exists<Ev: 'static>(
         .unwrap_exists()
 }
 
-async fn list_keys<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
+async fn list_keys(
+    context: &CapabilityContext<KeyValueOperation>,
     prefix: String,
     cursor: u64,
 ) -> Result<(Vec<String>, u64), KeyValueError> {
