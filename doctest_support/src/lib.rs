@@ -34,24 +34,6 @@ pub mod compose {
                     Self { context }
                 }
 
-                // pub fn one<F>(&self, number: usize, event: F)
-                // where
-                //     F: FnOnce(usize) -> E + Send + 'static,
-                //     E: 'static,
-                // {
-                //     let this = Clone::clone(self);
-
-                //     this.context.spawn({
-                //         let this = this.clone();
-
-                //         async move {
-                //             let result = this.one_async(number).await;
-
-                //             this.context.update_app(event(result));
-                //         }
-                //     });
-                // }
-
                 pub async fn one_async(&self, number: usize) -> usize {
                     self.context.request_from_shell(OpOne { number }).await
                 }
@@ -94,24 +76,6 @@ pub mod compose {
                 pub fn new(context: CapabilityContext<OpTwo>) -> Self {
                     Self { context }
                 }
-
-                // pub fn two<F>(&self, number: usize, event: F)
-                // where
-                //     F: FnOnce(usize) -> E + Send + 'static,
-                //     E: 'static,
-                // {
-                //     let this = Clone::clone(self);
-
-                //     this.context.spawn({
-                //         let this = this.clone();
-
-                //         async move {
-                //             let result = this.two_async(number).await;
-
-                //             this.context.update_app(event(result));
-                //         }
-                //     });
-                // }
 
                 pub async fn two_async(&self, number: usize) -> usize {
                     self.context.request_from_shell(OpTwo { number }).await

@@ -54,13 +54,4 @@ impl Render {
 
 impl Capability for Render {
     type Operation = RenderOperation;
-
-    // fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    // where
-    //     F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-    //     Ev: 'static,
-    //     NewEv: 'static,
-    // {
-    //     Render::new(self.context.map_event(f))
-    // }
 }

@@ -267,26 +267,10 @@ impl Operation for Never {
 /// # }
 /// impl<Ev> Capability<Ev> for Http<Ev> {
 ///     type Operation = HttpRequest;
-///     type MappedSelf<MappedEv> = Http<MappedEv>;
-///
-///     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-///     where
-///         F: Fn(NewEvent) -> Ev + Send + Sync + 'static,
-///         Ev: 'static,
-///         NewEvent: 'static,
-///     {
-///         Http::new(self.context.map_event(f))
-///     }
 /// }
 /// ```
 pub trait Capability {
     type Operation: Operation + DeserializeOwned;
-
-    // fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    // where
-    //     F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-    //     Ev: 'static,
-    //     NewEv: 'static + Send;
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
@@ -463,14 +447,6 @@ where
         // consistent with their function calls.
         self.shell_channel.send(Request::resolves_never(operation));
     }
-
-    // /// Send an event to the app. The event will be processed on the next
-    // /// run of the update loop. You can call `update_app` several times,
-    // /// the events will be queued up and processed sequentially after your
-    // /// async task either `await`s or finishes.
-    // pub fn update_app(&self, event: Ev) {
-    //     self.inner.app_channel.send(event);
-    // }
 
     /// Transform the CapabilityContext into one which uses the provided function to
     /// map each event dispatched with `update_app` to a different event type.
