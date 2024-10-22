@@ -231,7 +231,7 @@ mod tests {
         // send fetch event to app
         let (mut http_effects, mut render_effects) = app
             .update(Event::Fetch, &mut model)
-            .take_partitioned_effects(|e| e.is_http());
+            .take_effects_partitioned_by(Effect::is_http);
 
         // receive render effect
         render_effects.pop_front().unwrap().expect_render();
@@ -282,7 +282,7 @@ mod tests {
         // and check that we get a key value set event and a render event
         let (mut key_value_effects, mut render_effects) = app
             .update(event, &mut model)
-            .take_partitioned_effects(|e| e.is_key_value());
+            .take_effects_partitioned_by(Effect::is_key_value);
         render_effects.pop_front().unwrap().expect_render();
 
         let mut request = key_value_effects.pop_front().unwrap().expect_key_value();

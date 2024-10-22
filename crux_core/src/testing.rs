@@ -210,7 +210,7 @@ impl<Ef, Ev> Update<Ef, Ev> {
     where
         P: FnMut(&Ef) -> bool,
     {
-        let (matching_effects, other_effects) = self.take_partitioned_effects(predicate);
+        let (matching_effects, other_effects) = self.take_effects_partitioned_by(predicate);
 
         self.effects = other_effects.into_iter().collect();
 
@@ -219,7 +219,7 @@ impl<Ef, Ev> Update<Ef, Ev> {
 
     /// Take all of the effects out of the [`Update`]
     /// and split them into those matching `predicate` and the rest
-    pub fn take_partitioned_effects<P>(&mut self, predicate: P) -> (VecDeque<Ef>, VecDeque<Ef>)
+    pub fn take_effects_partitioned_by<P>(&mut self, predicate: P) -> (VecDeque<Ef>, VecDeque<Ef>)
     where
         P: FnMut(&Ef) -> bool,
     {

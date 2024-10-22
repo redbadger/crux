@@ -227,7 +227,7 @@ mod tests {
         let mut update = app.update(Event::Increment, &mut model);
 
         // split the effects into render and HTTP requests
-        let (mut render, mut http) = update.take_partitioned_effects(|e| e.is_render());
+        let (mut render, mut http) = update.take_effects_partitioned_by(Effect::is_render);
 
         // check that the app asked the shell to render
         render.pop_front().unwrap().expect_render();
@@ -285,7 +285,7 @@ mod tests {
         let mut update = app.update(Event::Decrement, &mut model);
 
         // split the effects into render and HTTP requests
-        let (mut render, mut http) = update.take_partitioned_effects(|e| e.is_render());
+        let (mut render, mut http) = update.take_effects_partitioned_by(Effect::is_render);
 
         // check that the app asked the shell to render
         render.pop_front().unwrap().expect_render();
