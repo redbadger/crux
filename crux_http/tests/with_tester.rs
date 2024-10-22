@@ -143,21 +143,21 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut update = app.update(Event::Get, &mut model);
-
-        let Effect::Http(request) = update.effects_mut().next().unwrap();
-        let http_request = &request.operation;
+        let mut request = app
+            .update(Event::Get, &mut model)
+            .expect_one_effect()
+            .expect_http();
 
         assert_eq!(
-            *http_request,
+            request.operation,
             HttpRequest::get("http://example.com/")
                 .header("authorization", "secret-token")
                 .build()
         );
 
-        let update = app
+        let actual = app
             .resolve(
-                request,
+                &mut request,
                 HttpResult::Ok(
                     HttpResponse::ok()
                         .json("hello")
@@ -166,19 +166,17 @@ mod tests {
                         .build(),
                 ),
             )
-            .expect("Resolves successfully");
+            .expect("Resolves successfully")
+            .expect_one_event();
 
-        let actual = update.events.clone();
-        assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
-            assert_eq!(*response.body().unwrap(), "\"hello\"".to_string());
-            assert_eq!(*response.header("my_header").unwrap().iter()
+        assert_matches!(actual.clone(), Event::Set(Ok(response)) => {
+            assert_eq!(response.body().unwrap(), "\"hello\"");
+            assert_eq!(response.header("my_header").unwrap().iter()
             .map(|v| v.to_string())
             .collect::<Vec<_>>(), vec!["my_value1", "my_value2"]);
         });
 
-        for event in update.events {
-            app.update(event, &mut model).assert_empty();
-        }
+        app.update(actual, &mut model).assert_empty();
         assert_eq!(model.body, "\"hello\"");
         assert_eq!(model.values, vec!["my_value1", "my_value2"]);
     }
@@ -188,9 +186,10 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut update = app.update(Event::Post, &mut model);
-
-        let Effect::Http(request) = update.effects_mut().next().unwrap();
+        let mut request = app
+            .update(Event::Post, &mut model)
+            .expect_one_effect()
+            .expect_http();
 
         assert_eq!(
             request.operation,
@@ -200,16 +199,16 @@ mod tests {
                 .build()
         );
 
-        let update = app
+        let actual = app
             .resolve(
-                request,
+                &mut request,
                 HttpResult::Ok(HttpResponse::ok().json("The Body").build()),
             )
-            .expect("Resolves successfully");
+            .expect("Resolves successfully")
+            .expect_one_event();
 
-        let actual = update.events;
-        assert_matches!(&actual[..], [Event::Set(Ok(response))] => {
-            assert_eq!(*response.body().unwrap(), "\"The Body\"".to_string());
+        assert_matches!(actual, Event::Set(Ok(response)) => {
+            assert_eq!(response.body().unwrap(), "\"The Body\"");
         });
     }
 
@@ -218,40 +217,40 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut update = app.update(Event::GetPostChain, &mut model);
-
-        let Effect::Http(request) = update.effects_mut().next().unwrap();
-        let http_request = &request.operation;
+        let mut request = app
+            .update(Event::GetPostChain, &mut model)
+            .expect_one_effect()
+            .expect_http();
 
         assert_eq!(
-            *http_request,
+            request.operation,
             HttpRequest::get("http://example.com/").build()
         );
 
-        let mut update = app
+        let mut request = app
             .resolve(
-                request,
+                &mut request,
                 HttpResult::Ok(HttpResponse::ok().body("secret_place").build()),
             )
-            .expect("Resolves successfully");
-
-        assert!(update.events.is_empty());
-
-        let Effect::Http(request) = update.effects_mut().next().unwrap();
-        let http_request = &request.operation;
+            .expect("Resolves successfully")
+            .expect_one_effect()
+            .expect_http();
 
         assert_eq!(
-            *http_request,
+            request.operation,
             HttpRequest::post("http://example.com/secret_place").build()
         );
 
-        let update = app
-            .resolve(request, HttpResult::Ok(HttpResponse::status(201).build()))
-            .expect("Resolves successfully");
+        let actual = app
+            .resolve(
+                &mut request,
+                HttpResult::Ok(HttpResponse::status(201).build()),
+            )
+            .expect("Resolves successfully")
+            .expect_one_event();
 
-        let actual = update.events.clone();
-        assert_matches!(&actual[..], [Event::ComposeComplete(status)] => {
-            assert_eq!(*status, 201);
+        assert_matches!(actual, Event::ComposeComplete(status) => {
+            assert_eq!(status, 201);
         });
     }
 
@@ -260,29 +259,28 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut update = app.update(Event::ConcurrentGets, &mut model);
-        let mut effects = update.effects_mut();
+        let mut requests = app
+            .update(Event::ConcurrentGets, &mut model)
+            .take_effects(Effect::is_http);
 
-        let Effect::Http(request_one) = effects.next().unwrap();
-        let http_request = &request_one.operation;
+        let mut request_one = requests.pop_front().unwrap().expect_http();
 
         assert_eq!(
-            *http_request,
+            request_one.operation,
             HttpRequest::get("http://example.com/one").build()
         );
 
-        let Effect::Http(request_two) = effects.next().unwrap();
-        let http_request = &request_two.operation;
+        let mut request_two = requests.pop_front().unwrap().expect_http();
 
         assert_eq!(
-            *http_request,
+            request_two.operation,
             HttpRequest::get("http://example.com/two").build()
         );
 
         // Resolve second request first, should not matter
         let update = app
             .resolve(
-                request_two,
+                &mut request_two,
                 HttpResult::Ok(HttpResponse::ok().body("one").build()),
             )
             .expect("Resolves successfully");
@@ -291,16 +289,16 @@ mod tests {
         assert!(update.effects.is_empty());
         assert!(update.events.is_empty());
 
-        let update = app
+        let actual = app
             .resolve(
-                request_one,
+                &mut request_one,
                 HttpResult::Ok(HttpResponse::ok().body("one").build()),
             )
-            .expect("Resolves successfully");
+            .expect("Resolves successfully")
+            .expect_one_event();
 
-        let actual = update.events.clone();
-        assert_matches!(&actual[..], [Event::ComposeComplete(status)] => {
-            assert_eq!(*status, 200);
+        assert_matches!(actual, Event::ComposeComplete(status) => {
+            assert_eq!(status, 200);
         });
     }
 
@@ -309,31 +307,29 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut update = app.update(Event::Get, &mut model);
-
-        let mut effects = update.effects_mut();
-        let Effect::Http(request) = effects.next().unwrap();
-        let http_request = &request.operation;
+        let mut request = app
+            .update(Event::Get, &mut model)
+            .expect_one_effect()
+            .expect_http();
 
         assert_eq!(
-            *http_request,
+            request.operation,
             HttpRequest::get("http://example.com/")
                 .header("authorization", "secret-token")
                 .build()
         );
 
-        let update = app
+        let actual = app
             .resolve(
-                request,
+                &mut request,
                 HttpResult::Err(crux_http::HttpError::Io(
                     "Socket shenanigans prevented the request".to_string(),
                 )),
             )
-            .expect("Resolves successfully");
+            .expect("Resolves successfully")
+            .expect_one_event();
 
-        let actual = update.events.clone();
-
-        let Event::Set(Err(crux_http::HttpError::Io(error))) = &actual[0] else {
+        let Event::Set(Err(crux_http::HttpError::Io(error))) = actual else {
             panic!("Expected original error back")
         };
 

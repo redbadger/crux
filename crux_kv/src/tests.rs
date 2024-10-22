@@ -137,32 +137,27 @@ fn test_get() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let updated = app.update(Event::Get, &mut model);
+    let mut request = app
+        .update(Event::Get, &mut model)
+        .expect_one_effect()
+        .expect_key_value();
 
-    let effect = updated.into_effects().next().unwrap();
-    let Effect::KeyValue(mut request) = effect else {
-        panic!("Expected KeyValue effect");
-    };
+    assert_eq!(
+        request.operation,
+        KeyValueOperation::Get {
+            key: "test".to_string()
+        }
+    );
 
-    let KeyValueOperation::Get { key } = request.operation.clone() else {
-        panic!("Expected get operation");
-    };
-
-    assert_eq!(key, "test");
-
-    let updated = app
-        .resolve(
-            &mut request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Get {
-                    value: 42i32.to_ne_bytes().to_vec().into(),
-                },
+    let _updated = app.resolve_to_event_then_update(
+        &mut request,
+        KeyValueResult::Ok {
+            response: KeyValueResponse::Get {
+                value: 42i32.to_ne_bytes().to_vec().into(),
             },
-        )
-        .unwrap();
-
-    let event = updated.events.into_iter().next().unwrap();
-    let _update = app.update(event, &mut model);
+        },
+        &mut model,
+    );
 
     assert_eq!(model.value, 42);
 }
@@ -172,33 +167,28 @@ fn test_set() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let updated = app.update(Event::Set, &mut model);
+    let mut request = app
+        .update(Event::Set, &mut model)
+        .expect_one_effect()
+        .expect_key_value();
 
-    let effect = updated.into_effects().next().unwrap();
-    let Effect::KeyValue(mut request) = effect else {
-        panic!("Expected KeyValue effect");
-    };
+    assert_eq!(
+        request.operation,
+        KeyValueOperation::Set {
+            key: "test".to_string(),
+            value: 42i32.to_ne_bytes().to_vec().into(),
+        }
+    );
 
-    let KeyValueOperation::Set { key, value } = request.operation.clone() else {
-        panic!("Expected set operation");
-    };
-
-    assert_eq!(key, "test");
-    assert_eq!(value, 42i32.to_ne_bytes().to_vec());
-
-    let updated = app
-        .resolve(
-            &mut request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Set {
-                    previous: Value::None,
-                },
+    let _updated = app.resolve_to_event_then_update(
+        &mut request,
+        KeyValueResult::Ok {
+            response: KeyValueResponse::Set {
+                previous: Value::None,
             },
-        )
-        .unwrap();
-
-    let event = updated.events.into_iter().next().unwrap();
-    let _update = app.update(event, &mut model);
+        },
+        &mut model,
+    );
 
     assert!(model.successful);
 }
@@ -213,11 +203,12 @@ fn test_delete() {
         .expect_one_effect()
         .expect_key_value();
 
-    let KeyValueOperation::Delete { key } = request.operation.clone() else {
-        panic!("Expected delete operation");
-    };
-
-    assert_eq!(key, "test");
+    assert_eq!(
+        request.operation,
+        KeyValueOperation::Delete {
+            key: "test".to_string()
+        }
+    );
 
     let _updated = app.resolve_to_event_then_update(
         &mut request,
@@ -242,11 +233,12 @@ fn test_exists() {
         .expect_one_effect()
         .expect_key_value();
 
-    let KeyValueOperation::Exists { key } = request.operation.clone() else {
-        panic!("Expected exists operation");
-    };
-
-    assert_eq!(key, "test");
+    assert_eq!(
+        request.operation,
+        KeyValueOperation::Exists {
+            key: "test".to_string()
+        }
+    );
 
     let _updated = app.resolve_to_event_then_update(
         &mut request,
@@ -269,14 +261,15 @@ fn test_list_keys() {
         .expect_one_effect()
         .expect_key_value();
 
-    let KeyValueOperation::ListKeys { prefix, cursor } = request.operation.clone() else {
-        panic!("Expected list keys operation");
-    };
+    assert_eq!(
+        request.operation,
+        KeyValueOperation::ListKeys {
+            prefix: "test:".to_string(),
+            cursor: 0,
+        }
+    );
 
-    assert_eq!(prefix, "test:");
-    assert_eq!(cursor, 0);
-
-    let _update = app.resolve_to_event_then_update(
+    let _updated = app.resolve_to_event_then_update(
         &mut request,
         KeyValueResult::Ok {
             response: KeyValueResponse::ListKeys {
@@ -296,20 +289,19 @@ pub fn test_kv_async() -> Result<()> {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let update = app.update(Event::GetThenSet, &mut model);
+    let mut request = app
+        .update(Event::GetThenSet, &mut model)
+        .expect_one_effect()
+        .expect_key_value();
 
-    let effect = update.into_effects().next().unwrap();
-    let Effect::KeyValue(mut request) = effect else {
-        panic!("Expected KeyValue effect");
-    };
+    assert_eq!(
+        request.operation,
+        KeyValueOperation::Get {
+            key: "test_num".to_string()
+        }
+    );
 
-    let KeyValueOperation::Get { key } = request.operation.clone() else {
-        panic!("Expected get operation");
-    };
-
-    assert_eq!(key, "test_num");
-
-    let update = app
+    let mut request = app
         .resolve(
             &mut request,
             KeyValueResult::Ok {
@@ -318,33 +310,27 @@ pub fn test_kv_async() -> Result<()> {
                 },
             },
         )
-        .unwrap();
+        .unwrap()
+        .expect_one_effect()
+        .expect_key_value();
 
-    let effect = update.into_effects().next().unwrap();
-    let Effect::KeyValue(mut request) = effect else {
-        panic!("Expected KeyValue effect");
-    };
+    assert_eq!(
+        request.operation,
+        KeyValueOperation::Set {
+            key: "test_num".to_string(),
+            value: 18u32.to_ne_bytes().to_vec().into(),
+        }
+    );
 
-    let KeyValueOperation::Set { key, value } = request.operation.clone() else {
-        panic!("Expected get operation");
-    };
-
-    assert_eq!(key, "test_num".to_string());
-    assert_eq!(value, 18u32.to_ne_bytes().to_vec());
-
-    let update = app
-        .resolve(
-            &mut request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Set {
-                    previous: Value::None,
-                },
+    let _updated = app.resolve_to_event_then_update(
+        &mut request,
+        KeyValueResult::Ok {
+            response: KeyValueResponse::Set {
+                previous: Value::None,
             },
-        )
-        .unwrap();
-
-    let event = update.events.into_iter().next().unwrap();
-    let _update = app.update(event, &mut model);
+        },
+        &mut model,
+    );
 
     assert!(model.successful);
 
