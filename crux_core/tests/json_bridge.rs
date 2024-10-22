@@ -26,7 +26,7 @@ mod app {
             _model: &mut Self::Model,
             caps: &Capabilities,
         ) -> Command<Self::Event> {
-            Command::empty_effect(caps.render.render())
+            caps.render.render()
         }
 
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {

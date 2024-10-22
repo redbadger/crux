@@ -191,6 +191,29 @@ impl<Event> Command<Event> {
     pub fn empty_effect(fut: impl Future<Output = ()> + Send + 'static) -> Self {
         Self::Effects(vec![Box::pin(fut.map(|()| Command::None))])
     }
+
+    pub fn map<F, Event2>(self, func: F) -> Command<Event2>
+    where
+        F: Fn(Event) -> Event2 + Send + Clone + 'static,
+        Event: 'static,
+    {
+        match self {
+            Command::None => Command::None,
+            Command::Event(ev) => Command::Event(func(ev)),
+            Command::Effects(effects) => {
+                let effects = effects
+                    .into_iter()
+                    .map(|fut| {
+                        Box::pin(fut.map({
+                            let f = func.clone();
+                            move |cmd| cmd.map(f)
+                        })) as BoxFuture<'static, Command<Event2>>
+                    })
+                    .collect();
+                Command::Effects(effects)
+            }
+        }
+    }
 }
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]

@@ -89,18 +89,18 @@ impl crux_core::App for App {
 
             Event::SetResponse(Ok(_response)) => {
                 model.successful = true;
-                Command::empty_effect(caps.render.render())
+                caps.render.render()
             }
 
             Event::ExistsResponse(Ok(_response)) => {
                 model.successful = true;
-                Command::empty_effect(caps.render.render())
+                caps.render.render()
             }
 
             Event::ListKeysResponse(Ok((keys, cursor))) => {
                 model.keys = keys;
                 model.cursor = cursor;
-                Command::empty_effect(caps.render.render())
+                caps.render.render()
             }
 
             Event::GetResponse(Err(error)) => {

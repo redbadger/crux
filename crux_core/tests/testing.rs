@@ -36,13 +36,7 @@ mod app {
             _model: &mut Self::Model,
             caps: &Self::Capabilities,
         ) -> crux_core::Command<Self::Event> {
-            Command::effect({
-                let render = caps.render.clone();
-                async move {
-                    render.render().await;
-                    Command::None
-                }
-            })
+            caps.render.render()
         }
     }
 }

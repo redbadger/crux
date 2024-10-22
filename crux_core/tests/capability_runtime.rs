@@ -197,7 +197,7 @@ mod app {
                 Event::Resume => Command::empty_effect(caps.crawler.resume()),
                 Event::Done(items) => {
                     *model = items;
-                    Command::empty_effect(caps.render.render())
+                    caps.render.render()
                 }
             }
         }

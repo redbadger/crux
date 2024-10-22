@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     capability::{CapabilityContext, Operation},
-    Capability,
+    Capability, Command,
 };
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
@@ -44,7 +44,13 @@ impl Render {
 
     /// Call `render` from [`App::update`](crate::App::update) to signal to the Shell that
     /// UI should be re-drawn.
-    pub fn render(&self) -> impl Future<Output = ()> {
+    pub fn render<Event>(&self) -> Command<Event> {
+        Command::empty_effect(self.render_async())
+    }
+
+    /// Call `render` from [`App::update`](crate::App::update) to signal to the Shell that
+    /// UI should be re-drawn.
+    pub fn render_async(&self) -> impl Future<Output = ()> {
         let ctx = self.context.clone();
         async move {
             ctx.notify_shell(RenderOperation).await;

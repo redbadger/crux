@@ -66,7 +66,7 @@ mod shared {
                     if let TimeResponse::Now(time) = time {
                         let time: DateTime<Utc> = time.try_into().unwrap();
                         model.time = time.to_rfc3339();
-                        Command::empty_effect(caps.render.render())
+                        caps.render.render()
                     } else {
                         Command::None
                     }

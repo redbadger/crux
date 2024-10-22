@@ -34,7 +34,7 @@ mod shared {
                 Event::PlatformGet => caps.platform.get(Event::PlatformSet),
                 Event::PlatformSet(platform) => {
                     model.platform = platform.0;
-                    Command::empty_effect(caps.render.render())
+                    caps.render.render()
                 }
             }
         }

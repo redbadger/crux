@@ -53,11 +53,11 @@ mod shared {
                     let mut response = response.unwrap();
                     model.status = response.status().into();
                     model.body = response.take_body().unwrap();
-                    Command::empty_effect(caps.render.render())
+                    caps.render.render()
                 }
                 Event::SetJson(response) => {
                     model.json_body = response.unwrap().take_body().unwrap();
-                    Command::empty_effect(caps.render.render())
+                    caps.render.render()
                 }
             }
         }
