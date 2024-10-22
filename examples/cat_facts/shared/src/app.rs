@@ -238,7 +238,7 @@ mod tests {
 
         // receive two HTTP effects, one to fetch the fact and one to fetch the image
         // we'll handle the fact request first
-        let mut request = http_effects.pop_front().unwrap().expect_http();
+        let request = &mut http_effects.pop_front().unwrap().expect_http();
         assert_eq!(request.operation, HttpRequest::get(FACT_API_URL).build());
 
         let a_fact = CatFact {
@@ -249,7 +249,7 @@ mod tests {
         // resolve the request with a simulated response from the web API
         let event = app
             .resolve(
-                &mut request,
+                request,
                 HttpResult::Ok(
                     HttpResponse::ok()
                         .body(r#"{ "fact": "cats are good", "length": 13 }"#)
@@ -268,11 +268,11 @@ mod tests {
         // Setting the fact should trigger a time event
         let mut time_events = app.update(event, &mut model).take_effects(|e| e.is_time());
 
-        let mut request = time_events.pop_front().unwrap().expect_time();
+        let request = &mut time_events.pop_front().unwrap().expect_time();
 
         let response = TimeResponse::Now(Instant::new(0, 0).unwrap());
         let event = app
-            .resolve(&mut request, response)
+            .resolve(request, response)
             .expect("should resolve successfully")
             .expect_one_event();
 
@@ -285,7 +285,7 @@ mod tests {
             .take_effects_partitioned_by(Effect::is_key_value);
         render_effects.pop_front().unwrap().expect_render();
 
-        let mut request = key_value_effects.pop_front().unwrap().expect_key_value();
+        let request = &mut key_value_effects.pop_front().unwrap().expect_key_value();
         assert_eq!(
             request.operation,
             KeyValueOperation::Set {
@@ -295,7 +295,7 @@ mod tests {
         );
 
         let _updated = app.resolve_to_event_then_update(
-            &mut request,
+            request,
             KeyValueResult::Ok {
                 response: KeyValueResponse::Set {
                     previous: Value::None,
@@ -305,7 +305,7 @@ mod tests {
         );
 
         // Now we'll handle the image
-        let mut request = http_effects.pop_front().unwrap().expect_http();
+        let request = &mut http_effects.pop_front().unwrap().expect_http();
         assert_eq!(request.operation, HttpRequest::get(IMAGE_API_URL).build());
 
         let an_image = CatImage {
@@ -313,7 +313,7 @@ mod tests {
         };
 
         let response = HttpResult::Ok(HttpResponse::ok().body(r#"{"href":"image_url"}"#).build());
-        let _updated = app.resolve_to_event_then_update(&mut request, response, &mut model);
+        let _updated = app.resolve_to_event_then_update(request, response, &mut model);
 
         assert_eq!(model.cat_fact, Some(a_fact));
         assert_eq!(model.cat_image, Some(an_image));

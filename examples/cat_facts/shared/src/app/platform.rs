@@ -57,13 +57,13 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request = app
+        let request = &mut app
             .update(Event::Get, &mut model)
             .expect_one_effect()
             .expect_platform();
 
         let response = PlatformResponse("platform".to_string());
-        app.resolve_to_event_then_update(&mut request, response, &mut model)
+        app.resolve_to_event_then_update(request, response, &mut model)
             .expect_one_effect()
             .expect_render();
 

@@ -143,7 +143,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request = app
+        let request = &mut app
             .update(Event::Get, &mut model)
             .expect_one_effect()
             .expect_http();
@@ -157,7 +157,7 @@ mod tests {
 
         let actual = app
             .resolve(
-                &mut request,
+                request,
                 HttpResult::Ok(
                     HttpResponse::ok()
                         .json("hello")
@@ -186,7 +186,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request = app
+        let request = &mut app
             .update(Event::Post, &mut model)
             .expect_one_effect()
             .expect_http();
@@ -201,7 +201,7 @@ mod tests {
 
         let actual = app
             .resolve(
-                &mut request,
+                request,
                 HttpResult::Ok(HttpResponse::ok().json("The Body").build()),
             )
             .expect("Resolves successfully")
@@ -217,7 +217,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request = app
+        let request = &mut app
             .update(Event::GetPostChain, &mut model)
             .expect_one_effect()
             .expect_http();
@@ -227,9 +227,9 @@ mod tests {
             HttpRequest::get("http://example.com/").build()
         );
 
-        let mut request = app
+        let request = &mut app
             .resolve(
-                &mut request,
+                request,
                 HttpResult::Ok(HttpResponse::ok().body("secret_place").build()),
             )
             .expect("Resolves successfully")
@@ -242,10 +242,7 @@ mod tests {
         );
 
         let actual = app
-            .resolve(
-                &mut request,
-                HttpResult::Ok(HttpResponse::status(201).build()),
-            )
+            .resolve(request, HttpResult::Ok(HttpResponse::status(201).build()))
             .expect("Resolves successfully")
             .expect_one_event();
 
@@ -263,14 +260,14 @@ mod tests {
             .update(Event::ConcurrentGets, &mut model)
             .take_effects(Effect::is_http);
 
-        let mut request_one = requests.pop_front().unwrap().expect_http();
+        let request_one = &mut requests.pop_front().unwrap().expect_http();
 
         assert_eq!(
             request_one.operation,
             HttpRequest::get("http://example.com/one").build()
         );
 
-        let mut request_two = requests.pop_front().unwrap().expect_http();
+        let request_two = &mut requests.pop_front().unwrap().expect_http();
 
         assert_eq!(
             request_two.operation,
@@ -280,7 +277,7 @@ mod tests {
         // Resolve second request first, should not matter
         let update = app
             .resolve(
-                &mut request_two,
+                request_two,
                 HttpResult::Ok(HttpResponse::ok().body("one").build()),
             )
             .expect("Resolves successfully");
@@ -291,7 +288,7 @@ mod tests {
 
         let actual = app
             .resolve(
-                &mut request_one,
+                request_one,
                 HttpResult::Ok(HttpResponse::ok().body("one").build()),
             )
             .expect("Resolves successfully")
@@ -307,7 +304,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request = app
+        let request = &mut app
             .update(Event::Get, &mut model)
             .expect_one_effect()
             .expect_http();
@@ -321,7 +318,7 @@ mod tests {
 
         let actual = app
             .resolve(
-                &mut request,
+                request,
                 HttpResult::Err(crux_http::HttpError::Io(
                     "Socket shenanigans prevented the request".to_string(),
                 )),

@@ -151,7 +151,7 @@ mod tests {
 
         // check that the app emitted an HTTP request,
         // capturing the request in the process
-        let mut request = update.expect_one_effect().expect_http();
+        let request = &mut update.expect_one_effect().expect_http();
 
         // check that the request is a GET to the correct URL
         let actual = request.operation.clone();
@@ -163,7 +163,7 @@ mod tests {
             .body(r#"{ "value": 1, "updated_at": 1672531200000 }"#)
             .build();
         let update = app
-            .resolve(&mut request, HttpResult::Ok(response))
+            .resolve(request, HttpResult::Ok(response))
             .expect("an update");
 
         // check that the app emitted an (internal) event to update the model
@@ -244,7 +244,7 @@ mod tests {
 
         // check that the app also emitted an HTTP request,
         // capturing the request in the process
-        let mut request = http.pop_front().unwrap().expect_http();
+        let request = &mut http.pop_front().unwrap().expect_http();
 
         // check that the request is a POST to the correct URL
         let actual = &request.operation;
@@ -256,7 +256,7 @@ mod tests {
             .body(r#"{ "value": 2, "updated_at": 1672531200000 }"#)
             .build();
         let _updated =
-            app.resolve_to_event_then_update(&mut request, HttpResult::Ok(response), &mut model);
+            app.resolve_to_event_then_update(request, HttpResult::Ok(response), &mut model);
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
@@ -302,7 +302,7 @@ mod tests {
 
         // check that the app also emitted an HTTP request,
         // capturing the request in the process
-        let mut request = http.pop_front().unwrap().expect_http();
+        let request = &mut http.pop_front().unwrap().expect_http();
 
         // check that the request is a POST to the correct URL
         let actual = &request.operation;
@@ -314,7 +314,7 @@ mod tests {
             .body(r#"{ "value": -1, "updated_at": 1672531200000 }"#)
             .build();
         let _updated =
-            app.resolve_to_event_then_update(&mut request, HttpResult::Ok(response), &mut model);
+            app.resolve_to_event_then_update(request, HttpResult::Ok(response), &mut model);
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
@@ -335,11 +335,12 @@ mod tests {
             .expect_one_effect()
             .expect_sse();
 
-        let actual = &request.operation;
-        let expected = &SseRequest {
-            url: "https://crux-counter.fly.dev/sse".to_string(),
-        };
-        assert_eq!(actual, expected);
+        assert_eq!(
+            request.operation,
+            SseRequest {
+                url: "https://crux-counter.fly.dev/sse".to_string(),
+            }
+        );
     }
 
     #[test]

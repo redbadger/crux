@@ -195,14 +195,14 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request = app
+        let request = &mut app
             .update(Event::GetAsync, &mut model)
             .expect_one_effect()
             .expect_time();
 
         let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
         let response = TimeResponse::Now(now.try_into().unwrap());
-        let _update = app.resolve_to_event_then_update(&mut request, response, &mut model);
+        let _update = app.resolve_to_event_then_update(request, response, &mut model);
 
         assert_eq!(app.view(&model).time, "2022-12-01T01:47:12.746202562+00:00");
     }
@@ -212,18 +212,18 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request1 = app
+        let request1 = &mut app
             .update(Event::StartDebounce, &mut model)
             .expect_one_effect()
             .expect_time();
-        let mut request2 = app
+        let request2 = &mut app
             .update(Event::StartDebounce, &mut model)
             .expect_one_effect()
             .expect_time();
 
         // resolve and update
         app.resolve_to_event_then_update(
-            &mut request1,
+            request1,
             TimeResponse::DurationElapsed {
                 id: model.debounce_time_id.unwrap(),
             },
@@ -236,7 +236,7 @@ mod tests {
 
         // resolve and update
         app.resolve_to_event_then_update(
-            &mut request2,
+            request2,
             TimeResponse::DurationElapsed {
                 id: model.debounce_time_id.unwrap(),
             },
@@ -253,7 +253,7 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut request1 = app
+        let request1 = &mut app
             .update(Event::StartDebounce, &mut model)
             .expect_one_effect()
             .expect_time();
@@ -261,7 +261,7 @@ mod tests {
         assert!(model.debounce_time_id.is_some());
 
         app.resolve_to_event_then_update(
-            &mut request1,
+            request1,
             TimeResponse::Cleared {
                 id: model.debounce_time_id.unwrap(),
             },

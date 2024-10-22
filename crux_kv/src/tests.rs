@@ -137,7 +137,7 @@ fn test_get() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let mut request = app
+    let request = &mut app
         .update(Event::Get, &mut model)
         .expect_one_effect()
         .expect_key_value();
@@ -150,7 +150,7 @@ fn test_get() {
     );
 
     let _updated = app.resolve_to_event_then_update(
-        &mut request,
+        request,
         KeyValueResult::Ok {
             response: KeyValueResponse::Get {
                 value: 42i32.to_ne_bytes().to_vec().into(),
@@ -167,7 +167,7 @@ fn test_set() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let mut request = app
+    let request = &mut app
         .update(Event::Set, &mut model)
         .expect_one_effect()
         .expect_key_value();
@@ -181,7 +181,7 @@ fn test_set() {
     );
 
     let _updated = app.resolve_to_event_then_update(
-        &mut request,
+        request,
         KeyValueResult::Ok {
             response: KeyValueResponse::Set {
                 previous: Value::None,
@@ -198,7 +198,7 @@ fn test_delete() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let mut request = app
+    let request = &mut app
         .update(Event::Delete, &mut model)
         .expect_one_effect()
         .expect_key_value();
@@ -211,7 +211,7 @@ fn test_delete() {
     );
 
     let _updated = app.resolve_to_event_then_update(
-        &mut request,
+        request,
         KeyValueResult::Ok {
             response: KeyValueResponse::Delete {
                 previous: Value::None,
@@ -228,7 +228,7 @@ fn test_exists() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let mut request = app
+    let request = &mut app
         .update(Event::Exists, &mut model)
         .expect_one_effect()
         .expect_key_value();
@@ -241,7 +241,7 @@ fn test_exists() {
     );
 
     let _updated = app.resolve_to_event_then_update(
-        &mut request,
+        request,
         KeyValueResult::Ok {
             response: KeyValueResponse::Exists { is_present: true },
         },
@@ -256,7 +256,7 @@ fn test_list_keys() {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let mut request = app
+    let request = &mut app
         .update(Event::ListKeys, &mut model)
         .expect_one_effect()
         .expect_key_value();
@@ -270,7 +270,7 @@ fn test_list_keys() {
     );
 
     let _updated = app.resolve_to_event_then_update(
-        &mut request,
+        request,
         KeyValueResult::Ok {
             response: KeyValueResponse::ListKeys {
                 keys: vec!["test:1".to_string(), "test:2".to_string()],
@@ -289,7 +289,7 @@ pub fn test_kv_async() -> Result<()> {
     let app = AppTester::<App, _>::default();
     let mut model = Model::default();
 
-    let mut request = app
+    let request = &mut app
         .update(Event::GetThenSet, &mut model)
         .expect_one_effect()
         .expect_key_value();
@@ -301,9 +301,9 @@ pub fn test_kv_async() -> Result<()> {
         }
     );
 
-    let mut request = app
+    let request = &mut app
         .resolve(
-            &mut request,
+            request,
             KeyValueResult::Ok {
                 response: KeyValueResponse::Get {
                     value: 17u32.to_ne_bytes().to_vec().into(),
@@ -323,7 +323,7 @@ pub fn test_kv_async() -> Result<()> {
     );
 
     let _updated = app.resolve_to_event_then_update(
-        &mut request,
+        request,
         KeyValueResult::Ok {
             response: KeyValueResponse::Set {
                 previous: Value::None,

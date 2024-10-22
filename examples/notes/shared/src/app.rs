@@ -561,9 +561,9 @@ mod save_load_tests {
         // this will eventually take a document ID
         let mut requests = app
             .update(Event::Open, &mut model)
-            .take_effects(|e| e.is_key_value());
+            .take_effects(Effect::is_key_value);
 
-        let mut request = requests.pop_front().unwrap().expect_key_value();
+        let request = &mut requests.pop_front().unwrap().expect_key_value();
         assert_eq!(
             request.operation,
             KeyValueOperation::Get {
@@ -579,7 +579,7 @@ mod save_load_tests {
                 value: note.save().into(),
             },
         };
-        let update = app.resolve_to_event_then_update(&mut request, response, &mut model);
+        let update = app.resolve_to_event_then_update(request, response, &mut model);
         assert_effect!(update, Effect::Render(_));
 
         assert_eq!(app.view(&model).text, "LOADED");
@@ -600,7 +600,7 @@ mod save_load_tests {
             .update(Event::Open, &mut model)
             .take_effects(Effect::is_key_value);
 
-        let mut request = requests.pop_front().unwrap().expect_key_value();
+        let request = &mut requests.pop_front().unwrap().expect_key_value();
         assert_eq!(
             request.operation,
             KeyValueOperation::Get {
@@ -613,7 +613,7 @@ mod save_load_tests {
         // Read was unsuccessful
         let event = app
             .resolve(
-                &mut request,
+                request,
                 KeyValueResult::Ok {
                     response: KeyValueResponse::Get { value: Value::None },
                 },
@@ -652,7 +652,7 @@ mod save_load_tests {
             .into_effects()
             .filter_map(Effect::into_timer);
 
-        let mut request = requests.next().unwrap();
+        let request = &mut requests.next().unwrap();
         assert_let!(
             TimerOperation::Start {
                 id: first_id,
@@ -665,7 +665,7 @@ mod save_load_tests {
 
         // Tells app the timer was created
         let update = app
-            .resolve(&mut request, TimerOutput::Created { id: first_id })
+            .resolve(request, TimerOutput::Created { id: first_id })
             .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
