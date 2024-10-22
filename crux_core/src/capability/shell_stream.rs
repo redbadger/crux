@@ -129,7 +129,7 @@ mod tests {
                     break;
                 }
             }
-            Command::None
+            Command::none()
         }));
 
         // We still shouldn't have any requests

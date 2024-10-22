@@ -72,7 +72,7 @@ impl crux_core::App for App {
                         .set_async("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
                         .await;
 
-                    Command::Event(Event::SetResponse(result))
+                    Command::event(Event::SetResponse(result))
                 };
                 Command::effect(fut)
             }
@@ -80,7 +80,7 @@ impl crux_core::App for App {
             Event::GetResponse(Ok(Some(value))) => {
                 let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                 model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
-                Command::None
+                Command::none()
             }
 
             Event::GetResponse(Ok(None)) => {

@@ -27,7 +27,7 @@ mod shared {
             _model: &mut Self::Model,
             _caps: &Capabilities,
         ) -> Command<Self::Event> {
-            Command::None
+            Command::none()
         }
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
             unimplemented!();

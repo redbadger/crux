@@ -80,7 +80,7 @@ impl Time {
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
         let this = self.clone();
-        Command::effect(async move { Command::Event(callback(this.now_async().await)) })
+        Command::effect(async move { Command::event(callback(this.now_async().await)) })
     }
 
     /// Request current time, which will be passed to the app as a [`TimeResponse`] containing an [`Instant`]
@@ -96,7 +96,7 @@ impl Time {
     {
         let this = self.clone();
         Command::effect(
-            async move { Command::Event(callback(this.notify_after_async(duration).await)) },
+            async move { Command::event(callback(this.notify_after_async(duration).await)) },
         )
     }
 

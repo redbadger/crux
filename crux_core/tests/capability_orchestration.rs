@@ -43,12 +43,12 @@ mod app {
                     async move {
                         let (result_one, result_two) =
                             join(one.one_async(10), two.two_async(20)).await;
-                        Command::Event(Event::Finished(result_one, result_two))
+                        Command::event(Event::Finished(result_one, result_two))
                     }
                 }),
                 Event::Finished(one, two) => {
                     model.total = one + two;
-                    Command::None
+                    Command::none()
                 }
             }
         }

@@ -149,7 +149,7 @@ mod tests {
         executor.spawn_task(Box::pin(async move {
             future.await;
             event_sender.send(());
-            Command::None
+            Command::none()
         }));
 
         // We still shouldn't have any requests

@@ -3,8 +3,8 @@
 use crux_core::testing::AppTester;
 
 mod app {
-    use crux_core::App;
-    use crux_core::{macros::Effect, Command};
+    use crux_core::macros::Effect;
+    use crux_core::{App, Command};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ mod app {
             _event: Self::Event,
             _model: &mut Self::Model,
             caps: &Self::Capabilities,
-        ) -> crux_core::Command<Self::Event> {
+        ) -> Command<Self::Event> {
             caps.render.render()
         }
     }

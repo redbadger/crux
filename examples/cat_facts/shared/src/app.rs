@@ -3,8 +3,8 @@ pub mod platform;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-pub use crux_core::App;
 use crux_core::{render::Render, Capability};
+pub use crux_core::{App, Command};
 use crux_http::Http;
 use crux_kv::{error::KeyValueError, KeyValue};
 use crux_platform::Platform;
@@ -88,19 +88,19 @@ pub struct CatFacts {
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
 pub struct CatFactCapabilities {
-    pub http: Http<Event>,
-    pub key_value: KeyValue<Event>,
-    pub platform: Platform<Event>,
-    pub render: Render<Event>,
-    pub time: Time<Event>,
+    pub http: Http,
+    pub key_value: KeyValue,
+    pub platform: Platform,
+    pub render: Render,
+    pub time: Time,
 }
 
 // Allow easily using Platform as a submodule
 impl From<&CatFactCapabilities> for Capabilities {
     fn from(incoming: &CatFactCapabilities) -> Self {
         Capabilities {
-            platform: incoming.platform.map_event(super::Event::Platform),
-            render: incoming.render.map_event(super::Event::Platform),
+            platform: incoming.platform.clone(),
+            render: incoming.render.clone(),
         }
     }
 }
@@ -111,20 +111,24 @@ impl App for CatFacts {
     type ViewModel = ViewModel;
     type Capabilities = CatFactCapabilities;
 
-    fn update(&self, msg: Event, model: &mut Model, caps: &CatFactCapabilities) {
+    fn update(&self, msg: Event, model: &mut Model, caps: &CatFactCapabilities) -> Command<Event> {
         match msg {
-            Event::GetPlatform => {
-                self.platform
-                    .update(platform::Event::Get, &mut model.platform, &caps.into())
-            }
-            Event::Platform(msg) => self.platform.update(msg, &mut model.platform, &caps.into()),
+            Event::GetPlatform => self
+                .platform
+                .update(platform::Event::Get, &mut model.platform, &caps.into())
+                .map(Event::Platform),
+            Event::Platform(msg) => self
+                .platform
+                .update(msg, &mut model.platform, &caps.into())
+                .map(Event::Platform),
             Event::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
-                caps.render.render();
+                caps.key_value
+                    .set(KEY.to_string(), bytes, |_| Event::none());
+                caps.render.render()
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
@@ -136,62 +140,82 @@ impl App for CatFacts {
             Event::Fetch => {
                 model.cat_image = Some(CatImage::default());
 
-                caps.http
+                let eff1 = caps
+                    .http
                     .get(FACT_API_URL)
                     .expect_json()
-                    .send(Event::SetFact);
+                    .send_and_respond(Event::SetFact);
 
-                caps.http
+                let eff2 = caps
+                    .http
                     .get(IMAGE_API_URL)
                     .expect_json()
-                    .send(Event::SetImage);
+                    .send_and_respond(Event::SetImage);
 
-                caps.render.render();
+                let eff3 = caps.render.render();
+                eff1.join(eff2).join(eff3)
             }
             Event::SetFact(Ok(mut response)) => {
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
-
-                caps.time.now(Event::CurrentTime);
+                Command::effect(async move {
+                    caps.key_value.set_async(KEY.to_string(), bytes).await;
+                    Command::none()
+                })
+                .join(caps.time.now(Event::CurrentTime))
             }
             Event::SetImage(Ok(mut response)) => {
                 model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
-                caps.render.render();
+                Command::effect(async move {
+                    let _result = caps.key_value.set_async(KEY.to_string(), bytes).await;
+                    Command::none()
+                })
+                .join(async move {
+                    caps.render.render_async().await;
+                    Command::none()
+                })
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
                 // TODO: Display an error
+                Command::none()
             }
             Event::CurrentTime(TimeResponse::Now(instant)) => {
                 let time: DateTime<Utc> = instant.try_into().unwrap();
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
-                caps.render.render();
+                Command::effect(async move {
+                    let result = caps.key_value.set_async(KEY.to_string(), bytes).await;
+                    Command::event(Event::SetState(result))
+                })
+                .join(async move {
+                    caps.render.render_async().await;
+                    Command::none()
+                })
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
-            Event::Restore => {
-                caps.key_value.get(KEY.to_string(), Event::SetState);
-            }
+            Event::Restore => caps.key_value.get(KEY.to_string(), Event::SetState),
             Event::SetState(Ok(Some(value))) => {
                 if let Ok(m) = serde_json::from_slice::<Model>(&value) {
                     *model = m;
-                    caps.render.render();
-                };
+                    caps.render.render()
+                } else {
+                    Command::none()
+                }
             }
             Event::SetState(Ok(None)) => {
                 // no state to restore
+                Command::none()
             }
             Event::SetState(Err(_)) => {
                 // handle error
+                Command::none()
             }
-            Event::None => {}
+            Event::None => Command::none(),
         }
     }
 

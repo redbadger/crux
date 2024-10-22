@@ -1,4 +1,5 @@
 use crux_core::render::Render;
+use crux_core::Command;
 use crux_platform::{Platform, PlatformResponse};
 use serde::{Deserialize, Serialize};
 
@@ -18,8 +19,8 @@ pub enum Event {
 
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
-    pub platform: Platform<Event>,
-    pub render: Render<Event>,
+    pub platform: Platform,
+    pub render: Render,
 }
 
 impl crux_core::App for App {
@@ -28,7 +29,7 @@ impl crux_core::App for App {
     type ViewModel = Model;
     type Capabilities = Capabilities;
 
-    fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) {
+    fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
         match msg {
             Event::Get => caps.platform.get(Event::Set),
             Event::Set(PlatformResponse(platform)) => {

@@ -371,7 +371,7 @@ where
             let resp = match result {
                 Ok(resp) => resp,
                 Err(e) => {
-                    return Command::Event(make_event(Err(e)));
+                    return Command::event(make_event(Err(e)));
                 }
             };
 
@@ -379,7 +379,7 @@ where
                 .await
                 .and_then(|r| self.expectation.decode(r));
 
-            Command::Event(make_event(resp))
+            Command::event(make_event(resp))
         };
         Command::effect(fut)
     }

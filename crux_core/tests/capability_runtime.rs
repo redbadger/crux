@@ -179,19 +179,19 @@ mod app {
             caps: &Self::Capabilities,
         ) -> Command<Self::Event> {
             match event {
-                Event::Start => Command::Effects(
+                Event::Start => Command::effects(
                     caps.crawler
                         .start_workers()
                         .into_iter()
                         .map(|work| {
-                            Box::pin(work.map(|()| Command::None))
+                            Box::pin(work.map(|()| Command::none()))
                                 as BoxFuture<'static, Command<Event>>
                         })
                         .collect(),
                 ),
                 Event::Fetch => {
                     let fut = caps.crawler.fetch_tree(0);
-                    Command::effect(fut.map(|data| Command::Event(Event::Done(data))))
+                    Command::effect(fut.map(|data| Command::event(Event::Done(data))))
                 }
                 Event::Pause => Command::empty_effect(caps.crawler.pause()),
                 Event::Resume => Command::empty_effect(caps.crawler.resume()),

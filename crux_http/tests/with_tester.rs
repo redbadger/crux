@@ -73,7 +73,7 @@ mod shared {
                             .await
                             .expect("Send async should succeed");
 
-                        Command::Event(Event::ComposeComplete(response.status()))
+                        Command::event(Event::ComposeComplete(response.status()))
                     };
                     Command::effect(fut)
                 }
@@ -95,13 +95,13 @@ mod shared {
                         ))
                         .unwrap();
 
-                        Command::Event(Event::ComposeComplete(status))
+                        Command::event(Event::ComposeComplete(status))
                     };
                     Command::effect(fut)
                 }
                 Event::ComposeComplete(status) => {
                     model.values.push(status.to_string());
-                    Command::None
+                    Command::none()
                 }
                 Event::Set(Ok(mut response)) => {
                     model.body = response.take_body().unwrap();
@@ -111,9 +111,9 @@ mod shared {
                         .iter()
                         .map(|v| v.to_string())
                         .collect();
-                    Command::None
+                    Command::none()
                 }
-                Event::Set(Err(_)) => Command::None,
+                Event::Set(Err(_)) => Command::none(),
             }
         }
 

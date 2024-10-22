@@ -59,7 +59,7 @@ mod shared {
                 Event::GetAsync => {
                     let time = caps.time.clone();
                     Command::effect(
-                        async move { Command::Event(Event::Set(time.now_async().await)) },
+                        async move { Command::event(Event::Set(time.now_async().await)) },
                     )
                 }
                 Event::Set(time) => {
@@ -68,7 +68,7 @@ mod shared {
                         model.time = time.to_rfc3339();
                         caps.render.render()
                     } else {
-                        Command::None
+                        Command::none()
                     }
                 }
                 Event::StartDebounce => {
@@ -83,7 +83,7 @@ mod shared {
                     if model.debounce.resolve(pending) {
                         model.debounce_complete = true;
                     }
-                    Command::None
+                    Command::none()
                 }
                 Event::DurationElapsed(_, _) => {
                     panic!("Unexpected debounce event")

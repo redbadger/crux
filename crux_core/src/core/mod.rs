@@ -11,7 +11,7 @@ pub use resolve::ResolveError;
 pub(crate) use resolve::Resolve;
 
 use crate::capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor};
-use crate::{App, Command, WithContext};
+use crate::{App, Command, CommandInner, WithContext};
 
 /// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
 ///
@@ -76,7 +76,7 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<Ef> {
-        self.process(Some(Command::Event(event)))
+        self.process(Some(Command::event(event)))
     }
     // ANCHOR_END: process_event
 
@@ -111,13 +111,13 @@ where
             for command in command.take().into_iter().chain(commands) {
                 let mut command = command;
                 loop {
-                    command = match command {
-                        Command::None => break,
-                        Command::Event(event) => {
+                    command = match command.inner {
+                        CommandInner::None => break,
+                        CommandInner::Event(event) => {
                             let mut model = self.model.write().expect("Model RwLock was poisoned.");
                             self.app.update(event, &mut model, &self.capabilities)
                         }
-                        Command::Effects(effects) => {
+                        CommandInner::Effects(effects) => {
                             for effect in effects {
                                 self.executor.spawn_task(effect);
                             }

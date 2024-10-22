@@ -16,7 +16,7 @@ impl Operation for PlatformRequest {
     type Output = PlatformResponse;
 }
 
-#[derive(Capability)]
+#[derive(Capability, Clone)]
 pub struct Platform {
     context: CapabilityContext<PlatformRequest>,
 }
@@ -33,7 +33,7 @@ impl Platform {
         let context = self.context.clone();
         Command::effect(async move {
             let response = context.request_from_shell(PlatformRequest).await;
-            Command::Event(callback(response))
+            Command::event(callback(response))
         })
     }
 }

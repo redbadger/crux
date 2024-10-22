@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     capability::{channel::Receiver, Operation, ProtoContext, QueuingExecutor},
-    Request, WithContext,
+    CommandInner, Request, WithContext,
 };
 
 /// AppTester is a simplified execution environment for Crux apps for use in
@@ -56,10 +56,10 @@ where
     /// and potential further events dispatched by capabilities.
     pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
         let command = self.app.update(event, model, &self.capabilities);
-        let event = match command {
-            crate::Command::None => None,
-            crate::Command::Event(event) => Some(event),
-            crate::Command::Effects(effects) => {
+        let event = match command.inner {
+            CommandInner::None => None,
+            CommandInner::Event(event) => Some(event),
+            CommandInner::Effects(effects) => {
                 for effect in effects {
                     self.context.executor.spawn_task(effect);
                 }
@@ -125,10 +125,10 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
                 break;
             }
             for c in commands {
-                match c {
-                    crate::Command::None => {}
-                    crate::Command::Event(ev) => events.push(ev),
-                    crate::Command::Effects(effs) => {
+                match c.inner {
+                    CommandInner::None => {}
+                    CommandInner::Event(ev) => events.push(ev),
+                    CommandInner::Effects(effs) => {
                         for task in effs {
                             self.executor.spawn_task(task);
                         }

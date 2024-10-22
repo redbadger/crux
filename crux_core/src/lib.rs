@@ -170,26 +170,83 @@ pub use self::{
 };
 pub use crux_macros as macros;
 
-#[must_use]
-pub enum Command<Event> {
-    None,
-    Event(Event),
-    Effects(Vec<BoxFuture<'static, Self>>),
+pub enum OneOrMany<T> {
+    One(T),
+    Many(Vec<T>),
 }
 
-impl<Event> From<BoxFuture<'static, Self>> for Command<Event> {
-    fn from(value: BoxFuture<'static, Command<Event>>) -> Self {
-        Self::Effects(vec![value])
+impl<T> IntoIterator for OneOrMany<T> {
+    type Item = T;
+
+    type IntoIter = std::iter::Chain<std::option::IntoIter<T>, std::vec::IntoIter<T>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let (one, many) = match self {
+            OneOrMany::One(one) => (Some(one), Vec::new()),
+            OneOrMany::Many(vec) => (None, vec),
+        };
+        one.into_iter().chain(many.into_iter())
     }
+}
+
+impl<T> FromIterator<T> for OneOrMany<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut iter = iter.into_iter();
+        let mut vec = match (iter.next(), iter.next()) {
+            (None, None) => Vec::new(),
+            (None, Some(_)) => unreachable!(),
+            (Some(one), None) => return OneOrMany::One(one),
+            (Some(one), Some(two)) => vec![one, two],
+        };
+        vec.extend(iter);
+        OneOrMany::Many(vec)
+    }
+}
+
+#[must_use]
+pub struct Command<Event> {
+    inner: CommandInner<Event>,
+}
+
+pub(crate) enum CommandInner<Event> {
+    None,
+    Event(Event),
+    Effects(OneOrMany<BoxFuture<'static, Command<Event>>>),
 }
 
 impl<Event> Command<Event> {
+    pub fn none() -> Self {
+        Self {
+            inner: CommandInner::None,
+        }
+    }
+
+    pub fn event(event: Event) -> Self {
+        Self {
+            inner: CommandInner::Event(event),
+        }
+    }
+
     pub fn effect(fut: impl Future<Output = Self> + Send + 'static) -> Self {
-        Self::Effects(vec![Box::pin(fut)])
+        Self {
+            inner: CommandInner::Effects(OneOrMany::One(Box::pin(fut))),
+        }
+    }
+
+    pub fn effects(futs: Vec<BoxFuture<'static, Self>>) -> Self {
+        Self {
+            inner: CommandInner::Effects(OneOrMany::Many(futs)),
+        }
     }
 
     pub fn empty_effect(fut: impl Future<Output = ()> + Send + 'static) -> Self {
-        Self::Effects(vec![Box::pin(fut.map(|()| Command::None))])
+        Self {
+            inner: CommandInner::Effects(OneOrMany::One(Box::pin(fut.map(|()| Command::none())))),
+        }
+    }
+
+    pub fn join(self, fut: impl Future<Output = Self> + Send + 'static) -> Self {
+        todo!()
     }
 
     pub fn map<F, Event2>(self, func: F) -> Command<Event2>
@@ -197,10 +254,10 @@ impl<Event> Command<Event> {
         F: Fn(Event) -> Event2 + Send + Clone + 'static,
         Event: 'static,
     {
-        match self {
-            Command::None => Command::None,
-            Command::Event(ev) => Command::Event(func(ev)),
-            Command::Effects(effects) => {
+        let inner = match self.inner {
+            CommandInner::None => CommandInner::None,
+            CommandInner::Event(ev) => CommandInner::Event(func(ev)),
+            CommandInner::Effects(effects) => {
                 let effects = effects
                     .into_iter()
                     .map(|fut| {
@@ -210,9 +267,10 @@ impl<Event> Command<Event> {
                         })) as BoxFuture<'static, Command<Event2>>
                     })
                     .collect();
-                Command::Effects(effects)
+                CommandInner::Effects(effects)
             }
-        }
+        };
+        Command { inner }
     }
 }
 

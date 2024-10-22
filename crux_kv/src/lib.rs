@@ -162,7 +162,7 @@ impl KeyValue {
         let context = self.context.clone();
         Command::effect(async move {
             let response = get(&context, key).await;
-            Command::Event(make_event(response))
+            Command::event(make_event(response))
         })
     }
 
@@ -185,7 +185,7 @@ impl KeyValue {
         let context = self.context.clone();
         Command::effect(async move {
             let response = set(&context, key, value).await;
-            Command::Event(make_event(response))
+            Command::event(make_event(response))
         })
     }
 
@@ -210,7 +210,7 @@ impl KeyValue {
         let context = self.context.clone();
         Command::effect(async move {
             let response = delete(&context, key).await;
-            Command::Event(make_event(response))
+            Command::event(make_event(response))
         })
     }
 
@@ -231,7 +231,7 @@ impl KeyValue {
         let context = self.context.clone();
         Command::effect(async move {
             let response = exists(&context, key).await;
-            Command::Event(make_event(response))
+            Command::event(make_event(response))
         })
     }
 
@@ -261,7 +261,7 @@ impl KeyValue {
         let context = self.context.clone();
         Command::effect(async move {
             let response = list_keys(&context, prefix, cursor).await;
-            Command::Event(make_event(response))
+            Command::event(make_event(response))
         })
     }
 

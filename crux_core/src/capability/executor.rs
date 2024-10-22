@@ -180,7 +180,7 @@ mod tests {
             async move {
                 assert_eq!(Arc::strong_count(&counter), 2);
                 ShellRequest::<()>::new().await;
-                Command::None
+                Command::none()
             }
         };
 
@@ -250,7 +250,7 @@ mod tests {
         let executor = QueuingExecutor::<()>::new();
         // 100 futures with many (1957) children each equals lots of chaos
         for _ in 0..100 {
-            let future = Chaotic::new_with_children(6).map(|()| Command::None);
+            let future = Chaotic::new_with_children(6).map(|()| Command::none());
             executor.spawn_task(Box::pin(future));
         }
         assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 195700);
