@@ -2,6 +2,7 @@
 
 use crux_core::capability::{CapabilityContext, Operation};
 use crux_core::macros::Capability;
+use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,29 +17,23 @@ impl Operation for PlatformRequest {
 }
 
 #[derive(Capability)]
-pub struct Platform<Ev> {
-    context: CapabilityContext<PlatformRequest, Ev>,
+pub struct Platform {
+    context: CapabilityContext<PlatformRequest>,
 }
 
-impl<Ev> Platform<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<PlatformRequest, Ev>) -> Self {
+impl Platform {
+    pub fn new(context: CapabilityContext<PlatformRequest>) -> Self {
         Self { context }
     }
 
-    pub fn get<F>(&self, callback: F)
+    pub fn get<F, Ev>(&self, callback: F) -> Command<Ev>
     where
         F: FnOnce(PlatformResponse) -> Ev + Send + Sync + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = context.request_from_shell(PlatformRequest).await;
-
-                context.update_app(callback(response));
-            }
-        });
+        let context = self.context.clone();
+        Command::effect(async move {
+            let response = context.request_from_shell(PlatformRequest).await;
+            Command::Event(callback(response))
+        })
     }
 }

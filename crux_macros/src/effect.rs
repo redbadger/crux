@@ -1,9 +1,9 @@
 use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::{Literal, TokenStream};
-use proc_macro_error::{abort_call_site, OptionExt};
+use proc_macro_error::OptionExt;
 use quote::{format_ident, quote};
 use std::collections::BTreeMap;
-use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
+use syn::{DeriveInput, Ident, Type};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(effect), supports(struct_named))]
@@ -182,20 +182,18 @@ fn split_on_generic(ty: &Type) -> (Type, Ident) {
 
 #[cfg(test)]
 mod tests {
-    use darling::{FromDeriveInput, FromMeta, ToTokens};
+    use darling::FromDeriveInput;
     use quote::quote;
-    use syn::{parse_str, Type};
+    use syn::parse_str;
 
     use crate::effect::EffectStructReceiver;
-
-    use super::split_on_generic;
 
     #[test]
     fn defaults() {
         let input = r#"
             #[derive(Effect)]
             pub struct Capabilities {
-                pub render: Render<Event>,
+                pub render: Render,
             }
         "#;
         let input = parse_str(input).unwrap();
@@ -207,15 +205,13 @@ mod tests {
         #[derive(Debug)]
         pub enum Effect {
             Render(
-                ::crux_core::Request<
-                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
-                >,
+                ::crux_core::Request<<Render as ::crux_core::capability::Capability>::Operation>,
             ),
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "Effect")]
         pub enum EffectFfi {
-            Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
+            Render(<Render as ::crux_core::capability::Capability>::Operation),
         }
         impl ::crux_core::Effect for Effect {
             type Ffi = EffectFfi;
@@ -225,9 +221,9 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<Event, Effect> for Capabilities {
+        impl ::crux_core::WithContext<Effect> for Capabilities {
             fn new_with_context(
-                context: ::crux_core::capability::ProtoContext<Effect, Event>,
+                context: ::crux_core::capability::ProtoContext<Effect>,
             ) -> Capabilities {
                 Capabilities {
                     render: Render::new(context.specialize(Effect::Render)),
@@ -241,9 +237,7 @@ mod tests {
             pub fn into_render(
                 self,
             ) -> Option<
-                crux_core::Request<
-                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
-                >,
+                crux_core::Request<<Render as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let Effect::Render(request) = self { Some(request) } else { None }
             }
@@ -256,9 +250,9 @@ mod tests {
         let input = r#"
             #[derive(Effect)]
             pub struct Capabilities {
-                pub render: Render<Event>,
+                pub render: Render,
                 #[effect(skip)]
-                pub compose: Compose<Event>,
+                pub compose: Compose,
             }
         "#;
         let input = parse_str(input).unwrap();
@@ -270,15 +264,13 @@ mod tests {
         #[derive(Debug)]
         pub enum Effect {
             Render(
-                ::crux_core::Request<
-                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
-                >,
+                ::crux_core::Request<<Render as ::crux_core::capability::Capability>::Operation>,
             ),
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "Effect")]
         pub enum EffectFfi {
-            Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
+            Render(<Render as ::crux_core::capability::Capability>::Operation),
         }
         impl ::crux_core::Effect for Effect {
             type Ffi = EffectFfi;
@@ -288,9 +280,9 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<Event, Effect> for Capabilities {
+        impl ::crux_core::WithContext<Effect> for Capabilities {
             fn new_with_context(
-                context: ::crux_core::capability::ProtoContext<Effect, Event>,
+                context: ::crux_core::capability::ProtoContext<Effect>,
             ) -> Capabilities {
                 Capabilities {
                     compose: Compose::new(
@@ -312,9 +304,7 @@ mod tests {
             pub fn into_render(
                 self,
             ) -> Option<
-                crux_core::Request<
-                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
-                >,
+                crux_core::Request<<Render as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let Effect::Render(request) = self { Some(request) } else { None }
             }
@@ -328,11 +318,11 @@ mod tests {
             #[derive(Effect)]
             #[effect(name = "MyEffect")]
             pub struct MyCapabilities {
-                pub http: crux_http::Http<MyEvent>,
-                pub key_value: KeyValue<MyEvent>,
-                pub platform: Platform<MyEvent>,
-                pub render: Render<MyEvent>,
-                pub time: Time<MyEvent>,
+                pub http: crux_http::Http,
+                pub key_value: KeyValue,
+                pub platform: Platform,
+                pub render: Render,
+                pub time: Time,
             }
         "#;
         let input = parse_str(input).unwrap();
@@ -345,52 +335,32 @@ mod tests {
         pub enum MyEffect {
             Http(
                 ::crux_core::Request<
-                    <crux_http::Http<
-                        MyEvent,
-                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    <crux_http::Http as ::crux_core::capability::Capability>::Operation,
                 >,
             ),
             KeyValue(
                 ::crux_core::Request<
-                    <KeyValue<
-                        MyEvent,
-                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    <KeyValue as ::crux_core::capability::Capability>::Operation,
                 >,
             ),
             Platform(
                 ::crux_core::Request<
-                    <Platform<
-                        MyEvent,
-                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    <Platform as ::crux_core::capability::Capability>::Operation,
                 >,
             ),
             Render(
-                ::crux_core::Request<
-                    <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                >,
+                ::crux_core::Request<<Render as ::crux_core::capability::Capability>::Operation>,
             ),
-            Time(
-                ::crux_core::Request<
-                    <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                >,
-            ),
+            Time(::crux_core::Request<<Time as ::crux_core::capability::Capability>::Operation>),
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "MyEffect")]
         pub enum MyEffectFfi {
-            Http(
-                <crux_http::Http<
-                    MyEvent,
-                > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-            ),
-            KeyValue(
-                <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
-            ),
-            Platform(
-                <Platform<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
-            ),
-            Render(<Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
-            Time(<Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
+            Http(<crux_http::Http as ::crux_core::capability::Capability>::Operation),
+            KeyValue(<KeyValue as ::crux_core::capability::Capability>::Operation),
+            Platform(<Platform as ::crux_core::capability::Capability>::Operation),
+            Render(<Render as ::crux_core::capability::Capability>::Operation),
+            Time(<Time as ::crux_core::capability::Capability>::Operation),
         }
         impl ::crux_core::Effect for MyEffect {
             type Ffi = MyEffectFfi;
@@ -404,9 +374,9 @@ mod tests {
                 }
             }
         }
-        impl ::crux_core::WithContext<MyEvent, MyEffect> for MyCapabilities {
+        impl ::crux_core::WithContext<MyEffect> for MyCapabilities {
             fn new_with_context(
-                context: ::crux_core::capability::ProtoContext<MyEffect, MyEvent>,
+                context: ::crux_core::capability::ProtoContext<MyEffect>,
             ) -> MyCapabilities {
                 MyCapabilities {
                     http: crux_http::Http::new(context.specialize(MyEffect::Http)),
@@ -425,9 +395,7 @@ mod tests {
                 self,
             ) -> Option<
                 crux_core::Request<
-                    <crux_http::Http<
-                        MyEvent,
-                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                    <crux_http::Http as ::crux_core::capability::Capability>::Operation,
                 >,
             > {
                 if let MyEffect::Http(request) = self { Some(request) } else { None }
@@ -440,11 +408,7 @@ mod tests {
             pub fn into_key_value(
                 self,
             ) -> Option<
-                crux_core::Request<
-                    <KeyValue<
-                        MyEvent,
-                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                >,
+                crux_core::Request<<KeyValue as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let MyEffect::KeyValue(request) = self { Some(request) } else { None }
             }
@@ -456,11 +420,7 @@ mod tests {
             pub fn into_platform(
                 self,
             ) -> Option<
-                crux_core::Request<
-                    <Platform<
-                        MyEvent,
-                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                >,
+                crux_core::Request<<Platform as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let MyEffect::Platform(request) = self { Some(request) } else { None }
             }
@@ -472,9 +432,7 @@ mod tests {
             pub fn into_render(
                 self,
             ) -> Option<
-                crux_core::Request<
-                    <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                >,
+                crux_core::Request<<Render as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let MyEffect::Render(request) = self { Some(request) } else { None }
             }
@@ -486,9 +444,7 @@ mod tests {
             pub fn into_time(
                 self,
             ) -> Option<
-                crux_core::Request<
-                    <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
-                >,
+                crux_core::Request<<Time as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let MyEffect::Time(request) = self { Some(request) } else { None }
             }
@@ -496,44 +452,8 @@ mod tests {
         "###);
     }
 
-    #[test]
-    #[should_panic]
-    fn should_panic_when_multiple_event_types() {
-        let input = r#"
-            #[derive(Effect)]
-            pub struct Capabilities {
-                pub render: Render<MyEvent>,
-                pub time: Time<YourEvent>,
-            }
-        "#;
-        let input = parse_str(input).unwrap();
-        let input = EffectStructReceiver::from_derive_input(&input).unwrap();
-
-        let mut actual = quote!();
-        input.to_tokens(&mut actual);
-    }
-
     fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
         let file = syn::parse_file(&ts.to_string()).unwrap();
         prettyplease::unparse(&file)
-    }
-
-    #[test]
-    fn split_event_types_preserves_path() {
-        let ty = Type::from_string("crux_core::render::Render<Event>").unwrap();
-
-        let (actual_type, actual_ident, actual_event) = split_on_generic(&ty);
-
-        assert_eq!(
-            quote!(#actual_type).to_string(),
-            quote!(crux_core::render::Render).to_string()
-        );
-
-        assert_eq!(
-            quote!(#actual_ident).to_string(),
-            quote!(Render).to_string()
-        );
-
-        assert_eq!(quote!(#actual_event).to_string(), quote!(Event).to_string());
     }
 }

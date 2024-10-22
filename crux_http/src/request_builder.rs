@@ -11,11 +11,10 @@ use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
 
 use crux_core::Command;
 use futures_util::future::BoxFuture;
-use futures_util::FutureExt as _;
 use http_types::convert::DeserializeOwned;
 use serde::Serialize;
 
-use std::{fmt, marker::PhantomData};
+use std::fmt;
 
 /// Request Builder
 ///

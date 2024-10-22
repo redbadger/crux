@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::macros::Effect;
     use crux_core::render::Render;
+    use crux_core::{macros::Effect, Command};
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
 
@@ -29,12 +29,12 @@ mod shared {
         type ViewModel = ViewModel;
         type Capabilities = Capabilities;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
             match event {
                 Event::PlatformGet => caps.platform.get(Event::PlatformSet),
                 Event::PlatformSet(platform) => {
                     model.platform = platform.0;
-                    caps.render.render()
+                    Command::empty_effect(caps.render.render())
                 }
             }
         }
@@ -48,8 +48,8 @@ mod shared {
 
     #[derive(Effect)]
     pub struct Capabilities {
-        pub platform: Platform<Event>,
-        pub render: Render<Event>,
+        pub platform: Platform,
+        pub render: Render,
     }
 }
 

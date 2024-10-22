@@ -14,7 +14,10 @@ pub use instant::Instant;
 
 use serde::{Deserialize, Serialize};
 
-use crux_core::capability::{CapabilityContext, Operation};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Command,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,9 +74,30 @@ impl Time {
     }
 
     /// Request current time, which will be passed to the app as a [`TimeResponse`] containing an [`Instant`]
+    /// wrapped in the event produced by the `callback`.
+    pub fn now<F, Ev>(&self, callback: F) -> Command<Ev>
+    where
+        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
+    {
+        let this = self.clone();
+        Command::effect(async move { Command::Event(callback(this.now_async().await)) })
+    }
+
+    /// Request current time, which will be passed to the app as a [`TimeResponse`] containing an [`Instant`]
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub async fn now_async(&self) -> TimeResponse {
         self.context.request_from_shell(TimeRequest::Now).await
+    }
+
+    /// Ask to receive a notification when the specified duration has elapsed.
+    pub fn notify_after<F, Ev>(&self, duration: Duration, callback: F) -> Command<Ev>
+    where
+        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
+    {
+        let this = self.clone();
+        Command::effect(
+            async move { Command::Event(callback(this.notify_after_async(duration).await)) },
+        )
     }
 
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
