@@ -246,17 +246,20 @@ mod tests {
             length: 13,
         };
 
-        let response = HttpResult::Ok(
-            HttpResponse::ok()
-                .body(r#"{ "fact": "cats are good", "length": 13 }"#)
-                .build(),
-        );
-
+        // resolve the request with a simulated response from the web API
         let event = app
-            .resolve(&mut request, response)
+            .resolve(
+                &mut request,
+                HttpResult::Ok(
+                    HttpResponse::ok()
+                        .body(r#"{ "fact": "cats are good", "length": 13 }"#)
+                        .build(),
+                ),
+            )
             .expect("should resolve successfully")
             .expect_one_event();
 
+        // check that the app emitted an (internal) event to update the model
         assert_eq!(
             event,
             Event::SetFact(Ok(ResponseBuilder::ok().body(a_fact.clone()).build()))

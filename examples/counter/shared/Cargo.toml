@@ -26,7 +26,6 @@ url = "2.5.2"
 wasm-bindgen = "0.2.95"
 
 [dev-dependencies]
-assert_let_bind = "0.1.1"
 insta = { version = "1.40.0", features = ["yaml"] }
 
 [target.uniffi-bindgen.dependencies]
