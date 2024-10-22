@@ -1,9 +1,10 @@
 mod capability {
     use std::future::Future;
 
-    use async_channel::Sender;
+    use async_channel::{Receiver, Sender};
     use crux_core::capability::{CapabilityContext, Operation};
     use crux_core::macros::Capability;
+    use futures::future::BoxFuture;
     use futures::{FutureExt, StreamExt};
     use serde::{Deserialize, Serialize};
 
@@ -20,7 +21,9 @@ mod capability {
     pub struct Crawler {
         context: CapabilityContext<Fetch>,
         tasks_tx: Sender<(usize, Sender<usize>)>,
+        tasks_rx: Receiver<(usize, Sender<usize>)>,
         commands_tx: Sender<Command>,
+        commands_rx: Receiver<Command>,
     }
 
     impl Drop for Crawler {
@@ -46,12 +49,22 @@ mod capability {
         pub fn new(context: CapabilityContext<Fetch>) -> Self {
             let (tasks_tx, tasks_rx) = async_channel::unbounded::<(usize, Sender<usize>)>();
             let (commands_tx, commands_rx) = async_channel::unbounded::<Command>();
+            Crawler {
+                context,
+                tasks_tx,
+                tasks_rx,
+                commands_tx,
+                commands_rx,
+            }
+        }
 
-            for n in 0..NUM_WORKERS {
-                let context = context.clone();
-                let tasks_rx = tasks_rx.clone();
-                let tasks_tx = tasks_tx.clone();
-                let commands_rx = commands_rx.clone();
+        pub(crate) fn start_workers(&self) -> Vec<BoxFuture<'static, ()>> {
+            (0..NUM_WORKERS).map(
+                |n| {
+                let context = self.context.clone();
+                let tasks_rx = self.tasks_rx.clone();
+                let tasks_tx = self.tasks_tx.clone();
+                let commands_rx = self.commands_rx.clone();
 
                 let mut accepting_tasks = true;
 
@@ -97,14 +110,9 @@ mod capability {
 
                     eprintln!("Worker {n} stopping");
                 };
-                todo!()
-            }
-
-            Crawler {
-                context,
-                tasks_tx,
-                commands_tx,
-            }
+                Box::pin(fut) as BoxFuture<'static, ()>
+            })
+            .collect::<Vec<_>>()
         }
 
         pub fn pause(&self) -> impl Future<Output = ()> {
@@ -136,10 +144,13 @@ mod capability {
 mod app {
     use crux_core::App;
     use crux_core::{macros::Effect, Command};
+    use futures::future::BoxFuture;
+    use futures::FutureExt;
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
     pub enum Event {
+        Start,
         Fetch,
         Pause,
         Resume,
@@ -168,9 +179,19 @@ mod app {
             caps: &Self::Capabilities,
         ) -> Command<Self::Event> {
             match event {
+                Event::Start => Command::Effects(
+                    caps.crawler
+                        .start_workers()
+                        .into_iter()
+                        .map(|work| {
+                            Box::pin(work.map(|()| Command::None))
+                                as BoxFuture<'static, Command<Event>>
+                        })
+                        .collect(),
+                ),
                 Event::Fetch => {
                     let fut = caps.crawler.fetch_tree(0);
-                    Command::effect(async move { Command::Event(Event::Done(fut.await)) })
+                    Command::effect(fut.map(|data| Command::Event(Event::Done(data))))
                 }
                 Event::Pause => Command::empty_effect(caps.crawler.pause()),
                 Event::Resume => Command::empty_effect(caps.crawler.resume()),
@@ -199,8 +220,11 @@ mod tests {
     fn fetches_a_tree() {
         let core: Core<Effect, MyApp> = Core::new();
 
-        core.process_event(Event::Fetch);
-        let mut effects: VecDeque<Effect> = todo!();
+        let mut effects: VecDeque<_> = core
+            .process_event(Event::Start)
+            .into_iter()
+            .chain(core.process_event(Event::Fetch))
+            .collect();
 
         let mut counter: usize = 1;
 

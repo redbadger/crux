@@ -73,7 +73,8 @@ impl<Event> QueuingExecutor<Event> {
             .expect("Task slab poisoned")
             .insert(Some(task));
         self.ready_sender
-            .send(TaskId(task_id.try_into().expect("TaskId overflow")));
+            .send(TaskId(task_id.try_into().expect("TaskId overflow")))
+            .expect("failed to spawn task");
     }
 
     pub fn run_all(&self) -> Vec<Command<Event>> {

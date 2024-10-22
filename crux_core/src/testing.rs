@@ -59,8 +59,10 @@ where
         let event = match command {
             crate::Command::None => None,
             crate::Command::Event(event) => Some(event),
-            crate::Command::Effect(pin) => {
-                self.context.executor.spawn_task(pin);
+            crate::Command::Effects(effects) => {
+                for effect in effects {
+                    self.context.executor.spawn_task(effect);
+                }
                 None
             }
         };
@@ -126,8 +128,10 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
                 match c {
                     crate::Command::None => {}
                     crate::Command::Event(ev) => events.push(ev),
-                    crate::Command::Effect(task) => {
-                        self.executor.spawn_task(task);
+                    crate::Command::Effects(effs) => {
+                        for task in effs {
+                            self.executor.spawn_task(task);
+                        }
                     }
                 }
             }

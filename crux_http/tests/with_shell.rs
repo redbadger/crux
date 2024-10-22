@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::macros::Effect;
     use crux_core::render::Render;
+    use crux_core::{macros::Effect, Command};
     use crux_http::Http;
     use serde::{Deserialize, Serialize};
 
@@ -38,26 +38,26 @@ mod shared {
 
         type Capabilities = Capabilities;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
             match event {
-                Event::Get => {
-                    caps.http.get("http://example.com").send(Event::Set);
-                }
-                Event::GetJson => {
-                    caps.http
-                        .get("http://example.com")
-                        .expect_json::<String>()
-                        .send(Event::SetJson);
-                }
+                Event::Get => caps
+                    .http
+                    .get("http://example.com")
+                    .send_and_respond(Event::Set),
+                Event::GetJson => caps
+                    .http
+                    .get("http://example.com")
+                    .expect_json::<String>()
+                    .send_and_respond(Event::SetJson),
                 Event::Set(response) => {
                     let mut response = response.unwrap();
                     model.status = response.status().into();
                     model.body = response.take_body().unwrap();
-                    caps.render.render()
+                    Command::empty_effect(caps.render.render())
                 }
                 Event::SetJson(response) => {
                     model.json_body = response.unwrap().take_body().unwrap();
-                    caps.render.render()
+                    Command::empty_effect(caps.render.render())
                 }
             }
         }
@@ -76,8 +76,8 @@ mod shared {
 
     #[derive(Effect)]
     pub(crate) struct Capabilities {
-        pub http: Http<Event>,
-        pub render: Render<Event>,
+        pub http: Http,
+        pub render: Render,
     }
 }
 

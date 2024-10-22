@@ -174,22 +174,22 @@ pub use crux_macros as macros;
 pub enum Command<Event> {
     None,
     Event(Event),
-    Effect(BoxFuture<'static, Self>),
+    Effects(Vec<BoxFuture<'static, Self>>),
 }
 
 impl<Event> From<BoxFuture<'static, Self>> for Command<Event> {
     fn from(value: BoxFuture<'static, Command<Event>>) -> Self {
-        Self::Effect(value)
+        Self::Effects(vec![value])
     }
 }
 
 impl<Event> Command<Event> {
     pub fn effect(fut: impl Future<Output = Self> + Send + 'static) -> Self {
-        Self::Effect(Box::pin(fut))
+        Self::Effects(vec![Box::pin(fut)])
     }
 
     pub fn empty_effect(fut: impl Future<Output = ()> + Send + 'static) -> Self {
-        Self::Effect(Box::pin(fut.map(|()| Command::None)))
+        Self::Effects(vec![Box::pin(fut.map(|()| Command::None))])
     }
 }
 

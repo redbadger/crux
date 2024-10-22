@@ -45,9 +45,9 @@ impl ToTokens for ExportStructReceiver {
 
         let mut output_type_exports = Vec::new();
 
-        for (capability, event) in fields.iter().map(|f| split_on_generic(&f.ty)) {
+        for capability in fields.iter().map(|f| &f.ty) {
             output_type_exports.push(quote! {
-                #capability::<#event>::register_types(generator)?;
+                #capability::register_types(generator)?;
             });
         }
 
@@ -79,32 +79,6 @@ pub(crate) fn export_impl(input: &DeriveInput) -> TokenStream {
     quote!(#input)
 }
 
-fn split_on_generic(ty: &Type) -> (Type, Type) {
-    let ty = ty.clone();
-    match ty {
-        Type::Path(mut path) if path.qself.is_none() => {
-            // Get the last segment of the path where the generic parameter should be
-
-            let last = path.path.segments.last_mut().expect("type has no segments");
-            let type_params = std::mem::take(&mut last.arguments);
-
-            // It should have only one angle-bracketed param
-            let generic_arg = match type_params {
-                PathArguments::AngleBracketed(params) => params.args.first().cloned(),
-                _ => None,
-            };
-
-            // This argument must be a type
-            match generic_arg {
-                Some(GenericArgument::Type(t2)) => Some((Type::Path(path), t2)),
-                _ => None,
-            }
-        }
-        _ => None,
-    }
-    .expect_or_abort("capabilities should be generic over a single event type")
-}
-
 #[cfg(test)]
 mod tests {
     use darling::{FromDeriveInput, FromMeta};
@@ -112,8 +86,6 @@ mod tests {
     use syn::{parse_str, Type};
 
     use crate::export::ExportStructReceiver;
-
-    use super::split_on_generic;
 
     #[test]
     fn defaults() {

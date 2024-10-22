@@ -177,7 +177,7 @@ fn split_on_generic(ty: &Type) -> (Type, Ident) {
         }
         _ => None,
     }
-    .expect_or_abort("capabilities should be generic over a single event type")
+    .expect_or_abort("bad path")
 }
 
 #[cfg(test)]

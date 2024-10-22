@@ -2,6 +2,7 @@
 mod shared {
     use crux_core::macros::{Effect, Export};
     use crux_core::render::Render;
+    use crux_core::Command;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -20,7 +21,14 @@ mod shared {
         type Model = ();
         type ViewModel = ViewModel;
         type Capabilities = Capabilities;
-        fn update(&self, _event: Event, _model: &mut Self::Model, _caps: &Capabilities) {}
+        fn update(
+            &self,
+            _event: Event,
+            _model: &mut Self::Model,
+            _caps: &Capabilities,
+        ) -> Command<Self::Event> {
+            Command::None
+        }
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
             unimplemented!();
         }
@@ -29,7 +37,7 @@ mod shared {
     #[derive(Effect, Export)]
     pub struct Capabilities {
         #[allow(dead_code)]
-        pub render: Render<Event>,
+        pub render: Render,
     }
 }
 

@@ -75,26 +75,10 @@ where
     /// effect requests.
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
-    pub fn process_event(&self, event: A::Event) {
-        self.process_command(Command::Event(event))
+    pub fn process_event(&self, event: A::Event) -> Vec<Ef> {
+        self.process(Some(Command::Event(event)))
     }
     // ANCHOR_END: process_event
-
-    pub fn process_command(&self, mut command: Command<A::Event>) {
-        loop {
-            command = match command {
-                Command::None => break,
-                Command::Event(event) => {
-                    let mut model = self.model.write().expect("Model RwLock was poisoned.");
-                    self.app.update(event, &mut model, &self.capabilities)
-                }
-                Command::Effect(effect) => {
-                    self.executor.spawn_task(effect);
-                    break;
-                }
-            }
-        }
-    }
 
     /// Resolve an effect `request` for operation `Op` with the corresponding result.
     ///
@@ -112,26 +96,37 @@ where
         let resolve_result = request.resolve(result);
         debug_assert!(resolve_result.is_ok());
 
-        self.process()
+        self.process(None)
     }
     // ANCHOR_END: resolve
 
     // used in docs/internals/runtime.md
     // ANCHOR: process
-    pub(crate) fn process(&self) -> Vec<Ef> {
+    pub(crate) fn process(&self, mut command: Option<Command<A::Event>>) -> Vec<Ef> {
         let mut more_work_to_do = true;
         while more_work_to_do {
             more_work_to_do = false;
 
             let commands = self.executor.run_all();
-            for command in commands {
-                self.process_command(command);
+            for command in command.take().into_iter().chain(commands) {
+                let mut command = command;
+                loop {
+                    command = match command {
+                        Command::None => break,
+                        Command::Event(event) => {
+                            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                            self.app.update(event, &mut model, &self.capabilities)
+                        }
+                        Command::Effects(effects) => {
+                            for effect in effects {
+                                self.executor.spawn_task(effect);
+                            }
+                            break;
+                        }
+                    }
+                }
                 more_work_to_do = true;
             }
-            // while let Some(capability_event) = self.capability_events.receive() {
-            //     self.process_event(capability_event);
-            //     more_work_to_do = true;
-            // }
         }
 
         self.requests.drain().collect()

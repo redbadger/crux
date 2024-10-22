@@ -193,7 +193,6 @@ mod shell_request;
 mod shell_stream;
 
 use serde::de::DeserializeOwned;
-use std::sync::Arc;
 
 pub(crate) use channel::channel;
 pub(crate) use executor::QueuingExecutor;
@@ -402,20 +401,7 @@ pub struct CapabilityContext<Op>
 where
     Op: Operation,
 {
-    inner: std::sync::Arc<ContextInner<Op>>,
-}
-
-struct ContextInner<Op>
-where
-    Op: Operation,
-{
     shell_channel: Sender<Request<Op>>,
-}
-// ANCHOR_END: capability_context
-
-/// Initial version of capability Context which has not yet been specialized to a chosen capability
-pub struct ProtoContext<Eff> {
-    shell_channel: Sender<Eff>,
 }
 
 impl<Op> Clone for CapabilityContext<Op>
@@ -424,9 +410,16 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            inner: Arc::clone(&self.inner),
+            shell_channel: self.shell_channel.clone(),
         }
     }
+}
+
+// ANCHOR_END: capability_context
+
+/// Initial version of capability Context which has not yet been specialized to a chosen capability
+pub struct ProtoContext<Eff> {
+    shell_channel: Sender<Eff>,
 }
 
 impl<Eff> ProtoContext<Eff>
@@ -458,9 +451,7 @@ where
     Op: Operation,
 {
     pub(crate) fn new(shell_channel: Sender<Request<Op>>) -> Self {
-        let inner = Arc::new(ContextInner { shell_channel });
-
-        CapabilityContext { inner }
+        Self { shell_channel }
     }
 
     /// Send an effect request to the shell in a fire and forget fashion. The
@@ -470,9 +461,7 @@ where
         // it's important that it is.  It forces all capabilities to
         // spawn onto the executor which keeps the ordering of effects
         // consistent with their function calls.
-        self.inner
-            .shell_channel
-            .send(Request::resolves_never(operation));
+        self.shell_channel.send(Request::resolves_never(operation));
     }
 
     // /// Send an event to the app. The event will be processed on the next
@@ -572,7 +561,7 @@ where
     // }
 
     pub(crate) fn send_request(&self, request: Request<Op>) {
-        self.inner.shell_channel.send(request);
+        self.shell_channel.send(request);
     }
 }
 

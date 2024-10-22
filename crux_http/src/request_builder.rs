@@ -9,7 +9,9 @@ use crate::{
 };
 use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
 
+use crux_core::Command;
 use futures_util::future::BoxFuture;
+use futures_util::FutureExt as _;
 use http_types::convert::DeserializeOwned;
 use serde::Serialize;
 
@@ -351,38 +353,37 @@ where
         }
     }
 
-    // /// Sends the constructed `Request` and returns its result as an update `Event`
-    // ///
-    // /// When finished, the response will wrapped in an event using `make_event` and
-    // /// dispatched to the app's `update function.
-    // pub fn send<F>(self, make_event: F)
-    // where
-    //     F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
-    // {
-    //     let CapOrClient::Capability(capability) = self.cap_or_client else {
-    //         panic!("Called RequestBuilder::send in a middleware context");
-    //     };
-    //     let request = self.req;
+    /// Sends the constructed `Request` and returns its result as an update `Event`
+    ///
+    /// When finished, the response will wrapped in an event using `make_event` and
+    /// dispatched to the app's `update function.
+    pub fn send_and_respond<F, Event>(self, make_event: F) -> Command<Event>
+    where
+        F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
+    {
+        let CapOrClient::Capability(capability) = self.cap_or_client else {
+            panic!("Called RequestBuilder::send in a middleware context");
+        };
+        let request = self.req;
 
-    //     let ctx = capability.context.clone();
-    //     ctx.spawn(async move {
-    //         let result = capability.client.send(request.unwrap()).await;
+        let fut = async move {
+            let result = capability.client.send(request.unwrap()).await;
 
-    //         let resp = match result {
-    //             Ok(resp) => resp,
-    //             Err(e) => {
-    //                 capability.context.update_app(make_event(Err(e)));
-    //                 return;
-    //             }
-    //         };
+            let resp = match result {
+                Ok(resp) => resp,
+                Err(e) => {
+                    return Command::Event(make_event(Err(e)));
+                }
+            };
 
-    //         let resp = Response::<Vec<u8>>::new(resp)
-    //             .await
-    //             .and_then(|r| self.expectation.decode(r));
+            let resp = Response::<Vec<u8>>::new(resp)
+                .await
+                .and_then(|r| self.expectation.decode(r));
 
-    //         capability.context.update_app(make_event(resp));
-    //     });
-    // }
+            Command::Event(make_event(resp))
+        };
+        Command::effect(fut)
+    }
 
     /// Sends the constructed `Request` and returns a future that resolves to [`ResponseAsync`].
     /// but does not consume it or convert the body to an expected format.
