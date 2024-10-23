@@ -20,10 +20,10 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.91"
-crux_core = { path = "../../crux_core" }
-crux_http = { path = "../../crux_http" }
-# crux_core = "0.9.1"
-# crux_http = "0.10.2"
+# crux_core = { path = "../../crux_core" }
+# crux_http = { path = "../../crux_http" }
+crux_core = "0.10.0"
+crux_http = "0.10.3"
 serde = "1.0.213"
 
 [workspace.metadata.bin]
