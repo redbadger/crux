@@ -4,7 +4,7 @@ use crux_core::capability::{CapabilityContext, Operation};
 use crux_core::macros::Capability;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformRequest;
 
 // TODO revisit this

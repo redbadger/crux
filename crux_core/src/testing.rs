@@ -1,6 +1,6 @@
 //! Testing support for unit testing Crux apps.
 use anyhow::Result;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 use crate::{
     capability::{
@@ -202,6 +202,30 @@ impl<Ef, Ev> Update<Ef, Ev> {
             self.effects.len(),
             self.events.len()
         );
+    }
+
+    /// Take effects matching the `predicate` out of the [`Update`]
+    /// and return them, mutating the `Update`
+    pub fn take_effects<P>(&mut self, predicate: P) -> VecDeque<Ef>
+    where
+        P: FnMut(&Ef) -> bool,
+    {
+        let (matching_effects, other_effects) = self.take_effects_partitioned_by(predicate);
+
+        self.effects = other_effects.into_iter().collect();
+
+        matching_effects
+    }
+
+    /// Take all of the effects out of the [`Update`]
+    /// and split them into those matching `predicate` and the rest
+    pub fn take_effects_partitioned_by<P>(&mut self, predicate: P) -> (VecDeque<Ef>, VecDeque<Ef>)
+    where
+        P: FnMut(&Ef) -> bool,
+    {
+        std::mem::take(&mut self.effects)
+            .into_iter()
+            .partition(predicate)
     }
 }
 

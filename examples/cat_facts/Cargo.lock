@@ -144,12 +144,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "assert_let_bind"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26da9bc03539eda841c2042fd584ee3982b652606f40dc9e7a828817eae79275"
-
-[[package]]
 name = "async-channel"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -254,9 +248,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.7.2"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "428d9aa8fbc0670b7b8d6030a7fadd0f86151cae55e4dbbece15f3780a3dfaf3"
+checksum = "9ac0150caa2ae65ca5bd83f25c7de183dea78d4d366469f148435e2acfbad0da"
 
 [[package]]
 name = "camino"
@@ -434,8 +428,6 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 [[package]]
 name = "crux_core"
 version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7254d2fca79de45e1e595fa7d32a0d3d8bfec85ee02b250cc216af6b7f01162"
 dependencies = [
  "anyhow",
  "bincode",
@@ -454,8 +446,6 @@ dependencies = [
 [[package]]
 name = "crux_http"
 version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf0c2c59aee43cfd5a02ddf3eea264e59bc8317b731fa57905bfd62c4eb84c80"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -476,8 +466,6 @@ dependencies = [
 [[package]]
 name = "crux_kv"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5b90cf04e92216c2a5c4a878bd832b220ca70238228f271323be95585d7c1d"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -489,8 +477,6 @@ dependencies = [
 [[package]]
 name = "crux_macros"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6628a214f3754bdea8f05bf9ebbe62cd6bff48f7a4bea52ecb14cbd1743484ad"
 dependencies = [
  "darling",
  "proc-macro-error",
@@ -502,8 +488,6 @@ dependencies = [
 [[package]]
 name = "crux_platform"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea670b8e6fa544ea8f9cd435624eea4d763d867298a8e7575ee71bcdd0859452"
 dependencies = [
  "crux_core",
  "serde",
@@ -512,8 +496,6 @@ dependencies = [
 [[package]]
 name = "crux_time"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "705d7974afd4343ae6f52dd588ff74b5a383c212232324be7449b6b7342ce08f"
 dependencies = [
  "chrono",
  "crux_core",
@@ -2247,9 +2229,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.210"
+version = "1.0.211"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8e3592472072e6e22e0a54d5904d9febf8508f65fb8552499a1abc7d1078c3a"
+checksum = "1ac55e59090389fb9f0dd9e0f3c09615afed1d19094284d0b200441f13550793"
 dependencies = [
  "serde_derive",
 ]
@@ -2312,9 +2294,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.210"
+version = "1.0.211"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "243902eda00fad750862fc144cea25caca5e20d615af0a81bee94ca738f1df1f"
+checksum = "54be4f245ce16bc58d57ef2716271d0d4519e0f6defa147f6e081005bcb278ff"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2369,7 +2351,6 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "assert_let_bind",
  "chrono",
  "crux_core",
  "crux_http",

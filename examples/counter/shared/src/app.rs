@@ -127,7 +127,6 @@ mod tests {
     use super::{App, Event, Model};
     use crate::capabilities::sse::SseRequest;
     use crate::{Count, Effect};
-    use assert_let_bind::assert_let;
     use chrono::{TimeZone, Utc};
     use crux_core::{assert_effect, testing::AppTester};
     use crux_http::protocol::HttpResult;
@@ -148,15 +147,15 @@ mod tests {
         let mut model = Model::default();
 
         // send a `Get` event to the app
-        let mut update = app.update(Event::Get, &mut model);
+        let update = app.update(Event::Get, &mut model);
 
         // check that the app emitted an HTTP request,
         // capturing the request in the process
-        assert_let!(Effect::Http(request), &mut update.effects[0]);
+        let request = &mut update.expect_one_effect().expect_http();
 
         // check that the request is a GET to the correct URL
-        let actual = &request.operation;
-        let expected = &HttpRequest::get("https://crux-counter.fly.dev/").build();
+        let actual = request.operation.clone();
+        let expected = HttpRequest::get("https://crux-counter.fly.dev/").build();
         assert_eq!(actual, expected);
 
         // resolve the request with a simulated response from the web API
@@ -227,8 +226,11 @@ mod tests {
         // send an `Increment` event to the app
         let mut update = app.update(Event::Increment, &mut model);
 
+        // split the effects into render and HTTP requests
+        let (mut render, mut http) = update.take_effects_partitioned_by(Effect::is_render);
+
         // check that the app asked the shell to render
-        assert_effect!(update, Effect::Render(_));
+        render.pop_front().unwrap().expect_render();
 
         // we are expecting our model to be updated "optimistically" before the
         // HTTP request completes, so the value should have been updated
@@ -242,7 +244,7 @@ mod tests {
 
         // check that the app also emitted an HTTP request,
         // capturing the request in the process
-        assert_let!(Effect::Http(request), &mut update.effects[1]);
+        let request = &mut http.pop_front().unwrap().expect_http();
 
         // check that the request is a POST to the correct URL
         let actual = &request.operation;
@@ -253,12 +255,8 @@ mod tests {
         let response = HttpResponse::ok()
             .body(r#"{ "value": 2, "updated_at": 1672531200000 }"#)
             .build();
-        let update = app
-            .resolve(request, HttpResult::Ok(response))
-            .expect("Update to succeed");
-
-        // send the generated (internal) `Set` event back into the app
-        let _ = app.update(update.events[0].clone(), &mut model);
+        let _updated =
+            app.resolve_to_event_then_update(request, HttpResult::Ok(response), &mut model);
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
@@ -286,8 +284,11 @@ mod tests {
         // send a `Decrement` event to the app
         let mut update = app.update(Event::Decrement, &mut model);
 
+        // split the effects into render and HTTP requests
+        let (mut render, mut http) = update.take_effects_partitioned_by(Effect::is_render);
+
         // check that the app asked the shell to render
-        assert_effect!(update, Effect::Render(_));
+        render.pop_front().unwrap().expect_render();
 
         // we are expecting our model to be updated "optimistically" before the
         // HTTP request completes, so the value should have been updated
@@ -301,7 +302,7 @@ mod tests {
 
         // check that the app also emitted an HTTP request,
         // capturing the request in the process
-        assert_let!(Effect::Http(request), &mut update.effects[1]);
+        let request = &mut http.pop_front().unwrap().expect_http();
 
         // check that the request is a POST to the correct URL
         let actual = &request.operation;
@@ -312,15 +313,8 @@ mod tests {
         let response = HttpResponse::ok()
             .body(r#"{ "value": -1, "updated_at": 1672531200000 }"#)
             .build();
-        let update = app
-            .resolve(request, HttpResult::Ok(response))
-            .expect("a successful update");
-
-        // run the event loop in order to send the (internal) `Set` event
-        // back into the app
-        for event in update.events {
-            let _ = app.update(event, &mut model);
-        }
+        let _updated =
+            app.resolve_to_event_then_update(request, HttpResult::Ok(response), &mut model);
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
@@ -336,15 +330,17 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::StartWatch, &mut model);
+        let request = app
+            .update(Event::StartWatch, &mut model)
+            .expect_one_effect()
+            .expect_sse();
 
-        assert_let!(Effect::ServerSentEvents(request), &update.effects[0]);
-
-        let actual = &request.operation;
-        let expected = &SseRequest {
-            url: "https://crux-counter.fly.dev/sse".to_string(),
-        };
-        assert_eq!(actual, expected);
+        assert_eq!(
+            request.operation,
+            SseRequest {
+                url: "https://crux-counter.fly.dev/sse".to_string(),
+            }
+        );
     }
 
     #[test]
@@ -358,9 +354,9 @@ mod tests {
         };
         let event = Event::Update(count);
 
-        let update = app.update(event, &mut model);
-
-        assert_effect!(update, Effect::Render(_));
+        app.update(event, &mut model)
+            .expect_one_effect()
+            .expect_render();
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
