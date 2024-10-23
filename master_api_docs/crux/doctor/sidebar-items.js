@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["SOURCE_CODE_EXTENSIONS"],"fn":["common","compare","difference","doctor","ensure_trailing_newline","intersection","is_source_code","missing","read_files","validate_path"],"type":["FileMap"]};
