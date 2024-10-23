@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.5.2](https://github.com/redbadger/crux/compare/crux_kv-v0.5.1...crux_kv-v0.5.2) - 2024-10-23
+
+### Other
+
+- tidy and docs udpate
+- update http and kv tests to use new API
+
 ## [0.5.1](https://github.com/redbadger/crux/compare/crux_kv-v0.5.0...crux_kv-v0.5.1) - 2024-20-21
 
 - Serialization of bytes can now be more efficient with [`serde_bytes`](https://github.com/serde-rs/bytes).
