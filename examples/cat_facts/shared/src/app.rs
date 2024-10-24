@@ -3,7 +3,7 @@ pub mod platform;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crux_core::{render::Render, Capability};
+use crux_core::render::Render;
 pub use crux_core::{App, Command};
 use crux_http::Http;
 use crux_kv::{error::KeyValueError, KeyValue};
@@ -126,8 +126,8 @@ impl App for CatFacts {
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                let cmd1 = caps.key_value
-                    .set(KEY.to_string(), bytes, |_| Command::none());
+                let cmd1: Command<Event> =
+                    caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
                 cmd1.join(caps.render.render())
             }
             Event::Get => {
@@ -159,9 +159,12 @@ impl App for CatFacts {
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                Command::effect(async move {
-                    caps.key_value.set_async(KEY.to_string(), bytes).await;
-                    Command::none()
+                Command::effect({
+                    let key_value = caps.key_value.clone();
+                    async move {
+                        let _ = key_value.set_async(KEY.to_string(), bytes).await;
+                        Command::none()
+                    }
                 })
                 .join(caps.time.now(Event::CurrentTime))
             }
@@ -170,14 +173,14 @@ impl App for CatFacts {
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                Command::effect(async move {
-                    let _result = caps.key_value.set_async(KEY.to_string(), bytes).await;
-                    Command::none()
+                Command::effect({
+                    let key_value = caps.key_value.clone();
+                    async move {
+                        let _result = key_value.set_async(KEY.to_string(), bytes).await;
+                        Command::none()
+                    }
                 })
-                .join_effect(async move {
-                    caps.render.render_async().await;
-                    Command::none()
-                })
+                .join(caps.render.render())
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
                 // TODO: Display an error
@@ -188,14 +191,14 @@ impl App for CatFacts {
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                Command::effect(async move {
-                    let result = caps.key_value.set_async(KEY.to_string(), bytes).await;
-                    Command::event(Event::SetState(result))
+                Command::effect({
+                    let key_value = caps.key_value.clone();
+                    async move {
+                        let result = key_value.set_async(KEY.to_string(), bytes).await;
+                        Command::event(Event::SetState(result))
+                    }
                 })
-                .join_effect(async move {
-                    caps.render.render_async().await;
-                    Command::none()
-                })
+                .join(caps.render.render())
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
             Event::Restore => caps.key_value.get(KEY.to_string(), Event::SetState),
