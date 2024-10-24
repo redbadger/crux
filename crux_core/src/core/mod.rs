@@ -2,6 +2,7 @@ mod effect;
 mod request;
 mod resolve;
 
+use std::collections::VecDeque;
 use std::sync::RwLock;
 
 pub use effect::Effect;
@@ -102,31 +103,31 @@ where
 
     // used in docs/internals/runtime.md
     // ANCHOR: process
-    pub(crate) fn process(&self, mut command: Option<Command<A::Event>>) -> Vec<Ef> {
-        let mut more_work_to_do = true;
-        while more_work_to_do {
-            more_work_to_do = false;
+    pub(crate) fn process(&self, command: Option<Command<A::Event>>) -> Vec<Ef> {
+        let mut pending_commands: VecDeque<Command<_>> = VecDeque::new();
+        pending_commands.extend(command);
+        pending_commands.extend(self.executor.run_all());
 
-            let commands = self.executor.run_all();
-            for command in command.take().into_iter().chain(commands) {
-                let mut command = command;
-                loop {
-                    command = match command.inner {
-                        CommandInner::None => break,
-                        CommandInner::Event(event) => {
-                            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-                            self.app.update(event, &mut model, &self.capabilities)
-                        }
-                        CommandInner::Effects(effects) => {
-                            for effect in effects {
-                                self.executor.spawn_task(effect);
-                            }
-                            break;
-                        }
-                    }
+        while let Some(command) = pending_commands.pop_front() {
+            match command.inner {
+                CommandInner::None => continue,
+                CommandInner::Event(event) => {
+                    let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                    pending_commands.push_back(self.app.update(
+                        event,
+                        &mut model,
+                        &self.capabilities,
+                    ));
                 }
-                more_work_to_do = true;
+                CommandInner::Effect(effect) => {
+                    self.executor.spawn_task(effect);
+                }
+                CommandInner::Multiple(commands) => {
+                    pending_commands.extend(commands);
+                    continue;
+                }
             }
+            pending_commands.extend(self.executor.run_all())
         }
 
         self.requests.drain().collect()

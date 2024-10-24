@@ -126,9 +126,9 @@ impl App for CatFacts {
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                caps.key_value
-                    .set(KEY.to_string(), bytes, |_| Event::none());
-                caps.render.render()
+                let cmd1 = caps.key_value
+                    .set(KEY.to_string(), bytes, |_| Command::none());
+                cmd1.join(caps.render.render())
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
@@ -174,7 +174,7 @@ impl App for CatFacts {
                     let _result = caps.key_value.set_async(KEY.to_string(), bytes).await;
                     Command::none()
                 })
-                .join(async move {
+                .join_effect(async move {
                     caps.render.render_async().await;
                     Command::none()
                 })
@@ -192,7 +192,7 @@ impl App for CatFacts {
                     let result = caps.key_value.set_async(KEY.to_string(), bytes).await;
                     Command::event(Event::SetState(result))
                 })
-                .join(async move {
+                .join_effect(async move {
                     caps.render.render_async().await;
                     Command::none()
                 })

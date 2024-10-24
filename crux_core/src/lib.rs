@@ -211,7 +211,8 @@ pub struct Command<Event> {
 pub(crate) enum CommandInner<Event> {
     None,
     Event(Event),
-    Effects(OneOrMany<BoxFuture<'static, Command<Event>>>),
+    Effect(BoxFuture<'static, Command<Event>>),
+    Multiple(Vec<Command<Event>>),
 }
 
 impl<Event> Command<Event> {
@@ -229,24 +230,42 @@ impl<Event> Command<Event> {
 
     pub fn effect(fut: impl Future<Output = Self> + Send + 'static) -> Self {
         Self {
-            inner: CommandInner::Effects(OneOrMany::One(Box::pin(fut))),
+            inner: CommandInner::Effect(Box::pin(fut)),
         }
     }
 
-    pub fn effects(futs: Vec<BoxFuture<'static, Self>>) -> Self {
-        Self {
-            inner: CommandInner::Effects(OneOrMany::Many(futs)),
+    pub fn effects(
+        mut futs: impl Iterator<Item = impl Future<Output = Self> + Send + 'static>,
+    ) -> Self {
+        let Some(first) = futs.next() else {
+            return Command::none();
+        };
+        let mut commands = Command::effect(first);
+        for fut in futs {
+            commands = commands.join_effect(fut);
         }
+        commands
     }
 
     pub fn empty_effect(fut: impl Future<Output = ()> + Send + 'static) -> Self {
         Self {
-            inner: CommandInner::Effects(OneOrMany::One(Box::pin(fut.map(|()| Command::none())))),
+            inner: CommandInner::Effect(Box::pin(fut.map(|()| Command::none()))),
         }
     }
 
-    pub fn join(self, fut: impl Future<Output = Self> + Send + 'static) -> Self {
-        todo!()
+    pub fn join(mut self, command: Self) -> Self {
+        if let CommandInner::Multiple(cmds) = &mut self.inner {
+            cmds.push(command);
+            self
+        } else {
+            Command {
+                inner: CommandInner::Multiple(vec![self, command]),
+            }
+        }
+    }
+
+    pub fn join_effect(self, fut: impl Future<Output = Self> + Send + 'static) -> Self {
+        self.join(Command::effect(fut))
     }
 
     pub fn map<F, Event2>(self, func: F) -> Command<Event2>
@@ -254,23 +273,23 @@ impl<Event> Command<Event> {
         F: Fn(Event) -> Event2 + Send + Clone + 'static,
         Event: 'static,
     {
-        let inner = match self.inner {
-            CommandInner::None => CommandInner::None,
-            CommandInner::Event(ev) => CommandInner::Event(func(ev)),
-            CommandInner::Effects(effects) => {
-                let effects = effects
+        match self.inner {
+            CommandInner::None => Command::none(),
+            CommandInner::Event(ev) => Command::event(func(ev)),
+            CommandInner::Effect(effect) => Command::effect(effect.map({
+                let f = func.clone();
+                move |cmd| cmd.map(f)
+            })),
+            CommandInner::Multiple(commands) => {
+                let cmds = commands
                     .into_iter()
-                    .map(|fut| {
-                        Box::pin(fut.map({
-                            let f = func.clone();
-                            move |cmd| cmd.map(f)
-                        })) as BoxFuture<'static, Command<Event2>>
-                    })
+                    .map(|cmd| cmd.map(func.clone()))
                     .collect();
-                CommandInner::Effects(effects)
+                Command {
+                    inner: CommandInner::Multiple(cmds),
+                }
             }
-        };
-        Command { inner }
+        }
     }
 }
 

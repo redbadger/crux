@@ -1,6 +1,6 @@
 //! Testing support for unit testing Crux apps.
 use anyhow::Result;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 use crate::{
     capability::{channel::Receiver, Operation, ProtoContext, QueuingExecutor},
@@ -56,17 +56,25 @@ where
     /// and potential further events dispatched by capabilities.
     pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
         let command = self.app.update(event, model, &self.capabilities);
-        let event = match command.inner {
-            CommandInner::None => None,
-            CommandInner::Event(event) => Some(event),
-            CommandInner::Effects(effects) => {
-                for effect in effects {
+        let mut queue: VecDeque<_> = std::iter::once(command).collect();
+        let mut events = Vec::new();
+        while let Some(command) = queue.pop_front() {
+            match command.inner {
+                CommandInner::None => continue,
+                CommandInner::Event(event) => {
+                    events.push(event);
+                }
+                CommandInner::Effect(effect) => {
                     self.context.executor.spawn_task(effect);
                 }
-                None
-            }
-        };
-        self.context.updates(event)
+                CommandInner::Multiple(multiple) => {
+                    for command in multiple {
+                        queue.push_back(command);
+                    }
+                }
+            };
+        }
+        self.context.updates(events)
     }
 
     /// Resolve an effect `request` from previous update with an operation output.
@@ -79,7 +87,7 @@ where
         value: Op::Output,
     ) -> Result<Update<Ef, App::Event>> {
         request.resolve(value)?;
-        Ok(self.context.updates(None))
+        Ok(self.context.updates(Vec::new()))
     }
 
     /// Run the app's `view` function with a model state
@@ -117,23 +125,17 @@ where
 }
 
 impl<Ef, Ev> AppContext<Ef, Ev> {
-    pub fn updates(self: &Arc<Self>, pending_event: Option<Ev>) -> Update<Ef, Ev> {
-        let mut events: Vec<Ev> = pending_event.into_iter().collect();
-        loop {
-            let commands = self.executor.run_all();
-            if commands.is_empty() {
-                break;
-            }
-            for c in commands {
-                match c.inner {
-                    CommandInner::None => {}
-                    CommandInner::Event(ev) => events.push(ev),
-                    CommandInner::Effects(effs) => {
-                        for task in effs {
-                            self.executor.spawn_task(task);
-                        }
-                    }
+    pub fn updates(self: &Arc<Self>, mut events: Vec<Ev>) -> Update<Ef, Ev> {
+        let mut queue: VecDeque<_> = self.executor.run_all().into_iter().collect();
+        while let Some(command) = queue.pop_front() {
+            match command.inner {
+                CommandInner::None => {}
+                CommandInner::Event(ev) => events.push(ev),
+                CommandInner::Effect(effect) => {
+                    self.executor.spawn_task(effect);
+                    queue.extend(self.executor.run_all())
                 }
+                CommandInner::Multiple(commands) => queue.extend(commands),
             }
         }
         let effects = self.commands.drain().collect();
