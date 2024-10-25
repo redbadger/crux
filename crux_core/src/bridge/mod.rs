@@ -199,8 +199,7 @@ where
                 self.registry.resume(id, data).expect(
                     "Response could not be handled. The request did not expect a response.",
                 );
-
-                self.core.process()
+                self.core.process(None)
             }
         };
 

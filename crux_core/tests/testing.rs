@@ -4,7 +4,7 @@ use crux_core::testing::AppTester;
 
 mod app {
     use crux_core::macros::Effect;
-    use crux_core::App;
+    use crux_core::{App, Command};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -14,7 +14,7 @@ mod app {
 
     #[derive(Effect)]
     pub struct Capabilities {
-        render: crux_core::render::Render<Event>,
+        render: crux_core::render::Render,
     }
 
     #[derive(Default)]
@@ -26,12 +26,17 @@ mod app {
         type ViewModel = String;
         type Capabilities = Capabilities;
 
-        fn update(&self, _event: Self::Event, _model: &mut Self::Model, caps: &Self::Capabilities) {
-            caps.render.render()
-        }
-
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
             model.clone()
+        }
+
+        fn update(
+            &self,
+            _event: Self::Event,
+            _model: &mut Self::Model,
+            caps: &Self::Capabilities,
+        ) -> Command<Self::Event> {
+            caps.render.render()
         }
     }
 }

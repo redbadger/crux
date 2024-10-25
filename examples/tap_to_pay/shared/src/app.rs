@@ -1,6 +1,6 @@
 mod payment;
 
-use crux_core::render::Render;
+use crux_core::{render::Render, Command};
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::delay::Delay;
@@ -38,8 +38,8 @@ pub enum Screen {
 #[derive(crux_core::macros::Effect)]
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 pub struct Capabilities {
-    render: Render<Event>,
-    delay: Delay<Event>,
+    render: Render,
+    delay: Delay,
 }
 
 #[derive(Default)]
@@ -51,7 +51,12 @@ impl crux_core::App for App {
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Event> {
         match event {
             Event::SetAmount(amount) => {
                 match &model.payment {
@@ -81,7 +86,10 @@ impl crux_core::App for App {
                     payment.send();
 
                     // Simulate processing delay
-                    caps.delay.start(2500, Event::ConfirmSend)
+                    return caps
+                        .delay
+                        .start(2500, Event::ConfirmSend)
+                        .join(caps.render.render());
                 }
             }
             Event::ConfirmSend => {
@@ -111,7 +119,10 @@ impl crux_core::App for App {
                         receipt.send();
 
                         // Simulate processing delay
-                        caps.delay.start(1200, Event::ConfirmSendReceipt)
+                        return caps
+                            .delay
+                            .start(1200, Event::ConfirmSendReceipt)
+                            .join(caps.render.render());
                     }
                 }
             }
@@ -124,7 +135,8 @@ impl crux_core::App for App {
             }
         };
 
-        caps.render.render();
+        // fall-through
+        caps.render.render()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {

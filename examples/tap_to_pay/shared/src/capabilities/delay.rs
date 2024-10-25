@@ -1,4 +1,5 @@
 use crux_core::capability::{CapabilityContext, Operation};
+use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -11,32 +12,22 @@ impl Operation for DelayOperation {
 }
 
 #[derive(crux_core::macros::Capability)]
-pub struct Delay<Event> {
-    context: CapabilityContext<DelayOperation, Event>,
+pub struct Delay {
+    context: CapabilityContext<DelayOperation>,
 }
 
-impl<Ev> Delay<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<DelayOperation, Ev>) -> Self {
+impl Delay {
+    pub fn new(context: CapabilityContext<DelayOperation>) -> Self {
         Self { context }
     }
 
-    pub fn start(&self, millis: usize, event: Ev)
-    where
-        Ev: Send,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                context
-                    .request_from_shell(DelayOperation::Start { millis })
-                    .await;
-
-                context.update_app(event);
-            }
+    pub fn start<Ev: 'static + Send>(&self, millis: usize, event: Ev) -> Command<Ev> {
+        let context = self.context.clone();
+        Command::effect(async move {
+            context
+                .request_from_shell(DelayOperation::Start { millis })
+                .await;
+            Command::event(event)
         })
     }
 }

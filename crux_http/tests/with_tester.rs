@@ -2,8 +2,7 @@ mod shared {
 
     use std::{cmp::max, future::IntoFuture};
 
-    use crux_core::compose::Compose;
-    use crux_core::macros::Effect;
+    use crux_core::{macros::Effect, Command};
     use crux_http::Http;
     use futures_util::join;
     use http_types::StatusCode;
@@ -42,26 +41,24 @@ mod shared {
 
         type Capabilities = Capabilities;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
             match event {
-                Event::Get => {
-                    caps.http
-                        .get("http://example.com")
-                        .header("Authorization", "secret-token")
-                        .expect_string()
-                        .send(Event::Set);
-                }
-                Event::Post => {
-                    caps.http
-                        .post("http://example.com")
-                        .body_bytes("The Body".as_bytes())
-                        .expect_string()
-                        .send(Event::Set);
-                }
-                Event::GetPostChain => caps.compose.spawn(|context| {
+                Event::Get => caps
+                    .http
+                    .get("http://example.com")
+                    .header("Authorization", "secret-token")
+                    .expect_string()
+                    .send_and_respond(Event::Set),
+                Event::Post => caps
+                    .http
+                    .post("http://example.com")
+                    .body_bytes("The Body".as_bytes())
+                    .expect_string()
+                    .send_and_respond(Event::Set),
+                Event::GetPostChain => {
                     let http = caps.http.clone();
 
-                    async move {
+                    let fut = async move {
                         let mut response = http
                             .get("http://example.com")
                             .await
@@ -76,15 +73,16 @@ mod shared {
                             .await
                             .expect("Send async should succeed");
 
-                        context.update_app(Event::ComposeComplete(response.status()))
-                    }
-                }),
-                Event::ConcurrentGets => caps.compose.spawn(|ctx| {
+                        Command::event(Event::ComposeComplete(response.status()))
+                    };
+                    Command::effect(fut)
+                }
+                Event::ConcurrentGets => {
                     let http = caps.http.clone();
 
-                    async move {
+                    let fut = async move {
                         let one = http.get("http://example.com/one").into_future();
-                        let two = http.get("http://example.com/two").send_async();
+                        let two = http.get("http://example.com/two").send();
 
                         let (response_one, response_two) = join!(one, two);
 
@@ -97,11 +95,13 @@ mod shared {
                         ))
                         .unwrap();
 
-                        ctx.update_app(Event::ComposeComplete(status))
-                    }
-                }),
+                        Command::event(Event::ComposeComplete(status))
+                    };
+                    Command::effect(fut)
+                }
                 Event::ComposeComplete(status) => {
                     model.values.push(status.to_string());
+                    Command::none()
                 }
                 Event::Set(Ok(mut response)) => {
                     model.body = response.take_body().unwrap();
@@ -111,8 +111,9 @@ mod shared {
                         .iter()
                         .map(|v| v.to_string())
                         .collect();
+                    Command::none()
                 }
-                Event::Set(Err(_)) => {}
+                Event::Set(Err(_)) => Command::none(),
             }
         }
 
@@ -125,9 +126,7 @@ mod shared {
 
     #[derive(Effect)]
     pub(crate) struct Capabilities {
-        pub http: Http<Event>,
-        #[effect(skip)]
-        pub compose: Compose<Event>,
+        pub http: Http,
     }
 }
 

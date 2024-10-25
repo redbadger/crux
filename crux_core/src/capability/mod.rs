@@ -14,8 +14,8 @@
 //!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
 //!# #[derive(crux_core::macros::Effect)]
 //!# pub struct Capabilities {
-//!#     pub render: crux_core::render::Render<Event>,
-//!#     pub http: crux_http::Http<Event>,
+//!#     pub render: crux_core::render::Render,
+//!#     pub http: crux_http::Http,
 //!# }
 //!# #[derive(Default)] pub struct Model { count: usize }
 //!# #[derive(Default)] pub struct App;
@@ -25,16 +25,17 @@
 //!#     type Model = Model;
 //!#     type ViewModel = ();
 //!#     type Capabilities = Capabilities;
-//! fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+//! fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) -> crux_core::Command<Self::Event> {
 //!     match event {
 //!         //...
 //!         Event::Increment => {
 //!             model.count += 1;
-//!             caps.render.render(); // Render capability
 //!
 //!             let base = Url::parse(API_URL).unwrap();
 //!             let url = base.join("/inc").unwrap();
-//!             caps.http.post(url).expect_json().send(Event::Set); // HTTP client capability
+//!             let cmd1 = caps.http.post(url).expect_json().send_and_respond(Event::Set); // HTTP client capability
+//!             let cmd2 = caps.render.render(); // Render capability
+//!             cmd1.join(cmd2)
 //!         }
 //!         Event::Set(_) => todo!(),
 //!     }
@@ -58,7 +59,7 @@
 //!
 //! // An app module which can be reused in different apps
 //! mod my_app {
-//!     use crux_core::{capability::CapabilityContext, App, render::Render};
+//!     use crux_core::{capability::CapabilityContext, App, Command, render::Render};
 //!     use crux_core::macros::Effect;
 //!     use serde::{Serialize, Deserialize};
 //!
@@ -72,7 +73,7 @@
 //!     // (and, in some languages, checking that all necessary capabilities are implemented)
 //!     #[derive(Effect)]
 //!     pub struct Capabilities {
-//!         pub render: Render<Event>
+//!         pub render: Render
 //!     }
 //!
 //!     impl App for MyApp {
@@ -81,8 +82,8 @@
 //!         type ViewModel = ();
 //!         type Capabilities = Capabilities;
 //!
-//!         fn update(&self, event: Event, model: &mut (), caps: &Capabilities) {
-//!             caps.render.render();
+//!         fn update(&self, event: Event, model: &mut (), caps: &Capabilities) -> Command<Event> {
+//!             caps.render.render()
 //!         }
 //!
 //!         fn view(&self, model: &()) {
@@ -116,6 +117,7 @@
 //!
 //! ```rust
 //! use crux_core::{
+//!     Command,
 //!     capability::{CapabilityContext, Operation},
 //! };
 //! use crux_core::macros::Capability;
@@ -144,23 +146,23 @@
 //!
 //! // The capability. Context will provide the interface to the rest of the system.
 //! #[derive(Capability)]
-//! struct Ducks<Event> {
-//!     context: CapabilityContext<DuckOperation, Event>
+//! struct Ducks {
+//!     context: CapabilityContext<DuckOperation>
 //! };
 //!
-//! impl<Event> Ducks<Event> {
-//!     pub fn new(context: CapabilityContext<DuckOperation, Event>) -> Self {
+//! impl Ducks {
+//!     pub fn new(context: CapabilityContext<DuckOperation>) -> Self {
 //!         Self { context }
 //!     }
 //!
-//!     pub fn get_in_a_row<F>(&self, number_of_ducks: usize, event: F)
+//!     pub fn get_in_a_row<F, Event>(&self, number_of_ducks: usize, event: F) -> Command<Event>
 //!     where
 //!         Event: 'static,
 //!         F: FnOnce(Vec<Duck>) -> Event + Send + 'static,
 //!     {
 //!         let ctx = self.context.clone();
 //!         // Start a shell interaction
-//!         self.context.spawn(async move {
+//!         Command::effect(async move {
 //!             // Instruct Shell to get ducks in a row and await the ducks
 //!             let ducks = ctx.request_from_shell(DuckOperation::GetInARow(number_of_ducks)).await;
 //!
@@ -169,7 +171,9 @@
 //!             // and doesn't send the wrong output type back
 //!             if let DuckOutput::GetInRow(ducks) = ducks {
 //!                 // Queue an app update with the ducks event
-//!                 ctx.update_app(event(ducks));
+//!                 Command::event(event(ducks))
+//!             } else {
+//!                 Command::none()
 //!             }
 //!         })
 //!    }
@@ -192,12 +196,10 @@ mod executor;
 mod shell_request;
 mod shell_stream;
 
-use futures::Future;
 use serde::de::DeserializeOwned;
-use std::sync::Arc;
 
 pub(crate) use channel::channel;
-pub(crate) use executor::{executor_and_spawner, QueuingExecutor};
+pub(crate) use executor::QueuingExecutor;
 
 use crate::Request;
 use channel::Sender;
@@ -228,11 +230,11 @@ pub trait Operation: serde::Serialize + Clone + PartialEq + Send + 'static {
 /// # use crux_core::capability::{CapabilityContext, Never};
 /// # use crux_core::macros::Capability;
 /// #[derive(Capability)]
-/// pub struct Compose<E> {
-///     context: CapabilityContext<Never, E>,
+/// pub struct Compose {
+///     context: CapabilityContext<Never>,
 /// }
-/// # impl<E> Compose<E> {
-/// #     pub fn new(context: CapabilityContext<Never, E>) -> Self {
+/// # impl Compose {
+/// #     pub fn new(context: CapabilityContext<Never>) -> Self {
 /// #         Self { context }
 /// #     }
 /// # }
@@ -255,42 +257,24 @@ impl Operation for Never {
 ///
 /// ```rust
 /// # use crux_core::{Capability, capability::{CapabilityContext, Operation}};
-/// # pub struct Http<Ev> {
-/// #     context: CapabilityContext<HttpRequest, Ev>,
+/// # pub struct Http {
+/// #     context: CapabilityContext<HttpRequest>,
 /// # }
 /// # #[derive(Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)] pub struct HttpRequest;
 /// # impl Operation for HttpRequest {
 /// #     type Output = ();
 /// # }
-/// # impl<Ev> Http<Ev> where Ev: 'static, {
-/// #     pub fn new(context: CapabilityContext<HttpRequest, Ev>) -> Self {
+/// # impl Http {
+/// #     pub fn new(context: CapabilityContext<HttpRequest>) -> Self {
 /// #         Self { context }
 /// #     }
 /// # }
-/// impl<Ev> Capability<Ev> for Http<Ev> {
+/// impl Capability for Http {
 ///     type Operation = HttpRequest;
-///     type MappedSelf<MappedEv> = Http<MappedEv>;
-///
-///     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
-///     where
-///         F: Fn(NewEvent) -> Ev + Send + Sync + 'static,
-///         Ev: 'static,
-///         NewEvent: 'static,
-///     {
-///         Http::new(self.context.map_event(f))
-///     }
 /// }
 /// ```
-pub trait Capability<Ev> {
+pub trait Capability {
     type Operation: Operation + DeserializeOwned;
-
-    type MappedSelf<MappedEv>;
-
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static + Send;
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
@@ -316,24 +300,24 @@ pub trait Capability<Ev> {
 /// # pub enum Event {}
 /// # #[allow(dead_code)]
 /// # pub struct Capabilities {
-/// #     http: crux_http::Http<Event>,
-/// #     render: crux_core::render::Render<Event>,
+/// #     http: crux_http::Http,
+/// #     render: crux_core::render::Render,
 /// # }
 /// # pub enum Effect {
-/// #     Http(crux_core::Request<<crux_http::Http<Event> as crux_core::capability::Capability<Event>>::Operation>),
-/// #     Render(crux_core::Request<<crux_core::render::Render<Event> as crux_core::capability::Capability<Event>>::Operation>),
+/// #     Http(crux_core::Request<<crux_http::Http as crux_core::capability::Capability>::Operation>),
+/// #     Render(crux_core::Request<<crux_core::render::Render as crux_core::capability::Capability>::Operation>),
 /// # }
 /// # #[derive(serde::Serialize)]
 /// # pub enum EffectFfi {
-/// #     Http(<crux_http::Http<Event> as crux_core::capability::Capability<Event>>::Operation),
-/// #     Render(<crux_core::render::Render<Event> as crux_core::capability::Capability<Event>>::Operation),
+/// #     Http(<crux_http::Http as crux_core::capability::Capability>::Operation),
+/// #     Render(<crux_core::render::Render as crux_core::capability::Capability>::Operation),
 /// # }
 /// # impl crux_core::App for App {
 /// #     type Event = Event;
 /// #     type Model = ();
 /// #     type ViewModel = ();
 /// #     type Capabilities = Capabilities;
-/// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) {
+/// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) -> crux_core::Command<Event> {
 /// #         unimplemented!()
 /// #     }
 /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -349,9 +333,9 @@ pub trait Capability<Ev> {
 /// #         }
 /// #     }
 /// # }
-/// impl crux_core::WithContext<Event, Effect> for Capabilities {
+/// impl crux_core::WithContext<Effect> for Capabilities {
 ///     fn new_with_context(
-///         context: crux_core::capability::ProtoContext<Effect, Event>,
+///         context: crux_core::capability::ProtoContext<Effect>,
 ///     ) -> Capabilities {
 ///         Capabilities {
 ///             http: crux_http::Http::new(context.specialize(Effect::Http)),
@@ -360,8 +344,8 @@ pub trait Capability<Ev> {
 ///     }
 /// }
 /// ```
-pub trait WithContext<Ev, Ef> {
-    fn new_with_context(context: ProtoContext<Ef, Ev>) -> Self;
+pub trait WithContext<Ef> {
+    fn new_with_context(context: ProtoContext<Ef>) -> Self;
 }
 
 /// An interface for capabilities to interact with the app and the shell.
@@ -372,85 +356,66 @@ pub trait WithContext<Ev, Ef> {
 /// For example (from `crux_time`)
 ///
 /// ```rust
+/// # use crux_core::Command;
 /// # #[derive(Clone, PartialEq, serde::Serialize)] pub struct TimeRequest;
 /// # #[derive(Clone, serde::Deserialize)] pub struct TimeResponse(pub String);
 /// # impl crux_core::capability::Operation for TimeRequest {
 /// #     type Output = TimeResponse;
 /// # }
-/// # pub struct Time<Ev> {
-/// #     context: crux_core::capability::CapabilityContext<TimeRequest, Ev>,
+/// # pub struct Time {
+/// #     context: crux_core::capability::CapabilityContext<TimeRequest>,
 /// # }
-/// # impl<Ev> Time<Ev> where Ev: 'static, {
-/// #     pub fn new(context: crux_core::capability::CapabilityContext<TimeRequest, Ev>) -> Self {
+/// # impl Time {
+/// #     pub fn new(context: crux_core::capability::CapabilityContext<TimeRequest>) -> Self {
 /// #         Self { context }
 /// #     }
 ///
-/// pub fn get<F>(&self, callback: F)
+/// pub fn get<F, Ev>(&self, callback: F) -> Command<Ev>
 /// where
 ///     F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
 /// {
 ///     let ctx = self.context.clone();
-///     self.context.spawn(async move {
+///     Command::effect(async move {
 ///         let response = ctx.request_from_shell(TimeRequest).await;
-///
-///         ctx.update_app(callback(response));
-///     });
+///         Command::event(callback(response))
+///     })
 /// }
 /// # }
 /// ```
 ///
 // used in docs/internals/runtime.md
 // ANCHOR: capability_context
-pub struct CapabilityContext<Op, Event>
-where
-    Op: Operation,
-{
-    inner: std::sync::Arc<ContextInner<Op, Event>>,
-}
-
-struct ContextInner<Op, Event>
+pub struct CapabilityContext<Op>
 where
     Op: Operation,
 {
     shell_channel: Sender<Request<Op>>,
-    app_channel: Sender<Event>,
-    spawner: executor::Spawner,
-}
-// ANCHOR_END: capability_context
-
-/// Initial version of capability Context which has not yet been specialized to a chosen capability
-pub struct ProtoContext<Eff, Event> {
-    shell_channel: Sender<Eff>,
-    app_channel: Sender<Event>,
-    spawner: executor::Spawner,
 }
 
-impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
+impl<Op> Clone for CapabilityContext<Op>
 where
     Op: Operation,
 {
     fn clone(&self) -> Self {
         Self {
-            inner: Arc::clone(&self.inner),
+            shell_channel: self.shell_channel.clone(),
         }
     }
 }
 
-impl<Eff, Ev> ProtoContext<Eff, Ev>
+// ANCHOR_END: capability_context
+
+/// Initial version of capability Context which has not yet been specialized to a chosen capability
+pub struct ProtoContext<Eff> {
+    shell_channel: Sender<Eff>,
+}
+
+impl<Eff> ProtoContext<Eff>
 where
-    Ev: 'static,
     Eff: 'static,
 {
-    pub(crate) fn new(
-        shell_channel: Sender<Eff>,
-        app_channel: Sender<Ev>,
-        spawner: executor::Spawner,
-    ) -> Self {
-        Self {
-            shell_channel,
-            app_channel,
-            spawner,
-        }
+    pub(crate) fn new(shell_channel: Sender<Eff>) -> Self {
+        Self { shell_channel }
     }
 
     /// Specialize the CapabilityContext to a specific capability, wrapping its operations into
@@ -460,42 +425,21 @@ where
     ///
     /// This will likely only be called from the implementation of [`WithContext`]
     /// for the app's `Capabilities` type. You should not need to call this function directly.
-    pub fn specialize<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
+    pub fn specialize<Op, F>(&self, func: F) -> CapabilityContext<Op>
     where
         F: Fn(Request<Op>) -> Eff + Sync + Send + Copy + 'static,
         Op: Operation,
     {
-        CapabilityContext::new(
-            self.shell_channel.map_input(func),
-            self.app_channel.clone(),
-            self.spawner.clone(),
-        )
+        CapabilityContext::new(self.shell_channel.map_input(func))
     }
 }
 
-impl<Op, Ev> CapabilityContext<Op, Ev>
+impl<Op> CapabilityContext<Op>
 where
     Op: Operation,
-    Ev: 'static,
 {
-    pub(crate) fn new(
-        shell_channel: Sender<Request<Op>>,
-        app_channel: Sender<Ev>,
-        spawner: executor::Spawner,
-    ) -> Self {
-        let inner = Arc::new(ContextInner {
-            shell_channel,
-            app_channel,
-            spawner,
-        });
-
-        CapabilityContext { inner }
-    }
-
-    /// Spawn a task to do the asynchronous work. Within the task, async code
-    /// can be used to interact with the Shell and the App.
-    pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
-        self.inner.spawner.spawn(f);
+    pub(crate) fn new(shell_channel: Sender<Request<Op>>) -> Self {
+        Self { shell_channel }
     }
 
     /// Send an effect request to the shell in a fire and forget fashion. The
@@ -505,110 +449,11 @@ where
         // it's important that it is.  It forces all capabilities to
         // spawn onto the executor which keeps the ordering of effects
         // consistent with their function calls.
-        self.inner
-            .shell_channel
-            .send(Request::resolves_never(operation));
-    }
-
-    /// Send an event to the app. The event will be processed on the next
-    /// run of the update loop. You can call `update_app` several times,
-    /// the events will be queued up and processed sequentially after your
-    /// async task either `await`s or finishes.
-    pub fn update_app(&self, event: Ev) {
-        self.inner.app_channel.send(event);
-    }
-
-    /// Transform the CapabilityContext into one which uses the provided function to
-    /// map each event dispatched with `update_app` to a different event type.
-    ///
-    /// This is useful when composing apps from modules to wrap a submodule's
-    /// event type with a specific variant of the parent module's event, so it can
-    /// be forwarded to the submodule when received.
-    ///
-    /// In a typical case you would implement `From` on the submodule's `Capabilities` type
-    ///
-    /// ```rust
-    /// # use crux_core::Capability;
-    /// # #[derive(Default)]
-    /// # struct App;
-    /// # pub enum Event {
-    /// #     Submodule(child::Event),
-    /// # }
-    /// # #[derive(crux_core::macros::Effect)]
-    /// # pub struct Capabilities {
-    /// #     some_capability: crux_time::Time<Event>,
-    /// #     render: crux_core::render::Render<Event>,
-    /// # }
-    /// # impl crux_core::App for App {
-    /// #     type Event = Event;
-    /// #     type Model = ();
-    /// #     type ViewModel = ();
-    /// #     type Capabilities = Capabilities;
-    /// #     fn update(
-    /// #         &self,
-    /// #         _event: Self::Event,
-    /// #         _model: &mut Self::Model,
-    /// #         _caps: &Self::Capabilities,
-    /// #     ) {
-    /// #         unimplemented!()
-    /// #     }
-    /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-    /// #         unimplemented!()
-    /// #     }
-    /// # }
-    ///impl From<&Capabilities> for child::Capabilities {
-    ///    fn from(incoming: &Capabilities) -> Self {
-    ///        child::Capabilities {
-    ///            some_capability: incoming.some_capability.map_event(Event::Submodule),
-    ///            render: incoming.render.map_event(Event::Submodule),
-    ///        }
-    ///    }
-    ///}
-    /// # mod child {
-    /// #     #[derive(Default)]
-    /// #     struct App;
-    /// #     pub struct Event;
-    /// #     #[derive(crux_core::macros::Effect)]
-    /// #     pub struct Capabilities {
-    /// #         pub some_capability: crux_time::Time<Event>,
-    /// #         pub render: crux_core::render::Render<Event>,
-    /// #     }
-    /// #     impl crux_core::App for App {
-    /// #         type Event = Event;
-    /// #         type Model = ();
-    /// #         type ViewModel = ();
-    /// #         type Capabilities = Capabilities;
-    /// #         fn update(
-    /// #             &self,
-    /// #             _event: Self::Event,
-    /// #             _model: &mut Self::Model,
-    /// #             _caps: &Self::Capabilities,
-    /// #         ) {
-    /// #             unimplemented!()
-    /// #         }
-    /// #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
-    /// #             unimplemented!()
-    /// #         }
-    /// #     }
-    /// # }
-    /// ```
-    ///
-    /// in the parent module's `update` function, you can then call `.into()` on the
-    /// capabilities, before passing them down to the submodule.
-    pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Op, NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Sync + Send + 'static,
-        NewEv: 'static,
-    {
-        CapabilityContext::new(
-            self.inner.shell_channel.clone(),
-            self.inner.app_channel.map_input(func),
-            self.inner.spawner.clone(),
-        )
+        self.shell_channel.send(Request::resolves_never(operation));
     }
 
     pub(crate) fn send_request(&self, request: Request<Op>) {
-        self.inner.shell_channel.send(request);
+        self.shell_channel.send(request);
     }
 }
 
@@ -632,6 +477,6 @@ mod tests {
         type Output = ();
     }
 
-    assert_impl_all!(ProtoContext<Effect, Event>: Send, Sync);
-    assert_impl_all!(CapabilityContext<Op, Event>: Send, Sync);
+    assert_impl_all!(ProtoContext<Effect>: Send, Sync);
+    assert_impl_all!(CapabilityContext<Op>: Send, Sync);
 }

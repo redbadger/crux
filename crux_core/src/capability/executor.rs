@@ -1,31 +1,36 @@
 use std::{
     sync::{Arc, Mutex},
-    task::{Context, Wake},
+    task::{Context, Poll, Wake},
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use futures::{future, Future, FutureExt};
+use futures::{FutureExt, StreamExt};
 use slab::Slab;
 
-type BoxFuture = future::BoxFuture<'static, ()>;
+use crate::Command;
+
+type BoxFuture<Event> = futures::future::BoxFuture<'static, Command<Event>>;
+type BoxStream<Event> = futures::stream::BoxStream<'static, Command<Event>>;
 
 // used in docs/internals/runtime.md
 // ANCHOR: executor
-pub(crate) struct QueuingExecutor {
-    spawn_queue: Receiver<BoxFuture>,
+pub(crate) struct QueuingExecutor<Event> {
     ready_queue: Receiver<TaskId>,
     ready_sender: Sender<TaskId>,
-    tasks: Mutex<Slab<Option<BoxFuture>>>,
+    tasks: Mutex<Slab<Option<BoxFuture<Event>>>>,
+}
+
+impl<Event> QueuingExecutor<Event> {
+    pub(crate) fn new() -> Self {
+        let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
+        Self {
+            ready_queue,
+            ready_sender,
+            tasks: Mutex::new(Slab::new()),
+        }
+    }
 }
 // ANCHOR_END: executor
-
-// used in docs/internals/runtime.md
-// ANCHOR: spawner
-#[derive(Clone)]
-pub struct Spawner {
-    future_sender: Sender<BoxFuture>,
-}
-// ANCHOR_END: spawner
 
 #[derive(Clone, Copy, Debug)]
 struct TaskId(u32);
@@ -37,33 +42,6 @@ impl std::ops::Deref for TaskId {
         &self.0
     }
 }
-
-pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
-    let (future_sender, spawn_queue) = crossbeam_channel::unbounded();
-    let (ready_sender, ready_queue) = crossbeam_channel::unbounded();
-
-    (
-        QueuingExecutor {
-            ready_queue,
-            spawn_queue,
-            ready_sender,
-            tasks: Mutex::new(Slab::new()),
-        },
-        Spawner { future_sender },
-    )
-}
-
-// used in docs/internals/runtime.md
-// ANCHOR: spawning
-impl Spawner {
-    pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
-        let future = future.boxed();
-        self.future_sender
-            .send(future)
-            .expect("unable to spawn an async task, task sender channel is disconnected.")
-    }
-}
-// ANCHOR_END: spawning
 
 #[derive(Clone)]
 struct TaskWaker {
@@ -87,49 +65,46 @@ impl Wake for TaskWaker {
 // ANCHOR_END: wake
 
 // used in docs/internals/runtime.md
-// ANCHOR: run_all
-impl QueuingExecutor {
-    pub fn run_all(&self) {
-        // we read off both queues and execute the tasks we receive.
-        // Since either queue can generate work for the other queue,
-        // we read from them in a loop until we are sure both queues
-        // are exhausted
-        let mut did_some_work = true;
-
-        while did_some_work {
-            did_some_work = false;
-            while let Ok(task) = self.spawn_queue.try_recv() {
-                let task_id = self
-                    .tasks
-                    .lock()
-                    .expect("Task slab poisoned")
-                    .insert(Some(task));
-                self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
-                did_some_work = true;
-            }
-            while let Ok(task_id) = self.ready_queue.try_recv() {
-                match self.run_task(task_id) {
-                    RunTask::Unavailable => {
-                        // We were unable to run the task as it is (presumably) being run on
-                        // another thread. We re-queue the task for 'later' and do NOT set
-                        // `did_some_work = true`. That way we will keep looping and doing work
-                        // until all remaining work is 'unavailable', at which point we will bail
-                        // out of the loop, leaving the queued work to be finished by another thread.
-                        // This strategy should avoid dropping work or busy-looping
-                        self.ready_sender.send(task_id).expect("could not requeue");
-                    }
-                    RunTask::Missing => {
-                        // This is possible if a naughty future sends a wake notification while
-                        // still running, then runs to completion and is evicted from the slab.
-                        // Nothing to be done.
-                    }
-                    RunTask::Suspended | RunTask::Completed => did_some_work = true,
-                }
-            }
-        }
+impl<Event> QueuingExecutor<Event> {
+    pub fn spawn_task(&self, task: BoxFuture<Event>) {
+        let task_id = self
+            .tasks
+            .lock()
+            .expect("Task slab poisoned")
+            .insert(Some(task));
+        self.ready_sender
+            .send(TaskId(task_id.try_into().expect("TaskId overflow")))
+            .expect("failed to spawn task");
     }
 
-    fn run_task(&self, task_id: TaskId) -> RunTask {
+    // ANCHOR: run_all
+    pub fn run_all(&self) -> Vec<Command<Event>> {
+        let mut commands = Vec::new();
+        while let Ok(task_id) = self.ready_queue.try_recv() {
+            match self.run_task(task_id) {
+                RunTask::Unavailable => {
+                    // We were unable to run the task as it is (presumably) being run on
+                    // another thread. We re-queue the task for 'later' and do NOT set
+                    // `did_some_work = true`. That way we will keep looping and doing work
+                    // until all remaining work is 'unavailable', at which point we will bail
+                    // out of the loop, leaving the queued work to be finished by another thread.
+                    // This strategy should avoid dropping work or busy-looping
+                    self.ready_sender.send(task_id).expect("could not requeue");
+                }
+                RunTask::Missing => {
+                    // This is possible if a naughty future sends a wake notification while
+                    // still running, then runs to completion and is evicted from the slab.
+                    // Nothing to be done.
+                }
+                RunTask::Suspended => {}
+                RunTask::Completed(command) => commands.push(command),
+            }
+        }
+        commands
+    }
+    // ANCHOR_END: run_all
+
+    fn run_task(&self, task_id: TaskId) -> RunTask<Event> {
         let mut lock = self.tasks.lock().expect("Task slab poisoned");
         let Some(task) = lock.get_mut(*task_id as usize) else {
             return RunTask::Missing;
@@ -151,37 +126,60 @@ impl QueuingExecutor {
         let context = &mut Context::from_waker(&waker);
 
         // poll the task
-        if task.as_mut().poll(context).is_pending() {
-            // If it's still pending, put the future back in the slot
-            self.tasks
-                .lock()
-                .expect("Task slab poisoned")
-                .get_mut(*task_id as usize)
-                .expect("Task slot is missing")
-                .replace(task);
-            RunTask::Suspended
-        } else {
-            // otherwise the future is completed and we can free the slot
-            self.tasks.lock().unwrap().remove(*task_id as usize);
-            RunTask::Completed
+        match task.as_mut().poll(context) {
+            Poll::Ready(command) => {
+                // otherwise the future is completed and we can free the slot
+                self.tasks.lock().unwrap().remove(*task_id as usize);
+                RunTask::Completed(command)
+            }
+            Poll::Pending => {
+                // If it's still pending, put the future back in the slot
+                self.tasks
+                    .lock()
+                    .expect("Task slab poisoned")
+                    .get_mut(*task_id as usize)
+                    .expect("Task slot is missing")
+                    .replace(task);
+                RunTask::Suspended
+            }
         }
     }
 }
 
-enum RunTask {
+impl<Event> QueuingExecutor<Event>
+where
+    Event: 'static, // for some reason, the 'static bound is necessary here but not for spawn_task
+{
+    pub fn spawn_stream(&self, stream: BoxStream<Event>) {
+        let stream_task: BoxFuture<Event> = Box::pin(stream.into_future().map(|(cmd, next)| {
+            cmd.map(|cmd| cmd.join(Command::boxed_stream(next)))
+                .unwrap_or(Command::none())
+        }));
+        let task_id = self
+            .tasks
+            .lock()
+            .expect("Task slab poisoned")
+            .insert(Some(stream_task));
+        self.ready_sender
+            .send(TaskId(task_id.try_into().expect("TaskId overflow")))
+            .expect("failed to spawn task");
+    }
+}
+
+enum RunTask<Event> {
     Missing,
     Unavailable,
     Suspended,
-    Completed,
+    Completed(Command<Event>),
 }
-
-// ANCHOR_END: run_all
 
 #[cfg(test)]
 mod tests {
 
+    use futures::FutureExt as _;
     use rand::Rng;
     use std::{
+        future::Future,
         sync::atomic::{AtomicI32, Ordering},
         task::Poll,
     };
@@ -195,20 +193,20 @@ mod tests {
         let counter = Arc::new(());
         assert_eq!(Arc::strong_count(&counter), 1);
 
-        let (executor, spawner) = executor_and_spawner();
+        let executor = QueuingExecutor::<()>::new();
 
         let future = {
             let counter = counter.clone();
             async move {
                 assert_eq!(Arc::strong_count(&counter), 2);
                 ShellRequest::<()>::new().await;
+                Command::none()
             }
         };
 
-        spawner.spawn(future);
+        executor.spawn_task(Box::pin(future));
         executor.run_all();
         drop(executor);
-        drop(spawner);
         assert_eq!(Arc::strong_count(&counter), 1);
     }
 
@@ -269,15 +267,14 @@ mod tests {
             }
         }
 
-        let (executor, spawner) = executor_and_spawner();
+        let executor = QueuingExecutor::<()>::new();
         // 100 futures with many (1957) children each equals lots of chaos
         for _ in 0..100 {
-            let future = Chaotic::new_with_children(6);
-            spawner.spawn(future);
+            let future = Chaotic::new_with_children(6).map(|()| Command::none());
+            executor.spawn_task(Box::pin(future));
         }
         assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 195700);
         let executor = Arc::new(executor);
-        assert_eq!(executor.spawn_queue.len(), 100);
 
         // Spawn 10 threads and run all
         let handles = (0..10)
@@ -292,7 +289,6 @@ mod tests {
             handle.join().unwrap();
         }
         // nothing left in queue, all futures resolved
-        assert_eq!(executor.spawn_queue.len(), 0);
         assert_eq!(executor.ready_queue.len(), 0);
         assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 0);
     }

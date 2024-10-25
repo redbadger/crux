@@ -1,5 +1,5 @@
 // ANCHOR: app
-use crux_core::{render::Render, App};
+use crux_core::{render::Render, App, Command};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -22,7 +22,7 @@ pub struct ViewModel {
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
-    render: Render<Event>,
+    render: Render,
 }
 
 #[derive(Default)]
@@ -35,14 +35,19 @@ impl App for Counter {
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Event> {
         match event {
             Event::Increment => model.count += 1,
             Event::Decrement => model.count -= 1,
             Event::Reset => model.count = 0,
         };
 
-        caps.render.render();
+        caps.render.render()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {

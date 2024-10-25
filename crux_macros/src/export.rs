@@ -2,7 +2,7 @@ use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::TokenStream;
 use proc_macro_error::OptionExt;
 use quote::{format_ident, quote};
-use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
+use syn::{DeriveInput, Ident, Type};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(effect), supports(struct_named))]
@@ -45,9 +45,9 @@ impl ToTokens for ExportStructReceiver {
 
         let mut output_type_exports = Vec::new();
 
-        for (capability, event) in fields.iter().map(|f| split_on_generic(&f.ty)) {
+        for capability in fields.iter().map(|f| &f.ty) {
             output_type_exports.push(quote! {
-                #capability::<#event>::register_types(generator)?;
+                #capability::register_types(generator)?;
             });
         }
 
@@ -79,48 +79,20 @@ pub(crate) fn export_impl(input: &DeriveInput) -> TokenStream {
     quote!(#input)
 }
 
-fn split_on_generic(ty: &Type) -> (Type, Type) {
-    let ty = ty.clone();
-    match ty {
-        Type::Path(mut path) if path.qself.is_none() => {
-            // Get the last segment of the path where the generic parameter should be
-
-            let last = path.path.segments.last_mut().expect("type has no segments");
-            let type_params = std::mem::take(&mut last.arguments);
-
-            // It should have only one angle-bracketed param
-            let generic_arg = match type_params {
-                PathArguments::AngleBracketed(params) => params.args.first().cloned(),
-                _ => None,
-            };
-
-            // This argument must be a type
-            match generic_arg {
-                Some(GenericArgument::Type(t2)) => Some((Type::Path(path), t2)),
-                _ => None,
-            }
-        }
-        _ => None,
-    }
-    .expect_or_abort("capabilities should be generic over a single event type")
-}
-
 #[cfg(test)]
 mod tests {
-    use darling::{FromDeriveInput, FromMeta};
+    use darling::FromDeriveInput;
     use quote::quote;
-    use syn::{parse_str, Type};
+    use syn::parse_str;
 
     use crate::export::ExportStructReceiver;
-
-    use super::split_on_generic;
 
     #[test]
     fn defaults() {
         let input = r#"
             #[derive(Export)]
             pub struct Capabilities {
-                pub render: Render<Event>,
+                pub render: Render,
             }
         "#;
         let input = parse_str(input).unwrap();
@@ -135,7 +107,7 @@ mod tests {
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
                 use ::crux_core::capability::Capability;
-                Render::<Event>::register_types(generator)?;
+                Render::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
                 Ok(())
@@ -145,30 +117,16 @@ mod tests {
     }
 
     #[test]
-    fn split_event_types_preserves_path() {
-        let ty = Type::from_string("crux_core::render::Render<Event>").unwrap();
-
-        let (actual_type, actual_event) = split_on_generic(&ty);
-
-        assert_eq!(
-            quote!(#actual_type).to_string(),
-            quote!(crux_core::render::Render).to_string()
-        );
-
-        assert_eq!(quote!(#actual_event).to_string(), quote!(Event).to_string());
-    }
-
-    #[test]
     fn export_macro_respects_an_skip_attr() {
         let input = r#"
             #[derive(Export)]
             pub struct MyCapabilities {
-                pub http: crux_http::Http<MyEvent>,
-                pub key_value: KeyValue<MyEvent>,
-                pub platform: Platform<MyEvent>,
-                pub render: Render<MyEvent>,
+                pub http: crux_http::Http,
+                pub key_value: KeyValue,
+                pub platform: Platform,
+                pub render: Render,
                 #[effect(skip)]
-                pub time: Time<MyEvent>,
+                pub time: Time,
             }
         "#;
         let input = parse_str(input).unwrap();
@@ -183,10 +141,10 @@ mod tests {
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
                 use ::crux_core::capability::Capability;
-                crux_http::Http::<MyEvent>::register_types(generator)?;
-                KeyValue::<MyEvent>::register_types(generator)?;
-                Platform::<MyEvent>::register_types(generator)?;
-                Render::<MyEvent>::register_types(generator)?;
+                crux_http::Http::register_types(generator)?;
+                KeyValue::register_types(generator)?;
+                Platform::register_types(generator)?;
+                Render::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
                 Ok(())
@@ -200,11 +158,11 @@ mod tests {
         let input = r#"
             #[derive(Export)]
             pub struct MyCapabilities {
-                pub http: crux_http::Http<MyEvent>,
-                pub key_value: KeyValue<MyEvent>,
-                pub platform: Platform<MyEvent>,
-                pub render: Render<MyEvent>,
-                pub time: Time<MyEvent>,
+                pub http: crux_http::Http,
+                pub key_value: KeyValue,
+                pub platform: Platform,
+                pub render: Render,
+                pub time: Time,
             }
         "#;
         let input = parse_str(input).unwrap();
@@ -219,11 +177,11 @@ mod tests {
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
                 use ::crux_core::capability::Capability;
-                crux_http::Http::<MyEvent>::register_types(generator)?;
-                KeyValue::<MyEvent>::register_types(generator)?;
-                Platform::<MyEvent>::register_types(generator)?;
-                Render::<MyEvent>::register_types(generator)?;
-                Time::<MyEvent>::register_types(generator)?;
+                crux_http::Http::register_types(generator)?;
+                KeyValue::register_types(generator)?;
+                Platform::register_types(generator)?;
+                Render::register_types(generator)?;
+                Time::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
                 Ok(())
@@ -238,7 +196,7 @@ mod tests {
             #[derive(Export, Effect)]
             #[effect(name = "MyEffect")]
             pub struct Capabilities {
-                render: Render<Event>,
+                render: Render,
             }
         "#;
 
@@ -254,7 +212,7 @@ mod tests {
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
                 use ::crux_core::capability::Capability;
-                Render::<Event>::register_types(generator)?;
+                Render::register_types(generator)?;
                 generator.register_type::<MyEffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
                 Ok(())

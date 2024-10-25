@@ -4,13 +4,13 @@
 //!
 //! ```no_run
 //! # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-//! # struct Capabilities { http: crux_http::Http<Event> }
-//! # fn update(caps: &Capabilities) {
+//! # struct Capabilities { http: crux_http::Http }
+//! # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
 //!
 //! caps.http
 //!     .get("https://httpbin.org/redirect/2")
 //!     .middleware(crux_http::middleware::Redirect::default())
-//!     .send(Event::ReceiveResponse)
+//!     .send_and_respond(Event::ReceiveResponse)
 //! # }
 //! ```
 
@@ -61,13 +61,13 @@ impl Redirect {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     ///
     /// caps.http
     ///     .get("https://httpbin.org/redirect/2")
     ///     .middleware(crux_http::middleware::Redirect::default())
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn new(attempts: u8) -> Self {

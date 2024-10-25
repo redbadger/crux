@@ -2,6 +2,7 @@ mod effect;
 mod request;
 mod resolve;
 
+use std::collections::VecDeque;
 use std::sync::RwLock;
 
 pub use effect::Effect;
@@ -11,7 +12,7 @@ pub use resolve::ResolveError;
 pub(crate) use resolve::Resolve;
 
 use crate::capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor};
-use crate::{App, WithContext};
+use crate::{App, Command, CommandInner, WithContext};
 
 /// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
 ///
@@ -39,8 +40,7 @@ where
 
     // internals
     requests: Receiver<Ef>,
-    capability_events: Receiver<A::Event>,
-    executor: QueuingExecutor,
+    executor: QueuingExecutor<A::Event>,
 }
 // ANCHOR_END: core
 
@@ -57,12 +57,11 @@ where
     ///
     pub fn new() -> Self
     where
-        A::Capabilities: WithContext<A::Event, Ef>,
+        A::Capabilities: WithContext<Ef>,
     {
         let (request_sender, request_receiver) = capability::channel();
-        let (event_sender, event_receiver) = capability::channel();
-        let (executor, spawner) = capability::executor_and_spawner();
-        let capability_context = ProtoContext::new(request_sender, event_sender, spawner);
+        let executor = QueuingExecutor::new();
+        let capability_context = ProtoContext::new(request_sender);
 
         Self {
             model: Default::default(),
@@ -70,7 +69,6 @@ where
             app: Default::default(),
             capabilities: <<A as App>::Capabilities>::new_with_context(capability_context),
             requests: request_receiver,
-            capability_events: event_receiver,
         }
     }
 
@@ -79,11 +77,7 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<Ef> {
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
-        self.app.update(event, &mut model, &self.capabilities);
-
-        self.process()
+        self.process(Some(Command::event(event)))
     }
     // ANCHOR_END: process_event
 
@@ -103,21 +97,40 @@ where
         let resolve_result = request.resolve(result);
         debug_assert!(resolve_result.is_ok());
 
-        self.process()
+        self.process(None)
     }
     // ANCHOR_END: resolve
 
     // used in docs/internals/runtime.md
     // ANCHOR: process
-    pub(crate) fn process(&self) -> Vec<Ef> {
-        self.executor.run_all();
+    pub(crate) fn process(&self, command: Option<Command<A::Event>>) -> Vec<Ef> {
+        let mut pending_commands: VecDeque<Command<_>> = VecDeque::new();
+        pending_commands.extend(command);
+        pending_commands.extend(self.executor.run_all());
 
-        while let Some(capability_event) = self.capability_events.receive() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app
-                .update(capability_event, &mut model, &self.capabilities);
-            drop(model);
-            self.executor.run_all();
+        while let Some(command) = pending_commands.pop_front() {
+            match command.inner {
+                CommandInner::None => continue,
+                CommandInner::Event(event) => {
+                    let mut model = self.model.write().expect("Model RwLock was poisoned.");
+                    pending_commands.push_back(self.app.update(
+                        event,
+                        &mut model,
+                        &self.capabilities,
+                    ));
+                }
+                CommandInner::Effect(effect) => {
+                    self.executor.spawn_task(effect);
+                }
+                CommandInner::Stream(stream) => {
+                    self.executor.spawn_stream(stream);
+                }
+                CommandInner::Multiple(commands) => {
+                    pending_commands.extend(commands);
+                    continue;
+                }
+            }
+            pending_commands.extend(self.executor.run_all())
         }
 
         self.requests.drain().collect()
@@ -136,7 +149,7 @@ impl<Ef, A> Default for Core<Ef, A>
 where
     Ef: Effect,
     A: App,
-    A::Capabilities: WithContext<A::Event, Ef>,
+    A::Capabilities: WithContext<Ef>,
 {
     fn default() -> Self {
         Self::new()

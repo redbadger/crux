@@ -42,10 +42,9 @@ impl<T> Stream for ShellStream<T> {
     }
 }
 
-impl<Op, Ev> crate::capability::CapabilityContext<Op, Ev>
+impl<Op> crate::capability::CapabilityContext<Op>
 where
     Op: crate::capability::Operation,
-    Ev: 'static,
 {
     /// Send an effect request to the shell, expecting a stream of responses
     pub fn stream_from_shell(&self, operation: Op) -> ShellStream<Op::Output> {
@@ -90,7 +89,10 @@ where
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::capability::{channel, executor_and_spawner, CapabilityContext, Operation};
+    use crate::{
+        capability::{channel, CapabilityContext, Operation, QueuingExecutor},
+        Command,
+    };
 
     #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
     struct TestOperation;
@@ -106,9 +108,8 @@ mod tests {
     fn test_shell_stream() {
         let (request_sender, requests) = channel();
         let (event_sender, events) = channel::<()>();
-        let (executor, spawner) = executor_and_spawner();
-        let capability_context =
-            CapabilityContext::new(request_sender, event_sender.clone(), spawner.clone());
+        let executor = QueuingExecutor::<()>::new();
+        let capability_context = CapabilityContext::new(request_sender);
 
         let mut stream = capability_context.stream_from_shell(TestOperation);
 
@@ -120,8 +121,7 @@ mod tests {
         executor.run_all();
         assert_matches!(requests.receive(), None);
         assert_matches!(events.receive(), None);
-
-        spawner.spawn(async move {
+        executor.spawn_task(Box::pin(async move {
             use futures::StreamExt;
             while let Some(maybe_done) = stream.next().await {
                 event_sender.send(());
@@ -129,7 +129,8 @@ mod tests {
                     break;
                 }
             }
-        });
+            Command::none()
+        }));
 
         // We still shouldn't have any requests
         assert_matches!(requests.receive(), None);
@@ -161,7 +162,7 @@ mod tests {
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), Some(()));
         assert_matches!(events.receive(), Some(()));
-        assert_matches!(events.receive(), None);
+        assert_matches!(events.try_receive(), Err(()));
 
         // The next resolve should error as we've terminated the task
         request

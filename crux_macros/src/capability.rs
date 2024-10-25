@@ -32,18 +32,8 @@ impl ToTokens for CapabilityStructReceiver {
             .expect_or_abort("could not find a field named `context`");
 
         tokens.extend(quote! {
-          impl<Ev> crux_core::capability::Capability<Ev> for #name<Ev> {
+          impl crux_core::capability::Capability for #name {
             type Operation = #operation_type;
-            type MappedSelf<MappedEv> = #name<MappedEv>;
-
-            fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-            where
-                F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-                Ev: 'static,
-                NewEv: 'static + Send,
-            {
-              #name::new(self.context.map_event(f))
-            }
           }
         })
     }
@@ -100,8 +90,8 @@ mod tests {
     fn test_derive() {
         let input = r#"
             #[derive(Capability)]
-            pub struct Render<Ev> {
-              context: CapabilityContext<RenderOperation, Ev>,
+            pub struct Render {
+              context: CapabilityContext<RenderOperation>,
             }
         "#;
         let input = parse_str(input).unwrap();
@@ -110,17 +100,8 @@ mod tests {
         let actual = quote!(#input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r###"
-        impl<Ev> crux_core::capability::Capability<Ev> for Render<Ev> {
+        impl crux_core::capability::Capability for Render {
             type Operation = RenderOperation;
-            type MappedSelf<MappedEv> = Render<MappedEv>;
-            fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-            where
-                F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-                Ev: 'static,
-                NewEv: 'static + Send,
-            {
-                Render::new(self.context.map_event(f))
-            }
         }
         "###);
     }

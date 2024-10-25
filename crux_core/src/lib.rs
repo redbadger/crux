@@ -40,7 +40,7 @@
 //!
 //! ```rust
 //!// src/app.rs
-//!use crux_core::{render::Render, App, macros::Effect};
+//!use crux_core::{render::Render, App, Command, macros::Effect};
 //!use serde::{Deserialize, Serialize};
 //!
 //!// Model describing the application state
@@ -62,7 +62,7 @@
 //!#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 //!#[derive(Effect)]
 //!pub struct Capabilities {
-//!    pub render: Render<Event>,
+//!    pub render: Render,
 //!}
 //!
 //!#[derive(Default)]
@@ -77,7 +77,7 @@
 //!    // Use the above Capabilities
 //!    type Capabilities = Capabilities;
 //!
-//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
 //!        match event {
 //!            Event::Increment => model.count += 1,
 //!            Event::Decrement => model.count -= 1,
@@ -158,6 +158,13 @@ pub mod typegen;
 mod capabilities;
 mod core;
 
+use std::future::Future;
+
+use futures::{
+    future::{BoxFuture, FutureExt},
+    stream::BoxStream,
+    Stream, StreamExt,
+};
 use serde::Serialize;
 
 pub use self::{
@@ -166,6 +173,114 @@ pub use self::{
     core::{Core, Effect, Request},
 };
 pub use crux_macros as macros;
+
+#[must_use]
+pub struct Command<Event> {
+    inner: CommandInner<Event>,
+}
+
+pub(crate) enum CommandInner<Event> {
+    None,
+    Event(Event),
+    Effect(BoxFuture<'static, Command<Event>>),
+    Stream(BoxStream<'static, Command<Event>>),
+    Multiple(Vec<Command<Event>>),
+}
+
+impl<Event> Command<Event> {
+    pub fn none() -> Self {
+        Self {
+            inner: CommandInner::None,
+        }
+    }
+
+    pub fn event(event: Event) -> Self {
+        Self {
+            inner: CommandInner::Event(event),
+        }
+    }
+
+    pub fn effect(fut: impl Future<Output = Self> + Send + 'static) -> Self {
+        Self {
+            inner: CommandInner::Effect(Box::pin(fut)),
+        }
+    }
+
+    pub fn effects(
+        mut futs: impl Iterator<Item = impl Future<Output = Self> + Send + 'static>,
+    ) -> Self {
+        let Some(first) = futs.next() else {
+            return Command::none();
+        };
+        let mut commands = Command::effect(first);
+        for fut in futs {
+            commands = commands.join_effect(fut);
+        }
+        commands
+    }
+
+    pub fn empty_effect(fut: impl Future<Output = ()> + Send + 'static) -> Self {
+        Self {
+            inner: CommandInner::Effect(Box::pin(fut.map(|()| Command::none()))),
+        }
+    }
+
+    pub fn stream(stream: impl Stream<Item = Self> + Send + 'static) -> Self {
+        Self {
+            inner: CommandInner::Stream(Box::pin(stream)),
+        }
+    }
+
+    pub fn boxed_stream(stream: BoxStream<'static, Self>) -> Self {
+        Self {
+            inner: CommandInner::Stream(stream),
+        }
+    }
+
+    pub fn join(mut self, command: Self) -> Self {
+        if let CommandInner::Multiple(cmds) = &mut self.inner {
+            cmds.push(command);
+            self
+        } else {
+            Command {
+                inner: CommandInner::Multiple(vec![self, command]),
+            }
+        }
+    }
+
+    pub fn join_effect(self, fut: impl Future<Output = Self> + Send + 'static) -> Self {
+        self.join(Command::effect(fut))
+    }
+
+    pub fn map<F, Event2>(self, mut func: F) -> Command<Event2>
+    where
+        F: FnMut(Event) -> Event2 + Send + Clone + 'static,
+        Event: 'static,
+    {
+        match self.inner {
+            CommandInner::None => Command::none(),
+            CommandInner::Event(ev) => Command::event(func(ev)),
+            CommandInner::Effect(effect) => Command::effect(effect.map({
+                let f = func.clone();
+                move |cmd| cmd.map(f)
+            })),
+            CommandInner::Stream(stream) => Command::stream(stream.map({
+                let f = func.clone();
+                move |cmd| cmd.map(f.clone())
+            })),
+
+            CommandInner::Multiple(commands) => {
+                let cmds = commands
+                    .into_iter()
+                    .map(|cmd| cmd.map(func.clone()))
+                    .collect();
+                Command {
+                    inner: CommandInner::Multiple(cmds),
+                }
+            }
+        }
+    }
+}
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
@@ -190,7 +305,12 @@ pub trait App: Default {
     /// effect completes.
     ///
     /// Typically, `update` should call at least [`Render::render`](crate::render::Render::render).
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities);
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Self::Event>;
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;

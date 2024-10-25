@@ -1,8 +1,8 @@
 #[cfg(feature = "chrono")]
 mod shared {
     use chrono::{DateTime, Utc};
-    use crux_core::macros::Effect;
     use crux_core::render::Render;
+    use crux_core::{macros::Effect, Command};
     use crux_time::{Time, TimeResponse, TimerId};
     use serde::{Deserialize, Serialize};
 
@@ -54,37 +54,40 @@ mod shared {
         type ViewModel = ViewModel;
         type Capabilities = Capabilities;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
             match event {
                 Event::Get => caps.time.now(Event::Set),
-                Event::GetAsync => caps.compose.spawn(|ctx| {
+                Event::GetAsync => {
                     let time = caps.time.clone();
-
-                    async move {
-                        ctx.update_app(Event::Set(time.now_async().await));
-                    }
-                }),
+                    Command::effect(
+                        async move { Command::event(Event::Set(time.now_async().await)) },
+                    )
+                }
                 Event::Set(time) => {
                     if let TimeResponse::Now(time) = time {
                         let time: DateTime<Utc> = time.try_into().unwrap();
                         model.time = time.to_rfc3339();
                         caps.render.render()
+                    } else {
+                        Command::none()
                     }
                 }
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
 
-                    let tid = caps.time.notify_after(
+                    let (cmd, tid) = caps.time.notify_after(
                         crux_time::Duration::from_millis(300).expect("valid duration"),
                         event_with_user_info(pending, Event::DurationElapsed),
                     );
 
                     model.debounce_time_id = Some(tid);
+                    cmd
                 }
                 Event::DurationElapsed(pending, TimeResponse::DurationElapsed { id: _ }) => {
                     if model.debounce.resolve(pending) {
                         model.debounce_complete = true;
                     }
+                    Command::none()
                 }
                 Event::DurationElapsed(_, TimeResponse::Cleared { id }) => {
                     if let Some(tid) = model.debounce_time_id {
@@ -92,6 +95,7 @@ mod shared {
                             model.debounce_time_id = None;
                         }
                     }
+                    Command::none()
                 }
                 Event::DurationElapsed(_, _) => {
                     panic!("Unexpected debounce event")
@@ -108,10 +112,8 @@ mod shared {
 
     #[derive(Effect)]
     pub struct Capabilities {
-        pub time: Time<Event>,
-        pub render: Render<Event>,
-        #[effect(skip)]
-        pub compose: crux_core::compose::Compose<Event>,
+        pub time: Time,
+        pub render: Render,
     }
 
     /// Helper to create an event with additional user info captured

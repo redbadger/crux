@@ -1,6 +1,6 @@
 // ANCHOR: app
 
-use crux_core::{render::Render, App};
+use crux_core::{render::Render, App, Command};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -18,7 +18,7 @@ pub struct ViewModel {
 
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
-    render: Render<Event>,
+    render: Render,
 }
 
 #[derive(Default)]
@@ -30,8 +30,13 @@ impl App for Hello {
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
-    fn update(&self, _event: Self::Event, _model: &mut Self::Model, caps: &Self::Capabilities) {
-        caps.render.render();
+    fn update(
+        &self,
+        _event: Self::Event,
+        _model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Event> {
+        caps.render.render()
     }
 
     fn view(&self, _model: &Self::Model) -> Self::ViewModel {

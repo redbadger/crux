@@ -3,10 +3,8 @@ use anyhow::Result;
 use std::{collections::VecDeque, sync::Arc};
 
 use crate::{
-    capability::{
-        channel::Receiver, executor_and_spawner, Operation, ProtoContext, QueuingExecutor,
-    },
-    Request, WithContext,
+    capability::{channel::Receiver, Operation, ProtoContext, QueuingExecutor},
+    CommandInner, Request, WithContext,
 };
 
 /// AppTester is a simplified execution environment for Crux apps for use in
@@ -31,8 +29,7 @@ where
 
 struct AppContext<Ef, Ev> {
     commands: Receiver<Ef>,
-    events: Receiver<Ev>,
-    executor: QueuingExecutor,
+    executor: QueuingExecutor<Ev>,
 }
 
 impl<App, Ef> AppTester<App, Ef>
@@ -45,7 +42,7 @@ where
     pub fn new(app: App) -> Self
     where
         Ef: Send + 'static,
-        App::Capabilities: WithContext<App::Event, Ef>,
+        App::Capabilities: WithContext<Ef>,
     {
         Self {
             app,
@@ -58,8 +55,29 @@ where
     /// You can use the resulting [`Update`] to inspect the effects which were requested
     /// and potential further events dispatched by capabilities.
     pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
-        self.app.update(event, model, &self.capabilities);
-        self.context.updates()
+        let command = self.app.update(event, model, &self.capabilities);
+        let mut queue: VecDeque<_> = std::iter::once(command).collect();
+        let mut events = Vec::new();
+        while let Some(command) = queue.pop_front() {
+            match command.inner {
+                CommandInner::None => continue,
+                CommandInner::Event(event) => {
+                    events.push(event);
+                }
+                CommandInner::Effect(effect) => {
+                    self.context.executor.spawn_task(effect);
+                }
+                CommandInner::Stream(stream) => {
+                    self.context.executor.spawn_stream(stream);
+                }
+                CommandInner::Multiple(multiple) => {
+                    for command in multiple {
+                        queue.push_back(command);
+                    }
+                }
+            };
+        }
+        self.context.updates(events)
     }
 
     /// Resolve an effect `request` from previous update with an operation output.
@@ -72,8 +90,7 @@ where
         value: Op::Output,
     ) -> Result<Update<Ef, App::Event>> {
         request.resolve(value)?;
-
-        Ok(self.context.updates())
+        Ok(self.context.updates(Vec::new()))
     }
 
     /// Resolve an effect `request` from previous update, then run the resulting event
@@ -87,7 +104,7 @@ where
         model: &mut App::Model,
     ) -> Update<Ef, App::Event> {
         request.resolve(value).expect("failed to resolve request");
-        let event = self.context.updates().expect_one_event();
+        let event = self.context.updates(Vec::new()).expect_one_event();
         self.update(event, model)
     }
 
@@ -100,23 +117,18 @@ where
 impl<App, Ef> Default for AppTester<App, Ef>
 where
     App: crate::App,
-    App::Capabilities: WithContext<App::Event, Ef>,
+    App::Capabilities: WithContext<Ef>,
     Ef: Send + 'static,
 {
     fn default() -> Self {
         let (command_sender, commands) = crate::capability::channel();
-        let (event_sender, events) = crate::capability::channel();
-        let (executor, spawner) = executor_and_spawner();
-        let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
+        let executor = QueuingExecutor::new();
+        let capability_context = ProtoContext::new(command_sender);
 
         Self {
             app: App::default(),
             capabilities: App::Capabilities::new_with_context(capability_context),
-            context: Arc::new(AppContext {
-                commands,
-                events,
-                executor,
-            }),
+            context: Arc::new(AppContext { commands, executor }),
         }
     }
 }
@@ -130,12 +142,28 @@ where
     }
 }
 
-impl<Ef, Ev> AppContext<Ef, Ev> {
-    pub fn updates(self: &Arc<Self>) -> Update<Ef, Ev> {
-        self.executor.run_all();
+impl<Ef, Ev> AppContext<Ef, Ev>
+where
+    Ev: 'static,
+{
+    pub fn updates(self: &Arc<Self>, mut events: Vec<Ev>) -> Update<Ef, Ev> {
+        let mut queue: VecDeque<_> = self.executor.run_all().into_iter().collect();
+        while let Some(command) = queue.pop_front() {
+            match command.inner {
+                CommandInner::None => {}
+                CommandInner::Event(ev) => events.push(ev),
+                CommandInner::Effect(effect) => {
+                    self.executor.spawn_task(effect);
+                    queue.extend(self.executor.run_all())
+                }
+                CommandInner::Stream(stream) => {
+                    self.executor.spawn_stream(stream);
+                    queue.extend(self.executor.run_all())
+                }
+                CommandInner::Multiple(commands) => queue.extend(commands),
+            }
+        }
         let effects = self.commands.drain().collect();
-        let events = self.events.drain().collect();
-
         Update { effects, events }
     }
 }

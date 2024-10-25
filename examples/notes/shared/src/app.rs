@@ -3,7 +3,7 @@ mod note;
 use std::ops::Range;
 
 use automerge::Change;
-use crux_core::{render::Render, App};
+use crux_core::{render::Render, App, Command};
 use crux_kv::{error::KeyValueError, KeyValue};
 use serde::{Deserialize, Serialize};
 
@@ -58,15 +58,17 @@ struct EditTimer {
 }
 
 impl EditTimer {
-    fn start(&mut self, timer: &Timer<Event>) {
-        if let Some(id) = self.current_id {
+    fn start(&mut self, timer: &Timer) -> Command<Event> {
+        let cancel = if let Some(id) = self.current_id {
             println!("Cancelling timer {id}");
-            timer.cancel(id);
-        }
+            timer.cancel(id)
+        } else {
+            Command::none()
+        };
         self.current_id = None;
 
         println!("Starting timer {}", self.next_id);
-        timer.start(self.next_id, EDIT_TIMER, Event::EditTimer);
+        cancel.join(timer.start(self.next_id, EDIT_TIMER, Event::EditTimer))
     }
 
     fn was_created(&mut self, id: u64) {
@@ -107,10 +109,10 @@ impl From<&Model> for ViewModel {
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
-    timer: Timer<Event>,
-    render: Render<Event>,
-    pub_sub: PubSub<Event>,
-    key_value: KeyValue<Event>,
+    timer: Timer,
+    render: Render,
+    pub_sub: PubSub,
+    key_value: KeyValue,
 }
 
 const EDIT_TIMER: usize = 1000;
@@ -122,7 +124,12 @@ impl App for NoteEditor {
 
     type Capabilities = Capabilities;
 
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Event> {
         match event {
             Event::Insert(text) => {
                 let mut change = match &model.cursor {
@@ -134,8 +141,8 @@ impl App for NoteEditor {
                     }
                 };
 
-                caps.pub_sub.publish(change.bytes().to_vec());
-                model.edit_timer.start(&caps.timer);
+                let cmd1 = caps.pub_sub.publish(change.bytes().to_vec());
+                let cmd2 = model.edit_timer.start(&caps.timer);
 
                 let len = text.chars().count();
                 let idx = match &model.cursor {
@@ -144,7 +151,7 @@ impl App for NoteEditor {
                 };
                 model.cursor = TextCursor::Position(idx + len);
 
-                caps.render.render();
+                cmd1.join(cmd2).join(caps.render.render())
             }
             Event::Replace(from, to, text) => {
                 let idx = from + text.chars().count();
@@ -152,20 +159,20 @@ impl App for NoteEditor {
 
                 let mut change = model.note.splice_text(from, to - from, &text);
 
-                caps.pub_sub.publish(change.bytes().to_vec());
-                model.edit_timer.start(&caps.timer);
-
-                caps.render.render();
+                caps.pub_sub
+                    .publish(change.bytes().to_vec())
+                    .join(model.edit_timer.start(&caps.timer))
+                    .join(caps.render.render())
             }
             Event::MoveCursor(idx) => {
                 model.cursor = TextCursor::Position(idx);
 
-                caps.render.render();
+                caps.render.render()
             }
             Event::Select(from, to) => {
                 model.cursor = TextCursor::Selection(from..to);
 
-                caps.render.render();
+                caps.render.render()
             }
             Event::Backspace | Event::Delete => {
                 let (new_index, mut change) = match &model.cursor {
@@ -196,10 +203,10 @@ impl App for NoteEditor {
 
                 model.cursor = TextCursor::Position(new_index);
 
-                caps.pub_sub.publish(change.bytes().to_vec());
-                model.edit_timer.start(&caps.timer);
-
-                caps.render.render();
+                caps.pub_sub
+                    .publish(change.bytes().to_vec())
+                    .join(model.edit_timer.start(&caps.timer))
+                    .join(caps.render.render())
             }
             Event::ReceiveChanges(bytes) => {
                 let change = Change::from_bytes(bytes).expect("a valid change");
@@ -210,35 +217,39 @@ impl App for NoteEditor {
                 model.note.apply_changes_with([change], &mut observer);
                 model.cursor = observer.cursor;
 
-                caps.render.render();
+                caps.render.render()
             }
             Event::EditTimer(TimerOutput::Created { id }) => {
                 model.edit_timer.was_created(id);
+                Command::none()
             }
             Event::EditTimer(TimerOutput::Finished { id }) => {
                 model.edit_timer.finished(id);
 
                 caps.key_value
-                    .set("note".to_string(), model.note.save(), Event::Written);
+                    .set("note".to_string(), model.note.save(), Event::Written)
             }
             Event::Written(_) => {
                 // FIXME assuming successful write
+                Command::none()
             }
             Event::Open => caps.key_value.get("note".to_string(), Event::Load),
             Event::Load(Ok(value)) => {
-                if value.is_none() {
+                let kv_cmd = if value.is_none() {
                     model.note = Note::new();
-
                     caps.key_value
-                        .set("note".to_string(), model.note.save(), Event::Written);
+                        .set("note".to_string(), model.note.save(), Event::Written)
                 } else {
                     model.note = Note::load(&value.unwrap_or_default());
-                }
-                caps.pub_sub.subscribe(Event::ReceiveChanges);
-                caps.render.render();
+                    Command::none()
+                };
+                kv_cmd
+                    .join(caps.pub_sub.subscribe(Event::ReceiveChanges))
+                    .join(caps.render.render())
             }
             Event::Load(Err(_)) => {
                 // FIXME handle error
+                Command::none()
             }
         }
     }

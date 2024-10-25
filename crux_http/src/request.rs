@@ -52,7 +52,7 @@ impl Request {
     /// ```
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
@@ -75,7 +75,7 @@ impl Request {
     /// ```
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
@@ -99,7 +99,7 @@ impl Request {
     ///
     /// ```
     /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// let mut req = caps.http.get("https://httpbin.org/get").build();
     /// req.set_header("X-Requested-With", "surf");
@@ -168,7 +168,7 @@ impl Request {
     ///
     /// ```
     /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// let mut req = caps.http.get("https://httpbin.org/get").build();
     /// req.set_header("X-Requested-With", "surf");
@@ -196,7 +196,7 @@ impl Request {
     ///
     /// ```
     /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// let req = caps.http.get("https://httpbin.org/get").build();
     /// assert_eq!(req.method(), crux_http::http::Method::Get);
@@ -212,7 +212,7 @@ impl Request {
     ///
     /// ```
     /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// use crux_http::http::Url;
     /// let req = caps.http.get("https://httpbin.org/get").build();
@@ -343,7 +343,7 @@ impl Request {
     ///
     /// ```
     /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// let mut req = caps.http.get("https://httpbin.org/get").build();
     /// req.middleware(crux_http::middleware::Redirect::default());

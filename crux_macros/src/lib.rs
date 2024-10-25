@@ -23,7 +23,7 @@ use syn::parse_macro_input;
 ///
 /// e.g.
 /// ```rust
-/// # use crux_core::{Capability, render::Render, compose::Compose};
+/// # use crux_core::{Capability, Command, render::Render};
 /// # use crux_core::macros::Effect;
 /// # #[derive(Default)]
 /// # struct MyApp;
@@ -38,7 +38,7 @@ use syn::parse_macro_input;
 /// #         _event: Self::Event,
 /// #         _model: &mut Self::Model,
 /// #         _caps: &Self::Capabilities,
-/// #     ) {
+/// #     ) -> Command<MyEvent> {
 /// #         unimplemented!()
 /// #     }
 /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -48,10 +48,8 @@ use syn::parse_macro_input;
 /// #[derive(Effect)]
 /// #[effect(name = "MyEffect")]
 /// pub struct MyCapabilities {
-///     pub http: crux_http::Http<MyEvent>,
-///     pub render: Render<MyEvent>,
-///     #[effect(skip)]
-///     pub compose: Compose<MyEvent>,
+///     pub http: crux_http::Http,
+///     pub render: Render,
 /// }
 
 #[proc_macro_derive(Effect, attributes(effect))]

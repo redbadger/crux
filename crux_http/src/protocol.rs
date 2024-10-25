@@ -170,10 +170,7 @@ pub(crate) trait EffectSender {
 }
 
 #[async_trait]
-impl<Ev> EffectSender for crux_core::capability::CapabilityContext<HttpRequest, Ev>
-where
-    Ev: 'static,
-{
+impl EffectSender for crux_core::capability::CapabilityContext<HttpRequest> {
     async fn send(&self, effect: HttpRequest) -> HttpResult {
         crux_core::capability::CapabilityContext::request_from_shell(self, effect).await
     }
