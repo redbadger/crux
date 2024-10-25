@@ -1,4 +1,5 @@
 use crux_core::capability::{CapabilityContext, Operation};
+use crux_core::Command;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -19,44 +20,31 @@ impl Operation for TimerOperation {
 }
 
 #[derive(crux_core::macros::Capability)]
-pub struct Timer<Event> {
-    context: CapabilityContext<TimerOperation, Event>,
+pub struct Timer {
+    context: CapabilityContext<TimerOperation>,
 }
 
-impl<Ev> Timer<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<TimerOperation, Ev>) -> Self {
+impl Timer {
+    pub fn new(context: CapabilityContext<TimerOperation>) -> Self {
         Self { context }
     }
 
-    pub fn start<F>(&self, id: u64, millis: usize, make_event: F)
+    pub fn start<F, Ev>(&self, id: u64, millis: usize, make_event: F) -> Command<Ev>
     where
         F: FnOnce(TimerOutput) -> Ev + Clone + Send + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                let mut stream = context.stream_from_shell(TimerOperation::Start { id, millis });
-
-                while let Some(output) = stream.next().await {
-                    let make_event = make_event.clone();
-
-                    context.update_app(make_event(output));
-                }
-            }
-        })
+        let context = self.context.clone();
+        let mut stream = context.stream_from_shell(TimerOperation::Start { id, millis });
+        Command::stream(stream.map(move |message| {
+            let make_event = make_event.clone();
+            Command::event(make_event(message))
+        }))
     }
 
-    pub fn cancel(&self, id: u64) {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                context.notify_shell(TimerOperation::Cancel { id }).await;
-            }
+    pub fn cancel<Event>(&self, id: u64) -> Command<Event> {
+        let context = self.context.clone();
+        Command::empty_effect(async move {
+            context.notify_shell(TimerOperation::Cancel { id }).await;
         })
     }
 }

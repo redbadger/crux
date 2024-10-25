@@ -1,4 +1,5 @@
 use crux_core::capability::{CapabilityContext, Operation};
+use crux_core::Command;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -18,44 +19,29 @@ impl Operation for PubSubOperation {
 }
 
 #[derive(crux_core::macros::Capability)]
-pub struct PubSub<Event> {
-    context: CapabilityContext<PubSubOperation, Event>,
+pub struct PubSub {
+    context: CapabilityContext<PubSubOperation>,
 }
 
-impl<Ev> PubSub<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<PubSubOperation, Ev>) -> Self {
+impl PubSub {
+    pub fn new(context: CapabilityContext<PubSubOperation>) -> Self {
         Self { context }
     }
 
-    pub fn subscribe<F>(&self, make_event: F)
+    pub fn subscribe<F, Ev>(&self, make_event: F) -> Command<Ev>
     where
         F: FnOnce(Vec<u8>) -> Ev + Clone + Send + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                let mut stream = context.stream_from_shell(PubSubOperation::Subscribe);
-
-                while let Some(message) = stream.next().await {
-                    let make_event = make_event.clone();
-
-                    context.update_app(make_event(message.0));
-                }
-            }
-        })
+        let context = self.context.clone();
+        let mut stream = context.stream_from_shell(PubSubOperation::Subscribe);
+        Command::stream(stream.map(move |message| {
+            let make_event = make_event.clone();
+            Command::event(make_event(message.0))
+        }))
     }
 
-    pub fn publish(&self, data: Vec<u8>) {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                context.notify_shell(PubSubOperation::Publish(data)).await;
-            }
-        })
+    pub fn publish<Ev>(&self, data: Vec<u8>) -> Command<Ev> {
+        let ctx = self.context.clone();
+        Command::empty_effect(async move { ctx.notify_shell(PubSubOperation::Publish(data)).await })
     }
 }
