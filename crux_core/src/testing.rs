@@ -67,6 +67,9 @@ where
                 CommandInner::Effect(effect) => {
                     self.context.executor.spawn_task(effect);
                 }
+                CommandInner::Stream(stream) => {
+                    self.context.executor.spawn_stream(stream);
+                }
                 CommandInner::Multiple(multiple) => {
                     for command in multiple {
                         queue.push_back(command);
@@ -139,7 +142,10 @@ where
     }
 }
 
-impl<Ef, Ev> AppContext<Ef, Ev> {
+impl<Ef, Ev> AppContext<Ef, Ev>
+where
+    Ev: 'static,
+{
     pub fn updates(self: &Arc<Self>, mut events: Vec<Ev>) -> Update<Ef, Ev> {
         let mut queue: VecDeque<_> = self.executor.run_all().into_iter().collect();
         while let Some(command) = queue.pop_front() {
@@ -148,6 +154,10 @@ impl<Ef, Ev> AppContext<Ef, Ev> {
                 CommandInner::Event(ev) => events.push(ev),
                 CommandInner::Effect(effect) => {
                     self.executor.spawn_task(effect);
+                    queue.extend(self.executor.run_all())
+                }
+                CommandInner::Stream(stream) => {
+                    self.executor.spawn_stream(stream);
                     queue.extend(self.executor.run_all())
                 }
                 CommandInner::Multiple(commands) => queue.extend(commands),

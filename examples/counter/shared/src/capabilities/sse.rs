@@ -4,6 +4,7 @@ use futures::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crux_core::capability::{CapabilityContext, Operation};
+use crux_core::Command;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SseRequest {
@@ -21,48 +22,42 @@ impl Operation for SseRequest {
 }
 
 #[derive(crux_core::macros::Capability)]
-pub struct ServerSentEvents<Ev> {
-    context: CapabilityContext<SseRequest, Ev>,
+pub struct ServerSentEvents {
+    context: CapabilityContext<SseRequest>,
 }
 
-impl<Ev> ServerSentEvents<Ev>
-where
-    Ev: 'static,
-{
-    pub fn new(context: CapabilityContext<SseRequest, Ev>) -> Self {
+impl ServerSentEvents {
+    pub fn new(context: CapabilityContext<SseRequest>) -> Self {
         Self { context }
     }
 
-    pub fn get_json<F, T>(&self, url: impl AsRef<str>, make_event: F)
+    pub fn get_json<F, Ev, T>(&self, url: impl AsRef<str>, make_event: F) -> Command<Ev>
     where
         F: Fn(T) -> Ev + Clone + Send + 'static,
+        Ev: Send + 'static,
         T: DeserializeOwned,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            let url = url.as_ref().to_string();
+        let context = self.context.clone();
+        let url = url.as_ref().to_string();
 
-            async move {
-                let mut stream = context.stream_from_shell(SseRequest { url });
-
-                while let Some(response) = stream.next().await {
-                    let make_event = make_event.clone();
-
-                    match response {
-                        SseResponse::Chunk(data) => {
-                            let mut reader = decode(Cursor::new(data));
-
-                            while let Some(sse_event) = reader.next().await {
-                                if let Ok(Event::Message(msg)) = sse_event {
-                                    let t: T = serde_json::from_slice(msg.data()).unwrap();
-                                    context.update_app(make_event(t));
-                                }
-                            }
-                        }
-                        SseResponse::Done => break,
+        let mut stream = context.stream_from_shell(SseRequest { url });
+        let stream = stream.flat_map(move |response| match response {
+            SseResponse::Chunk(data) => {
+                let mut reader = decode(Cursor::new(data));
+                let make_event = make_event.clone();
+                let inner = reader.map(move |sse_event| {
+                    if let Ok(Event::Message(msg)) = sse_event {
+                        let t: T = serde_json::from_slice(msg.data()).unwrap();
+                        let make_event = make_event.clone();
+                        Command::event(make_event(t))
+                    } else {
+                        Command::none()
                     }
-                }
+                });
+                Box::pin(inner) as futures::stream::BoxStream<_>
             }
+            SseResponse::Done => Box::pin(futures::stream::empty()),
         });
+        Command::stream(stream)
     }
 }

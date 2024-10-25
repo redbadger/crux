@@ -4,12 +4,13 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use futures::future;
+use futures::{FutureExt, StreamExt};
 use slab::Slab;
 
 use crate::Command;
 
-type BoxFuture<Event> = future::BoxFuture<'static, Command<Event>>;
+type BoxFuture<Event> = futures::future::BoxFuture<'static, Command<Event>>;
+type BoxStream<Event> = futures::stream::BoxStream<'static, Command<Event>>;
 
 // used in docs/internals/runtime.md
 // ANCHOR: executor
@@ -64,7 +65,6 @@ impl Wake for TaskWaker {
 // ANCHOR_END: wake
 
 // used in docs/internals/runtime.md
-// ANCHOR: run_all
 impl<Event> QueuingExecutor<Event> {
     pub fn spawn_task(&self, task: BoxFuture<Event>) {
         let task_id = self
@@ -77,6 +77,7 @@ impl<Event> QueuingExecutor<Event> {
             .expect("failed to spawn task");
     }
 
+    // ANCHOR: run_all
     pub fn run_all(&self) -> Vec<Command<Event>> {
         let mut commands = Vec::new();
         while let Ok(task_id) = self.ready_queue.try_recv() {
@@ -101,6 +102,7 @@ impl<Event> QueuingExecutor<Event> {
         }
         commands
     }
+    // ANCHOR_END: run_all
 
     fn run_task(&self, task_id: TaskId) -> RunTask<Event> {
         let mut lock = self.tasks.lock().expect("Task slab poisoned");
@@ -144,6 +146,26 @@ impl<Event> QueuingExecutor<Event> {
     }
 }
 
+impl<Event> QueuingExecutor<Event>
+where
+    Event: 'static, // for some reason, the 'static bound is necessary here but not for spawn_task
+{
+    pub fn spawn_stream(&self, stream: BoxStream<Event>) {
+        let stream_task: BoxFuture<Event> = Box::pin(stream.into_future().map(|(cmd, next)| {
+            cmd.map(|cmd| cmd.join(Command::boxed_stream(next)))
+                .unwrap_or(Command::none())
+        }));
+        let task_id = self
+            .tasks
+            .lock()
+            .expect("Task slab poisoned")
+            .insert(Some(stream_task));
+        self.ready_sender
+            .send(TaskId(task_id.try_into().expect("TaskId overflow")))
+            .expect("failed to spawn task");
+    }
+}
+
 enum RunTask<Event> {
     Missing,
     Unavailable,
@@ -151,12 +173,10 @@ enum RunTask<Event> {
     Completed(Command<Event>),
 }
 
-// ANCHOR_END: run_all
-
 #[cfg(test)]
 mod tests {
 
-    use future::FutureExt as _;
+    use futures::FutureExt as _;
     use rand::Rng;
     use std::{
         future::Future,

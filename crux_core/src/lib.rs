@@ -160,7 +160,11 @@ mod core;
 
 use std::future::Future;
 
-use futures::future::{BoxFuture, FutureExt};
+use futures::{
+    future::{BoxFuture, FutureExt},
+    stream::BoxStream,
+    Stream, StreamExt,
+};
 use serde::Serialize;
 
 pub use self::{
@@ -212,6 +216,7 @@ pub(crate) enum CommandInner<Event> {
     None,
     Event(Event),
     Effect(BoxFuture<'static, Command<Event>>),
+    Stream(BoxStream<'static, Command<Event>>),
     Multiple(Vec<Command<Event>>),
 }
 
@@ -253,6 +258,18 @@ impl<Event> Command<Event> {
         }
     }
 
+    pub fn stream(stream: impl Stream<Item = Self> + Send + 'static) -> Self {
+        Self {
+            inner: CommandInner::Stream(Box::pin(stream)),
+        }
+    }
+
+    pub fn boxed_stream(stream: BoxStream<'static, Self>) -> Self {
+        Self {
+            inner: CommandInner::Stream(stream),
+        }
+    }
+
     pub fn join(mut self, command: Self) -> Self {
         if let CommandInner::Multiple(cmds) = &mut self.inner {
             cmds.push(command);
@@ -268,9 +285,9 @@ impl<Event> Command<Event> {
         self.join(Command::effect(fut))
     }
 
-    pub fn map<F, Event2>(self, func: F) -> Command<Event2>
+    pub fn map<F, Event2>(self, mut func: F) -> Command<Event2>
     where
-        F: Fn(Event) -> Event2 + Send + Clone + 'static,
+        F: FnMut(Event) -> Event2 + Send + Clone + 'static,
         Event: 'static,
     {
         match self.inner {
@@ -280,6 +297,11 @@ impl<Event> Command<Event> {
                 let f = func.clone();
                 move |cmd| cmd.map(f)
             })),
+            CommandInner::Stream(stream) => Command::stream(stream.map({
+                let f = func.clone();
+                move |cmd| cmd.map(f.clone())
+            })),
+
             CommandInner::Multiple(commands) => {
                 let cmds = commands
                     .into_iter()

@@ -1,6 +1,7 @@
 use crate::capabilities::sse::ServerSentEvents;
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::render::Render;
+use crux_core::Command;
 use crux_http::Http;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -45,9 +46,9 @@ pub enum Event {
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
-    pub render: Render<Event>,
-    pub http: Http<Event>,
-    pub sse: ServerSentEvents<Event>,
+    pub render: Render,
+    pub http: Http,
+    pub sse: ServerSentEvents,
 }
 
 #[derive(Default)]
@@ -59,21 +60,28 @@ impl crux_core::App for App {
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
 
-    fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        msg: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Event> {
         match msg {
-            Event::Get => {
-                caps.http.get(API_URL).expect_json().send(Event::Set);
-            }
+            Event::Get => caps
+                .http
+                .get(API_URL)
+                .expect_json()
+                .send_and_respond(Event::Set),
             Event::Set(Ok(mut response)) => {
                 let count = response.take_body().unwrap();
-                self.update(Event::Update(count), model, caps);
+                self.update(Event::Update(count), model, caps)
             }
             Event::Set(Err(e)) => {
                 panic!("Oh no something went wrong: {e:?}");
             }
             Event::Update(count) => {
                 model.count = count;
-                caps.render.render();
+                caps.render.render()
             }
             Event::Increment => {
                 // optimistic update
@@ -81,12 +89,15 @@ impl crux_core::App for App {
                     value: model.count.value + 1,
                     updated_at: None,
                 };
-                caps.render.render();
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/inc").unwrap();
-                caps.http.post(url).expect_json().send(Event::Set);
+                caps.http
+                    .post(url)
+                    .expect_json()
+                    .send_and_respond(Event::Set)
+                    .join(caps.render.render())
             }
             Event::Decrement => {
                 // optimistic update
@@ -94,17 +105,20 @@ impl crux_core::App for App {
                     value: model.count.value - 1,
                     updated_at: None,
                 };
-                caps.render.render();
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/dec").unwrap();
-                caps.http.post(url).expect_json().send(Event::Set);
+                caps.http
+                    .post(url)
+                    .expect_json()
+                    .send_and_respond(Event::Set)
+                    .join(caps.render.render())
             }
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
-                caps.sse.get_json(url, Event::Update);
+                caps.sse.get_json(url, Event::Update)
             }
         }
     }

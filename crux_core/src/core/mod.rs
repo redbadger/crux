@@ -122,6 +122,9 @@ where
                 CommandInner::Effect(effect) => {
                     self.executor.spawn_task(effect);
                 }
+                CommandInner::Stream(stream) => {
+                    self.executor.spawn_stream(stream);
+                }
                 CommandInner::Multiple(commands) => {
                     pending_commands.extend(commands);
                     continue;
