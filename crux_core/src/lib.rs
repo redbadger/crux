@@ -174,39 +174,6 @@ pub use self::{
 };
 pub use crux_macros as macros;
 
-pub enum OneOrMany<T> {
-    One(T),
-    Many(Vec<T>),
-}
-
-impl<T> IntoIterator for OneOrMany<T> {
-    type Item = T;
-
-    type IntoIter = std::iter::Chain<std::option::IntoIter<T>, std::vec::IntoIter<T>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        let (one, many) = match self {
-            OneOrMany::One(one) => (Some(one), Vec::new()),
-            OneOrMany::Many(vec) => (None, vec),
-        };
-        one.into_iter().chain(many.into_iter())
-    }
-}
-
-impl<T> FromIterator<T> for OneOrMany<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut iter = iter.into_iter();
-        let mut vec = match (iter.next(), iter.next()) {
-            (None, None) => Vec::new(),
-            (None, Some(_)) => unreachable!(),
-            (Some(one), None) => return OneOrMany::One(one),
-            (Some(one), Some(two)) => vec![one, two],
-        };
-        vec.extend(iter);
-        OneOrMany::Many(vec)
-    }
-}
-
 #[must_use]
 pub struct Command<Event> {
     inner: CommandInner<Event>,
