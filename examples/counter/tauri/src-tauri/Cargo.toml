@@ -1,28 +1,27 @@
 [package]
 name = "counter_tauri"
 version = "0.1.0"
-edition = "2021"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
 
-# authors.workspace = true
-# repository.workspace = true
-# edition.workspace = true
-# license.workspace = true
-# keywords.workspace = true
-# rust-version.workspace = true
 [lib]
 name = "tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "1.5", features = [] }
+tauri-build = { version = "2.0.2", features = [] }
 
 [dependencies]
 anyhow.workspace = true
-futures = "0.3.30"
+futures = "0.3.31"
 lazy_static = "1.5.0"
-reqwest = { version = "0.12.7", features = ["stream"] }
+reqwest = { version = "0.12.8", features = ["stream"] }
 shared = { path = "../../shared" }
-tauri = { version = "1.8", features = ["shell-open"] }
+tauri = { version = "2.0.6", features = [] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

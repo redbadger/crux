@@ -215,7 +215,7 @@ use channel::Sender;
 ///     type Output = HttpResponse;
 /// }
 /// ```
-pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
+pub trait Operation: serde::Serialize + Clone + PartialEq + Send + 'static {
     /// `Output` assigns the type this request results in.
     type Output: serde::de::DeserializeOwned + Send + 'static;
 }
@@ -240,7 +240,7 @@ pub trait Operation: serde::Serialize + PartialEq + Send + 'static {
 /// # }
 ///
 /// ```
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Never {}
 
 /// Implement `Operation` for `Never` to allow using it as a capability operation.
@@ -260,7 +260,7 @@ impl Operation for Never {
 /// # pub struct Http {
 /// #     context: CapabilityContext<HttpRequest>,
 /// # }
-/// # #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq)] pub struct HttpRequest;
+/// # #[derive(Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)] pub struct HttpRequest;
 /// # impl Operation for HttpRequest {
 /// #     type Output = ();
 /// # }
@@ -357,8 +357,8 @@ pub trait WithContext<Ef> {
 ///
 /// ```rust
 /// # use crux_core::Command;
-/// # #[derive(PartialEq,serde::Serialize)]pub struct TimeRequest;
-/// # #[derive(serde::Deserialize)]pub struct TimeResponse(pub String);
+/// # #[derive(Clone, PartialEq, serde::Serialize)] pub struct TimeRequest;
+/// # #[derive(Clone, serde::Deserialize)] pub struct TimeResponse(pub String);
 /// # impl crux_core::capability::Operation for TimeRequest {
 /// #     type Output = TimeResponse;
 /// # }
@@ -470,7 +470,7 @@ mod tests {
     #[allow(dead_code)]
     enum Event {}
 
-    #[derive(PartialEq, Serialize)]
+    #[derive(PartialEq, Clone, Serialize)]
     struct Op {}
 
     impl Operation for Op {

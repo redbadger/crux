@@ -29,6 +29,7 @@ impl CoreService {
 
     pub async fn run(&self, rx: &mut UnboundedReceiver<Event>) {
         let mut view = self.view;
+        view.set(self.core.view());
         while let Some(event) = rx.next().await {
             self.update(event, &mut view);
         }
@@ -45,6 +46,7 @@ impl CoreService {
 
 fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
     debug!("effect: {:?}", effect);
+
     match effect {
         Effect::Render(_) => {
             // This currently issues a warning:

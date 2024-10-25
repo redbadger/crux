@@ -3,7 +3,7 @@ mod shared {
     use chrono::{DateTime, Utc};
     use crux_core::render::Render;
     use crux_core::{macros::Effect, Command};
-    use crux_time::{Time, TimeResponse};
+    use crux_time::{Time, TimeResponse, TimerId};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -40,6 +40,7 @@ mod shared {
         pub time: String,
         debounce: Debounce,
         pub debounce_complete: bool,
+        pub debounce_time_id: Option<TimerId>,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -74,16 +75,25 @@ mod shared {
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
 
-                    caps.time.notify_after(
+                    let (tid, cmd) = caps.time.notify_after(
                         crux_time::Duration::from_millis(300).expect("valid duration"),
                         event_with_user_info(pending, Event::DurationElapsed),
-                    )
+                    );
+
+                    model.debounce_time_id = Some(tid);
                 }
-                Event::DurationElapsed(pending, TimeResponse::DurationElapsed) => {
+                Event::DurationElapsed(pending, TimeResponse::DurationElapsed { id: _ }) => {
                     if model.debounce.resolve(pending) {
                         model.debounce_complete = true;
                     }
                     Command::none()
+                }
+                Event::DurationElapsed(_, TimeResponse::Cleared { id }) => {
+                    if let Some(tid) = model.debounce_time_id {
+                        if tid == id {
+                            model.debounce_time_id = None;
+                        }
+                    }
                 }
                 Event::DurationElapsed(_, _) => {
                     panic!("Unexpected debounce event")
@@ -185,19 +195,14 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update = app.update(Event::GetAsync, &mut model);
-
-        let effect = update.into_effects().next().unwrap();
-        let Effect::Time(mut request) = effect else {
-            panic!("Expected Time effect");
-        };
+        let request = &mut app
+            .update(Event::GetAsync, &mut model)
+            .expect_one_effect()
+            .expect_time();
 
         let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
         let response = TimeResponse::Now(now.try_into().unwrap());
-        let update = app.resolve(&mut request, response).unwrap();
-
-        let event = update.events.into_iter().next().unwrap();
-        app.update(event, &mut model);
+        let _update = app.resolve_to_event_then_update(request, response, &mut model);
 
         assert_eq!(app.view(&model).time, "2022-12-01T01:47:12.746202562+00:00");
     }
@@ -207,43 +212,64 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let update1 = app.update(Event::StartDebounce, &mut model);
-        let update2 = app.update(Event::StartDebounce, &mut model);
+        let request1 = &mut app
+            .update(Event::StartDebounce, &mut model)
+            .expect_one_effect()
+            .expect_time();
+        let request2 = &mut app
+            .update(Event::StartDebounce, &mut model)
+            .expect_one_effect()
+            .expect_time();
 
-        let Effect::Time(mut request1) = update1.into_effects().next().unwrap() else {
-            panic!("Expected Time effect");
-        };
-
-        // resolve and run loop
-        app.update(
-            app.resolve(&mut request1, TimeResponse::DurationElapsed)
-                .unwrap()
-                .events
-                .into_iter()
-                .next()
-                .unwrap(),
+        // resolve and update
+        app.resolve_to_event_then_update(
+            request1,
+            TimeResponse::DurationElapsed {
+                id: model.debounce_time_id.unwrap(),
+            },
             &mut model,
-        );
+        )
+        .assert_empty();
 
         // resolving the first debounce should not set the debounce_complete flag
         assert!(!model.debounce_complete);
 
-        let Effect::Time(mut request2) = update2.into_effects().next().unwrap() else {
-            panic!("Expected Time effect");
-        };
-
-        // resolve and run loop
-        app.update(
-            app.resolve(&mut request2, TimeResponse::DurationElapsed)
-                .unwrap()
-                .events
-                .into_iter()
-                .next()
-                .unwrap(),
+        // resolve and update
+        app.resolve_to_event_then_update(
+            request2,
+            TimeResponse::DurationElapsed {
+                id: model.debounce_time_id.unwrap(),
+            },
             &mut model,
-        );
+        )
+        .assert_empty();
 
         // resolving the second debounce should set the debounce_complete flag
         assert!(model.debounce_complete);
+    }
+
+    #[test]
+    pub fn test_cancel_timer() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let request1 = &mut app
+            .update(Event::StartDebounce, &mut model)
+            .expect_one_effect()
+            .expect_time();
+
+        assert!(model.debounce_time_id.is_some());
+
+        app.resolve_to_event_then_update(
+            request1,
+            TimeResponse::Cleared {
+                id: model.debounce_time_id.unwrap(),
+            },
+            &mut model,
+        )
+        .assert_empty();
+
+        assert!(!model.debounce_complete);
+        assert!(model.debounce_time_id.is_none());
     }
 }

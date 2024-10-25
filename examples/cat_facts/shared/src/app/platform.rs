@@ -48,7 +48,6 @@ impl crux_core::App for App {
 
 #[cfg(test)]
 mod tests {
-    use assert_let_bind::assert_let;
     use crux_core::testing::AppTester;
     use crux_platform::PlatformResponse;
 
@@ -59,17 +58,15 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        let mut update = app.update(Event::Get, &mut model);
-
-        assert_let!(Effect::Platform(request), &mut update.effects[0]);
+        let request = &mut app
+            .update(Event::Get, &mut model)
+            .expect_one_effect()
+            .expect_platform();
 
         let response = PlatformResponse("platform".to_string());
-        let update = app
-            .resolve(request, response)
-            .expect("should resolve successfully");
-        for event in update.events {
-            app.update(event, &mut model);
-        }
+        app.resolve_to_event_then_update(request, response, &mut model)
+            .expect_one_effect()
+            .expect_render();
 
         assert_eq!(model.platform, "platform");
         assert_eq!(app.view(&model).platform, "Hello platform");

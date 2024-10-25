@@ -65,7 +65,7 @@ pub mod capabilities {
         use crux_core::macros::Capability;
         use serde::{Deserialize, Serialize};
 
-        #[derive(PartialEq, Serialize, Deserialize, Debug)]
+        #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
         pub struct OpOne {
             number: usize,
         }
@@ -105,7 +105,7 @@ pub mod capabilities {
         use crux_core::macros::Capability;
         use serde::{Deserialize, Serialize};
 
-        #[derive(PartialEq, Serialize, Deserialize, Debug)]
+        #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
         pub struct OpTwo {
             number: usize,
         }

@@ -47,7 +47,7 @@ impl App for Hello {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crux_core::{assert_effect, testing::AppTester};
+    use crux_core::testing::AppTester;
 
     #[test]
     fn hello_says_hello_world() {
@@ -58,7 +58,7 @@ mod tests {
         let update = hello.update(Event::None, &mut model);
 
         // Check update asked us to `Render`
-        assert_effect!(update, Effect::Render(_));
+        update.expect_one_effect().expect_render();
 
         // Make sure the view matches our expectations
         let actual_view = &hello.view(&model).data;

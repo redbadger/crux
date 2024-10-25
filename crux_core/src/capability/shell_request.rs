@@ -121,7 +121,7 @@ mod tests {
         Command,
     };
 
-    #[derive(serde::Serialize, PartialEq, Eq, Debug)]
+    #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
     struct TestOperation;
 
     impl Operation for TestOperation {

@@ -330,8 +330,9 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let update = app.update(Event::MoveCursor(5), &mut model);
-        assert_effect!(update, Effect::Render(_));
+        app.update(Event::MoveCursor(5), &mut model)
+            .expect_one_effect()
+            .expect_render();
 
         let view = app.view(&model);
 
@@ -349,8 +350,9 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let update = app.update(Event::Select(2, 5), &mut model);
-        assert_effect!(update, Effect::Render(_));
+        app.update(Event::Select(2, 5), &mut model)
+            .expect_one_effect()
+            .expect_render();
 
         let view = app.view(&model);
 
@@ -557,14 +559,19 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let update = app.update(Event::Open, &mut model);
-        let requests = &mut update.into_effects().filter_map(Effect::into_key_value);
+        let mut requests = app
+            .update(Event::Open, &mut model)
+            .take_effects(Effect::is_key_value);
 
-        let mut request = requests.next().unwrap();
-        assert_let!(KeyValueOperation::Get { key }, &request.operation);
-        assert_eq!(key, "note");
+        let request = &mut requests.pop_front().unwrap().expect_key_value();
+        assert_eq!(
+            request.operation,
+            KeyValueOperation::Get {
+                key: "note".to_string()
+            }
+        );
 
-        assert!(requests.next().is_none());
+        assert!(requests.is_empty());
 
         // Read was successful
         let response = KeyValueResult::Ok {
@@ -572,13 +579,8 @@ mod save_load_tests {
                 value: note.save().into(),
             },
         };
-        let update = app.resolve(&mut request, response).unwrap();
-        assert_eq!(update.events.len(), 1);
-
-        for e in update.events {
-            let update = app.update(e, &mut model);
-            assert_effect!(update, Effect::Render(_));
-        }
+        let update = app.resolve_to_event_then_update(request, response, &mut model);
+        assert_effect!(update, Effect::Render(_));
 
         assert_eq!(app.view(&model).text, "LOADED");
     }
@@ -596,36 +598,42 @@ mod save_load_tests {
         // this will eventually take a document ID
         let requests = &mut app
             .update(Event::Open, &mut model)
-            .into_effects()
-            .filter_map(Effect::into_key_value);
+            .take_effects(Effect::is_key_value);
 
-        let mut request = requests.next().unwrap();
-        assert_let!(KeyValueOperation::Get { key }, &request.operation);
-        assert_eq!(key, "note");
+        let request = &mut requests.pop_front().unwrap().expect_key_value();
+        assert_eq!(
+            request.operation,
+            KeyValueOperation::Get {
+                key: "note".to_string()
+            }
+        );
 
-        assert!(requests.next().is_none());
+        assert!(requests.is_empty());
 
         // Read was unsuccessful
-        let update = app
+        let event = app
             .resolve(
-                &mut request,
+                request,
                 KeyValueResult::Ok {
                     response: KeyValueResponse::Get { value: Value::None },
                 },
             )
+            .unwrap()
+            .expect_one_event();
+
+        let save = app
+            .update(event, &mut model)
+            .into_effects()
+            .find_map(Effect::into_key_value)
             .unwrap();
-        assert_eq!(update.events.len(), 1);
 
-        for e in update.events {
-            let save = app
-                .update(e, &mut model)
-                .into_effects()
-                .find_map(Effect::into_key_value)
-                .unwrap();
-
-            assert_let!(KeyValueOperation::Set { key, value: _ }, &save.operation);
-            assert_eq!(key, "note");
-        }
+        assert_eq!(
+            save.operation,
+            KeyValueOperation::Set {
+                key: "note".to_string(),
+                value: model.note.save().into(),
+            }
+        );
     }
 
     #[test]
@@ -644,7 +652,7 @@ mod save_load_tests {
             .into_effects()
             .filter_map(Effect::into_timer);
 
-        let mut request = requests.next().unwrap();
+        let request = &mut requests.next().unwrap();
         assert_let!(
             TimerOperation::Start {
                 id: first_id,
@@ -657,11 +665,11 @@ mod save_load_tests {
 
         // Tells app the timer was created
         let update = app
-            .resolve(&mut request, TimerOutput::Created { id: first_id })
+            .resolve(request, TimerOutput::Created { id: first_id })
             .unwrap();
         for event in update.events {
             println!("Event: {event:?}");
-            app.update(event, &mut model);
+            let _ = app.update(event, &mut model);
         }
 
         // Before the timer fires, insert another character, which should
@@ -691,24 +699,20 @@ mod save_load_tests {
         assert!(requests.next().is_none());
 
         // Tell app the second timer was created
-        let update = app
-            .resolve(start_request, TimerOutput::Created { id: second_id })
-            .unwrap();
-        for event in update.events {
-            println!("Event: {event:?}");
-            app.update(event, &mut model);
-        }
+        let _updated = app.resolve_to_event_then_update(
+            start_request,
+            TimerOutput::Created { id: second_id },
+            &mut model,
+        );
 
         // Time passes
 
         // Fire the timer
-        let update = app
-            .resolve(start_request, TimerOutput::Finished { id: second_id })
-            .unwrap();
-        for event in update.events {
-            println!("Event: {event:?}");
-            app.update(event, &mut model);
-        }
+        let _updated = app.resolve_to_event_then_update(
+            start_request,
+            TimerOutput::Finished { id: second_id },
+            &mut model,
+        );
 
         // One more edit. Should result in a timer, but not in cancellation
         let update = app.update(Event::Backspace, &mut model);
@@ -748,13 +752,13 @@ mod save_load_tests {
             .find_map(Effect::into_key_value)
             .unwrap();
 
-        assert_let!(
-            KeyValueOperation::Set { key, value },
-            &write_request.operation
+        assert_eq!(
+            write_request.operation,
+            KeyValueOperation::Set {
+                key: "note".to_string(),
+                value: model.note.save().into()
+            }
         );
-
-        assert_eq!(key, "note");
-        assert_eq!(value, &model.note.save());
     }
 }
 

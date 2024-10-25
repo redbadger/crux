@@ -100,6 +100,8 @@ impl ToTokens for EffectStructReceiver {
 
                 let filter_fn = format_ident!("is_{}", field_name);
                 let map_fn = format_ident!("into_{}", field_name);
+                let expect_fn = format_ident!("expect_{}", field_name);
+                let name_as_str = field_name.to_string();
                 filters.push(quote! {
                     impl #effect_name {
                         pub fn #filter_fn(&self) -> bool {
@@ -114,6 +116,13 @@ impl ToTokens for EffectStructReceiver {
                                 Some(request)
                             } else {
                                 None
+                            }
+                        }
+                        pub fn #expect_fn(self) -> crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation> {
+                            if let #effect_name::#variant(request) = self {
+                                request
+                            } else {
+                                panic!("not a {} effect", #name_as_str)
                             }
                         }
                     }
@@ -241,6 +250,17 @@ mod tests {
             > {
                 if let Effect::Render(request) = self { Some(request) } else { None }
             }
+            pub fn expect_render(
+                self,
+            ) -> crux_core::Request<
+                <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+            > {
+                if let Effect::Render(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "render")
+                }
+            }
         }
         "###);
     }
@@ -307,6 +327,17 @@ mod tests {
                 crux_core::Request<<Render as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let Effect::Render(request) = self { Some(request) } else { None }
+            }
+            pub fn expect_render(
+                self,
+            ) -> crux_core::Request<
+                <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+            > {
+                if let Effect::Render(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "render")
+                }
             }
         }
         "###);
@@ -400,6 +431,19 @@ mod tests {
             > {
                 if let MyEffect::Http(request) = self { Some(request) } else { None }
             }
+            pub fn expect_http(
+                self,
+            ) -> crux_core::Request<
+                <crux_http::Http<
+                    MyEvent,
+                > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            > {
+                if let MyEffect::Http(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "http")
+                }
+            }
         }
         impl MyEffect {
             pub fn is_key_value(&self) -> bool {
@@ -411,6 +455,17 @@ mod tests {
                 crux_core::Request<<KeyValue as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let MyEffect::KeyValue(request) = self { Some(request) } else { None }
+            }
+            pub fn expect_key_value(
+                self,
+            ) -> crux_core::Request<
+                <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            > {
+                if let MyEffect::KeyValue(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "key_value")
+                }
             }
         }
         impl MyEffect {
@@ -424,6 +479,17 @@ mod tests {
             > {
                 if let MyEffect::Platform(request) = self { Some(request) } else { None }
             }
+            pub fn expect_platform(
+                self,
+            ) -> crux_core::Request<
+                <Platform<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            > {
+                if let MyEffect::Platform(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "platform")
+                }
+            }
         }
         impl MyEffect {
             pub fn is_render(&self) -> bool {
@@ -436,6 +502,17 @@ mod tests {
             > {
                 if let MyEffect::Render(request) = self { Some(request) } else { None }
             }
+            pub fn expect_render(
+                self,
+            ) -> crux_core::Request<
+                <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            > {
+                if let MyEffect::Render(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "render")
+                }
+            }
         }
         impl MyEffect {
             pub fn is_time(&self) -> bool {
@@ -447,6 +524,17 @@ mod tests {
                 crux_core::Request<<Time as ::crux_core::capability::Capability>::Operation>,
             > {
                 if let MyEffect::Time(request) = self { Some(request) } else { None }
+            }
+            pub fn expect_time(
+                self,
+            ) -> crux_core::Request<
+                <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            > {
+                if let MyEffect::Time(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "time")
+                }
             }
         }
         "###);

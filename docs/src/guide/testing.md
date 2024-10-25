@@ -113,7 +113,7 @@ let app = AppTester::<NoteEditor, _>::default();
 
 The `Model` is normally private to the app (`NoteEditor`), but `AppTester`
 allows us to set it up for our test. In this case the document contains the
-string `"hello"` with the last three characters selected.
+string `"hello"` with the last two characters selected.
 
 ```rust,ignore,no_run
 let mut model = Model {
@@ -123,7 +123,7 @@ let mut model = Model {
 };
 ```
 
-Let's insert the text under the selection range. We simply create an `Event`
+Let's insert some text under the selection range. We simply create an `Event`
 that captures the user's action and pass it into the app's `update()` method,
 along with the Model we just created (which we will be able to inspect
 afterwards).
@@ -244,7 +244,8 @@ which we'll use later. Finally, we don't expect any more timer requests to have
 been generated.
 
 ```rust,ignore,no_run
-let mut request = requests.next().unwrap(); // this is mutable so we can resolve it later
+// this is mutable so we can resolve it later
+let request = &mut requests.next().unwrap();
 assert_let!(
     TimerOperation::Start {
         id: first_id,
@@ -254,6 +255,39 @@ assert_let!(
 );
 assert!(requests.next().is_none());
 ```
+
+````admonish Note
+There are other ways to analyze effects from the update.
+
+You can take all the effects that match a predicate out of the update:
+
+  ```rust,ignore,no_run
+  let requests = update.take_effects(|effect| effect.is_timer());
+  // or
+  let requests = update.take_effects(Effect::is_timer);
+  ```
+
+Or you can partition the effects into those that match the predicate and those
+that don't:
+
+  ```rust,ignore,no_run
+  // split the effects into HTTP requests and renders
+  let (timer_requests, other_requests) = update.take_effects_partitioned_by(Effect::is_timer);
+  ```
+
+  There are also `expect_*` methods that allow you to assert and return a certain
+  type of effect:
+
+  ```rust,ignore,no_run
+  // this is mutable so we can resolve it later
+  let request = &mut timer_requests.pop_front().unwrap().expect_timer();
+  assert_eq!(
+      request.operation,
+      TimerOperation::Start { id: 1, millis: 1000 }
+  );
+  assert!(timer_requests.is_empty());
+  ```
+````
 
 At this point the shell would start the timer (this is something the core can't
 do as it is a side effect) and so we need to tell the app that it was created.
@@ -270,11 +304,17 @@ Note that resolving a request could call the app's `update()` method resulting
 in more `Event`s being generated, which we need to feed back into the app.
 
 ```rust,ignore,no_run
-let update = app
-    .resolve(&mut request, TimerOutput::Created { id: first_id }).unwrap();
+let update = app.resolve(request, TimerOutput::Created { id: first_id }).unwrap();
 for event in update.events {
-    app.update(event, &mut model);
+    let _ = app.update(event, &mut model);
 }
+
+// or, if this event "settles" the app
+let _updated = app.resolve_to_event_then_update(
+    request,
+    TimerOutput::Created { id: first_id },
+    &mut model
+);
 ```
 
 Before the timer fires, we'll insert another character, which should cancel the
@@ -333,16 +373,16 @@ Another edit should result in another timer, but not in a cancellation:
 
 ```rust,ignore,no_run
 let update = app.update(Event::Backspace, &mut model);
-let mut timer_requests = update.into_effects().filter_map(Effect::into_timer);
+let mut requests = update.into_effects().filter_map(Effect::into_timer);
 
 assert_let!(
     TimerOperation::Start {
         id: third_id,
         millis: 1000
     },
-    timer_requests.next().unwrap().operation
+    requests.next().unwrap().operation
 );
-assert!(timer_requests.next().is_none()); // no cancellation
+assert!(requests.next().is_none()); // no cancellation
 
 assert_ne!(third_id, second_id);
 ```

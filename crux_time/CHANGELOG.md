@@ -8,6 +8,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/redbadger/crux/compare/crux_time-v0.5.1...crux_time-v0.6.0) - 2024-10-23
+
+### Added
+
+- adds a new `Clear` variant to to the `TimeRequest` `Operation` and augments `NotifyAt` and `NotifyAfter`
+  with a `TimerId` to facilitate cancelling requests. This is a breaking change.
+
+### Other
+
+- tidy and docs udpate
+- remove unused test event
+
+## [0.5.1](https://github.com/redbadger/crux/compare/crux_time-v0.5.0...crux_time-v0.5.1) - 2024-10-21
+
+- Fixes a problem building the crate for the `typegen` feature, see https://github.com/redbadger/crux/pull/277
+
 ## [0.5.0](https://github.com/redbadger/crux/compare/crux_time-v0.4.4...crux_time-v0.5.0) - 2024-08-13
 
 ### Other
