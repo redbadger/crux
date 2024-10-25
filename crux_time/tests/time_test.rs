@@ -75,12 +75,13 @@ mod shared {
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
 
-                    let (tid, cmd) = caps.time.notify_after(
+                    let (cmd, tid) = caps.time.notify_after(
                         crux_time::Duration::from_millis(300).expect("valid duration"),
                         event_with_user_info(pending, Event::DurationElapsed),
                     );
 
                     model.debounce_time_id = Some(tid);
+                    cmd
                 }
                 Event::DurationElapsed(pending, TimeResponse::DurationElapsed { id: _ }) => {
                     if model.debounce.resolve(pending) {
@@ -94,6 +95,7 @@ mod shared {
                             model.debounce_time_id = None;
                         }
                     }
+                    Command::none()
                 }
                 Event::DurationElapsed(_, _) => {
                     panic!("Unexpected debounce event")

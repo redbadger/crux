@@ -100,37 +100,22 @@ impl Time {
         self.context.request_from_shell(TimeRequest::Now).await
     }
 
-    /// Ask to receive a notification when the specified duration has elapsed.
-    pub fn notify_after<F, Ev>(&self, duration: Duration, callback: F) -> Command<Ev>
-    where
-        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
-    {
-        let this = self.clone();
-        Command::effect(
-            async move { Command::event(callback(this.notify_after_async(duration).await)) },
-        )
-    }
-
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
-    pub fn notify_at<F>(&self, instant: Instant, callback: F) -> TimerId
+    pub fn notify_at<F, Ev>(&self, instant: Instant, callback: F) -> (Command<Ev>, TimerId)
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
         let tid = get_timer_id();
-        self.context.spawn({
-            let context = self.context.clone();
-            let this = self.clone();
+        let this = self.clone();
 
-            async move {
-                context.update_app(callback(this.notify_at_async(tid, instant).await));
-            }
+        let cmd = Command::effect(async move {
+            Command::event(callback(this.notify_at_async(tid, instant).await))
         });
 
-        tid
+        (cmd, tid)
     }
 
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
-    /// This is an async call to use with [`crux_core::compose::Compose`].
     pub async fn notify_at_async(&self, id: TimerId, instant: Instant) -> TimeResponse {
         self.context
             .request_from_shell(TimeRequest::NotifyAt { id, instant })
@@ -138,38 +123,33 @@ impl Time {
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.
-    pub fn notify_after<F>(&self, duration: Duration, callback: F) -> TimerId
+    pub fn notify_after<F, Ev>(&self, duration: Duration, callback: F) -> (Command<Ev>, TimerId)
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
         let tid = get_timer_id();
-        self.context.spawn({
-            let context = self.context.clone();
-            let this = self.clone();
-
-            async move {
-                context.update_app(callback(this.notify_after_async(tid, duration).await));
-            }
+        let this = self.clone();
+        let cmd = Command::effect(async move {
+            Command::event(callback(this.notify_after_async(tid, duration).await))
         });
 
-        tid
+        (cmd, tid)
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.
+    /// This is an async call to use with [`crux_core::compose::Compose`].
     pub async fn notify_after_async(&self, id: TimerId, duration: Duration) -> TimeResponse {
         self.context
             .request_from_shell(TimeRequest::NotifyAfter { id, duration })
             .await
     }
 
-    pub fn clear(&self, id: TimerId) {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                context.notify_shell(TimeRequest::Clear { id }).await;
-            }
-        });
+    pub fn clear<Ev>(&self, id: TimerId) -> Command<Ev> {
+        let ctx = self.context.clone();
+        Command::effect(async move {
+            ctx.notify_shell(TimeRequest::Clear { id }).await;
+            Command::none()
+        })
     }
 }
 

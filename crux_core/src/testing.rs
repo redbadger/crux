@@ -101,7 +101,7 @@ where
         model: &mut App::Model,
     ) -> Update<Ef, App::Event> {
         request.resolve(value).expect("failed to resolve request");
-        let event = self.context.updates().expect_one_event();
+        let event = self.context.updates(Vec::new()).expect_one_event();
         self.update(event, model)
     }
 
