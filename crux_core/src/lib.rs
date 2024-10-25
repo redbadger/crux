@@ -40,7 +40,7 @@
 //!
 //! ```rust
 //!// src/app.rs
-//!use crux_core::{render::Render, App, macros::Effect};
+//!use crux_core::{render::Render, App, Command, macros::Effect};
 //!use serde::{Deserialize, Serialize};
 //!
 //!// Model describing the application state
@@ -62,7 +62,7 @@
 //!#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 //!#[derive(Effect)]
 //!pub struct Capabilities {
-//!    pub render: Render<Event>,
+//!    pub render: Render,
 //!}
 //!
 //!#[derive(Default)]
@@ -77,7 +77,7 @@
 //!    // Use the above Capabilities
 //!    type Capabilities = Capabilities;
 //!
-//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Event> {
 //!        match event {
 //!            Event::Increment => model.count += 1,
 //!            Event::Decrement => model.count -= 1,
