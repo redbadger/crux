@@ -33,7 +33,7 @@ impl PubSub {
         F: FnOnce(Vec<u8>) -> Ev + Clone + Send + 'static,
     {
         let context = self.context.clone();
-        let mut stream = context.stream_from_shell(PubSubOperation::Subscribe);
+        let stream = context.stream_from_shell(PubSubOperation::Subscribe);
         Command::stream(stream.map(move |message| {
             let make_event = make_event.clone();
             Command::event(make_event(message.0))

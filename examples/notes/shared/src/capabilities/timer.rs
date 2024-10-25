@@ -34,7 +34,7 @@ impl Timer {
         F: FnOnce(TimerOutput) -> Ev + Clone + Send + 'static,
     {
         let context = self.context.clone();
-        let mut stream = context.stream_from_shell(TimerOperation::Start { id, millis });
+        let stream = context.stream_from_shell(TimerOperation::Start { id, millis });
         Command::stream(stream.map(move |message| {
             let make_event = make_event.clone();
             Command::event(make_event(message))

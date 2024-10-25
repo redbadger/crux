@@ -40,24 +40,27 @@ impl ServerSentEvents {
         let context = self.context.clone();
         let url = url.as_ref().to_string();
 
-        let mut stream = context.stream_from_shell(SseRequest { url });
-        let stream = stream.flat_map(move |response| match response {
-            SseResponse::Chunk(data) => {
-                let mut reader = decode(Cursor::new(data));
-                let make_event = make_event.clone();
-                let inner = reader.map(move |sse_event| {
-                    if let Ok(Event::Message(msg)) = sse_event {
-                        let t: T = serde_json::from_slice(msg.data()).unwrap();
-                        let make_event = make_event.clone();
-                        Command::event(make_event(t))
-                    } else {
-                        Command::none()
-                    }
-                });
-                Box::pin(inner) as futures::stream::BoxStream<_>
-            }
-            SseResponse::Done => Box::pin(futures::stream::empty()),
-        });
+        let stream = context
+            .stream_from_shell(SseRequest { url })
+            .flat_map(move |response| match response {
+                SseResponse::Chunk(data) => {
+                    // this decoder is async (even though for our purposed it doesn't need to be)
+                    // which makes the following code a bit fiddly
+                    let reader = decode(Cursor::new(data));
+                    let make_event = make_event.clone();
+                    let inner = reader.map(move |sse_event| {
+                        if let Ok(Event::Message(msg)) = sse_event {
+                            let t: T = serde_json::from_slice(msg.data()).unwrap();
+                            let make_event = make_event.clone();
+                            Command::event(make_event(t))
+                        } else {
+                            Command::none()
+                        }
+                    });
+                    Box::pin(inner) as futures::stream::BoxStream<_>
+                }
+                SseResponse::Done => Box::pin(futures::stream::empty()),
+            });
         Command::stream(stream)
     }
 }
