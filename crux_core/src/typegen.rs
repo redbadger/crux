@@ -18,6 +18,7 @@
 //!
 //! ```rust
 //! # mod shared {
+//! #     use crux_core::Command;
 //! #     use crux_core::render::Render;
 //! #     use crux_core::macros::Effect;
 //! #     use serde::{Deserialize, Serialize};
@@ -35,14 +36,14 @@
 //! #         type Model = ();
 //! #         type ViewModel = ViewModel;
 //! #         type Capabilities = Capabilities;
-//! #         fn update(&self, _event: Event, _model: &mut Self::Model, _caps: &Capabilities) {}
+//! #         fn update(&self, _event: Event, _model: &mut Self::Model, _caps: &Capabilities) -> Command<Event> { todo!() }
 //! #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
 //! #             todo!();
 //! #         }
 //! #     }
 //! #     #[derive(Effect)]
 //! #     pub struct Capabilities {
-//! #         pub render: Render<Event>,
+//! #         pub render: Render,
 //! #     }
 //! # }
 //!use shared::{App, EffectFfi, Event};

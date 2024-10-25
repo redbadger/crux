@@ -26,14 +26,14 @@ use std::fmt;
 /// ```no_run
 /// use crux_http::http::{mime::HTML};
 /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-/// # struct Capabilities { http: crux_http::Http<Event> }
-/// # fn update(caps: &Capabilities) {
+/// # struct Capabilities { http: crux_http::Http }
+/// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
 /// caps.http
 ///     .post("https://httpbin.org/post")
 ///     .body("<html>hi</html>")
 ///     .header("custom-header", "value")
 ///     .content_type(HTML)
-///     .send(Event::ReceiveResponse)
+///     .send_and_respond(Event::ReceiveResponse)
 /// # }
 /// ```
 #[must_use]
@@ -82,13 +82,13 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// caps.http
     ///     .get("https://httpbin.org/get")
     ///     .body("<html>hi</html>")
     ///     .header("header-name", "header-value")
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
@@ -103,12 +103,12 @@ where
     /// ```no_run
     /// # use crux_http::http::mime;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// caps.http
     ///     .get("https://httpbin.org/get")
     ///     .content_type(mime::HTML)
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn content_type(mut self, content_type: impl Into<Mime>) -> Self {
@@ -128,15 +128,15 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// use serde_json::json;
     /// use crux_http::http::mime;
     /// caps.http
     ///     .post("https://httpbin.org/post")
     ///     .body(json!({"any": "Into<Body>"}))
     ///     .content_type(mime::HTML)
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn body(mut self, body: impl Into<Body>) -> Self {
@@ -159,8 +159,8 @@ where
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// #[derive(Deserialize, Serialize)]
     /// struct Ip {
     ///     ip: String
@@ -171,7 +171,7 @@ where
     ///     .post("https://httpbin.org/post")
     ///     .body_json(data)
     ///     .expect("could not serialize body")
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
@@ -188,12 +188,12 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// caps.http
     ///     .post("https://httpbin.org/post")
     ///     .body_string("hello_world".to_string())
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn body_string(self, string: String) -> Self {
@@ -210,12 +210,12 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// caps.http
     ///     .post("https://httpbin.org/post")
     ///     .body_bytes(b"hello_world".to_owned())
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn body_bytes(self, bytes: impl AsRef<[u8]>) -> Self {
@@ -229,8 +229,8 @@ where
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
     ///     page: u32
@@ -241,7 +241,7 @@ where
     ///     .post("https://httpbin.org/post")
     ///     .query(&query)
     ///     .expect("could not serialize query string")
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn query(mut self, query: &impl Serialize) -> std::result::Result<Self, HttpError> {
@@ -265,13 +265,13 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     ///
     /// caps.http
     ///     .get("https://httpbin.org/redirect/2")
     ///     .middleware(crux_http::middleware::Redirect::default())
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn middleware(mut self, middleware: impl Middleware) -> Self {
@@ -292,14 +292,14 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
     ///
-    /// # fn update(caps: &Capabilities) {
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// caps.http
     ///     .post("https://httpbin.org/json")
     ///     .expect_string()
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn expect_string(self) -> RequestBuilder<String> {
@@ -320,7 +320,7 @@ where
     ///
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # struct Capabilities { http: crux_http::Http }
     /// #[derive(Deserialize)]
     /// struct Response {
     ///     slideshow: Slideshow
@@ -333,11 +333,11 @@ where
     ///
     /// enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Slideshow>>) }
     ///
-    /// # fn update(caps: &Capabilities) {
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
     /// caps.http
     ///     .post("https://httpbin.org/json")
     ///     .expect_json::<Slideshow>()
-    ///     .send(Event::ReceiveResponse)
+    ///     .send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn expect_json<T>(self) -> RequestBuilder<T>

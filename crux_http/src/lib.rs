@@ -87,9 +87,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.get("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.get("https://httpbin.org/get").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn get(&self, url: impl AsRef<str>) -> RequestBuilder {
@@ -112,9 +112,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.head("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.head("https://httpbin.org/get").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder {
@@ -137,9 +137,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.post("https://httpbin.org/post").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.post("https://httpbin.org/post").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder {
@@ -162,9 +162,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.put("https://httpbin.org/post").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.put("https://httpbin.org/post").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder {
@@ -187,9 +187,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.delete("https://httpbin.org/post").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.delete("https://httpbin.org/post").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder {
@@ -212,9 +212,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.connect("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.connect("https://httpbin.org/get").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder {
@@ -237,9 +237,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.options("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.options("https://httpbin.org/get").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder {
@@ -262,9 +262,9 @@ impl Http {
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.trace("https://httpbin.org/get").send(Event::ReceiveResponse)
+    /// # struct Capabilities { http: crux_http::Http }
+    /// # fn update(caps: &Capabilities) -> crux_core::Command<Event> {
+    /// caps.http.trace("https://httpbin.org/get").send_and_respond(Event::ReceiveResponse)
     /// # }
     /// ```
     pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder {
