@@ -21,6 +21,15 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
         .toolchain("nightly")
         .manifest_path(lib.manifest_path())
         .build()?;
+    // let json_path = lib
+    //     .manifest_path()
+    //     .parent()
+    //     .unwrap()
+    //     .parent()
+    //     .unwrap()
+    //     .join("target")
+    //     .join("doc")
+    //     .join("shared.json");
 
     let crate_: Crate = spawn_blocking(move || -> Result<Crate> {
         let file = File::open(json_path)?;
@@ -29,9 +38,7 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
     })
     .await??;
 
-    println!("Parsing rustdoc JSON, version {}", crate_.format_version);
-    let out = parser::parse(&crate_)?;
-    println!("{}", out);
+    parser::parse(&crate_)?;
 
     Ok(())
 }
