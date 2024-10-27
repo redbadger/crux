@@ -18,6 +18,7 @@ anyhow.workspace = true
 clap = { version = "4.5.35", features = ["derive"] }
 console = "0.15.11"
 guppy = "0.17.5"
+ascent = "0.7.0"
 ignore = "0.4.23"
 libc = "0.2.161"
 petgraph = "0.6.5"

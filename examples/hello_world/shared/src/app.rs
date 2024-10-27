@@ -21,7 +21,7 @@ pub struct Model;
 
 #[derive(Serialize, Deserialize)]
 pub struct ViewModel {
-    data: String,
+    pub data: String,
 }
 
 #[derive(Default)]
