@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use ascent::ascent;
 use rustdoc_types::{
     Crate, Enum, GenericArg, GenericArgs, Id, Impl, Item, ItemEnum, ItemSummary, Path, StructKind,
@@ -56,21 +56,22 @@ pub fn parse(crate_: &Crate) -> Result<String> {
             .path = Some(path.clone());
     }
 
-    let node_by_id = |id: &Id| -> Result<&Node> {
-        nodes_by_id
+    let node_by_id = |id: &Id| -> Option<&Node> {
+        let node = nodes_by_id
             .get(id)
-            .ok_or_else(|| anyhow!("Could not find node with id {:?}", id))
+            .expect("node should exist for all items and paths");
+        let skip = match &node.item {
+            Some(x) => x.attrs.contains(&"#[serde(skip)]".to_string()),
+            _ => false,
+        };
+        (!skip).then_some(node)
     };
 
     // edges
     for (id, item) in &crate_.index {
-        let source = node_by_id(id)?.clone();
-
-        if let Some(x) = &source.item {
-            if x.attrs.contains(&"#[serde(skip)]".to_string()) {
-                continue;
-            }
-        }
+        let Some(source) = node_by_id(id) else {
+            continue;
+        };
 
         match &item.inner {
             ItemEnum::Module(_module) => (),
@@ -80,16 +81,16 @@ pub fn parse(crate_: &Crate) -> Result<String> {
             ItemEnum::Struct(s) => {
                 match &s.kind {
                     StructKind::Unit => {
-                        prog.edge.push((source.clone(), source, Edge::Unit));
+                        prog.edge.push((source.clone(), source.clone(), Edge::Unit));
                     }
                     StructKind::Tuple(fields) => {
                         for field in fields {
                             if let Some(id) = field {
-                                prog.edge.push((
-                                    source.clone(),
-                                    node_by_id(&id)?.clone(),
-                                    Edge::HasField,
-                                ));
+                                let Some(dest) = node_by_id(id) else {
+                                    continue;
+                                };
+                                prog.edge
+                                    .push((source.clone(), dest.clone(), Edge::HasField));
                             }
                         }
                     }
@@ -98,11 +99,11 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                         has_stripped_fields: _,
                     } => {
                         for id in fields {
-                            prog.edge.push((
-                                source.clone(),
-                                node_by_id(&id)?.clone(),
-                                Edge::HasField,
-                            ));
+                            let Some(dest) = node_by_id(id) else {
+                                continue;
+                            };
+                            prog.edge
+                                .push((source.clone(), dest.clone(), Edge::HasField));
                         }
                     }
                 };
@@ -115,9 +116,12 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                             for arg in args {
                                 if let GenericArg::Type(t) = arg {
                                     if let Type::ResolvedPath(path) = t {
+                                        let Some(dest) = node_by_id(&path.id) else {
+                                            continue;
+                                        };
                                         prog.edge.push((
                                             source.clone(),
-                                            node_by_id(&path.id)?.clone(),
+                                            dest.clone(),
                                             Edge::ForType,
                                         ));
                                     };
@@ -130,8 +134,11 @@ pub fn parse(crate_: &Crate) -> Result<String> {
             },
             ItemEnum::Enum(Enum { variants, .. }) => {
                 for id in variants {
+                    let Some(dest) = node_by_id(id) else {
+                        continue;
+                    };
                     prog.edge
-                        .push((source.clone(), node_by_id(&id)?.clone(), Edge::HasVariant));
+                        .push((source.clone(), dest.clone(), Edge::HasVariant));
                 }
             }
             ItemEnum::Variant(v) => {
@@ -140,11 +147,11 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                     VariantKind::Tuple(fields) => {
                         for id in fields {
                             if let Some(id) = id {
-                                prog.edge.push((
-                                    source.clone(),
-                                    node_by_id(id)?.clone(),
-                                    Edge::HasField,
-                                ));
+                                let Some(dest) = node_by_id(id) else {
+                                    continue;
+                                };
+                                prog.edge
+                                    .push((source.clone(), dest.clone(), Edge::HasField));
                             }
                         }
                     }
@@ -152,12 +159,12 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                         fields,
                         has_stripped_fields: _,
                     } => {
-                        for field in fields {
-                            prog.edge.push((
-                                source.clone(),
-                                node_by_id(field)?.clone(),
-                                Edge::HasField,
-                            ));
+                        for id in fields {
+                            let Some(dest) = node_by_id(id) else {
+                                continue;
+                            };
+                            prog.edge
+                                .push((source.clone(), dest.clone(), Edge::HasField));
                         }
                     }
                 };
@@ -179,19 +186,32 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                 if !["App", "Effect"].contains(&name.as_str()) {
                     continue;
                 }
-                prog.edge.push((
-                    source.clone(),
-                    node_by_id(&target.id)?.clone(),
-                    Edge::ForType,
-                ));
+
+                let Some(dest) = node_by_id(&target.id) else {
+                    continue;
+                };
                 prog.edge
-                    .push((source.clone(), node_by_id(trait_id)?.clone(), Edge::Trait));
+                    .push((source.clone(), dest.clone(), Edge::ForType));
+
+                let Some(dest) = node_by_id(trait_id) else {
+                    continue;
+                };
+                prog.edge.push((source.clone(), dest.clone(), Edge::Trait));
                 for id in items {
-                    prog.edge.push((
-                        source.clone(),
-                        node_by_id(&id)?.clone(),
-                        Edge::AssociatedItem,
-                    ));
+                    let Some(dest) = node_by_id(id) else {
+                        continue;
+                    };
+                    if let Some(Item {
+                        name: Some(name), ..
+                    }) = &dest.item
+                    {
+                        if !["Event", "ViewModel"].contains(&name.as_str()) {
+                            continue;
+                        }
+                    }
+
+                    prog.edge
+                        .push((source.clone(), dest.clone(), Edge::AssociatedItem));
                 }
             }
             ItemEnum::Impl(_) => (),
@@ -211,10 +231,11 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                 bounds: _,
                 type_: Some(Type::ResolvedPath(target)),
             } => {
-                if let Ok(dest) = node_by_id(&target.id) {
-                    prog.edge
-                        .push((source.clone(), dest.clone(), Edge::AssociatedType));
-                }
+                let Some(dest) = node_by_id(&target.id) else {
+                    continue;
+                };
+                prog.edge
+                    .push((source.clone(), dest.clone(), Edge::AssociatedType));
             }
             ItemEnum::AssocType { .. } => (),
         }
