@@ -3,21 +3,17 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Result};
 use ascent::ascent;
 use rustdoc_types::{
-    Crate, Enum, Id, Impl, Item, ItemEnum, ItemSummary, Path, StructKind, Type, VariantKind,
+    Crate, Enum, GenericArg, GenericArgs, Id, Impl, Item, ItemEnum, ItemSummary, Path, StructKind,
+    Type, VariantKind,
 };
 use serde::Serialize;
 
 ascent! {
     relation edge(Node, Node, Edge);
 
-    relation implements(Node, Node);
     relation struct_fields(Node, Node);
     relation enum_variants(Node, Node);
     relation associated_type(Node, Node);
-
-    implements(type_, trait_) <--
-        edge(impl_, type_, Edge::ForType),
-        edge(impl_, trait_, Edge::Trait);
 
     associated_type(impl_, type_) <--
         edge(impl_, trait_, Edge::Trait),
@@ -27,11 +23,14 @@ ascent! {
     struct_fields(struct_, field) <--
         associated_type(impl_, struct_),
         (edge(struct_, field, Edge::HasField) || edge(struct_, field, Edge::Unit));
+    struct_fields(struct2, field2) <--
+        struct_fields(struct1, field1),
+        edge(field1, struct2, Edge::ForType),
+        edge(struct2, field2, Edge::HasField);
 
     enum_variants(enum_, variant) <--
         associated_type(impl_, enum_),
         edge(enum_, variant, Edge::HasVariant);
-
     enum_variants(variant, field) <--
         enum_variants(enum_, variant),
         edge(variant, field, Edge::HasField);
@@ -66,6 +65,12 @@ pub fn parse(crate_: &Crate) -> Result<String> {
     // edges
     for (id, item) in &crate_.index {
         let source = node_by_id(id)?.clone();
+
+        if let Some(x) = &source.item {
+            if x.attrs.contains(&"#[serde(skip)]".to_string()) {
+                continue;
+            }
+        }
 
         match &item.inner {
             ItemEnum::Module(_module) => (),
@@ -102,7 +107,27 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                     }
                 };
             }
-            ItemEnum::StructField(_) => (),
+            ItemEnum::StructField(type_) => match type_ {
+                // TODO: make recursive
+                Type::ResolvedPath(path) => {
+                    if let Some(args) = &path.args {
+                        if let GenericArgs::AngleBracketed { args, .. } = args.as_ref() {
+                            for arg in args {
+                                if let GenericArg::Type(t) = arg {
+                                    if let Type::ResolvedPath(path) = t {
+                                        prog.edge.push((
+                                            source.clone(),
+                                            node_by_id(&path.id)?.clone(),
+                                            Edge::ForType,
+                                        ));
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => (),
+            },
             ItemEnum::Enum(Enum { variants, .. }) => {
                 for id in variants {
                     prog.edge
@@ -197,6 +222,7 @@ pub fn parse(crate_: &Crate) -> Result<String> {
 
     prog.run();
 
+    std::fs::write("/tmp/edge.json", serde_json::to_string(&prog.edge).unwrap())?;
     std::fs::write(
         "/tmp/struct_fields.json",
         serde_json::to_string(&prog.struct_fields).unwrap(),
