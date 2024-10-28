@@ -11,28 +11,35 @@ use serde::Serialize;
 ascent! {
     relation edge(Node, Node, Edge);
 
-    relation struct_fields(Node, Node);
-    relation enum_variants(Node, Node);
-    relation associated_type(Node, Node);
+    relation field(Node, Node);
+    relation variant(Node, Node);
+    relation root(Node, Node);
 
-    associated_type(impl_, type_) <--
+    // root for Event and ViewModel
+    root(impl_, type_) <--
         edge(impl_, trait_, Edge::Trait),
         edge(impl_, item, Edge::AssociatedItem),
         edge(item, type_, Edge::AssociatedType);
+    // root for Effect
+    root(impl_, type_) <--
+        edge(impl_, type_, Edge::AssociatedType),
+        if let Some(i) = impl_.item.as_ref(),
+        if let Some(n) = i.name.as_ref(),
+        if n == &"Ffi".to_string();
 
-    struct_fields(struct_, field) <--
-        associated_type(impl_, struct_),
-        (edge(struct_, field, Edge::HasField) || edge(struct_, field, Edge::Unit));
-    struct_fields(struct2, field2) <--
-        struct_fields(struct1, field1),
+    field(struct_, field) <--
+        root(impl_, struct_),
+        edge(struct_, field, ?Edge::HasField|Edge::Unit);
+    field(struct2, field2) <--
+        field(struct1, field1),
         edge(field1, struct2, Edge::ForType),
         edge(struct2, field2, Edge::HasField);
 
-    enum_variants(enum_, variant) <--
-        associated_type(impl_, enum_),
+    variant(enum_, variant) <--
+        root(impl_, enum_),
         edge(enum_, variant, Edge::HasVariant);
-    enum_variants(variant, field) <--
-        enum_variants(enum_, variant),
+    variant(variant, field) <--
+        variant(enum_, variant),
         edge(variant, field, Edge::HasField);
 }
 
@@ -231,6 +238,14 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                 bounds: _,
                 type_: Some(Type::ResolvedPath(target)),
             } => {
+                if let Item {
+                    name: Some(name), ..
+                } = &item
+                {
+                    if !["Event", "ViewModel", "Ffi"].contains(&name.as_str()) {
+                        continue;
+                    }
+                }
                 let Some(dest) = node_by_id(&target.id) else {
                     continue;
                 };
@@ -245,12 +260,12 @@ pub fn parse(crate_: &Crate) -> Result<String> {
 
     std::fs::write("/tmp/edge.json", serde_json::to_string(&prog.edge).unwrap())?;
     std::fs::write(
-        "/tmp/struct_fields.json",
-        serde_json::to_string(&prog.struct_fields).unwrap(),
+        "/tmp/field.json",
+        serde_json::to_string(&prog.field).unwrap(),
     )?;
     std::fs::write(
-        "/tmp/enum_variants.json",
-        serde_json::to_string(&prog.enum_variants).unwrap(),
+        "/tmp/variant.json",
+        serde_json::to_string(&prog.variant).unwrap(),
     )?;
 
     Ok(format!(""))
