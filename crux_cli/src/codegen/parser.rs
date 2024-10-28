@@ -33,7 +33,7 @@ ascent! {
     field(struct2, field2) <--
         field(struct1, field1),
         edge(field1, struct2, Edge::ForType),
-        edge(struct2, field2, Edge::HasField);
+        edge(struct2, field2, ?Edge::HasField|Edge::Unit);
 
     variant(enum_, variant) <--
         root(impl_, enum_),
@@ -105,6 +105,11 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                         fields,
                         has_stripped_fields: _,
                     } => {
+                        // unit struct
+                        if fields.is_empty() {
+                            prog.edge.push((source.clone(), source.clone(), Edge::Unit));
+                        }
+
                         for id in fields {
                             let Some(dest) = node_by_id(id) else {
                                 continue;
@@ -116,8 +121,14 @@ pub fn parse(crate_: &Crate) -> Result<String> {
                 };
             }
             ItemEnum::StructField(type_) => match type_ {
-                // TODO: make recursive
                 Type::ResolvedPath(path) => {
+                    let Some(dest) = node_by_id(&path.id) else {
+                        continue;
+                    };
+                    prog.edge
+                        .push((source.clone(), dest.clone(), Edge::ForType));
+
+                    // TODO: make recursive
                     if let Some(args) = &path.args {
                         if let GenericArgs::AngleBracketed { args, .. } = args.as_ref() {
                             for arg in args {
