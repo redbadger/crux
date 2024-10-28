@@ -1,4 +1,6 @@
+mod format;
 mod parser;
+mod rust;
 
 use std::fs::File;
 
@@ -38,7 +40,9 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
     })
     .await??;
 
-    parser::parse(&crate_)?;
+    let edges = parser::parse(&crate_)?;
+
+    rust::generate(&edges);
 
     Ok(())
 }

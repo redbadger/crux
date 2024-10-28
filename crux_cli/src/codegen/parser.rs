@@ -43,7 +43,7 @@ ascent! {
         edge(variant, field, Edge::HasField);
 }
 
-pub fn parse(crate_: &Crate) -> Result<String> {
+pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
     let mut prog = AscentProgram::default();
     let mut nodes_by_id = HashMap::new();
 
@@ -259,17 +259,21 @@ pub fn parse(crate_: &Crate) -> Result<String> {
 
     prog.run();
 
-    std::fs::write("/tmp/edge.json", serde_json::to_string(&prog.edge).unwrap())?;
-    std::fs::write(
-        "/tmp/field.json",
-        serde_json::to_string(&prog.field).unwrap(),
-    )?;
-    std::fs::write(
-        "/tmp/variant.json",
-        serde_json::to_string(&prog.variant).unwrap(),
-    )?;
+    // std::fs::write("/tmp/edge.json", serde_json::to_string(&prog.edge).unwrap())?;
+    // std::fs::write(
+    //     "/tmp/field.json",
+    //     serde_json::to_string(&prog.field).unwrap(),
+    // )?;
+    // std::fs::write(
+    //     "/tmp/variant.json",
+    //     serde_json::to_string(&prog.variant).unwrap(),
+    // )?;
 
-    Ok(format!(""))
+    let mut all_edges = Vec::new();
+    all_edges.extend(prog.field);
+    all_edges.extend(prog.variant);
+
+    Ok(all_edges)
 }
 
 fn process_args<'a>(
@@ -299,10 +303,10 @@ fn process_args<'a>(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-struct Node {
-    id: Id,
-    item: Option<Item>,
-    path: Option<ItemSummary>,
+pub struct Node {
+    pub id: Id,
+    pub item: Option<Item>,
+    pub path: Option<ItemSummary>,
 }
 
 impl Node {

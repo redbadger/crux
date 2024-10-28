@@ -2,7 +2,7 @@
 
 cargo build
 
-for d in ../examples/hello_world
+for d in ../examples/simple_counter
     pushd $d
     ../../target/debug/crux codegen --lib shared
     popd
