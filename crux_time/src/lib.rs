@@ -12,10 +12,43 @@ pub use duration::Duration;
 pub use error::TimeError;
 pub use instant::Instant;
 
-use serde::{Deserialize, Serialize};
-
 use crux_core::capability::{CapabilityContext, Operation};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt::Display,
+    ops::Deref,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash)]
+#[serde(transparent)]
+pub struct TimerId(pub String);
+
+impl Deref for TimerId {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for TimerId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl TimerId {
+    #[inline]
+    pub fn new(v: impl ToString) -> Self {
+        Self(v.to_string())
+    }
+
+    pub fn new_atomic() -> Self {
+        static COUNTER: AtomicUsize = AtomicUsize::new(1);
+        Self::new(COUNTER.fetch_add(1, Ordering::Relaxed))
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,15 +59,7 @@ pub enum TimeRequest {
     Clear { id: TimerId },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TimerId(pub usize);
-
-fn get_timer_id() -> TimerId {
-    static COUNTER: AtomicUsize = AtomicUsize::new(1);
-    TimerId(COUNTER.fetch_add(1, Ordering::Relaxed))
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TimeResponse {
     Now(Instant),
@@ -121,17 +146,24 @@ where
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        let tid = get_timer_id();
+        let id = TimerId::new_atomic();
+        self.notify_at_with_id(id.clone(), instant, callback);
+        id
+    }
+
+    /// Ask to receive a notification when the specified [`Instant`] has arrived.
+    pub fn notify_at_with_id<F>(&self, id: TimerId, instant: Instant, callback: F)
+    where
+        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
+    {
         self.context.spawn({
             let context = self.context.clone();
             let this = self.clone();
 
             async move {
-                context.update_app(callback(this.notify_at_async(tid, instant).await));
+                context.update_app(callback(this.notify_at_async(id, instant).await));
             }
         });
-
-        tid
     }
 
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
@@ -147,17 +179,24 @@ where
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        let tid = get_timer_id();
+        let id = TimerId::new_atomic();
+        self.notify_after_with_id(id.clone(), duration, callback);
+        id
+    }
+
+    /// Ask to receive a notification when the specified duration has elapsed.
+    pub fn notify_after_with_id<F>(&self, id: TimerId, duration: Duration, callback: F)
+    where
+        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
+    {
         self.context.spawn({
             let context = self.context.clone();
             let this = self.clone();
 
             async move {
-                context.update_app(callback(this.notify_after_async(tid, duration).await));
+                context.update_app(callback(this.notify_after_async(id, duration).await));
             }
         });
-
-        tid
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.
@@ -194,28 +233,28 @@ mod test {
         assert_eq!(now, deserialized);
 
         let now = TimeRequest::NotifyAt {
-            id: TimerId(1),
+            id: TimerId::new(1),
             instant: Instant::new(1, 2).expect("valid instant"),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();
         assert_eq!(
             &serialized,
-            r#"{"notifyAt":{"id":1,"instant":{"seconds":1,"nanos":2}}}"#
+            r#"{"notifyAt":{"id":"1","instant":{"seconds":1,"nanos":2}}}"#
         );
 
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
 
         let now = TimeRequest::NotifyAfter {
-            id: TimerId(2),
+            id: TimerId::new(2),
             duration: Duration::from_secs(1).expect("valid duration"),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();
         assert_eq!(
             &serialized,
-            r#"{"notifyAfter":{"id":2,"duration":{"nanos":1000000000}}}"#
+            r#"{"notifyAfter":{"id":"2","duration":{"nanos":1000000000}}}"#
         );
 
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();
@@ -232,18 +271,22 @@ mod test {
         let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
 
-        let now = TimeResponse::DurationElapsed { id: TimerId(1) };
+        let now = TimeResponse::DurationElapsed {
+            id: TimerId::new(1),
+        };
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"durationElapsed":{"id":1}}"#);
+        assert_eq!(&serialized, r#"{"durationElapsed":{"id":"1"}}"#);
 
         let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
 
-        let now = TimeResponse::InstantArrived { id: TimerId(2) };
+        let now = TimeResponse::InstantArrived {
+            id: TimerId::new(2),
+        };
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"instantArrived":{"id":2}}"#);
+        assert_eq!(&serialized, r#"{"instantArrived":{"id":"2"}}"#);
 
         let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
