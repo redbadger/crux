@@ -44,7 +44,7 @@ fn get_timer_id() -> TimerId {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TimeResponse {
-    Now(Instant),
+    Now { instant: Instant },
     InstantArrived { id: TimerId },
     DurationElapsed { id: TimerId },
     Cleared { id: TimerId },
@@ -300,10 +300,15 @@ mod test {
 
     #[test]
     fn test_serializing_the_response_types_as_json() {
-        let now = TimeResponse::Now(Instant::new(1, 2).expect("valid instant"));
+        let now = TimeResponse::Now {
+            instant: Instant::new(1, 2).expect("valid instant"),
+        };
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"now":{"seconds":1,"nanos":2}}"#);
+        assert_eq!(
+            &serialized,
+            r#"{"now":{"instant":{"seconds":1,"nanos":2}}}"#
+        );
 
         let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);
