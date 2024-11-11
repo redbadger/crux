@@ -14,9 +14,9 @@
 //! # }
 //! ```
 
-use http_types::{headers, StatusCode, Url};
 use crate::middleware::{Middleware, Next, Request};
 use crate::{Client, ResponseAsync, Result};
+use http_types::{headers, StatusCode, Url};
 
 // List of acceptable 300-series redirect codes.
 const REDIRECT_CODES: &[StatusCode] = &[
@@ -114,7 +114,7 @@ impl Middleware for Redirect {
                             base_url.clone()
                         }
                         Err(e) => match e {
-	                        http_types::url::ParseError::RelativeUrlWithoutBase => {
+                            http_types::url::ParseError::RelativeUrlWithoutBase => {
                                 base_url.join(location.last().as_str())?
                             }
                             e => return Err(e.into()),

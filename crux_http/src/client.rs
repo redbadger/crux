@@ -1,10 +1,10 @@
 use std::fmt;
 use std::sync::Arc;
 
-use http_types::{Method, Url};
 use crate::middleware::{Middleware, Next};
 use crate::protocol::{EffectSender, HttpResult, ProtocolRequestBuilder};
 use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
+use http_types::{Method, Url};
 
 /// An HTTP client, capable of sending `Request`s
 ///

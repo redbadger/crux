@@ -2,7 +2,10 @@
 
 use std::{collections::HashMap, fmt::Debug};
 
-use http_types::{headers::{HeaderName, HeaderValues, ToHeaderValues}, Url};
+use http_types::{
+    headers::{HeaderName, HeaderValues, ToHeaderValues},
+    Url,
+};
 
 use crate::Result;
 

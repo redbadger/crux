@@ -1,4 +1,4 @@
-use super::{decode::decode_body, new_headers, response};
+use super::{decode::decode_body, new_headers};
 use http_types::{
     self,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
@@ -363,21 +363,21 @@ where
 impl<Body> Eq for Response<Body> where Body: Eq {}
 
 impl<Body: Into<http_types::Body>> Into<http_types::Response> for Response<Body> {
-	fn into(self) -> http_types::Response {
-		let mut response = http_types::Response::new(self.status);
-		
-		if let Some(body) = self.body {
-			response.set_body(body);
-		}
+    fn into(self) -> http_types::Response {
+        let mut response = http_types::Response::new(self.status);
 
-		response.set_version(self.version);
-		
-		for (header, values) in self.headers {
-			response.insert_header(header, &values);
-		}
-		
-		response
-	}
+        if let Some(body) = self.body {
+            response.set_body(body);
+        }
+
+        response.set_version(self.version);
+
+        for (header, values) in self.headers {
+            response.insert_header(header, &values);
+        }
+
+        response
+    }
 }
 
 mod header_serde {

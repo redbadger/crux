@@ -1,15 +1,13 @@
+use crate::expect::ResponseExpectation;
 use crate::expect::{ExpectBytes, ExpectJson, ExpectString};
 use crate::middleware::Middleware;
-use crate::{
-    expect::ResponseExpectation,
-};
 use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
 use http_types::{
-	convert::DeserializeOwned,
-	headers::{HeaderName, ToHeaderValues},
-	Body, Method, Mime, Url,
+    convert::DeserializeOwned,
+    headers::{HeaderName, ToHeaderValues},
+    Body, Method, Mime, Url,
 };
 use serde::Serialize;
 
