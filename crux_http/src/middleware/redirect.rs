@@ -14,7 +14,7 @@
 //! # }
 //! ```
 
-use crate::http::{self, headers, StatusCode, Url};
+use http_types::{headers, StatusCode, Url};
 use crate::middleware::{Middleware, Next, Request};
 use crate::{Client, ResponseAsync, Result};
 
@@ -107,14 +107,14 @@ impl Middleware for Redirect {
             let res: ResponseAsync = client.send(r).await?;
             if REDIRECT_CODES.contains(&res.status()) {
                 if let Some(location) = res.header(headers::LOCATION) {
-                    let http_req: &mut http::Request = req.as_mut();
+                    let http_req: &mut http_types::Request = req.as_mut();
                     *http_req.url_mut() = match Url::parse(location.last().as_str()) {
                         Ok(valid_url) => {
                             base_url = valid_url;
                             base_url.clone()
                         }
                         Err(e) => match e {
-                            http::url::ParseError::RelativeUrlWithoutBase => {
+	                        http_types::url::ParseError::RelativeUrlWithoutBase => {
                                 base_url.join(location.last().as_str())?
                             }
                             e => return Err(e.into()),

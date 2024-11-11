@@ -2,9 +2,8 @@
 
 use std::{collections::HashMap, fmt::Debug};
 
-use http_types::headers::{HeaderName, HeaderValues, ToHeaderValues};
+use http_types::{headers::{HeaderName, HeaderValues, ToHeaderValues}, Url};
 
-use crate::http::Url;
 use crate::Result;
 
 /// Configuration for `crux_http::Http`s and their underlying HTTP client.

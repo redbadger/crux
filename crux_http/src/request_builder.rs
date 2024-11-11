@@ -2,15 +2,15 @@ use crate::expect::{ExpectBytes, ExpectJson, ExpectString};
 use crate::middleware::Middleware;
 use crate::{
     expect::ResponseExpectation,
-    http::{
-        headers::{HeaderName, ToHeaderValues},
-        Body, Method, Mime, Url,
-    },
 };
 use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
-use http_types::convert::DeserializeOwned;
+use http_types::{
+	convert::DeserializeOwned,
+	headers::{HeaderName, ToHeaderValues},
+	Body, Method, Mime, Url,
+};
 use serde::Serialize;
 
 use std::{fmt, marker::PhantomData};
@@ -23,7 +23,7 @@ use std::{fmt, marker::PhantomData};
 /// # Examples
 ///
 /// ```no_run
-/// use crux_http::http::{mime::HTML};
+/// use crux_http::http_types::{mime::HTML};
 /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
 /// # struct Capabilities { http: crux_http::Http<Event> }
 /// # fn update(caps: &Capabilities) {
@@ -107,7 +107,7 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # use crux_http::http::mime;
+    /// # use crux_http::http_types::mime;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) {
@@ -137,7 +137,7 @@ where
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) {
     /// use serde_json::json;
-    /// use crux_http::http::mime;
+    /// use crux_http::http_types::mime;
     /// caps.http
     ///     .post("https://httpbin.org/post")
     ///     .body(json!({"any": "Into<Body>"}))

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::http::{Method, Url};
+use http_types::{Method, Url};
 use crate::middleware::{Middleware, Next};
 use crate::protocol::{EffectSender, HttpResult, ProtocolRequestBuilder};
 use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};

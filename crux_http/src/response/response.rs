@@ -1,11 +1,11 @@
-use super::{decode::decode_body, new_headers};
-use crate::http::{
+use super::{decode::decode_body, new_headers, response};
+use http_types::{
     self,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
     Mime, StatusCode, Version,
 };
 
-use http::{headers::CONTENT_TYPE, Headers};
+use http_types::{headers::CONTENT_TYPE, Headers};
 use serde::de::DeserializeOwned;
 
 use std::fmt;
@@ -14,8 +14,8 @@ use std::ops::Index;
 /// An HTTP Response that will be passed to in a message to an apps update function
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
-    version: Option<http::Version>,
-    status: http::StatusCode,
+    version: Option<http_types::Version>,
+    status: http_types::StatusCode,
     #[serde(with = "header_serde")]
     headers: Headers,
     body: Option<Body>,
@@ -64,7 +64,7 @@ impl<Body> Response<Body> {
     ///
     /// ```no_run
     /// # let res = crux_http::testing::ResponseBuilder::ok().build();
-    /// use crux_http::http::Version;
+    /// use crux_http::http_types::Version;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
     /// ```
     pub fn version(&self) -> Option<Version> {
@@ -146,7 +146,7 @@ impl<Body> Response<Body> {
     /// # let res = crux_http::testing::ResponseBuilder::ok()
     /// #   .header("Content-Type", "application/json")
     /// #   .build();
-    /// use crux_http::http::mime;
+    /// use crux_http::http_types::mime;
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// ```
     pub fn content_type(&self) -> Option<Mime> {
@@ -172,7 +172,7 @@ impl<Body> Response<Body> {
 }
 
 impl Response<Vec<u8>> {
-    pub(crate) fn new_with_status(status: http::StatusCode) -> Self {
+    pub(crate) fn new_with_status(status: http_types::StatusCode) -> Self {
         let headers = new_headers();
 
         Response {
@@ -290,14 +290,14 @@ impl Response<Vec<u8>> {
     }
 }
 
-impl<Body> AsRef<http::Headers> for Response<Body> {
-    fn as_ref(&self) -> &http::Headers {
+impl<Body> AsRef<http_types::Headers> for Response<Body> {
+    fn as_ref(&self) -> &http_types::Headers {
         &self.headers
     }
 }
 
-impl<Body> AsMut<http::Headers> for Response<Body> {
-    fn as_mut(&mut self) -> &mut http::Headers {
+impl<Body> AsMut<http_types::Headers> for Response<Body> {
+    fn as_mut(&mut self) -> &mut http_types::Headers {
         &mut self.headers
     }
 }
@@ -362,12 +362,30 @@ where
 
 impl<Body> Eq for Response<Body> where Body: Eq {}
 
+impl<Body: Into<http_types::Body>> Into<http_types::Response> for Response<Body> {
+	fn into(self) -> http_types::Response {
+		let mut response = http_types::Response::new(self.status);
+		
+		if let Some(body) = self.body {
+			response.set_body(body);
+		}
+
+		response.set_version(self.version);
+		
+		for (header, values) in self.headers {
+			response.insert_header(header, &values);
+		}
+		
+		response
+	}
+}
+
 mod header_serde {
     use crate::{
-        http::{self, Headers},
+        http_types::{self, Headers},
         response::new_headers,
     };
-    use http::headers::HeaderName;
+    use http_types::headers::HeaderName;
     use serde::{de::Error, Deserializer, Serializer};
 
     pub fn serialize<S>(headers: &Headers, serializer: S) -> Result<S::Ok, S::Error>

@@ -6,7 +6,7 @@
 // #![warn(missing_docs)]
 
 use crux_core::capability::CapabilityContext;
-use http::Method;
+use http_types::Method;
 use url::Url;
 
 mod config;
@@ -21,7 +21,7 @@ pub mod middleware;
 pub mod protocol;
 pub mod testing;
 
-pub use http_types::{self as http};
+pub use http_types;
 
 pub use self::{
     config::Config,
@@ -307,7 +307,7 @@ where
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
     /// the app's `update function.
-    pub fn request(&self, method: http::Method, url: Url) -> RequestBuilder<Ev> {
+    pub fn request(&self, method: http_types::Method, url: Url) -> RequestBuilder<Ev> {
         RequestBuilder::new(method, url, self.clone())
     }
 }

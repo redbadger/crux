@@ -212,7 +212,7 @@ impl ProtocolRequestBuilder for crate::Request {
 
 impl From<HttpResponse> for crate::ResponseAsync {
     fn from(effect_response: HttpResponse) -> Self {
-        let mut res = crate::http::Response::new(effect_response.status);
+        let mut res = http_types::Response::new(effect_response.status);
         res.set_body(effect_response.body);
         for header in effect_response.headers {
             res.append_header(header.name.as_str(), header.value);
