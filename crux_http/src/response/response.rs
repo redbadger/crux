@@ -362,22 +362,47 @@ where
 
 impl<Body> Eq for Response<Body> where Body: Eq {}
 
-impl<Body: Into<http_types::Body>> Into<http_types::Response> for Response<Body> {
-    fn into(self) -> http_types::Response {
-        let mut response = http_types::Response::new(self.status);
+#[cfg(feature = "http-compat")]
+impl<Body> TryInto<http::Response<Body>> for Response<Body> {
+	type Error = ();
 
-        if let Some(body) = self.body {
-            response.set_body(body);
+	fn try_into(self) -> Result<http::Response<Body>, Self::Error> {
+        let mut response = http::Response::new(self.body.ok_or(())?);
+
+        if let Some(version) = self.version {
+	        let version = match version {
+	            Version::Http0_9 => Some(http::Version::HTTP_09),
+	            Version::Http1_0 => Some(http::Version::HTTP_10),
+	            Version::Http1_1 => Some(http::Version::HTTP_11),
+	            Version::Http2_0 => Some(http::Version::HTTP_2),
+	            Version::Http3_0 => Some(http::Version::HTTP_3),
+	            _ => None,
+            };
+	        
+	        if let Some(version) = version {
+		        *response.version_mut() = version;
+	        }
         }
+		
+		let mut headers = self.headers;
+        headers_to_hyperium_headers(&mut headers, response.headers_mut());
 
-        response.set_version(self.version);
-
-        for (header, values) in self.headers {
-            response.insert_header(header, &values);
-        }
-
-        response
+        Ok(response)
     }
+}
+
+#[cfg(feature = "http-compat")]
+fn headers_to_hyperium_headers(headers: &mut Headers, hyperium_headers: &mut http::HeaderMap) {
+	for (name, values) in headers {
+		let name = format!("{}", name).into_bytes();
+		let name = http::header::HeaderName::from_bytes(&name).unwrap();
+
+		for value in values.iter() {
+			let value = format!("{}", value).into_bytes();
+			let value = http::header::HeaderValue::from_bytes(&value).unwrap();
+			hyperium_headers.append(&name, value);
+		}
+	}
 }
 
 mod header_serde {
