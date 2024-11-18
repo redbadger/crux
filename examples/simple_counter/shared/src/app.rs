@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum Event {
     Increment,
     Decrement,
+    Set(isize),
     Reset,
 }
 
@@ -23,6 +24,8 @@ pub struct ViewModel {
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
     render: Render<Event>,
+    #[effect(skip)]
+    compose: crux_core::compose::Compose<Event>,
 }
 
 #[derive(Default)]
@@ -37,8 +40,13 @@ impl App for Counter {
 
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
-            Event::Increment => model.count += 1,
+            Event::Increment => {
+                let count = model.count + 1;
+                caps.compose
+                    .spawn(|context| async move { context.update_app(Event::Set(count)) });
+            }
             Event::Decrement => model.count -= 1,
+            Event::Set(count) => model.count = count,
             Event::Reset => model.count = 0,
         };
 
