@@ -83,6 +83,9 @@ where
 
         self.app.update(event, &mut model, &self.capabilities);
 
+        // drop the model here, we don't want to hold the lock for the process() call
+        drop(model);
+
         self.process()
     }
     // ANCHOR_END: process_event
