@@ -1,0 +1,21 @@
+[package]
+name = "cli"
+version = "0.1.0"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+anyhow.workspace = true
+clap = { version = "4.3.24", features = ["derive"] }
+crossbeam-channel = "0.5.13"
+futures = "0.3"
+reqwest = { version = "0.12.8", features = ["stream"] }
+shared = { path = "../shared" }
+tokio = { version = "1.38.1", features = ["rt-multi-thread", "macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

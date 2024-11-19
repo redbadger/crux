@@ -4,10 +4,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Event {
+    // events from the shell
     Increment,
     Decrement,
-    Set(isize),
     Reset,
+
+    // events local to the core
+    #[serde(skip)]
+    Set(isize),
 }
 
 #[derive(Default)]
@@ -42,15 +46,28 @@ impl App for Counter {
         match event {
             Event::Increment => {
                 let count = model.count + 1;
-                caps.compose
-                    .spawn(|context| async move { context.update_app(Event::Set(count)) });
-            }
-            Event::Decrement => model.count -= 1,
-            Event::Set(count) => model.count = count,
-            Event::Reset => model.count = 0,
-        };
 
-        caps.render.render();
+                // doesn't work
+                caps.compose.spawn(|context| async move {
+                    context.update_app(Event::Set(count));
+                });
+
+                // works
+                // self.update(Event::Set(count), model, caps);
+            }
+            Event::Decrement => {
+                model.count -= 1;
+                caps.render.render();
+            }
+            Event::Set(count) => {
+                model.count = count;
+                caps.render.render();
+            }
+            Event::Reset => {
+                model.count = 0;
+                caps.render.render();
+            }
+        };
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
