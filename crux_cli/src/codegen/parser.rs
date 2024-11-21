@@ -259,15 +259,16 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
 
     prog.run();
 
-    // std::fs::write("/tmp/edge.json", serde_json::to_string(&prog.edge).unwrap())?;
-    // std::fs::write(
-    //     "/tmp/field.json",
-    //     serde_json::to_string(&prog.field).unwrap(),
-    // )?;
-    // std::fs::write(
-    //     "/tmp/variant.json",
-    //     serde_json::to_string(&prog.variant).unwrap(),
-    // )?;
+    // write field and variant edges to disk for debugging
+    std::fs::write("/tmp/edge.json", serde_json::to_string(&prog.edge).unwrap())?;
+    std::fs::write(
+        "/tmp/field.json",
+        serde_json::to_string(&prog.field).unwrap(),
+    )?;
+    std::fs::write(
+        "/tmp/variant.json",
+        serde_json::to_string(&prog.variant).unwrap(),
+    )?;
 
     let mut all_edges = Vec::new();
     all_edges.extend(prog.field);

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     cell::{Ref, RefCell, RefMut},
     collections::BTreeMap,
