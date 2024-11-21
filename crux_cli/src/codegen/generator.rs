@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rustdoc_types::{Type, Variant};
+use rustdoc_types::{GenericArg, GenericArgs, Type, Variant};
 
 use crate::codegen::format::{ContainerFormat, Named};
 
@@ -86,12 +86,58 @@ pub(crate) fn generate(edges: &[(Node, Node)]) {
 impl From<&Type> for Format {
     fn from(value: &Type) -> Self {
         match value {
-            Type::ResolvedPath(path) => Format::TypeName(path.name.clone()),
+            Type::ResolvedPath(path) => {
+                if let Some(args) = &path.args {
+                    match args.as_ref() {
+                        GenericArgs::AngleBracketed {
+                            args,
+                            constraints: _,
+                        } => {
+                            if path.name == "Option" {
+                                let format = match args[0] {
+                                    GenericArg::Type(ref t) => t.into(),
+                                    _ => todo!(),
+                                };
+                                Format::Option(Box::new(format))
+                            } else {
+                                Format::TypeName(path.name.clone())
+                            }
+                        }
+                        GenericArgs::Parenthesized {
+                            inputs: _,
+                            output: _,
+                        } => todo!(),
+                    }
+                } else {
+                    Format::TypeName(path.name.clone())
+                }
+            }
             Type::DynTrait(_dyn_trait) => todo!(),
             Type::Generic(_) => todo!(),
             Type::Primitive(s) => match s.as_ref() {
+                "bool" => Format::Bool,
+                "char" => Format::Char,
+                "isize" => match std::mem::size_of::<isize>() {
+                    4 => Format::I32,
+                    8 => Format::I64,
+                    _ => panic!("unsupported isize size"),
+                },
+                "i8" => Format::I8,
+                "i16" => Format::I16,
+                "i32" => Format::I32,
+                "i64" => Format::I64,
+                "i128" => Format::I128,
+                "usize" => match std::mem::size_of::<usize>() {
+                    4 => Format::U32,
+                    8 => Format::U64,
+                    _ => panic!("unsupported usize size"),
+                },
+                "u8" => Format::U8,
+                "u16" => Format::U16,
                 "u32" => Format::U32,
-                _ => todo!(),
+                "u64" => Format::U64,
+                "u128" => Format::U128,
+                s => panic!("need to implement primitive {s}"),
             },
             Type::FunctionPointer(_function_pointer) => todo!(),
             Type::Tuple(_vec) => todo!(),
