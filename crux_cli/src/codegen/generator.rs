@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rustdoc_types::{GenericArg, GenericArgs, Type, Variant};
+use rustdoc_types::{Crate, GenericArg, GenericArgs, ItemSummary, Type, Variant};
 
 use crate::codegen::format::{ContainerFormat, Named};
 
@@ -9,11 +9,11 @@ use super::{
     parser::Node,
 };
 
-pub(crate) fn generate(edges: &[(Node, Node)]) {
+pub(crate) fn generate(edges: &[(Node, Node)], crate_: &Crate) {
     let mut containers = HashMap::new();
     let mut variant_index = 0;
     for (from, to) in edges {
-        let Some(name) = get_name(&from) else {
+        let Some(name) = get_name(&from, true) else {
             continue;
         };
         let Some(item) = &from.item else {
@@ -33,7 +33,7 @@ pub(crate) fn generate(edges: &[(Node, Node)]) {
                 }
             },
             rustdoc_types::ItemEnum::Enum(_e) => {
-                if containers.contains_key(name) {
+                if containers.contains_key(&name) {
                     variant_index += 1;
                 } else {
                     variant_index = 0;
@@ -47,7 +47,7 @@ pub(crate) fn generate(edges: &[(Node, Node)]) {
             _ => continue,
         }
 
-        let Some(name) = get_name(&to) else {
+        let Some(name) = get_name(&to, false) else {
             continue;
         };
         let Some(item) = &to.item else {
@@ -60,32 +60,34 @@ pub(crate) fn generate(edges: &[(Node, Node)]) {
                 };
                 v.push(Named {
                     name: name.to_string(),
-                    value: t.into(),
+                    value: (crate_, t).into(),
                 });
             }
             rustdoc_types::ItemEnum::Variant(t) => {
                 let Some(ContainerFormat::Enum(ref mut v)) = &mut container else {
                     continue;
                 };
-                v.insert(
-                    variant_index,
-                    Named {
-                        name: name.to_string(),
-                        value: t.into(),
-                    },
-                );
+                let value = Named {
+                    name: name.to_string(),
+                    value: t.into(),
+                };
+                if v.values().find(|v| v.name == name).is_none() {
+                    v.insert(variant_index, value);
+                } else {
+                    variant_index -= 1;
+                }
             }
             _ => continue,
         }
-        println!("{:?} \n-> {:?}\n", item, to);
+        // println!("{:?} \n-> {:?}\n", item, to);
     }
-    println!();
+    // println!();
     println!("{:#?}", containers);
 }
 
-impl From<&Type> for Format {
-    fn from(value: &Type) -> Self {
-        match value {
+impl From<(&Crate, &Type)> for Format {
+    fn from(value: (&Crate, &Type)) -> Self {
+        match value.1 {
             Type::ResolvedPath(path) => {
                 if let Some(args) = &path.args {
                     match args.as_ref() {
@@ -95,12 +97,13 @@ impl From<&Type> for Format {
                         } => {
                             if path.name == "Option" {
                                 let format = match args[0] {
-                                    GenericArg::Type(ref t) => t.into(),
+                                    GenericArg::Type(ref t) => (value.0, t).into(),
                                     _ => todo!(),
                                 };
                                 Format::Option(Box::new(format))
                             } else {
-                                Format::TypeName(path.name.clone())
+                                let name = qualify_name(value.0.paths.get(&path.id), &path.name);
+                                Format::TypeName(name)
                             }
                         }
                         GenericArgs::Parenthesized {
@@ -181,31 +184,63 @@ impl From<&Variant> for VariantFormat {
     }
 }
 
-fn get_name(node: &Node) -> Option<&str> {
+fn get_name(node: &Node, qualified: bool) -> Option<String> {
     node.item.as_ref().and_then(|item| {
         let mut new_name = "";
         for attr in &item.attrs {
             if let Some((_, n)) =
-                lazy_regex::regex_captures!(r#"\[serde\(rename = "(\w+)"\)\]"#, attr)
+                lazy_regex::regex_captures!(r#"\[serde\(rename\s*=\s*"(\w+)"\)\]"#, attr)
             {
                 new_name = n;
             }
         }
-        if new_name.is_empty() {
+        let name = if new_name.is_empty() {
             item.name.as_deref()
         } else {
             Some(new_name)
-        }
+        };
+        let item_summary = node.summary.as_ref();
+        name.map(|name| {
+            if qualified {
+                qualify_name(item_summary, name)
+            } else {
+                name.to_string()
+            }
+        })
     })
+}
+
+fn qualify_name(item_summary: Option<&ItemSummary>, name: &str) -> String {
+    item_summary
+        .map(|p| {
+            p.path
+                .iter()
+                .rev()
+                .skip(1)
+                .rev()
+                .chain([name.to_string()].iter())
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .as_slice()
+                .join("::")
+        })
+        .unwrap_or(name.to_string())
 }
 
 #[cfg(test)]
 mod test {
-    use rustdoc_types::{Generics, Id, Item, ItemEnum, Struct, StructKind, Visibility};
+    use rustdoc_types::{
+        Generics, Id, Item, ItemEnum, ItemKind, ItemSummary, Struct, StructKind, Visibility,
+    };
 
     use super::*;
 
-    fn test_node(name: Option<String>, attrs: Vec<String>) -> Node {
+    fn test_node(name: Option<String>, path: Option<Vec<String>>, attrs: Vec<String>) -> Node {
+        let path = path.map(|path| ItemSummary {
+            crate_id: 0,
+            path,
+            kind: ItemKind::Struct,
+        });
         Node {
             item: Some(Item {
                 name,
@@ -230,31 +265,50 @@ mod test {
                 deprecation: None,
             }),
             id: Id(0),
-            path: None,
+            summary: path,
         }
     }
 
     #[test]
     fn test_get_name() {
         let name = Some("Foo".to_string());
+        let path = vec!["shared".to_string(), "app".to_string(), "Foo".to_string()];
         let attrs = vec![];
-        let node = test_node(name, attrs);
-        assert_eq!(get_name(&node), Some("Foo"));
+        let node = test_node(name, Some(path), attrs);
+        assert_eq!(get_name(&node, false), Some("Foo".to_string()));
+    }
+
+    #[test]
+    fn test_get_name_qualified() {
+        let name = Some("Foo".to_string());
+        let path = vec!["shared".to_string(), "app".to_string(), "Foo".to_string()];
+        let attrs = vec![];
+        let node = test_node(name, Some(path), attrs);
+        assert_eq!(get_name(&node, true), Some("shared::app::Foo".to_string()));
     }
 
     #[test]
     fn test_get_name_with_rename() {
         let name = Some("Foo".to_string());
+        let path = vec!["shared".to_string(), "app".to_string(), "Foo".to_string()];
         let attrs = vec![r#"#[serde(rename = "Bar")]"#.to_string()];
-        let node = test_node(name, attrs);
-        assert_eq!(get_name(&node), Some("Bar"));
+        let node = test_node(name, Some(path), attrs);
+        assert_eq!(get_name(&node, true), Some("shared::app::Bar".to_string()));
+    }
+
+    #[test]
+    fn test_get_name_with_rename_no_whitespace() {
+        let name = Some("Foo".to_string());
+        let attrs = vec![r#"#[serde(rename="Bar")]"#.to_string()];
+        let node = test_node(name, None, attrs);
+        assert_eq!(get_name(&node, false), Some("Bar".to_string()));
     }
 
     #[test]
     fn test_get_name_with_no_name() {
         let name = None;
         let attrs = vec![];
-        let node = test_node(name, attrs);
-        assert_eq!(get_name(&node), None);
+        let node = test_node(name, None, attrs);
+        assert_eq!(get_name(&node, false), None);
     }
 }

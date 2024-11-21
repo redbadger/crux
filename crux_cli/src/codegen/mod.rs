@@ -21,6 +21,7 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let json_path = rustdoc_json::Builder::default()
         .toolchain("nightly")
+        .document_private_items(true)
         .manifest_path(lib.manifest_path())
         .build()?;
     // let json_path = lib
@@ -42,7 +43,7 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let edges = parser::parse(&crate_)?;
 
-    generator::generate(&edges);
+    generator::generate(&edges, &crate_);
 
     Ok(())
 }
