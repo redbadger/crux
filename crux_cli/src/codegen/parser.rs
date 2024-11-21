@@ -29,11 +29,11 @@ ascent! {
 
     field(struct_, field) <--
         root(impl_, struct_),
-        edge(struct_, field, ?Edge::HasField|Edge::Unit);
+        edge(struct_, field, ?Edge::HasVariant|Edge::HasField|Edge::Unit);
     field(struct2, field2) <--
         field(struct1, field1),
         edge(field1, struct2, Edge::ForType),
-        edge(struct2, field2, ?Edge::HasField|Edge::Unit);
+        edge(struct2, field2, ?Edge::HasVariant|Edge::HasField|Edge::Unit);
 
     variant(enum_, variant) <--
         root(impl_, enum_),
