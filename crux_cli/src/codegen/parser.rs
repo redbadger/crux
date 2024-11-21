@@ -11,24 +11,50 @@ use serde::Serialize;
 ascent! {
     relation edge(Node, Node, Edge);
 
+    relation app(Node);
+    relation effect(Node);
+    relation is_effect_of_app(Node, Node);
+    relation root(Node);
+    relation parent(Node, Node);
     relation field(Node, Node);
     relation variant(Node, Node);
-    relation root(Node, Node);
+
+    // app structs
+    app(app) <--
+        edge(app_impl, app_trait, Edge::OfTraitApp),
+        edge(app_impl, app, Edge::ForType);
+
+    // effect enums
+    effect(effect) <--
+        edge(effect_impl, effect_trait, Edge::OfTraitEffect),
+        edge(effect_impl, effect, Edge::ForType);
+
+    is_effect_of_app(app, effect) <--
+        app(app),
+        effect(effect),
+        if are_in_same_module(app, effect);
 
     // root for Event and ViewModel
-    root(impl_, type_) <--
-        edge(impl_, trait_, Edge::Trait),
-        edge(impl_, item, Edge::AssociatedItem),
-        edge(item, type_, Edge::AssociatedType);
+    root(assoc_type) <--
+        edge(app_impl, app_trait, Edge::OfTraitApp),
+        edge(app_impl, app, Edge::ForType),
+        !parent(_, app),
+        edge(app_impl, assoc_item, Edge::AssociatedItem),
+        edge(assoc_item, assoc_type, Edge::AssociatedType);
     // root for Effect
-    root(impl_, type_) <--
-        edge(impl_, type_, Edge::AssociatedType),
-        if let Some(i) = impl_.item.as_ref(),
-        if let Some(n) = i.name.as_ref(),
-        if n == &"Ffi".to_string();
+    root(effect_enum) <--
+        is_effect_of_app(app, effect_enum),
+        !parent(_, app);
+
+    // app hierarchy
+    parent(parent, child) <--
+        app(parent),
+        app(child),
+        edge(parent, field, Edge::HasField),
+        edge(field, child, Edge::ForType);
 
     field(struct_, field) <--
-        root(impl_, struct_),
+        root(struct_),
         edge(struct_, field, ?Edge::HasVariant|Edge::HasField|Edge::Unit);
     field(struct2, field2) <--
         field(struct1, field1),
@@ -36,11 +62,21 @@ ascent! {
         edge(struct2, field2, ?Edge::HasVariant|Edge::HasField|Edge::Unit);
 
     variant(enum_, variant) <--
-        root(impl_, enum_),
+        root(enum_),
         edge(enum_, variant, Edge::HasVariant);
     variant(variant, field) <--
         variant(enum_, variant),
         edge(variant, field, Edge::HasField);
+}
+
+fn are_in_same_module(app: &Node, effect: &Node) -> bool {
+    let (Some(app), Some(effect)) = (&app.summary, &effect.summary) else {
+        return false;
+    };
+    if app.path.len() != effect.path.len() {
+        return false;
+    };
+    app.path[..(app.path.len() - 1)] == effect.path[..(effect.path.len() - 1)]
 }
 
 pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
@@ -60,7 +96,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
         nodes_by_id
             .entry(*id)
             .or_insert_with(|| Node::new(*id))
-            .path = Some(path.clone());
+            .summary = Some(path.clone());
     }
 
     let node_by_id = |id: &Id| -> Option<&Node> {
@@ -79,6 +115,9 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
         let Some(source) = node_by_id(id) else {
             continue;
         };
+        if item.attrs.contains(&"#[serde(skip)]".to_string()) {
+            continue;
+        }
 
         match &item.inner {
             ItemEnum::Module(_module) => (),
@@ -183,9 +222,17 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                 items,
                 ..
             }) => {
-                if !["App", "Effect"].contains(&trait_name.as_str()) {
+                let trait_edge = match trait_name.as_str() {
+                    "App" => Edge::OfTraitApp,
+                    "Effect" => Edge::OfTraitEffect,
+                    _ => continue,
+                };
+
+                // record an edge for the trait the impl is of
+                let Some(dest) = node_by_id(trait_id) else {
                     continue;
-                }
+                };
+                prog.edge.push((source.clone(), dest.clone(), trait_edge));
 
                 // record an edge for the type the impl is for
                 let Some(dest) = node_by_id(&for_type_id) else {
@@ -193,12 +240,6 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                 };
                 prog.edge
                     .push((source.clone(), dest.clone(), Edge::ForType));
-
-                // record an edge for the trait the impl is of
-                let Some(dest) = node_by_id(trait_id) else {
-                    continue;
-                };
-                prog.edge.push((source.clone(), dest.clone(), Edge::Trait));
 
                 // record edges for the associated items in the impl
                 for id in items {
@@ -211,7 +252,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                         name: Some(name), ..
                     }) = &dest.item
                     {
-                        if !["Event", "ViewModel"].contains(&name.as_str()) {
+                        if !["Event", "ViewModel", "Capabilities"].contains(&name.as_str()) {
                             continue;
                         }
                     }
@@ -261,6 +302,16 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
 
     // write field and variant edges to disk for debugging
     std::fs::write("/tmp/edge.json", serde_json::to_string(&prog.edge).unwrap())?;
+    std::fs::write("/tmp/app.json", serde_json::to_string(&prog.app).unwrap())?;
+    std::fs::write(
+        "/tmp/effect.json",
+        serde_json::to_string(&prog.effect).unwrap(),
+    )?;
+    std::fs::write("/tmp/root.json", serde_json::to_string(&prog.root).unwrap())?;
+    std::fs::write(
+        "/tmp/is_effect_of_app.json",
+        serde_json::to_string(&prog.is_effect_of_app).unwrap(),
+    )?;
     std::fs::write(
         "/tmp/field.json",
         serde_json::to_string(&prog.field).unwrap(),
@@ -268,6 +319,10 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
     std::fs::write(
         "/tmp/variant.json",
         serde_json::to_string(&prog.variant).unwrap(),
+    )?;
+    std::fs::write(
+        "/tmp/parent.json",
+        serde_json::to_string(&prog.parent).unwrap(),
     )?;
 
     let mut all_edges = Vec::new();
@@ -307,7 +362,7 @@ fn process_args<'a>(
 pub struct Node {
     pub id: Id,
     pub item: Option<Item>,
-    pub path: Option<ItemSummary>,
+    pub summary: Option<ItemSummary>,
 }
 
 impl Node {
@@ -315,7 +370,7 @@ impl Node {
         Self {
             id,
             item: None,
-            path: None,
+            summary: None,
         }
     }
 }
@@ -333,6 +388,7 @@ enum Edge {
     ForType,
     HasField,
     HasVariant,
-    Trait,
+    OfTraitApp,
+    OfTraitEffect,
     Unit,
 }
