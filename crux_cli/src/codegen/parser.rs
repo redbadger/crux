@@ -17,8 +17,7 @@ ascent! {
     relation is_effect_of_app(Node, Node);
     relation root(Node);
     relation parent(Node, Node);
-    relation field(Node, Node);
-    relation variant(Node, Node);
+    relation output(Node, Node);
 
     // app structs have an implementation of the App trait
     app(app) <--
@@ -56,24 +55,12 @@ ascent! {
         edge(parent, field, Edge::Field),
         edge(field, child, Edge::Type);
 
-    // fields of root structs
-    field(struct_, field) <--
-        root(struct_),
-        edge(struct_, field, ?Edge::Variant|Edge::Field);
-    // recursive descent
-    field(struct2, field2) <--
-        field(struct1, field1),
-        edge(field1, struct2, Edge::Type),
-        edge(struct2, field2, ?Edge::Variant|Edge::Field);
-
-    // variants of root enums
-    variant(enum_, variant) <--
-        root(enum_),
-        edge(enum_, variant, Edge::Variant);
-    // recursive descent
-    variant(variant, field) <--
-        variant(enum_, variant),
-        edge(variant, field, Edge::Field);
+    output(root, child) <--
+        root(root),
+        edge(root, child, ?Edge::Variant|Edge::Field);
+    output(parent, child) <--
+        output(grandparent, parent),
+        edge(parent, child, ?Edge::Variant|Edge::Field|Edge::Type);
 }
 
 fn are_in_same_module(app: &Node, effect: &Node) -> bool {
@@ -278,29 +265,21 @@ pub fn parse(data: &Data) -> Result<Vec<(Node, Node)>> {
         "/tmp/effect.json",
         serde_json::to_string(&prog.effect).unwrap(),
     )?;
-    std::fs::write("/tmp/root.json", serde_json::to_string(&prog.root).unwrap())?;
     std::fs::write(
         "/tmp/is_effect_of_app.json",
         serde_json::to_string(&prog.is_effect_of_app).unwrap(),
     )?;
-    std::fs::write(
-        "/tmp/field.json",
-        serde_json::to_string(&prog.field).unwrap(),
-    )?;
-    std::fs::write(
-        "/tmp/variant.json",
-        serde_json::to_string(&prog.variant).unwrap(),
-    )?;
+    std::fs::write("/tmp/root.json", serde_json::to_string(&prog.root).unwrap())?;
     std::fs::write(
         "/tmp/parent.json",
         serde_json::to_string(&prog.parent).unwrap(),
     )?;
+    std::fs::write(
+        "/tmp/output.json",
+        serde_json::to_string(&prog.output).unwrap(),
+    )?;
 
-    let mut all = Vec::new();
-    all.extend(prog.field);
-    all.extend(prog.variant);
-
-    Ok(all)
+    Ok(prog.output)
 }
 
 fn process_args(

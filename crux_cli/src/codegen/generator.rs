@@ -21,7 +21,8 @@ pub(crate) fn generate(edges: &[(Node, Node)], data: &Data) {
         let Some(item) = &from.item else {
             continue;
         };
-        let mut container = match &item.inner {
+
+        let container = match &item.inner {
             ItemEnum::Struct(s) => {
                 let val = match &s.kind {
                     StructKind::Unit => ContainerFormat::UnitStruct,
@@ -44,6 +45,8 @@ pub(crate) fn generate(edges: &[(Node, Node)], data: &Data) {
                     .entry(name)
                     .or_insert(ContainerFormat::Enum(Default::default()))
             }
+            // ItemEnum::StructField(_) => (),
+            // ItemEnum::Variant(variant) => Source::Variant(name, variant.into()),
             _ => continue,
         };
 
@@ -54,7 +57,7 @@ pub(crate) fn generate(edges: &[(Node, Node)], data: &Data) {
             continue;
         };
         match &item.inner {
-            ItemEnum::StructField(t) => match &mut container {
+            ItemEnum::StructField(t) => match container {
                 ContainerFormat::Struct(ref mut v) => {
                     v.push(Named {
                         name: name.to_string(),
@@ -63,28 +66,35 @@ pub(crate) fn generate(edges: &[(Node, Node)], data: &Data) {
                 }
                 ContainerFormat::UnitStruct => (),
                 ContainerFormat::NewTypeStruct(_format) => (),
-                ContainerFormat::TupleStruct(ref mut _v) => {
+                ContainerFormat::TupleStruct(ref mut v) => {
+                    println!("{:?}", v);
                     // v.push(Format::Tuple((data, t).into()));
                 }
                 ContainerFormat::Enum(_btree_map) => (),
             },
-            ItemEnum::Variant(t) => {
-                let ContainerFormat::Enum(ref mut v) = &mut container else {
-                    continue;
-                };
-                let value = Named {
-                    name: name.to_string(),
-                    value: t.into(),
-                };
-                if v.values().find(|v| v.name == name).is_none() {
-                    v.insert(variant_index, value);
-                } else {
-                    variant_index -= 1;
+            ItemEnum::Variant(t) => match container {
+                ContainerFormat::Enum(ref mut v) => {
+                    let value = Named {
+                        name: name.to_string(),
+                        value: t.into(),
+                    };
+                    if v.values().find(|v| v.name == name).is_none() {
+                        v.insert(variant_index, value);
+                    } else {
+                        variant_index -= 1;
+                    }
                 }
-            }
+                ContainerFormat::UnitStruct => todo!(),
+                ContainerFormat::NewTypeStruct(_format) => todo!(),
+                ContainerFormat::TupleStruct(ref mut v) => {
+                    println!("{:?}", v);
+                    // v.push(Format::Tuple((data, t).into()));
+                }
+                ContainerFormat::Struct(_vec) => todo!(),
+            },
             _ => continue,
         }
-        // println!("{:?} \n-> {:?}\n", item, to);
+        println!("{:?} \n-> {:?}\n", from, to);
     }
     // println!();
     println!("{:#?}", containers);
@@ -181,11 +191,8 @@ impl From<&Variant> for VariantFormat {
     fn from(value: &Variant) -> Self {
         match &value.kind {
             VariantKind::Plain => VariantFormat::Unit,
-            VariantKind::Tuple(_vec) => VariantFormat::Tuple(vec![]),
-            VariantKind::Struct {
-                fields: _,
-                has_stripped_fields: _,
-            } => todo!(),
+            VariantKind::Tuple(_) => VariantFormat::Tuple(Default::default()),
+            VariantKind::Struct { .. } => VariantFormat::Struct(Default::default()),
         }
     }
 }
