@@ -9,8 +9,10 @@ use rustdoc_types::{
 use serde::Serialize;
 
 ascent! {
+    // input data
     relation edge(Node, Node, Edge);
 
+    // result data
     relation app(Node);
     relation effect(Node);
     relation is_effect_of_app(Node, Node);
@@ -19,29 +21,31 @@ ascent! {
     relation field(Node, Node);
     relation variant(Node, Node);
 
-    // app structs
+    // app structs have an implementation of the App trait
     app(app) <--
-        edge(app_impl, app_trait, Edge::OfTraitApp),
-        edge(app_impl, app, Edge::ForType);
+        edge(app_impl, app_trait, Edge::TraitApp),
+        edge(app_impl, app, Edge::Type);
 
-    // effect enums
+    // effect enums have an implementation of the Effect trait
     effect(effect) <--
-        edge(effect_impl, effect_trait, Edge::OfTraitEffect),
-        edge(effect_impl, effect, Edge::ForType);
+        edge(effect_impl, effect_trait, Edge::TraitEffect),
+        edge(effect_impl, effect, Edge::Type);
 
+    // an effect belongs to an app if they are in the same module
     is_effect_of_app(app, effect) <--
         app(app),
         effect(effect),
         if are_in_same_module(app, effect);
 
-    // root for Event and ViewModel
+    // Event and ViewModel types are associated
+    // with the root apps (that have no parent)
     root(assoc_type) <--
-        edge(app_impl, app_trait, Edge::OfTraitApp),
-        edge(app_impl, app, Edge::ForType),
+        edge(app_impl, app_trait, Edge::TraitApp),
+        edge(app_impl, app, Edge::Type),
         !parent(_, app),
         edge(app_impl, assoc_item, Edge::AssociatedItem),
         edge(assoc_item, assoc_type, Edge::AssociatedType);
-    // root for Effect
+    // Effects belong to the root apps (that have no parent)
     root(effect_enum) <--
         is_effect_of_app(app, effect_enum),
         !parent(_, app);
@@ -50,23 +54,27 @@ ascent! {
     parent(parent, child) <--
         app(parent),
         app(child),
-        edge(parent, field, Edge::HasField),
-        edge(field, child, Edge::ForType);
+        edge(parent, field, Edge::Field),
+        edge(field, child, Edge::Type);
 
+    // fields of root structs
     field(struct_, field) <--
         root(struct_),
-        edge(struct_, field, ?Edge::HasVariant|Edge::HasField|Edge::Unit);
+        edge(struct_, field, ?Edge::Variant|Edge::Field);
+    // recursive descent
     field(struct2, field2) <--
         field(struct1, field1),
-        edge(field1, struct2, Edge::ForType),
-        edge(struct2, field2, ?Edge::HasVariant|Edge::HasField|Edge::Unit);
+        edge(field1, struct2, Edge::Type),
+        edge(struct2, field2, ?Edge::Variant|Edge::Field);
 
+    // variants of root enums
     variant(enum_, variant) <--
         root(enum_),
-        edge(enum_, variant, Edge::HasVariant);
+        edge(enum_, variant, Edge::Variant);
+    // recursive descent
     variant(variant, field) <--
         variant(enum_, variant),
-        edge(variant, field, Edge::HasField);
+        edge(variant, field, Edge::Field);
 }
 
 fn are_in_same_module(app: &Node, effect: &Node) -> bool {
@@ -126,17 +134,14 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
             ItemEnum::Union(_union) => (),
             ItemEnum::Struct(s) => {
                 match &s.kind {
-                    StructKind::Unit => {
-                        prog.edge.push((source.clone(), source.clone(), Edge::Unit));
-                    }
+                    StructKind::Unit => (),
                     StructKind::Tuple(fields) => {
                         for field in fields {
                             if let Some(id) = field {
                                 let Some(dest) = node_by_id(id) else {
                                     continue;
                                 };
-                                prog.edge
-                                    .push((source.clone(), dest.clone(), Edge::HasField));
+                                prog.edge.push((source.clone(), dest.clone(), Edge::Field));
                             }
                         }
                     }
@@ -148,8 +153,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                             let Some(dest) = node_by_id(id) else {
                                 continue;
                             };
-                            prog.edge
-                                .push((source.clone(), dest.clone(), Edge::HasField));
+                            prog.edge.push((source.clone(), dest.clone(), Edge::Field));
                         }
                     }
                 };
@@ -159,8 +163,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                     let Some(dest) = node_by_id(&path.id) else {
                         continue;
                     };
-                    prog.edge
-                        .push((source.clone(), dest.clone(), Edge::ForType));
+                    prog.edge.push((source.clone(), dest.clone(), Edge::Type));
 
                     if let Some(args) = &path.args {
                         process_args(source, args.as_ref(), &node_by_id, &mut prog);
@@ -174,7 +177,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                         continue;
                     };
                     prog.edge
-                        .push((source.clone(), dest.clone(), Edge::HasVariant));
+                        .push((source.clone(), dest.clone(), Edge::Variant));
                 }
             }
             ItemEnum::Variant(v) => {
@@ -186,8 +189,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                                 let Some(dest) = node_by_id(id) else {
                                     continue;
                                 };
-                                prog.edge
-                                    .push((source.clone(), dest.clone(), Edge::HasField));
+                                prog.edge.push((source.clone(), dest.clone(), Edge::Field));
                             }
                         }
                     }
@@ -199,8 +201,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                             let Some(dest) = node_by_id(id) else {
                                 continue;
                             };
-                            prog.edge
-                                .push((source.clone(), dest.clone(), Edge::HasField));
+                            prog.edge.push((source.clone(), dest.clone(), Edge::Field));
                         }
                     }
                 };
@@ -223,8 +224,8 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                 ..
             }) => {
                 let trait_edge = match trait_name.as_str() {
-                    "App" => Edge::OfTraitApp,
-                    "Effect" => Edge::OfTraitEffect,
+                    "App" => Edge::TraitApp,
+                    "Effect" => Edge::TraitEffect,
                     _ => continue,
                 };
 
@@ -238,8 +239,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                 let Some(dest) = node_by_id(&for_type_id) else {
                     continue;
                 };
-                prog.edge
-                    .push((source.clone(), dest.clone(), Edge::ForType));
+                prog.edge.push((source.clone(), dest.clone(), Edge::Type));
 
                 // record edges for the associated items in the impl
                 for id in items {
@@ -325,11 +325,11 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
         serde_json::to_string(&prog.parent).unwrap(),
     )?;
 
-    let mut all_edges = Vec::new();
-    all_edges.extend(prog.field);
-    all_edges.extend(prog.variant);
+    let mut all = Vec::new();
+    all.extend(prog.field);
+    all.extend(prog.variant);
 
-    Ok(all_edges)
+    Ok(all)
 }
 
 fn process_args<'a>(
@@ -345,8 +345,7 @@ fn process_args<'a>(
                     let Some(dest) = node_by_id(&path.id) else {
                         continue;
                     };
-                    prog.edge
-                        .push((source.clone(), dest.clone(), Edge::ForType));
+                    prog.edge.push((source.clone(), dest.clone(), Edge::Type));
 
                     if let Some(args) = &path.args {
                         let generic_args = args.as_ref();
@@ -385,10 +384,9 @@ impl std::hash::Hash for Node {
 enum Edge {
     AssociatedItem,
     AssociatedType,
-    ForType,
-    HasField,
-    HasVariant,
-    OfTraitApp,
-    OfTraitEffect,
-    Unit,
+    Type,
+    Field,
+    Variant,
+    TraitApp,
+    TraitEffect,
 }

@@ -22,8 +22,8 @@ pub(crate) fn generate(edges: &[(Node, Node)], crate_: &Crate) {
         let mut container = None;
         match &item.inner {
             rustdoc_types::ItemEnum::Struct(s) => match &s.kind {
-                rustdoc_types::StructKind::Unit => {}
-                rustdoc_types::StructKind::Tuple(_vec) => {}
+                rustdoc_types::StructKind::Unit => (),
+                rustdoc_types::StructKind::Tuple(_vec) => (),
                 rustdoc_types::StructKind::Plain {
                     fields: _,
                     has_stripped_fields: _,
@@ -213,15 +213,8 @@ fn get_name(node: &Node, qualified: bool) -> Option<String> {
 fn qualify_name(item_summary: Option<&ItemSummary>, name: &str) -> String {
     item_summary
         .map(|p| {
-            p.path
-                .iter()
-                .rev()
-                .skip(1)
-                .rev()
-                .chain([name.to_string()].iter())
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .as_slice()
+            [&p.path[..(p.path.len() - 1)], &[name.to_string()]]
+                .concat()
                 .join("::")
         })
         .unwrap_or(name.to_string())
