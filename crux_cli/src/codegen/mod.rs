@@ -1,3 +1,4 @@
+mod data;
 mod format;
 mod generator;
 mod parser;
@@ -41,9 +42,11 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
     })
     .await??;
 
-    let edges = parser::parse(&crate_)?;
+    let data = data::Data::new(crate_);
 
-    generator::generate(&edges, &crate_);
+    let edges = parser::parse(&data)?;
+
+    generator::generate(&edges, &data);
 
     Ok(())
 }
