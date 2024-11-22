@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use rustdoc_types::{Crate, Id, Item, ItemSummary};
 use serde::Serialize;
@@ -64,7 +64,7 @@ impl Node {
     }
 }
 
-impl std::hash::Hash for Node {
+impl Hash for Node {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }

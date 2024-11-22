@@ -70,15 +70,16 @@ program (similar to Datalog) on the graph.
 
 ```rust
 ascent! {
+    // input data
     relation edge(Node, Node, Edge);
 
+    // result data
     relation app(Node);
     relation effect(Node);
     relation is_effect_of_app(Node, Node);
     relation root(Node);
     relation parent(Node, Node);
-    relation field(Node, Node);
-    relation variant(Node, Node);
+    relation output(Node, Node);
 
     // app structs have an implementation of the App trait
     app(app) <--
@@ -116,24 +117,12 @@ ascent! {
         edge(parent, field, Edge::Field),
         edge(field, child, Edge::Type);
 
-    // fields of root structs
-    field(struct_, field) <--
-        root(struct_),
-        edge(struct_, field, ?Edge::Variant|Edge::Field);
-    // recursive descent
-    field(struct2, field2) <--
-        field(struct1, field1),
-        edge(field1, struct2, Edge::Type),
-        edge(struct2, field2, ?Edge::Variant|Edge::Field);
-
-    // variants of root enums
-    variant(enum_, variant) <--
-        root(enum_),
-        edge(enum_, variant, Edge::Variant);
-    // recursive descent
-    variant(variant, field) <--
-        variant(enum_, variant),
-        edge(variant, field, Edge::Field);
+    output(root, child) <--
+        root(root),
+        edge(root, child, ?Edge::Variant|Edge::Field);
+    output(parent, child) <--
+        output(grandparent, parent),
+        edge(parent, child, ?Edge::Variant|Edge::Field|Edge::Type);
 }
 ```
 
