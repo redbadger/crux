@@ -1,12 +1,11 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use ascent::ascent;
 use rustdoc_types::{
-    Crate, Enum, GenericArg, GenericArgs, Id, Impl, Item, ItemEnum, ItemSummary, Path, StructKind,
-    Type, VariantKind,
+    Enum, GenericArg, GenericArgs, Impl, Item, ItemEnum, Path, StructKind, Type, VariantKind,
 };
 use serde::Serialize;
+
+use super::data::{Data, Node};
 
 ascent! {
     // input data
@@ -87,40 +86,12 @@ fn are_in_same_module(app: &Node, effect: &Node) -> bool {
     app.path[..(app.path.len() - 1)] == effect.path[..(effect.path.len() - 1)]
 }
 
-pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
+pub fn parse(data: &Data) -> Result<Vec<(Node, Node)>> {
     let mut prog = AscentProgram::default();
-    let mut nodes_by_id = HashMap::new();
-
-    // items
-    for (id, item) in &crate_.index {
-        nodes_by_id
-            .entry(*id)
-            .or_insert_with(|| Node::new(*id))
-            .item = Some(item.clone());
-    }
-
-    // paths
-    for (id, path) in &crate_.paths {
-        nodes_by_id
-            .entry(*id)
-            .or_insert_with(|| Node::new(*id))
-            .summary = Some(path.clone());
-    }
-
-    let node_by_id = |id: &Id| -> Option<&Node> {
-        let node = nodes_by_id
-            .get(id)
-            .expect("node should exist for all items and paths");
-        let skip = match &node.item {
-            Some(x) => x.attrs.contains(&"#[serde(skip)]".to_string()),
-            _ => false,
-        };
-        (!skip).then_some(node)
-    };
 
     // edges
-    for (id, item) in &crate_.index {
-        let Some(source) = node_by_id(id) else {
+    for (id, item) in &data.crate_.index {
+        let Some(source) = data.node_by_id(id) else {
             continue;
         };
         if item.attrs.contains(&"#[serde(skip)]".to_string()) {
@@ -138,7 +109,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                     StructKind::Tuple(fields) => {
                         for field in fields {
                             if let Some(id) = field {
-                                let Some(dest) = node_by_id(id) else {
+                                let Some(dest) = data.node_by_id(id) else {
                                     continue;
                                 };
                                 prog.edge.push((source.clone(), dest.clone(), Edge::Field));
@@ -150,7 +121,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                         has_stripped_fields: _,
                     } => {
                         for id in fields {
-                            let Some(dest) = node_by_id(id) else {
+                            let Some(dest) = data.node_by_id(id) else {
                                 continue;
                             };
                             prog.edge.push((source.clone(), dest.clone(), Edge::Field));
@@ -160,20 +131,20 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
             }
             ItemEnum::StructField(type_) => match type_ {
                 Type::ResolvedPath(path) => {
-                    let Some(dest) = node_by_id(&path.id) else {
+                    let Some(dest) = data.node_by_id(&path.id) else {
                         continue;
                     };
                     prog.edge.push((source.clone(), dest.clone(), Edge::Type));
 
                     if let Some(args) = &path.args {
-                        process_args(source, args.as_ref(), &node_by_id, &mut prog);
+                        process_args(source, args.as_ref(), &data, &mut prog.edge);
                     }
                 }
                 _ => (),
             },
             ItemEnum::Enum(Enum { variants, .. }) => {
                 for id in variants {
-                    let Some(dest) = node_by_id(id) else {
+                    let Some(dest) = data.node_by_id(id) else {
                         continue;
                     };
                     prog.edge
@@ -186,7 +157,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                     VariantKind::Tuple(fields) => {
                         for id in fields {
                             if let Some(id) = id {
-                                let Some(dest) = node_by_id(id) else {
+                                let Some(dest) = data.node_by_id(id) else {
                                     continue;
                                 };
                                 prog.edge.push((source.clone(), dest.clone(), Edge::Field));
@@ -198,7 +169,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                         has_stripped_fields: _,
                     } => {
                         for id in fields {
-                            let Some(dest) = node_by_id(id) else {
+                            let Some(dest) = data.node_by_id(id) else {
                                 continue;
                             };
                             prog.edge.push((source.clone(), dest.clone(), Edge::Field));
@@ -230,20 +201,20 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                 };
 
                 // record an edge for the trait the impl is of
-                let Some(dest) = node_by_id(trait_id) else {
+                let Some(dest) = data.node_by_id(trait_id) else {
                     continue;
                 };
                 prog.edge.push((source.clone(), dest.clone(), trait_edge));
 
                 // record an edge for the type the impl is for
-                let Some(dest) = node_by_id(&for_type_id) else {
+                let Some(dest) = data.node_by_id(&for_type_id) else {
                     continue;
                 };
                 prog.edge.push((source.clone(), dest.clone(), Edge::Type));
 
                 // record edges for the associated items in the impl
                 for id in items {
-                    let Some(dest) = node_by_id(id) else {
+                    let Some(dest) = data.node_by_id(id) else {
                         continue;
                     };
 
@@ -288,7 +259,7 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
                 }
 
                 // record an edge for the associated type
-                let Some(dest) = node_by_id(&target.id) else {
+                let Some(dest) = data.node_by_id(&target.id) else {
                     continue;
                 };
                 prog.edge
@@ -332,51 +303,28 @@ pub fn parse(crate_: &Crate) -> Result<Vec<(Node, Node)>> {
     Ok(all)
 }
 
-fn process_args<'a>(
+fn process_args(
     source: &Node,
     args: &GenericArgs,
-    node_by_id: &impl Fn(&Id) -> Option<&'a Node>,
-    prog: &mut AscentProgram,
+    data: &Data,
+    edges: &mut Vec<(Node, Node, Edge)>,
 ) {
     if let GenericArgs::AngleBracketed { args, .. } = args {
         for arg in args {
             if let GenericArg::Type(t) = arg {
                 if let Type::ResolvedPath(path) = t {
-                    let Some(dest) = node_by_id(&path.id) else {
+                    let Some(dest) = data.node_by_id(&path.id) else {
                         continue;
                     };
-                    prog.edge.push((source.clone(), dest.clone(), Edge::Type));
+                    edges.push((source.clone(), dest.clone(), Edge::Type));
 
                     if let Some(args) = &path.args {
                         let generic_args = args.as_ref();
-                        process_args(source, generic_args, node_by_id, prog);
+                        process_args(source, generic_args, data, edges);
                     }
                 };
             }
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Node {
-    pub id: Id,
-    pub item: Option<Item>,
-    pub summary: Option<ItemSummary>,
-}
-
-impl Node {
-    fn new(id: Id) -> Self {
-        Self {
-            id,
-            item: None,
-            summary: None,
-        }
-    }
-}
-
-impl std::hash::Hash for Node {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
     }
 }
 
