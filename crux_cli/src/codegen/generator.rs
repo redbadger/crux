@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
-use rustdoc_types::{Crate, GenericArg, GenericArgs, ItemSummary, Type, Variant};
+use rustdoc_types::{
+    GenericArg, GenericArgs, ItemEnum, ItemSummary, StructKind, Type, Variant, VariantKind,
+};
 
 use crate::codegen::format::{ContainerFormat, Named};
 
 use super::{
+    data::{Data, Node},
     format::{Format, VariantFormat},
-    parser::Node,
 };
 
-pub(crate) fn generate(edges: &[(Node, Node)], crate_: &Crate) {
+pub(crate) fn generate(edges: &[(Node, Node)], data: &Data) {
     let mut containers = HashMap::new();
     let mut variant_index = 0;
     for (from, to) in edges {
@@ -19,33 +21,31 @@ pub(crate) fn generate(edges: &[(Node, Node)], crate_: &Crate) {
         let Some(item) = &from.item else {
             continue;
         };
-        let mut container = None;
-        match &item.inner {
-            rustdoc_types::ItemEnum::Struct(s) => match &s.kind {
-                rustdoc_types::StructKind::Unit => (),
-                rustdoc_types::StructKind::Tuple(_vec) => (),
-                rustdoc_types::StructKind::Plain {
-                    fields: _,
-                    has_stripped_fields: _,
-                } => {
-                    let val = ContainerFormat::Struct(vec![]);
-                    container = Some(containers.entry(name).or_insert(val));
-                }
-            },
-            rustdoc_types::ItemEnum::Enum(_e) => {
+        let mut container = match &item.inner {
+            ItemEnum::Struct(s) => {
+                let val = match &s.kind {
+                    StructKind::Unit => ContainerFormat::UnitStruct,
+                    StructKind::Tuple(_fields) => ContainerFormat::TupleStruct(Default::default()),
+                    StructKind::Plain {
+                        fields: _,
+                        has_stripped_fields: _,
+                    } => ContainerFormat::Struct(Default::default()),
+                };
+                containers.entry(name).or_insert(val)
+            }
+            ItemEnum::Enum(_e) => {
                 if containers.contains_key(&name) {
                     variant_index += 1;
                 } else {
                     variant_index = 0;
                 }
-                container = Some(
-                    containers
-                        .entry(name)
-                        .or_insert(ContainerFormat::Enum(Default::default())),
-                );
+
+                containers
+                    .entry(name)
+                    .or_insert(ContainerFormat::Enum(Default::default()))
             }
             _ => continue,
-        }
+        };
 
         let Some(name) = get_name(&to, false) else {
             continue;
@@ -54,17 +54,22 @@ pub(crate) fn generate(edges: &[(Node, Node)], crate_: &Crate) {
             continue;
         };
         match &item.inner {
-            rustdoc_types::ItemEnum::StructField(t) => {
-                let Some(ContainerFormat::Struct(ref mut v)) = &mut container else {
-                    continue;
-                };
-                v.push(Named {
-                    name: name.to_string(),
-                    value: (crate_, t).into(),
-                });
-            }
-            rustdoc_types::ItemEnum::Variant(t) => {
-                let Some(ContainerFormat::Enum(ref mut v)) = &mut container else {
+            ItemEnum::StructField(t) => match &mut container {
+                ContainerFormat::Struct(ref mut v) => {
+                    v.push(Named {
+                        name: name.to_string(),
+                        value: (data, t).into(),
+                    });
+                }
+                ContainerFormat::UnitStruct => (),
+                ContainerFormat::NewTypeStruct(_format) => (),
+                ContainerFormat::TupleStruct(ref mut _v) => {
+                    // v.push(Format::Tuple((data, t).into()));
+                }
+                ContainerFormat::Enum(_btree_map) => (),
+            },
+            ItemEnum::Variant(t) => {
+                let ContainerFormat::Enum(ref mut v) = &mut container else {
                     continue;
                 };
                 let value = Named {
@@ -85,9 +90,9 @@ pub(crate) fn generate(edges: &[(Node, Node)], crate_: &Crate) {
     println!("{:#?}", containers);
 }
 
-impl From<(&Crate, &Type)> for Format {
-    fn from(value: (&Crate, &Type)) -> Self {
-        match value.1 {
+impl From<(&Data, &Type)> for Format {
+    fn from((data, type_): (&Data, &Type)) -> Self {
+        match type_ {
             Type::ResolvedPath(path) => {
                 if let Some(args) = &path.args {
                     match args.as_ref() {
@@ -97,12 +102,13 @@ impl From<(&Crate, &Type)> for Format {
                         } => {
                             if path.name == "Option" {
                                 let format = match args[0] {
-                                    GenericArg::Type(ref t) => (value.0, t).into(),
+                                    GenericArg::Type(ref t) => (data, t).into(),
                                     _ => todo!(),
                                 };
                                 Format::Option(Box::new(format))
                             } else {
-                                let name = qualify_name(value.0.paths.get(&path.id), &path.name);
+                                let name =
+                                    qualify_name(data.crate_.paths.get(&path.id), &path.name);
                                 Format::TypeName(name)
                             }
                         }
@@ -174,9 +180,9 @@ impl From<(&Crate, &Type)> for Format {
 impl From<&Variant> for VariantFormat {
     fn from(value: &Variant) -> Self {
         match &value.kind {
-            rustdoc_types::VariantKind::Plain => VariantFormat::Unit,
-            rustdoc_types::VariantKind::Tuple(_vec) => VariantFormat::Tuple(vec![]),
-            rustdoc_types::VariantKind::Struct {
+            VariantKind::Plain => VariantFormat::Unit,
+            VariantKind::Tuple(_vec) => VariantFormat::Tuple(vec![]),
+            VariantKind::Struct {
                 fields: _,
                 has_stripped_fields: _,
             } => todo!(),
