@@ -1,5 +1,6 @@
 mod data;
 mod format;
+mod logic;
 mod parser;
 
 use std::fs::File;
@@ -24,15 +25,6 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
         .document_private_items(true)
         .manifest_path(lib.manifest_path())
         .build()?;
-    // let json_path = lib
-    //     .manifest_path()
-    //     .parent()
-    //     .unwrap()
-    //     .parent()
-    //     .unwrap()
-    //     .join("target")
-    //     .join("doc")
-    //     .join("shared.json");
 
     let crate_: Crate = spawn_blocking(move || -> Result<Crate> {
         let file = File::open(json_path)?;
@@ -43,7 +35,9 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let data = data::Data::new(crate_);
 
-    let registry = parser::parse(&data)?;
+    let parsed = parser::parse(&data);
+
+    let registry = logic::run(parsed);
     println!("{:#?}", registry);
 
     Ok(())
