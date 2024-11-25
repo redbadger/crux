@@ -521,7 +521,6 @@ dependencies = [
  "ignore",
  "lazy-regex",
  "libc",
- "petgraph 0.6.5",
  "ramhorns",
  "rustdoc-json",
  "rustdoc-types",
@@ -1476,7 +1475,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "syn 2.0.85",
+ "syn 2.0.99",
 ]
 
 [[package]]
