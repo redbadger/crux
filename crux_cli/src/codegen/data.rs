@@ -8,6 +8,24 @@ pub struct Data {
     pub nodes_by_id: HashMap<Id, Node>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Node {
+    pub id: Id,
+    pub item: Option<Item>,
+    pub summary: Option<ItemSummary>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub enum Edge {
+    AssociatedItem,
+    AssociatedType,
+    Type,
+    Field,
+    Variant,
+    TraitApp,
+    TraitEffect,
+}
+
 impl Data {
     pub fn new(crate_: Crate) -> Self {
         let mut nodes_by_id = HashMap::new();
@@ -45,13 +63,6 @@ impl Data {
         };
         (!skip).then_some(node)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Node {
-    pub id: Id,
-    pub item: Option<Item>,
-    pub summary: Option<ItemSummary>,
 }
 
 impl Node {
