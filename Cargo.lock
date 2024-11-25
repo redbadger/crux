@@ -521,7 +521,6 @@ dependencies = [
  "ignore",
  "lazy-regex",
  "libc",
- "petgraph 0.6.5",
  "ramhorns",
  "rustdoc-json",
  "rustdoc-types",

@@ -1,6 +1,5 @@
 mod data;
 mod format;
-mod generator;
 mod parser;
 
 use std::fs::File;
@@ -44,9 +43,8 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let data = data::Data::new(crate_);
 
-    let edges = parser::parse(&data)?;
-
-    generator::generate(&edges, &data);
+    let registry = parser::parse(&data)?;
+    println!("{:#?}", registry);
 
     Ok(())
 }

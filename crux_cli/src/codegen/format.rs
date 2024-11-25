@@ -6,7 +6,7 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ContainerFormat {
     /// An empty struct, e.g. `struct A`.
     UnitStruct,
@@ -21,7 +21,7 @@ pub enum ContainerFormat {
     Enum(BTreeMap<u32, Named<VariantFormat>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Format {
     /// A format whose value is initially unknown. Used internally for tracing. Not (de)serializable.
     Variable(Variable<Format>),
@@ -69,18 +69,18 @@ pub enum Format {
 
 /// A named value.
 /// Used for named parameters or variants.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Named<T> {
     pub name: String,
     pub value: T,
 }
 
 /// A mutable holder for an initially unknown value.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variable<T>(Rc<RefCell<Option<T>>>);
 
 /// Description of a variant in an enum.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VariantFormat {
     /// A variant whose format is initially unknown. Used internally for tracing. Not (de)serializable.
     Variable(Variable<VariantFormat>),
@@ -143,5 +143,11 @@ where
             Ok(cell) => cell.into_inner(),
             Err(rc) => rc.borrow().clone(),
         }
+    }
+}
+
+impl<T: std::hash::Hash> std::hash::Hash for Variable<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.borrow().hash(state);
     }
 }
