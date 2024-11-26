@@ -86,10 +86,9 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
             is_struct(struct_),
             if let Some(Item { inner: ItemEnum::Struct(Struct{kind: StructKind::Tuple(_), ..}), .. }) = &struct_.item;
 
-        relation struct_field(Node, Node);
-        struct_field(struct_, field) <--
-            is_struct(struct_),
-            edge(struct_, field, Edge::Field);
+        relation field(Node, Node);
+        field(struct_or_variant, field) <--
+            edge(struct_or_variant, field, Edge::Field);
 
         relation is_enum(Node);
         is_enum(enum_) <--
@@ -100,11 +99,6 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         variant(enum_, variant) <--
             is_enum(enum_),
             edge(enum_, variant, Edge::Variant);
-
-        relation variant_field(Node, Node);
-        variant_field(variant, field) <--
-            variant(enum_, variant),
-            edge(variant, field, Edge::Field);
 
         relation variant_plain(Node, Node);
         variant_plain(enum_, variant) <--
@@ -125,34 +119,34 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         // these rules are used to generate the output
 
         relation format(Node, Format);
-        format(parent, format) <--
-            edge(parent, field, Edge::Field),
+        format(struct_or_variant, format) <--
+            field(struct_or_variant, field),
             let format = make_format(&field);
 
         relation format_named(Node, Named<Format>);
-        format_named(struct_, format) <--
-            struct_field(struct_, field),
+        format_named(struct_or_variant, format) <--
+            field(struct_or_variant, field),
             let format = make_named_format(&field);
 
         relation format_plain_variant(Node, Named<VariantFormat>);
         format_plain_variant(enum_, format) <--
             variant_plain(enum_, variant),
-            variant_field(variant, field),
-            agg formats = collect(format) in format_named(field, format),
+            field(variant, field),
+            agg formats = collect(format) in format_named(variant, format),
             let format = make_plain_variant_format(variant);
 
         relation format_struct_variant(Node, Named<VariantFormat>);
         format_struct_variant(enum_, format) <--
             variant_struct(enum_, variant),
-            variant_field(variant, field),
-            agg formats = collect(format) in format_named(field, format),
+            field(variant, field),
+            agg formats = collect(format) in format_named(variant, format),
             let format = make_struct_variant_format(variant, &formats);
 
         relation format_tuple_variant(Node, Named<VariantFormat>);
         format_tuple_variant(enum_, format) <--
             variant_tuple(enum_, variant),
-            variant_field(variant, field),
-            agg formats = collect(format) in format(field, format),
+            field(variant, field),
+            agg formats = collect(format) in format(variant, format),
             let format = make_tuple_variant_format(variant, &formats);
 
         relation format_variant(Node, Named<VariantFormat>);
@@ -166,22 +160,22 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         relation container(String, ContainerFormat);
         container(name, container) <--
             struct_plain(struct_),
-            agg formats = collect(format) in format_named(struct_, format),
+            agg fields = collect(format) in format_named(struct_, format),
             if let Some(Item { name: Some(n), .. }) = &struct_.item,
             let name = n.to_string(),
-            let container = make_struct_plain(struct_, &formats);
+            let container = make_struct_plain(struct_, &fields);
         container(name, container) <--
             struct_tuple(struct_),
-            agg formats = collect(format) in format(struct_, format),
+            agg fields = collect(format) in format(struct_, format),
             if let Some(Item { name: Some(n), .. }) = &struct_.item,
             let name = n.to_string(),
-            let container = make_struct_tuple(&formats);
+            let container = make_struct_tuple(&fields);
         container(name, container) <--
             is_enum(enum_),
-            agg formats = collect(format) in format_variant(enum_, format),
+            agg variants = collect(format) in format_variant(enum_, format),
             if let Some(Item { name: Some(n), .. }) = &enum_.item,
             let name = n.to_string(),
-            let container = make_enum(&formats);
+            let container = make_enum(&variants);
     };
 
     // write field and variant edges to disk for debugging
@@ -204,6 +198,7 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
             "is_struct.json",
             serde_json::to_string(&prog.is_struct).unwrap(),
         ),
+        ("field.json", serde_json::to_string(&prog.field).unwrap()),
         (
             "struct_plain.json",
             serde_json::to_string(&prog.struct_plain).unwrap(),
