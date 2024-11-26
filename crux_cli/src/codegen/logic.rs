@@ -122,31 +122,31 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         relation format(Node, Format);
         format(struct_or_variant, format) <--
             field(struct_or_variant, field),
-            let format = make_format(&field);
+            if let Some(format) = make_format(&field);
 
         relation format_named(Node, Named<Format>);
         format_named(struct_or_variant, format) <--
             field(struct_or_variant, field),
-            let format = make_named_format(&field);
+            if let Some(format) = make_named_format(&field);
 
         relation format_plain_variant(Node, Named<VariantFormat>);
         format_plain_variant(enum_, format) <--
             variant_plain(enum_, variant),
-            let format = make_plain_variant_format(variant);
+            if let Some(format) = make_plain_variant_format(variant);
 
         relation format_tuple_variant(Node, Named<VariantFormat>);
         format_tuple_variant(enum_, format) <--
             variant_tuple(enum_, variant),
             field(variant, field),
             agg formats = collect(format) in format(field, format),
-            let format = make_tuple_variant_format(variant, &formats);
+            if let Some(format) = make_tuple_variant_format(variant, &formats);
 
         relation format_struct_variant(Node, Named<VariantFormat>);
         format_struct_variant(enum_, format) <--
             variant_struct(enum_, variant),
             field(variant, field),
             agg formats = collect(format) in format_named(field, format),
-            let format = make_struct_variant_format(variant, &formats);
+            if let Some(format) = make_struct_variant_format(variant, &formats);
 
         relation format_variant(Node, Named<VariantFormat>);
         format_variant(enum_, format) <--
@@ -253,43 +253,32 @@ where
     std::iter::once(input.collect::<Vec<_>>())
 }
 
-fn make_format(field: &Node) -> Format {
-    println!("make format");
-    if let Some(item) = &field.item {
-        match &item.inner {
-            // ItemEnum::Struct(s) => match &s.kind {
-            //     // StructKind::Plain { .. } => return Format::TypeName(),
-            //     StructKind::Tuple(_) => return Format::Unit,
-            //     _ => println!("{:?}", s),
-            // },
-            ItemEnum::StructField(type_) => return type_.into(),
-            ItemEnum::Variant(v) => match &v.kind {
-                VariantKind::Plain => return Format::Unit,
-                VariantKind::Struct { .. } => return Format::Unit, // todo
-                VariantKind::Tuple(_) => return Format::Unit,      // todo
-            },
-            _ => println!("{:?}", item),
-        };
+fn make_format(field: &Node) -> Option<Format> {
+    match &field.item {
+        Some(item) => match &item.inner {
+            ItemEnum::StructField(type_) => Some(type_.into()),
+            _ => None,
+        },
+        _ => None,
     }
-    unreachable!()
 }
 
-fn make_named_format(field: &Node) -> Named<Format> {
-    println!("make named format");
-    if let Some(Item {
-        name: Some(name), ..
-    }) = &field.item
-    {
-        return Named {
-            name: name.clone(),
-            value: make_format(field),
-        };
-    };
-    unreachable!()
+fn make_named_format(field: &Node) -> Option<Named<Format>> {
+    match &field.item {
+        Some(Item {
+            name: Some(name), ..
+        }) => match make_format(field) {
+            Some(value) => Some(Named {
+                name: name.clone(),
+                value,
+            }),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 fn is_plain_variant(variant: &Node) -> bool {
-    println!("is plain variant");
     matches!(
         &variant.item,
         Some(Item {
@@ -303,7 +292,6 @@ fn is_plain_variant(variant: &Node) -> bool {
 }
 
 fn is_struct_variant(variant: &Node) -> bool {
-    println!("is struct variant");
     matches!(
         &variant.item,
         Some(Item {
@@ -317,7 +305,6 @@ fn is_struct_variant(variant: &Node) -> bool {
 }
 
 fn is_tuple_variant(variant: &Node) -> bool {
-    println!("is tuple variant");
     matches!(
         &variant.item,
         Some(Item {
@@ -330,71 +317,71 @@ fn is_tuple_variant(variant: &Node) -> bool {
     )
 }
 
-fn make_plain_variant_format(variant: &Node) -> Named<VariantFormat> {
-    println!("make plain variant format");
-    if let Some(Item {
-        name: Some(name), ..
-    }) = &variant.item
-    {
-        if let Some(item) = &variant.item {
-            if let ItemEnum::Variant(_) = &item.inner {
-                return Named {
-                    name: name.clone(),
-                    value: VariantFormat::Unit,
-                };
-            };
-        }
+fn make_plain_variant_format(variant: &Node) -> Option<Named<VariantFormat>> {
+    match &variant.item {
+        Some(Item {
+            name: Some(name),
+            inner,
+            ..
+        }) => match inner {
+            ItemEnum::Variant(_) => Some(Named {
+                name: name.clone(),
+                value: VariantFormat::Unit,
+            }),
+            _ => None,
+        },
+        _ => None,
     }
-    unreachable!()
 }
 
 fn make_struct_variant_format(
     variant: &Node,
     fields: &Vec<(&Named<Format>,)>,
-) -> Named<VariantFormat> {
-    println!("make struct variant format");
-    if let Some(Item {
-        name: Some(name), ..
-    }) = &variant.item
-    {
-        if let Some(item) = &variant.item {
-            if let ItemEnum::Variant(_) = &item.inner {
-                return Named {
-                    name: name.clone(),
-                    value: VariantFormat::Struct(
-                        fields
-                            .iter()
-                            .map(|(field,)| (*field).clone())
-                            .collect::<Vec<_>>(),
-                    ),
-                };
-            };
-        }
+) -> Option<Named<VariantFormat>> {
+    match &variant.item {
+        Some(Item {
+            name: Some(name),
+            inner,
+            ..
+        }) => match inner {
+            ItemEnum::Variant(_) => Some(Named {
+                name: name.clone(),
+                value: VariantFormat::Struct(
+                    fields
+                        .iter()
+                        .map(|(field,)| (*field).clone())
+                        .collect::<Vec<_>>(),
+                ),
+            }),
+            _ => None,
+        },
+        _ => None,
     }
-    unreachable!()
 }
 
-fn make_tuple_variant_format(variant: &Node, fields: &Vec<(&Format,)>) -> Named<VariantFormat> {
-    println!("make tuple variant format");
-    if let Some(Item {
-        name: Some(name), ..
-    }) = &variant.item
-    {
-        if let Some(item) = &variant.item {
-            if let ItemEnum::Variant(_) = &item.inner {
-                return Named {
-                    name: name.clone(),
-                    value: VariantFormat::Tuple(
-                        fields
-                            .iter()
-                            .map(|(field,)| (*field).clone())
-                            .collect::<Vec<_>>(),
-                    ),
-                };
-            };
-        }
+fn make_tuple_variant_format(
+    variant: &Node,
+    fields: &Vec<(&Format,)>,
+) -> Option<Named<VariantFormat>> {
+    match &variant.item {
+        Some(Item {
+            name: Some(name),
+            inner,
+            ..
+        }) => match inner {
+            ItemEnum::Variant(_) => Some(Named {
+                name: name.clone(),
+                value: VariantFormat::Tuple(
+                    fields
+                        .iter()
+                        .map(|(field,)| (*field).clone())
+                        .collect::<Vec<_>>(),
+                ),
+            }),
+            _ => None,
+        },
+        _ => None,
     }
-    unreachable!()
 }
 
 fn make_struct_plain(_node: &Node, fields: &Vec<(&Named<Format>,)>) -> ContainerFormat {
@@ -416,7 +403,6 @@ fn make_struct_tuple(fields: &Vec<(&Format,)>) -> ContainerFormat {
 }
 
 fn make_enum(variants: &Vec<(&Named<VariantFormat>,)>) -> ContainerFormat {
-    println!("make enum");
     ContainerFormat::Enum(
         variants
             .iter()
