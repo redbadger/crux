@@ -71,33 +71,35 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
             subset(grandparent, parent),
             edge(parent, child, ?Edge::Variant|Edge::Field|Edge::Type);
 
-        relation is_struct(Node);
-        is_struct(struct_) <--
+        relation struct_in_subset(Node);
+        struct_in_subset(struct_) <--
             subset(struct_, _),
             if let Some(Item { inner: ItemEnum::Struct(_), .. }) = &struct_.item;
 
+        relation enum_in_subset(Node);
+        enum_in_subset(enum_) <--
+            subset(enum_, _),
+            if let Some(Item { inner: ItemEnum::Enum(_), .. }) = &enum_.item;
+
         relation struct_plain(Node);
         struct_plain(struct_) <--
-            is_struct(struct_),
+            struct_in_subset(struct_),
             if let Some(Item { inner: ItemEnum::Struct(Struct{kind: StructKind::Plain { .. }, ..}), .. }) = &struct_.item;
 
         relation struct_tuple(Node);
         struct_tuple(struct_) <--
-            is_struct(struct_),
+            struct_in_subset(struct_),
             if let Some(Item { inner: ItemEnum::Struct(Struct{kind: StructKind::Tuple(_), ..}), .. }) = &struct_.item;
-
-        relation field(Node, Node);
-        field(struct_or_variant, field) <--
-            edge(struct_or_variant, field, Edge::Field);
-
-        relation is_enum(Node);
-        is_enum(enum_) <--
-            subset(enum_, _),
-            if let Some(Item { inner: ItemEnum::Enum(_), .. }) = &enum_.item;
 
         relation variant(Node, Node);
         variant(enum_, variant) <--
+            enum_in_subset(enum_),
             edge(enum_, variant, Edge::Variant);
+
+        relation field(Node, Node);
+        field(struct_or_variant, field) <--
+            (struct_in_subset(struct_or_variant) || variant(enum_, struct_or_variant)),
+            edge(struct_or_variant, field, Edge::Field);
 
         relation variant_plain(Node, Node);
         variant_plain(enum_, variant) <--
@@ -168,7 +170,7 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
             let name = n.to_string(),
             let container = make_struct_tuple(&fields);
         container(name, container) <--
-            is_enum(enum_),
+            enum_in_subset(enum_),
             agg variants = collect(format) in format_variant(enum_, format),
             if let Some(Item { name: Some(n), .. }) = &enum_.item,
             let name = n.to_string(),
@@ -188,12 +190,12 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         ("parent.json", serde_json::to_string(&prog.parent).unwrap()),
         ("subset.json", serde_json::to_string(&prog.subset).unwrap()),
         (
-            "is_enum.json",
-            serde_json::to_string(&prog.is_enum).unwrap(),
+            "enum_in_subset.json",
+            serde_json::to_string(&prog.enum_in_subset).unwrap(),
         ),
         (
-            "is_struct.json",
-            serde_json::to_string(&prog.is_struct).unwrap(),
+            "struct_in_subset.json",
+            serde_json::to_string(&prog.struct_in_subset).unwrap(),
         ),
         ("field.json", serde_json::to_string(&prog.field).unwrap()),
         (
@@ -222,6 +224,18 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         ),
         ("format.txt", format!("{:#?}", &prog.format)),
         ("format_named.txt", format!("{:#?}", &prog.format_named)),
+        (
+            "format_plain_variant.txt",
+            format!("{:#?}", &prog.format_plain_variant),
+        ),
+        (
+            "format_tuple_variant.txt",
+            format!("{:#?}", &prog.format_tuple_variant),
+        ),
+        (
+            "format_struct_variant.txt",
+            format!("{:#?}", &prog.format_struct_variant),
+        ),
         ("container.txt", format!("{:#?}", &prog.container)),
     ] {
         std::fs::write(format!("/tmp/stu/{name}"), contents).unwrap();
