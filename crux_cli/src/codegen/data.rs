@@ -1,21 +1,21 @@
 use std::{collections::HashMap, hash::Hash};
 
 use rustdoc_types::{Crate, Id, Item, ItemSummary};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub struct Data {
     pub crate_: Crate,
     pub nodes_by_id: HashMap<Id, Node>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     pub id: Id,
     pub item: Option<Item>,
     pub summary: Option<ItemSummary>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Edge {
     AssociatedItem,
     AssociatedType,

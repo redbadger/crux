@@ -513,6 +513,7 @@ dependencies = [
  "console",
  "guppy",
  "ignore",
+ "insta",
  "lazy-regex",
  "libc",
  "ramhorns",
