@@ -97,23 +97,22 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
 
         relation variant(Node, Node);
         variant(enum_, variant) <--
-            is_enum(enum_),
             edge(enum_, variant, Edge::Variant);
 
         relation variant_plain(Node, Node);
         variant_plain(enum_, variant) <--
             variant(enum_, variant),
-            if let Some(Item { inner: ItemEnum::Variant(Variant{kind: VariantKind::Plain, ..}), .. }) = &variant.item;
-
-        relation variant_struct(Node, Node);
-        variant_struct(enum_, variant) <--
-            variant(enum_, variant),
-            if let Some(Item { inner: ItemEnum::Variant(Variant{kind: VariantKind::Struct {..}, ..}), .. }) = &variant.item;
+            if is_plain_variant(&variant);
 
         relation variant_tuple(Node, Node);
         variant_tuple(enum_, variant) <--
             variant(enum_, variant),
-            if let Some(Item { inner: ItemEnum::Variant(Variant{kind: VariantKind::Tuple(_), ..}), .. }) = &variant.item;
+            if is_tuple_variant(&variant);
+
+        relation variant_struct(Node, Node);
+        variant_struct(enum_, variant) <--
+            variant(enum_, variant),
+            if is_struct_variant(&variant);
 
         // ------- rules over output -------
         // these rules are used to generate the output
@@ -131,23 +130,21 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         relation format_plain_variant(Node, Named<VariantFormat>);
         format_plain_variant(enum_, format) <--
             variant_plain(enum_, variant),
-            field(variant, field),
-            agg formats = collect(format) in format_named(variant, format),
             let format = make_plain_variant_format(variant);
-
-        relation format_struct_variant(Node, Named<VariantFormat>);
-        format_struct_variant(enum_, format) <--
-            variant_struct(enum_, variant),
-            field(variant, field),
-            agg formats = collect(format) in format_named(variant, format),
-            let format = make_struct_variant_format(variant, &formats);
 
         relation format_tuple_variant(Node, Named<VariantFormat>);
         format_tuple_variant(enum_, format) <--
             variant_tuple(enum_, variant),
             field(variant, field),
-            agg formats = collect(format) in format(variant, format),
+            agg formats = collect(format) in format(field, format),
             let format = make_tuple_variant_format(variant, &formats);
+
+        relation format_struct_variant(Node, Named<VariantFormat>);
+        format_struct_variant(enum_, format) <--
+            variant_struct(enum_, variant),
+            field(variant, field),
+            agg formats = collect(format) in format_named(field, format),
+            let format = make_struct_variant_format(variant, &formats);
 
         relation format_variant(Node, Named<VariantFormat>);
         format_variant(enum_, format) <--
@@ -208,6 +205,10 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
             serde_json::to_string(&prog.struct_tuple).unwrap(),
         ),
         (
+            "variant.json",
+            serde_json::to_string(&prog.variant).unwrap(),
+        ),
+        (
             "variant_plain.json",
             serde_json::to_string(&prog.variant_plain).unwrap(),
         ),
@@ -239,13 +240,14 @@ where
 }
 
 fn make_format(field: &Node) -> Format {
+    println!("make format");
     if let Some(item) = &field.item {
         match &item.inner {
-            ItemEnum::Struct(s) => match &s.kind {
-                // StructKind::Plain { .. } => return Format::TypeName(),
-                StructKind::Tuple(_) => return Format::Unit,
-                _ => println!("{:?}", s),
-            },
+            // ItemEnum::Struct(s) => match &s.kind {
+            //     // StructKind::Plain { .. } => return Format::TypeName(),
+            //     StructKind::Tuple(_) => return Format::Unit,
+            //     _ => println!("{:?}", s),
+            // },
             ItemEnum::StructField(type_) => return type_.into(),
             ItemEnum::Variant(v) => match &v.kind {
                 VariantKind::Plain => return Format::Unit,
@@ -259,6 +261,7 @@ fn make_format(field: &Node) -> Format {
 }
 
 fn make_named_format(field: &Node) -> Named<Format> {
+    println!("make named format");
     if let Some(Item {
         name: Some(name), ..
     }) = &field.item
@@ -271,7 +274,50 @@ fn make_named_format(field: &Node) -> Named<Format> {
     unreachable!()
 }
 
+fn is_plain_variant(variant: &Node) -> bool {
+    println!("is plain variant");
+    matches!(
+        &variant.item,
+        Some(Item {
+            inner: ItemEnum::Variant(Variant {
+                kind: VariantKind::Plain,
+                ..
+            }),
+            ..
+        })
+    )
+}
+
+fn is_struct_variant(variant: &Node) -> bool {
+    println!("is struct variant");
+    matches!(
+        &variant.item,
+        Some(Item {
+            inner: ItemEnum::Variant(Variant {
+                kind: VariantKind::Struct { .. },
+                ..
+            }),
+            ..
+        })
+    )
+}
+
+fn is_tuple_variant(variant: &Node) -> bool {
+    println!("is tuple variant");
+    matches!(
+        &variant.item,
+        Some(Item {
+            inner: ItemEnum::Variant(Variant {
+                kind: VariantKind::Tuple(_),
+                ..
+            }),
+            ..
+        })
+    )
+}
+
 fn make_plain_variant_format(variant: &Node) -> Named<VariantFormat> {
+    println!("make plain variant format");
     if let Some(Item {
         name: Some(name), ..
     }) = &variant.item
@@ -292,6 +338,7 @@ fn make_struct_variant_format(
     variant: &Node,
     fields: &Vec<(&Named<Format>,)>,
 ) -> Named<VariantFormat> {
+    println!("make struct variant format");
     if let Some(Item {
         name: Some(name), ..
     }) = &variant.item
@@ -314,6 +361,7 @@ fn make_struct_variant_format(
 }
 
 fn make_tuple_variant_format(variant: &Node, fields: &Vec<(&Format,)>) -> Named<VariantFormat> {
+    println!("make tuple variant format");
     if let Some(Item {
         name: Some(name), ..
     }) = &variant.item
@@ -354,6 +402,7 @@ fn make_struct_tuple(fields: &Vec<(&Format,)>) -> ContainerFormat {
 }
 
 fn make_enum(variants: &Vec<(&Named<VariantFormat>,)>) -> ContainerFormat {
+    println!("make enum");
     ContainerFormat::Enum(
         variants
             .iter()
@@ -385,7 +434,7 @@ impl From<&Type> for Format {
                         } => {
                             if path.name == "Option" {
                                 let format = match args[0] {
-                                    GenericArg::Type(ref t) => t.into(),
+                                    GenericArg::Type(ref type_) => type_.into(),
                                     _ => todo!(),
                                 };
                                 Format::Option(Box::new(format))
@@ -457,3 +506,7 @@ impl From<&Type> for Format {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "logic_tests.rs"]
+mod logic_tests;
