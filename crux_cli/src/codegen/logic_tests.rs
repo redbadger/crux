@@ -1,11 +1,28 @@
-use crate::codegen::data::{Edge, Node};
+use rustdoc_types::Crate;
+
+use crate::codegen::data::Node;
 
 #[test]
 fn cat_facts() {
-    static FILE: &str = include_str!("fixtures/cat_facts.json");
-    let data: Vec<(Node, Node, Edge)> = serde_json::from_str(FILE).unwrap();
+    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts_rustdoc.json");
+    let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
+    let nodes = crate_
+        .index
+        .values()
+        .flat_map(|item| {
+            if item.attrs.contains(&"#[serde(skip)]".to_string()) {
+                None
+            } else {
+                Some((Node {
+                    id: item.id,
+                    item: Some(item.clone()),
+                    summary: crate_.paths.get(&item.id).cloned(),
+                },))
+            }
+        })
+        .collect::<Vec<_>>();
 
-    let containers = super::run(data);
+    let containers = super::run(nodes);
     insta::assert_debug_snapshot!(&containers, @r#"
     [
         (
