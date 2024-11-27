@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
             cli.verbose,
             *include_source_code,
         ),
-        Some(Commands::Codegen(args)) => codegen::codegen(args).await,
+        Some(Commands::Codegen(args)) => codegen::codegen(args),
         None => Ok(()),
     }
 }

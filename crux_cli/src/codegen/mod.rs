@@ -1,18 +1,17 @@
 mod data;
 mod format;
 mod logic;
-mod parser;
 
 use std::fs::File;
 
 use anyhow::{bail, Result};
+use data::Node;
 use guppy::{graph::PackageGraph, MetadataCommand};
 use rustdoc_types::Crate;
-use tokio::task::spawn_blocking;
 
 use crate::args::CodegenArgs;
 
-pub async fn codegen(args: &CodegenArgs) -> Result<()> {
+pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let mut cmd = MetadataCommand::new();
     let package_graph = PackageGraph::from_command(&mut cmd)?;
 
@@ -26,18 +25,26 @@ pub async fn codegen(args: &CodegenArgs) -> Result<()> {
         .manifest_path(lib.manifest_path())
         .build()?;
 
-    let crate_: Crate = spawn_blocking(move || -> Result<Crate> {
-        let file = File::open(json_path)?;
-        let crate_ = serde_json::from_reader(file)?;
-        Ok(crate_)
-    })
-    .await??;
+    let file = File::open(json_path)?;
+    let crate_: Crate = serde_json::from_reader(file)?;
 
-    let data = data::Data::new(crate_);
+    let nodes = crate_
+        .index
+        .values()
+        .flat_map(|item| {
+            if item.attrs.contains(&"#[serde(skip)]".to_string()) {
+                None
+            } else {
+                Some((Node {
+                    id: item.id,
+                    item: Some(item.clone()),
+                    summary: crate_.paths.get(&item.id).cloned(),
+                },))
+            }
+        })
+        .collect::<Vec<_>>();
 
-    let parsed = parser::parse(&data);
-
-    let registry = logic::run(parsed);
+    let registry = logic::run(nodes);
     println!("{:#?}", registry);
 
     Ok(())

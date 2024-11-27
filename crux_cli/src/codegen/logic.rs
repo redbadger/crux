@@ -2,104 +2,141 @@ use std::collections::BTreeMap;
 
 use ascent::ascent_run;
 use rustdoc_types::{
-    GenericArg, GenericArgs, Item, ItemEnum, Struct, StructKind, Type, Variant, VariantKind,
+    Enum, GenericArg, GenericArgs, Impl, Item, ItemEnum, Path, Struct, StructKind, Type, Variant,
+    VariantKind,
 };
 
 use crate::codegen::format::ContainerFormat;
 
 use super::{
-    data::{Edge, Node},
+    data::Node,
     format::{Format, Named, VariantFormat},
 };
 
-pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
+pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
     let prog = ascent_run! {
         // ------- facts ------------------
+        relation node(Node) = nodes;
 
-        relation edge(Node, Node, Edge) = data;
+        // ------- rules ------------------
 
-        // ------- rules over input -------
-        // filters out the items that are not of interest
+        relation is_struct(Node);
+        is_struct(struct_) <--
+            node(struct_),
+            if let Some(Item { inner: ItemEnum::Struct(_), .. }) = &struct_.item;
 
-        relation app(Node);
+        relation is_enum(Node);
+        is_enum(enum_) <--
+            node(enum_),
+            if let Some(Item { inner: ItemEnum::Enum(_), .. }) = &enum_.item;
+
         // app structs have an implementation of the App trait
-        app(app) <--
-            edge(app_impl, app_trait, Edge::TraitApp),
-            edge(app_impl, app, Edge::Type);
+        relation app(Node, Node);
+        app(impl_, app) <--
+            node(impl_),
+            is_struct(app),
+            if is_impl_for(impl_, app, "App");
 
-        relation effect(Node);
         // effect enums have an implementation of the Effect trait
+        relation effect(Node);
         effect(effect) <--
-            edge(effect_impl, effect_trait, Edge::TraitEffect),
-            edge(effect_impl, effect, Edge::Type);
+            node(impl_),
+            is_enum(effect),
+            if is_impl_for(impl_, effect, "Effect");
 
-        relation is_effect_of_app(Node, Node);
         // an effect belongs to an app if they are in the same module
+        relation is_effect_of_app(Node, Node);
         is_effect_of_app(app, effect) <--
-            app(app),
+            app(_impl, app),
             effect(effect),
             if are_in_same_module(app, effect);
+
+        relation field_of(Node, Node);
+        field_of(parent, field) <--
+            node(parent),
+            node(field),
+            if is_field_of(parent, field);
+
+        relation variant_of(Node, Node);
+        variant_of(parent, variant) <--
+            node(parent),
+            node(variant),
+            if is_variant_of(parent, variant);
+
+        relation type_for(Node, Node);
+        type_for(parent, type_) <--
+            node(parent),
+            node(type_),
+            if is_type_for(parent, type_);
+
+        relation associated_item(Node, Node);
+        associated_item(impl_, item) <--
+            app(impl_, _),
+            node(item),
+            if is_associated_item(impl_, item);
+
+        // app hierarchy
+        relation parent(Node, Node);
+        parent(parent, child) <--
+            app(_, parent),
+            app(_, child),
+            field_of(parent, field),
+            type_for(field, child);
 
         relation root(Node);
         // Event and ViewModel types are associated
         // with the root apps (that have no parent)
         root(assoc_type) <--
-            edge(app_impl, app_trait, Edge::TraitApp),
-            edge(app_impl, app, Edge::Type),
+            app(impl_, app),
             !parent(_, app),
-            edge(app_impl, assoc_item, Edge::AssociatedItem),
-            edge(assoc_item, assoc_type, Edge::AssociatedType);
+            associated_item(impl_, assoc_item),
+            type_for(assoc_item, assoc_type);
         // Effects belong to the root apps (that have no parent)
         root(effect_enum) <--
             is_effect_of_app(app, effect_enum),
             !parent(_, app);
 
-        relation parent(Node, Node);
-        // app hierarchy
-        parent(parent, child) <--
-            app(parent),
-            app(child),
-            edge(parent, field, Edge::Field),
-            edge(field, child, Edge::Type);
-
         // set of all the edges we are interested in
         relation subset(Node, Node);
-        subset(root, child) <--
-            root(root),
-            edge(root, child, ?Edge::Variant|Edge::Field);
-        subset(parent, child) <--
-            subset(grandparent, parent),
-            edge(parent, child, ?Edge::Variant|Edge::Field|Edge::Type);
-
-        relation struct_in_subset(Node);
-        struct_in_subset(struct_) <--
-            subset(struct_, _),
-            if let Some(Item { inner: ItemEnum::Struct(_), .. }) = &struct_.item;
-
-        relation enum_in_subset(Node);
-        enum_in_subset(enum_) <--
-            subset(enum_, _),
-            if let Some(Item { inner: ItemEnum::Enum(_), .. }) = &enum_.item;
+        subset(parent_struct, child_struct) <--
+            root(parent_struct),
+            is_struct(parent_struct),
+            field_of(parent_struct, child_struct);
+        subset(parent_struct, child_struct) <--
+            subset(_, parent_struct),
+            is_struct(parent_struct),
+            field_of(parent_struct, child_struct);
+        subset(parent_enum, variant) <--
+            root(parent_enum),
+            is_enum(parent_enum),
+            variant_of(parent_enum, variant);
+        subset(variant, child) <--
+            subset(_, variant),
+            field_of(variant, child);
+        subset(parent_enum, variant) <--
+            subset(_, parent_enum),
+            is_enum(parent_enum),
+            variant_of(parent_enum, variant);
 
         relation struct_plain(Node);
         struct_plain(struct_) <--
-            struct_in_subset(struct_),
+            subset(struct_, _),
             if let Some(Item { inner: ItemEnum::Struct(Struct{kind: StructKind::Plain { .. }, ..}), .. }) = &struct_.item;
 
         relation struct_tuple(Node);
         struct_tuple(struct_) <--
-            struct_in_subset(struct_),
+            subset(struct_, _),
             if let Some(Item { inner: ItemEnum::Struct(Struct{kind: StructKind::Tuple(_), ..}), .. }) = &struct_.item;
-
-        relation variant(Node, Node);
-        variant(enum_, variant) <--
-            enum_in_subset(enum_),
-            edge(enum_, variant, Edge::Variant);
 
         relation field(Node, Node);
         field(struct_or_variant, field) <--
-            (struct_in_subset(struct_or_variant) || variant(enum_, struct_or_variant)),
-            edge(struct_or_variant, field, Edge::Field);
+            subset(struct_or_variant, _),
+            field_of(struct_or_variant, field);
+
+        relation variant(Node, Node);
+        variant(enum_, variant) <--
+            subset(enum_, _),
+            variant_of(enum_, variant);
 
         relation variant_plain(Node, Node);
         variant_plain(enum_, variant) <--
@@ -152,51 +189,65 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
         format_variant(enum_, format) <--
             (
                 format_plain_variant(enum_, format) ||
-                format_struct_variant(enum_, format) ||
-                format_tuple_variant(enum_, format)
+                format_tuple_variant(enum_, format) ||
+                format_struct_variant(enum_, format)
             );
 
         relation container(String, ContainerFormat);
         container(name, container) <--
             struct_plain(struct_),
             agg fields = collect(format) in format_named(struct_, format),
-            if let Some(Item { name: Some(n), .. }) = &struct_.item,
-            let name = n.to_string(),
+            if let Some(name) = name_of(struct_),
             let container = make_struct_plain(struct_, &fields);
         container(name, container) <--
             struct_tuple(struct_),
             agg fields = collect(format) in format(struct_, format),
-            if let Some(Item { name: Some(n), .. }) = &struct_.item,
-            let name = n.to_string(),
+            if let Some(name) = name_of(struct_),
             let container = make_struct_tuple(&fields);
         container(name, container) <--
-            enum_in_subset(enum_),
+            variant(enum_, _),
             agg variants = collect(format) in format_variant(enum_, format),
-            if let Some(Item { name: Some(n), .. }) = &enum_.item,
-            let name = n.to_string(),
+            if let Some(name) = name_of(enum_),
             let container = make_enum(&variants);
     };
 
     // write field and variant edges to disk for debugging
     for (name, contents) in &[
-        ("edge.json", serde_json::to_string(&prog.edge).unwrap()),
+        ("node.json", serde_json::to_string(&prog.node).unwrap()),
         ("app.json", serde_json::to_string(&prog.app).unwrap()),
         ("effect.json", serde_json::to_string(&prog.effect).unwrap()),
+        (
+            "is_struct.json",
+            serde_json::to_string(&prog.is_struct).unwrap(),
+        ),
+        (
+            "is_enum.json",
+            serde_json::to_string(&prog.is_enum).unwrap(),
+        ),
+        (
+            "associated_item.json",
+            serde_json::to_string(&prog.associated_item).unwrap(),
+        ),
         (
             "is_effect_of_app.json",
             serde_json::to_string(&prog.is_effect_of_app).unwrap(),
         ),
         ("root.json", serde_json::to_string(&prog.root).unwrap()),
         ("parent.json", serde_json::to_string(&prog.parent).unwrap()),
+        (
+            "variant_of.json",
+            serde_json::to_string(&prog.variant_of).unwrap(),
+        ),
+        (
+            "type_for.json",
+            serde_json::to_string(&prog.type_for).unwrap(),
+        ),
+        ("parent.json", serde_json::to_string(&prog.parent).unwrap()),
+        (
+            "field_of.json",
+            serde_json::to_string(&prog.field_of).unwrap(),
+        ),
         ("subset.json", serde_json::to_string(&prog.subset).unwrap()),
-        (
-            "enum_in_subset.json",
-            serde_json::to_string(&prog.enum_in_subset).unwrap(),
-        ),
-        (
-            "struct_in_subset.json",
-            serde_json::to_string(&prog.struct_in_subset).unwrap(),
-        ),
         ("field.json", serde_json::to_string(&prog.field).unwrap()),
         (
             "struct_plain.json",
@@ -244,6 +295,102 @@ pub fn run(data: Vec<(Node, Node, Edge)>) -> Vec<(String, ContainerFormat)> {
     prog.container
 }
 
+fn is_impl_for(impl_: &Node, for_: &Node, trait_name: &str) -> bool {
+    match &impl_.item {
+        Some(Item {
+            inner:
+                ItemEnum::Impl(Impl {
+                    trait_: Some(Path { name, .. }),
+                    for_: Type::ResolvedPath(Path { id, .. }),
+                    ..
+                }),
+            ..
+        }) if name == trait_name && id == &for_.id => true,
+        _ => false,
+    }
+}
+
+fn is_field_of(parent: &Node, field: &Node) -> bool {
+    match &parent.item {
+        Some(Item {
+            inner: ItemEnum::Struct(Struct { kind, .. }),
+            ..
+        }) => {
+            if let Some(Item {
+                name: Some(name), ..
+            }) = &field.item
+            {
+                if name == "__private_field" {
+                    return false;
+                }
+            }
+            match kind {
+                StructKind::Unit => false,
+                StructKind::Tuple(fields) => fields.contains(&Some(field.id)),
+                StructKind::Plain {
+                    fields,
+                    has_stripped_fields: _,
+                } => fields.contains(&field.id),
+            }
+        }
+        Some(Item {
+            inner: ItemEnum::Variant(Variant { kind, .. }),
+            ..
+        }) => match kind {
+            VariantKind::Plain => false,
+            VariantKind::Tuple(fields) => fields.contains(&Some(field.id)),
+            VariantKind::Struct { fields, .. } => fields.contains(&field.id),
+        },
+        _ => false,
+    }
+}
+
+fn is_variant_of(enum_: &Node, variant: &Node) -> bool {
+    match &enum_.item {
+        Some(Item {
+            inner: ItemEnum::Enum(Enum { variants, .. }),
+            ..
+        }) => variants.contains(&variant.id),
+        _ => false,
+    }
+}
+
+fn is_type_for(field: &Node, type_: &Node) -> bool {
+    match &field.item {
+        Some(Item {
+            inner: ItemEnum::StructField(Type::ResolvedPath(Path { id, .. })),
+            ..
+        }) => id == &type_.id,
+        Some(Item {
+            inner:
+                ItemEnum::AssocType {
+                    type_: Some(Type::ResolvedPath(target)),
+                    ..
+                },
+            name: Some(name),
+            ..
+        }) if ["Event", "ViewModel", "Ffi"].contains(&name.as_str()) => target.id == type_.id,
+        _ => false,
+    }
+}
+
+fn is_associated_item(impl_: &Node, associated_item: &Node) -> bool {
+    match &impl_.item {
+        Some(Item {
+            inner: ItemEnum::Impl(Impl { items, .. }),
+            ..
+        }) => match &associated_item.item {
+            Some(Item {
+                name: Some(name), ..
+            }) if ["Event", "ViewModel"].contains(&name.as_str()) => {
+                items.contains(&associated_item.id)
+            }
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
 pub fn collect<'a, N: 'a, T: Iterator<Item = (&'a N,)>>(
     input: T,
 ) -> impl Iterator<Item = Vec<(&'a N,)>>
@@ -251,6 +398,13 @@ where
     N: Clone,
 {
     std::iter::once(input.collect::<Vec<_>>())
+}
+
+fn name_of(item: &Node) -> Option<String> {
+    match &item.item {
+        Some(Item { name, .. }) => name.clone(),
+        _ => None,
+    }
 }
 
 fn make_format(field: &Node) -> Option<Format> {
