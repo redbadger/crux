@@ -28,6 +28,19 @@ fn cat_facts() {
     insta::assert_debug_snapshot!(&containers, @r#"
     [
         (
+            "CatImage",
+            Struct(
+                [
+                    Named {
+                        name: "href",
+                        value: TypeName(
+                            "String",
+                        ),
+                    },
+                ],
+            ),
+        ),
+        (
             "Effect",
             Enum(
                 {
