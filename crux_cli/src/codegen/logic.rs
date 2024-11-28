@@ -59,7 +59,7 @@ pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
 
         relation variant_of(Node, Node);
         variant_of(parent, variant) <--
-            node(parent),
+            is_enum(parent),
             node(variant),
             if is_variant_of(parent, variant);
 
@@ -100,22 +100,20 @@ pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
         relation subset(Node, Node);
         subset(parent_struct, child_struct) <--
             root(parent_struct),
-            is_struct(parent_struct),
-            field_of(parent_struct, child_struct);
+            field_of(parent_struct, field),
+            type_for(field, child_struct);
         subset(parent_struct, child_struct) <--
             subset(_, parent_struct),
-            is_struct(parent_struct),
-            field_of(parent_struct, child_struct);
+            field_of(parent_struct, field),
+            type_for(field, child_struct);
         subset(parent_enum, variant) <--
             root(parent_enum),
-            is_enum(parent_enum),
             variant_of(parent_enum, variant);
         subset(variant, child) <--
             subset(_, variant),
             field_of(variant, child);
         subset(parent_enum, variant) <--
             subset(_, parent_enum),
-            is_enum(parent_enum),
             variant_of(parent_enum, variant);
 
         relation struct_plain(Node);
@@ -358,19 +356,39 @@ fn is_variant_of(enum_: &Node, variant: &Node) -> bool {
 fn is_type_for(field: &Node, type_: &Node) -> bool {
     match &field.item {
         Some(Item {
-            inner: ItemEnum::StructField(Type::ResolvedPath(Path { id, .. })),
+            inner: ItemEnum::StructField(Type::ResolvedPath(Path { id, args, .. })),
             ..
-        }) => id == &type_.id,
+        }) => id == &type_.id || check_args(type_, args),
         Some(Item {
             inner:
                 ItemEnum::AssocType {
                     type_: Some(Type::ResolvedPath(target)),
                     ..
                 },
-            name: Some(name),
             ..
-        }) if ["Event", "ViewModel", "Effect", "Ffi"].contains(&name.as_str()) => {
-            target.id == type_.id
+        }) => target.id == type_.id,
+        _ => false,
+    }
+}
+
+fn check_args(source: &Node, args: &Option<Box<GenericArgs>>) -> bool {
+    match args.as_deref() {
+        Some(GenericArgs::AngleBracketed { args, .. }) => {
+            for arg in args {
+                match arg {
+                    GenericArg::Type(t) => match t {
+                        Type::ResolvedPath(Path { id, args, .. }) => {
+                            if id == &source.id {
+                                return true;
+                            }
+                            check_args(source, args)
+                        }
+                        _ => return false,
+                    },
+                    _ => return false,
+                };
+            }
+            false
         }
         _ => false,
     }
