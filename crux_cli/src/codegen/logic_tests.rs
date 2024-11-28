@@ -22,47 +22,46 @@ fn cat_facts() {
         })
         .collect::<Vec<_>>();
 
-    let containers = super::run(nodes);
+    let mut containers = super::run(nodes);
+    containers.sort_by_key(|(name, _)| name.to_string());
+
     insta::assert_debug_snapshot!(&containers, @r#"
     [
         (
-            "ViewModel",
-            Struct(
-                [
-                    Named {
-                        name: "fact",
-                        value: TypeName(
-                            "String",
+            "Effect",
+            Enum(
+                {
+                    0: Named {
+                        name: "Http",
+                        value: Tuple(
+                            [],
                         ),
                     },
-                    Named {
-                        name: "image",
-                        value: Option(
-                            TypeName(
-                                "CatImage",
-                            ),
+                    1: Named {
+                        name: "KeyValue",
+                        value: Tuple(
+                            [],
                         ),
                     },
-                    Named {
-                        name: "platform",
-                        value: TypeName(
-                            "String",
+                    2: Named {
+                        name: "Platform",
+                        value: Tuple(
+                            [],
                         ),
                     },
-                ],
-            ),
-        ),
-        (
-            "CatImage",
-            Struct(
-                [
-                    Named {
-                        name: "href",
-                        value: TypeName(
-                            "String",
+                    3: Named {
+                        name: "Render",
+                        value: Tuple(
+                            [],
                         ),
                     },
-                ],
+                    4: Named {
+                        name: "Time",
+                        value: Tuple(
+                            [],
+                        ),
+                    },
+                },
             ),
         ),
         (
@@ -97,40 +96,30 @@ fn cat_facts() {
             ),
         ),
         (
-            "Effect",
-            Enum(
-                {
-                    0: Named {
-                        name: "Render",
-                        value: Tuple(
-                            [],
+            "ViewModel",
+            Struct(
+                [
+                    Named {
+                        name: "fact",
+                        value: TypeName(
+                            "String",
                         ),
                     },
-                    1: Named {
-                        name: "Http",
-                        value: Tuple(
-                            [],
+                    Named {
+                        name: "image",
+                        value: Option(
+                            TypeName(
+                                "CatImage",
+                            ),
                         ),
                     },
-                    2: Named {
-                        name: "Time",
-                        value: Tuple(
-                            [],
+                    Named {
+                        name: "platform",
+                        value: TypeName(
+                            "String",
                         ),
                     },
-                    3: Named {
-                        name: "KeyValue",
-                        value: Tuple(
-                            [],
-                        ),
-                    },
-                    4: Named {
-                        name: "Platform",
-                        value: Tuple(
-                            [],
-                        ),
-                    },
-                },
+                ],
             ),
         ),
     ]
