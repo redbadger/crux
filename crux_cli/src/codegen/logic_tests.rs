@@ -1,6 +1,6 @@
 use rustdoc_types::Crate;
 
-use crate::codegen::data::Node;
+use crate::codegen::logic::Node;
 
 #[test]
 fn cat_facts() {
