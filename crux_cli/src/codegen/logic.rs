@@ -1,17 +1,56 @@
-use std::collections::BTreeMap;
+use std::{
+    cmp::Ordering,
+    collections::BTreeMap,
+    hash::{Hash, Hasher},
+};
 
 use ascent::ascent_run;
 use rustdoc_types::{
-    Enum, GenericArg, GenericArgs, Impl, Item, ItemEnum, Path, Struct, StructKind, Type, Variant,
-    VariantKind,
+    Enum, GenericArg, GenericArgs, Id, Impl, Item, ItemEnum, ItemSummary, Path, Struct, StructKind,
+    Type, Variant, VariantKind,
 };
+use serde::{Deserialize, Serialize};
 
-use crate::codegen::format::ContainerFormat;
+use super::format::{ContainerFormat, Format, Named, VariantFormat};
 
-use super::{
-    data::Node,
-    format::{Format, Named, VariantFormat},
-};
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Node {
+    pub id: Id,
+    pub item: Option<Item>,
+    pub summary: Option<ItemSummary>,
+}
+
+impl Hash for Node {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+/// An indexed value.
+/// Used for preserving member position in parent type
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Indexed<T> {
+    pub index: u32,
+    pub value: T,
+}
+
+impl<T: Clone> Indexed<T> {
+    fn inner(&self) -> T {
+        self.value.clone()
+    }
+}
+
+impl<T: Eq> Ord for Indexed<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.index.cmp(&other.index)
+    }
+}
+
+impl<T: Eq> PartialOrd for Indexed<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
     let prog = ascent_run! {
@@ -154,36 +193,36 @@ pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
         // ------- rules over output -------
         // these rules are used to generate the output
 
-        relation format(Node, Format);
+        relation format(Node, Indexed<Format>);
         format(struct_or_variant, format) <--
             field(struct_or_variant, field),
-            if let Some(format) = make_format(&field);
+            if let Some(format) = make_format(struct_or_variant, &field);
 
-        relation format_named(Node, (u32, Named<Format>));
+        relation format_named(Node, Indexed<Named<Format>>);
         format_named(struct_or_variant, format) <--
             field(struct_or_variant, field),
             if let Some(format) = make_named_format(struct_or_variant, &field);
 
-        relation format_plain_variant(Node, (u32, Named<VariantFormat>));
+        relation format_plain_variant(Node, Indexed<Named<VariantFormat>>);
         format_plain_variant(enum_, format) <--
             variant_plain(enum_, variant),
             if let Some(format) = make_plain_variant_format(enum_, variant);
 
-        relation format_tuple_variant(Node, (u32, Named<VariantFormat>));
+        relation format_tuple_variant(Node, Indexed<Named<VariantFormat>>);
         format_tuple_variant(enum_, format) <--
             variant_tuple(enum_, variant),
             field(variant, field),
             agg formats = collect(format) in format(field, format),
             if let Some(format) = make_tuple_variant_format(enum_, variant, &formats);
 
-        relation format_struct_variant(Node, (u32, Named<VariantFormat>));
+        relation format_struct_variant(Node, Indexed<Named<VariantFormat>>);
         format_struct_variant(enum_, format) <--
             variant_struct(enum_, variant),
             field(variant, field),
             agg formats = collect(format) in format_named(field, format),
             if let Some(format) = make_struct_variant_format(enum_, variant, &formats);
 
-        relation format_variant(Node, (u32, Named<VariantFormat>));
+        relation format_variant(Node, Indexed<Named<VariantFormat>>);
         format_variant(enum_, format) <--
             (
                 format_plain_variant(enum_, format) ||
@@ -210,85 +249,85 @@ pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
     };
 
     // write field and variant edges to disk for debugging
-    for (name, contents) in &[
-        ("node.json", serde_json::to_string(&prog.node).unwrap()),
-        ("app.json", serde_json::to_string(&prog.app).unwrap()),
-        ("effect.json", serde_json::to_string(&prog.effect).unwrap()),
-        (
-            "is_struct.json",
-            serde_json::to_string(&prog.is_struct).unwrap(),
-        ),
-        (
-            "is_enum.json",
-            serde_json::to_string(&prog.is_enum).unwrap(),
-        ),
-        (
-            "associated_item.json",
-            serde_json::to_string(&prog.associated_item).unwrap(),
-        ),
-        (
-            "is_effect_of_app.json",
-            serde_json::to_string(&prog.is_effect_of_app).unwrap(),
-        ),
-        ("root.json", serde_json::to_string(&prog.root).unwrap()),
-        ("parent.json", serde_json::to_string(&prog.parent).unwrap()),
-        (
-            "variant_of.json",
-            serde_json::to_string(&prog.variant_of).unwrap(),
-        ),
-        (
-            "type_for.json",
-            serde_json::to_string(&prog.type_for).unwrap(),
-        ),
-        ("parent.json", serde_json::to_string(&prog.parent).unwrap()),
-        (
-            "field_of.json",
-            serde_json::to_string(&prog.field_of).unwrap(),
-        ),
-        ("subset.json", serde_json::to_string(&prog.subset).unwrap()),
-        ("field.json", serde_json::to_string(&prog.field).unwrap()),
-        (
-            "struct_plain.json",
-            serde_json::to_string(&prog.struct_plain).unwrap(),
-        ),
-        (
-            "struct_tuple.json",
-            serde_json::to_string(&prog.struct_tuple).unwrap(),
-        ),
-        (
-            "variant.json",
-            serde_json::to_string(&prog.variant).unwrap(),
-        ),
-        (
-            "variant_plain.json",
-            serde_json::to_string(&prog.variant_plain).unwrap(),
-        ),
-        (
-            "variant_struct.json",
-            serde_json::to_string(&prog.variant_struct).unwrap(),
-        ),
-        (
-            "variant_tuple.json",
-            serde_json::to_string(&prog.variant_tuple).unwrap(),
-        ),
-        ("format.txt", format!("{:#?}", &prog.format)),
-        ("format_named.txt", format!("{:#?}", &prog.format_named)),
-        (
-            "format_plain_variant.txt",
-            format!("{:#?}", &prog.format_plain_variant),
-        ),
-        (
-            "format_tuple_variant.txt",
-            format!("{:#?}", &prog.format_tuple_variant),
-        ),
-        (
-            "format_struct_variant.txt",
-            format!("{:#?}", &prog.format_struct_variant),
-        ),
-        ("container.txt", format!("{:#?}", &prog.container)),
-    ] {
-        std::fs::write(format!("/tmp/stu/{name}"), contents).unwrap();
-    }
+    // for (name, contents) in &[
+    //     ("node.json", serde_json::to_string(&prog.node).unwrap()),
+    //     ("app.json", serde_json::to_string(&prog.app).unwrap()),
+    //     ("effect.json", serde_json::to_string(&prog.effect).unwrap()),
+    //     (
+    //         "is_struct.json",
+    //         serde_json::to_string(&prog.is_struct).unwrap(),
+    //     ),
+    //     (
+    //         "is_enum.json",
+    //         serde_json::to_string(&prog.is_enum).unwrap(),
+    //     ),
+    //     (
+    //         "associated_item.json",
+    //         serde_json::to_string(&prog.associated_item).unwrap(),
+    //     ),
+    //     (
+    //         "is_effect_of_app.json",
+    //         serde_json::to_string(&prog.is_effect_of_app).unwrap(),
+    //     ),
+    //     ("root.json", serde_json::to_string(&prog.root).unwrap()),
+    //     ("parent.json", serde_json::to_string(&prog.parent).unwrap()),
+    //     (
+    //         "variant_of.json",
+    //         serde_json::to_string(&prog.variant_of).unwrap(),
+    //     ),
+    //     (
+    //         "type_for.json",
+    //         serde_json::to_string(&prog.type_for).unwrap(),
+    //     ),
+    //     ("parent.json", serde_json::to_string(&prog.parent).unwrap()),
+    //     (
+    //         "field_of.json",
+    //         serde_json::to_string(&prog.field_of).unwrap(),
+    //     ),
+    //     ("subset.json", serde_json::to_string(&prog.subset).unwrap()),
+    //     ("field.json", serde_json::to_string(&prog.field).unwrap()),
+    //     (
+    //         "struct_plain.json",
+    //         serde_json::to_string(&prog.struct_plain).unwrap(),
+    //     ),
+    //     (
+    //         "struct_tuple.json",
+    //         serde_json::to_string(&prog.struct_tuple).unwrap(),
+    //     ),
+    //     (
+    //         "variant.json",
+    //         serde_json::to_string(&prog.variant).unwrap(),
+    //     ),
+    //     (
+    //         "variant_plain.json",
+    //         serde_json::to_string(&prog.variant_plain).unwrap(),
+    //     ),
+    //     (
+    //         "variant_struct.json",
+    //         serde_json::to_string(&prog.variant_struct).unwrap(),
+    //     ),
+    //     (
+    //         "variant_tuple.json",
+    //         serde_json::to_string(&prog.variant_tuple).unwrap(),
+    //     ),
+    //     ("format.txt", format!("{:#?}", &prog.format)),
+    //     ("format_named.txt", format!("{:#?}", &prog.format_named)),
+    //     (
+    //         "format_plain_variant.txt",
+    //         format!("{:#?}", &prog.format_plain_variant),
+    //     ),
+    //     (
+    //         "format_tuple_variant.txt",
+    //         format!("{:#?}", &prog.format_tuple_variant),
+    //     ),
+    //     (
+    //         "format_struct_variant.txt",
+    //         format!("{:#?}", &prog.format_struct_variant),
+    //     ),
+    //     ("container.txt", format!("{:#?}", &prog.container)),
+    // ] {
+    //     std::fs::write(format!("/tmp/stu/{name}"), contents).unwrap();
+    // }
 
     prog.container
 }
@@ -427,28 +466,31 @@ fn name_of(item: &Node) -> Option<String> {
     }
 }
 
-fn make_format(field: &Node) -> Option<Format> {
+fn make_format(node: &Node, field: &Node) -> Option<Indexed<Format>> {
     match &field.item {
         Some(item) => match &item.inner {
-            ItemEnum::StructField(type_) => Some(type_.into()),
+            ItemEnum::StructField(type_) => Some(Indexed {
+                index: index(node, field)? as u32,
+                value: type_.into(),
+            }),
             _ => None,
         },
         _ => None,
     }
 }
 
-fn make_named_format(node: &Node, field: &Node) -> Option<(u32, Named<Format>)> {
+fn make_named_format(node: &Node, field: &Node) -> Option<Indexed<Named<Format>>> {
     match &field.item {
         Some(Item {
             name: Some(name), ..
-        }) => match make_format(field) {
-            Some(value) => Some((
-                index(node, field)? as u32,
-                Named {
+        }) => match make_format(node, field) {
+            Some(value) => Some(Indexed {
+                index: index(node, field)? as u32,
+                value: Named {
                     name: name.clone(),
-                    value,
+                    value: value.value,
                 },
-            )),
+            }),
             _ => None,
         },
         _ => None,
@@ -494,20 +536,23 @@ fn is_tuple_variant(variant: &Node) -> bool {
     )
 }
 
-fn make_plain_variant_format(enum_: &Node, variant: &Node) -> Option<(u32, Named<VariantFormat>)> {
+fn make_plain_variant_format(
+    enum_: &Node,
+    variant: &Node,
+) -> Option<Indexed<Named<VariantFormat>>> {
     match &variant.item {
         Some(Item {
             name: Some(name),
             inner,
             ..
         }) => match inner {
-            ItemEnum::Variant(_) => Some((
-                index(enum_, variant)? as u32,
-                Named {
+            ItemEnum::Variant(_) => Some(Indexed {
+                index: index(enum_, variant)? as u32,
+                value: Named {
                     name: name.clone(),
                     value: VariantFormat::Unit,
                 },
-            )),
+            }),
             _ => None,
         },
         _ => None,
@@ -517,8 +562,8 @@ fn make_plain_variant_format(enum_: &Node, variant: &Node) -> Option<(u32, Named
 fn make_struct_variant_format(
     enum_: &Node,
     variant: &Node,
-    fields: &Vec<(&(u32, Named<Format>),)>,
-) -> Option<(u32, Named<VariantFormat>)> {
+    fields: &Vec<(&Indexed<Named<Format>>,)>,
+) -> Option<Indexed<Named<VariantFormat>>> {
     match &variant.item {
         Some(Item {
             name: Some(name),
@@ -526,17 +571,16 @@ fn make_struct_variant_format(
             ..
         }) => match inner {
             ItemEnum::Variant(_) => {
-                let mut map = BTreeMap::default();
-                for ((i, field),) in fields.clone() {
-                    map.insert(i, field.clone());
-                }
-                Some((
-                    index(enum_, variant)? as u32,
-                    Named {
+                let mut fields = fields.clone();
+                fields.sort();
+                let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
+                Some(Indexed {
+                    index: index(enum_, variant)? as u32,
+                    value: Named {
                         name: name.clone(),
-                        value: VariantFormat::Struct(map.values().cloned().collect::<Vec<_>>()),
+                        value: VariantFormat::Struct(fields),
                     },
-                ))
+                })
             }
             _ => None,
         },
@@ -547,26 +591,26 @@ fn make_struct_variant_format(
 fn make_tuple_variant_format(
     enum_: &Node,
     variant: &Node,
-    fields: &Vec<(&Format,)>,
-) -> Option<(u32, Named<VariantFormat>)> {
+    fields: &Vec<(&Indexed<Format>,)>,
+) -> Option<Indexed<Named<VariantFormat>>> {
     match &variant.item {
         Some(Item {
             name: Some(name),
             inner,
             ..
         }) => match inner {
-            ItemEnum::Variant(_) => Some((
-                index(enum_, variant)? as u32,
-                Named {
-                    name: name.clone(),
-                    value: VariantFormat::Tuple(
-                        fields
-                            .iter()
-                            .map(|(field,)| (*field).clone())
-                            .collect::<Vec<_>>(),
-                    ),
-                },
-            )),
+            ItemEnum::Variant(_) => {
+                let mut fields = fields.clone();
+                fields.sort();
+                let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
+                Some(Indexed {
+                    index: index(enum_, variant)? as u32,
+                    value: Named {
+                        name: name.clone(),
+                        value: VariantFormat::Tuple(fields),
+                    },
+                })
+            }
             _ => None,
         },
         _ => None,
@@ -591,27 +635,24 @@ fn index(node: &Node, child: &Node) -> Option<usize> {
     }
 }
 
-fn make_struct_plain(fields: &Vec<(&(u32, Named<Format>),)>) -> ContainerFormat {
-    let mut map = BTreeMap::default();
-    for ((i, field),) in fields.clone() {
-        map.insert(*i, field.clone());
-    }
-    ContainerFormat::Struct(map.values().cloned().collect::<Vec<_>>())
+fn make_struct_plain(fields: &Vec<(&Indexed<Named<Format>>,)>) -> ContainerFormat {
+    let mut fields = fields.clone();
+    fields.sort();
+    let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
+    ContainerFormat::Struct(fields)
 }
 
-fn make_struct_tuple(fields: &Vec<(&Format,)>) -> ContainerFormat {
-    ContainerFormat::TupleStruct(
-        fields
-            .iter()
-            .map(|(field,)| (*field).clone())
-            .collect::<Vec<_>>(),
-    )
+fn make_struct_tuple(fields: &Vec<(&Indexed<Format>,)>) -> ContainerFormat {
+    let mut fields = fields.clone();
+    fields.sort();
+    let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
+    ContainerFormat::TupleStruct(fields)
 }
 
-fn make_enum(formats: &Vec<(&(u32, Named<VariantFormat>),)>) -> ContainerFormat {
+fn make_enum(formats: &Vec<(&Indexed<Named<VariantFormat>>,)>) -> ContainerFormat {
     let mut map = BTreeMap::default();
-    for ((i, variant),) in formats.clone() {
-        map.insert(*i, variant.clone());
+    for (Indexed { index, value },) in formats.clone() {
+        map.insert(*index, value.clone());
     }
     ContainerFormat::Enum(map)
 }

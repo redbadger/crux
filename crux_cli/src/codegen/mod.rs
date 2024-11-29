@@ -1,12 +1,11 @@
-mod data;
 mod format;
 mod logic;
 
 use std::fs::File;
 
 use anyhow::{bail, Result};
-use data::Node;
 use guppy::{graph::PackageGraph, MetadataCommand};
+use logic::Node;
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
