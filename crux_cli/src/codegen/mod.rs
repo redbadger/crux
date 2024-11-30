@@ -27,7 +27,16 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let file = File::open(json_path)?;
     let crate_: Crate = serde_json::from_reader(file)?;
 
-    let nodes = crate_
+    let nodes = parse(crate_);
+
+    let registry = logic::run(nodes);
+    println!("{:#?}", registry);
+
+    Ok(())
+}
+
+fn parse(crate_: Crate) -> Vec<(Node,)> {
+    crate_
         .index
         .values()
         .flat_map(|item| {
@@ -41,10 +50,5 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
                 },))
             }
         })
-        .collect::<Vec<_>>();
-
-    let registry = logic::run(nodes);
-    println!("{:#?}", registry);
-
-    Ok(())
+        .collect::<Vec<_>>()
 }
