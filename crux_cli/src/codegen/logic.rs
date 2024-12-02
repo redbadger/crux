@@ -174,15 +174,13 @@ ascent! {
     relation format_tuple_variant(Node, Indexed<Named<VariantFormat>>);
     format_tuple_variant(enum_, format) <--
         variant_tuple(enum_, variant),
-        field(variant, field),
-        agg formats = collect(format) in format(field, format),
+        agg formats = collect(format) in format(variant, format),
         if let Some(format) = make_tuple_variant_format(enum_, variant, &formats);
 
     relation format_struct_variant(Node, Indexed<Named<VariantFormat>>);
     format_struct_variant(enum_, format) <--
         variant_struct(enum_, variant),
-        field(variant, field),
-        agg formats = collect(format) in format_named(field, format),
+        agg formats = collect(format) in format_named(variant, format),
         if let Some(format) = make_struct_variant_format(enum_, variant, &formats);
 
     relation format_variant(Node, Indexed<Named<VariantFormat>>);
@@ -215,6 +213,7 @@ pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
     let mut prog = AscentProgram::default();
     prog.node = nodes;
     prog.run();
+    // std::fs::write("logic.txt", format!("{:#?}", prog.subset)).unwrap();
     prog.container
 }
 
@@ -554,6 +553,14 @@ fn index(node: &Node, child: &Node) -> Option<usize> {
             StructKind::Plain { fields, .. } => fields.iter().position(|f| f == &child.id),
             StructKind::Tuple(fields) => fields.iter().position(|f| f == &Some(child.id)),
             StructKind::Unit => None,
+        },
+        Some(Item {
+            inner: ItemEnum::Variant(Variant { kind, .. }),
+            ..
+        }) => match kind {
+            VariantKind::Plain => None,
+            VariantKind::Tuple(fields) => fields.iter().position(|f| f == &Some(child.id)),
+            VariantKind::Struct { fields, .. } => fields.iter().position(|f| f == &child.id),
         },
         _ => None,
     }
