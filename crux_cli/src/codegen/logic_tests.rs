@@ -1,9 +1,71 @@
 use std::fs::File;
 
 use pretty_assertions::assert_eq;
-use rustdoc_types::Crate;
+use rustdoc_types::{Crate, Generics, Id, Item, ItemEnum, Struct, StructKind, Visibility};
 
+use super::*;
 use crate::codegen::{parse, Registry};
+
+fn test_node(name: Option<String>, attrs: Vec<String>) -> Node {
+    Node {
+        item: Some(Item {
+            name,
+            attrs,
+            inner: ItemEnum::Struct(Struct {
+                kind: StructKind::Plain {
+                    fields: vec![],
+                    has_stripped_fields: false,
+                },
+                generics: Generics {
+                    params: vec![],
+                    where_predicates: vec![],
+                },
+                impls: vec![],
+            }),
+            id: Id(0),
+            crate_id: 0,
+            span: None,
+            visibility: Visibility::Public,
+            docs: None,
+            links: Default::default(),
+            deprecation: None,
+        }),
+        id: Id(0),
+        summary: None,
+    }
+}
+
+#[test]
+fn test_get_name() {
+    let name = Some("Foo".to_string());
+    let attrs = vec![];
+    let node = test_node(name, attrs);
+    assert_eq!(name_of(&node), Some("Foo"));
+}
+
+#[test]
+fn test_get_name_with_rename() {
+    let name = Some("Foo".to_string());
+    let attrs = vec![r#"#[serde(rename = "Bar")]"#.to_string()];
+    let node = test_node(name, attrs);
+    assert_eq!(name_of(&node), Some("Bar"));
+}
+
+#[test]
+fn test_get_name_with_rename_no_whitespace() {
+    let name = Some("Foo".to_string());
+    let attrs = vec![r#"#[serde(rename="Bar")]"#.to_string()];
+    let node = test_node(name, attrs);
+    assert_eq!(name_of(&node), Some("Bar"));
+}
+
+#[test]
+fn test_get_name_with_no_name() {
+    let name = None;
+    let attrs = vec![];
+    let node = test_node(name, attrs);
+    assert_eq!(name_of(&node), None);
+}
 
 #[test]
 fn field_is_option_of_t() {
@@ -375,6 +437,22 @@ fn cat_facts_json() {
 }
 
 #[test]
+#[ignore = "not yet fully implemented"]
+fn notes_json() {
+    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/notes/rustdoc.json");
+    let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
+    let nodes = parse(crate_);
+
+    let actual = super::run(nodes);
+
+    let writer = File::create("fixtures-notes-actual.json").unwrap();
+    serde_json::to_writer_pretty(writer, &actual).unwrap();
+    let expected: Registry = serde_json::from_str(include_str!("fixtures/notes/expected.json"))
+        .expect("should deserialize");
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn cat_facts() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
@@ -398,7 +476,7 @@ fn cat_facts() {
                     name: "Http",
                     value: NewType(
                         TypeName(
-                            "::crux_core::Request",
+                            "Operation",
                         ),
                     ),
                 },
@@ -406,7 +484,7 @@ fn cat_facts() {
                     name: "KeyValue",
                     value: NewType(
                         TypeName(
-                            "::crux_core::Request",
+                            "Operation",
                         ),
                     ),
                 },
@@ -414,7 +492,7 @@ fn cat_facts() {
                     name: "Platform",
                     value: NewType(
                         TypeName(
-                            "::crux_core::Request",
+                            "Operation",
                         ),
                     ),
                 },
@@ -422,7 +500,7 @@ fn cat_facts() {
                     name: "Render",
                     value: NewType(
                         TypeName(
-                            "::crux_core::Request",
+                            "Operation",
                         ),
                     ),
                 },
@@ -430,7 +508,7 @@ fn cat_facts() {
                     name: "Time",
                     value: NewType(
                         TypeName(
-                            "::crux_core::Request",
+                            "Operation",
                         ),
                     ),
                 },
@@ -504,7 +582,7 @@ fn bridge_echo() {
                     name: "Render",
                     value: NewType(
                         TypeName(
-                            "::crux_core::Request",
+                            "Operation",
                         ),
                     ),
                 },

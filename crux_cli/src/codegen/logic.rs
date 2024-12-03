@@ -32,27 +32,6 @@ ascent! {
         node(enum_),
         if let Some(Item { inner: ItemEnum::Enum(_), .. }) = &enum_.item;
 
-    // app structs have an implementation of the App trait
-    relation app(Node, Node);
-    app(impl_, app) <--
-        node(impl_),
-        is_struct(app),
-        if is_impl_for(impl_, app, "App");
-
-    // effect enums have an implementation of the Effect trait
-    relation effect(Node);
-    effect(effect) <--
-        node(impl_),
-        is_enum(effect),
-        if is_impl_for(impl_, effect, "Effect");
-
-    // an effect belongs to an app if they are in the same module
-    relation is_effect_of_app(Node, Node);
-    is_effect_of_app(app, effect) <--
-        app(_impl, app),
-        effect(effect),
-        if are_in_same_module(app, effect);
-
     relation field_of(Node, Node);
     field_of(parent, field) <--
         node(parent),
@@ -71,11 +50,12 @@ ascent! {
         node(type_),
         if is_type_for(parent, type_);
 
-    relation associated_item(Node, Node);
-    associated_item(impl_, item) <--
-        app(impl_, _),
-        node(item),
-        if is_associated_item(impl_, item);
+    // app structs have an implementation of the App trait
+    relation app(Node, Node);
+    app(impl_, app) <--
+        node(impl_),
+        is_struct(app),
+        if is_impl_for(impl_, app, "App");
 
     // app hierarchy
     relation parent(Node, Node);
@@ -85,18 +65,41 @@ ascent! {
         field_of(parent, field),
         type_for(field, child);
 
-    relation root(Node);
-    // Event and ViewModel types are associated
-    // with the root apps (that have no parent)
-    root(assoc_type) <--
+    relation root_app(Node, Node);
+    root_app(impl_, app) <--
         app(impl_, app),
-        !parent(_, app),
-        associated_item(impl_, assoc_item),
-        type_for(assoc_item, assoc_type);
-    // Effects belong to the root apps (that have no parent)
-    root(effect_enum) <--
-        is_effect_of_app(app, effect_enum),
         !parent(_, app);
+
+    // a view model is an associated type of an app
+    relation view_model(Node, Node);
+    view_model(app, view_model) <--
+        root_app(impl_, app),
+        type_for(item, view_model),
+        if is_associated_item(impl_, item, "ViewModel");
+
+    // an event is an associated type of an app
+    relation event(Node, Node);
+    event(app, event) <--
+        root_app(impl_, app),
+        type_for(item, event),
+        if is_associated_item(impl_, item, "Event");
+
+    // effect enums have an implementation of the Effect trait
+    // and an associated Ffi type, which is the FFI representation of the effect
+    relation effect(Node, Node);
+    effect(app, effect_ffi) <--
+        root_app(app_impl, app),
+        is_enum(effect),
+        node(effect_impl),
+        if is_impl_for(effect_impl, effect, "Effect"),
+        if are_in_same_module(app, effect),
+        type_for(effect_ffi_item, effect_ffi),
+        if is_associated_item(effect_impl, effect_ffi_item, "Ffi");
+
+    relation root(Node);
+    root(x) <-- view_model(app, x);
+    root(x) <-- event(app, x);
+    root(x) <-- effect(app, x);
 
     // set of all the edges we are interested in
     relation subset(Node, Node);
@@ -124,12 +127,12 @@ ascent! {
     relation struct_plain(Node);
     struct_plain(struct_) <--
         subset(struct_, _),
-        if let Some(Item { inner: ItemEnum::Struct(Struct{kind: StructKind::Plain { .. }, ..}), .. }) = &struct_.item;
+        if is_plain_struct(struct_);
 
     relation struct_tuple(Node);
     struct_tuple(struct_) <--
         subset(struct_, _),
-        if let Some(Item { inner: ItemEnum::Struct(Struct{kind: StructKind::Tuple(_), ..}), .. }) = &struct_.item;
+        if is_tuple_struct(struct_);
 
     relation field(Node, Node);
     field(struct_or_variant, field) <--
@@ -187,12 +190,9 @@ ascent! {
         if let Some(format) = make_struct_variant_format(enum_, variant, &formats);
 
     relation format_variant(Node, Indexed<Named<VariantFormat>>);
-    format_variant(enum_, format) <--
-            format_plain_variant(enum_, format);
-    format_variant(enum_, format) <--
-            format_tuple_variant(enum_, format);
-    format_variant(enum_, format) <--
-            format_struct_variant(enum_, format);
+    format_variant(enum_, format) <-- format_plain_variant(enum_, format);
+    format_variant(enum_, format) <-- format_tuple_variant(enum_, format);
+    format_variant(enum_, format) <-- format_struct_variant(enum_, format);
 
     relation container(String, ContainerFormat);
     container(name, container) <--
@@ -216,7 +216,7 @@ pub fn run(nodes: Vec<(Node,)>) -> Registry {
     let mut prog = AscentProgram::default();
     prog.node = nodes;
     prog.run();
-    // std::fs::write("logic.txt", format!("{:#?}", prog.subset)).unwrap();
+    // std::fs::write("root.txt", format!("{:#?}", prog.root)).unwrap();
     prog.container.into_iter().collect()
 }
 
@@ -280,7 +280,7 @@ fn is_field_of(parent: &Node, field: &Node) -> bool {
             inner: ItemEnum::Struct(Struct { kind, .. }),
             ..
         }) => {
-            if name_of(field) == Some("__private_field".to_string()) {
+            if name_of(field) == Some("__private_field") {
                 return false;
             }
             match kind {
@@ -354,17 +354,13 @@ fn check_args(type_node: &Node, args: &Option<Box<GenericArgs>>) -> bool {
     }
 }
 
-fn is_associated_item(impl_: &Node, associated_item: &Node) -> bool {
+fn is_associated_item(impl_: &Node, associated_item: &Node, name: &str) -> bool {
     match &impl_.item {
         Some(Item {
             inner: ItemEnum::Impl(Impl { items, .. }),
             ..
         }) => match &associated_item.item {
-            Some(Item {
-                name: Some(name), ..
-            }) if ["Event", "ViewModel"].contains(&name.as_str()) => {
-                items.contains(&associated_item.id)
-            }
+            Some(Item { name: Some(n), .. }) if name == n => items.contains(&associated_item.id),
             _ => false,
         },
         _ => false,
@@ -380,11 +376,22 @@ where
     std::iter::once(input.collect::<Vec<_>>())
 }
 
-fn name_of(item: &Node) -> Option<String> {
-    match &item.item {
-        Some(Item { name, .. }) => name.clone(),
-        _ => None,
-    }
+fn name_of(node: &Node) -> Option<&str> {
+    node.item.as_ref().and_then(|item| {
+        let mut new_name = "";
+        for attr in &item.attrs {
+            if let Some((_, n)) =
+                lazy_regex::regex_captures!(r#"\[serde\(rename\s*=\s*"(\w+)"\)\]"#, attr)
+            {
+                new_name = n;
+            }
+        }
+        if new_name.is_empty() {
+            item.name.as_deref()
+        } else {
+            Some(new_name)
+        }
+    })
 }
 
 fn make_format(node: &Node, field: &Node) -> Option<Indexed<Format>> {
@@ -406,7 +413,7 @@ fn make_named_format(node: &Node, field: &Node) -> Option<Indexed<Named<Format>>
             Some(Indexed { index, value }) => Some(Indexed {
                 index,
                 value: Named {
-                    name: name.clone(),
+                    name: name.to_string(),
                     value,
                 },
             }),
@@ -414,6 +421,32 @@ fn make_named_format(node: &Node, field: &Node) -> Option<Indexed<Named<Format>>
         },
         _ => None,
     }
+}
+
+fn is_plain_struct(struct_: &Node) -> bool {
+    matches!(
+        &struct_.item,
+        Some(Item {
+            inner: ItemEnum::Struct(Struct {
+                kind: StructKind::Plain { .. },
+                ..
+            }),
+            ..
+        })
+    )
+}
+
+fn is_tuple_struct(struct_: &Node) -> bool {
+    matches!(
+        &struct_.item,
+        Some(Item {
+            inner: ItemEnum::Struct(Struct {
+                kind: StructKind::Tuple { .. },
+                ..
+            }),
+            ..
+        })
+    )
 }
 
 fn is_plain_variant(variant: &Node) -> bool {
@@ -624,6 +657,13 @@ impl From<&Type> for Format {
                                 Format::Option(Box::new(format))
                             }
                             "String" => Format::Str,
+                            "Vec" => {
+                                let format = match args[0] {
+                                    GenericArg::Type(ref type_) => type_.into(),
+                                    _ => todo!(),
+                                };
+                                Format::Seq(Box::new(format))
+                            }
                             _ => Format::TypeName(path.name.clone()),
                         },
                         GenericArgs::Parenthesized {
