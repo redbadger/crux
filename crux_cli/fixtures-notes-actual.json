@@ -1,0 +1,138 @@
+{
+  "Effect": {
+    "ENUM": {
+      "0": {
+        "KeyValue": {
+          "NEWTYPE": {
+            "TYPENAME": "Operation"
+          }
+        }
+      },
+      "1": {
+        "PubSub": {
+          "NEWTYPE": {
+            "TYPENAME": "Operation"
+          }
+        }
+      },
+      "2": {
+        "Render": {
+          "NEWTYPE": {
+            "TYPENAME": "Operation"
+          }
+        }
+      },
+      "3": {
+        "Timer": {
+          "NEWTYPE": {
+            "TYPENAME": "Operation"
+          }
+        }
+      }
+    }
+  },
+  "Event": {
+    "ENUM": {
+      "0": {
+        "Open": "UNIT"
+      },
+      "1": {
+        "Insert": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "2": {
+        "Replace": {
+          "TUPLE": [
+            "U64",
+            "U64",
+            "STR"
+          ]
+        }
+      },
+      "3": {
+        "MoveCursor": {
+          "NEWTYPE": "U64"
+        }
+      },
+      "4": {
+        "Select": {
+          "TUPLE": [
+            "U64",
+            "U64"
+          ]
+        }
+      },
+      "5": {
+        "Backspace": "UNIT"
+      },
+      "6": {
+        "Delete": "UNIT"
+      },
+      "7": {
+        "ReceiveChanges": {
+          "NEWTYPE": {
+            "SEQ": "U8"
+          }
+        }
+      },
+      "8": {
+        "EditTimer": {
+          "NEWTYPE": {
+            "TYPENAME": "crate::capabilities::timer::TimerOutput"
+          }
+        }
+      }
+    }
+  },
+  "TextCursor": {
+    "ENUM": {
+      "0": {
+        "Position": {
+          "NEWTYPE": "U64"
+        }
+      },
+      "1": {
+        "Selection": {
+          "NEWTYPE": {
+            "TYPENAME": "std::ops::Range"
+          }
+        }
+      }
+    }
+  },
+  "TimerOutput": {
+    "ENUM": {
+      "0": {
+        "Created": {
+          "STRUCT": [
+            {
+              "id": "U64"
+            }
+          ]
+        }
+      },
+      "1": {
+        "Finished": {
+          "STRUCT": [
+            {
+              "id": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "ViewModel": {
+    "STRUCT": [
+      {
+        "text": "STR"
+      },
+      {
+        "cursor": {
+          "TYPENAME": "TextCursor"
+        }
+      }
+    ]
+  }
+}
