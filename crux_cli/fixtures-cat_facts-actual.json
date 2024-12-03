@@ -10,47 +10,37 @@
     "ENUM": {
       "0": {
         "Http": {
-          "TUPLE": [
-            {
-              "TYPENAME": "::crux_core::Request"
-            }
-          ]
+          "NEWTYPE": {
+            "TYPENAME": "::crux_core::Request"
+          }
         }
       },
       "1": {
         "KeyValue": {
-          "TUPLE": [
-            {
-              "TYPENAME": "::crux_core::Request"
-            }
-          ]
+          "NEWTYPE": {
+            "TYPENAME": "::crux_core::Request"
+          }
         }
       },
       "2": {
         "Platform": {
-          "TUPLE": [
-            {
-              "TYPENAME": "::crux_core::Request"
-            }
-          ]
+          "NEWTYPE": {
+            "TYPENAME": "::crux_core::Request"
+          }
         }
       },
       "3": {
         "Render": {
-          "TUPLE": [
-            {
-              "TYPENAME": "::crux_core::Request"
-            }
-          ]
+          "NEWTYPE": {
+            "TYPENAME": "::crux_core::Request"
+          }
         }
       },
       "4": {
         "Time": {
-          "TUPLE": [
-            {
-              "TYPENAME": "::crux_core::Request"
-            }
-          ]
+          "NEWTYPE": {
+            "TYPENAME": "::crux_core::Request"
+          }
         }
       }
     }
