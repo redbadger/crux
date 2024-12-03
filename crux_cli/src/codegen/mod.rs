@@ -1,14 +1,18 @@
+mod error;
 mod format;
 mod logic;
 
-use std::fs::File;
+use std::{collections::BTreeMap, fs::File};
 
 use anyhow::{bail, Result};
+use format::ContainerFormat;
 use guppy::{graph::PackageGraph, MetadataCommand};
 use logic::Node;
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
+
+pub type Registry = BTreeMap<String, ContainerFormat>;
 
 pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let mut cmd = MetadataCommand::new();

@@ -1,6 +1,9 @@
+use std::fs::File;
+
+use pretty_assertions::assert_eq;
 use rustdoc_types::Crate;
 
-use crate::codegen::parse;
+use crate::codegen::{parse, Registry};
 
 #[test]
 fn field_is_option_of_t() {
@@ -356,145 +359,142 @@ fn field_is_option_of_t() {
 }
 
 #[test]
-fn cat_facts() {
-    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts_rustdoc.json");
+#[ignore = "not yet fully implemented"]
+fn cat_facts_json() {
+    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
     let nodes = parse(crate_);
 
-    let mut containers = super::run(nodes);
-    containers.sort_by_key(|(name, _)| name.to_string());
+    let actual = super::run(nodes);
 
-    insta::assert_debug_snapshot!(&containers, @r#"
-    [
-        (
-            "CatImage",
-            Struct(
-                [
-                    Named {
-                        name: "href",
-                        value: TypeName(
-                            "String",
-                        ),
-                    },
-                ],
-            ),
-        ),
-        (
-            "Effect",
-            Enum(
-                {
-                    0: Named {
-                        name: "Http",
-                        value: Tuple(
-                            [
-                                TypeName(
-                                    "::crux_core::Request",
-                                ),
-                            ],
-                        ),
-                    },
-                    1: Named {
-                        name: "KeyValue",
-                        value: Tuple(
-                            [
-                                TypeName(
-                                    "::crux_core::Request",
-                                ),
-                            ],
-                        ),
-                    },
-                    2: Named {
-                        name: "Platform",
-                        value: Tuple(
-                            [
-                                TypeName(
-                                    "::crux_core::Request",
-                                ),
-                            ],
-                        ),
-                    },
-                    3: Named {
-                        name: "Render",
-                        value: Tuple(
-                            [
-                                TypeName(
-                                    "::crux_core::Request",
-                                ),
-                            ],
-                        ),
-                    },
-                    4: Named {
-                        name: "Time",
-                        value: Tuple(
-                            [
-                                TypeName(
-                                    "::crux_core::Request",
-                                ),
-                            ],
-                        ),
-                    },
+    let writer = File::create("fixtures-cat_facts-actual.json").unwrap();
+    serde_json::to_writer_pretty(writer, &actual).unwrap();
+    let expected: Registry = serde_json::from_str(include_str!("fixtures/cat_facts/expected.json"))
+        .expect("should deserialize");
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn cat_facts() {
+    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
+    let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
+    let nodes = parse(crate_);
+
+    let registry = super::run(nodes);
+
+    insta::assert_debug_snapshot!(&registry, @r#"
+    {
+        "CatImage": Struct(
+            [
+                Named {
+                    name: "href",
+                    value: Str,
                 },
-            ),
+            ],
         ),
-        (
-            "Event",
-            Enum(
-                {
-                    0: Named {
-                        name: "None",
-                        value: Unit,
-                    },
-                    1: Named {
-                        name: "Clear",
-                        value: Unit,
-                    },
-                    2: Named {
-                        name: "Get",
-                        value: Unit,
-                    },
-                    3: Named {
-                        name: "Fetch",
-                        value: Unit,
-                    },
-                    4: Named {
-                        name: "GetPlatform",
-                        value: Unit,
-                    },
-                    5: Named {
-                        name: "Restore",
-                        value: Unit,
-                    },
-                },
-            ),
-        ),
-        (
-            "ViewModel",
-            Struct(
-                [
-                    Named {
-                        name: "fact",
-                        value: TypeName(
-                            "String",
-                        ),
-                    },
-                    Named {
-                        name: "image",
-                        value: Option(
+        "Effect": Enum(
+            {
+                0: Named {
+                    name: "Http",
+                    value: Tuple(
+                        [
                             TypeName(
-                                "CatImage",
+                                "::crux_core::Request",
                             ),
-                        ),
-                    },
-                    Named {
-                        name: "platform",
-                        value: TypeName(
-                            "String",
-                        ),
-                    },
-                ],
-            ),
+                        ],
+                    ),
+                },
+                1: Named {
+                    name: "KeyValue",
+                    value: Tuple(
+                        [
+                            TypeName(
+                                "::crux_core::Request",
+                            ),
+                        ],
+                    ),
+                },
+                2: Named {
+                    name: "Platform",
+                    value: Tuple(
+                        [
+                            TypeName(
+                                "::crux_core::Request",
+                            ),
+                        ],
+                    ),
+                },
+                3: Named {
+                    name: "Render",
+                    value: Tuple(
+                        [
+                            TypeName(
+                                "::crux_core::Request",
+                            ),
+                        ],
+                    ),
+                },
+                4: Named {
+                    name: "Time",
+                    value: Tuple(
+                        [
+                            TypeName(
+                                "::crux_core::Request",
+                            ),
+                        ],
+                    ),
+                },
+            },
         ),
-    ]
+        "Event": Enum(
+            {
+                0: Named {
+                    name: "None",
+                    value: Unit,
+                },
+                1: Named {
+                    name: "Clear",
+                    value: Unit,
+                },
+                2: Named {
+                    name: "Get",
+                    value: Unit,
+                },
+                3: Named {
+                    name: "Fetch",
+                    value: Unit,
+                },
+                4: Named {
+                    name: "GetPlatform",
+                    value: Unit,
+                },
+                5: Named {
+                    name: "Restore",
+                    value: Unit,
+                },
+            },
+        ),
+        "ViewModel": Struct(
+            [
+                Named {
+                    name: "fact",
+                    value: Str,
+                },
+                Named {
+                    name: "image",
+                    value: Option(
+                        TypeName(
+                            "CatImage",
+                        ),
+                    ),
+                },
+                Named {
+                    name: "platform",
+                    value: Str,
+                },
+            ],
+        ),
+    }
     "#);
 }
 
@@ -504,54 +504,44 @@ fn bridge_echo() {
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
     let nodes = parse(crate_);
 
-    let mut containers = super::run(nodes);
-    containers.sort_by_key(|(name, _)| name.to_string());
+    let containers = super::run(nodes);
 
     insta::assert_debug_snapshot!(&containers, @r#"
-    [
-        (
-            "Effect",
-            Enum(
-                {
-                    0: Named {
-                        name: "Render",
-                        value: Tuple(
-                            [
-                                TypeName(
-                                    "::crux_core::Request",
-                                ),
-                            ],
-                        ),
-                    },
+    {
+        "Effect": Enum(
+            {
+                0: Named {
+                    name: "Render",
+                    value: Tuple(
+                        [
+                            TypeName(
+                                "::crux_core::Request",
+                            ),
+                        ],
+                    ),
                 },
-            ),
+            },
         ),
-        (
-            "Event",
-            Enum(
-                {
-                    0: Named {
-                        name: "Tick",
-                        value: Unit,
-                    },
-                    1: Named {
-                        name: "NewPeriod",
-                        value: Unit,
-                    },
+        "Event": Enum(
+            {
+                0: Named {
+                    name: "Tick",
+                    value: Unit,
                 },
-            ),
+                1: Named {
+                    name: "NewPeriod",
+                    value: Unit,
+                },
+            },
         ),
-        (
-            "ViewModel",
-            Struct(
-                [
-                    Named {
-                        name: "count",
-                        value: U64,
-                    },
-                ],
-            ),
+        "ViewModel": Struct(
+            [
+                Named {
+                    name: "count",
+                    value: U64,
+                },
+            ],
         ),
-    ]
+    }
     "#);
 }
