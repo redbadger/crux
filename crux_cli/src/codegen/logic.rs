@@ -11,7 +11,10 @@ use rustdoc_types::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::format::{ContainerFormat, Format, Named, VariantFormat};
+use super::{
+    format::{ContainerFormat, Format, Named, VariantFormat},
+    Registry,
+};
 
 ascent! {
     // ------- facts ------------------
@@ -209,12 +212,12 @@ ascent! {
         let container = make_enum(&variants);
 }
 
-pub fn run(nodes: Vec<(Node,)>) -> Vec<(String, ContainerFormat)> {
+pub fn run(nodes: Vec<(Node,)>) -> Registry {
     let mut prog = AscentProgram::default();
     prog.node = nodes;
     prog.run();
     // std::fs::write("logic.txt", format!("{:#?}", prog.subset)).unwrap();
-    prog.container
+    prog.container.into_iter().collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -607,17 +610,17 @@ impl From<&Type> for Format {
                         GenericArgs::AngleBracketed {
                             args,
                             constraints: _,
-                        } => {
-                            if path.name == "Option" {
+                        } => match path.name.as_str() {
+                            "Option" => {
                                 let format = match args[0] {
                                     GenericArg::Type(ref type_) => type_.into(),
                                     _ => todo!(),
                                 };
                                 Format::Option(Box::new(format))
-                            } else {
-                                Format::TypeName(path.name.clone())
                             }
-                        }
+                            "String" => Format::Str,
+                            _ => Format::TypeName(path.name.clone()),
+                        },
                         GenericArgs::Parenthesized {
                             inputs: _,
                             output: _,
