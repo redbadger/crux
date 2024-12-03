@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		072EE0FC2CFF2594008ABD8F /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 072EE0FB2CFF2594008ABD8F /* SparklineView.swift */; };
 		0787064227803E37303F8850 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 973DE79248816287A24759FA /* ContentView.swift */; };
 		1D91DEB92273DE4FC7EE2D8F /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = BBD3AE0E65859A8BDC264878 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2391A638B2F2968ACA44FD2D /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6815780EE0429EC63F67067 /* core.swift */; };
@@ -22,6 +23,8 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
+			inputFiles = (
+			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -74,6 +77,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		072EE0FB2CFF2594008ABD8F /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
 		5714ACFE617CB6EE596AD894 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		973DE79248816287A24759FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9CC45FB589F9964637A15D5C /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
@@ -130,6 +134,7 @@
 			children = (
 				E902CC2F9431673D47029C6C /* BridgePerfApp.swift */,
 				973DE79248816287A24759FA /* ContentView.swift */,
+				072EE0FB2CFF2594008ABD8F /* SparklineView.swift */,
 				F6815780EE0429EC63F67067 /* core.swift */,
 				CC862345F0CDB156048B1417 /* Info.plist */,
 			);
@@ -261,6 +266,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C4CD26945C055EF9827876AE /* BridgePerfApp.swift in Sources */,
+				072EE0FC2CFF2594008ABD8F /* SparklineView.swift in Sources */,
 				0787064227803E37303F8850 /* ContentView.swift in Sources */,
 				2391A638B2F2968ACA44FD2D /* core.swift in Sources */,
 				5425067E3C89678E1AEF3F79 /* shared.udl in Sources */,
