@@ -2865,20 +2865,12 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "crux_core",
  "lazy_static",
  "serde",
  "uniffi",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "shared_types"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crux_core",
- "shared",
 ]
 
 [[package]]
