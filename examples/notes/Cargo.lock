@@ -1058,6 +1058,7 @@ dependencies = [
  "anyhow",
  "crux_core",
  "crux_kv",
+ "serde_json",
  "shared",
 ]
 
