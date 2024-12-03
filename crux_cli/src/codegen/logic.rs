@@ -280,13 +280,8 @@ fn is_field_of(parent: &Node, field: &Node) -> bool {
             inner: ItemEnum::Struct(Struct { kind, .. }),
             ..
         }) => {
-            if let Some(Item {
-                name: Some(name), ..
-            }) = &field.item
-            {
-                if name == "__private_field" {
-                    return false;
-                }
+            if name_of(field) == Some("__private_field".to_string()) {
+                return false;
             }
             match kind {
                 StructKind::Unit => false,
@@ -406,15 +401,13 @@ fn make_format(node: &Node, field: &Node) -> Option<Indexed<Format>> {
 }
 
 fn make_named_format(node: &Node, field: &Node) -> Option<Indexed<Named<Format>>> {
-    match &field.item {
-        Some(Item {
-            name: Some(name), ..
-        }) => match make_format(node, field) {
-            Some(value) => Some(Indexed {
-                index: index(node, field)? as u32,
+    match name_of(field) {
+        Some(name) => match make_format(node, field) {
+            Some(Indexed { index, value }) => Some(Indexed {
+                index,
                 value: Named {
                     name: name.clone(),
-                    value: value.value,
+                    value,
                 },
             }),
             _ => None,
@@ -529,11 +522,16 @@ fn make_tuple_variant_format(
                 let mut fields = fields.clone();
                 fields.sort();
                 let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
+                let value = match fields.len() {
+                    0 => VariantFormat::Unit,
+                    1 => VariantFormat::NewType(Box::new(fields[0].clone())),
+                    _ => VariantFormat::Tuple(fields),
+                };
                 Some(Indexed {
                     index: index(enum_, variant)? as u32,
                     value: Named {
                         name: name.clone(),
-                        value: VariantFormat::Tuple(fields),
+                        value,
                     },
                 })
             }
@@ -573,14 +571,21 @@ fn make_struct_plain(fields: &Vec<(&Indexed<Named<Format>>,)>) -> ContainerForma
     let mut fields = fields.clone();
     fields.sort();
     let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
-    ContainerFormat::Struct(fields)
+    match fields.len() {
+        0 => ContainerFormat::UnitStruct,
+        _ => ContainerFormat::Struct(fields),
+    }
 }
 
 fn make_struct_tuple(fields: &Vec<(&Indexed<Format>,)>) -> ContainerFormat {
     let mut fields = fields.clone();
     fields.sort();
     let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
-    ContainerFormat::TupleStruct(fields)
+    match fields.len() {
+        0 => ContainerFormat::UnitStruct,
+        1 => ContainerFormat::NewTypeStruct(Box::new(fields[0].clone())),
+        _ => ContainerFormat::TupleStruct(fields),
+    }
 }
 
 fn make_enum(formats: &Vec<(&Indexed<Named<VariantFormat>>,)>) -> ContainerFormat {

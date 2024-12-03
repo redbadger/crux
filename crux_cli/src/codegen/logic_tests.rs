@@ -396,52 +396,42 @@ fn cat_facts() {
             {
                 0: Named {
                     name: "Http",
-                    value: Tuple(
-                        [
-                            TypeName(
-                                "::crux_core::Request",
-                            ),
-                        ],
+                    value: NewType(
+                        TypeName(
+                            "::crux_core::Request",
+                        ),
                     ),
                 },
                 1: Named {
                     name: "KeyValue",
-                    value: Tuple(
-                        [
-                            TypeName(
-                                "::crux_core::Request",
-                            ),
-                        ],
+                    value: NewType(
+                        TypeName(
+                            "::crux_core::Request",
+                        ),
                     ),
                 },
                 2: Named {
                     name: "Platform",
-                    value: Tuple(
-                        [
-                            TypeName(
-                                "::crux_core::Request",
-                            ),
-                        ],
+                    value: NewType(
+                        TypeName(
+                            "::crux_core::Request",
+                        ),
                     ),
                 },
                 3: Named {
                     name: "Render",
-                    value: Tuple(
-                        [
-                            TypeName(
-                                "::crux_core::Request",
-                            ),
-                        ],
+                    value: NewType(
+                        TypeName(
+                            "::crux_core::Request",
+                        ),
                     ),
                 },
                 4: Named {
                     name: "Time",
-                    value: Tuple(
-                        [
-                            TypeName(
-                                "::crux_core::Request",
-                            ),
-                        ],
+                    value: NewType(
+                        TypeName(
+                            "::crux_core::Request",
+                        ),
                     ),
                 },
             },
@@ -512,12 +502,10 @@ fn bridge_echo() {
             {
                 0: Named {
                     name: "Render",
-                    value: Tuple(
-                        [
-                            TypeName(
-                                "::crux_core::Request",
-                            ),
-                        ],
+                    value: NewType(
+                        TypeName(
+                            "::crux_core::Request",
+                        ),
                     ),
                 },
             },
