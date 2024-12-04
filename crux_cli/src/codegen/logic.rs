@@ -17,6 +17,8 @@ use super::{
 };
 
 ascent! {
+    struct Filter;
+
     // ------- facts ------------------
     relation node(Node);
 
@@ -32,38 +34,38 @@ ascent! {
         node(enum_),
         if let Some(Item { inner: ItemEnum::Enum(_), .. }) = &enum_.item;
 
-    relation field_of(Node, Node);
-    field_of(parent, field) <--
+    relation field(Node, Node);
+    field(parent, field) <--
         node(parent),
         node(field),
         if is_field_of(parent, field);
 
-    relation variant_of(Node, Node);
-    variant_of(parent, variant) <--
+    relation variant(Node, Node);
+    variant(parent, variant) <--
         is_enum(parent),
         node(variant),
         if is_variant_of(parent, variant);
 
-    relation type_for(Node, Node);
-    type_for(parent, type_) <--
+    relation type_of(Node, Node);
+    type_of(parent, type_) <--
         node(parent),
         node(type_),
-        if is_type_for(parent, type_);
+        if is_type_of(parent, type_);
 
     // app structs have an implementation of the App trait
     relation app(Node, Node);
     app(impl_, app) <--
         node(impl_),
         is_struct(app),
-        if is_impl_for(impl_, app, "App");
+        if is_impl_of(impl_, app, "App");
 
     // app hierarchy
     relation parent(Node, Node);
     parent(parent, child) <--
         app(_, parent),
         app(_, child),
-        field_of(parent, field),
-        type_for(field, child);
+        field(parent, field),
+        type_of(field, child);
 
     relation root_app(Node, Node);
     root_app(impl_, app) <--
@@ -74,14 +76,14 @@ ascent! {
     relation view_model(Node, Node);
     view_model(app, view_model) <--
         root_app(impl_, app),
-        type_for(item, view_model),
+        type_of(item, view_model),
         if is_associated_item(impl_, item, "ViewModel");
 
     // an event is an associated type of an app
     relation event(Node, Node);
     event(app, event) <--
         root_app(impl_, app),
-        type_for(item, event),
+        type_of(item, event),
         if is_associated_item(impl_, item, "Event");
 
     // effect enums have an implementation of the Effect trait
@@ -91,9 +93,9 @@ ascent! {
         root_app(app_impl, app),
         is_enum(effect),
         node(effect_impl),
-        if is_impl_for(effect_impl, effect, "Effect"),
+        if is_impl_of(effect_impl, effect, "Effect"),
         if are_in_same_module(app, effect),
-        type_for(effect_ffi_item, effect_ffi),
+        type_of(effect_ffi_item, effect_ffi),
         if is_associated_item(effect_impl, effect_ffi_item, "Ffi");
 
     relation root(Node);
@@ -102,47 +104,56 @@ ascent! {
     root(x) <-- effect(app, x);
 
     // set of all the edges we are interested in
-    relation subset(Node, Node);
+    relation edge(Node, Node);
 
     // root fields
-    subset(root, field) <--
+    edge(root, field) <--
         root(root),
-        field_of(root, field);
+        field(root, field);
     // root variants
-    subset(root, variant) <--
+    edge(root, variant) <--
         root(root),
-        variant_of(root, variant);
+        variant(root, variant);
 
-    subset(type_, field) <--
-        subset(_, type_),
-        field_of(type_, field);
-    subset(type_, variant) <--
-        subset(_, type_),
-        variant_of(type_, variant);
+    edge(type_, field) <--
+        edge(_, type_),
+        field(type_, field);
+    edge(type_, variant) <--
+        edge(_, type_),
+        variant(type_, variant);
 
-    subset(field, type_) <--
-        subset(_, field),
-        type_for(field, type_);
+    edge(field, type_) <--
+        edge(_, field),
+        type_of(field, type_);
+}
+
+ascent! {
+    struct Formatter;
+
+    // ------- facts ------------------
+    relation edge(Node, Node);
+
+    // ------- rules ------------------
 
     relation struct_plain(Node);
     struct_plain(struct_) <--
-        subset(struct_, _),
+        edge(struct_, _),
         if is_plain_struct(struct_);
 
     relation struct_tuple(Node);
     struct_tuple(struct_) <--
-        subset(struct_, _),
+        edge(struct_, _),
         if is_tuple_struct(struct_);
 
     relation field(Node, Node);
     field(struct_or_variant, field) <--
-        subset(struct_or_variant, field),
-        field_of(struct_or_variant, field);
+        edge(struct_or_variant, field),
+        if is_field_of(struct_or_variant, field);
 
     relation variant(Node, Node);
     variant(enum_, variant) <--
-        subset(enum_, variant),
-        variant_of(enum_, variant);
+        edge(enum_, variant),
+        if is_variant_of(enum_, variant);
 
     relation variant_plain(Node, Node);
     variant_plain(enum_, variant) <--
@@ -213,11 +224,16 @@ ascent! {
 }
 
 pub fn run(nodes: Vec<(Node,)>) -> Registry {
-    let mut prog = AscentProgram::default();
-    prog.node = nodes;
-    prog.run();
+    let mut filter = Filter::default();
+    filter.node = nodes;
+    filter.run();
+
+    let mut formatter = Formatter::default();
+    formatter.edge = filter.edge;
+    formatter.run();
+
     // std::fs::write("root.txt", format!("{:#?}", prog.root)).unwrap();
-    prog.container.into_iter().collect()
+    formatter.container.into_iter().collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -259,7 +275,7 @@ impl<T: Eq> PartialOrd for Indexed<T> {
     }
 }
 
-fn is_impl_for(impl_: &Node, for_: &Node, trait_name: &str) -> bool {
+fn is_impl_of(impl_: &Node, for_: &Node, trait_name: &str) -> bool {
     match &impl_.item {
         Some(Item {
             inner:
@@ -314,7 +330,7 @@ fn is_variant_of(enum_: &Node, variant: &Node) -> bool {
     }
 }
 
-fn is_type_for(field_node: &Node, type_node: &Node) -> bool {
+fn is_type_of(field_node: &Node, type_node: &Node) -> bool {
     match &field_node.item {
         Some(Item {
             inner: ItemEnum::StructField(t),
