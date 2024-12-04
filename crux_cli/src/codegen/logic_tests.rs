@@ -73,12 +73,12 @@ fn field_is_option_of_t() {
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
     let nodes = parse(crate_);
 
-    let mut prog = super::AscentProgram::default();
+    let mut prog = super::Filter::default();
     prog.node = nodes;
     prog.run();
 
     // 345 (struct: ViewModel) to 343 (field: image)
-    let mut out = prog.field_of;
+    let mut out = prog.field;
     out.sort_by_key(|(name, _)| name.id.0);
     insta::assert_debug_snapshot!(&out, @r#"
     [
@@ -208,7 +208,7 @@ fn field_is_option_of_t() {
     "#);
 
     // 343 (field: image) to 281 (struct: CatImage)
-    let mut out = prog.type_for;
+    let mut out = prog.type_of;
     out.sort_by_key(|(name, _)| name.id.0);
     insta::assert_debug_snapshot!(&out, @r#"
     [
