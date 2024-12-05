@@ -1,16 +1,20 @@
-mod error;
-mod format;
-mod logic;
+mod filter;
+mod formatter;
+mod indexed;
+mod node;
+mod serde_generate;
 
 use std::{collections::BTreeMap, fs::File};
 
 use anyhow::{bail, Result};
-use format::ContainerFormat;
 use guppy::{graph::PackageGraph, MetadataCommand};
-use logic::Node;
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
+use filter::Filter;
+use formatter::Formatter;
+use node::Node;
+use serde_generate::format::ContainerFormat;
 
 pub type Registry = BTreeMap<String, ContainerFormat>;
 
@@ -33,26 +37,37 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let nodes = parse(crate_);
 
-    let registry = logic::run(nodes);
+    let registry = run(nodes);
+
     println!("{:#?}", registry);
 
     Ok(())
+}
+
+fn run(nodes: Vec<(Node,)>) -> Registry {
+    let mut filter = Filter::default();
+    filter.node = nodes;
+    filter.run();
+
+    let mut formatter = Formatter::default();
+    formatter.edge = filter.edge;
+    formatter.run();
+    formatter.container.into_iter().collect()
 }
 
 fn parse(crate_: Crate) -> Vec<(Node,)> {
     crate_
         .index
         .values()
-        .flat_map(|item| {
-            if item.attrs.contains(&"#[serde(skip)]".to_string()) {
-                None
-            } else {
-                Some((Node {
-                    id: item.id,
-                    item: Some(item.clone()),
-                    summary: crate_.paths.get(&item.id).cloned(),
-                },))
-            }
+        .map(|item| {
+            (Node {
+                id: item.id,
+                item: Some(item.clone()),
+                summary: crate_.paths.get(&item.id).cloned(),
+            },)
         })
         .collect::<Vec<_>>()
 }
+
+#[cfg(test)]
+mod tests;
