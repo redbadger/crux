@@ -13,7 +13,7 @@ use rustdoc_types::Crate;
 use crate::args::CodegenArgs;
 use filter::Filter;
 use formatter::Formatter;
-use node::Node;
+use node::{CrateNode, ItemNode, SummaryNode};
 use serde_generate::format::ContainerFormat;
 
 pub type Registry = BTreeMap<String, ContainerFormat>;
@@ -35,38 +35,48 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let file = File::open(json_path)?;
     let crate_: Crate = serde_json::from_reader(file)?;
 
-    let nodes = parse(crate_);
+    let manifest_paths: BTreeMap<&str, &str> = package_graph
+        .packages()
+        .map(|package| (package.name(), package.manifest_path().as_str()))
+        .collect();
 
-    let registry = run(nodes);
+    println!("{:#?}", manifest_paths);
+
+    let registry = run(crate_);
 
     println!("{:#?}", registry);
 
     Ok(())
 }
 
-fn run(nodes: Vec<(Node,)>) -> Registry {
+fn run(crate_: Crate) -> Registry {
     let mut filter = Filter::default();
-    filter.node = nodes;
+    filter.summary = crate_
+        .paths
+        .iter()
+        .map(|(id, summary)| {
+            (SummaryNode {
+                id: *id,
+                summary: summary.clone(),
+            },)
+        })
+        .collect::<Vec<_>>();
+    filter.item = crate_
+        .index
+        .values()
+        .map(|item| (ItemNode(item.clone()),))
+        .collect::<Vec<_>>();
+    filter.ext_crate = crate_
+        .external_crates
+        .values()
+        .map(|item| (CrateNode(item.clone()),))
+        .collect::<Vec<_>>();
     filter.run();
 
     let mut formatter = Formatter::default();
     formatter.edge = filter.edge;
     formatter.run();
     formatter.container.into_iter().collect()
-}
-
-fn parse(crate_: Crate) -> Vec<(Node,)> {
-    crate_
-        .index
-        .values()
-        .map(|item| {
-            (Node {
-                id: item.id,
-                item: Some(item.clone()),
-                summary: crate_.paths.get(&item.id).cloned(),
-            },)
-        })
-        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
