@@ -9,9 +9,7 @@ use crate::codegen::Registry;
 fn cat_facts_json() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
-    let nodes = super::parse(crate_);
-
-    let actual = super::run(nodes);
+    let actual = super::run(crate_);
 
     let writer = File::create("fixtures-cat_facts-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
@@ -25,9 +23,7 @@ fn cat_facts_json() {
 fn notes_json() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/notes/rustdoc.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
-    let nodes = super::parse(crate_);
-
-    let actual = super::run(nodes);
+    let actual = super::run(crate_);
 
     let writer = File::create("fixtures-notes-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
@@ -40,9 +36,7 @@ fn notes_json() {
 fn bridge_echo() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/bridge_echo_rustdoc.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
-    let nodes = super::parse(crate_);
-
-    let containers = super::run(nodes);
+    let containers = super::run(crate_);
 
     insta::assert_debug_snapshot!(&containers, @r#"
     {
@@ -86,9 +80,8 @@ fn bridge_echo() {
 fn cat_facts() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
-    let nodes = super::parse(crate_);
 
-    let registry = super::run(nodes);
+    let registry = super::run(crate_);
 
     insta::assert_debug_snapshot!(&registry, @r#"
     {
