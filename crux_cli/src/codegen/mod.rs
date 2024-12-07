@@ -68,10 +68,17 @@ fn run(crate_: Crate) -> Registry {
         .collect::<Vec<_>>();
     filter.ext_crate = crate_
         .external_crates
-        .values()
-        .map(|item| (CrateNode(item.clone()),))
+        .iter()
+        .map(|(id, crate_)| {
+            (CrateNode {
+                id: *id,
+                crate_: crate_.clone(),
+            },)
+        })
         .collect::<Vec<_>>();
     filter.run();
+
+    println!("{:#?}", filter.continue_with);
 
     let mut formatter = Formatter::default();
     formatter.edge = filter.edge;
