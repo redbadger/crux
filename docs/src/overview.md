@@ -1,6 +1,6 @@
 # Overview
 
-Crux is an approach to building cross-platform applications
+Crux is a framework for building cross-platform applications
 with better testability, higher code and behavior reuse, better safety,
 security, and more joy from better tools.
 
