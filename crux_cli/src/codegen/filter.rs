@@ -28,8 +28,11 @@ ascent! {
     field(s, f) <-- is_struct(s), item(f), if s.has_field(f);
     field(v, f) <-- variant(e, v), item(f), if v.has_field(f);
 
-    relation type_of(ItemNode, ItemNode);
-    type_of(f, t) <-- item(f), item(t), if f.is_of_type(t);
+    relation local_type_of(ItemNode, ItemNode);
+    local_type_of(f, t) <-- item(f), item(t), if f.is_of_local_type(t);
+
+    relation remote_type_of(ItemNode, SummaryNode);
+    remote_type_of(f, t) <-- item(f), summary(t), if f.is_of_remote_type(t);
 
     // app structs have an implementation of the App trait
     relation app(ItemNode, ItemNode);
@@ -44,7 +47,7 @@ ascent! {
         app(_, parent),
         app(_, child),
         field(parent, field),
-        type_of(field, child);
+        local_type_of(field, child);
 
     relation root_app(ItemNode, ItemNode);
     root_app(impl_, app) <--
@@ -55,14 +58,14 @@ ascent! {
     relation view_model(ItemNode, ItemNode);
     view_model(app, view_model) <--
         root_app(impl_, app),
-        type_of(item, view_model),
+        local_type_of(item, view_model),
         if impl_.has_associated_item(item, "ViewModel");
 
     // an event is an associated type of an app
     relation event(ItemNode, ItemNode);
     event(app, event) <--
         root_app(impl_, app),
-        type_of(item, event),
+        local_type_of(item, event),
         if impl_.has_associated_item(item, "Event");
 
     // effect enums have an implementation of the Effect trait
@@ -76,7 +79,7 @@ ascent! {
         has_summary(app, app_summary),
         has_summary(effect, effect_summary),
         if app_summary.in_same_module_as(effect_summary),
-        type_of(effect_ffi_item, effect_ffi),
+        local_type_of(effect_ffi_item, effect_ffi),
         if effect_impl.has_associated_item(effect_ffi_item, "Ffi");
 
     relation root(ItemNode);
@@ -105,7 +108,14 @@ ascent! {
 
     edge(field, type_) <--
         edge(_, field),
-        type_of(field, type_);
+        local_type_of(field, type_);
+
+    relation continue_with(CrateNode, SummaryNode);
+    continue_with(c, s) <--
+        ext_crate(c),
+        edge(a, b),
+        remote_type_of(b, s),
+        if s.summary.crate_id == c.id;
 }
 
 #[cfg(test)]

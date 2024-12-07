@@ -16,7 +16,10 @@ pub struct SummaryNode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
-pub struct CrateNode(pub ExternalCrate);
+pub struct CrateNode {
+    pub id: u32,
+    pub crate_: ExternalCrate,
+}
 
 impl SummaryNode {
     pub fn in_same_module_as(&self, other: &SummaryNode) -> bool {
@@ -188,12 +191,20 @@ impl ItemNode {
         }
     }
 
-    pub fn is_of_type(&self, type_node: &ItemNode) -> bool {
+    pub fn is_of_local_type(&self, type_node: &ItemNode) -> bool {
+        self.is_of_type(&type_node.0.id, false)
+    }
+
+    pub fn is_of_remote_type(&self, type_node: &SummaryNode) -> bool {
+        self.is_of_type(&type_node.id, true)
+    }
+
+    fn is_of_type(&self, id: &Id, is_remote: bool) -> bool {
         match &self.0 {
             Item {
                 inner: ItemEnum::StructField(t),
                 ..
-            } => check_type(type_node, t),
+            } => check_type(&id, t, is_remote),
             Item {
                 inner:
                     ItemEnum::AssocType {
@@ -201,7 +212,7 @@ impl ItemNode {
                         ..
                     },
                 ..
-            } => target.id == type_node.0.id,
+            } => &target.id == id,
             _ => false,
         }
     }
@@ -248,25 +259,42 @@ impl ItemNode {
     }
 }
 
-fn check_type(type_node: &ItemNode, type_: &Type) -> bool {
+fn check_type(parent: &Id, type_: &Type, is_remote: bool) -> bool {
     match type_ {
-        Type::ResolvedPath(Path { id, args, .. }) => {
-            id == &type_node.0.id || check_args(type_node, args)
+        Type::ResolvedPath(Path { name, id, args }) => {
+            if is_remote {
+                if let "Option" | "String" | "Vec" = name.as_str() {
+                    return false;
+                }
+            }
+            id == parent || {
+                if let Some(args) = args {
+                    check_args(parent, args, is_remote)
+                } else {
+                    false
+                }
+            }
         }
+        Type::QualifiedPath {
+            self_type, args, ..
+        } => check_type(parent, self_type, is_remote) || check_args(parent, args, is_remote),
         Type::Primitive(_) => false,
-        Type::Tuple(vec) => vec.iter().any(|t| check_type(type_node, t)),
-        Type::Slice(t) => check_type(type_node, t),
-        Type::Array { type_: t, .. } => check_type(type_node, t),
+        Type::Tuple(vec) => vec.iter().any(|t| check_type(parent, t, is_remote)),
+        Type::Slice(t) => check_type(parent, t, is_remote),
+        Type::Array { type_: t, .. } => check_type(parent, t, is_remote),
         _ => false,
     }
 }
 
-fn check_args(type_node: &ItemNode, args: &Option<Box<GenericArgs>>) -> bool {
-    match args.as_deref() {
-        Some(GenericArgs::AngleBracketed { args, .. }) => args
-            .iter()
-            .any(|arg| matches!(arg, GenericArg::Type(t) if check_type(type_node, t))),
-        _ => false,
+fn check_args(parent: &Id, args: &Box<GenericArgs>, is_remote: bool) -> bool {
+    match args.as_ref() {
+        GenericArgs::AngleBracketed { args, .. } => args.iter().any(|arg| match arg {
+            GenericArg::Type(t) => check_type(parent, t, is_remote),
+            _ => false,
+        }),
+        GenericArgs::Parenthesized { inputs, .. } => {
+            inputs.iter().any(|t| check_type(parent, t, is_remote))
+        }
     }
 }
 

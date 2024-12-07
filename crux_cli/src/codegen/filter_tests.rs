@@ -134,7 +134,7 @@ fn field_is_option_of_t() {
     "#);
 
     // 343 (field: image) to 281 (struct: CatImage)
-    let mut out = prog.type_of;
+    let mut out = prog.local_type_of;
     out.sort_by_key(|(node, _)| node.0.id.0);
     insta::assert_debug_snapshot!(&out, @r#"
     [
