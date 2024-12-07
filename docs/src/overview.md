@@ -81,9 +81,9 @@ overall goals of Crux are to:
 
 ## Path to 1.0
 
-Crux is used in production apps today, at least one quite large one. In that sense
-we consider it production ready. However, to truly be at 1.0 with a more stable
-API, we will take the following steps:
+Crux is used in production apps today, and we consider it production ready. However, we still have a number of things to work on to call it 1.0, with a stable API, and other things one would expect from a mature framework. 
+
+Below is a list of some of the things we know we want to do before 1.0:
 
 * Improved documentation, code examples, and example apps for newcomers
 * Improved onboarding experience, with less boilerplate code that end users have
