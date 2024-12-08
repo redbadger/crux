@@ -6,7 +6,7 @@ mod serde_generate;
 
 use std::{collections::BTreeMap, fs::File};
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
 use rustdoc_types::Crate;
 
@@ -22,34 +22,45 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let mut cmd = MetadataCommand::new();
     let package_graph = PackageGraph::from_command(&mut cmd)?;
 
-    let Ok(lib) = package_graph.workspace().member_by_path(&args.lib) else {
-        bail!("Could not find workspace package with path {}", args.lib)
-    };
-
-    let json_path = rustdoc_json::Builder::default()
-        .toolchain("nightly")
-        .document_private_items(true)
-        .manifest_path(lib.manifest_path())
-        .build()?;
-
-    let file = File::open(json_path)?;
-    let crate_: Crate = serde_json::from_reader(file)?;
-
     let manifest_paths: BTreeMap<&str, &str> = package_graph
         .packages()
         .map(|package| (package.name(), package.manifest_path().as_str()))
         .collect();
 
-    println!("{:#?}", manifest_paths);
+    let Ok(lib) = package_graph.workspace().member_by_path(&args.lib) else {
+        bail!("Could not find workspace package with path {}", args.lib)
+    };
+    let load = |name: String| load_crate(&name, &manifest_paths);
 
-    let registry = run(crate_);
+    let registry = run(lib.name(), true, load)?;
 
     println!("{:#?}", registry);
 
     Ok(())
 }
 
-fn run(crate_: Crate) -> Registry {
+fn run(
+    crate_name: &str,
+    should_recurse: bool,
+    load: impl Fn(String) -> Result<Crate>,
+) -> Result<Registry> {
+    let shared_lib = load(crate_name.to_string())?;
+    let (mut filtered, mut _continue_with) = filter(shared_lib);
+
+    if should_recurse {
+        while !_continue_with.is_empty() {
+            let (crate_, _summary) = _continue_with.pop().unwrap();
+            let dep = crate_.crate_.name.clone();
+            let crate_ = load(dep)?;
+            let (more_filtered, more_continue_with) = filter(crate_);
+            filtered.extend(more_filtered);
+            _continue_with.extend(more_continue_with);
+        }
+    }
+    Ok(format(filtered))
+}
+
+fn filter(crate_: Crate) -> (Vec<(ItemNode, ItemNode)>, Vec<(CrateNode, SummaryNode)>) {
     let mut filter = Filter::default();
     filter.summary = crate_
         .paths
@@ -78,12 +89,30 @@ fn run(crate_: Crate) -> Registry {
         .collect::<Vec<_>>();
     filter.run();
 
-    println!("{:#?}", filter.continue_with);
+    (filter.edge, filter.continue_with)
+}
 
+fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
     let mut formatter = Formatter::default();
-    formatter.edge = filter.edge;
+    formatter.edge = edges;
     formatter.run();
+
     formatter.container.into_iter().collect()
+}
+
+fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate, anyhow::Error> {
+    let manifest_path = manifest_paths
+        .get(name)
+        .ok_or_else(|| anyhow!("cannot get manifest for crate {name}"))?;
+    let json_path = rustdoc_json::Builder::default()
+        .toolchain("nightly")
+        .document_private_items(true)
+        .manifest_path(manifest_path)
+        .build()?;
+    let file = File::open(json_path)?;
+    let crate_ = serde_json::from_reader(file)?;
+
+    Ok(crate_)
 }
 
 #[cfg(test)]
