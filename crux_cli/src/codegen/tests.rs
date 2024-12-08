@@ -1,15 +1,15 @@
 use std::fs::File;
 
-use rustdoc_types::Crate;
-
 use crate::codegen::Registry;
 
 #[test]
 #[ignore = "not yet fully implemented"]
 fn cat_facts_json() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
-    let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
-    let actual = super::run(crate_);
+    let actual = super::run("cat_facts", false, |_| {
+        Ok(serde_json::from_slice(RUSTDOC).unwrap())
+    })
+    .unwrap();
 
     let writer = File::create("fixtures-cat_facts-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
@@ -22,8 +22,10 @@ fn cat_facts_json() {
 #[ignore = "not yet fully implemented"]
 fn notes_json() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/notes/rustdoc.json");
-    let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
-    let actual = super::run(crate_);
+    let actual = super::run("notes", false, |_| {
+        Ok(serde_json::from_slice(RUSTDOC).unwrap())
+    })
+    .unwrap();
 
     let writer = File::create("fixtures-notes-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
@@ -35,10 +37,12 @@ fn notes_json() {
 #[test]
 fn bridge_echo() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/bridge_echo_rustdoc.json");
-    let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
-    let containers = super::run(crate_);
+    let actual = super::run("bridge_echo", false, |_| {
+        Ok(serde_json::from_slice(RUSTDOC).unwrap())
+    })
+    .unwrap();
 
-    insta::assert_debug_snapshot!(&containers, @r#"
+    insta::assert_debug_snapshot!(&actual, @r#"
     {
         "Effect": Enum(
             {
@@ -79,11 +83,12 @@ fn bridge_echo() {
 #[test]
 fn cat_facts() {
     static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
-    let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
+    let actual = super::run("cat_facts", false, |_| {
+        Ok(serde_json::from_slice(RUSTDOC).unwrap())
+    })
+    .unwrap();
 
-    let registry = super::run(crate_);
-
-    insta::assert_debug_snapshot!(&registry, @r#"
+    insta::assert_debug_snapshot!(&actual, @r#"
     {
         "CatImage": Struct(
             [
