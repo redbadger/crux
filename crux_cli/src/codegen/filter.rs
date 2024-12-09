@@ -9,6 +9,7 @@ ascent! {
     relation item(ItemNode);
     relation summary(SummaryNode);
     relation ext_crate(CrateNode);
+    relation start_with(SummaryNode);
 
     // ------- rules ------------------
 
@@ -82,10 +83,31 @@ ascent! {
         local_type_of(effect_ffi_item, effect_ffi),
         if effect_impl.has_associated_item(effect_ffi_item, "Ffi");
 
+    // Operation is an associated type of an impl of the Capability trait
+    relation operation(ItemNode, ItemNode);
+    operation(cap, op_type) <--
+        item(cap),
+        item(cap_impl),
+        if cap_impl.is_impl_for(cap, "Capability"),
+        local_type_of(op, op_type),
+        if cap_impl.has_associated_item(op, "Operation");
+
+    // Output is an associated type of an impl of the Operation trait
+    relation output(ItemNode, ItemNode);
+    output(op, output_type) <--
+        item(op),
+        item(op_impl),
+        if op_impl.is_impl_for(op, "Operation"),
+        local_type_of(out, output_type),
+        if op_impl.has_associated_item(out, "Output");
+
     relation root(ItemNode);
     root(x) <-- view_model(app, x);
     root(x) <-- event(app, x);
     root(x) <-- effect(app, x);
+    root(x) <-- operation(cap, x);
+    root(x) <-- output(op, x);
+    root(x) <-- start_with(s), has_summary(x, s);
 
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);

@@ -8,6 +8,7 @@ use std::{collections::BTreeMap, fs::File};
 
 use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
+use iter_tools::Itertools as _;
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
@@ -30,9 +31,8 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let Ok(lib) = package_graph.workspace().member_by_path(&args.lib) else {
         bail!("Could not find workspace package with path {}", args.lib)
     };
-    let load = |name: String| load_crate(&name, &manifest_paths);
 
-    let registry = run(lib.name(), true, load)?;
+    let registry = run(lib.name(), false, |name| load_crate(&name, &manifest_paths))?;
 
     println!("{:#?}", registry);
 
@@ -45,22 +45,39 @@ fn run(
     load: impl Fn(String) -> Result<Crate>,
 ) -> Result<Registry> {
     let shared_lib = load(crate_name.to_string())?;
-    let (mut filtered, mut _continue_with) = filter(shared_lib);
+    let (mut filtered, _continue_with) = filter(shared_lib, vec![]);
+    let mut summaries = _continue_with
+        .into_iter()
+        .into_group_map()
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    println!("summaries {:#?}", summaries);
 
     if should_recurse {
-        while !_continue_with.is_empty() {
-            let (crate_, _summary) = _continue_with.pop().unwrap();
+        while !summaries.is_empty() {
+            let (crate_, items) = summaries.pop().unwrap();
+            println!("loading {}", crate_.crate_.name);
             let dep = crate_.crate_.name.clone();
             let crate_ = load(dep)?;
-            let (more_filtered, more_continue_with) = filter(crate_);
+            let (more_filtered, more_continue_with) = filter(crate_, items);
             filtered.extend(more_filtered);
-            _continue_with.extend(more_continue_with);
+            let more_summaries = more_continue_with
+                .into_iter()
+                .into_group_map()
+                .into_iter()
+                .collect::<Vec<_>>();
+            println!("summaries {:#?}", more_summaries);
+            summaries.extend(more_summaries);
         }
     }
     Ok(format(filtered))
 }
 
-fn filter(crate_: Crate) -> (Vec<(ItemNode, ItemNode)>, Vec<(CrateNode, SummaryNode)>) {
+fn filter(
+    crate_: Crate,
+    summaries: Vec<SummaryNode>,
+) -> (Vec<(ItemNode, ItemNode)>, Vec<(CrateNode, SummaryNode)>) {
     let mut filter = Filter::default();
     filter.summary = crate_
         .paths
@@ -87,6 +104,7 @@ fn filter(crate_: Crate) -> (Vec<(ItemNode, ItemNode)>, Vec<(CrateNode, SummaryN
             },)
         })
         .collect::<Vec<_>>();
+    filter.start_with = summaries.into_iter().map(|summary| (summary,)).collect();
     filter.run();
 
     (filter.edge, filter.continue_with)
