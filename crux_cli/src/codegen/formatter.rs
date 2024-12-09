@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use ascent::ascent;
 use rustdoc_types::{GenericArg, GenericArgs, Item, ItemEnum, Type, Variant, VariantKind};
 
+use crate::codegen::node::collect;
+
 use super::{
     indexed::Indexed,
     node::ItemNode,
@@ -93,15 +95,6 @@ ascent! {
         agg variants = collect(format) in format_variant(e, format),
         if let Some(name) = e.name(),
         let container = make_enum(&variants);
-}
-
-pub fn collect<'a, N: 'a, T: Iterator<Item = (&'a N,)>>(
-    input: T,
-) -> impl Iterator<Item = Vec<(&'a N,)>>
-where
-    N: Clone,
-{
-    std::iter::once(input.collect::<Vec<_>>())
 }
 
 fn make_format(node: &ItemNode, field: &ItemNode) -> Option<Indexed<Format>> {

@@ -9,16 +9,37 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemNode(pub Item);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub struct SummaryNode {
     pub id: Id,
     pub summary: ItemSummary,
+}
+
+impl Hash for SummaryNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.summary.path.hash(state);
+    }
+}
+
+impl PartialEq for SummaryNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.summary.path == other.summary.path
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct CrateNode {
     pub id: u32,
     pub crate_: ExternalCrate,
+}
+
+pub fn collect<'a, N: 'a, T: Iterator<Item = (&'a N,)>>(
+    input: T,
+) -> impl Iterator<Item = Vec<(&'a N,)>>
+where
+    N: Clone,
+{
+    std::iter::once(input.collect::<Vec<_>>())
 }
 
 impl SummaryNode {
