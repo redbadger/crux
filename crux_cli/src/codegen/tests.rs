@@ -1,5 +1,7 @@
 use std::fs::File;
 
+use pretty_assertions::assert_eq;
+
 use crate::codegen::Registry;
 
 #[test]
@@ -14,6 +16,22 @@ fn cat_facts_json() {
     let writer = File::create("fixtures-cat_facts-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
     let expected: Registry = serde_json::from_str(include_str!("fixtures/cat_facts/expected.json"))
+        .expect("should deserialize");
+    assert_eq!(actual, expected);
+}
+
+#[test]
+#[ignore = "not yet fully implemented"]
+fn counter_json() {
+    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/counter/rustdoc.json");
+    let actual = super::run("counter", false, |_| {
+        Ok(serde_json::from_slice(RUSTDOC).unwrap())
+    })
+    .unwrap();
+
+    let writer = File::create("fixtures-counter-actual.json").unwrap();
+    serde_json::to_writer_pretty(writer, &actual).unwrap();
+    let expected: Registry = serde_json::from_str(include_str!("fixtures/counter/expected.json"))
         .expect("should deserialize");
     assert_eq!(actual, expected);
 }

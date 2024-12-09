@@ -1,0 +1,83 @@
+{
+  "Effect": {
+    "ENUM": {
+      "0": {
+        "Http": {
+          "NEWTYPE": {
+            "TYPENAME": "Operation"
+          }
+        }
+      },
+      "1": {
+        "Render": {
+          "NEWTYPE": {
+            "TYPENAME": "Operation"
+          }
+        }
+      },
+      "2": {
+        "ServerSentEvents": {
+          "NEWTYPE": {
+            "TYPENAME": "Operation"
+          }
+        }
+      }
+    }
+  },
+  "Event": {
+    "ENUM": {
+      "0": {
+        "Get": "UNIT"
+      },
+      "1": {
+        "Increment": "UNIT"
+      },
+      "2": {
+        "Decrement": "UNIT"
+      },
+      "3": {
+        "StartWatch": "UNIT"
+      }
+    }
+  },
+  "ServerSentEvents": {
+    "STRUCT": [
+      {
+        "context": {
+          "TYPENAME": "crux_core::capability::CapabilityContext"
+        }
+      }
+    ]
+  },
+  "SseRequest": {
+    "STRUCT": [
+      {
+        "url": "STR"
+      }
+    ]
+  },
+  "SseResponse": {
+    "ENUM": {
+      "0": {
+        "Chunk": {
+          "NEWTYPE": {
+            "SEQ": "U8"
+          }
+        }
+      },
+      "1": {
+        "Done": "UNIT"
+      }
+    }
+  },
+  "ViewModel": {
+    "STRUCT": [
+      {
+        "text": "STR"
+      },
+      {
+        "confirmed": "BOOL"
+      }
+    ]
+  }
+}
