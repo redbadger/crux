@@ -32,7 +32,7 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
         bail!("Could not find workspace package with path {}", args.lib)
     };
 
-    let registry = run(lib.name(), false, |name| load_crate(&name, &manifest_paths))?;
+    let registry = run(lib.name(), true, |name| load_crate(&name, &manifest_paths))?;
 
     println!("{:#?}", registry);
 
