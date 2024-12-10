@@ -4,7 +4,7 @@ mod indexed;
 mod node;
 mod serde_generate;
 
-use std::{collections::BTreeMap, fs::File};
+use std::{collections::BTreeMap, fs::File, path::PathBuf, process::Command};
 
 use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
@@ -57,7 +57,6 @@ fn run(
     if should_recurse {
         while !summaries.is_empty() {
             let (crate_, items) = summaries.pop().unwrap();
-            println!("loading {}", crate_.crate_.name);
             let dep = crate_.crate_.name.clone();
             let crate_ = load(dep)?;
             let (more_filtered, more_continue_with) = filter(crate_, items);
@@ -119,18 +118,44 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
 }
 
 fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate, anyhow::Error> {
-    let manifest_path = manifest_paths
-        .get(name)
-        .ok_or_else(|| anyhow!("cannot get manifest for crate {name}"))?;
-    let json_path = rustdoc_json::Builder::default()
-        .toolchain("nightly")
-        .document_private_items(true)
-        .manifest_path(manifest_path)
-        .build()?;
+    // TODO: ensure that the user has installed the core rustdoc JSON files
+    // e.g. `rustup component add --toolchain nightly rust-docs-json`
+
+    let json_path = if let "core" | "alloc" | "std" = name {
+        rustdoc_json_path()?.join(format!("{name}.json"))
+    } else {
+        let manifest_path = manifest_paths
+            .get(name)
+            .ok_or_else(|| anyhow!("unknown crate {}", name))?;
+        rustdoc_json::Builder::default()
+            .toolchain("nightly")
+            .document_private_items(true)
+            .manifest_path(manifest_path)
+            .build()?
+    };
+    println!("loading {} from {}", name, json_path.to_string_lossy());
+
     let file = File::open(json_path)?;
     let crate_ = serde_json::from_reader(file)?;
 
     Ok(crate_)
+}
+
+fn rustdoc_json_path() -> Result<PathBuf> {
+    let output = Command::new("rustup")
+        .arg("which")
+        .args(["--toolchain", "nightly"])
+        .arg("rustc")
+        .output()?;
+    let rustc_path = std::str::from_utf8(&output.stdout)?.trim();
+    let json_path = PathBuf::from(rustc_path)
+        .parent()
+        .ok_or_else(|| anyhow!("could not get parent of {}", rustc_path))?
+        .parent()
+        .ok_or_else(|| anyhow!("could not get grandparent of {}", rustc_path))?
+        .join("share/doc/rust/json");
+
+    Ok(json_path)
 }
 
 #[cfg(test)]
