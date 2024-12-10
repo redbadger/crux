@@ -76,17 +76,17 @@
   },
   "HttpError": {
     "ENUM": {
-      "2": {
+      "0": {
         "Url": {
           "NEWTYPE": "STR"
         }
       },
-      "3": {
+      "1": {
         "Io": {
           "NEWTYPE": "STR"
         }
       },
-      "4": {
+      "2": {
         "Timeout": "UNIT"
       }
     }
