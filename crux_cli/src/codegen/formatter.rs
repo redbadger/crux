@@ -31,8 +31,20 @@ ascent! {
     relation field(ItemNode, ItemNode);
     field(x, f) <-- edge(x, f), if x.has_field(f);
 
+    relation fields(ItemNode, Vec<ItemNode>);
+    fields(x, fields) <--
+        field(x, f),
+        agg fs = collect(f) in field(x, f),
+        let fields = x.fields(fs);
+
     relation variant(ItemNode, ItemNode);
     variant(e, v) <-- edge(e, v), if e.has_variant(v);
+
+    relation variants(ItemNode, Vec<ItemNode>);
+    variants(e, variants) <--
+        variant(e, v),
+        agg vs = collect(v) in variant(e, v),
+        let variants = e.variants(vs);
 
     relation variant_plain(ItemNode, ItemNode);
     variant_plain(e, v) <-- variant(e, v), if is_plain_variant(&v);
@@ -46,29 +58,34 @@ ascent! {
     relation format(ItemNode, Indexed<Format>);
     format(x, format) <--
         field(x, field),
-        if let Some(format) = make_format(x, &field);
+        fields(x, fields),
+        if let Some(format) = make_format(field, fields);
 
     relation format_named(ItemNode, Indexed<Named<Format>>);
     format_named(x, format) <--
         field(x, field),
-        if let Some(format) = make_named_format(x, &field);
+        fields(x, fields),
+        if let Some(format) = make_named_format(field, fields);
 
     relation format_plain_variant(ItemNode, Indexed<Named<VariantFormat>>);
     format_plain_variant(e, format) <--
         variant_plain(e, v),
-        if let Some(format) = make_plain_variant_format(e, v);
+        variants(e, variants),
+        if let Some(format) = make_plain_variant_format(v, variants);
 
     relation format_tuple_variant(ItemNode, Indexed<Named<VariantFormat>>);
     format_tuple_variant(e, format) <--
         variant_tuple(e, v),
+        variants(e, variants),
         agg formats = collect(format) in format(v, format),
-        if let Some(format) = make_tuple_variant_format(e, v, &formats);
+        if let Some(format) = make_tuple_variant_format(v, &formats, variants);
 
     relation format_struct_variant(ItemNode, Indexed<Named<VariantFormat>>);
     format_struct_variant(e, format) <--
         variant_struct(e, v),
+        variants(e, variants),
         agg formats = collect(format) in format_named(v, format),
-        if let Some(format) = make_struct_variant_format(e, v, &formats);
+        if let Some(format) = make_struct_variant_format(v, &formats, variants);
 
     relation format_variant(ItemNode, Indexed<Named<VariantFormat>>);
     format_variant(e, format) <-- format_plain_variant(e, format);
@@ -97,19 +114,23 @@ ascent! {
         let container = make_enum(&variants);
 }
 
-fn make_format(node: &ItemNode, field: &ItemNode) -> Option<Indexed<Format>> {
+fn make_format(field: &ItemNode, all_fields: &Vec<ItemNode>) -> Option<Indexed<Format>> {
+    let index = all_fields.iter().position(|f| f == field)?;
     match &field.0.inner {
         ItemEnum::StructField(type_) => Some(Indexed {
-            index: node.index_of(field)? as u32,
+            index: index as u32,
             value: type_.into(),
         }),
         _ => None,
     }
 }
 
-fn make_named_format(node: &ItemNode, field: &ItemNode) -> Option<Indexed<Named<Format>>> {
+fn make_named_format(
+    field: &ItemNode,
+    all_fields: &Vec<ItemNode>,
+) -> Option<Indexed<Named<Format>>> {
     match field.name() {
-        Some(name) => match make_format(node, field) {
+        Some(name) => match make_format(field, all_fields) {
             Some(Indexed { index, value }) => Some(Indexed {
                 index,
                 value: Named {
@@ -163,9 +184,10 @@ fn is_tuple_variant(variant: &ItemNode) -> bool {
 }
 
 fn make_plain_variant_format(
-    enum_: &ItemNode,
     variant: &ItemNode,
+    all_variants: &Vec<ItemNode>,
 ) -> Option<Indexed<Named<VariantFormat>>> {
+    let index = all_variants.iter().position(|f| f == variant)?;
     match &variant.0 {
         Item {
             name: Some(name),
@@ -173,7 +195,7 @@ fn make_plain_variant_format(
             ..
         } => match inner {
             ItemEnum::Variant(_) => Some(Indexed {
-                index: enum_.index_of(variant)? as u32,
+                index: index as u32,
                 value: Named {
                     name: name.clone(),
                     value: VariantFormat::Unit,
@@ -186,10 +208,11 @@ fn make_plain_variant_format(
 }
 
 fn make_struct_variant_format(
-    enum_: &ItemNode,
     variant: &ItemNode,
     fields: &Vec<(&Indexed<Named<Format>>,)>,
+    all_variants: &Vec<ItemNode>,
 ) -> Option<Indexed<Named<VariantFormat>>> {
+    let index = all_variants.iter().position(|f| f == variant)?;
     match &variant.0 {
         Item {
             name: Some(name),
@@ -201,7 +224,7 @@ fn make_struct_variant_format(
                 fields.sort();
                 let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
                 Some(Indexed {
-                    index: enum_.index_of(variant)? as u32,
+                    index: index as u32,
                     value: Named {
                         name: name.clone(),
                         value: VariantFormat::Struct(fields),
@@ -215,10 +238,11 @@ fn make_struct_variant_format(
 }
 
 fn make_tuple_variant_format(
-    enum_: &ItemNode,
     variant: &ItemNode,
     fields: &Vec<(&Indexed<Format>,)>,
+    all_variants: &Vec<ItemNode>,
 ) -> Option<Indexed<Named<VariantFormat>>> {
+    let index = all_variants.iter().position(|v| v == variant)?;
     match &variant.0 {
         Item {
             name: Some(name),
@@ -235,7 +259,7 @@ fn make_tuple_variant_format(
                     _ => VariantFormat::Tuple(fields),
                 };
                 Some(Indexed {
-                    index: enum_.index_of(variant)? as u32,
+                    index: index as u32,
                     value: Named {
                         name: name.clone(),
                         value,
