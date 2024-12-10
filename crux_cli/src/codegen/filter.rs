@@ -13,33 +13,37 @@ ascent! {
 
     // ------- rules ------------------
 
+    // this is an optimization to reduce the number of nodes we need to consider
+    relation subset(ItemNode);
+    subset(a) <-- item(a), if a.is_subset();
+
     relation has_summary(ItemNode, SummaryNode);
-    has_summary(n, s) <-- item(n), summary(s), if n.has_summary(s);
+    has_summary(n, s) <-- subset(n), summary(s), if n.has_summary(s);
 
     relation is_struct(ItemNode);
-    is_struct(s) <-- item(s), if s.is_struct();
+    is_struct(s) <-- subset(s), if s.is_struct();
 
     relation is_enum(ItemNode);
-    is_enum(e) <-- item(e), if e.is_enum();
+    is_enum(e) <-- subset(e), if e.is_enum();
 
     relation variant(ItemNode, ItemNode);
-    variant(e, v) <-- is_enum(e), item(v), if e.has_variant(v);
+    variant(e, v) <-- is_enum(e), subset(v), if e.has_variant(v);
 
     relation field(ItemNode, ItemNode);
-    field(s, f) <-- is_struct(s), item(f), if s.has_field(f);
-    field(v, f) <-- variant(e, v), item(f), if v.has_field(f);
+    field(s, f) <-- is_struct(s), subset(f), if s.has_field(f);
+    field(v, f) <-- variant(e, v), subset(f), if v.has_field(f);
 
     relation local_type_of(ItemNode, ItemNode);
-    local_type_of(f, t) <-- item(f), item(t), if f.is_of_local_type(t);
+    local_type_of(f, t) <-- subset(f), subset(t), if f.is_of_local_type(t);
 
     relation remote_type_of(ItemNode, SummaryNode);
-    remote_type_of(f, t) <-- item(f), summary(t), if f.is_of_remote_type(t);
+    remote_type_of(f, t) <-- subset(f), summary(t), if f.is_of_remote_type(t);
 
     // app structs have an implementation of the App trait
     relation app(ItemNode, ItemNode);
     app(imp, app) <--
         is_struct(app),
-        item(imp),
+        subset(imp),
         if imp.is_impl_for(app, "App");
 
     // app hierarchy
@@ -75,7 +79,7 @@ ascent! {
     effect(app, effect_ffi) <--
         root_app(app_impl, app),
         is_enum(effect),
-        item(effect_impl),
+        subset(effect_impl),
         if effect_impl.is_impl_for(effect, "Effect"),
         has_summary(app, app_summary),
         has_summary(effect, effect_summary),
@@ -86,15 +90,15 @@ ascent! {
     // Operation is an associated type of an impl of the Capability trait
     relation operation(ItemNode);
     operation(op) <--
-        item(cap),
-        item(cap_impl),
+        subset(cap),
+        subset(cap_impl),
         if cap_impl.is_impl_for(cap, "Capability"),
         local_type_of(item, op),
         if cap_impl.has_associated_item(item, "Operation");
     operation(op) <--
         start_with(s),
         has_summary(cap, s),
-        item(cap_impl),
+        subset(cap_impl),
         if cap_impl.is_impl_for(cap, "Capability"),
         local_type_of(item, op),
         if cap_impl.has_associated_item(item, "Operation");
@@ -103,7 +107,7 @@ ascent! {
     relation output(ItemNode);
     output(out) <--
         operation(op),
-        item(op_impl),
+        subset(op_impl),
         if op_impl.is_impl_for(op, "Operation"),
         local_type_of(item, out),
         if op_impl.has_associated_item(item, "Output");
