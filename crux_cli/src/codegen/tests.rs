@@ -1,17 +1,29 @@
 use std::fs::File;
 
+use anyhow::Result;
 use pretty_assertions::assert_eq;
+use rustdoc_types::Crate;
 
 use crate::codegen::Registry;
+
+fn load(name: String) -> Result<Crate> {
+    Ok(match name.as_str() {
+        "cat_facts" => serde_json::from_str(include_str!("fixtures/cat_facts/rustdoc.json"))?,
+        "counter" => serde_json::from_str(include_str!("fixtures/counter/rustdoc.json"))?,
+        "notes" => serde_json::from_str(include_str!("fixtures/notes/rustdoc.json"))?,
+        "crux_core" => serde_json::from_str(include_str!("fixtures/crux_core.json"))?,
+        "crux_http" => serde_json::from_str(include_str!("fixtures/crux_http.json"))?,
+        "crux_kv" => serde_json::from_str(include_str!("fixtures/crux_kv.json"))?,
+        "crux_platform" => serde_json::from_str(include_str!("fixtures/crux_platform.json"))?,
+        "crux_time" => serde_json::from_str(include_str!("fixtures/crux_time.json"))?,
+        _ => panic!("unknown crate {}", name),
+    })
+}
 
 #[test]
 #[ignore = "not yet fully implemented"]
 fn cat_facts_json() {
-    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/cat_facts/rustdoc.json");
-    let actual = super::run("cat_facts", false, |_| {
-        Ok(serde_json::from_slice(RUSTDOC).unwrap())
-    })
-    .unwrap();
+    let actual = super::run("cat_facts", true, load).unwrap();
 
     let writer = File::create("fixtures-cat_facts-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
@@ -23,11 +35,7 @@ fn cat_facts_json() {
 #[test]
 #[ignore = "not yet fully implemented"]
 fn counter_json() {
-    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/counter/rustdoc.json");
-    let actual = super::run("counter", false, |_| {
-        Ok(serde_json::from_slice(RUSTDOC).unwrap())
-    })
-    .unwrap();
+    let actual = super::run("counter", true, load).unwrap();
 
     let writer = File::create("fixtures-counter-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
@@ -39,11 +47,7 @@ fn counter_json() {
 #[test]
 #[ignore = "not yet fully implemented"]
 fn notes_json() {
-    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/notes/rustdoc.json");
-    let actual = super::run("notes", false, |_| {
-        Ok(serde_json::from_slice(RUSTDOC).unwrap())
-    })
-    .unwrap();
+    let actual = super::run("notes", true, load).unwrap();
 
     let writer = File::create("fixtures-notes-actual.json").unwrap();
     serde_json::to_writer_pretty(writer, &actual).unwrap();
