@@ -79,6 +79,58 @@ impl ItemNode {
         }
     }
 
+    pub fn is_subset(&self) -> bool {
+        self.is_struct()
+            || self.is_struct_field()
+            || self.is_enum()
+            || self.is_enum_variant()
+            || self.is_impl()
+            || self.is_associated_type()
+    }
+
+    fn is_impl(&self) -> bool {
+        matches!(
+            &self.0,
+            Item {
+                inner: ItemEnum::Impl(Impl {
+                    trait_: Some(Path { name, .. }),
+                    ..
+                }),
+                ..
+                } if (&["App", "Effect", "Capability", "Operation"]).contains(&name.as_str())
+        )
+    }
+
+    fn is_associated_type(&self) -> bool {
+        matches!(
+            &self.0,
+            Item {
+                inner: ItemEnum::AssocType { .. },
+                ..
+            }
+        )
+    }
+
+    fn is_struct_field(&self) -> bool {
+        matches!(
+            &self.0,
+            Item {
+                inner: ItemEnum::StructField(_),
+                ..
+            }
+        )
+    }
+
+    fn is_enum_variant(&self) -> bool {
+        matches!(
+            &self.0,
+            Item {
+                inner: ItemEnum::Variant(_),
+                ..
+            }
+        )
+    }
+
     pub fn has_summary(&self, summary: &SummaryNode) -> bool {
         self.0.id == summary.id
     }
