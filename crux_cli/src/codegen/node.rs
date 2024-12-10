@@ -164,6 +164,41 @@ impl ItemNode {
             .any(|attr| lazy_regex::regex_is_match!(r#"\[serde\s*\(\s*skip\s*\)\s*\]"#, attr))
     }
 
+    pub fn fields(&self, fields: Vec<(&ItemNode,)>) -> Vec<ItemNode> {
+        let field_ids = match &self.0 {
+            Item {
+                inner: ItemEnum::Struct(Struct { kind, .. }),
+                ..
+            } => match kind {
+                StructKind::Plain { fields, .. } => fields.to_vec(),
+                StructKind::Tuple(fields) => {
+                    fields.iter().filter_map(|f| f.as_ref()).cloned().collect()
+                }
+                StructKind::Unit => vec![],
+            },
+            Item {
+                inner: ItemEnum::Variant(Variant { kind, .. }),
+                ..
+            } => match kind {
+                VariantKind::Plain => vec![],
+                VariantKind::Tuple(fields) => {
+                    fields.iter().filter_map(|f| f.as_ref()).cloned().collect()
+                }
+                VariantKind::Struct { fields, .. } => fields.to_vec(),
+            },
+            _ => vec![],
+        };
+        field_ids
+            .iter()
+            .filter_map(
+                |id| match fields.iter().find(|(f,)| !f.should_skip() && f.0.id == *id) {
+                    Some(found) => Some(found.0.clone()),
+                    None => None,
+                },
+            )
+            .collect()
+    }
+
     pub fn has_field(&self, field: &ItemNode) -> bool {
         if field.should_skip() {
             return false;
@@ -196,6 +231,28 @@ impl ItemNode {
             },
             _ => false,
         }
+    }
+
+    pub fn variants(&self, variants: Vec<(&ItemNode,)>) -> Vec<ItemNode> {
+        let variant_ids = match &self.0 {
+            Item {
+                inner: ItemEnum::Enum(Enum { variants, .. }),
+                ..
+            } => variants.to_vec(),
+            _ => vec![],
+        };
+        variant_ids
+            .iter()
+            .filter_map(|id| {
+                match variants
+                    .iter()
+                    .find(|(v,)| !v.should_skip() && v.0.id == *id)
+                {
+                    Some(found) => Some(found.0.clone()),
+                    None => None,
+                }
+            })
+            .collect()
     }
 
     pub fn has_variant(&self, variant: &ItemNode) -> bool {
@@ -250,32 +307,6 @@ impl ItemNode {
                 _ => false,
             },
             _ => false,
-        }
-    }
-
-    pub fn index_of(&self, child: &ItemNode) -> Option<usize> {
-        match &self.0 {
-            Item {
-                inner: ItemEnum::Enum(Enum { variants, .. }),
-                ..
-            } => variants.iter().position(|v| v == &child.0.id),
-            Item {
-                inner: ItemEnum::Struct(Struct { kind, .. }),
-                ..
-            } => match kind {
-                StructKind::Plain { fields, .. } => fields.iter().position(|f| f == &child.0.id),
-                StructKind::Tuple(fields) => fields.iter().position(|f| f == &Some(child.0.id)),
-                StructKind::Unit => None,
-            },
-            Item {
-                inner: ItemEnum::Variant(Variant { kind, .. }),
-                ..
-            } => match kind {
-                VariantKind::Plain => None,
-                VariantKind::Tuple(fields) => fields.iter().position(|f| f == &Some(child.0.id)),
-                VariantKind::Struct { fields, .. } => fields.iter().position(|f| f == &child.0.id),
-            },
-            _ => None,
         }
     }
 }
