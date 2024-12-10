@@ -298,7 +298,14 @@ fn check_type(parent: &Id, type_: &Type, is_remote: bool) -> bool {
         }
         Type::QualifiedPath {
             self_type, args, ..
-        } => check_type(parent, self_type, is_remote) || check_args(parent, args, is_remote),
+        } => {
+            if is_remote {
+                // record types in foreign crates, for continuation
+                check_type(parent, self_type, is_remote) || check_args(parent, args, is_remote)
+            } else {
+                false
+            }
+        }
         Type::Primitive(_) => false,
         Type::Tuple(vec) => vec.iter().any(|t| check_type(parent, t, is_remote)),
         Type::Slice(t) => check_type(parent, t, is_remote),
