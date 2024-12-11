@@ -117,9 +117,7 @@
         }
       },
       {
-        "body": {
-          "SEQ": "U8"
-        }
+        "body": "BYTES"
       }
     ]
   },
@@ -136,9 +134,7 @@
         }
       },
       {
-        "body": {
-          "SEQ": "U8"
-        }
+        "body": "BYTES"
       }
     ]
   },
@@ -154,7 +150,7 @@
       "1": {
         "Err": {
           "NEWTYPE": {
-            "TYPENAME": "crate::HttpError"
+            "TYPENAME": "HttpError"
           }
         }
       }
@@ -173,7 +169,7 @@
   "KeyValueError": {
     "ENUM": {
       "0": {
-        "Io": {
+        "io": {
           "STRUCT": [
             {
               "message": "STR"
@@ -182,13 +178,13 @@
         }
       },
       "1": {
-        "Timeout": "UNIT"
+        "timeout": "UNIT"
       },
       "2": {
-        "CursorNotFound": "UNIT"
+        "cursorNotFound": "UNIT"
       },
       "3": {
-        "Other": {
+        "other": {
           "STRUCT": [
             {
               "message": "STR"
@@ -216,9 +212,7 @@
               "key": "STR"
             },
             {
-              "value": {
-                "SEQ": "U8"
-              }
+              "value": "BYTES"
             }
           ]
         }
@@ -262,7 +256,7 @@
           "STRUCT": [
             {
               "value": {
-                "TYPENAME": "value::Value"
+                "TYPENAME": "Value"
               }
             }
           ]
@@ -273,7 +267,7 @@
           "STRUCT": [
             {
               "previous": {
-                "TYPENAME": "value::Value"
+                "TYPENAME": "Value"
               }
             }
           ]
@@ -284,7 +278,7 @@
           "STRUCT": [
             {
               "previous": {
-                "TYPENAME": "value::Value"
+                "TYPENAME": "Value"
               }
             }
           ]
@@ -333,7 +327,7 @@
           "STRUCT": [
             {
               "error": {
-                "TYPENAME": "error::KeyValueError"
+                "TYPENAME": "KeyValueError"
               }
             }
           ]
@@ -341,16 +335,18 @@
       }
     }
   },
+  "PlatformRequest": "UNITSTRUCT",
   "PlatformResponse": {
     "NEWTYPESTRUCT": "STR"
   },
+  "RenderOperation": "UNITSTRUCT",
   "TimeRequest": {
     "ENUM": {
       "0": {
-        "Now": "UNIT"
+        "now": "UNIT"
       },
       "1": {
-        "NotifyAt": {
+        "notifyAt": {
           "STRUCT": [
             {
               "id": {
@@ -366,7 +362,7 @@
         }
       },
       "2": {
-        "NotifyAfter": {
+        "notifyAfter": {
           "STRUCT": [
             {
               "id": {
@@ -382,7 +378,7 @@
         }
       },
       "3": {
-        "Clear": {
+        "clear": {
           "STRUCT": [
             {
               "id": {
@@ -397,14 +393,14 @@
   "TimeResponse": {
     "ENUM": {
       "0": {
-        "Now": {
+        "now": {
           "NEWTYPE": {
             "TYPENAME": "Instant"
           }
         }
       },
       "1": {
-        "InstantArrived": {
+        "instantArrived": {
           "STRUCT": [
             {
               "id": {
@@ -415,7 +411,7 @@
         }
       },
       "2": {
-        "DurationElapsed": {
+        "durationElapsed": {
           "STRUCT": [
             {
               "id": {
@@ -426,7 +422,7 @@
         }
       },
       "3": {
-        "Cleared": {
+        "cleared": {
           "STRUCT": [
             {
               "id": {
@@ -448,9 +444,7 @@
       },
       "1": {
         "Bytes": {
-          "NEWTYPE": {
-            "SEQ": "U8"
-          }
+          "NEWTYPE": "BYTES"
         }
       }
     }

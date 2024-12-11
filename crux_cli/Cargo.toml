@@ -37,3 +37,4 @@ tokio-fd = "0.3.0"
 [dev-dependencies]
 insta = { version = "1.41.1" }
 pretty_assertions = "1.4.1"
+rstest = "0.23.0"

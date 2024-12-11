@@ -2,6 +2,7 @@ mod filter;
 mod formatter;
 mod indexed;
 mod node;
+mod serde;
 mod serde_generate;
 
 use std::{collections::BTreeMap, fs::File, path::PathBuf, process::Command};
