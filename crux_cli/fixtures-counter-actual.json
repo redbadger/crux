@@ -116,7 +116,7 @@
       "1": {
         "Err": {
           "NEWTYPE": {
-            "TYPENAME": "crate::HttpError"
+            "TYPENAME": "HttpError"
           }
         }
       }
