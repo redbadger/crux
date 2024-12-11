@@ -40,15 +40,89 @@
       }
     }
   },
-  "ServerSentEvents": {
+  "HttpError": {
+    "ENUM": {
+      "0": {
+        "Url": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "1": {
+        "Io": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "2": {
+        "Timeout": "UNIT"
+      }
+    }
+  },
+  "HttpHeader": {
     "STRUCT": [
       {
-        "context": {
-          "TYPENAME": "crux_core::capability::CapabilityContext"
-        }
+        "name": "STR"
+      },
+      {
+        "value": "STR"
       }
     ]
   },
+  "HttpRequest": {
+    "STRUCT": [
+      {
+        "method": "STR"
+      },
+      {
+        "url": "STR"
+      },
+      {
+        "headers": {
+          "SEQ": {
+            "TYPENAME": "HttpHeader"
+          }
+        }
+      },
+      {
+        "body": "BYTES"
+      }
+    ]
+  },
+  "HttpResponse": {
+    "STRUCT": [
+      {
+        "status": "U16"
+      },
+      {
+        "headers": {
+          "SEQ": {
+            "TYPENAME": "HttpHeader"
+          }
+        }
+      },
+      {
+        "body": "BYTES"
+      }
+    ]
+  },
+  "HttpResult": {
+    "ENUM": {
+      "0": {
+        "Ok": {
+          "NEWTYPE": {
+            "TYPENAME": "HttpResponse"
+          }
+        }
+      },
+      "1": {
+        "Err": {
+          "NEWTYPE": {
+            "TYPENAME": "crate::HttpError"
+          }
+        }
+      }
+    }
+  },
+  "RenderOperation": "UNITSTRUCT",
   "SseRequest": {
     "STRUCT": [
       {
