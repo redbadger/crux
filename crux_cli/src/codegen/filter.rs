@@ -122,11 +122,15 @@ ascent! {
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
 
-    // root fields
+    // roots that are unit structs
+    edge(root, root) <--
+        root(root),
+        is_struct(root);
+    // roots that have fields
     edge(root, field) <--
         root(root),
         field(root, field);
-    // root variants
+    // roots that have variants
     edge(root, variant) <--
         root(root),
         variant(root, variant);

@@ -80,11 +80,12 @@ impl ItemNode {
     }
 
     pub fn is_subset(&self) -> bool {
-        self.is_struct()
+        // from most likely to least likely
+        self.is_impl()
             || self.is_struct_field()
-            || self.is_enum()
             || self.is_enum_variant()
-            || self.is_impl()
+            || self.is_struct()
+            || self.is_enum()
             || self.is_associated_type()
     }
 

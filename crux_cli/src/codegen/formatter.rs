@@ -119,7 +119,18 @@ fn make_format(field: &ItemNode, all_fields: &Vec<ItemNode>) -> Option<Indexed<F
     match &field.0.inner {
         ItemEnum::StructField(type_) => Some(Indexed {
             index: index as u32,
-            value: type_.into(),
+            value: {
+                if let Some((_whole, serde_with)) = &field.0.attrs.iter().find_map(|attr| {
+                    lazy_regex::regex_captures!(r#"\[serde\(with\s*=\s*"(\w+)"\)\]"#, attr)
+                }) {
+                    match *serde_with {
+                        "serde_bytes" => Format::Bytes, // e.g. HttpRequest.body, HttpResponse.body
+                        _ => todo!(),
+                    }
+                } else {
+                    type_.into()
+                }
+            },
         }),
         _ => None,
     }
