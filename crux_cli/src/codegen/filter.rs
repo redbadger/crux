@@ -87,19 +87,23 @@ ascent! {
         local_type_of(effect_ffi_item, effect_ffi),
         if effect_impl.has_associated_item(effect_ffi_item, "Ffi");
 
+    // Capability is a struct/enum with an implementation of the Capability trait
+    relation capability(ItemNode, ItemNode);
+    capability(cap, cap_impl) <--
+        subset(cap),
+        subset(cap_impl),
+        if cap_impl.is_impl_for(cap, "Capability");
+
     // Operation is an associated type of an impl of the Capability trait
     relation operation(ItemNode);
     operation(op) <--
-        subset(cap),
-        subset(cap_impl),
-        if cap_impl.is_impl_for(cap, "Capability"),
+        capability(cap, cap_impl),
         local_type_of(item, op),
         if cap_impl.has_associated_item(item, "Operation");
     operation(op) <--
         start_with(s),
         has_summary(cap, s),
-        subset(cap_impl),
-        if cap_impl.is_impl_for(cap, "Capability"),
+        capability(cap, cap_impl),
         local_type_of(item, op),
         if cap_impl.has_associated_item(item, "Operation");
 
@@ -118,6 +122,7 @@ ascent! {
     root(x) <-- effect(app, x);
     root(x) <-- operation(x);
     root(x) <-- output(x);
+    root(x) <-- start_with(s), has_summary(x, s), !capability(x, _);
 
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
