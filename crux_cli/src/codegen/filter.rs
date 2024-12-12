@@ -1,4 +1,5 @@
 use ascent::ascent;
+use rustdoc_types::Crate;
 
 use super::node::{CrateNode, ItemNode, SummaryNode};
 
@@ -9,7 +10,6 @@ ascent! {
     relation item(ItemNode);
     relation summary(SummaryNode);
     relation ext_crate(CrateNode);
-    relation start_with(SummaryNode);
 
     // ------- rules ------------------
 
@@ -100,12 +100,6 @@ ascent! {
         capability(cap, cap_impl),
         local_type_of(item, op),
         if cap_impl.has_associated_item(item, "Operation");
-    operation(op) <--
-        start_with(s),
-        has_summary(cap, s),
-        capability(cap, cap_impl),
-        local_type_of(item, op),
-        if cap_impl.has_associated_item(item, "Operation");
 
     // Output is an associated type of an impl of the Operation trait
     relation output(ItemNode);
@@ -122,7 +116,6 @@ ascent! {
     root(x) <-- effect(app, x);
     root(x) <-- operation(x);
     root(x) <-- output(x);
-    root(x) <-- start_with(s), has_summary(x, s), !capability(x, _);
 
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
@@ -130,7 +123,7 @@ ascent! {
     // roots that are unit structs
     edge(root, root) <--
         root(root),
-        is_struct(root);
+        is_struct(root), if root.is_struct_unit();
     // roots that have fields
     edge(root, field) <--
         root(root),
@@ -142,7 +135,8 @@ ascent! {
 
     edge(type_, field) <--
         edge(_, type_),
-        field(type_, field);
+        field(type_, field),
+        !capability(type_, _);
     edge(type_, variant) <--
         edge(_, type_),
         variant(type_, variant);
@@ -151,12 +145,44 @@ ascent! {
         edge(_, field),
         local_type_of(field, type_);
 
-    relation continue_with(CrateNode, SummaryNode);
-    continue_with(c, s) <--
+    relation crates(String);
+    crates(n) <--
         ext_crate(c),
         edge(a, b),
         remote_type_of(b, s),
-        if s.summary.crate_id == c.id;
+        if s.points_to_crate(c),
+        let n = &c.crate_.name;
+}
+
+impl Filter {
+    pub fn update(&mut self, crate_name: &str, crate_: &Crate) {
+        println!("Updating filter for {}", crate_name);
+        self.summary = crate_
+            .paths
+            .iter()
+            .map(|(id, summary)| {
+                (SummaryNode::new(
+                    crate_name.to_string(),
+                    id.0,
+                    summary.clone(),
+                ),)
+            })
+            .collect::<Vec<_>>();
+        self.item = crate_
+            .index
+            .values()
+            .map(|item| (ItemNode::new(crate_name.to_string(), item.clone()),))
+            .collect::<Vec<_>>();
+        self.ext_crate = crate_
+            .external_crates
+            .iter()
+            .map(|(id, crate_)| (CrateNode::new(crate_name.to_string(), *id, crate_.clone()),))
+            .collect::<Vec<_>>();
+    }
+
+    pub fn get_crates(&self) -> Vec<String> {
+        self.crates.iter().map(|(crate_,)| crate_.clone()).collect()
+    }
 }
 
 #[cfg(test)]
