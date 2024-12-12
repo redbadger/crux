@@ -7,8 +7,8 @@ use crate::codegen::Registry;
 
 use super::rustdoc_json_path;
 
-fn load_rustdoc(name: String) -> Result<Crate> {
-    Ok(match name.as_str() {
+fn load_rustdoc(name: &str) -> Result<Crate> {
+    Ok(match name {
         "bridge_echo" => {
             serde_json::from_slice(include_bytes!("fixtures/bridge_echo/rustdoc.json"))?
         }
@@ -67,7 +67,7 @@ fn load_expected(name: &str) -> Result<Registry> {
 #[case::tap_to_pay("tap_to_pay")]
 #[ignore = "not yet fully implemented"]
 fn full(#[case] example: &str) {
-    let actual = super::run(example, true, load_rustdoc).unwrap();
+    let actual = super::run(example, load_rustdoc).unwrap();
     let expected: Registry = load_expected(example).expect("should deserialize");
 
     assert_eq!(actual, expected);
