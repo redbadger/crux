@@ -5,7 +5,7 @@ mod node;
 mod serde;
 mod serde_generate;
 
-use std::{collections::BTreeMap, fs::File, path::PathBuf, process::Command};
+use std::{collections::BTreeMap, fs::File, io::Read, path::PathBuf, process::Command};
 
 use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
@@ -136,8 +136,9 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
     };
     println!("loading {} from {}", name, json_path.to_string_lossy());
 
-    let file = File::open(json_path)?;
-    let crate_ = serde_json::from_reader(file)?;
+    let buf = &mut Vec::new();
+    File::open(json_path)?.read_to_end(buf)?;
+    let crate_ = serde_json::from_slice(buf)?;
 
     Ok(crate_)
 }

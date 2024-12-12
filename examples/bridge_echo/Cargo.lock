@@ -2071,6 +2071,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crux_core",
+ "serde_json",
  "shared",
 ]
 
