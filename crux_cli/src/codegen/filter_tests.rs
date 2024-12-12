@@ -11,18 +11,22 @@ fn field_is_option_of_t() {
     prog.item = crate_
         .index
         .values()
-        .map(|item| (ItemNode(item.clone()),))
+        .map(|item| (ItemNode::new("test".to_string(), item.clone()),))
         .collect::<Vec<_>>();
     prog.run();
 
     // 345 (struct: ViewModel) to 343 (field: image)
     let mut out = prog.field;
-    out.sort_by_key(|(node, _)| node.0.id.0);
+    out.sort_by_key(|(node, _)| node.item.id.0);
     insta::assert_debug_snapshot!(&out, @r#"
     [
         (
-            ItemNode(
-                Item {
+            ItemNode {
+                id: GlobalId {
+                    crate_: "test",
+                    id: 345,
+                },
+                item: Item {
                     id: Id(
                         345,
                     ),
@@ -66,9 +70,13 @@ fn field_is_option_of_t() {
                         },
                     ),
                 },
-            ),
-            ItemNode(
-                Item {
+            },
+            ItemNode {
+                id: GlobalId {
+                    crate_: "test",
+                    id: 343,
+                },
+                item: Item {
                     id: Id(
                         343,
                     ),
@@ -128,19 +136,23 @@ fn field_is_option_of_t() {
                         ),
                     ),
                 },
-            ),
+            },
         ),
     ]
     "#);
 
     // 343 (field: image) to 281 (struct: CatImage)
     let mut out = prog.local_type_of;
-    out.sort_by_key(|(node, _)| node.0.id.0);
+    out.sort_by_key(|(node, _)| node.item.id.0);
     insta::assert_debug_snapshot!(&out, @r#"
     [
         (
-            ItemNode(
-                Item {
+            ItemNode {
+                id: GlobalId {
+                    crate_: "test",
+                    id: 343,
+                },
+                item: Item {
                     id: Id(
                         343,
                     ),
@@ -200,9 +212,13 @@ fn field_is_option_of_t() {
                         ),
                     ),
                 },
-            ),
-            ItemNode(
-                Item {
+            },
+            ItemNode {
+                id: GlobalId {
+                    crate_: "test",
+                    id: 281,
+                },
+                item: Item {
                     id: Id(
                         281,
                     ),
@@ -328,7 +344,7 @@ fn field_is_option_of_t() {
                         },
                     ),
                 },
-            ),
+            },
         ),
     ]
     "#);

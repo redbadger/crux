@@ -5,17 +5,22 @@ mod node;
 mod serde;
 mod serde_generate;
 
-use std::{collections::BTreeMap, fs::File, io::Read, path::PathBuf, process::Command};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs::File,
+    io::Read,
+    path::PathBuf,
+    process::Command,
+};
 
 use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
-use iter_tools::Itertools as _;
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
 use filter::Filter;
 use formatter::Formatter;
-use node::{CrateNode, ItemNode, SummaryNode};
+use node::ItemNode;
 use serde_generate::format::ContainerFormat;
 
 pub type Registry = BTreeMap<String, ContainerFormat>;
@@ -33,81 +38,45 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
         bail!("Could not find workspace package with path {}", args.lib)
     };
 
-    let registry = run(lib.name(), true, |name| load_crate(&name, &manifest_paths))?;
+    let registry = run(lib.name(), |name| load_crate(&name, &manifest_paths))?;
 
     println!("{:#?}", registry);
 
     Ok(())
 }
 
-fn run(
-    crate_name: &str,
-    should_recurse: bool,
-    load: impl Fn(String) -> Result<Crate>,
-) -> Result<Registry> {
-    let shared_lib = load(crate_name.to_string())?;
-    let (mut filtered, _continue_with) = filter(shared_lib, vec![]);
-    let mut summaries = _continue_with
-        .into_iter()
-        .into_group_map()
-        .into_iter()
-        .collect::<Vec<_>>();
+fn run<F>(crate_name: &str, load: F) -> Result<Registry>
+where
+    F: Fn(&str) -> Result<Crate>,
+{
+    let mut previous: HashMap<String, Crate> = HashMap::new();
 
-    println!("summaries {:#?}", summaries);
+    let shared_lib = load(&crate_name)?;
 
-    if should_recurse {
-        while !summaries.is_empty() {
-            let (crate_, items) = summaries.pop().unwrap();
-            let dep = crate_.crate_.name.clone();
-            let crate_ = load(dep)?;
-            let (more_filtered, more_continue_with) = filter(crate_, items);
-            filtered.extend(more_filtered);
-            let more_summaries = more_continue_with
-                .into_iter()
-                .into_group_map()
-                .into_iter()
-                .collect::<Vec<_>>();
-            println!("summaries {:#?}", more_summaries);
-            summaries.extend(more_summaries);
-        }
-    }
-    Ok(format(filtered))
-}
-
-fn filter(
-    crate_: Crate,
-    summaries: Vec<SummaryNode>,
-) -> (Vec<(ItemNode, ItemNode)>, Vec<(CrateNode, SummaryNode)>) {
     let mut filter = Filter::default();
-    filter.summary = crate_
-        .paths
-        .iter()
-        .map(|(id, summary)| {
-            (SummaryNode {
-                id: *id,
-                summary: summary.clone(),
-            },)
-        })
-        .collect::<Vec<_>>();
-    filter.item = crate_
-        .index
-        .values()
-        .map(|item| (ItemNode(item.clone()),))
-        .collect::<Vec<_>>();
-    filter.ext_crate = crate_
-        .external_crates
-        .iter()
-        .map(|(id, crate_)| {
-            (CrateNode {
-                id: *id,
-                crate_: crate_.clone(),
-            },)
-        })
-        .collect::<Vec<_>>();
-    filter.start_with = summaries.into_iter().map(|summary| (summary,)).collect();
+    filter.update(crate_name, &shared_lib);
     filter.run();
 
-    (filter.edge, filter.continue_with)
+    previous.insert(crate_name.to_string(), shared_lib);
+
+    let mut next: Vec<String> = filter.get_crates();
+
+    while !next.is_empty() {
+        let crate_name = next.pop().unwrap();
+        if previous.contains_key(&crate_name) {
+            continue;
+        }
+        let crate_ = load(&crate_name)?;
+
+        filter.update(&crate_name, &crate_);
+        filter.run();
+
+        // std::fs::write("edge.json", serde_json::to_string_pretty(&filter.edge)?)?;
+        next = filter.get_crates();
+        previous.insert(crate_name, crate_);
+    }
+
+    Ok(format(filter.edge))
 }
 
 fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
@@ -134,7 +103,7 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
             .manifest_path(manifest_path)
             .build()?
     };
-    println!("loading {} from {}", name, json_path.to_string_lossy());
+    println!("from {}", json_path.to_string_lossy());
 
     let buf = &mut Vec::new();
     File::open(json_path)?.read_to_end(buf)?;
@@ -158,6 +127,15 @@ fn rustdoc_json_path() -> Result<PathBuf> {
         .join("share/doc/rust/json");
 
     Ok(json_path)
+}
+
+pub fn collect<'a, N: 'a, T: Iterator<Item = (&'a N,)>>(
+    input: T,
+) -> impl Iterator<Item = Vec<(&'a N,)>>
+where
+    N: Clone,
+{
+    std::iter::once(input.collect::<Vec<_>>())
 }
 
 #[cfg(test)]

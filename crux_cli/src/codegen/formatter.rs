@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ascent::ascent;
 use rustdoc_types::{GenericArg, GenericArgs, Item, ItemEnum, Type, Variant, VariantKind};
 
-use crate::codegen::node::collect;
+use crate::codegen::collect;
 
 use super::{
     indexed::Indexed,
@@ -122,11 +122,11 @@ ascent! {
 
 fn make_format(field: &ItemNode, all_fields: &Vec<ItemNode>) -> Option<Indexed<Format>> {
     let index = all_fields.iter().position(|f| f == field)?;
-    match &field.0.inner {
+    match &field.item.inner {
         ItemEnum::StructField(type_) => Some(Indexed {
             index: index as u32,
             value: {
-                if let Some((_whole, serde_with)) = field.0.attrs.iter().find_map(|attr| {
+                if let Some((_whole, serde_with)) = field.item.attrs.iter().find_map(|attr| {
                     lazy_regex::regex_captures!(r#"\[serde\(with\s*=\s*"(\w+)"\)\]"#, attr)
                 }) {
                     match serde_with {
@@ -152,7 +152,7 @@ fn make_named_format(
             Some(Indexed { index, value }) => Some(Indexed {
                 index,
                 value: Named {
-                    name: field_name(name, &field.0.attrs, &struct_.0.attrs),
+                    name: field_name(name, &field.item.attrs, &struct_.item.attrs),
                     value,
                 },
             }),
@@ -164,7 +164,7 @@ fn make_named_format(
 
 fn is_plain_variant(variant: &ItemNode) -> bool {
     matches!(
-        &variant.0,
+        &variant.item,
         Item {
             inner: ItemEnum::Variant(Variant {
                 kind: VariantKind::Plain,
@@ -177,7 +177,7 @@ fn is_plain_variant(variant: &ItemNode) -> bool {
 
 fn is_struct_variant(variant: &ItemNode) -> bool {
     matches!(
-        &variant.0,
+        &variant.item,
         Item {
             inner: ItemEnum::Variant(Variant {
                 kind: VariantKind::Struct { .. },
@@ -190,7 +190,7 @@ fn is_struct_variant(variant: &ItemNode) -> bool {
 
 fn is_tuple_variant(variant: &ItemNode) -> bool {
     matches!(
-        &variant.0,
+        &variant.item,
         Item {
             inner: ItemEnum::Variant(Variant {
                 kind: VariantKind::Tuple(_),
@@ -207,7 +207,7 @@ fn make_plain_variant_format(
     enum_: &ItemNode,
 ) -> Option<Indexed<Named<VariantFormat>>> {
     let index = all_variants.iter().position(|f| f == variant)?;
-    match &variant.0 {
+    match &variant.item {
         Item {
             name: Some(name),
             inner,
@@ -216,7 +216,7 @@ fn make_plain_variant_format(
             ItemEnum::Variant(_) => Some(Indexed {
                 index: index as u32,
                 value: Named {
-                    name: variant_name(name, &variant.0.attrs, &enum_.0.attrs),
+                    name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
                     value: VariantFormat::Unit,
                 },
             }),
@@ -233,7 +233,7 @@ fn make_struct_variant_format(
     enum_: &ItemNode,
 ) -> Option<Indexed<Named<VariantFormat>>> {
     let index = all_variants.iter().position(|f| f == variant)?;
-    match &variant.0 {
+    match &variant.item {
         Item {
             name: Some(name),
             inner,
@@ -246,7 +246,7 @@ fn make_struct_variant_format(
                 Some(Indexed {
                     index: index as u32,
                     value: Named {
-                        name: variant_name(name, &variant.0.attrs, &enum_.0.attrs),
+                        name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
                         value: VariantFormat::Struct(fields),
                     },
                 })
@@ -264,7 +264,7 @@ fn make_tuple_variant_format(
     enum_: &ItemNode,
 ) -> Option<Indexed<Named<VariantFormat>>> {
     let index = all_variants.iter().position(|v| v == variant)?;
-    match &variant.0 {
+    match &variant.item {
         Item {
             name: Some(name),
             inner,
@@ -282,7 +282,7 @@ fn make_tuple_variant_format(
                 Some(Indexed {
                     index: index as u32,
                     value: Named {
-                        name: variant_name(name, &variant.0.attrs, &enum_.0.attrs),
+                        name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
                         value,
                     },
                 })
@@ -327,7 +327,7 @@ fn make_enum(formats: &Vec<(&Indexed<Named<VariantFormat>>,)>) -> ContainerForma
 }
 
 fn make_range(field: &ItemNode) -> Option<ContainerFormat> {
-    match &field.0.inner {
+    match &field.item.inner {
         ItemEnum::StructField(range_type) => {
             let field_format: Option<Format> = match range_type {
                 Type::ResolvedPath(path) => match &path.args {
