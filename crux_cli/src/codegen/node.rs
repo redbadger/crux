@@ -210,6 +210,16 @@ impl ItemNode {
         }
     }
 
+    pub fn is_range(&self) -> bool {
+        matches!(
+            &self.0,
+            Item {
+                inner: ItemEnum::StructField(Type::ResolvedPath(Path { name, .. })),
+                ..
+            } if name == "std::ops::Range"
+        )
+    }
+
     fn should_skip(&self) -> bool {
         self.0
             .attrs
@@ -368,7 +378,7 @@ fn check_type(parent: &Id, type_: &Type, is_remote: bool) -> bool {
     match type_ {
         Type::ResolvedPath(Path { name, id, args }) => {
             if is_remote {
-                if let "Option" | "String" | "Vec" = name.as_str() {
+                if let "Option" | "String" | "Vec" | "std::ops::Range" = name.as_str() {
                     return false;
                 }
             }

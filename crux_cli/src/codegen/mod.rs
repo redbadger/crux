@@ -118,7 +118,7 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
     formatter.container.into_iter().collect()
 }
 
-fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate, anyhow::Error> {
+fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate> {
     // TODO: ensure that the user has installed the core rustdoc JSON files
     // e.g. `rustup component add --toolchain nightly rust-docs-json`
 

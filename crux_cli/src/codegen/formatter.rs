@@ -96,23 +96,28 @@ ascent! {
     relation container(String, ContainerFormat);
     container(name, container) <--
         struct_plain(s),
-        agg fields = collect(format) in format_named(s, format),
         if let Some(name) = s.name(),
-        let container = make_struct_plain(&fields);
+        agg field_formats = collect(format) in format_named(s, format),
+        let container = make_struct_plain(&field_formats);
     container(name, container) <--
         struct_unit(s),
         if let Some(name) = s.name(),
         let container = make_struct_unit();
     container(name, container) <--
         struct_tuple(s),
-        agg fields = collect(format) in format(s, format),
         if let Some(name) = s.name(),
-        let container = make_struct_tuple(&fields);
+        agg field_formats = collect(format) in format(s, format),
+        let container = make_struct_tuple(&field_formats);
     container(name, container) <--
         variant(e, _),
-        agg variants = collect(format) in format_variant(e, format),
         if let Some(name) = e.name(),
-        let container = make_enum(&variants);
+        agg variant_formats = collect(format) in format_variant(e, format),
+        let container = make_enum(&variant_formats);
+    container("Range".to_string(), container) <--
+        field(_, f), if f.is_range(),
+        if let Some(container) = make_range(f);
+    container("Request".to_string(), container) <--
+        let container = make_request();
 }
 
 fn make_format(field: &ItemNode, all_fields: &Vec<ItemNode>) -> Option<Indexed<Format>> {
@@ -321,6 +326,55 @@ fn make_enum(formats: &Vec<(&Indexed<Named<VariantFormat>>,)>) -> ContainerForma
     ContainerFormat::Enum(map)
 }
 
+fn make_range(field: &ItemNode) -> Option<ContainerFormat> {
+    match &field.0.inner {
+        ItemEnum::StructField(range_type) => {
+            let field_format: Option<Format> = match range_type {
+                Type::ResolvedPath(path) => match &path.args {
+                    Some(args) => match args.as_ref() {
+                        GenericArgs::AngleBracketed { args, .. } => {
+                            let type_ = args.iter().next()?;
+                            match type_ {
+                                GenericArg::Type(ref type_) => Some(type_.into()),
+                                _ => None,
+                            }
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                },
+                _ => None,
+            };
+            field_format.map(|f| {
+                ContainerFormat::Struct(vec![
+                    Named {
+                        name: "start".to_string(),
+                        value: f.clone(),
+                    },
+                    Named {
+                        name: "end".to_string(),
+                        value: f.clone(),
+                    },
+                ])
+            })
+        }
+        _ => None,
+    }
+}
+
+fn make_request() -> ContainerFormat {
+    ContainerFormat::Struct(vec![
+        Named {
+            name: "id".to_string(),
+            value: Format::U32,
+        },
+        Named {
+            name: "effect".to_string(),
+            value: Format::TypeName("Effect".to_string()),
+        },
+    ])
+}
+
 impl From<&Type> for Format {
     fn from(type_: &Type) -> Self {
         match type_ {
@@ -358,7 +412,7 @@ impl From<&Type> for Format {
                 }
             }
             Type::DynTrait(_dyn_trait) => todo!(),
-            Type::Generic(_) => todo!(),
+            Type::Generic(_param_name) => todo!(),
             Type::Primitive(s) => match s.as_ref() {
                 "bool" => Format::Bool,
                 "char" => Format::Char,
