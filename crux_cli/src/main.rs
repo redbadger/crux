@@ -14,6 +14,8 @@ mod workspace;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
+
     let cli = Cli::parse();
     match &cli.command {
         Some(Commands::Doctor(DoctorArgs {

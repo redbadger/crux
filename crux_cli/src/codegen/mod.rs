@@ -1,6 +1,7 @@
 mod filter;
 mod formatter;
 mod indexed;
+mod item;
 mod node;
 mod serde;
 mod serde_generate;
@@ -15,6 +16,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
+use log::{debug, info};
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
@@ -40,7 +42,7 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let registry = run(lib.name(), |name| load_crate(&name, &manifest_paths))?;
 
-    println!("{:#?}", registry);
+    info!("{:#?}", registry);
 
     Ok(())
 }
@@ -54,24 +56,20 @@ where
     let shared_lib = load(&crate_name)?;
 
     let mut filter = Filter::default();
-    filter.update(crate_name, &shared_lib);
-    filter.run();
+    filter.process(crate_name, &shared_lib)?;
 
     previous.insert(crate_name.to_string(), shared_lib);
 
     let mut next: Vec<String> = filter.get_crates();
 
-    while !next.is_empty() {
-        let crate_name = next.pop().unwrap();
+    while let Some(crate_name) = next.pop() {
         if previous.contains_key(&crate_name) {
             continue;
         }
         let crate_ = load(&crate_name)?;
 
-        filter.update(&crate_name, &crate_);
-        filter.run();
+        filter.process(&crate_name, &crate_)?;
 
-        // std::fs::write("edge.json", serde_json::to_string_pretty(&filter.edge)?)?;
         next = filter.get_crates();
         previous.insert(crate_name, crate_);
     }
@@ -83,6 +81,7 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
     let mut formatter = Formatter::default();
     formatter.edge = edges;
     formatter.run();
+    debug!("{}", formatter.scc_times_summary());
 
     formatter.container.into_iter().collect()
 }
@@ -103,7 +102,7 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
             .manifest_path(manifest_path)
             .build()?
     };
-    println!("from {}", json_path.to_string_lossy());
+    debug!("from {}", json_path.to_string_lossy());
 
     let buf = &mut Vec::new();
     File::open(json_path)?.read_to_end(buf)?;
