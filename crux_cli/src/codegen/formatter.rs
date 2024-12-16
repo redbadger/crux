@@ -1,18 +1,20 @@
 use std::collections::BTreeMap;
 
 use ascent::ascent;
-use rustdoc_types::{GenericArg, GenericArgs, Item, ItemEnum, Type, Variant, VariantKind};
+use rustdoc_types::{GenericArg, GenericArgs, Item, ItemEnum, Type};
 
 use crate::codegen::collect;
 
 use super::{
     indexed::Indexed,
+    item::*,
     node::ItemNode,
     serde::case::RenameRule,
     serde_generate::format::{ContainerFormat, Format, Named, VariantFormat},
 };
 
 ascent! {
+    #![measure_rule_times]
     pub struct Formatter;
 
     // ------- facts ------------------
@@ -21,13 +23,13 @@ ascent! {
     // ------- rules ------------------
 
     relation struct_unit(ItemNode);
-    struct_unit(s) <-- edge(s, _), if s.is_struct_unit();
+    struct_unit(s) <-- edge(s, _), if is_struct_unit(&s.item);
 
     relation struct_plain(ItemNode);
-    struct_plain(s) <-- edge(s, _), if s.is_struct_plain();
+    struct_plain(s) <-- edge(s, _), if is_struct_plain(&s.item);
 
     relation struct_tuple(ItemNode);
-    struct_tuple(s) <-- edge(s, _), if s.is_struct_tuple();
+    struct_tuple(s) <-- edge(s, _), if is_struct_tuple(&s.item);
 
     relation field(ItemNode, ItemNode);
     field(x, f) <-- edge(x, f), if x.has_field(f);
@@ -48,13 +50,13 @@ ascent! {
         let variants = e.variants(vs);
 
     relation variant_plain(ItemNode, ItemNode);
-    variant_plain(e, v) <-- variant(e, v), if is_plain_variant(&v);
+    variant_plain(e, v) <-- variant(e, v), if is_plain_variant(&v.item);
 
     relation variant_tuple(ItemNode, ItemNode);
-    variant_tuple(e, v) <-- variant(e, v), if is_tuple_variant(&v);
+    variant_tuple(e, v) <-- variant(e, v), if is_tuple_variant(&v.item);
 
     relation variant_struct(ItemNode, ItemNode);
-    variant_struct(e, v) <-- variant(e, v), if is_struct_variant(&v);
+    variant_struct(e, v) <-- variant(e, v), if is_struct_variant(&v.item);
 
     relation format(ItemNode, Indexed<Format>);
     format(x, format) <--
@@ -160,45 +162,6 @@ fn make_named_format(
         },
         _ => None,
     }
-}
-
-fn is_plain_variant(variant: &ItemNode) -> bool {
-    matches!(
-        &variant.item,
-        Item {
-            inner: ItemEnum::Variant(Variant {
-                kind: VariantKind::Plain,
-                ..
-            }),
-            ..
-        }
-    )
-}
-
-fn is_struct_variant(variant: &ItemNode) -> bool {
-    matches!(
-        &variant.item,
-        Item {
-            inner: ItemEnum::Variant(Variant {
-                kind: VariantKind::Struct { .. },
-                ..
-            }),
-            ..
-        }
-    )
-}
-
-fn is_tuple_variant(variant: &ItemNode) -> bool {
-    matches!(
-        &variant.item,
-        Item {
-            inner: ItemEnum::Variant(Variant {
-                kind: VariantKind::Tuple(_),
-                ..
-            }),
-            ..
-        }
-    )
 }
 
 fn make_plain_variant_format(

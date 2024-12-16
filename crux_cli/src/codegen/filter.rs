@@ -1,9 +1,13 @@
+use anyhow::Result;
 use ascent::ascent;
+use log::{debug, info};
 use rustdoc_types::Crate;
 
+use super::item::*;
 use super::node::{CrateNode, ItemNode, SummaryNode};
 
 ascent! {
+    #![measure_rule_times]
     pub struct Filter;
 
     // ------- facts ------------------
@@ -13,37 +17,34 @@ ascent! {
 
     // ------- rules ------------------
 
-    // this is an optimization to reduce the number of nodes we need to consider
-    relation subset(ItemNode);
-    subset(a) <-- item(a), if a.is_subset();
-
     relation has_summary(ItemNode, SummaryNode);
-    has_summary(n, s) <-- subset(n), summary(s), if n.has_summary(s);
+    has_summary(i, s) <-- item(i), summary(s), if i.has_summary(s);
+
 
     relation is_struct(ItemNode);
-    is_struct(s) <-- subset(s), if s.is_struct();
+    is_struct(s) <-- item(s) if is_struct(&s.item);
 
     relation is_enum(ItemNode);
-    is_enum(e) <-- subset(e), if e.is_enum();
+    is_enum(e) <-- item(e) if is_enum(&e.item);
 
     relation variant(ItemNode, ItemNode);
-    variant(e, v) <-- is_enum(e), subset(v), if e.has_variant(v);
+    variant(e, v) <-- is_enum(e), item(v) if e.has_variant(v);
 
     relation field(ItemNode, ItemNode);
-    field(s, f) <-- is_struct(s), subset(f), if s.has_field(f);
-    field(v, f) <-- variant(e, v), subset(f), if v.has_field(f);
+    field(s, f) <-- is_struct(s), item(f) if s.has_field(f);
+    field(v, f) <-- variant(e, v), item(f) if v.has_field(f);
 
     relation local_type_of(ItemNode, ItemNode);
-    local_type_of(f, t) <-- subset(f), subset(t), if f.is_of_local_type(t);
+    local_type_of(f, t) <-- item(f), item(t) if f.is_of_local_type(t);
 
     relation remote_type_of(ItemNode, SummaryNode);
-    remote_type_of(f, t) <-- subset(f), summary(t), if f.is_of_remote_type(t);
+    remote_type_of(f, t) <-- item(f), summary(t) if f.is_of_remote_type(t);
 
     // app structs have an implementation of the App trait
     relation app(ItemNode, ItemNode);
     app(imp, app) <--
         is_struct(app),
-        subset(imp),
+        item(imp),
         if imp.is_impl_for(app, "App");
 
     // app hierarchy
@@ -79,7 +80,7 @@ ascent! {
     effect(app, effect_ffi) <--
         root_app(app_impl, app),
         is_enum(effect),
-        subset(effect_impl),
+        item(effect_impl),
         if effect_impl.is_impl_for(effect, "Effect"),
         has_summary(app, app_summary),
         has_summary(effect, effect_summary),
@@ -90,8 +91,8 @@ ascent! {
     // Capability is a struct/enum with an implementation of the Capability trait
     relation capability(ItemNode, ItemNode);
     capability(cap, cap_impl) <--
-        subset(cap),
-        subset(cap_impl),
+        item(cap),
+        item(cap_impl),
         if cap_impl.is_impl_for(cap, "Capability");
 
     // Operation is an associated type of an impl of the Capability trait
@@ -105,7 +106,7 @@ ascent! {
     relation output(ItemNode);
     output(out) <--
         operation(op),
-        subset(op_impl),
+        item(op_impl),
         if op_impl.is_impl_for(op, "Operation"),
         local_type_of(item, out),
         if op_impl.has_associated_item(item, "Output");
@@ -123,7 +124,7 @@ ascent! {
     // roots that are unit structs
     edge(root, root) <--
         root(root),
-        is_struct(root), if root.is_struct_unit();
+        is_struct(root), if is_struct_unit(&root.item);
     // roots that have fields
     edge(root, field) <--
         root(root),
@@ -155,8 +156,8 @@ ascent! {
 }
 
 impl Filter {
-    pub fn update(&mut self, crate_name: &str, crate_: &Crate) {
-        println!("Updating filter for {}", crate_name);
+    pub fn process(&mut self, crate_name: &str, crate_: &Crate) -> Result<()> {
+        info!("Updating filter for {}", crate_name);
         self.summary = crate_
             .paths
             .iter()
@@ -171,13 +172,24 @@ impl Filter {
         self.item = crate_
             .index
             .values()
-            .map(|item| (ItemNode::new(crate_name.to_string(), item.clone()),))
+            .filter_map(|item| {
+                if is_relevant(item) {
+                    Some((ItemNode::new(crate_name.to_string(), item.clone()),))
+                } else {
+                    None
+                }
+            })
             .collect::<Vec<_>>();
         self.ext_crate = crate_
             .external_crates
             .iter()
             .map(|(id, crate_)| (CrateNode::new(crate_name.to_string(), *id, crate_.clone()),))
             .collect::<Vec<_>>();
+
+        self.run();
+        debug!("{}", self.scc_times_summary());
+
+        Ok(())
     }
 
     pub fn get_crates(&self) -> Vec<String> {
