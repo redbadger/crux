@@ -1,10 +1,11 @@
 use std::hash::{Hash, Hasher};
 
 use rustdoc_types::{
-    Enum, ExternalCrate, GenericArg, GenericArgs, Id, Impl, Item, ItemEnum, ItemSummary, Path,
-    Struct, StructKind, Type, Variant, VariantKind,
+    ExternalCrate, GenericArg, GenericArgs, Id, Item, ItemEnum, ItemSummary, Path, Type,
 };
 use serde::{Deserialize, Serialize};
+
+use super::item::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GlobalId {
@@ -129,138 +130,16 @@ impl ItemNode {
         }
     }
 
-    pub fn is_subset(&self) -> bool {
-        // from most likely to least likely
-        self.is_impl()
-            || self.is_struct_field()
-            || self.is_enum_variant()
-            || self.is_struct()
-            || self.is_enum()
-            || self.is_associated_type()
-    }
-
-    fn is_impl(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::Impl(Impl {
-                    trait_: Some(Path { name, .. }),
-                    ..
-                }),
-                ..
-                } if (&["App", "Effect", "Capability", "Operation"]).contains(&name.as_str())
-        )
-    }
-
-    fn is_associated_type(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::AssocType { .. },
-                ..
-            }
-        )
-    }
-
-    fn is_struct_field(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::StructField(_),
-                ..
-            }
-        )
-    }
-
-    fn is_enum_variant(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::Variant(_),
-                ..
-            }
-        )
-    }
-
     pub fn has_summary(&self, summary: &SummaryNode) -> bool {
         self.id == summary.id
-    }
-
-    pub fn is_struct(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::Struct(_),
-                ..
-            }
-        )
-    }
-
-    pub fn is_struct_unit(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::Struct(Struct {
-                    kind: StructKind::Unit,
-                    ..
-                }),
-                ..
-            }
-        )
-    }
-
-    pub fn is_struct_plain(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::Struct(Struct {
-                    kind: StructKind::Plain { .. },
-                    ..
-                }),
-                ..
-            }
-        )
-    }
-
-    pub fn is_struct_tuple(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::Struct(Struct {
-                    kind: StructKind::Tuple(_),
-                    ..
-                }),
-                ..
-            }
-        )
-    }
-
-    pub fn is_enum(&self) -> bool {
-        matches!(
-            &self.item,
-            Item {
-                inner: ItemEnum::Enum(_),
-                ..
-            }
-        )
     }
 
     pub fn is_impl_for(&self, for_: &ItemNode, trait_name: &str) -> bool {
         if self.id.crate_ != for_.id.crate_ {
             return false;
         }
-        match &self.item {
-            Item {
-                inner:
-                    ItemEnum::Impl(Impl {
-                        trait_: Some(Path { name, .. }),
-                        for_: Type::ResolvedPath(Path { id, .. }),
-                        ..
-                    }),
-                ..
-            } if name == trait_name && id == &for_.item.id => true,
-            _ => false,
-        }
+
+        is_impl_for(&self.item, &for_.item, trait_name)
     }
 
     pub fn is_range(&self) -> bool {
@@ -281,35 +160,12 @@ impl ItemNode {
     }
 
     pub fn fields(&self, fields: Vec<(&ItemNode,)>) -> Vec<ItemNode> {
-        let field_ids = match &self.item {
-            Item {
-                inner: ItemEnum::Struct(Struct { kind, .. }),
-                ..
-            } => match kind {
-                StructKind::Plain { fields, .. } => fields.to_vec(),
-                StructKind::Tuple(fields) => {
-                    fields.iter().filter_map(|f| f.as_ref()).cloned().collect()
-                }
-                StructKind::Unit => vec![],
-            },
-            Item {
-                inner: ItemEnum::Variant(Variant { kind, .. }),
-                ..
-            } => match kind {
-                VariantKind::Plain => vec![],
-                VariantKind::Tuple(fields) => {
-                    fields.iter().filter_map(|f| f.as_ref()).cloned().collect()
-                }
-                VariantKind::Struct { fields, .. } => fields.to_vec(),
-            },
-            _ => vec![],
-        };
-        field_ids
+        field_ids(&self.item)
             .iter()
             .filter_map(|id| {
                 match fields
                     .iter()
-                    .find(|(f,)| !f.should_skip() && f.item.id == *id)
+                    .find(|(f,)| !f.should_skip() && id == &f.item.id)
                 {
                     Some(found) => Some(found.0.clone()),
                     None => None,
@@ -322,50 +178,20 @@ impl ItemNode {
         if self.id.crate_ != field.id.crate_ || field.should_skip() {
             return false;
         }
-
-        match &self.item {
-            Item {
-                inner: ItemEnum::Struct(Struct { kind, .. }),
-                ..
-            } => {
-                if field.name() == Some("__private_field") {
-                    return false;
-                }
-                match kind {
-                    StructKind::Unit => false,
-                    StructKind::Tuple(fields) => fields.contains(&Some(field.item.id)),
-                    StructKind::Plain {
-                        fields,
-                        has_stripped_fields: _,
-                    } => fields.contains(&field.item.id),
-                }
-            }
-            Item {
-                inner: ItemEnum::Variant(Variant { kind, .. }),
-                ..
-            } => match kind {
-                VariantKind::Plain => false,
-                VariantKind::Tuple(fields) => fields.contains(&Some(field.item.id)),
-                VariantKind::Struct { fields, .. } => fields.contains(&field.item.id),
-            },
-            _ => false,
+        if field.name() == Some("__private_field") {
+            return false;
         }
+
+        has_field(&self.item, &field.item)
     }
 
     pub fn variants(&self, variants: Vec<(&ItemNode,)>) -> Vec<ItemNode> {
-        let variant_ids = match &self.item {
-            Item {
-                inner: ItemEnum::Enum(Enum { variants, .. }),
-                ..
-            } => variants.to_vec(),
-            _ => vec![],
-        };
-        variant_ids
+        variant_ids(&self.item)
             .iter()
             .filter_map(|id| {
                 match variants
                     .iter()
-                    .find(|(v,)| !v.should_skip() && v.item.id == *id)
+                    .find(|(v,)| !v.should_skip() && id == &v.item.id)
                 {
                     Some(found) => Some(found.0.clone()),
                     None => None,
@@ -379,13 +205,7 @@ impl ItemNode {
             return false;
         }
 
-        match &self.item {
-            Item {
-                inner: ItemEnum::Enum(Enum { variants, .. }),
-                ..
-            } => variants.contains(&variant.item.id),
-            _ => false,
-        }
+        has_variant(&self.item, &variant.item)
     }
 
     pub fn is_of_local_type(&self, type_node: &ItemNode) -> bool {
@@ -400,6 +220,7 @@ impl ItemNode {
         if self.id.crate_ != id.crate_ {
             return false;
         }
+
         match &self.item {
             Item {
                 inner: ItemEnum::StructField(t),
@@ -418,18 +239,11 @@ impl ItemNode {
     }
 
     pub fn has_associated_item(&self, associated_item: &ItemNode, with_name: &str) -> bool {
-        match &self.item {
-            Item {
-                inner: ItemEnum::Impl(Impl { items, .. }),
-                ..
-            } => match &associated_item.item {
-                Item {
-                    name: Some(name), ..
-                } if with_name == name => items.contains(&associated_item.item.id),
-                _ => false,
-            },
-            _ => false,
+        if self.id.crate_ != associated_item.id.crate_ {
+            return false;
         }
+
+        has_associated_item(&self.item, &associated_item.item, with_name)
     }
 }
 
