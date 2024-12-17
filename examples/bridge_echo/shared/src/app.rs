@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum Event {
     Tick,
     NewPeriod,
+    Reset,
 }
 
 #[derive(Default, Debug, PartialEq)]
@@ -17,6 +18,7 @@ pub struct Model {
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ViewModel {
     pub count: usize,
+    pub log: Vec<usize>,
 }
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
@@ -42,13 +44,20 @@ impl crux_core::App for App {
                 model.log.push(model.count);
                 model.count = 0;
             }
+            Event::Reset => {
+                model.count = 0;
+                model.log.clear();
+            }
         };
 
         caps.render.render();
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        ViewModel { count: model.count }
+        ViewModel {
+            count: model.count,
+            log: model.log.clone(),
+        }
     }
 }
 // ANCHOR_END: impl_app
@@ -66,7 +75,10 @@ mod test {
         let model = Model::default();
 
         let actual_view = app.view(&model);
-        let expected_view = ViewModel { count: 0 };
+        let expected_view = ViewModel {
+            count: 0,
+            log: vec![],
+        };
 
         assert_eq!(actual_view, expected_view);
     }
@@ -81,7 +93,10 @@ mod test {
         let _ = app.update(Event::Tick, &mut model);
 
         let actual_view = app.view(&model);
-        let expected_view = ViewModel { count: 3 };
+        let expected_view = ViewModel {
+            count: 3,
+            log: vec![],
+        };
 
         assert_eq!(actual_view, expected_view);
     }
