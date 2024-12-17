@@ -1,10 +1,12 @@
 mod filter;
 mod formatter;
+mod graph;
 mod indexed;
 mod item;
 mod node;
 mod serde;
 mod serde_generate;
+mod summary;
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -15,6 +17,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Result};
+use graph::Graph;
 use guppy::{graph::PackageGraph, MetadataCommand};
 use log::{debug, info};
 use rustdoc_types::Crate;
@@ -47,6 +50,18 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     Ok(())
 }
 
+fn graph<F>(crate_name: &str, load: F) -> Result<Graph>
+where
+    F: Fn(&str) -> Result<Crate>,
+{
+    let shared_lib = load(&crate_name)?;
+
+    let mut graph = Graph::default();
+    graph.process(crate_name, &shared_lib)?;
+
+    Ok(graph)
+}
+
 fn run<F>(crate_name: &str, load: F) -> Result<Registry>
 where
     F: Fn(&str) -> Result<Crate>,
@@ -73,6 +88,15 @@ where
         next = filter.get_crates();
         previous.insert(crate_name, crate_);
     }
+
+    std::fs::write(
+        format!("{crate_name}_local_type_of.txt"),
+        format!("{:#?}", filter.local_type_of),
+    )?;
+    std::fs::write(
+        format!("{crate_name}_node.txt"),
+        format!("{:#?}", filter.node),
+    )?;
 
     Ok(format(filter.edge))
 }
@@ -107,6 +131,11 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
     let buf = &mut Vec::new();
     File::open(json_path)?.read_to_end(buf)?;
     let crate_ = serde_json::from_slice(buf)?;
+
+    std::fs::write(
+        format!("{name}.json"),
+        serde_json::to_string_pretty(&crate_)?,
+    )?;
 
     Ok(crate_)
 }

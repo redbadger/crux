@@ -1,10 +1,13 @@
 use anyhow::Result;
 use ascent::ascent;
+use ascent::lattice::ord_lattice::OrdLattice;
 use log::{debug, info};
 use rustdoc_types::Crate;
 
+use crate::codegen::{item, summary};
+
 use super::item::*;
-use super::node::{CrateNode, ItemNode, SummaryNode};
+use super::node::{CrateNode, ItemNode, Node, SummaryNode};
 
 ascent! {
     #![measure_rule_times]
@@ -20,6 +23,11 @@ ascent! {
     relation has_summary(ItemNode, SummaryNode);
     has_summary(i, s) <-- item(i), summary(s), if i.has_summary(s);
 
+    // // relation from a path to a node,
+    // // a node is an item, if we've seen it, or a summary if we haven't
+    lattice node(Vec<String>, OrdLattice<Node>);
+    node(s.path(), OrdLattice(n)) <-- has_summary(i, s), let n = Node::Item(i.clone());
+    node(s.path(), OrdLattice(n)) <-- summary(s), let n = Node::Summary(s.clone());
 
     relation is_struct(ItemNode);
     is_struct(s) <-- item(s) if is_struct(&s.item);
@@ -161,23 +169,22 @@ impl Filter {
         self.summary = crate_
             .paths
             .iter()
-            .map(|(id, summary)| {
-                (SummaryNode::new(
-                    crate_name.to_string(),
-                    id.0,
-                    summary.clone(),
-                ),)
+            .filter_map(|(id, summary)| {
+                summary::is_relevant(summary).then(|| {
+                    (SummaryNode::new(
+                        crate_name.to_string(),
+                        id.0,
+                        summary.clone(),
+                    ),)
+                })
             })
             .collect::<Vec<_>>();
         self.item = crate_
             .index
             .values()
             .filter_map(|item| {
-                if is_relevant(item) {
-                    Some((ItemNode::new(crate_name.to_string(), item.clone()),))
-                } else {
-                    None
-                }
+                item::is_relevant(item)
+                    .then(|| (ItemNode::new(crate_name.to_string(), item.clone()),))
             })
             .collect::<Vec<_>>();
         self.ext_crate = crate_

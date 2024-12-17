@@ -7,6 +7,10 @@ use crate::codegen::Registry;
 
 use super::rustdoc_json_path;
 
+fn init() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+
 fn load_rustdoc(name: &str) -> Result<Crate> {
     Ok(match name {
         "bridge_echo" => {
@@ -71,4 +75,23 @@ fn full(#[case] example: &str) {
     let expected: Registry = load_expected(example).expect("should deserialize");
 
     assert_eq!(actual, expected);
+}
+
+#[rstest]
+#[case::counter("counter")]
+// #[ignore = "not yet fully implemented"]
+fn graph(#[case] example: &str) -> Result<()> {
+    init();
+
+    let actual = super::graph(example, load_rustdoc).unwrap();
+    std::fs::write(
+        format!("{}_graph.yml", example),
+        serde_yml::to_string(&actual.edge).unwrap(),
+    )?;
+    std::fs::write(
+        format!("{}_krate.yml", example),
+        serde_yml::to_string(&actual.krate).unwrap(),
+    )?;
+
+    panic!()
 }
