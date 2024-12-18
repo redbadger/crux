@@ -90,8 +90,9 @@ Below is a list of some of the things we know we want to do before 1.0:
   to deal with
 * Better FFI code generation to enable support for more languages (e.g. C#, Dart, even C++...) 
   and in trurn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
-* Revised capabilities and effects to allow
-  for [app composition](./guide/composing.md) in larger apps
+* Revised capabilities and effects to allow for better, more natural
+  [app composition](./guide/composing.md) in larger apps, for composing capabilities, 
+  and generally for a more ergonomic effect API overall
 
 Until then, we hope you will work with us on the rough edges, and adapt to the necessary
 API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable. 
