@@ -1,6 +1,6 @@
 # Overview
 
-Crux is an **experimental** approach to building cross-platform applications
+Crux is a framework for building cross-platform applications
 with better testability, higher code and behavior reuse, better safety,
 security, and more joy from better tools.
 
@@ -66,7 +66,7 @@ will result in build failures in the Shell.
 
 ## Goals
 
-We set out to prove this architecture to find a better way of building apps
+We set out to find a better way of building apps
 across platforms. You can read more [about our motivation](./motivation.md). The
 overall goals of Crux are to:
 
@@ -78,3 +78,21 @@ overall goals of Crux are to:
 - Separate the behavior from the look and feel and interaction design
 - Use the native UI tool kits to create user experience that is the best fit for
   a given platform
+
+## Path to 1.0
+
+Crux is used in production apps today, and we consider it production ready. However, we still have a number of things to work on to call it 1.0, with a stable API, and other things one would expect from a mature framework. 
+
+Below is a list of some of the things we know we want to do before 1.0:
+
+* Improved documentation, code examples, and example apps for newcomers
+* Improved onboarding experience, with less boilerplate code that end users have
+  to deal with
+* Better FFI code generation to enable support for more languages (e.g. C#, Dart, even C++...) 
+  and in trurn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
+* Revised capabilities and effects to allow for better, more natural
+  [app composition](./guide/composing.md) in larger apps, for composing capabilities, 
+  and generally for a more ergonomic effect API overall
+
+Until then, we hope you will work with us on the rough edges, and adapt to the necessary
+API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable. 
