@@ -93,5 +93,5 @@ Below is a list of some of the things we know we want to do before 1.0:
 * Revised capabilities and effects to allow
   for [app composition](./guide/composing.md) in larger apps
 
-Until then, we hope you will work with us on the rough edges, and factor in
-frequent API updates as we evolve.
+Until then, we hope you will work with us on the rough edges, and adapt to the necessary
+API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable. 
