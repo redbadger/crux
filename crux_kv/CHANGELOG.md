@@ -12,7 +12,7 @@ and this project adheres to
 
 ### Other
 
-- tidy and docs udpate
+- tidy and docs update
 - update http and kv tests to use new API
 
 ## [0.5.1](https://github.com/redbadger/crux/compare/crux_kv-v0.5.0...crux_kv-v0.5.1) - 2024-20-21

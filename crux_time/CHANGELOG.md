@@ -17,7 +17,7 @@ and this project adheres to
 
 ### Other
 
-- tidy and docs udpate
+- tidy and docs update
 - remove unused test event
 
 ## [0.5.1](https://github.com/redbadger/crux/compare/crux_time-v0.5.0...crux_time-v0.5.1) - 2024-10-21

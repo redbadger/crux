@@ -15,7 +15,7 @@ use futures::Future;
 /// * Any arbitrary graph of effects which depend on each other (or not).
 ///
 /// The compose capability doesn't have any operations it emits to the shell, and type generation fails
-/// on its operation type ([`Never`](crate::capability::Never))). This is difficult for crux to detect
+/// on its operation type ([`Never`])). This is difficult for crux to detect
 /// at the moment. To avoid this problem until a better fix is found, use `#[effect(skip)]` to skip the
 /// generation of an effect variant for the compose capability. For example
 ///

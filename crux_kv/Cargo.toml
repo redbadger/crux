@@ -18,4 +18,4 @@ anyhow.workspace = true
 crux_core = { version = "0.10.0", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11.15"
-thiserror = "1.0.65"
+thiserror = "2.0.5"

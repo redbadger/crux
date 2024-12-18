@@ -15,13 +15,13 @@ proc-macro = true
 [dependencies]
 darling = "0.20.10"
 proc-macro-error = "1.0.4"
-proc-macro2 = "1.0.89"
+proc-macro2 = "1.0.92"
 quote = "1.0.37"
-syn = "2.0.82"
+syn = "2.0.90"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
-insta = "1.40"
+insta = "1.41"
 prettyplease = "0.2"
-serde = { version = "1.0.213", features = ["derive"] }
+serde = { version = "1.0.215", features = ["derive"] }

@@ -88,11 +88,11 @@ pub struct CatFacts {
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
 pub struct CatFactCapabilities {
-    pub http: Http<Event>,
-    pub key_value: KeyValue<Event>,
-    pub platform: Platform<Event>,
-    pub render: Render<Event>,
-    pub time: Time<Event>,
+    http: Http<Event>,
+    key_value: KeyValue<Event>,
+    platform: Platform<Event>,
+    render: Render<Event>,
+    time: Time<Event>,
 }
 
 // Allow easily using Platform as a submodule

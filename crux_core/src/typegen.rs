@@ -143,7 +143,7 @@ pub enum TypeGenError {
     TypeTracing(String),
     #[error("value tracing failed: {0}")]
     ValueTracing(String),
-    #[error("type tracing failed: {0} {}", DESERIALIZATION_ERROR_HINT)]
+    #[error("type tracing failed: {0} {DESERIALIZATION_ERROR_HINT}")]
     Deserialization(String),
     #[error("code has been generated, too late to register types")]
     LateRegistration,
