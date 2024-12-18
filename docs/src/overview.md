@@ -88,8 +88,8 @@ Below is a list of some of the things we know we want to do before 1.0:
 * Improved documentation, code examples, and example apps for newcomers
 * Improved onboarding experience, with less boilerplate code that end users have
   to deal with
-* Better FFI code generation to enable support for more Shells (e.g. .NET,
-  Flutter) which will also enable Desktop apps in Windows
+* Better FFI code generation to enable support for more languages (e.g. C#, Dart, even C++...) 
+  and in trurn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
 * Revised capabilities and effects to allow
   for [app composition](./guide/composing.md) in larger apps
 
