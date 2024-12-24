@@ -92,7 +92,7 @@ If you don't have it already, install the `dx` CLI tool:
 cargo install dioxus-cli
 ```
 
-To build and run the [Dioxus]https://dioxuslabs.com/) web app:
+To build and run the [Dioxus](https://dioxuslabs.com/) web app:
 
 ```
 cd web-dioxus
