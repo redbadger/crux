@@ -1,0 +1,386 @@
+{
+  "Effect": {
+    "ENUM": {
+      "0": {
+        "KeyValue": {
+          "NEWTYPE": {
+            "TYPENAME": "KeyValueOperation"
+          }
+        }
+      },
+      "1": {
+        "PubSub": {
+          "NEWTYPE": {
+            "TYPENAME": "PubSubOperation"
+          }
+        }
+      },
+      "2": {
+        "Render": {
+          "NEWTYPE": {
+            "TYPENAME": "RenderOperation"
+          }
+        }
+      },
+      "3": {
+        "Timer": {
+          "NEWTYPE": {
+            "TYPENAME": "TimerOperation"
+          }
+        }
+      }
+    }
+  },
+  "Event": {
+    "ENUM": {
+      "0": {
+        "Open": "UNIT"
+      },
+      "1": {
+        "Insert": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "2": {
+        "Replace": {
+          "TUPLE": [
+            "U64",
+            "U64",
+            "STR"
+          ]
+        }
+      },
+      "3": {
+        "MoveCursor": {
+          "NEWTYPE": "U64"
+        }
+      },
+      "4": {
+        "Select": {
+          "TUPLE": [
+            "U64",
+            "U64"
+          ]
+        }
+      },
+      "5": {
+        "Backspace": "UNIT"
+      },
+      "6": {
+        "Delete": "UNIT"
+      },
+      "7": {
+        "ReceiveChanges": {
+          "NEWTYPE": {
+            "SEQ": "U8"
+          }
+        }
+      },
+      "8": {
+        "EditTimer": {
+          "NEWTYPE": {
+            "TYPENAME": "TimerOutput"
+          }
+        }
+      }
+    }
+  },
+  "KeyValueError": {
+    "ENUM": {
+      "0": {
+        "io": {
+          "STRUCT": [
+            {
+              "message": "STR"
+            }
+          ]
+        }
+      },
+      "1": {
+        "timeout": "UNIT"
+      },
+      "2": {
+        "cursorNotFound": "UNIT"
+      },
+      "3": {
+        "other": {
+          "STRUCT": [
+            {
+              "message": "STR"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "KeyValueOperation": {
+    "ENUM": {
+      "0": {
+        "Get": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            }
+          ]
+        }
+      },
+      "1": {
+        "Set": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            },
+            {
+              "value": "BYTES"
+            }
+          ]
+        }
+      },
+      "2": {
+        "Delete": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            }
+          ]
+        }
+      },
+      "3": {
+        "Exists": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            }
+          ]
+        }
+      },
+      "4": {
+        "ListKeys": {
+          "STRUCT": [
+            {
+              "prefix": "STR"
+            },
+            {
+              "cursor": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "KeyValueResponse": {
+    "ENUM": {
+      "0": {
+        "Get": {
+          "STRUCT": [
+            {
+              "value": {
+                "TYPENAME": "Value"
+              }
+            }
+          ]
+        }
+      },
+      "1": {
+        "Set": {
+          "STRUCT": [
+            {
+              "previous": {
+                "TYPENAME": "Value"
+              }
+            }
+          ]
+        }
+      },
+      "2": {
+        "Delete": {
+          "STRUCT": [
+            {
+              "previous": {
+                "TYPENAME": "Value"
+              }
+            }
+          ]
+        }
+      },
+      "3": {
+        "Exists": {
+          "STRUCT": [
+            {
+              "is_present": "BOOL"
+            }
+          ]
+        }
+      },
+      "4": {
+        "ListKeys": {
+          "STRUCT": [
+            {
+              "keys": {
+                "SEQ": "STR"
+              }
+            },
+            {
+              "next_cursor": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "KeyValueResult": {
+    "ENUM": {
+      "0": {
+        "Ok": {
+          "STRUCT": [
+            {
+              "response": {
+                "TYPENAME": "KeyValueResponse"
+              }
+            }
+          ]
+        }
+      },
+      "1": {
+        "Err": {
+          "STRUCT": [
+            {
+              "error": {
+                "TYPENAME": "KeyValueError"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Message": {
+    "NEWTYPESTRUCT": {
+      "SEQ": "U8"
+    }
+  },
+  "PubSubOperation": {
+    "ENUM": {
+      "0": {
+        "Publish": {
+          "NEWTYPE": {
+            "SEQ": "U8"
+          }
+        }
+      },
+      "1": {
+        "Subscribe": "UNIT"
+      }
+    }
+  },
+  "Range": {
+    "STRUCT": [
+      {
+        "start": "U64"
+      },
+      {
+        "end": "U64"
+      }
+    ]
+  },
+  "RenderOperation": "UNITSTRUCT",
+  "Request": {
+    "STRUCT": [
+      {
+        "id": "U32"
+      },
+      {
+        "effect": {
+          "TYPENAME": "Effect"
+        }
+      }
+    ]
+  },
+  "TextCursor": {
+    "ENUM": {
+      "0": {
+        "Position": {
+          "NEWTYPE": "U64"
+        }
+      },
+      "1": {
+        "Selection": {
+          "NEWTYPE": {
+            "TYPENAME": "Range"
+          }
+        }
+      }
+    }
+  },
+  "TimerOperation": {
+    "ENUM": {
+      "0": {
+        "Start": {
+          "STRUCT": [
+            {
+              "id": "U64"
+            },
+            {
+              "millis": "U64"
+            }
+          ]
+        }
+      },
+      "1": {
+        "Cancel": {
+          "STRUCT": [
+            {
+              "id": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "TimerOutput": {
+    "ENUM": {
+      "0": {
+        "Created": {
+          "STRUCT": [
+            {
+              "id": "U64"
+            }
+          ]
+        }
+      },
+      "1": {
+        "Finished": {
+          "STRUCT": [
+            {
+              "id": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Value": {
+    "ENUM": {
+      "0": {
+        "None": "UNIT"
+      },
+      "1": {
+        "Bytes": {
+          "NEWTYPE": "BYTES"
+        }
+      }
+    }
+  },
+  "ViewModel": {
+    "STRUCT": [
+      {
+        "text": "STR"
+      },
+      {
+        "cursor": {
+          "TYPENAME": "TextCursor"
+        }
+      }
+    ]
+  }
+}
