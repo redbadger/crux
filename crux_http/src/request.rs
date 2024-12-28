@@ -1,21 +1,22 @@
-use crate::http::{
-    self,
+use crate::middleware::Middleware;
+use http_types::{
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
     Body, Method, Mime, Url,
 };
-use crate::middleware::Middleware;
 
 use serde::Serialize;
 
 use std::fmt;
 use std::ops::Index;
+use std::str::FromStr;
 use std::sync::Arc;
+use anyhow::anyhow;
 
 /// An HTTP request, returns a `Response`.
 #[derive(Clone)]
 pub struct Request {
     /// Holds the state of the request.
-    req: http::Request,
+    req: http_types::Request,
     /// Holds an optional per-request middleware stack.
     middleware: Option<Vec<Arc<dyn Middleware>>>,
 }
@@ -31,14 +32,14 @@ impl Request {
     ///
     /// ```
     /// fn main() -> crux_http::Result<()> {
-    /// use crux_http::http::{Url, Method};
+    /// use crux_http::http_types::{Url, Method};
     ///
     /// let url = Url::parse("https://httpbin.org/get")?;
     /// let req = crux_http::Request::new(Method::Get, url);
     /// # Ok(()) }
     /// ```
     pub fn new(method: Method, url: Url) -> Self {
-        let req = http::Request::new(method, url);
+        let req = http_types::Request::new(method, url);
         Self {
             req,
             middleware: None,
@@ -199,7 +200,7 @@ impl Request {
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// let req = caps.http.get("https://httpbin.org/get").build();
-    /// assert_eq!(req.method(), crux_http::http::Method::Get);
+    /// assert_eq!(req.method(), crux_http::http_types::Method::Get);
     /// # Ok(()) }
     /// ```
     pub fn method(&self) -> Method {
@@ -214,7 +215,7 @@ impl Request {
     /// # enum Event {}
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
-    /// use crux_http::http::Url;
+    /// use crux_http::http_types::Url;
     /// let req = caps.http.get("https://httpbin.org/get").build();
     /// assert_eq!(req.url(), &Url::parse("https://httpbin.org/get")?);
     /// # Ok(()) }
@@ -362,33 +363,33 @@ impl Request {
     }
 }
 
-impl AsRef<http::Headers> for Request {
-    fn as_ref(&self) -> &http::Headers {
+impl AsRef<http_types::Headers> for Request {
+    fn as_ref(&self) -> &http_types::Headers {
         self.req.as_ref()
     }
 }
 
-impl AsMut<http::Headers> for Request {
-    fn as_mut(&mut self) -> &mut http::Headers {
+impl AsMut<http_types::Headers> for Request {
+    fn as_mut(&mut self) -> &mut http_types::Headers {
         self.req.as_mut()
     }
 }
 
-impl AsRef<http::Request> for Request {
-    fn as_ref(&self) -> &http::Request {
+impl AsRef<http_types::Request> for Request {
+    fn as_ref(&self) -> &http_types::Request {
         &self.req
     }
 }
 
-impl AsMut<http::Request> for Request {
-    fn as_mut(&mut self) -> &mut http::Request {
+impl AsMut<http_types::Request> for Request {
+    fn as_mut(&mut self) -> &mut http_types::Request {
         &mut self.req
     }
 }
 
-impl From<http::Request> for Request {
-    /// Converts an `http::Request` to a `crux_http::Request`.
-    fn from(req: http::Request) -> Self {
+impl From<http_types::Request> for Request {
+    /// Converts an `http_types::Request` to a `crux_http::Request`.
+    fn from(req: http_types::Request) -> Self {
         Self {
             req,
             middleware: None,
@@ -396,10 +397,26 @@ impl From<http::Request> for Request {
     }
 }
 
+#[cfg(feature = "http-compat")]
+impl<B: Into<Body>> TryFrom<http::Request<B>> for Request {
+	type Error = anyhow::Error;
+
+	fn try_from(req: http::Request<B>) -> Result<Self, Self::Error> {
+		let mut o = Request::new(Method::from_str(req.method().as_str()).map_err(|e| anyhow!(e))?, req.uri().to_string().parse()?);
+
+		for (k, v) in req.headers().iter() {
+			o.append_header(k.as_str(), v.to_str()?);
+		}
+
+		o.set_body(req.into_body());
+		Ok(o)
+	}
+}
+
 #[allow(clippy::from_over_into)]
-impl Into<http::Request> for Request {
-    /// Converts a `crux_http::Request` to an `http::Request`.
-    fn into(self) -> http::Request {
+impl Into<http_types::Request> for Request {
+    /// Converts a `crux_http::Request` to an `http_types::Request`.
+    fn into(self) -> http_types::Request {
         self.req
     }
 }
@@ -414,7 +431,7 @@ impl IntoIterator for Request {
     type Item = (HeaderName, HeaderValues);
     type IntoIter = headers::IntoIter;
 
-    /// Returns a iterator of references over the remaining items.
+    /// Returns an iterator of references over the remaining items.
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.req.into_iter()

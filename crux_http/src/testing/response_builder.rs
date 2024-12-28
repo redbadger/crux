@@ -1,6 +1,4 @@
-use http::headers::{HeaderName, ToHeaderValues};
-
-use crate::http;
+use http_types::headers::{HeaderName, ToHeaderValues};
 
 use crate::response::Response;
 
@@ -14,11 +12,11 @@ pub struct ResponseBuilder<Body> {
 impl ResponseBuilder<Vec<u8>> {
     /// Constructs a new ResponseBuilder with the 200 OK status code.
     pub fn ok() -> ResponseBuilder<Vec<u8>> {
-        ResponseBuilder::with_status(http::StatusCode::Ok)
+        ResponseBuilder::with_status(http_types::StatusCode::Ok)
     }
 
     /// Constructs a new ResponseBuilder with the specified status code.
-    pub fn with_status(status: http::StatusCode) -> ResponseBuilder<Vec<u8>> {
+    pub fn with_status(status: http_types::StatusCode) -> ResponseBuilder<Vec<u8>> {
         let response = Response::new_with_status(status);
 
         ResponseBuilder { response }
