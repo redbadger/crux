@@ -116,6 +116,8 @@ impl QueuingExecutor {
                         // until all remaining work is 'unavailable', at which point we will bail
                         // out of the loop, leaving the queued work to be finished by another thread.
                         // This strategy should avoid dropping work or busy-looping
+                        // FIXME: are we potentially sending ourselves `Unavailable` and reading it
+                        // in a loop - busy looping here?
                         self.ready_sender.send(task_id).expect("could not requeue");
                     }
                     RunTask::Missing => {

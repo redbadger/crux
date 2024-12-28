@@ -156,6 +156,7 @@ pub mod testing;
 pub mod typegen;
 
 mod capabilities;
+mod command;
 mod core;
 
 use serde::Serialize;
@@ -163,6 +164,7 @@ use serde::Serialize;
 pub use self::{
     capabilities::*,
     capability::{Capability, WithContext},
+    command::Command,
     core::{Core, Effect, Request},
 };
 pub use crux_macros as macros;
