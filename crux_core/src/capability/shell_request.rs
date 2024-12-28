@@ -26,10 +26,19 @@ impl ShellRequest<()> {
     }
 }
 
+// State shared between the ShellRequest future itself and the
+// Request's resolve callback. The resolve callback is responsible
+// for advancing the state from Pending to Complete
+//
+// FIXME this should be a tri-state enum instead:
+// - ReadyToSend(Box<dyn FnOnce() + Send + 'static>)
+// - Pending(Waker)
+// - Complete(T)
 struct SharedState<T> {
+    // the effect's output
     result: Option<T>,
-    waker: Option<Waker>,
     send_request: Option<Box<dyn FnOnce() + Send + 'static>>,
+    waker: Option<Waker>,
 }
 
 impl<T> Future for ShellRequest<T> {
