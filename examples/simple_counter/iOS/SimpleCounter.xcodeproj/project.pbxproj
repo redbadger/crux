@@ -3,41 +3,29 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		1989BD3C863A9FB37C889B6D /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = ADFA4530638891CDAA6FCC5D /* SharedTypes */; };
 		2AD69AC61D674BB2BC300FC2 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = E75E53B837C6A0E03FDCEC5A /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		401EA3CBD0D2AD8D475C10AF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842F8D01CC76E9BFCDBD2862 /* ContentView.swift */; };
+		5776AB3F6BDB21968CE9543A /* shared.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA33C72B2EF6A68B351BB022 /* shared.swift */; };
+		8291B7EC6C593FA8E5BB4F36 /* sharedFFI.h in Sources */ = {isa = PBXBuildFile; fileRef = 07EC71797B0B95DAD077436C /* sharedFFI.h */; };
 		94DCD6C97BBC86B89673CA0E /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 258EC994D7C693E3141C4563 /* core.swift */; };
-		A022BC4B1B16254762ED55B3 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */; };
+		ACEED4C684566162EAB9CB48 /* SimpleCounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DCFFA8F642585B6E57DA81 /* SimpleCounterApp.swift */; };
 		C26A1E5DDAB1ED32518E8F2A /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2EA4D4AAE1A6C4D3400A9A06 /* libshared_static.a */; };
-		D39A72610E7E3BD191DBDC06 /* SimpleCounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF52C000453302D743B48803 /* SimpleCounterApp.swift */; };
+		C52E639D2187D4C22DDEF776 /* sharedFFI.modulemap in Sources */ = {isa = PBXBuildFile; fileRef = 98924D54C7B6BFCB1E503C2E /* sharedFFI.modulemap */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXBuildRule section */
-		A7015E42CE7FE365402B3A57 /* PBXBuildRule */ = {
-			isa = PBXBuildRule;
-			compilerSpec = com.apple.compilers.proxy.script;
-			filePatterns = "*.udl";
-			fileType = pattern.proxy;
-			inputFiles = (
-			);
-			isEditable = 1;
-			name = "Generate FFI";
-			outputFiles = (
-				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift",
-				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h",
-			);
-			outputFilesCompilerFlags = (
-			);
-			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/debug/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
-		};
-/* End PBXBuildRule section */
-
 /* Begin PBXContainerItemProxy section */
+		076D837A2C49634600D2EEF1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
+			proxyType = 2;
+			remoteGlobalIDString = CA60D2B4E60D10F7F7FCAC5B;
+			remoteInfo = "shared-cdylib";
+		};
 		4579D0264028B49513DBCDA5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
@@ -59,13 +47,6 @@
 			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
 			remoteInfo = "shared-staticlib";
 		};
-		CCE0790C2AA1F71400CD4B57 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA60D2B4E60D10F7F7FCAC5B;
-			remoteInfo = "shared-cdylib";
-		};
 		EC190C8522C4065CF4E41954 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8EA6E09EE87596B896068D0E /* Shared */;
@@ -76,14 +57,16 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		02DCFFA8F642585B6E57DA81 /* SimpleCounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleCounterApp.swift; sourceTree = "<group>"; };
+		07EC71797B0B95DAD077436C /* sharedFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sharedFFI.h; sourceTree = "<group>"; };
 		1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SimpleCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		258EC994D7C693E3141C4563 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
-		642CF26F4B57B0FF7348C6BF /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		642CF26F4B57B0FF7348C6BF /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		842F8D01CC76E9BFCDBD2862 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
 		8EA6E09EE87596B896068D0E /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
-		BF52C000453302D743B48803 /* SimpleCounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleCounterApp.swift; sourceTree = "<group>"; };
+		98924D54C7B6BFCB1E503C2E /* sharedFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = sharedFFI.modulemap; sourceTree = "<group>"; };
 		CF5BE0317D54587DCCF48AF4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		EA33C72B2EF6A68B351BB022 /* shared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = shared.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,30 +86,32 @@
 			isa = PBXGroup;
 			children = (
 				E551F092584A1E0A747C2BEB /* Packages */,
+				37E66549D321172F287501B5 /* SharedFFI */,
 				E6F6A75B1B8366C3D868D1E4 /* SimpleCounter */,
-				A58FEB50EA86B3FEA463FCF0 /* src */,
 				D4D259F256E0F508B61E0EA9 /* Products */,
 				B6068D7E9E67CAA3B5F4F827 /* Projects */,
 			);
+			sourceTree = "<group>";
+		};
+		37E66549D321172F287501B5 /* SharedFFI */ = {
+			isa = PBXGroup;
+			children = (
+				EA33C72B2EF6A68B351BB022 /* shared.swift */,
+				07EC71797B0B95DAD077436C /* sharedFFI.h */,
+				98924D54C7B6BFCB1E503C2E /* sharedFFI.modulemap */,
+			);
+			name = SharedFFI;
+			path = ../shared/generated/swift/SharedFFI;
 			sourceTree = "<group>";
 		};
 		64DA90BC973EE8B5939308C2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				2EA4D4AAE1A6C4D3400A9A06 /* libshared_static.a */,
-				CCE0790D2AA1F71400CD4B57 /* shared.dylib */,
+				076D837B2C49634600D2EEF1 /* shared.dylib */,
 				E75E53B837C6A0E03FDCEC5A /* uniffi-bindgen */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		A58FEB50EA86B3FEA463FCF0 /* src */ = {
-			isa = PBXGroup;
-			children = (
-				8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */,
-			);
-			name = src;
-			path = ../shared/src;
 			sourceTree = "<group>";
 		};
 		B6068D7E9E67CAA3B5F4F827 /* Projects */ = {
@@ -151,15 +136,15 @@
 				642CF26F4B57B0FF7348C6BF /* SharedTypes */,
 			);
 			name = Packages;
-			sourceTree = SOURCE_ROOT;
+			sourceTree = "<group>";
 		};
 		E6F6A75B1B8366C3D868D1E4 /* SimpleCounter */ = {
 			isa = PBXGroup;
 			children = (
 				842F8D01CC76E9BFCDBD2862 /* ContentView.swift */,
 				258EC994D7C693E3141C4563 /* core.swift */,
-				BF52C000453302D743B48803 /* SimpleCounterApp.swift */,
 				CF5BE0317D54587DCCF48AF4 /* Info.plist */,
+				02DCFFA8F642585B6E57DA81 /* SimpleCounterApp.swift */,
 			);
 			path = SimpleCounter;
 			sourceTree = "<group>";
@@ -176,7 +161,6 @@
 				593C7A3AEAC5E5C614E32E14 /* Frameworks */,
 			);
 			buildRules = (
-				A7015E42CE7FE365402B3A57 /* PBXBuildRule */,
 			);
 			dependencies = (
 				2FF352CA5059B90A12956273 /* PBXTargetDependency */,
@@ -208,6 +192,9 @@
 				en,
 			);
 			mainGroup = 1B8911D02E90EF25A711F2BE;
+			packageReferences = (
+				828D8D7B0DA5553163A5E024 /* XCLocalSwiftPackageReference "../shared/generated/swift/SharedTypes" */,
+			);
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -223,18 +210,18 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
+		076D837B2C49634600D2EEF1 /* shared.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = shared.dylib;
+			remoteRef = 076D837A2C49634600D2EEF1 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 		2EA4D4AAE1A6C4D3400A9A06 /* libshared_static.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libshared_static.a;
 			remoteRef = 6EC78E6AA13637C891278065 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		CCE0790D2AA1F71400CD4B57 /* shared.dylib */ = {
-			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.dylib";
-			path = shared.dylib;
-			remoteRef = CCE0790C2AA1F71400CD4B57 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 		E75E53B837C6A0E03FDCEC5A /* uniffi-bindgen */ = {
@@ -263,9 +250,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				401EA3CBD0D2AD8D475C10AF /* ContentView.swift in Sources */,
-				D39A72610E7E3BD191DBDC06 /* SimpleCounterApp.swift in Sources */,
+				ACEED4C684566162EAB9CB48 /* SimpleCounterApp.swift in Sources */,
 				94DCD6C97BBC86B89673CA0E /* core.swift in Sources */,
-				A022BC4B1B16254762ED55B3 /* shared.udl in Sources */,
+				5776AB3F6BDB21968CE9543A /* shared.swift in Sources */,
+				8291B7EC6C593FA8E5BB4F36 /* sharedFFI.h in Sources */,
+				C52E639D2187D4C22DDEF776 /* sharedFFI.modulemap in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -290,6 +279,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = SimpleCounter/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -302,7 +292,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.simple_counter.SimpleCounter;
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				SWIFT_OBJC_BRIDGING_HEADER = ../shared/generated/swift/SharedFFI/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -312,6 +302,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = SimpleCounter/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -324,7 +315,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.simple_counter.SimpleCounter;
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
+				SWIFT_OBJC_BRIDGING_HEADER = ../shared/generated/swift/SharedFFI/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -468,6 +459,13 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		828D8D7B0DA5553163A5E024 /* XCLocalSwiftPackageReference "../shared/generated/swift/SharedTypes" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared/generated/swift/SharedTypes;
+		};
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		ADFA4530638891CDAA6FCC5D /* SharedTypes */ = {

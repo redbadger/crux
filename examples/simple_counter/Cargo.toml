@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "shared_types", "web-dioxus", "web-leptos", "web-yew"]
+members = ["shared", "web-dioxus", "web-leptos", "web-yew"]
 resolver = "1"
 
 [workspace.package]
@@ -17,3 +17,4 @@ serde = "1.0.213"
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }
+cargo-make = { version = "=0.37.14" }

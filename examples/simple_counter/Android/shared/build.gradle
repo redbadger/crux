@@ -30,7 +30,7 @@ android {
         jvmTarget = '20'
     }
     sourceSets {
-        main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
+        main.java.srcDirs += "${projectDir}/../../shared/generated/java"
     }
 }
 
@@ -87,27 +87,22 @@ afterEvaluate {
 }
 
 tasks.register('bindGen', Exec) {
-    def outDir = "${projectDir}/../../shared_types/generated/java"
-    workingDir "../../"
+    def outDir = "${projectDir}/../../shared/generated/java"
+    workingDir "../../shared"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine("cmd", "/c",
-                "cargo build -p shared && " + "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " + "--language kotlin " + "--out-dir " + outDir.replace('/', '\\'))
+                "cargo make uniffi-gen-java")
     } else {
         commandLine("sh", "-c",
-                """\
-                cargo build -p shared && \
-                target/debug/uniffi-bindgen generate shared/src/shared.udl \
-                --language kotlin \
-                --out-dir $outDir
-                """)
+                "cargo make uniffi-gen-java")
     }
 }
 
 tasks.register('typesGen', Exec) {
-    workingDir "../../"
+    workingDir "../../shared"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine("cmd", "/c", "cargo build -p shared_types")
+        commandLine("cmd", "/c", "cargo make generate-types")
     } else {
-        commandLine("sh", "-c", "cargo build -p shared_types")
+        commandLine("sh", "-c", "cargo make generate-types")
     }
 }
