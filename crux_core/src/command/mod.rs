@@ -1,14 +1,14 @@
 use std::future::Future;
 use std::sync::Arc;
-use std::task::{Context, Wake};
+use std::task::{Context, Poll, Wake, Waker};
 
 use crossbeam_channel::{Receiver, Sender}; // TODO: do we want to use capability channel here?
 use futures::future;
-use futures::task::ArcWake;
 use futures::FutureExt;
 use slab::Slab;
 
 use crate::capability::Operation;
+
 use crate::Request;
 
 #[derive(Clone, Copy, Debug)]
@@ -16,44 +16,33 @@ struct TaskId(usize);
 
 type BoxFuture = future::BoxFuture<'static, ()>;
 
-pub struct Command<Effect> {
+// Public API
+
+pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
+    events: Receiver<Event>,
     ready_queue: Receiver<TaskId>,
+    ready_sender: Sender<TaskId>,
     tasks: Slab<BoxFuture>,
 }
 
-pub struct CommandContext<Effect> {
-    effects: Sender<Effect>,
-}
-
-impl<Effect> CommandContext<Effect> {
-    fn notify_shell<Op>(&self, operation: Op)
-    where
-        Op: Operation,
-        Effect: From<Request<Op>>,
-    {
-        let request = Request::resolves_never(operation);
-
-        self.effects
-            .send(request.into())
-            .expect("Could not send notification, effect channel disconnected");
-    }
-}
-
-impl<Effect> Command<Effect>
+impl<Effect, Event> Command<Effect, Event>
 where
     Effect: Send + 'static,
+    Event: Send + 'static,
 {
     pub fn new<F, Fut>(create_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect>) -> Fut,
+        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
         let (effect_sender, effect_receiver) = crossbeam_channel::unbounded();
+        let (event_sender, event_receiver) = crossbeam_channel::unbounded();
         let (ready_sender, ready_receiver) = crossbeam_channel::unbounded();
 
         let context = CommandContext {
             effects: effect_sender,
+            events: event_sender,
         };
 
         let task = create_task(context).boxed();
@@ -66,18 +55,23 @@ where
 
         Command {
             effects: effect_receiver,
+            events: event_receiver,
             ready_queue: ready_receiver,
+            ready_sender,
             tasks,
         }
     }
 
     pub fn done() -> Self {
         let (_, effects) = crossbeam_channel::bounded(0);
-        let (_, ready_queue) = crossbeam_channel::bounded(0);
+        let (_, events) = crossbeam_channel::bounded(0);
+        let (ready_sender, ready_queue) = crossbeam_channel::bounded(0);
 
         Command {
             effects,
+            events,
             ready_queue,
+            ready_sender,
             tasks: Slab::new(),
         }
     }
@@ -90,6 +84,20 @@ where
         Command::new(|ctx| async move { ctx.notify_shell(operation) })
     }
 
+    pub fn request_from_shell<Op, E>(operation: Op, event: E) -> Self
+    where
+        Op: Operation,
+        Effect: From<Request<Op>>,
+        E: FnOnce(Op::Output) -> Event + Send + 'static,
+    {
+        Command::new(|ctx| async move {
+            let output = ctx.request_from_shell(operation).await;
+            let event = event(output);
+
+            ctx.send_event(event)
+        })
+    }
+
     pub fn is_done(&self) -> bool {
         self.tasks.is_empty()
     }
@@ -99,10 +107,142 @@ where
 
         self.effects.try_iter().collect()
     }
+
+    pub fn events(&mut self) -> Vec<Event> {
+        self.run_until_settled();
+
+        self.events.try_iter().collect()
+    }
 }
+
+// Context enabling futures to communicate with the Command
+
+pub struct CommandContext<Effect, Event> {
+    effects: Sender<Effect>,
+    events: Sender<Event>,
+}
+
+impl<Effect, Event> CommandContext<Effect, Event> {
+    fn notify_shell<Op>(&self, operation: Op)
+    where
+        Op: Operation,
+        Effect: From<Request<Op>>,
+    {
+        let request = Request::resolves_never(operation);
+
+        self.effects
+            .send(request.into())
+            .expect("Command could not send notification, effect channel disconnected");
+    }
+
+    fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
+    where
+        Op: Operation,
+        Effect: From<Request<Op>> + Send + 'static,
+    {
+        // Two way communication betwen the Request's resolve and the ShellRequest
+        let (output_sender, output_receiver) = crossbeam_channel::bounded(1);
+        let (waker_sender, waker_receiver) = crossbeam_channel::bounded(1);
+
+        let request = Request::resolves_once(operation, move |output| {
+            // The future sent its waker into the channel after dispatching the request.
+            // We take it out in order to signal the future is ready, because the output
+            // has been received and is ready to read from the output channel
+            let waker: Waker = waker_receiver.try_recv().expect(
+                "Shell request was resolved, but the sending future is not waiting for output",
+            );
+
+            output_sender
+                .send(output)
+                .expect("Request could not send output to ShellRequest future");
+
+            waker.wake();
+        });
+
+        let send_request = {
+            let effect = request.into();
+            let effects = self.effects.clone();
+            move || {
+                effects
+                    .send(effect)
+                    .expect("Command could not send request effect, effect channel disconnected")
+            }
+        };
+
+        ShellRequest::new(Box::new(send_request), waker_sender, output_receiver)
+    }
+
+    fn send_event(&self, event: Event) {
+        self.events
+            .send(event)
+            .expect("Command could not send event, event channel disconnected")
+    }
+}
+
+struct ShellRequest<T: Unpin + Send> {
+    state: ShellRequestState<T>,
+}
+
+impl<T: Unpin + Send> ShellRequest<T> {
+    fn new(
+        send_request: Box<dyn FnOnce() + Send + 'static>,
+        waker_sender: Sender<Waker>,
+        output_receiver: Receiver<T>,
+    ) -> Self {
+        Self {
+            state: ShellRequestState::NotSent(send_request, waker_sender, output_receiver),
+        }
+    }
+}
+
+enum ShellRequestState<T: Unpin + Send> {
+    NotSent(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
+    Sent(Receiver<T>),
+}
+
+impl<T: Unpin + Send> Future for ShellRequest<T> {
+    type Output = T;
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        match &mut self.state {
+            ShellRequestState::NotSent(send_request, waker_sender, output_receiver) => {
+                let waker = cx.waker().clone();
+
+                // Need to do memory trickery in order to call the send_request
+                let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
+                std::mem::swap(&mut swapped_send_request, send_request);
+
+                // Prepare the waker for the resolve callback
+                waker_sender
+                    .send(waker)
+                    .expect("ShellRequest future could not send waker to Request");
+
+                self.state = ShellRequestState::Sent(output_receiver.clone());
+
+                // Send the request
+                swapped_send_request();
+
+                Poll::Pending
+            }
+            ShellRequestState::Sent(receiver) => {
+                let value = receiver.try_recv().expect(
+                    "ShellRequest future could not receive the output value from the Request",
+                );
+
+                Poll::Ready(value)
+            }
+        }
+    }
+}
+
+// Async executor stuff
 
 struct CommandWaker {
     task_id: TaskId,
+    ready_queue: Sender<TaskId>,
 }
 
 impl Wake for CommandWaker {
@@ -111,8 +251,10 @@ impl Wake for CommandWaker {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        // TODO: actually notify the command,
-        // otherwise we're stuck on the first .await point
+        // If we can't send the id to the ready queue,
+        // There is no Command to poll the task again anyway,
+        // nothing to do.
+        let _ = self.ready_queue.send(self.task_id);
     }
 }
 
@@ -123,7 +265,7 @@ enum TaskState {
 }
 
 // Command is actually an async executor of sorts
-impl<Effect> Command<Effect> {
+impl<Effect, Event> Command<Effect, Event> {
     // Run all tasks until all of them are pending
     fn run_until_settled(&mut self) {
         while let Ok(task_id) = self.ready_queue.try_recv() {
@@ -148,8 +290,13 @@ impl<Effect> Command<Effect> {
         let Some(task) = self.tasks.get_mut(task_id.0) else {
             return TaskState::Missing;
         };
+        let ready_queue = self.ready_sender.clone();
 
-        let waker = Arc::new(CommandWaker { task_id }).into();
+        let waker = Arc::new(CommandWaker {
+            task_id,
+            ready_queue,
+        })
+        .into();
         let context = &mut Context::from_waker(&waker);
 
         match task.as_mut().poll(context) {
