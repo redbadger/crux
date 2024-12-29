@@ -215,7 +215,7 @@ use channel::Sender;
 /// ```
 pub trait Operation: serde::Serialize + Clone + PartialEq + Send + 'static {
     /// `Output` assigns the type this request results in.
-    type Output: serde::de::DeserializeOwned + Send + 'static;
+    type Output: serde::de::DeserializeOwned + Send + Unpin + 'static;
 }
 
 /// A type that can be used as a capability operation, but which will never be sent to the shell.
