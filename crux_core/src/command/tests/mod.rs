@@ -72,9 +72,53 @@ mod basic {
         let mut cmd = Command::request_from_shell(AnOperation, Event::Completed);
 
         let mut effects = cmd.effects();
+
+        assert!(cmd.events().is_empty());
+
         let Effect::AnEffect(mut request) = effects.remove(0);
 
         assert_eq!(request.operation, AnOperation);
+
+        request
+            .resolve(AnOperationOutput)
+            .expect("Resolve should succeed");
+
+        let mut events = cmd.events();
+
+        assert!(matches!(
+            events.remove(0),
+            Event::Completed(AnOperationOutput)
+        ));
+
+        assert!(cmd.is_done())
+    }
+
+    #[test]
+    fn stream_effect_can_be_resolved_multiple_times() {
+        let mut cmd = Command::stream_from_shell(AnOperation, Event::Completed);
+
+        let mut effects = cmd.effects();
+
+        assert!(cmd.events().is_empty());
+
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation);
+
+        request
+            .resolve(AnOperationOutput)
+            .expect("Resolve should succeed");
+
+        let mut events = cmd.events();
+
+        assert!(matches!(
+            events.remove(0),
+            Event::Completed(AnOperationOutput)
+        ));
+
+        assert!(cmd.effects().is_empty());
+        assert!(cmd.events().is_empty());
+        assert!(!cmd.is_done());
 
         request
             .resolve(AnOperationOutput)

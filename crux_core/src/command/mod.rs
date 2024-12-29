@@ -3,9 +3,9 @@ use std::ops::DerefMut as _;
 use std::sync::Arc;
 use std::task::{Context, Poll, Wake, Waker};
 
-use crossbeam_channel::{Receiver, Sender}; // TODO: do we want to use capability channel here?
-use futures::future;
-use futures::FutureExt;
+use crossbeam_channel::{Receiver, Sender, TryRecvError}; // TODO: do we want to use capability channel here?
+use futures::{future, Stream};
+use futures::{FutureExt, StreamExt as _};
 use slab::Slab;
 
 use crate::capability::Operation;
@@ -99,16 +99,32 @@ where
         })
     }
 
+    pub fn stream_from_shell<Op, E>(operation: Op, event: E) -> Self
+    where
+        Op: Operation,
+        Effect: From<Request<Op>>,
+        E: Fn(Op::Output) -> Event + Send + 'static,
+    {
+        Command::new(|ctx| async move {
+            let mut stream = ctx.stream_from_shell(operation);
+            while let Some(output) = stream.next().await {
+                ctx.send_event(event(output))
+            }
+        })
+    }
+
     pub fn is_done(&self) -> bool {
         self.tasks.is_empty()
     }
 
+    /// Run the effect state machine until it settles and collect all effects generated
     pub fn effects(&mut self) -> Vec<Effect> {
         self.run_until_settled();
 
         self.effects.try_iter().collect()
     }
 
+    /// Run the effect state machine until it settles and collect all events generated
     pub fn events(&mut self) -> Vec<Event> {
         self.run_until_settled();
 
@@ -118,6 +134,7 @@ where
 
 // Context enabling futures to communicate with the Command
 
+#[derive(Clone)]
 pub struct CommandContext<Effect, Event> {
     effects: Sender<Effect>,
     events: Sender<Event>,
@@ -173,6 +190,46 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         ShellRequest::ReadyToSend(Box::new(send_request), waker_sender, output_receiver)
     }
 
+    fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
+    where
+        Op: Operation,
+        Effect: From<Request<Op>> + Send + 'static,
+    {
+        // Two way communication betwen the Request's resolve and the ShellRequest
+        let (output_sender, output_receiver) = crossbeam_channel::unbounded();
+        let (waker_sender, waker_receiver) = crossbeam_channel::bounded(1);
+
+        let request = Request::resolves_many_times(operation, move |output| {
+            // The future sent its waker into the channel after dispatching the request.
+            // We take it out in order to signal the future is ready, because the output
+            // has been received and is ready to read from the output channel
+            let waker: Waker = waker_receiver.try_recv().expect(
+                "Shell request was resolved, but the sending future is not waiting for output",
+            );
+
+            output_sender
+                .send(output)
+                .expect("Request could not send output to ShellStream future");
+
+            waker.wake();
+
+            // TODO: revisit the error handling in here
+            Ok(())
+        });
+
+        let send_request = {
+            let effect = request.into();
+            let effects = self.effects.clone();
+            move || {
+                effects
+                    .send(effect)
+                    .expect("Command could not send stream effect, effect channel disconnected")
+            }
+        };
+
+        ShellStream::ReadyToSend(Box::new(send_request), waker_sender, output_receiver)
+    }
+
     fn send_event(&self, event: Event) {
         self.events
             .send(event)
@@ -218,6 +275,62 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
                 );
 
                 Poll::Ready(value)
+            }
+        }
+    }
+}
+
+enum ShellStream<T: Unpin + Send> {
+    ReadyToSend(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
+    Sent(Receiver<T>, Sender<Waker>),
+}
+
+impl<T: Unpin + Send> Stream for ShellStream<T> {
+    type Item = T;
+
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        match self.deref_mut() {
+            ShellStream::ReadyToSend(send_stream_request, waker_sender, output_receiver) => {
+                let waker = cx.waker().clone();
+
+                // Need to do memory trickery in order to call the send_request
+                let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
+                std::mem::swap(&mut swapped_send_request, send_stream_request);
+
+                // Prepare the waker for the resolve callback
+                waker_sender
+                    .send(waker)
+                    .expect("ShellStream future could not send waker to Request");
+
+                *self = ShellStream::Sent(output_receiver.clone(), waker_sender.clone());
+
+                // Send the request
+                swapped_send_request();
+
+                Poll::Pending
+            }
+            ShellStream::Sent(output_receiver, waker_sender) => {
+                match output_receiver.try_recv() {
+                    Ok(value) => {
+                        // Each subsequent resolve of the Request will look for a waker in the channel,
+                        // so we make sure there is one
+
+                        let waker = cx.waker().clone();
+                        waker_sender
+                            .send(waker)
+                            .expect("ShellStream future could not send waker to Request");
+
+                        Poll::Ready(Some(value))
+                    }
+                    // There are no values waiting, we return pending
+                    // so that the parent future knows to keep waiting
+                    Err(TryRecvError::Empty) => Poll::Pending,
+                    // Channel is closed, so the stream has ended
+                    Err(TryRecvError::Disconnected) => Poll::Ready(None),
+                }
             }
         }
     }
