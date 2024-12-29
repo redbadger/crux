@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::ops::DerefMut as _;
 use std::sync::Arc;
 use std::task::{Context, Poll, Wake, Waker};
 
@@ -169,7 +170,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             }
         };
 
-        ShellRequest::new(Box::new(send_request), waker_sender, output_receiver)
+        ShellRequest::ReadyToSend(Box::new(send_request), waker_sender, output_receiver)
     }
 
     fn send_event(&self, event: Event) {
@@ -179,24 +180,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     }
 }
 
-struct ShellRequest<T: Unpin + Send> {
-    state: ShellRequestState<T>,
-}
-
-impl<T: Unpin + Send> ShellRequest<T> {
-    fn new(
-        send_request: Box<dyn FnOnce() + Send + 'static>,
-        waker_sender: Sender<Waker>,
-        output_receiver: Receiver<T>,
-    ) -> Self {
-        Self {
-            state: ShellRequestState::NotSent(send_request, waker_sender, output_receiver),
-        }
-    }
-}
-
-enum ShellRequestState<T: Unpin + Send> {
-    NotSent(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
+enum ShellRequest<T: Unpin + Send> {
+    ReadyToSend(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
     Sent(Receiver<T>),
 }
 
@@ -207,8 +192,8 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        match &mut self.state {
-            ShellRequestState::NotSent(send_request, waker_sender, output_receiver) => {
+        match self.deref_mut() {
+            ShellRequest::ReadyToSend(send_request, waker_sender, output_receiver) => {
                 let waker = cx.waker().clone();
 
                 // Need to do memory trickery in order to call the send_request
@@ -220,14 +205,14 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
                     .send(waker)
                     .expect("ShellRequest future could not send waker to Request");
 
-                self.state = ShellRequestState::Sent(output_receiver.clone());
+                *self = ShellRequest::Sent(output_receiver.clone());
 
                 // Send the request
                 swapped_send_request();
 
                 Poll::Pending
             }
-            ShellRequestState::Sent(receiver) => {
+            ShellRequest::Sent(receiver) => {
                 let value = receiver.try_recv().expect(
                     "ShellRequest future could not receive the output value from the Request",
                 );
