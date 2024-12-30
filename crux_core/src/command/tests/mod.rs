@@ -1,4 +1,4 @@
-mod basic {
+mod effects {
     use serde::{Deserialize, Serialize};
 
     use super::super::Command;
@@ -6,7 +6,7 @@ mod basic {
 
     #[derive(Debug, PartialEq, Clone, Serialize)]
     struct AnOperation;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, PartialEq, Deserialize)]
     struct AnOperationOutput;
 
     impl Operation for AnOperation {
@@ -23,7 +23,9 @@ mod basic {
         }
     }
 
+    #[derive(Debug, PartialEq)]
     enum Event {
+        Start,
         Completed(AnOperationOutput),
     }
 
@@ -130,5 +132,14 @@ mod basic {
             events.remove(0),
             Event::Completed(AnOperationOutput)
         ));
+    }
+
+    #[test]
+    fn event_can_be_created() {
+        let mut cmd: Command<Effect, _> = Command::event(Event::Start);
+
+        let events = cmd.events();
+
+        assert_eq!(events[0], Event::Start);
     }
 }
