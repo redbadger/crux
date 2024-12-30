@@ -1,0 +1,435 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Capability APIs - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/guide/capability_apis.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="capability-apis"><a class="header" href="#capability-apis">Capability APIs</a></h1>
+<p>In the previous chapter, we looked at the purpose of Capabilities and using them
+in Crux apps. In this one, we'll go through building our own. It will be a
+simple one, but real enough to show the key parts.</p>
+<p>We'll extend the Counter example we've built in the
+<a href="hello_world.html">Hello World</a> chapter and make it <em>worse</em>. Intentionally. We'll
+add a random delay before we actually update the counter, just to annoy the user
+(please don't do that in your real apps). It is a silly example, but it will
+allow us to demonstrate a few things:</p>
+<ul>
+<li>Random numbers, current time and delay are also side-effects</li>
+<li>To introduce a random delay, we will need to chain two effects behind a single
+capability call</li>
+<li>The capability can also offer specific time delay API and we can show how
+capabilities with multiple <em>operations</em> work.</li>
+</ul>
+<p>In fact, let's start with that.</p>
+<h2 id="basic-delay-capability"><a class="header" href="#basic-delay-capability">Basic delay capability</a></h2>
+<p>The first job of our capability will be to pause for a given number of
+milliseconds and then send an event to the app.</p>
+<p>There's a number of types and traits we will need to implement to make the
+capability work with the rest of Crux, so let's quickly go over them before we
+start. We will need</p>
+<ul>
+<li>The capability itself, able to hold on to the context used to interact with
+Crux</li>
+<li>The payload type for the effect, holding the number of milliseconds requested</li>
+<li>Implementation of the <code>Capability</code> trait</li>
+</ul>
+<p>Let's start with the payload:</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct DelayOperation {
+    millis: usize
+}</code></pre>
+<p>The request is just a named type holding onto a number. It will need to cross
+the FFI boundary, which is why it needs to be serializable, cloneable, etc.</p>
+<p>We will need our request to implement the <code>Operation</code> trait, which links it with
+the type of the response we expect back. In our case we expect a response, but
+there is no data, so we'll use the unit type.</p>
+<pre><code class="language-rust noplayground">use crux_core::capability::Operation;
+
+impl Operation for DelayOperation {
+    type Output = ();
+}</code></pre>
+<p>Now we can implement the capability:</p>
+<pre><code class="language-rust noplayground">use crux_core::capability::CapabilityContext;
+use crux_core::macros::Capability;
+
+#[derive(Capability)]
+struct Delay&lt;Ev&gt; {
+    context: CapabilityContext&lt;DelayOperation, Ev&gt;,
+}
+
+impl&lt;Ev&gt; Delay&lt;Ev&gt;
+where
+    Ev: 'static,
+{
+    pub fn new(context: CapabilityContext&lt;DelayOperation, Ev&gt;) -&gt; Self {
+        Self { context }
+    }
+
+    pub fn milliseconds(&amp;self, millis: usize, event: Ev)
+    where
+        Ev: Send,
+    {
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            ctx.request_from_shell(DelayOperation { millis }).await;
+
+            ctx.update_app(event);
+        });
+    }
+}</code></pre>
+<p>There's a fair bit going on. The capability is generic over an event type <code>Ev</code>
+and holds on to a <code>CapabilityContext</code>. The constructor will be called by Crux
+when starting an application that uses this capability.</p>
+<p>The <code>milliseconds</code> method is our capability's public API. It takes the delay in
+milliseconds and the event to send back. In this case, we don't expect any
+payload to return, so we take the <code>Ev</code> type directly. We'll shortly see what an
+event with data looks like as well.</p>
+<p>The implementation of the method has a little bit of boilerplate to enable us to
+use <code>async</code> code. First we clone the context to be able to use it in the async
+block. Then we use the context to spawn an <code>async move</code> code block in which
+we'll be able to use <code>async</code>/<code>await</code>. This bit of code will be the same in every
+part of your capability that needs to interact with the Shell.</p>
+<p>You can see we use two APIs to orchestrate the interaction. First
+<code>request_from_shell</code> sends the delay operation we made earlier to the Shell.
+This call returns a future, which we can <code>.await</code>. Once done, we use the other
+API <code>update_app</code> to dispatch the event we were given. At the <code>.await</code>, the task
+will be suspended, Crux will pass the operation to the Shell wrapped in the
+<code>Effect</code> type we talked about in the last chapter and the Shell will use its
+native APIs to wait for the given duration, and eventually respond. This will
+wake our task up again and we can continue working.</p>
+<p>Finally, we need to implement the <code>Capability</code> trait. This is done for us by the
+<code>#[derive(Capability)]</code> macro, but it is worth looking at the generated code:</p>
+<pre><code class="language-rust noplayground">impl&lt;Ev&gt; Capability&lt;Ev&gt; for Delay&lt;Ev&gt; {
+    type Operation = DelayOperation;
+    type MappedSelf&lt;MappedEv&gt; = Delay&lt;MappedEv&gt;;
+
+    fn map_event&lt;F, NewEv&gt;(&amp;self, f: F) -&gt; Self::MappedSelf&lt;NewEv&gt;
+    where
+        F: Fn(NewEv) -&gt; Ev + Send + Sync + Copy + 'static,
+        Ev: 'static,
+        NewEv: 'static,
+    {
+        Delay::new(self.context.map_event(f))
+    }
+}</code></pre>
+<p>What on earth is that for, you ask? This allows you to derive an instance of the
+<code>Delay</code> capability from an existing one and adapt it to a different <code>Event</code>
+type. Yes, we know, don't read that sentence again. This will be useful to allow
+composing Crux apps from smaller Crux apps to automatically wrap the child
+events in the parent events.</p>
+<p>We will cover this in depth in the chapter about
+<a href="./composing.html">Composable applications</a>.</p>
+<h2 id="random-delays"><a class="header" href="#random-delays">Random delays</a></h2>
+<p>To make the example more contrived, but also more educational, we'll add the
+random delay ability. This will</p>
+<ul>
+<li>Request a random number within given limits from the shell</li>
+<li>Then request the shell to delay by that number</li>
+<li>Then update the application, passing the number along, in case it is needed</li>
+</ul>
+<p>First off, we need to add the new operation in. Here we have a choice, we can
+add a random delay operation, or we can add a random number generation operation
+and compose the two building blocks ourselves. We'll go for the second option
+because... well because this is an example.</p>
+<p>Since we have multiple operations now, let's make our operation an enum</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum DelayOperation {
+    GetRandom(usize, usize),
+    Delay(usize),
+}</code></pre>
+<p>We now also need an output type:</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum DelayOutput {
+    Random(usize),
+    TimeUp
+}</code></pre>
+<p>And that changes the <code>Operation</code> trait implementation:</p>
+<pre><code class="language-rust noplayground">impl Operation for DelayOperation {
+    type Output = DelayOutput;
+}</code></pre>
+<p>The updated implementation looks like the following:</p>
+<pre><code class="language-rust noplayground">impl&lt;Ev&gt; Delay&lt;Ev&gt;
+where
+    Ev: 'static,
+{
+    pub fn new(context: CapabilityContext&lt;DelayOperation, Ev&gt;) -&gt; Self {
+        Self { context }
+    }
+
+    pub fn milliseconds(&amp;self, millis: usize, event: Ev) {
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            ctx.request_from_shell(DelayOperation::Delay(millis)).await; // Changed
+
+            ctx.update_app(event);
+        });
+    }
+
+    pub fn random&lt;F&gt;(&amp;self, min: usize, max: usize, event: F)
+    where F: Fn(usize) -&gt; Ev
+    {
+        let ctx = self.context.clone();
+        self.context.spawn(async move {
+            let response = ctx.request_from_shell(DelayOperation::GetRandom(min, max)).await;
+
+            let DelayOutput::Random(millis) = response else {
+                panic!("Expected a random number")
+            };
+            ctx.request_from_shell(DelayOperation::Delay(millis)).await;
+
+            ctx.update_app(event(millis));
+        });
+    }
+}</code></pre>
+<p>In the new API, the event handling is a little different from the original.
+Because the event has a payload, we don't simply take an <code>Ev</code>, we need a
+function that returns <code>Ev</code>, if given the random number. Seems cumbersome but
+you'll see using it in the <code>update</code> function of our app is quite natural:</p>
+<pre><code class="language-rust noplayground">fn update(&amp;self, event: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+    match event {
+        //
+        // ... Some events omitted
+        //
+        Event::Increment =&gt; {
+            caps.delay.random(200, 800, Event::DoIncrement);
+        }
+        Event::DoIncrement(_millis) =&gt; {
+            // optimistic update
+            model.count.value += 1;
+            model.confirmed = Some(false);
+            caps.render.render();
+
+            // real update
+            let base = Url::parse(API_URL).unwrap();
+            let url = base.join("/inc").unwrap();
+            caps.http.post(url.as_str()).expect_json().send(Event::Set);
+        }
+        Event::Decrement =&gt; {
+            caps.delay.milliseconds(500, Event::DoIncrement);
+        }
+        Event::DoDecrement =&gt; {
+            // optimistic update
+            model.count.value -= 1;
+            model.confirmed = Some(false);
+            caps.render.render();
+
+            // real update
+            let base = Url::parse(API_URL).unwrap();
+            let url = base.join("/dec").unwrap();
+            caps.http.post(url.as_str()).expect_json().send(Event::Set);
+        }
+    }
+}</code></pre>
+<p>That is essentially it for the capabilities. You can check out the complete
+context API
+<a href="https://docs.rs/crux_core/latest/crux_core/capability/struct.CapabilityContext.html">in the docs</a>.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../guide/capabilities.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../guide/testing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../guide/capabilities.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../guide/testing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

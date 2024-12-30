@@ -1,0 +1,645 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Shared core and types - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/getting_started/core.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="shared-core-and-types"><a class="header" href="#shared-core-and-types">Shared core and types</a></h1>
+<p>These are the steps to set up the two crates forming the shared core – the core
+itself, and the shared types crate which does type generation for the foreign
+languages.</p>
+<div id="admonition-sharp-edge" class="admonition admonish-warning" role="note" aria-labelledby="admonition-sharp-edge-title">
+<div class="admonition-title">
+<div id="admonition-sharp-edge-title">
+<p>Sharp edge</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-sharp-edge"></a>
+</div>
+<div>
+<p>Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy &amp; paste from one of the <a href="https://github.com/redbadger/crux/tree/master/examples">example projects</a>.</p>
+</div>
+</div>
+<h2 id="install-the-tools"><a class="header" href="#install-the-tools">Install the tools</a></h2>
+<p>This is an example of a
+<a href="https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file"><code>rust-toolchain.toml</code></a>
+file, which you can add at the root of your repo. It should ensure that the
+correct rust channel and compile targets are installed automatically for you
+when you use any rust tooling within the repo.</p>
+<!--- includes fail when indented see https://github.com/rust-lang/mdBook/pull/1718 --->
+<pre><code class="language-toml">[toolchain]
+channel = "stable"
+components = ["rustfmt", "rustc-dev"]
+targets = [
+  "aarch64-apple-darwin",
+  "aarch64-apple-ios",
+  "aarch64-apple-ios-sim",
+  "aarch64-linux-android",
+  "wasm32-unknown-unknown",
+  "x86_64-apple-ios"
+]
+profile = "minimal"
+</code></pre>
+<h2 id="create-the-core-crate"><a class="header" href="#create-the-core-crate">Create the core crate</a></h2>
+<h3 id="the-shared-library"><a class="header" href="#the-shared-library">The shared library</a></h3>
+<p>The first library to create is the one that will be shared across all platforms,
+containing the <em>behavior</em> of the app. You can call it whatever you like, but we
+have chosen the name <code>shared</code> here. You can create the shared rust library, like
+this:</p>
+<pre><code class="language-sh">cargo new --lib shared
+</code></pre>
+<h3 id="the-workspace-and-library-manifests"><a class="header" href="#the-workspace-and-library-manifests">The workspace and library manifests</a></h3>
+<p>We'll be adding a bunch of other folders into the monorepo, so we are choosing
+to use Cargo Workspaces. Edit the workspace <code>/Cargo.toml</code> file, at the monorepo
+root, to add the new library to our workspace. It should look something like
+this:</p>
+<pre><code class="language-toml">[workspace]
+members = ["shared"]
+resolver = "1"
+
+[workspace.package]
+authors = ["Red Badger Consulting Limited"]
+edition = "2021"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
+rust-version = "1.66"
+
+[workspace.dependencies]
+anyhow = "1.0.86"
+crux_core = "0.8"
+serde = "1.0.203"
+</code></pre>
+<p>The library's manifest, at <code>/shared/Cargo.toml</code>, should look something like the
+following, but there are a few things to note:</p>
+<ul>
+<li>the <code>crate-type</code>
+<ul>
+<li><code>lib</code> is the default rust library when linking into a rust binary, e.g. in
+the <code>web-yew</code>, or <code>cli</code>, variant</li>
+<li><code>staticlib</code> is a static library (<code>libshared.a</code>) for including in the Swift
+iOS app variant</li>
+<li><code>cdylib</code> is a C-ABI dynamic library (<code>libshared.so</code>) for use with JNA when
+included in the Kotlin Android app variant</li>
+</ul>
+</li>
+<li>we need to declare a feature called <code>typegen</code> that depends on the feature with
+the same name in the <code>crux_core</code> crate. This is used by this crate's sister
+library (often called <code>shared_types</code>) that will generate types for use across
+the FFI boundary (see the section below on generating shared types).</li>
+<li>the uniffi dependencies and <code>uniffi-bindgen</code> target should make sense after
+you read the next section</li>
+</ul>
+<pre><code class="language-toml">[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.66"
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+name = "shared"
+
+[features]
+typegen = ["crux_core/typegen"]
+
+[dependencies]
+crux_core.workspace = true
+serde = { workspace = true, features = ["derive"] }
+lazy_static = "1.5.0"
+uniffi = "0.28.2"
+wasm-bindgen = "0.2.95"
+
+[target.uniffi-bindgen.dependencies]
+uniffi = { version = "0.28.2", features = ["cli"] }
+
+[build-dependencies]
+uniffi = { version = "0.28.2", features = ["build"] }
+</code></pre>
+<h3 id="ffi-bindings"><a class="header" href="#ffi-bindings">FFI bindings</a></h3>
+<p>Crux uses Mozilla's <a href="https://mozilla.github.io/uniffi-rs/">Uniffi</a> to generate
+the FFI bindings for iOS and Android.</p>
+<h4 id="generating-the-uniffi-bindgen-cli-tool"><a class="header" href="#generating-the-uniffi-bindgen-cli-tool">Generating the <code>uniffi-bindgen</code> CLI tool</a></h4>
+<p>Since version <code>0.23.0</code> of Uniffi, we need to also generate the
+binary that generates these bindings. This avoids the possibility of getting a
+version mismatch between a separately installed binary and the crate's Uniffi
+version. You can read more about it
+<a href="https://mozilla.github.io/uniffi-rs/tutorial/foreign_language_bindings.html">here</a>.</p>
+<p>Generating the binary is simple, we just add the following to our crate, in a
+file called <code>/shared/src/bin/uniffi-bindgen.rs</code>.</p>
+<pre><code class="language-rust ignore">fn main() {
+    uniffi::uniffi_bindgen_main()
+}</code></pre>
+<p>And then we can build it with cargo.</p>
+<pre><code class="language-sh">cargo run -p shared --bin uniffi-bindgen
+
+# or
+
+cargo build
+./target/debug/uniffi-bindgen
+</code></pre>
+<p>The <code>uniffi-bindgen</code> executable will be used during the build in XCode and in
+Android Studio (see the following pages).</p>
+<h4 id="the-interface-definitions"><a class="header" href="#the-interface-definitions">The interface definitions</a></h4>
+<p>We will need an interface definition file for the FFI bindings. Uniffi has its
+own file format (similar to WebIDL) that has a <code>.udl</code> extension. You can create
+one at <code>/shared/src/shared.udl</code>, like this:</p>
+<pre><code class="language-txt">namespace shared {
+  bytes process_event([ByRef] bytes msg);
+  bytes handle_response(u32 id, [ByRef] bytes res);
+  bytes view();
+};
+</code></pre>
+<p>There are also a few additional parameters to tell Uniffi how to create bindings
+for Kotlin and Swift. They live in the file <code>/shared/uniffi.toml</code>, like this
+(feel free to adjust accordingly):</p>
+<pre><code class="language-toml">[bindings.kotlin]
+package_name = "com.example.simple_counter.shared"
+cdylib_name = "shared"
+
+[bindings.swift]
+cdylib_name = "shared_ffi"
+omit_argument_labels = true
+</code></pre>
+<p>Finally, we need a <code>build.rs</code> file in the root of the crate
+(<code>/shared/build.rs</code>), to generate the bindings:</p>
+<pre><code class="language-rust no_run noplayground">fn main() {
+    uniffi::generate_scaffolding("./src/shared.udl").unwrap();
+}</code></pre>
+<h3 id="scaffolding"><a class="header" href="#scaffolding">Scaffolding</a></h3>
+<p>Soon we will have macros and/or code-gen to help with this, but for now, we need
+some scaffolding in <code>/shared/src/lib.rs</code>. You'll notice that we are re-exporting
+the <code>Request</code> type and the capabilities we want to use in our native Shells, as
+well as our public types from the shared library.</p>
+<pre><code class="language-rust no_run noplayground">pub mod app;
+
+use lazy_static::lazy_static;
+use wasm_bindgen::prelude::wasm_bindgen;
+
+pub use crux_core::{bridge::Bridge, Core, Request};
+
+pub use app::*;
+
+// TODO hide this plumbing
+
+uniffi::include_scaffolding!("shared");
+
+lazy_static! {
+    static ref CORE: Bridge&lt;Effect, Counter&gt; = Bridge::new(Core::new());
+}
+
+#[wasm_bindgen]
+pub fn process_event(data: &amp;[u8]) -&gt; Vec&lt;u8&gt; {
+    CORE.process_event(data)
+}
+
+#[wasm_bindgen]
+pub fn handle_response(id: u32, data: &amp;[u8]) -&gt; Vec&lt;u8&gt; {
+    CORE.handle_response(id, data)
+}
+
+#[wasm_bindgen]
+pub fn view() -&gt; Vec&lt;u8&gt; {
+    CORE.view()
+}</code></pre>
+<h3 id="the-app"><a class="header" href="#the-app">The app</a></h3>
+<p>Now we are in a position to create a basic app in <code>/shared/src/app.rs</code>. This is
+from the
+<a href="https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/counter.rs">simple Counter example</a>
+(which also has tests, although we're not showing them here):</p>
+<pre><code class="language-rust no_run noplayground">use crux_core::{render::Render, App};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum Event {
+    Increment,
+    Decrement,
+    Reset,
+}
+
+#[derive(Default)]
+pub struct Model {
+    count: isize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct ViewModel {
+    pub count: String,
+}
+
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(crux_core::macros::Effect)]
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+}
+
+#[derive(Default)]
+pub struct Counter;
+
+impl App for Counter {
+    type Event = Event;
+    type Model = Model;
+    type ViewModel = ViewModel;
+    type Capabilities = Capabilities;
+
+    fn update(&amp;self, event: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+        match event {
+            Event::Increment =&gt; model.count += 1,
+            Event::Decrement =&gt; model.count -= 1,
+            Event::Reset =&gt; model.count = 0,
+        };
+
+        caps.render.render();
+    }
+
+    fn view(&amp;self, model: &amp;Self::Model) -&gt; Self::ViewModel {
+        ViewModel {
+            count: format!("Count is: {}", model.count),
+        }
+    }
+}</code></pre>
+<p>Make sure everything builds OK</p>
+<pre><code class="language-sh">cargo build
+</code></pre>
+<h2 id="create-the-shared-types-crate"><a class="header" href="#create-the-shared-types-crate">Create the shared types crate</a></h2>
+<p>This crate serves as the container for type generation for the foreign
+languages.</p>
+<p>Work is being done to remove the need for this crate, but for now, it is needed
+in order to drive the generation of the types that cross the FFI boundary.</p>
+<ul>
+<li>
+<p>Copy over the
+<a href="https://github.com/redbadger/crux/tree/master/examples/simple_counter/shared_types">shared_types</a>
+folder from the simple_counter example.</p>
+</li>
+<li>
+<p>Add the shared types crate to <code>workspace.members</code> in the <code>/Cargo.toml</code> file at the
+monorepo root.</p>
+</li>
+<li>
+<p>Edit the <code>build.rs</code> file and make sure that your app type is registered. In
+our example, the app type is <code>Counter</code>, so make sure you include this
+statement in your <code>build.rs</code></p>
+</li>
+</ul>
+<pre><code class="language-rust ignore"> gen.register_app::&lt;Counter&gt;()?;</code></pre>
+<p>The <code>build.rs</code> file should now look like this:</p>
+<pre><code class="language-rust no_run noplayground">use crux_core::typegen::TypeGen;
+use shared::Counter;
+use std::path::PathBuf;
+
+fn main() -&gt; anyhow::Result&lt;()&gt; {
+    println!("cargo:rerun-if-changed=../shared");
+
+    let mut gen = TypeGen::new();
+
+    gen.register_app::&lt;Counter&gt;()?;
+
+    let output_root = PathBuf::from("./generated");
+
+    gen.swift("SharedTypes", output_root.join("swift"))?;
+
+    gen.java(
+        "com.example.simple_counter.shared_types",
+        output_root.join("java"),
+    )?;
+
+    gen.typescript("shared_types", output_root.join("typescript"))?;
+
+    Ok(())
+}</code></pre>
+<p>If you are using the latest versions of the
+<code>crux_http</code> (&gt;= <code>v0.10.0</code>), <code>crux_kv</code> (&gt;= <code>v0.5.0</code>) or <code>crux_time</code> (&gt;= <code>v0.5.0</code>)
+capabilities, you will need to add a build dependency to the capability crate,
+with the <code>typegen</code> feature enabled — so your <code>Cargo.toml</code> file may end up looking something like this
+(from the <a href="https://github.com/redbadger/crux/tree/master/examples/cat_facts"><code>cat_facts</code></a> example):</p>
+<pre><code class="language-toml">[package]
+name = "shared_types"
+version = "0.1.0"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[build-dependencies]
+anyhow.workspace = true
+crux_core = { workspace = true, features = ["typegen"] }
+crux_http = { workspace = true, features = ["typegen"] }
+crux_kv = { workspace = true, features = ["typegen"] }
+crux_time = { workspace = true, features = ["typegen"] }
+shared = { path = "../shared", features = ["typegen"] }
+</code></pre>
+<div id="admonition-tip" class="admonition admonish-tip" role="note" aria-labelledby="admonition-tip-title">
+<div class="admonition-title">
+<div id="admonition-tip-title">
+<p>Tip</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-tip"></a>
+</div>
+<div>
+<p>Due to a current limitation with the reflection library,
+you may need to manually register nested enum types in your <code>build.rs</code> file.
+(see <a href="https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features">https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features</a>)</p>
+<p><em>Note, you don't have to do this for the latest versions of the
+<code>crux_http</code> (&gt;= <code>v0.10.0</code>), <code>crux_kv</code> (&gt;= <code>v0.5.0</code>) or <code>crux_time</code> (&gt;= <code>v0.5.0</code>)
+capabilities, which now do this registration for you — although you will need to add
+a build dependency to the capability crate, with the <code>typegen</code> feature enabled.</em></p>
+<p>If you <em>do</em> end up needing to register a type manually (you should get a helpful error to tell you this),
+you can use the <code>register_type</code> method (e.g. <code>gen.register_type::&lt;TextCursor&gt;()?;</code>) as
+shown in this
+<a href="https://github.com/redbadger/crux/blob/master/examples/notes/shared_types/build.rs"><code>build.rs</code></a>
+file from the <code>shared_types</code> crate of the
+<a href="https://github.com/redbadger/crux/tree/master/examples/notes">notes example</a>:</p>
+<pre><code class="language-rust ignore">use crux_core::typegen::TypeGen;
+use shared::{NoteEditor, TextCursor};
+use std::path::PathBuf;
+
+fn main() -&gt; anyhow::Result&lt;()&gt; {
+    println!("cargo:rerun-if-changed=../shared");
+
+    let mut gen = TypeGen::new();
+
+    gen.register_app::&lt;NoteEditor&gt;()?;
+
+    // Note: currently required as we can't find enums inside enums, see:
+    // https://github.com/zefchain/serde-reflection/tree/main/serde-reflection#supported-features
+    gen.register_type::&lt;TextCursor&gt;()?;
+
+    let output_root = PathBuf::from("./generated");
+
+    gen.swift("SharedTypes", output_root.join("swift"))?;
+
+    // TODO these are for later
+    //
+    // gen.java("com.example.counter.shared_types", output_root.join("java"))?;
+
+    gen.typescript("shared_types", output_root.join("typescript"))?;
+
+    Ok(())
+}</code></pre>
+</div>
+</div>
+<h3 id="building-your-app"><a class="header" href="#building-your-app">Building your app</a></h3>
+<p>Make sure everything builds and foreign types get generated into the
+<code>generated</code> folder.</p>
+<p>(If you're generating TypeScript, you may need <code>pnpm</code> to be installed and in your <code>$PATH</code>.)</p>
+<pre><code class="language-sh">cargo build
+</code></pre>
+<div id="admonition-tip-1" class="admonition admonish-tip" role="note" aria-labelledby="admonition-tip-1-title">
+<div class="admonition-title">
+<div id="admonition-tip-1-title">
+<p>Tip</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-tip-1"></a>
+</div>
+<div>
+<p>If you have problems building, make sure your <code>Capabilities</code> struct implements the <code>Export</code> trait.
+There is a derive macro that can do this for you, e.g.:</p>
+<pre><code class="language-rust ignore">#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(crux_core::macros::Effect)]
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+    http: Http&lt;Event&gt;,
+}</code></pre>
+<p>The <code>Export</code> and <code>Effect</code> derive macros can be configured with the <code>effect</code> attribute if you need to specify a different name for the Effect type e.g.:</p>
+<pre><code class="language-rust ignore">#[cfg_attr(feature = "typegen", derive(Export))]
+#[derive(Effect)]
+#[effect(name = "MyEffect")]
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+    pub_sub: PubSub&lt;Event&gt;,
+}</code></pre>
+<p>Additionally, if you are using a Capability that does not need to be exported to the foreign language, you can use the <code>#[effect(skip)]</code> attribute to skip exporting it, e.g.:</p>
+<pre><code class="language-rust ignore">#[cfg_attr(feature = "typegen", derive(Export))]
+#[derive(Effect)]
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+    #[effect(skip)]
+    compose: Compose&lt;Event&gt;,
+}</code></pre>
+</div>
+</div>
+<div id="admonition-success" class="admonition admonish-success" role="note" aria-labelledby="admonition-success-title">
+<div class="admonition-title">
+<div id="admonition-success-title">
+<p>Success</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-success"></a>
+</div>
+<div>
+<p>You should now be ready to set up <a href="iOS/index.html">iOS</a>, <a href="Android/index.html">Android</a>, or <a href="web/index.html">web</a> specific builds.</p>
+</div>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../motivation.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../getting_started/iOS/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../motivation.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../getting_started/iOS/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

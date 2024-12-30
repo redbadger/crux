@@ -1,0 +1,517 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Testing - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/guide/testing.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="a-guide-to-testing-crux-apps"><a class="header" href="#a-guide-to-testing-crux-apps">A guide to testing Crux apps</a></h1>
+<h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
+<p>One of the most compelling consequences of the Crux architecture is that it
+becomes trivial to comprehensively test your application. This is because the
+core is pure and therefore completely deterministic — all the side effects are
+pushed to the shell.</p>
+<p>It's straightforward to write an exhaustive set of unit tests that give you
+complete confidence in the correctness of your application code — you can test
+the behavior of your application independently of platform-specific UI and API
+calls.</p>
+<p>There is no need to mock/stub anything, and there is no need to write
+integration tests.</p>
+<p>Not only are the unit tests easy to write, but they run extremely quickly, and
+can be run in parallel.</p>
+<p>For example, the
+<a href="https://github.com/redbadger/crux/tree/master/examples/notes">Notes example app</a>
+contains complex logic related to collaborative text-editing using Conflict-free
+Replicated Data Types (CRDTs). The test suite consists of 25 tests that give us
+high coverage and high confidence of correctness. Many of the tests include
+instantiating two instances (alice and bob) and checking that, even during
+complex edits, the synchronization between them works correctly.</p>
+<p>This test, for example, ensures that when Alice and Bob both insert text at the
+same time, they both end up with the same result. It runs in 4 milliseconds.</p>
+<pre><code class="language-rust ignore no_run">#[test]
+fn two_way_sync() {
+    let (mut alice, mut bob) = make_alice_and_bob();
+
+    alice.update(Event::Insert("world".to_string()));
+    let edits = alice.edits.drain(0..).collect::&lt;Vec&lt;_&gt;&gt;();
+
+    bob.send_edits(edits.as_ref());
+
+    // Alice's inserts should go in front of Bob's cursor
+    // so we break the ambiguity of same cursor position
+    // as quickly as possible
+    bob.update(Event::Insert("Hello ".to_string()));
+    let edits = bob.edits.drain(0..).collect::&lt;Vec&lt;_&gt;&gt;();
+
+    alice.send_edits(edits.as_ref());
+
+    let alice_view = alice.view();
+    let bob_view = bob.view();
+
+    assert_eq!(alice_view.text, "Hello world".to_string());
+    assert_eq!(alice_view.text, bob_view.text);
+}</code></pre>
+<p>And the full suite of 25 tests runs in 16 milliseconds.</p>
+<pre><code class="language-txt">cargo nextest run --release -p shared
+    Finished release [optimized] target(s) in 0.07s
+    Starting 25 tests across 2 binaries
+        PASS [   0.005s] shared app::editing_tests::handles_emoji
+        PASS [   0.005s] shared app::editing_tests::removes_character_before_cursor
+        PASS [   0.005s] shared app::editing_tests::moves_cursor
+        PASS [   0.006s] shared app::editing_tests::inserts_text_at_cursor_and_renders
+        PASS [   0.005s] shared app::editing_tests::removes_selection_on_backspace
+        PASS [   0.005s] shared app::editing_tests::removes_character_after_cursor
+        PASS [   0.005s] shared app::editing_tests::removes_selection_on_delete
+        PASS [   0.007s] shared app::editing_tests::changes_selection
+        PASS [   0.006s] shared app::editing_tests::renders_text_and_cursor
+        PASS [   0.006s] shared app::editing_tests::replaces_empty_range_and_renders
+        PASS [   0.005s] shared app::editing_tests::replaces_range_and_renders
+        PASS [   0.005s] shared app::note::test::splices_text
+        PASS [   0.005s] shared app::editing_tests::replaces_selection_and_renders
+        PASS [   0.004s] shared app::save_load_tests::opens_a_document
+        PASS [   0.005s] shared app::note::test::inserts_text
+        PASS [   0.005s] shared app::save_load_tests::saves_document_when_typing_stops
+        PASS [   0.005s] shared app::save_load_tests::starts_a_timer_after_an_edit
+        PASS [   0.006s] shared app::save_load_tests::creates_a_document_if_it_cant_open_one
+        PASS [   0.005s] shared app::sync_tests::concurrent_clean_edits
+        PASS [   0.005s] shared app::sync_tests::concurrent_conflicting_edits
+        PASS [   0.005s] shared app::sync_tests::one_way_sync
+        PASS [   0.005s] shared app::sync_tests::remote_delete_moves_cursor
+        PASS [   0.005s] shared app::sync_tests::remote_insert_behind_cursor
+        PASS [   0.004s] shared app::sync_tests::two_way_sync
+        PASS [   0.005s] shared app::sync_tests::receiving_own_edits
+------------
+     Summary [   0.016s] 25 tests run: 25 passed, 0 skipped
+</code></pre>
+<h2 id="writing-a-simple-test"><a class="header" href="#writing-a-simple-test">Writing a simple test</a></h2>
+<p>Crux provides a simple test harness that we can use to write unit tests for our
+application code. Strictly speaking it's not needed, but it makes it easier to
+avoid boilerplate and to write tests that are easy to read and understand.</p>
+<p>Let's take a
+<a href="https://github.com/redbadger/crux/blob/master/examples/notes/shared/src/app.rs#L379">really simple test</a>
+from the
+<a href="https://github.com/redbadger/crux/tree/master/examples/notes">Notes example app</a>
+and walk through it step by step — the test replaces some selected text in a
+document and checks that the correct text is rendered.</p>
+<p>The first thing to do is create an instance of the <code>AppTester</code> test harness,
+which runs our app (<code>NoteEditor</code>) and makes it easy to analyze the <code>Event</code>s and
+<code>Effect</code>s that are generated.</p>
+<pre><code class="language-rust ignore no_run">let app = AppTester::&lt;NoteEditor, _&gt;::default();</code></pre>
+<p>The <code>Model</code> is normally private to the app (<code>NoteEditor</code>), but <code>AppTester</code>
+allows us to set it up for our test. In this case the document contains the
+string <code>"hello"</code> with the last two characters selected.</p>
+<pre><code class="language-rust ignore no_run">let mut model = Model {
+    note: Note::with_text("hello"),
+    cursor: TextCursor::Selection(3..5),
+    ..Default::default()
+};</code></pre>
+<p>Let's insert some text under the selection range. We simply create an <code>Event</code>
+that captures the user's action and pass it into the app's <code>update()</code> method,
+along with the Model we just created (which we will be able to inspect
+afterwards).</p>
+<pre><code class="language-rust ignore no_run">let event = Event::Insert("ter skelter".to_string());
+let update = app.update(event, &amp;mut model);</code></pre>
+<p>We can check that the shell was asked to render by using the
+<a href="https://docs.rs/crux_core/latest/crux_core/macro.assert_effect.html"><code>assert_effect!</code></a>
+macro, which panics if none of the effects generated by the update matches the
+specified pattern.</p>
+<pre><code class="language-rust ignore no_run">assert_effect!(update, Effect::Render(_));</code></pre>
+<p>Finally we can ask the app for its <code>ViewModel</code> and use it to check that the text
+was inserted correctly and that the cursor position was updated.</p>
+<pre><code class="language-rust ignore no_run">let view = app.view(&amp;model);
+
+assert_eq!(view.text, "helter skelter".to_string());
+assert_eq!(view.cursor, TextCursor::Position(14));</code></pre>
+<h2 id="writing-a-more-complicated-test"><a class="header" href="#writing-a-more-complicated-test">Writing a more complicated test</a></h2>
+<p>Now let's take a
+<a href="https://github.com/redbadger/crux/blob/master/examples/notes/shared/src/app.rs#L630">more complicated test</a>
+and walk through that. This test checks that a "save" timer is restarted each
+time the user edits the document (after a second of no activity the document is
+stored). Note that the <em>actual</em> timer is run by the shell (because it is a side
+effect, which would make it really tricky to test) — but all we need to do is
+check that the behavior of the timer is correct (i.e. started, finished and
+cancelled correctly).</p>
+<p>Again, the first thing we need to do is create an instance of the <code>AppTester</code>
+test harness, which runs our app (<code>NoteEditor</code>) and makes it easy to analyze the
+<code>Event</code>s and <code>Effect</code>s that are generated.</p>
+<pre><code class="language-rust ignore no_run">let app = AppTester::&lt;NoteEditor, _&gt;::default();</code></pre>
+<p>We again need to set up a <code>Model</code> that we can pass to the <code>update()</code> method.</p>
+<pre><code class="language-rust ignore no_run">let mut model = Model {
+    note: Note::with_text("hello"),
+    cursor: TextCursor::Selection(2..4),
+    ..Default::default()
+};</code></pre>
+<p>We send an <code>Event</code> (e.g. raised in response to a user action) into our app in
+order to check that it does the right thing.</p>
+<p>Here we send an Insert event, which should start a timer. We filter out just the
+<code>Effect</code>s that were created by the <code>Timer</code> Capability, mapping them to their
+inner <code>Request&lt;TimerOperation&gt;</code> type.</p>
+<pre><code class="language-rust ignore no_run">let requests = &amp;mut app
+    .update(Event::Insert("something".to_string()), &amp;mut model)
+    .into_effects()
+    .filter_map(Effect::into_timer);</code></pre>
+<p>There are a few things to discuss here. Firstly, the <code>update()</code> method returns
+an <code>Update</code> struct, which contains vectors of <code>Event</code>s and <code>Effect</code>s. We are
+only interested in the <code>Effect</code>s, so we call <code>into_effects()</code> to consume them as
+an <code>Iterator</code> (there are also <code>effects()</code> and <code>effects_mut()</code> methods that allow
+us to borrow the <code>Effect</code>s instead of consuming them, but we don't need that
+here). Secondly, we use the <code>filter_map()</code> method to filter out just the
+<code>Effect</code>s that were created by the <code>Timer</code> Capability, using
+<code>Effect::into_timer</code> to map the <code>Effect</code>s to their inner
+<code>Request&lt;TimerOperation&gt;</code>.</p>
+<p>The <a href="https://github.com/redbadger/crux/tree/master/crux_macros"><code>Effect</code></a> derive
+macro generates filters and maps for each capability that we are using. So if
+our <code>Capabilities</code> struct looked like this...</p>
+<pre><code class="language-rust ignore no_run">
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(Effect)]
+pub struct Capabilities {
+    timer: Timer&lt;Event&gt;,
+    render: Render&lt;Event&gt;,
+    pub_sub: PubSub&lt;Event&gt;,
+    key_value: KeyValue&lt;Event&gt;,
+}</code></pre>
+<p>... we would get the following filters and filter_maps:</p>
+<pre><code class="language-rust ignore no_run">// filters
+Effect::is_timer(&amp;self) -&gt; bool
+Effect::is_render(&amp;self) -&gt; bool
+Effect::is_pub_sub(&amp;self) -&gt; bool
+Effect::is_key_value(&amp;self) -&gt; bool
+// filter_maps
+Effect::into_timer(self) -&gt; Option&lt;Request&lt;TimerOperation&gt;&gt;
+Effect::into_render(self) -&gt; Option&lt;Request&lt;RenderOperation&gt;&gt;
+Effect::into_pub_sub(self) -&gt; Option&lt;Request&lt;PubSubOperation&gt;&gt;
+Effect::into_key_value(self) -&gt; Option&lt;Request&lt;KeyValueOperation&gt;&gt;</code></pre>
+<p>We want to check that the first request is a <code>Start</code> operation, and that the
+timer is set to fire in 1000 milliseconds. The macro
+<a href="https://docs.rs/assert_let_bind/0.1.1/assert_let_bind/"><code>assert_let!()</code></a> does a
+pattern match for us and assigns the <code>id</code> to a local variable called <code>first_id</code>,
+which we'll use later. Finally, we don't expect any more timer requests to have
+been generated.</p>
+<pre><code class="language-rust ignore no_run">// this is mutable so we can resolve it later
+let request = &amp;mut requests.next().unwrap();
+assert_let!(
+    TimerOperation::Start {
+        id: first_id,
+        millis: 1000
+    },
+    request.operation.clone()
+);
+assert!(requests.next().is_none());</code></pre>
+<div id="admonition-note" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-title">
+<div class="admonition-title">
+<div id="admonition-note-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note"></a>
+</div>
+<div>
+<p>There are other ways to analyze effects from the update.</p>
+<p>You can take all the effects that match a predicate out of the update:</p>
+<pre><code class="language-rust ignore no_run">let requests = update.take_effects(|effect| effect.is_timer());
+// or
+let requests = update.take_effects(Effect::is_timer);</code></pre>
+<p>Or you can partition the effects into those that match the predicate and those
+that don't:</p>
+<pre><code class="language-rust ignore no_run">// split the effects into HTTP requests and renders
+let (timer_requests, other_requests) = update.take_effects_partitioned_by(Effect::is_timer);</code></pre>
+<p>There are also <code>expect_*</code> methods that allow you to assert and return a certain
+type of effect:</p>
+<pre><code class="language-rust ignore no_run">// this is mutable so we can resolve it later
+let request = &amp;mut timer_requests.pop_front().unwrap().expect_timer();
+assert_eq!(
+    request.operation,
+    TimerOperation::Start { id: 1, millis: 1000 }
+);
+assert!(timer_requests.is_empty());</code></pre>
+</div>
+</div>
+<p>At this point the shell would start the timer (this is something the core can't
+do as it is a side effect) and so we need to tell the app that it was created.
+We do this by "resolving" the request.</p>
+<p>Remember that <code>Request</code>s either resolve zero times (fire-and-forget, e.g. for
+<code>Render</code>), once (request/response, e.g. for <code>Http</code>), or many times (for streams,
+e.g. <code>Sse</code> — Server-Sent Events). The <code>Timer</code> capability falls into the
+"request/response" category, so we need to resolve the <code>Start</code> request with a
+<code>Created</code> response. This tells the app that the timer has been started, and
+allows it to cancel the timer if necessary.</p>
+<p>Note that resolving a request could call the app's <code>update()</code> method resulting
+in more <code>Event</code>s being generated, which we need to feed back into the app.</p>
+<pre><code class="language-rust ignore no_run">let update = app.resolve(request, TimerOutput::Created { id: first_id }).unwrap();
+for event in update.events {
+    let _ = app.update(event, &amp;mut model);
+}
+
+// or, if this event "settles" the app
+let _updated = app.resolve_to_event_then_update(
+    request,
+    TimerOutput::Created { id: first_id },
+    &amp;mut model
+);</code></pre>
+<p>Before the timer fires, we'll insert another character, which should cancel the
+existing timer and start a new one.</p>
+<pre><code class="language-rust ignore no_run">let mut requests = app
+    .update(Event::Replace(1, 2, "a".to_string()), &amp;mut model)
+    .into_effects()
+    .filter_map(Effect::into_timer);
+
+let cancel_request = requests.next().unwrap();
+assert_let!(
+    TimerOperation::Cancel { id: cancel_id },
+    cancel_request.operation
+);
+assert_eq!(cancel_id, first_id);
+
+let start_request = &amp;mut requests.next().unwrap(); // this is mutable so we can resolve it later
+assert_let!(
+    TimerOperation::Start {
+        id: second_id,
+        millis: 1000
+    },
+    start_request.operation.clone()
+);
+assert_ne!(first_id, second_id);
+
+assert!(requests.next().is_none());</code></pre>
+<p>Now we need to tell the app that the second timer was created.</p>
+<pre><code class="language-rust ignore no_run">let update = app
+    .resolve(start_request, TimerOutput::Created { id: second_id })
+    .unwrap();
+for event in update.events {
+    app.update(event, &amp;mut model);
+}</code></pre>
+<p>In the real world, time passes and the timer fires, but all we have to do is to
+resolve our start request again, but this time with a <code>Finished</code> response.</p>
+<pre><code class="language-rust ignore no_run">let update = app
+    .resolve(start_request, TimerOutput::Finished { id: second_id })
+    .unwrap();
+for event in update.events {
+    app.update(event, &amp;mut model);
+}</code></pre>
+<p>Another edit should result in another timer, but not in a cancellation:</p>
+<pre><code class="language-rust ignore no_run">let update = app.update(Event::Backspace, &amp;mut model);
+let mut requests = update.into_effects().filter_map(Effect::into_timer);
+
+assert_let!(
+    TimerOperation::Start {
+        id: third_id,
+        millis: 1000
+    },
+    requests.next().unwrap().operation
+);
+assert!(requests.next().is_none()); // no cancellation
+
+assert_ne!(third_id, second_id);</code></pre>
+<p>Note that this test was not about testing whether the model was updated
+correctly (that is covered in other tests) so we don't call the app's <code>view()</code>
+method — it's just about checking that the timer is started, cancelled and
+restarted correctly.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../guide/capability_apis.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../guide/message_interface.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../guide/capability_apis.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../guide/message_interface.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

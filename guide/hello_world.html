@@ -1,0 +1,904 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Hello world - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/guide/hello_world.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="hello-world"><a class="header" href="#hello-world">Hello world</a></h1>
+<p>As the first step, we will build a simple application, starting with a classic
+Hello World, adding some state, and finally a remote API call. We will focus on
+the core, rely on tests to tell us things work, and return to the shell a little
+later, so unfortunately there won't be much to see until then.</p>
+<p>If you want to follow along, you should start by following the
+<a href="../getting_started/core.html">Shared core and types</a>, guide to set up the
+project.</p>
+<h2 id="creating-an-app"><a class="header" href="#creating-an-app">Creating an app</a></h2>
+<div id="admonition-example" class="admonition admonish-example" role="note" aria-labelledby="admonition-example-title">
+<div class="admonition-title">
+<div id="admonition-example-title">
+<p>Example</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-example"></a>
+</div>
+<div>
+<p>You can find the full code for this part of the guide <a href="https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/app.rs">here</a></p>
+</div>
+</div>
+<p>To start with, we need a <code>struct</code> to be the root of our app.</p>
+<pre><code class="language-rust noplayground">#[derive(Default)]
+pub struct Hello;</code></pre>
+<p>We need to implement <code>Default</code> so that Crux can construct the app for us.</p>
+<p>To turn it into an app, we need to implement the <code>App</code> trait from the
+<code>crux_core</code> crate.</p>
+<pre><code class="language-rust noplayground">use crux_core::App;
+
+#[derive(Default)]
+pub struct Model;
+
+impl App for Hello {}</code></pre>
+<p>If you're following along, the compiler is now screaming at you that you're
+missing four associated types for the trait: <code>Event</code>, <code>Model</code>, <code>ViewModel</code> and
+<code>Capabilities</code>.</p>
+<p>Capabilities is the more complicated of them, and to understand what it does, we
+need to talk about what makes Crux different from most UI frameworks.</p>
+<h2 id="side-effects-and-capabilities"><a class="header" href="#side-effects-and-capabilities">Side-effects and capabilities</a></h2>
+<p>One of the key design choices in Crux is that the Core is free of side-effects
+(besides its internal state). Your application can never <em>perform</em> anything that
+directly interacts with the environment around it - no network calls, no
+reading/writing files, and (somewhat obviously) not even updating the screen.
+Actually <em>doing</em> all those things is the job of the Shell, the core can only
+<em>ask</em> for them to be done.</p>
+<p>This makes the core portable between platforms, and, importantly, really easy to
+test. It also separates the intent, the "functional" requirements, from the
+implementation of the side-effects and the "non-functional" requirements (NFRs).
+For example, your application knows it wants to store data in a SQL database,
+but it doesn't need to know or care whether that database is local or remote.
+That decision can even change as the application evolves, and be different on
+each platform. If you want to understand this better before we carry on, you can
+read a lot more about how side-effects work in Crux in the chapter on
+<a href="./capabilities.html">capabilities</a>.</p>
+<p>To <em>ask</em> the Shell for side effects, it will need to know what side effects it
+needs to handle, so we will need to declare them (as an enum). <em>Effects</em> are
+simply messages describing what should happen, and for more complex side-effects
+(e.g. HTTP), they would be too unwieldy to create by hand, so to help us create
+them, Crux provides <em>capabilities</em> - reusable libraries which give us a nice API
+for requesting side-effects. We'll look at them in a lot more detail later.</p>
+<p>Let's start with the basics:</p>
+<pre><code class="language-rust noplayground">use crux_core::render::Render;
+
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+}</code></pre>
+<p>As you can see, for now, we will use a single capability, <code>Render</code>, which is
+built into Crux and available from the <code>crux_core</code> crate. It simply tells the
+shell to update the screen using the latest information.</p>
+<p>That means the core can produce a single <code>Effect</code>. It will soon be more than
+one, so we'll wrap it in an enum to give ourselves space. The <code>Effect</code> enum
+corresponds one to one to the <code>Capabilities</code> we're using, and rather than typing
+it (and its associated trait implementations) by hand and open ourselves to
+unnecessary mistakes, we can use the <code>crux_core::macros::Effect</code> derive macro.</p>
+<pre><code class="language-rust noplayground">use crux_core::render::Render;
+use crux_core::macros::Effect;
+
+#[derive(Effect)]
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+}</code></pre>
+<p>Other than the <code>derive</code> itself, we also need to link the effect to our app.
+We'll go into the detail of why that is in the <a href="capabilities.html">Capabilities</a>
+section, but the basic reason is that capabilities need to be able to send the
+app the outcomes of their work.</p>
+<p>You probably also noticed the <code>Event</code> type which capabilities are generic over,
+because they need to know the type which defines messages they can send back to
+the app. The same type is also used by the Shell to forward any user
+interactions to the Core, and in order to pass across the FFI boundary, it needs
+to be serializable. The resulting code will end up looking like this:</p>
+<pre><code class="language-rust noplayground">use crux_core::{render::Render, App};
+use crux_core::macros::Effect;
+use serde::{Deserialize, Serialize};
+
+#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[derive(Effect)]
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum Event {
+    None, // we can't instantiate an empty enum, so let's have a dummy variant for now
+}
+
+#[derive(Default)]
+pub struct Hello;
+
+impl App for Hello { ... }</code></pre>
+<p>In this example, we also invoke the <code>Export</code> derive macro, but only when the
+<code>typegen</code> feature is enabled — this is true in your <code>shared_types</code> library to
+generate the foreign types for the shell. For more detail see the
+<a href="../getting_started/core.html#create-the-shared-types-crate">Shared core and types</a>
+guide.</p>
+<p>Okay, that took a little bit of effort, but with this short detour out of the
+way and foundations in place, we can finally create an app and start
+implementing some behavior.</p>
+<h2 id="implementing-the-app-trait"><a class="header" href="#implementing-the-app-trait">Implementing the <code>App</code> trait</a></h2>
+<p>We now have almost all the building blocks to implement the <code>App</code> trait. We're
+just missing two simple types. First, a <code>Model</code> to keep our app's state, it
+makes sense to make that a struct. It needs to implement <code>Default</code>, which gives
+us an opportunity to set up any initial state the app might need. Second, we
+need a <code>ViewModel</code>, which is a representation of what the user should see on
+screen. It might be tempting to represent the state and the view with the same
+type, but in more complicated cases it will be too constraining, and probably
+non-obvious what data are for internal bookkeeping and what should end up on
+screen, so Crux separates the concepts. Nothing stops you using the same type
+for both <code>Model</code> and <code>ViewModel</code> if your app is simple enough.</p>
+<p>We'll start with a few simple types for events, model and view model.</p>
+<p>Now we can finally implement the trait with its two methods, <code>update</code> and
+<code>view</code>.</p>
+<pre><code class="language-rust noplayground">
+use crux_core::{render::Render, App};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub enum Event {
+    None,
+}
+
+#[derive(Default)]
+pub struct Model;
+
+#[derive(Serialize, Deserialize)]
+pub struct ViewModel {
+    data: String,
+}
+
+#[derive(crux_core::macros::Effect)]
+pub struct Capabilities {
+    render: Render&lt;Event&gt;,
+}
+
+#[derive(Default)]
+pub struct Hello;
+
+impl App for Hello {
+    type Event = Event;
+    type Model = Model;
+    type ViewModel = ViewModel;
+    type Capabilities = Capabilities;
+
+    fn update(&amp;self, _event: Self::Event, _model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+        caps.render.render();
+    }
+
+    fn view(&amp;self, _model: &amp;Self::Model) -&gt; Self::ViewModel {
+        ViewModel {
+            data: "Hello World".to_string(),
+        }
+    }
+}
+</code></pre>
+<p>The <code>update</code> function is the heart of the app. It responds to events by
+(optionally) updating the state and requesting some effects by using the
+capability's APIs.</p>
+<p>All our <code>update</code> function does is ignore all its arguments and ask the Shell to
+render the screen. It's a hello world after all.</p>
+<p>The <code>view</code> function returns the representation of what we want the Shell to show
+on screen. And true to form, it returns an instance of the <code>ViewModel</code> struct
+containing <code>Hello World!</code>.</p>
+<p>That's a working hello world done, lets try it. As we said at the beginning, for
+now we'll do it from tests. It may sound like a concession, but in fact, this is
+the intended way for apps to be developed with Crux - from inside out, with unit
+tests, focusing on behavior first and presentation later, roughly corresponding
+to doing the user experience first, then the visual design.</p>
+<p>Here's our test:</p>
+<pre><code class="language-rust noplayground">#[cfg(test)]
+mod tests {
+    use super::*;
+    use crux_core::testing::AppTester;
+
+    #[test]
+    fn hello_says_hello_world() {
+        let hello = AppTester::&lt;Hello, _&gt;::default();
+        let mut model = Model;
+
+        // Call 'update' and request effects
+        let update = hello.update(Event::None, &amp;mut model);
+
+        // Check update asked us to `Render`
+        update.expect_one_effect().expect_render();
+
+        // Make sure the view matches our expectations
+        let actual_view = &amp;hello.view(&amp;model).data;
+        let expected_view = "Hello World";
+        assert_eq!(actual_view, expected_view);
+    }
+}
+</code></pre>
+<p>It is a fairly underwhelming test, but it should pass (check with <code>cargo test</code>).
+The test uses a testing helper from <code>crux_core::testing</code> that lets us easily
+interact with the app, inspect the effects it requests and its state, without
+having to set up the machinery every time. It's not exactly complicated, but
+it's a fair amount of boiler plate code.</p>
+<h2 id="counting-up-and-down"><a class="header" href="#counting-up-and-down">Counting up and down</a></h2>
+<div id="admonition-example-1" class="admonition admonish-example" role="note" aria-labelledby="admonition-example-1-title">
+<div class="admonition-title">
+<div id="admonition-example-1-title">
+<p>Example</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-example-1"></a>
+</div>
+<div>
+<p>You can find the full code for this part of the guide
+<a href="https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/counter.rs">here</a></p>
+</div>
+</div>
+<p>Let's make things more interesting and add some behaviour. We'll teach the app
+to count up and down. First, we'll need a model, which represents the state. We
+could just make our model a number, but we'll go with a struct instead, so that
+we can easily add more state later.</p>
+<pre><code class="language-rust noplayground">#[derive(Default)]
+pub struct Model {
+    count: isize,
+}</code></pre>
+<p>We need <code>Default</code> implemented to define the initial state. For now we derive it,
+as our state is quite simple. We also update the app to show the current count:</p>
+<pre><code class="language-rust noplayground">impl App for Hello {
+// ...
+
+    type Model = Model;
+
+// ...
+
+    fn view(&amp;self, model: &amp;Self::Model) -&gt; Self::ViewModel {
+        ViewModel {
+            count: format!("Count is: {}", model.count),
+        }
+    }
+}</code></pre>
+<p>We'll also need a simple <code>ViewModel</code> struct to hold the data that the Shell will
+render.</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize)]
+pub struct ViewModel {
+    count: String,
+}</code></pre>
+<p>Great. All that's left is adding the behaviour. That's where <code>Event</code> comes in:</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize)]
+pub enum Event {
+    Increment,
+    Decrement,
+    Reset,
+}</code></pre>
+<p>The event type covers all the possible events the app can respond to. "Will that
+not get massive really quickly??" I hear you ask. Don't worry about that, there
+is <a href="./composing.html">a nice way to make this scale</a> and get reuse as well. Let's
+carry on. We need to actually handle those messages.</p>
+<pre><code class="language-rust noplayground">impl App for Counter {
+    type Event = Event;
+    type Model = Model;
+    type ViewModel = ViewModel;
+    type Capabilities = Capabilities;
+
+    fn update(&amp;self, event: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+        match event {
+            Event::Increment =&gt; model.count += 1,
+            Event::Decrement =&gt; model.count -= 1,
+            Event::Reset =&gt; model.count = 0,
+        };
+
+        caps.render.render();
+    }
+
+    fn view(&amp;self, model: &amp;Self::Model) -&gt; Self::ViewModel {
+        ViewModel {
+            count: format!("Count is: {}", model.count),
+        }
+    }
+}
+// ...</code></pre>
+<p>Pretty straightforward, we just do what we're told, update the state, and then
+tell the Shell to render. Lets update the tests to check everything works as
+expected.</p>
+<pre><code class="language-rust noplayground">#[cfg(test)]
+mod test {
+    use super::*;
+    use crux_core::{assert_effect, testing::AppTester};
+
+    #[test]
+    fn renders() {
+        let app = AppTester::&lt;Counter, _&gt;::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::Reset, &amp;mut model);
+
+        // Check update asked us to `Render`
+        assert_effect!(update, Effect::Render(_));
+    }
+
+    #[test]
+    fn shows_initial_count() {
+        let app = AppTester::&lt;Counter, _&gt;::default();
+        let model = Model::default();
+
+        let actual_view = app.view(&amp;model).count;
+        let expected_view = "Count is: 0";
+        assert_eq!(actual_view, expected_view);
+    }
+
+    #[test]
+    fn increments_count() {
+        let app = AppTester::&lt;Counter, _&gt;::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::Increment, &amp;mut model);
+
+        let actual_view = app.view(&amp;model).count;
+        let expected_view = "Count is: 1";
+        assert_eq!(actual_view, expected_view);
+
+        // Check update asked us to `Render`
+        assert_effect!(update, Effect::Render(_));
+    }
+
+    #[test]
+    fn decrements_count() {
+        let app = AppTester::&lt;Counter, _&gt;::default();
+        let mut model = Model::default();
+
+        let update = app.update(Event::Decrement, &amp;mut model);
+
+        let actual_view = app.view(&amp;model).count;
+        let expected_view = "Count is: -1";
+        assert_eq!(actual_view, expected_view);
+
+        // Check update asked us to `Render`
+        assert_effect!(update, Effect::Render(_));
+    }
+
+    #[test]
+    fn resets_count() {
+        let app = AppTester::&lt;Counter, _&gt;::default();
+        let mut model = Model::default();
+
+        let _ = app.update(Event::Increment, &amp;mut model);
+        let _ = app.update(Event::Reset, &amp;mut model);
+
+        let actual_view = app.view(&amp;model).count;
+        let expected_view = "Count is: 0";
+        assert_eq!(actual_view, expected_view);
+    }
+
+    #[test]
+    fn counts_up_and_down() {
+        let app = AppTester::&lt;Counter, _&gt;::default();
+        let mut model = Model::default();
+
+        let _ = app.update(Event::Increment, &amp;mut model);
+        let _ = app.update(Event::Reset, &amp;mut model);
+        let _ = app.update(Event::Decrement, &amp;mut model);
+        let _ = app.update(Event::Increment, &amp;mut model);
+        let _ = app.update(Event::Increment, &amp;mut model);
+
+        let actual_view = app.view(&amp;model).count;
+        let expected_view = "Count is: 1";
+        assert_eq!(actual_view, expected_view);
+    }
+}</code></pre>
+<p>Hopefully those all pass. We are now sure that when we build an actual UI for
+this, it will <em>work</em>, and we'll be able to focus on making it looking
+delightful.</p>
+<p>In more complicated cases, it might be helpful to inspect the <code>model</code> directly.
+It's up to you to make the call of which one is more appropriate, in some sense
+it's the difference between black-box and white-box testing, so you should
+probably be doing both to get the confidence you need that your app is working.</p>
+<h2 id="remote-api"><a class="header" href="#remote-api">Remote API</a></h2>
+<p>Before we dive into the thinking behind the architecture, let's add one more
+feature - a remote API call - to get a better feel for how side-effects and
+capabilities work.</p>
+<div id="admonition-example-2" class="admonition admonish-example" role="note" aria-labelledby="admonition-example-2-title">
+<div class="admonition-title">
+<div id="admonition-example-2-title">
+<p>Example</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-example-2"></a>
+</div>
+<div>
+<p>You can find the full code for this part of the guide <a href="https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs">here</a></p>
+</div>
+</div>
+<p>We'll add a simple integration with a counter API we've prepared at
+<a href="https://crux-counter.fly.dev">https://crux-counter.fly.dev</a>. All it does is count up an down like our local
+counter. It supports three requests</p>
+<ul>
+<li><code>GET /</code> returns the current count</li>
+<li><code>POST /inc</code> increments the counter</li>
+<li><code>POST /dec</code> decrements the counter</li>
+</ul>
+<p>All three API calls return the state of the counter in JSON, which looks
+something like this</p>
+<pre><code class="language-json">{
+  "value": 34,
+  "updated_at": 1673265904973
+}
+</code></pre>
+<p>We can represent that with a struct, and we'll need to update the model as well.
+We can use Serde for the serialization (deserializing <code>updated_at</code> from
+timestamp milliseconds to an option of <code>DateTime</code> using <code>chrono</code>).</p>
+<p>We'll also update the count optimistically by keeping track of if/when the
+server confirmed it (there are other ways to model these semantics, but let's
+keep it straightforward for now).</p>
+<pre><code class="language-rust noplayground">use chrono::{DateTime, Utc};
+use chrono::serde::ts_milliseconds_option::deserialize as ts_milliseconds_option;
+
+#[derive(Default, Serialize)]
+pub struct Model {
+    count: Count,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
+pub struct Count {
+    value: isize,
+    #[serde(deserialize_with = "ts_milliseconds_option")]
+    updated_at: Option&lt;DateTime&lt;Utc&gt;&gt;,
+}</code></pre>
+<p>We also need to update the <code>ViewModel</code> and the <code>view()</code> function to display the
+new data.</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ViewModel {
+    pub text: String,
+    pub confirmed: bool,
+}
+
+...
+
+fn view(&amp;self, model: &amp;Self::Model) -&gt; Self::ViewModel {
+    let suffix = match model.count.updated_at {
+        None =&gt; " (pending)".to_string(),
+        Some(d) =&gt; format!(" ({d})"),
+    };
+
+    Self::ViewModel {
+        text: model.count.value.to_string() + &amp;suffix,
+        confirmed: model.count.updated_at.is_some(),
+    }
+}</code></pre>
+<p>You can see that the view function caters to two states - the count has not yet
+been confirmed (<code>updated_at</code> is <code>None</code>), and having the count confirmed by the
+server.</p>
+<p>In a real-world app, it's likely that this information would be captured in a
+struct rather than converted to string inside the core, so that the UI can
+decide how to present it. The date formatting, however, is an example of
+something you may want to do consistently across all platforms and keep inside
+the Core. When making these choices, think about whose decisions they are, and
+do they need to be consistent across platforms or flexible. You will no doubt
+get a number of those calls wrong, but that's ok, the type system is here to
+help you refactor later and update the shells to work with the changes.</p>
+<p>We now have everything in place to update the <code>update</code> function. Let's start
+with thinking about the events. The API does not support resetting the counter,
+so that variant goes, but we need a new one to kick off fetching the current
+state of the counter. The Core itself can't autonomously start anything, it is
+always driven by the Shell, either by the user via the UI, or as a result of a
+side-effect.</p>
+<p>That gives us the following update function, with some placeholders:</p>
+<pre><code class="language-rust noplayground">fn update(&amp;self, event: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+    match event {
+        Event::Get =&gt; {
+            // TODO "GET /"
+        }
+        Event::Set(_response) =&gt; {
+            // TODO Get the data and update the model
+            caps.render.render();
+        }
+        Event::Increment =&gt; {
+            // optimistic update
+            model.count.value += 1;
+            model.count.updated_at = None;
+            caps.render.render();
+
+            // real update
+            // TODO "POST /inc"
+        }
+        Event::Decrement =&gt; {
+            // optimistic update
+            model.count.value -= 1;
+            model.count.updated_at = None;
+            caps.render.render();
+
+            // real update
+            // TODO "POST /dec"
+        }
+    }
+}</code></pre>
+<p>To request the respective HTTP calls, we'll use
+<a href="https://github.com/redbadger/crux/tree/master/crux_http"><code>crux_http</code></a> the
+built-in HTTP client. Since this is the first capability we're using, some
+things won't be immediately clear, but we should get there by the end of this
+chapter.</p>
+<p>The first thing to know is that the HTTP responses will be sent back to the
+update function as an event. That's what the <code>Event::Set</code> is for. The <code>Event</code>
+type looks as follows:</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum Event {
+    // these variants are used by the Shell
+    Get,
+    Increment,
+    Decrement,
+
+    // this variant is private to the Core
+    #[serde(skip)]
+    Set(crux_http::Result&lt;crux_http::Response&lt;Count&gt;&gt;),
+}</code></pre>
+<p>We decorate the <code>Set</code> variant with <code>#[serde(skip)]</code> for two reasons: one,
+there's currently a technical limitation stopping us easily serializing
+<code>crux_http::Response</code>, and two, there's no reason that variant should ever be
+sent by the Shell across the FFI boundary, which is the reason for the need to
+serialize in the first place — in a way, it is private to the Core.</p>
+<p>Finally, let's get rid of those TODOs. We'll need to add crux_http in the
+<code>Capabilities</code> type, so that the <code>update</code> function has access to it:</p>
+<pre><code class="language-rust noplayground">use crux_http::Http;
+
+#[derive(Effect)]
+pub struct Capabilities {
+    pub http: Http&lt;Event&gt;,
+    pub render: Render&lt;Event&gt;,
+}</code></pre>
+<p>This may seem like needless boilerplate, but it allows us to only use the
+capabilities we need and, more importantly, allow capabilities to be built by
+anyone. Later on, we'll also see that Crux apps <a href="composing.html">compose</a>, relying
+on each app's <code>Capabilities</code> type to declare its needs, and making sure the
+necessary capabilities exist in the parent app.</p>
+<p>We can now implement those TODOs, so lets do it.</p>
+<pre><code class="language-rust noplayground">const API_URL: &amp;str = "https://crux-counter.fly.dev";
+
+//...
+
+fn update(&amp;self, event: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+        match event {
+            Event::Get =&gt; {
+                caps.http.get(API_URL).expect_json().send(Event::Set);
+            }
+            Event::Set(Ok(mut response)) =&gt; {
+                let count = response.take_body().unwrap();
+                model.count = count;
+                caps.render.render();
+            }
+            Event::Set(Err(_)) =&gt; {
+                panic!("Oh no something went wrong");
+            }
+            Event::Increment =&gt; {
+                // optimistic update
+                model.count = Count {
+                    value: model.count.value + 1,
+                    updated_at: None,
+                };
+                caps.render.render();
+
+                // real update
+                let base = Url::parse(API_URL).unwrap();
+                let url = base.join("/inc").unwrap();
+                caps.http.post(url).expect_json().send(Event::Set);
+            }
+            Event::Decrement =&gt; {
+                // optimistic update
+                model.count = Count {
+                    value: model.count.value - 1,
+                    updated_at: None,
+                };
+                caps.render.render();
+
+                // real update
+                let base = Url::parse(API_URL).unwrap();
+                let url = base.join("/dec").unwrap();
+                caps.http.post(url).expect_json().send(Event::Set);
+            }
+        }
+    }
+</code></pre>
+<p>There's a few things of note. The first one is that the <code>.send</code> API at the end
+of each chain of calls to <code>crux_http</code> expects a function that wraps its argument
+(a <code>Result</code> of a http response) in a variant of <code>Event</code>. Fortunately, enum tuple
+variants create just such a function, and we can use it. The way to read the
+call is "Send a get request, parse the response as JSON, which should be
+deserialized as a <code>Count</code>, and then call me again with <code>Event::Set</code> carrying the
+result". Interestingly, we didn't need to specifically mention the <code>Count</code> type,
+as the type inference from the <code>Event::Set</code> variant is enough, making it really
+easy to read.</p>
+<p>The other thing of note is that the capability calls don't block. They queue up
+requests to send to the shell and execution continues immediately. The requests
+will be sent in the order they were queued and the asynchronous execution is the
+job of the shell.</p>
+<p>You can find the the complete example, including the shell implementations
+<a href="https://github.com/redbadger/crux/blob/master/examples/counter/">in the Crux repo</a>.
+It's interesting to take a closer look at the unit tests</p>
+<pre><code class="language-rust noplayground">    /// Test that a `Get` event causes the app to fetch the current
+    /// counter value from the web API
+    #[test]
+    fn get_counter() {
+        // instantiate our app via the test harness, which gives us access to the model
+        let app = AppTester::&lt;App, _&gt;::default();
+
+        // set up our initial model
+        let mut model = Model::default();
+
+        // send a `Get` event to the app
+        let update = app.update(Event::Get, &amp;mut model);
+
+        // check that the app emitted an HTTP request,
+        // capturing the request in the process
+        let request = &amp;mut update.expect_one_effect().expect_http();
+
+        // check that the request is a GET to the correct URL
+        let actual = request.operation.clone();
+        let expected = HttpRequest::get("https://crux-counter.fly.dev/").build();
+        assert_eq!(actual, expected);
+
+        // resolve the request with a simulated response from the web API
+        let response = HttpResponse::ok()
+            .body(r#"{ "value": 1, "updated_at": 1672531200000 }"#)
+            .build();
+        let update = app
+            .resolve(request, HttpResult::Ok(response))
+            .expect("an update");
+
+        // check that the app emitted an (internal) event to update the model
+        let actual = update.events;
+        let expected = vec![Event::Set(Ok(ResponseBuilder::ok()
+            .body(Count {
+                value: 1,
+                updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
+            })
+            .build()))];
+        assert_eq!(actual, expected);
+    }
+
+    /// Test that a `Set` event causes the app to update the model
+    #[test]
+    fn set_counter() {
+        // instantiate our app via the test harness, which gives us access to the model
+        let app = AppTester::&lt;App, _&gt;::default();
+
+        // set up our initial model
+        let mut model = Model::default();
+
+        // send a `Set` event (containing the HTTP response) to the app
+        let update = app.update(
+            Event::Set(Ok(ResponseBuilder::ok()
+                .body(Count {
+                    value: 1,
+                    updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
+                })
+                .build())),
+            &amp;mut model,
+        );
+
+        // check that the app asked the shell to render
+        assert_effect!(update, Effect::Render(_));
+
+        // check that the view has been updated correctly
+        insta::assert_yaml_snapshot!(app.view(&amp;model), @r###"
+        ---
+        text: "1 (2023-01-01 00:00:00 UTC)"
+        confirmed: true
+        "###);
+    }</code></pre>
+<p>Incidentally, we're using <a href="https://crates.io/crates/insta"><code>insta</code></a> in that last
+test to assert that the view model is correct. If you don't know it already,
+check it out. The really cool thing is that if the test fails, it shows you a
+diff of the actual and expected output, and if you're happy with the new output,
+you can accept the change (or not) by running <code>cargo insta review</code> — it will
+update the code for you to reflect the change. It's a really nice way to do
+snapshot testing, especially for the model and view model.</p>
+<p>You can see how easy it is to check that the app is requesting the right side
+effects, with the right arguments, and even test a chain of interactions and
+make sure the behavior is correct, all without mocking or stubbing anything or
+worrying about <code>async</code> code.</p>
+<p>In the next chapter, we can put the example into perspective and discuss the
+architecture it follows, inspired by Elm.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../getting_started/web/dioxus.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../guide/elm_architecture.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../getting_started/web/dioxus.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../guide/elm_architecture.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

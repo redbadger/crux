@@ -1,0 +1,151 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Capabilities provide a user-friendly API to request side-effects from the shell."><title>crux_core::capability - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="crux_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0 (90b35a623 2024-11-26)" data-channel="1.83.0" data-search-js="search-f0d225181b97f9a4.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../crux_core/index.html">crux_<wbr>core</a><span class="version">0.10.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module capability</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#example-use" title="Example use">Example use</a></li><li><a href="#implementing-a-capability" title="Implementing a capability">Implementing a capability</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#traits" title="Traits">Traits</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate crux_<wbr>core</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">crux_core</a></span><h1>Module <span>capability</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/crux_core/capability/mod.rs.html#1-637">source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Capabilities provide a user-friendly API to request side-effects from the shell.</p>
+<p>Typically, capabilities provide I/O and host API access. Capabilities are external to the
+core Crux library. Some are part of the Crux core distribution, others are expected to be built by the
+community. Apps can also build single-use capabilities where necessary.</p>
+<h2 id="example-use"><a class="doc-anchor" href="#example-use">§</a>Example use</h2>
+<p>A typical use of a capability would look like the following:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>update(<span class="kw-2">&amp;</span><span class="self">self</span>, event: <span class="self">Self</span>::Event, model: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Model, caps: <span class="kw-2">&amp;</span><span class="self">Self</span>::Capabilities) {
+    <span class="kw">match </span>event {
+        <span class="comment">//...
+        </span>Event::Increment =&gt; {
+            model.count += <span class="number">1</span>;
+            caps.render.render(); <span class="comment">// Render capability
+
+            </span><span class="kw">let </span>base = Url::parse(API_URL).unwrap();
+            <span class="kw">let </span>url = base.join(<span class="string">"/inc"</span>).unwrap();
+            caps.http.post(url).expect_json().send(Event::Set); <span class="comment">// HTTP client capability
+        </span>}
+        Event::Set(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+    }
+}</code></pre></div>
+<p>Capabilities don’t <em>perform</em> side-effects themselves, they request them from the Shell. As a consequence
+the capability calls within the <code>update</code> function <strong>only queue up the requests</strong>. The side-effects themselves
+are performed concurrently and don’t block the update function.</p>
+<p>In order to use a capability, the app needs to include it in its <code>Capabilities</code> associated type and <code>WithContext</code>
+trait implementation (which can be provided by the <code>crux_core::macros::Effect</code> macro). For example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">mod </span>root {
+
+<span class="comment">// An app module which can be reused in different apps
+</span><span class="kw">mod </span>my_app {
+    <span class="kw">use </span>crux_core::{capability::CapabilityContext, App, render::Render};
+    <span class="kw">use </span>crux_core::macros::Effect;
+    <span class="kw">use </span>serde::{Serialize, Deserialize};
+
+    <span class="attr">#[derive(Default)]
+    </span><span class="kw">pub struct </span>MyApp;
+    <span class="attr">#[derive(Serialize, Deserialize)]
+    </span><span class="kw">pub struct </span>Event;
+
+    <span class="comment">// The `Effect` derive macro generates an `Effect` type that is used by the
+    // Shell to dispatch side-effect requests to the right capability implementation
+    // (and, in some languages, checking that all necessary capabilities are implemented)
+    </span><span class="attr">#[derive(Effect)]
+    </span><span class="kw">pub struct </span>Capabilities {
+        <span class="kw">pub </span>render: Render&lt;Event&gt;
+    }
+
+    <span class="kw">impl </span>App <span class="kw">for </span>MyApp {
+        <span class="kw">type </span>Model = ();
+        <span class="kw">type </span>Event = Event;
+        <span class="kw">type </span>ViewModel = ();
+        <span class="kw">type </span>Capabilities = Capabilities;
+
+        <span class="kw">fn </span>update(<span class="kw-2">&amp;</span><span class="self">self</span>, event: Event, model: <span class="kw-2">&amp;mut </span>(), caps: <span class="kw-2">&amp;</span>Capabilities) {
+            caps.render.render();
+        }
+
+        <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, model: <span class="kw-2">&amp;</span>()) {
+            ()
+        }
+    }
+}
+}</code></pre></div>
+<h2 id="implementing-a-capability"><a class="doc-anchor" href="#implementing-a-capability">§</a>Implementing a capability</h2>
+<p>Capabilities provide an interface to request side-effects. The interface has asynchronous semantics
+with a form of callback. A typical capability call can look like this:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>caps.ducks.get_in_a_row(<span class="number">10</span>, Event::RowOfDucks)</code></pre></div>
+<p>The call above translates into “Get 10 ducks in a row and return them to me using the <code>RowOfDucks</code> event”.
+The capability’s job is to translate this request into a serializable message and instruct the Shell to
+do the duck herding and when it receives the ducks back, wrap them in the requested event and return it
+to the app.</p>
+<p>We will refer to <code>get_in_row</code> in the above call as an <em>operation</em>, the <code>10</code> is an <em>input</em>, and the
+<code>Event::RowOfDucks</code> is an event constructor - a function, which eventually receives the row of ducks
+and returns a variant of the <code>Event</code> enum. Conveniently, enum tuple variants can be used as functions,
+and so that will be the typical use.</p>
+<p>This is what the capability implementation could look like:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>crux_core::{
+    capability::{CapabilityContext, Operation},
+};
+<span class="kw">use </span>crux_core::macros::Capability;
+<span class="kw">use </span>serde::{Serialize, Deserialize};
+
+<span class="comment">// A duck
+</span><span class="attr">#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+</span><span class="kw">struct </span>Duck;
+
+<span class="comment">// Operations that can be requested from the Shell
+</span><span class="attr">#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+</span><span class="kw">enum </span>DuckOperation {
+    GetInARow(usize)
+}
+
+<span class="comment">// Respective outputs for those operations
+</span><span class="attr">#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+</span><span class="kw">enum </span>DuckOutput {
+    GetInRow(Vec&lt;Duck&gt;)
+}
+
+<span class="comment">// Link the input and output type
+</span><span class="kw">impl </span>Operation <span class="kw">for </span>DuckOperation {
+    <span class="kw">type </span>Output = DuckOutput;
+}
+
+<span class="comment">// The capability. Context will provide the interface to the rest of the system.
+</span><span class="attr">#[derive(Capability)]
+</span><span class="kw">struct </span>Ducks&lt;Event&gt; {
+    context: CapabilityContext&lt;DuckOperation, Event&gt;
+};
+
+<span class="kw">impl</span>&lt;Event&gt; Ducks&lt;Event&gt; {
+    <span class="kw">pub fn </span>new(context: CapabilityContext&lt;DuckOperation, Event&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ context }
+    }
+
+    <span class="kw">pub fn </span>get_in_a_row&lt;F&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, number_of_ducks: usize, event: F)
+    <span class="kw">where
+        </span>Event: <span class="lifetime">'static</span>,
+        F: FnOnce(Vec&lt;Duck&gt;) -&gt; Event + Send + <span class="lifetime">'static</span>,
+    {
+        <span class="kw">let </span>ctx = <span class="self">self</span>.context.clone();
+        <span class="comment">// Start a shell interaction
+        </span><span class="self">self</span>.context.spawn(<span class="kw">async move </span>{
+            <span class="comment">// Instruct Shell to get ducks in a row and await the ducks
+            </span><span class="kw">let </span>ducks = ctx.request_from_shell(DuckOperation::GetInARow(number_of_ducks)).<span class="kw">await</span>;
+
+            <span class="comment">// Unwrap the ducks and wrap them in the requested event
+            // This will always succeed, as long as the Shell implementation is correct
+            // and doesn't send the wrong output type back
+            </span><span class="kw">if let </span>DuckOutput::GetInRow(ducks) = ducks {
+                <span class="comment">// Queue an app update with the ducks event
+                </span>ctx.update_app(event(ducks));
+            }
+        })
+   }
+}</code></pre></div>
+<p>The <code>self.context.spawn</code> API allows a multi-step transaction with the Shell to be performed by a capability
+without involving the app, until the exchange has completed. During the exchange, one or more events can
+be emitted (allowing a subscription or streaming like capability to be built).</p>
+<p>For Shell requests that have no output, you can use <a href="struct.CapabilityContext.html#method.notify_shell" title="method crux_core::capability::CapabilityContext::notify_shell"><code>CapabilityContext::notify_shell</code></a>.</p>
+<p><code>DuckOperation</code> and <code>DuckOutput</code> show how the set of operations can be extended. In simple capabilities,
+with a single operation, these can be structs, or simpler types. For example, the HTTP capability works directly with
+<code>HttpRequest</code> and <code>HttpResponse</code>.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.CapabilityContext.html" title="struct crux_core::capability::CapabilityContext">Capability<wbr>Context</a></div><div class="desc docblock-short">An interface for capabilities to interact with the app and the shell.</div></li><li><div class="item-name"><a class="struct" href="struct.ProtoContext.html" title="struct crux_core::capability::ProtoContext">Proto<wbr>Context</a></div><div class="desc docblock-short">Initial version of capability Context which has not yet been specialized to a chosen capability</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Never.html" title="enum crux_core::capability::Never">Never</a></div><div class="desc docblock-short">A type that can be used as a capability operation, but which will never be sent to the shell.
+This type is useful for capabilities that don’t request effects.
+For example, you can use this type as the Operation for a
+capability that just composes other capabilities.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Capability.html" title="trait crux_core::capability::Capability">Capability</a></div><div class="desc docblock-short">Implement the <code>Capability</code> trait for your capability. This will allow
+mapping events when composing apps from submodules.</div></li><li><div class="item-name"><a class="trait" href="trait.Operation.html" title="trait crux_core::capability::Operation">Operation</a></div><div class="desc docblock-short">Operation trait links together input and output of a side-effect.</div></li><li><div class="item-name"><a class="trait" href="trait.WithContext.html" title="trait crux_core::capability::WithContext">With<wbr>Context</a></div><div class="desc docblock-short">Allows Crux to construct app’s set of required capabilities, providing context
+they can then use to request effects and dispatch events.</div></li></ul></section></div></main></body></html>

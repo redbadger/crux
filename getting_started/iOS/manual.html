@@ -1,0 +1,553 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Swift and SwiftUI (manual) - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../.././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/getting_started/iOS/manual.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="ios--swift-and-swiftui--manual-setup"><a class="header" href="#ios--swift-and-swiftui--manual-setup">iOS — Swift and SwiftUI — manual setup</a></h1>
+<p>These are the steps to set up Xcode to build and run a simple iOS app that calls
+into a shared core.</p>
+<div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
+<div class="admonition-title">
+<div id="admonition-warning-title">
+<p>Warning</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-warning"></a>
+</div>
+<div>
+<p>We recommend setting up Xcode with XcodeGen as described in the
+<a href="./with_xcodegen.html">previous section</a>. It is the simplest way to create an Xcode
+project to build and run a simple iOS app that calls into a shared core. However,
+if you want to set up Xcode manually then read on.</p>
+</div>
+</div>
+<div id="admonition-note" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-title">
+<div class="admonition-title">
+<div id="admonition-note-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note"></a>
+</div>
+<div>
+<p>This walk-through assumes you have already added the <code>shared</code> and <code>shared_types</code>
+libraries to your repo — as described in <a href="../core.html">Shared core and types</a>
+— and that you have built them using <code>cargo build</code>.</p>
+</div>
+</div>
+<h2 id="create-an-ios-app"><a class="header" href="#create-an-ios-app">Create an iOS App</a></h2>
+<p>The first thing we need to do is create a new iOS app in Xcode.</p>
+<p>Let's call the app "SimpleCounter" and select "SwiftUI" for the interface and
+"Swift" for the language. If you choose to create the app in the root folder of
+your monorepo, then you might want to rename the folder it creates to "iOS".
+Your repo's directory structure might now look something like this (some files
+elided):</p>
+<pre><code class="language-txt">.
+├── Cargo.lock
+├── Cargo.toml
+├── iOS
+│  ├── SimpleCounter
+│  │  ├── ContentView.swift
+│  │  └── SimpleCounterApp.swift
+│  └── SimpleCounter.xcodeproj
+│     └── project.pbxproj
+├── shared
+│  ├── build.rs
+│  ├── Cargo.toml
+│  ├── src
+│  │  ├── counter.rs
+│  │  ├── lib.rs
+│  │  └── shared.udl
+│  └── uniffi.toml
+├── shared_types
+│  ├── build.rs
+│  ├── Cargo.toml
+│  └── src
+│     └── lib.rs
+└── target
+</code></pre>
+<h2 id="generate-ffi-bindings"><a class="header" href="#generate-ffi-bindings">Generate FFI bindings</a></h2>
+<p>We want UniFFI to create the Swift bindings and the C headers for our shared
+library, and store them in a directory called <code>generated</code>.</p>
+<p>To achieve this, we'll associate a script with files that match the pattern
+<code>*.udl</code> (this will catch the interface definition file we created earlier), and
+then add our <code>shared.udl</code> file to the project.</p>
+<p>Note that our shared library generates the <code>uniffi-bindgen</code> binary (as explained
+on the page <a href="../core.html">"Shared core and types"</a>) that the script relies on, so
+make sure you have built it already, using <code>cargo build</code>.</p>
+<p>In "<strong>Build Rules</strong>", add a rule to process files that match the pattern <code>*.udl</code>
+with the following script (and also uncheck "<strong>Run once per architecture</strong>").</p>
+<pre><code class="language-bash">#!/bin/bash
+set -e
+
+# Skip during indexing phase in XCode 13+
+if [ "$ACTION" == "indexbuild" ]; then
+   echo "Not building *.udl files during indexing."
+   exit 0
+fi
+
+# Skip for preview builds
+if [ "$ENABLE_PREVIEWS" = "YES" ]; then
+   echo "Not building *.udl files during preview builds."
+   exit 0
+fi
+
+cd "${INPUT_FILE_DIR}/.."
+"${BUILD_DIR}/debug/uniffi-bindgen" generate "src/${INPUT_FILE_NAME}" --language swift --out-dir "${PROJECT_DIR}/generated"
+
+</code></pre>
+<p>We'll need to add the following as output files:</p>
+<pre><code class="language-txt">$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
+</code></pre>
+<pre><code class="language-txt">$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h
+</code></pre>
+<p>Now go to the project settings, "<strong>Build Phases, Compile Sources</strong>", and add <code>/shared/src/shared.udl</code>
+using the "add other" button, selecting "Create folder references".</p>
+<p>You may also need to go to "<strong>Build Settings, User Script Sandboxing</strong>" and set this
+to <code>No</code> to give the script permission to create files.</p>
+<p>Build the project (cmd-B), which will fail, but the above script should run
+successfully and the "generated" folder should contain the generated Swift types
+and C header files:</p>
+<pre><code class="language-bash">$ ls iOS/generated
+shared.swift  sharedFFI.h  sharedFFI.modulemap
+</code></pre>
+<h3 id="add-the-bridging-header"><a class="header" href="#add-the-bridging-header">Add the bridging header</a></h3>
+<p>In "<strong>Build Settings</strong>", search for "bridging header", and add
+<code>generated/sharedFFI.h</code>, for any architecture/SDK, i.e. in both Debug and
+Release. If there isn't already a setting for "bridging header" you can add one
+(and then delete it) as per
+<a href="https://stackoverflow.com/questions/41787935/how-to-use-objective-c-bridging-header-in-a-swift-project/41788055#41788055">this StackOverflow question</a></p>
+<h2 id="compile-our-rust-shared-library"><a class="header" href="#compile-our-rust-shared-library">Compile our Rust shared library</a></h2>
+<p>When we build our iOS app, we also want to build the Rust core as a static
+library so that it can be linked into the binary that we're going to ship.</p>
+<p>We will use <a href="https://crates.io/crates/cargo-xcode"><code>cargo-xcode</code></a> to generate an
+Xcode project for our shared library, which we can add as a sub-project in
+Xcode.</p>
+<div id="admonition-note-1" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-1-title">
+<div class="admonition-title">
+<div id="admonition-note-1-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note-1"></a>
+</div>
+<div>
+<p>Recent changes to <code>cargo-xcode</code> mean that we need to use version &lt;=1.7.0 for
+now.</p>
+<p>If you don't have this already, you can install it in one of two ways:</p>
+<ol>
+<li>
+<p>Globally, with <code>cargo install --force cargo-xcode --version 1.7.0</code></p>
+</li>
+<li>
+<p>Locally, using
+<a href="https://github.com/dustinblackman/cargo-run-bin"><code>cargo-run-bin</code></a>, after
+ensuring that your <code>Cargo.toml</code> has the following lines (see
+<a href="../core.html#the-workspace-and-library-manifests">The workspace and library manifests</a>):</p>
+<pre><code class="language-toml">[workspace.metadata.bin]
+cargo-xcode = { version = "=1.7.0" }
+</code></pre>
+<p>Ensure you have <code>cargo-run-bin</code> (and optionally <code>cargo-binstall</code>) installed:</p>
+<pre><code class="language-bash">cargo install cargo-run-bin cargo-binstall
+</code></pre>
+<p>Then, in the root of your app:</p>
+<pre><code class="language-bash">cargo bin --install # will be faster if `cargo-binstall` is installed
+cargo bin --sync-aliases # to use `cargo xcode` instead of `cargo bin xcode`
+</code></pre>
+</li>
+</ol>
+</div>
+</div>
+<p>Let's generate the sub-project:</p>
+<pre><code class="language-bash">cargo xcode
+</code></pre>
+<p>This generates an Xcode project for each crate in the workspace, but we're only
+interested in the one it creates in the <code>shared</code> directory. Don't open this
+generated project yet.</p>
+<p>Using Finder, drag the <code>shared/shared.xcodeproj</code> folder under the Xcode project
+root.</p>
+<p>Then, in the "<strong>Build Phases, Link Binary with Libraries</strong>" section, add the
+<code>libshared_static.a</code> library (you should be able to navigate to it as
+<code>Workspace -&gt; shared -&gt; libshared_static.a</code>)</p>
+<h2 id="add-the-shared-types"><a class="header" href="#add-the-shared-types">Add the Shared Types</a></h2>
+<p>Using Finder, drag the <code>shared_types/generated/swift/SharedTypes</code> folder under
+the Xcode project root.</p>
+<p>Then, in the "<strong>Build Phases, Link Binary with Libraries</strong>" section, add the
+<code>SharedTypes</code> library (you should be able to navigate to it as
+<code>Workspace -&gt; SharedTypes -&gt; SharedTypes</code>)</p>
+<h2 id="create-some-ui-and-run-in-the-simulator-or-on-an-iphone"><a class="header" href="#create-some-ui-and-run-in-the-simulator-or-on-an-iphone">Create some UI and run in the Simulator, or on an iPhone</a></h2>
+<div id="admonition-example" class="admonition admonish-example" role="note" aria-labelledby="admonition-example-title">
+<div class="admonition-title">
+<div id="admonition-example-title">
+<p>Example</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-example"></a>
+</div>
+<div>
+<p>There is slightly more advanced
+<a href="https://github.com/redbadger/crux/tree/master/examples/counter">example</a> of an
+iOS app in the Crux repository.</p>
+<p>However, we will use the
+<a href="https://github.com/redbadger/crux/tree/master/examples/simple_counter">simple counter example</a>,
+which has <code>shared</code> and <code>shared_types</code> libraries that will work with the
+following example code.</p>
+</div>
+</div>
+<h3 id="simple-counter-example"><a class="header" href="#simple-counter-example">Simple counter example</a></h3>
+<p>A simple app that increments, decrements and resets a counter.</p>
+<h4 id="wrap-the-core-to-support-capabilities"><a class="header" href="#wrap-the-core-to-support-capabilities">Wrap the core to support capabilities</a></h4>
+<p>First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+<code>Render</code> capability, which triggers a render of the UI.</p>
+<div id="admonition-note-2" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-2-title">
+<div class="admonition-title">
+<div id="admonition-note-2-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note-2"></a>
+</div>
+<div>
+<p>This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.</p>
+</div>
+</div>
+<p>Edit <code>iOS/SimpleCounter/core.swift</code> to look like the following. This code sends
+our (UI-generated) events to the core, and handles any effects that the core
+asks for. In this simple example, we aren't calling any HTTP APIs or handling
+any side effects other than rendering the UI, so we just handle this render
+effect by updating the published view model from the core.</p>
+<pre><code class="language-swift">import Foundation
+import SharedTypes
+
+@MainActor
+class Core: ObservableObject {
+    @Published var view: ViewModel
+    
+    init() {
+        self.view = try! .bincodeDeserialize(input: [UInt8](SimpleCounter.view()))
+    }
+    
+    func update(_ event: Event) {
+        let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
+        
+        let requests: [Request] = try! .bincodeDeserialize(input: effects)
+        for request in requests {
+            processEffect(request)
+        }
+    }
+    
+    func processEffect(_ request: Request) {
+        switch request.effect {
+        case .render:
+            view = try! .bincodeDeserialize(input: [UInt8](SimpleCounter.view()))
+        }
+    }
+}
+</code></pre>
+<div id="admonition-tip" class="admonition admonish-tip" role="note" aria-labelledby="admonition-tip-title">
+<div class="admonition-title">
+<div id="admonition-tip-title">
+<p>Tip</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-tip"></a>
+</div>
+<div>
+<p>That <code>switch</code> statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+<a href="https://github.com/redbadger/crux/tree/master/examples/counter/iOS/CounterApp/core.swift">counter example</a>
+in the Crux repository.</p>
+</div>
+</div>
+<p>Edit <code>iOS/SimpleCounter/ContentView.swift</code> to look like the following:</p>
+<pre><code class="language-swift">import SharedTypes
+import SwiftUI
+
+struct ContentView: View {
+    @ObservedObject var core: Core
+
+    var body: some View {
+        VStack {
+            Image(systemName: "globe")
+                .imageScale(.large)
+                .foregroundColor(.accentColor)
+            Text(core.view.count)
+            HStack {
+                ActionButton(label: "Reset", color: .red) {
+                    core.update(.reset)
+                }
+                ActionButton(label: "Inc", color: .green) {
+                    core.update(.increment)
+                }
+                ActionButton(label: "Dec", color: .yellow) {
+                    core.update(.decrement)
+                }
+            }
+        }
+    }
+}
+
+struct ActionButton: View {
+    var label: String
+    var color: Color
+    var action: () -&gt; Void
+
+    init(label: String, color: Color, action: @escaping () -&gt; Void) {
+        self.label = label
+        self.color = color
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .fontWeight(.bold)
+                .font(.body)
+                .padding(EdgeInsets(top: 10, leading: 15, bottom: 10, trailing: 15))
+                .background(color)
+                .cornerRadius(10)
+                .foregroundColor(.white)
+                .padding()
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView(core: Core())
+    }
+}
+</code></pre>
+<p>And create <code>iOS/SimpleCounter/SimpleCounterApp.swift</code> to look like this:</p>
+<pre><code class="language-swift">import SwiftUI
+
+@main
+struct SimpleCounterApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView(core: Core())
+        }
+    }
+}
+</code></pre>
+<div id="admonition-success" class="admonition admonish-success" role="note" aria-labelledby="admonition-success-title">
+<div class="admonition-title">
+<div id="admonition-success-title">
+<p>Success</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-success"></a>
+</div>
+<div>
+<p>You should then be able to run the app in the simulator or on an iPhone, and it should look like this:</p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+</div>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../getting_started/iOS/with_xcodegen.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../getting_started/Android/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../getting_started/iOS/with_xcodegen.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../getting_started/Android/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

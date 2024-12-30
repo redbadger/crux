@@ -1,0 +1,45 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Middleware types"><title>crux_http::middleware - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="crux_http" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0 (90b35a623 2024-11-26)" data-channel="1.83.0" data-search-js="search-f0d225181b97f9a4.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../crux_http/index.html">crux_<wbr>http</a><span class="version">0.10.3</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module middleware</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate crux_<wbr>http</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">crux_http</a></span><h1>Module <span>middleware</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/crux_http/middleware.rs.html#1-118">source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Middleware types</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>crux_http::middleware::{Next, Middleware};
+<span class="kw">use </span>crux_http::{client::Client, Request, ResponseAsync, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>std::time;
+<span class="kw">use </span>std::sync::Arc;
+
+<span class="doccomment">/// Log each request's duration
+</span><span class="attr">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Logger;
+
+<span class="attr">#[async_trait::async_trait]
+</span><span class="kw">impl </span>Middleware <span class="kw">for </span>Logger {
+    <span class="kw">async fn </span>handle(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        req: Request,
+        client: Client,
+        next: Next&lt;<span class="lifetime">'_</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ResponseAsync&gt; {
+        <span class="macro">println!</span>(<span class="string">"sending request to {}"</span>, req.url());
+        <span class="kw">let </span>now = time::Instant::now();
+        <span class="kw">let </span>res = next.run(req, client).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="macro">println!</span>(<span class="string">"request completed ({:?})"</span>, now.elapsed());
+        <span class="prelude-val">Ok</span>(res)
+    }
+}</code></pre></div>
+<p><code>Middleware</code> can also be instantiated using a free function thanks to some convenient trait
+implementations.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>futures_util::future::BoxFuture;
+<span class="kw">use </span>crux_http::middleware::{Next, Middleware};
+<span class="kw">use </span>crux_http::{client::Client, Request, ResponseAsync, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>std::time;
+<span class="kw">use </span>std::sync::Arc;
+
+<span class="kw">fn </span>logger&lt;<span class="lifetime">'a</span>&gt;(req: Request, client: Client, next: Next&lt;<span class="lifetime">'a</span>&gt;) -&gt; BoxFuture&lt;<span class="lifetime">'a</span>, <span class="prelude-ty">Result</span>&lt;ResponseAsync&gt;&gt; {
+    Box::pin(<span class="kw">async move </span>{
+        <span class="macro">println!</span>(<span class="string">"sending request to {}"</span>, req.url());
+        <span class="kw">let </span>now = time::Instant::now();
+        <span class="kw">let </span>res = next.run(req, client).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="macro">println!</span>(<span class="string">"request completed ({:?})"</span>, now.elapsed());
+        <span class="prelude-val">Ok</span>(res)
+    })
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Next.html" title="struct crux_http::middleware::Next">Next</a></div><div class="desc docblock-short">The remainder of a middleware chain, including the endpoint.</div></li><li><div class="item-name"><a class="struct" href="struct.Redirect.html" title="struct crux_http::middleware::Redirect">Redirect</a></div><div class="desc docblock-short">A middleware which attempts to follow HTTP redirects.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Middleware.html" title="trait crux_http::middleware::Middleware">Middleware</a></div><div class="desc docblock-short">Middleware that wraps around remaining middleware chain.</div></li></ul></section></div></main></body></html>

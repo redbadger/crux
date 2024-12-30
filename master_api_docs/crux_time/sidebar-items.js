@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TimeRequest","TimeResponse"],"mod":["duration","error","instant"],"struct":["Time","TimerId"]};

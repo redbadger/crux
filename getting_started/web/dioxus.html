@@ -1,0 +1,484 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Rust and Dioxus - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../.././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/getting_started/web/dioxus.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="web--rust-and-dioxus"><a class="header" href="#web--rust-and-dioxus">Web — Rust and Dioxus</a></h1>
+<p>These are the steps to set up and run a simple Rust Web app that calls into a
+shared core.</p>
+<div id="admonition-note" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-title">
+<div class="admonition-title">
+<div id="admonition-note-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note"></a>
+</div>
+<div>
+<p>This walk-through assumes you have already added the <code>shared</code> and <code>shared_types</code> libraries to your repo, as described in <a href="../core.html">Shared core and types</a>.</p>
+</div>
+</div>
+<div id="admonition-info" class="admonition admonish-info" role="note" aria-labelledby="admonition-info-title">
+<div class="admonition-title">
+<div id="admonition-info-title">
+<p>Info</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-info"></a>
+</div>
+<div>
+<p>There are many frameworks available for writing Web applications in Rust. We've chosen <a href="https://dioxuslabs.com/">Dioxus</a> for this walk-through. However, a similar setup would work for other frameworks that compile to WebAssembly.</p>
+</div>
+</div>
+<h2 id="create-a-dioxus-app"><a class="header" href="#create-a-dioxus-app">Create a Dioxus App</a></h2>
+<div id="admonition-tip" class="admonition admonish-tip" role="note" aria-labelledby="admonition-tip-title">
+<div class="admonition-title">
+<div id="admonition-tip-title">
+<p>Tip</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-tip"></a>
+</div>
+<div>
+<p>Dioxus has a CLI tool called <code>dx</code>, which can initialize, build and serve our app.</p>
+<pre><code class="language-sh">cargo install dioxus-cli
+</code></pre>
+<p>Test that the executable is available.</p>
+<pre><code class="language-sh">dx --help
+</code></pre>
+</div>
+</div>
+<p>Before we create a new app, let's add it to our Cargo workspace (so that the
+<code>dx</code> tool won't complain), by editing the root <code>Cargo.toml</code> file.</p>
+<p>For this example, we'll call the app <code>web-dioxus</code>.</p>
+<pre><code class="language-toml">[workspace]
+members = ["shared", "web-dioxus"]
+</code></pre>
+<p>Now we can create a new Dioxus app. The tool asks for a project name, which
+we'll provide as <code>web-dioxus</code>.</p>
+<pre><code class="language-sh">dx create
+
+cd web-dioxus
+</code></pre>
+<p>Now we can start fleshing out our project. Let's add some dependencies to the
+project's <code>Cargo.toml</code>.</p>
+<pre><code class="language-toml">[package]
+name = "web-dioxus"
+version = "0.1.0"
+authors = ["Stuart Harris &lt;stuart.harris@red-badger.com&gt;"]
+edition = "2021"
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+dioxus = { version = "0.6.0-alpha.3", features = ["web"] }
+dioxus-logger = "0.5.1"
+futures-util = "0.3.31"
+shared = { path = "../shared" }
+tracing = "0.1.40"
+</code></pre>
+<h2 id="create-some-ui"><a class="header" href="#create-some-ui">Create some UI</a></h2>
+<div id="admonition-example" class="admonition admonish-example" role="note" aria-labelledby="admonition-example-title">
+<div class="admonition-title">
+<div id="admonition-example-title">
+<p>Example</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-example"></a>
+</div>
+<div>
+<p>There is slightly more advanced <a href="https://github.com/redbadger/crux/tree/master/examples/counter">example</a> of a Dioxus app in the Crux repository.</p>
+<p>However, we will use the <a href="https://github.com/redbadger/crux/tree/master/examples/simple_counter">simple counter example</a>, which has <code>shared</code> and <code>shared_types</code> libraries that will work with the following example code.</p>
+</div>
+</div>
+<h3 id="simple-counter-example"><a class="header" href="#simple-counter-example">Simple counter example</a></h3>
+<p>A simple app that increments, decrements and resets a counter.</p>
+<h4 id="wrap-the-core-to-support-capabilities"><a class="header" href="#wrap-the-core-to-support-capabilities">Wrap the core to support capabilities</a></h4>
+<p>First, let's add some boilerplate code to wrap our core and handle the
+capabilities that we are using. For this example, we only need to support the
+<code>Render</code> capability, which triggers a render of the UI.</p>
+<div id="admonition-note-1" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-1-title">
+<div class="admonition-title">
+<div id="admonition-note-1-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note-1"></a>
+</div>
+<div>
+<p>This code that wraps the core only needs to be written once — it only grows when
+we need to support additional capabilities.</p>
+</div>
+</div>
+<p>Edit <code>src/core.rs</code> to look like the following. This code sends our
+(UI-generated) events to the core, and handles any effects that the core asks
+for. In this simple example, we aren't calling any HTTP APIs or handling any
+side effects other than rendering the UI, so we just handle this render effect
+by updating the component's <code>view</code> hook with the core's ViewModel.</p>
+<p>Also note that because both our core and our shell are written in Rust (and run
+in the same memory space), we do not need to serialize and deserialize the data
+that we pass between them. We can just pass the data directly.</p>
+<pre><code class="language-rust noplayground">use std::rc::Rc;
+
+use dioxus::{
+    prelude::{Signal, UnboundedReceiver},
+    signals::Writable,
+};
+use futures_util::StreamExt;
+use shared::{Counter, Effect, Event, ViewModel};
+use tracing::debug;
+
+type Core = Rc&lt;shared::Core&lt;Effect, Counter&gt;&gt;;
+
+pub struct CoreService {
+    core: Core,
+    view: Signal&lt;ViewModel&gt;,
+}
+
+impl CoreService {
+    pub fn new(view: Signal&lt;ViewModel&gt;) -&gt; Self {
+        debug!("initializing core service");
+        Self {
+            core: Rc::new(shared::Core::new()),
+            view,
+        }
+    }
+
+    pub async fn run(&amp;self, rx: &amp;mut UnboundedReceiver&lt;Event&gt;) {
+        let mut view = self.view;
+        view.set(self.core.view());
+        while let Some(event) = rx.next().await {
+            self.update(event, &amp;mut view);
+        }
+    }
+
+    fn update(&amp;self, event: Event, view: &amp;mut Signal&lt;ViewModel&gt;) {
+        debug!("event: {:?}", event);
+
+        for effect in self.core.process_event(event) {
+            process_effect(&amp;self.core, effect, view);
+        }
+    }
+}
+
+fn process_effect(core: &amp;Core, effect: Effect, view: &amp;mut Signal&lt;ViewModel&gt;) {
+    debug!("effect: {:?}", effect);
+
+    match effect {
+        Effect::Render(_) =&gt; {
+            view.set(core.view());
+        }
+    };
+}</code></pre>
+<div id="admonition-tip-1" class="admonition admonish-tip" role="note" aria-labelledby="admonition-tip-1-title">
+<div class="admonition-title">
+<div id="admonition-tip-1-title">
+<p>Tip</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-tip-1"></a>
+</div>
+<div>
+<p>That <code>match</code> statement, above, is where you would handle any other effects that
+your core might ask for. For example, if your core needs to make an HTTP
+request, you would handle that here. To see an example of this, take a look at
+the
+<a href="https://github.com/redbadger/crux/tree/master/examples/counter/web-dioxus/src/core.rs">counter example</a>
+in the Crux repository.</p>
+</div>
+</div>
+<p>Edit <code>src/main.rs</code> to look like the following. This code sets up the Dioxus app,
+and connects the core to the UI. Not only do we create a hook for the view state
+but we also create a coroutine that plugs in the Dioxus "service" we defined
+above to constantly send any events from the UI to the core.</p>
+<pre><code class="language-rust noplayground">mod core;
+
+use dioxus::prelude::*;
+use tracing::Level;
+
+use shared::{Event, ViewModel};
+
+use core::CoreService;
+
+#[component]
+fn App() -&gt; Element {
+    let view = use_signal(ViewModel::default);
+
+    let core = use_coroutine(move |mut rx| {
+        let svc = CoreService::new(view);
+        async move { svc.run(&amp;mut rx).await }
+    });
+    rsx! {
+        document::Link {
+            rel: "stylesheet",
+            href: asset!("./public/css/bulma.min.css")
+        }
+        main {
+            section { class: "section has-text-centered",
+                p { class: "is-size-5", "{view().count}" }
+                div { class: "buttons section is-centered",
+                    button { class:"button is-primary is-danger",
+                        onclick: move |_| {
+                            core.send(Event::Reset);
+                        },
+                        "Reset"
+                    }
+                    button { class:"button is-primary is-success",
+                        onclick: move |_| {
+                            core.send(Event::Increment);
+                        },
+                        "Increment"
+                    }
+                    button { class:"button is-primary is-warning",
+                        onclick: move |_| {
+                            core.send(Event::Decrement);
+                        },
+                        "Decrement"
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn main() {
+    dioxus_logger::init(Level::DEBUG).expect("failed to init logger");
+    console_error_panic_hook::set_once();
+
+    launch(App);
+}</code></pre>
+<p>We can add a title and a stylesheet by editing
+<code>examples/simple_counter/web-dioxus/Dioxus.toml</code>.</p>
+<pre><code class="language-toml">[application]
+name = "web-dioxus"
+default_platform = "web"
+out_dir = "dist"
+asset_dir = "public"
+
+[web.app]
+title = "Crux Simple Counter example"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "public"]
+</code></pre>
+<h2 id="build-and-serve-our-app"><a class="header" href="#build-and-serve-our-app">Build and serve our app</a></h2>
+<p>Now we can build our app and serve it in one simple step.</p>
+<pre><code class="language-sh">dx serve
+</code></pre>
+<div id="admonition-success" class="admonition admonish-success" role="note" aria-labelledby="admonition-success-title">
+<div class="admonition-title">
+<div id="admonition-success-title">
+<p>Success</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-success"></a>
+</div>
+<div>
+<p>Your app should look like this:</p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+</div>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../getting_started/web/leptos.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../guide/hello_world.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../getting_started/web/leptos.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../guide/hello_world.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
