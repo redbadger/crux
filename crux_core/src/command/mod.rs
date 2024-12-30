@@ -77,6 +77,10 @@ where
         }
     }
 
+    pub fn event(event: Event) -> Self {
+        Command::new(|ctx| async move { ctx.send_event(event) })
+    }
+
     pub fn notify_shell<Op>(operation: Op) -> Self
     where
         Op: Operation,
