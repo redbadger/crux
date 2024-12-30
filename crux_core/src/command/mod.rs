@@ -122,6 +122,7 @@ where
     }
 
     /// Run the effect state machine until it settles and collect all effects generated
+    // TODO: should this collect?
     pub fn effects(&mut self) -> Vec<Effect> {
         self.run_until_settled();
 
@@ -129,6 +130,7 @@ where
     }
 
     /// Run the effect state machine until it settles and collect all events generated
+    // TODO: should this collect?
     pub fn events(&mut self) -> Vec<Event> {
         self.run_until_settled();
 
@@ -273,13 +275,12 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
 
                 Poll::Pending
             }
-            ShellRequest::Sent(receiver) => {
-                let value = receiver.try_recv().expect(
-                    "ShellRequest future could not receive the output value from the Request",
-                );
-
-                Poll::Ready(value)
-            }
+            ShellRequest::Sent(receiver) => match receiver.try_recv() {
+                Ok(value) => Poll::Ready(value),
+                // not ready yet. We may be polled in a join for example
+                // TODO: do we need to send the waker again here? It has not changed
+                Err(_) => Poll::Pending,
+            },
         }
     }
 }

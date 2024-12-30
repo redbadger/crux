@@ -1,4 +1,4 @@
-mod effects {
+mod basic_effects {
     use serde::{Deserialize, Serialize};
 
     use super::super::Command;
@@ -28,6 +28,10 @@ mod effects {
         Start,
         Completed(AnOperationOutput),
     }
+
+    // Commands can be constructed without async and dispatch basic
+    // effects, which are executed lazily when the command is asked for
+    // emitted events or effects
 
     #[test]
     fn done_can_be_created() {
@@ -141,5 +145,162 @@ mod effects {
         let events = cmd.events();
 
         assert_eq!(events[0], Event::Start);
+    }
+}
+
+mod async_effects {
+    use futures::{join, select, FutureExt};
+    use serde::{Deserialize, Serialize};
+
+    use super::super::Command;
+    use crate::{capability::Operation, Request};
+
+    #[derive(Debug, PartialEq, Clone, Serialize)]
+    enum AnOperation {
+        One,
+        Two,
+    }
+    #[derive(Debug, PartialEq, Deserialize)]
+    enum AnOperationOutput {
+        One,
+        Two,
+    }
+
+    impl Operation for AnOperation {
+        type Output = AnOperationOutput;
+    }
+
+    enum Effect {
+        AnEffect(Request<AnOperation>),
+    }
+
+    impl From<Request<AnOperation>> for Effect {
+        fn from(request: Request<AnOperation>) -> Self {
+            Self::AnEffect(request)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum Event {
+        Completed(AnOperationOutput),
+    }
+
+    // Beyond the basic constructors, Command::new can be called directly
+    // and async code can be used to orchestrate effects. This is just async rust
+    // but we're checking the Command's executor works correctly
+
+    #[test]
+    fn sequence() {
+        let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+            let output = ctx.request_from_shell(AnOperation::One).await;
+            ctx.send_event(Event::Completed(output));
+            let output = ctx.request_from_shell(AnOperation::Two).await;
+            ctx.send_event(Event::Completed(output));
+        });
+
+        assert!(cmd.events().is_empty());
+
+        let mut effects = cmd.effects();
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::One);
+
+        request
+            .resolve(AnOperationOutput::One)
+            .expect("request should resolve");
+
+        let event = cmd.events().remove(0);
+
+        assert_eq!(event, Event::Completed(AnOperationOutput::One));
+
+        assert!(cmd.events().is_empty());
+
+        let mut effects = cmd.effects();
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::Two);
+
+        request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        assert!(cmd.effects().is_empty());
+
+        let event = cmd.events().remove(0);
+
+        assert_eq!(event, Event::Completed(AnOperationOutput::Two))
+    }
+
+    #[test]
+    fn parallel() {
+        let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+            let (first, second) = join!(
+                ctx.request_from_shell(AnOperation::One),
+                ctx.request_from_shell(AnOperation::Two)
+            );
+
+            ctx.send_event(Event::Completed(first));
+            ctx.send_event(Event::Completed(second));
+        });
+
+        assert!(cmd.events().is_empty());
+
+        let mut effects = cmd.effects();
+        let Effect::AnEffect(mut first_request) = effects.remove(0);
+        let Effect::AnEffect(mut second_request) = effects.remove(0);
+
+        assert_eq!(first_request.operation, AnOperation::One);
+        assert_eq!(second_request.operation, AnOperation::Two);
+
+        first_request
+            .resolve(AnOperationOutput::One)
+            .expect("request should resolve");
+
+        assert!(cmd.events().is_empty());
+
+        second_request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        assert!(cmd.effects().is_empty());
+
+        let mut events = cmd.events();
+
+        assert_eq!(events.len(), 2);
+
+        assert_eq!(events.remove(0), Event::Completed(AnOperationOutput::One));
+        assert_eq!(events.remove(0), Event::Completed(AnOperationOutput::Two));
+    }
+
+    #[test]
+    fn race() {
+        let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+            select! {
+                output = ctx.request_from_shell(AnOperation::One).fuse() => ctx.send_event(Event::Completed(output)),
+                output = ctx.request_from_shell(AnOperation::Two).fuse() => ctx.send_event(Event::Completed(output))
+            };
+        });
+
+        assert!(cmd.events().is_empty());
+
+        let mut effects = cmd.effects();
+        let Effect::AnEffect(mut first_request) = effects.remove(0);
+        let Effect::AnEffect(mut second_request) = effects.remove(0);
+
+        assert_eq!(first_request.operation, AnOperation::One);
+        assert_eq!(second_request.operation, AnOperation::Two);
+
+        second_request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        first_request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        let mut events = cmd.events();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events.remove(0), Event::Completed(AnOperationOutput::Two));
     }
 }
