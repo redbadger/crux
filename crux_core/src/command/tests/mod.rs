@@ -164,6 +164,7 @@ mod async_effects {
     enum AnOperationOutput {
         One,
         Two,
+        Abort,
     }
 
     impl Operation for AnOperation {
@@ -183,6 +184,7 @@ mod async_effects {
     #[derive(Debug, PartialEq)]
     enum Event {
         Completed(AnOperationOutput),
+        Aborted,
     }
 
     // Beyond the basic constructors, Command::new can be called directly
@@ -190,7 +192,7 @@ mod async_effects {
     // but we're checking the Command's executor works correctly
 
     #[test]
-    fn sequence() {
+    fn effects_execute_in_sequence() {
         let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
             let output = ctx.request_from_shell(AnOperation::One).await;
             ctx.send_event(Event::Completed(output));
@@ -232,7 +234,7 @@ mod async_effects {
     }
 
     #[test]
-    fn parallel() {
+    fn effects_execute_in_parallel() {
         let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
             let (first, second) = join!(
                 ctx.request_from_shell(AnOperation::One),
@@ -273,7 +275,7 @@ mod async_effects {
     }
 
     #[test]
-    fn race() {
+    fn effects_race() {
         let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
             select! {
                 output = ctx.request_from_shell(AnOperation::One).fuse() => ctx.send_event(Event::Completed(output)),
@@ -302,5 +304,85 @@ mod async_effects {
 
         assert_eq!(events.len(), 1);
         assert_eq!(events.remove(0), Event::Completed(AnOperationOutput::Two));
+    }
+
+    #[test]
+    fn effects_can_spawn_communicating_tasks() {
+        // We make two tasks which communicate over a channel
+        // the first sends effect requests and forwards outputs to the second
+        // the second sends them back out wrapped in events
+        // the first task continues until an ::Abort resolution is sent
+        // the second continues until it can't read from the channel
+
+        let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+            let (tx, rx) = async_channel::unbounded();
+
+            ctx.spawn({
+                let ctx = ctx.clone();
+                async move {
+                    loop {
+                        let output = ctx.request_from_shell(AnOperation::One).await;
+
+                        if output == AnOperationOutput::Abort {
+                            break;
+                        }
+
+                        tx.send(output).await.unwrap();
+                    }
+                }
+            });
+
+            ctx.spawn({
+                let ctx = ctx.clone();
+                async move {
+                    while let Ok(value) = rx.recv().await {
+                        ctx.send_event(Event::Completed(value));
+                    }
+
+                    ctx.send_event(Event::Aborted);
+                }
+            })
+        });
+
+        let mut effects = cmd.effects();
+
+        assert_eq!(effects.len(), 1);
+
+        let Effect::AnEffect(mut first_request) = effects.remove(0);
+        first_request
+            .resolve(AnOperationOutput::One)
+            .expect("request should resolve");
+
+        let mut effects = cmd.effects();
+        let events = cmd.events();
+
+        assert_eq!(effects.len(), 1);
+        assert_eq!(events.len(), 1);
+
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+
+        let Effect::AnEffect(mut first_request) = effects.remove(0);
+        first_request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        let mut effects = cmd.effects();
+        let events = cmd.events();
+
+        assert_eq!(effects.len(), 1);
+        assert_eq!(events.len(), 1);
+
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::Two));
+
+        let Effect::AnEffect(mut first_request) = effects.remove(0);
+        first_request
+            .resolve(AnOperationOutput::Abort)
+            .expect("request should resolve");
+
+        assert!(cmd.effects().is_empty());
+
+        assert_eq!(cmd.events()[0], Event::Aborted);
+
+        assert!(cmd.is_done());
     }
 }
