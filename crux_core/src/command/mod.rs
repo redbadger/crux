@@ -23,8 +23,9 @@ pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
     ready_queue: Receiver<TaskId>,
-    ready_sender: Sender<TaskId>,
+    spawn_queue: Receiver<BoxFuture>,
     tasks: Slab<BoxFuture>,
+    ready_sender: Sender<TaskId>, // Used to make wakers
 }
 
 impl<Effect, Event> Command<Effect, Event>
@@ -40,10 +41,12 @@ where
         let (effect_sender, effect_receiver) = crossbeam_channel::unbounded();
         let (event_sender, event_receiver) = crossbeam_channel::unbounded();
         let (ready_sender, ready_receiver) = crossbeam_channel::unbounded();
+        let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
 
         let context = CommandContext {
             effects: effect_sender,
             events: event_sender,
+            tasks: spawn_sender,
         };
 
         let task = create_task(context).boxed();
@@ -58,6 +61,7 @@ where
             effects: effect_receiver,
             events: event_receiver,
             ready_queue: ready_receiver,
+            spawn_queue: spawn_receiver,
             ready_sender,
             tasks,
         }
@@ -66,14 +70,16 @@ where
     pub fn done() -> Self {
         let (_, effects) = crossbeam_channel::bounded(0);
         let (_, events) = crossbeam_channel::bounded(0);
+        let (_, spawn_queue) = crossbeam_channel::bounded(0);
         let (ready_sender, ready_queue) = crossbeam_channel::bounded(0);
 
         Command {
             effects,
             events,
             ready_queue,
+            spawn_queue,
+            tasks: Slab::with_capacity(0),
             ready_sender,
-            tasks: Slab::new(),
         }
     }
 
@@ -122,7 +128,7 @@ where
     }
 
     /// Run the effect state machine until it settles and collect all effects generated
-    // TODO: should this collect?
+    // RFC: should this collect?
     pub fn effects(&mut self) -> Vec<Effect> {
         self.run_until_settled();
 
@@ -130,7 +136,7 @@ where
     }
 
     /// Run the effect state machine until it settles and collect all events generated
-    // TODO: should this collect?
+    // RFC: should this collect?
     pub fn events(&mut self) -> Vec<Event> {
         self.run_until_settled();
 
@@ -139,15 +145,25 @@ where
 }
 
 // Context enabling futures to communicate with the Command
-
-#[derive(Clone)]
 pub struct CommandContext<Effect, Event> {
     effects: Sender<Effect>,
     events: Sender<Event>,
+    tasks: Sender<BoxFuture>,
+}
+
+// derive(Clone) wants Effect and Event to be clone which is not actually necessary
+impl<Effect, Event> Clone for CommandContext<Effect, Event> {
+    fn clone(&self) -> Self {
+        Self {
+            effects: self.effects.clone(),
+            events: self.events.clone(),
+            tasks: self.tasks.clone(),
+        }
+    }
 }
 
 impl<Effect, Event> CommandContext<Effect, Event> {
-    fn notify_shell<Op>(&self, operation: Op)
+    pub fn notify_shell<Op>(&self, operation: Op)
     where
         Op: Operation,
         Effect: From<Request<Op>>,
@@ -159,7 +175,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             .expect("Command could not send notification, effect channel disconnected");
     }
 
-    fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
+    pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
     where
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
@@ -196,7 +212,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         ShellRequest::ReadyToSend(Box::new(send_request), waker_sender, output_receiver)
     }
 
-    fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
+    pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
     where
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
@@ -236,14 +252,25 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         ShellStream::ReadyToSend(Box::new(send_request), waker_sender, output_receiver)
     }
 
-    fn send_event(&self, event: Event) {
+    pub fn send_event(&self, event: Event) {
         self.events
             .send(event)
             .expect("Command could not send event, event channel disconnected")
     }
+
+    // RFC: this could return a join handle á la tokio
+    // RFC: should this have the same signature as `new` to avoid the boilerplate cloning of context in user code?
+    pub fn spawn<F>(&self, future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.tasks
+            .send(future.boxed())
+            .expect("Command could not spawn task, tasks channel disconnected")
+    }
 }
 
-enum ShellRequest<T: Unpin + Send> {
+pub enum ShellRequest<T: Unpin + Send> {
     ReadyToSend(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
     Sent(Receiver<T>),
 }
@@ -285,7 +312,7 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
     }
 }
 
-enum ShellStream<T: Unpin + Send> {
+pub enum ShellStream<T: Unpin + Send> {
     ReadyToSend(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
     Sent(Receiver<T>, Sender<Waker>),
 }
@@ -371,19 +398,27 @@ enum TaskState {
 impl<Effect, Event> Command<Effect, Event> {
     // Run all tasks until all of them are pending
     fn run_until_settled(&mut self) {
-        while let Ok(task_id) = self.ready_queue.try_recv() {
-            match self.run_task(task_id) {
-                TaskState::Missing => {
-                    // The task has been evicted because it completed.  This can happen when
-                    // a _running_ task schedules itself to wake, but then completes and gets
-                    // removed
-                }
-                TaskState::Suspended => {
-                    // Task suspended, we pick it up again when it's woken up
-                }
-                TaskState::Completed => {
-                    // Remove and drop the task it's finished
-                    drop(self.tasks.remove(task_id.0));
+        loop {
+            self.spawn_new_tasks();
+
+            if self.ready_queue.is_empty() {
+                break;
+            }
+
+            while let Ok(task_id) = self.ready_queue.try_recv() {
+                match self.run_task(task_id) {
+                    TaskState::Missing => {
+                        // The task has been evicted because it completed.  This can happen when
+                        // a _running_ task schedules itself to wake, but then completes and gets
+                        // removed
+                    }
+                    TaskState::Suspended => {
+                        // Task suspended, we pick it up again when it's woken up
+                    }
+                    TaskState::Completed => {
+                        // Remove and drop the task it's finished
+                        drop(self.tasks.remove(task_id.0));
+                    }
                 }
             }
         }
@@ -405,6 +440,16 @@ impl<Effect, Event> Command<Effect, Event> {
         match task.as_mut().poll(context) {
             std::task::Poll::Pending => TaskState::Suspended,
             std::task::Poll::Ready(_) => TaskState::Completed,
+        }
+    }
+
+    fn spawn_new_tasks(&mut self) {
+        while let Ok(task) = self.spawn_queue.try_recv() {
+            let task_id = self.tasks.insert(task);
+
+            self.ready_sender
+                .send(TaskId(task_id))
+                .expect("Command can't spawn a task, ready_queue has disconnected");
         }
     }
 }
