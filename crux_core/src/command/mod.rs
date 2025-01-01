@@ -142,6 +142,44 @@ where
 
         self.events.try_iter().collect()
     }
+
+    // Combinators
+
+    pub fn then(mut self, mut other: Self) -> Self
+    where
+        Effect: Unpin,
+        Event: Unpin,
+    {
+        Command::new(|ctx| async move {
+            // first run self until done
+            while let Some(output) = self.next().await {
+                match output {
+                    CommandOutput::Effect(effect) => ctx
+                        .effects
+                        .send(effect)
+                        .expect("Cannot send effect from then future"),
+                    CommandOutput::Event(event) => ctx
+                        .events
+                        .send(event)
+                        .expect("Cannot send event from then future"),
+                }
+            }
+
+            // then run other until done
+            while let Some(output) = other.next().await {
+                match output {
+                    CommandOutput::Effect(effect) => ctx
+                        .effects
+                        .send(effect)
+                        .expect("Cannot send effect from then future"),
+                    CommandOutput::Event(event) => ctx
+                        .events
+                        .send(event)
+                        .expect("Cannot send event from then future"),
+                }
+            }
+        })
+    }
 }
 
 // Context enabling futures to communicate with the Command
@@ -373,6 +411,7 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
 struct CommandWaker {
     task_id: TaskId,
     ready_queue: Sender<TaskId>,
+    parent_waker: Option<Waker>,
 }
 
 impl Wake for CommandWaker {
@@ -385,6 +424,13 @@ impl Wake for CommandWaker {
         // There is no Command to poll the task again anyway,
         // nothing to do.
         let _ = self.ready_queue.send(self.task_id);
+
+        if let Some(waker) = &self.parent_waker {
+            // If there is a parent waker, Command is being used as a stream
+            // so  we need to schedule ourselves (as the parent task) to wake
+            // since one of our subtasks is ready
+            waker.wake_by_ref();
+        }
     }
 }
 
@@ -406,7 +452,7 @@ impl<Effect, Event> Command<Effect, Event> {
             }
 
             while let Ok(task_id) = self.ready_queue.try_recv() {
-                match self.run_task(task_id) {
+                match self.run_task(task_id, None) {
                     TaskState::Missing => {
                         // The task has been evicted because it completed.  This can happen when
                         // a _running_ task schedules itself to wake, but then completes and gets
@@ -424,7 +470,8 @@ impl<Effect, Event> Command<Effect, Event> {
         }
     }
 
-    fn run_task(&mut self, task_id: TaskId) -> TaskState {
+    // Run task within our _own_ context
+    fn run_task(&mut self, task_id: TaskId, parent_waker: Option<Waker>) -> TaskState {
         let Some(task) = self.tasks.get_mut(task_id.0) else {
             return TaskState::Missing;
         };
@@ -433,6 +480,7 @@ impl<Effect, Event> Command<Effect, Event> {
         let waker = Arc::new(CommandWaker {
             task_id,
             ready_queue,
+            parent_waker,
         })
         .into();
         let context = &mut Context::from_waker(&waker);
@@ -450,6 +498,63 @@ impl<Effect, Event> Command<Effect, Event> {
             self.ready_sender
                 .send(TaskId(task_id))
                 .expect("Command can't spawn a task, ready_queue has disconnected");
+        }
+    }
+}
+
+// Command is an async Stream
+
+pub enum CommandOutput<Effect, Event> {
+    Effect(Effect),
+    Event(Event),
+}
+
+impl<Effect, Event> Stream for Command<Effect, Event>
+where
+    Effect: Unpin + Send + 'static,
+    Event: Unpin + Send + 'static,
+{
+    type Item = CommandOutput<Effect, Event>;
+
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        // FIXME: the spawning order is different for a stream than
+        // run_until_settled. We're more aggressive here and attempt to spawn
+        // after every task is polled. We should probably be consistent
+        self.deref_mut().spawn_new_tasks();
+
+        if self.is_done() {
+            return Poll::Ready(None);
+        }
+
+        loop {
+            let waker = cx.waker().clone();
+
+            match self.ready_queue.try_recv() {
+                Ok(task_id) => {
+                    match self.run_task(task_id, Some(waker)) {
+                        TaskState::Missing => continue,
+                        TaskState::Completed => {
+                            drop(self.tasks.remove(task_id.0));
+                        }
+                        TaskState::Suspended => {}
+                    }
+
+                    if let Ok(effect) = self.effects.try_recv() {
+                        return Poll::Ready(Some(CommandOutput::Effect(effect)));
+                    };
+
+                    if let Ok(event) = self.events.try_recv() {
+                        return Poll::Ready(Some(CommandOutput::Event(event)));
+                    }
+                }
+                Err(_) => {
+                    // No more ready tasks, return pending
+                    return Poll::Pending;
+                }
+            }
         }
     }
 }
