@@ -386,3 +386,79 @@ mod async_effects {
         assert!(cmd.is_done());
     }
 }
+
+mod combinators {
+    use serde::{Deserialize, Serialize};
+
+    use super::super::Command;
+    use crate::{capability::Operation, Request};
+
+    #[derive(Debug, PartialEq, Clone, Serialize)]
+    enum AnOperation {
+        One,
+        Two,
+    }
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    enum AnOperationOutput {
+        One,
+        Two,
+    }
+
+    impl Operation for AnOperation {
+        type Output = AnOperationOutput;
+    }
+
+    enum Effect {
+        AnEffect(Request<AnOperation>),
+    }
+
+    impl From<Request<AnOperation>> for Effect {
+        fn from(request: Request<AnOperation>) -> Self {
+            Self::AnEffect(request)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum Event {
+        Completed(AnOperationOutput),
+    }
+
+    #[test]
+    fn then() {
+        let cmd_one = Command::request_from_shell(AnOperation::One, Event::Completed);
+        let cmd_two = Command::request_from_shell(AnOperation::Two, Event::Completed);
+
+        let mut cmd = cmd_one.then(cmd_two);
+
+        assert!(cmd.events().is_empty());
+
+        let mut effects = cmd.effects();
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::One);
+
+        request
+            .resolve(AnOperationOutput::One)
+            .expect("request should resolve");
+
+        let events = cmd.events();
+
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+
+        let mut effects = cmd.effects();
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::Two);
+
+        request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        assert!(cmd.effects().is_empty());
+
+        let events = cmd.events();
+
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::Two));
+    }
+}
