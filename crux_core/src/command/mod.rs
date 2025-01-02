@@ -151,10 +151,11 @@ where
     // Combinators
 
     /// Create a command running self and the other command in sequence
+    // RFC: is this actually _useful_? In its current form, it doesn't allow other to use the results of self
     pub fn then(mut self, mut other: Self) -> Self
     where
-        Effect: Unpin,
-        Event: Unpin,
+        Effect: Unpin + std::fmt::Debug,
+        Event: Unpin + std::fmt::Debug,
     {
         Command::new(|ctx| async move {
             // first run self until done
@@ -258,7 +259,6 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
     {
-        // Two way communication betwen the Request's resolve and the ShellRequest
         let (output_sender, output_receiver) = crossbeam_channel::bounded(1);
         let shared_waker = Arc::new(AtomicWaker::new());
 
@@ -292,7 +292,6 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
     {
-        // Two way communication betwen the Request's resolve and the ShellRequest
         let (output_sender, output_receiver) = crossbeam_channel::unbounded();
         let shared_waker = Arc::new(AtomicWaker::new());
 
@@ -330,7 +329,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             .expect("Command could not send event, event channel disconnected")
     }
 
-    // RFC: this could return a join handle á la tokio
+    // RFC: this could return a join handle á la tokio, used to either await completion of the command or to cancel it early
     // RFC: should this have the same signature as `new` to avoid the boilerplate cloning of context in user code?
     pub fn spawn<F>(&self, future: F)
     where
@@ -542,31 +541,25 @@ where
     ) -> Poll<Option<Self::Item>> {
         self.waker.register(cx.waker());
 
-        self.deref_mut().spawn_new_tasks();
+        // run_until_settled is idempotent
+        self.deref_mut().run_until_settled();
+
+        // Check events first to preserve the order in which items were emitted. This is because
+        // sending events doesn't yield, and the next request/stream await point will be
+        // reached in the same poll, so any follow up effects will _also_ be available
+        if let Ok(event) = self.events.try_recv() {
+            return Poll::Ready(Some(CommandOutput::Event(event)));
+        }
+
+        if let Ok(effect) = self.effects.try_recv() {
+            return Poll::Ready(Some(CommandOutput::Effect(effect)));
+        };
 
         if self.is_done() {
-            return Poll::Ready(None);
+            Poll::Ready(None)
+        } else {
+            Poll::Pending
         }
-
-        while let Ok(task_id) = self.ready_queue.try_recv() {
-            match self.run_task(task_id) {
-                TaskState::Missing => continue,
-                TaskState::Completed => {
-                    drop(self.tasks.remove(task_id.0));
-                }
-                TaskState::Suspended => {}
-            }
-
-            if let Ok(effect) = self.effects.try_recv() {
-                return Poll::Ready(Some(CommandOutput::Effect(effect)));
-            };
-
-            if let Ok(event) = self.events.try_recv() {
-                return Poll::Ready(Some(CommandOutput::Event(event)));
-            }
-        }
-
-        Poll::Pending
     }
 }
 
