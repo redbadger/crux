@@ -1,10 +1,12 @@
 use std::future::Future;
 use std::ops::DerefMut as _;
 use std::sync::Arc;
-use std::task::{Context, Poll, Wake, Waker};
+use std::task::{Context, Poll, Wake};
 
-use crossbeam_channel::{Receiver, Sender, TryRecvError}; // TODO: do we want to use capability channel here?
-use futures::{future, Stream};
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use futures::task::AtomicWaker;
+// TODO: do we want to use capability channel here?
+use futures::{future, stream, Stream};
 use futures::{FutureExt, StreamExt as _};
 use slab::Slab;
 
@@ -17,8 +19,6 @@ struct TaskId(usize);
 
 type BoxFuture = future::BoxFuture<'static, ()>;
 
-// Public API
-
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
@@ -26,7 +26,10 @@ pub struct Command<Effect, Event> {
     spawn_queue: Receiver<BoxFuture>,
     tasks: Slab<BoxFuture>,
     ready_sender: Sender<TaskId>, // Used to make wakers
+    waker: Arc<AtomicWaker>,      // Shared with task wakers when polled in async context
 }
+
+// Public API
 
 impl<Effect, Event> Command<Effect, Event>
 where
@@ -64,6 +67,7 @@ where
             spawn_queue: spawn_receiver,
             ready_sender,
             tasks,
+            waker: Default::default(),
         }
     }
 
@@ -80,6 +84,7 @@ where
             spawn_queue,
             tasks: Slab::with_capacity(0),
             ready_sender,
+            waker: Default::default(),
         }
     }
 
@@ -145,6 +150,7 @@ where
 
     // Combinators
 
+    /// Create a command running self and the other command in sequence
     pub fn then(mut self, mut other: Self) -> Self
     where
         Effect: Unpin,
@@ -167,6 +173,40 @@ where
 
             // then run other until done
             while let Some(output) = other.next().await {
+                match output {
+                    CommandOutput::Effect(effect) => ctx
+                        .effects
+                        .send(effect)
+                        .expect("Cannot send effect from then future"),
+                    CommandOutput::Event(event) => ctx
+                        .events
+                        .send(event)
+                        .expect("Cannot send event from then future"),
+                }
+            }
+        })
+    }
+
+    /// Convenience for `Command:all` which runs another command concurrently with this one
+    pub fn and(self, other: Self) -> Self
+    where
+        Effect: Unpin + std::fmt::Debug,
+        Event: Unpin + std::fmt::Debug,
+    {
+        Command::all([self, other])
+    }
+
+    /// Create a command running a number of commands concurrently
+    pub fn all<I>(commands: I) -> Self
+    where
+        I: IntoIterator<Item = Self> + Send + 'static,
+        Effect: Unpin + std::fmt::Debug,
+        Event: Unpin + std::fmt::Debug,
+    {
+        Command::new(|ctx| async move {
+            let mut select = stream::select_all(commands);
+
+            while let Some(output) = select.next().await {
                 match output {
                     CommandOutput::Effect(effect) => ctx
                         .effects
@@ -220,21 +260,18 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     {
         // Two way communication betwen the Request's resolve and the ShellRequest
         let (output_sender, output_receiver) = crossbeam_channel::bounded(1);
-        let (waker_sender, waker_receiver) = crossbeam_channel::bounded(1);
+        let shared_waker = Arc::new(AtomicWaker::new());
 
-        let request = Request::resolves_once(operation, move |output| {
-            // The future sent its waker into the channel after dispatching the request.
-            // We take it out in order to signal the future is ready, because the output
-            // has been received and is ready to read from the output channel
-            let waker: Waker = waker_receiver.try_recv().expect(
-                "Shell request was resolved, but the sending future is not waiting for output",
-            );
+        let request = Request::resolves_once(operation, {
+            let waker = shared_waker.clone();
 
-            output_sender
-                .send(output)
-                .expect("Request could not send output to ShellRequest future");
+            move |output| {
+                output_sender
+                    .send(output)
+                    .expect("Request could not send output to ShellRequest future");
 
-            waker.wake();
+                waker.wake();
+            }
         });
 
         let send_request = {
@@ -247,7 +284,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             }
         };
 
-        ShellRequest::ReadyToSend(Box::new(send_request), waker_sender, output_receiver)
+        ShellRequest::ReadyToSend(Box::new(send_request), shared_waker, output_receiver)
     }
 
     pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
@@ -257,24 +294,21 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     {
         // Two way communication betwen the Request's resolve and the ShellRequest
         let (output_sender, output_receiver) = crossbeam_channel::unbounded();
-        let (waker_sender, waker_receiver) = crossbeam_channel::bounded(1);
+        let shared_waker = Arc::new(AtomicWaker::new());
 
-        let request = Request::resolves_many_times(operation, move |output| {
-            // The future sent its waker into the channel after dispatching the request.
-            // We take it out in order to signal the future is ready, because the output
-            // has been received and is ready to read from the output channel
-            let waker: Waker = waker_receiver.try_recv().expect(
-                "Shell request was resolved, but the sending future is not waiting for output",
-            );
+        let request = Request::resolves_many_times(operation, {
+            let waker = shared_waker.clone();
 
-            output_sender
-                .send(output)
-                .expect("Request could not send output to ShellStream future");
+            move |output| {
+                output_sender
+                    .send(output)
+                    .expect("Request could not send output to ShellStream future");
 
-            waker.wake();
+                waker.wake();
 
-            // TODO: revisit the error handling in here
-            Ok(())
+                // TODO: revisit the error handling in here
+                Ok(())
+            }
         });
 
         let send_request = {
@@ -287,7 +321,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             }
         };
 
-        ShellStream::ReadyToSend(Box::new(send_request), waker_sender, output_receiver)
+        ShellStream::ReadyToSend(Box::new(send_request), shared_waker, output_receiver)
     }
 
     pub fn send_event(&self, event: Event) {
@@ -309,8 +343,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 }
 
 pub enum ShellRequest<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
-    Sent(Receiver<T>),
+    ReadyToSend(Box<dyn FnOnce() + Send>, Arc<AtomicWaker>, Receiver<T>),
+    Sent(Receiver<T>, Arc<AtomicWaker>),
 }
 
 impl<T: Unpin + Send> Future for ShellRequest<T> {
@@ -321,38 +355,37 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
         cx: &mut Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         match self.deref_mut() {
-            ShellRequest::ReadyToSend(send_request, waker_sender, output_receiver) => {
-                let waker = cx.waker().clone();
-
+            ShellRequest::ReadyToSend(send_request, atomic_waker, output_receiver) => {
                 // Need to do memory trickery in order to call the send_request
                 let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
                 std::mem::swap(&mut swapped_send_request, send_request);
 
                 // Prepare the waker for the resolve callback
-                waker_sender
-                    .send(waker)
-                    .expect("ShellRequest future could not send waker to Request");
+                atomic_waker.register(cx.waker());
 
-                *self = ShellRequest::Sent(output_receiver.clone());
+                *self = ShellRequest::Sent(output_receiver.clone(), atomic_waker.clone());
 
                 // Send the request
                 swapped_send_request();
 
                 Poll::Pending
             }
-            ShellRequest::Sent(receiver) => match receiver.try_recv() {
+            ShellRequest::Sent(receiver, atomic_waker) => match receiver.try_recv() {
                 Ok(value) => Poll::Ready(value),
                 // not ready yet. We may be polled in a join for example
                 // TODO: do we need to send the waker again here? It has not changed
-                Err(_) => Poll::Pending,
+                Err(_) => {
+                    atomic_waker.register(cx.waker());
+                    Poll::Pending
+                }
             },
         }
     }
 }
 
 pub enum ShellStream<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, Sender<Waker>, Receiver<T>),
-    Sent(Receiver<T>, Sender<Waker>),
+    ReadyToSend(Box<dyn FnOnce() + Send>, Arc<AtomicWaker>, Receiver<T>),
+    Sent(Receiver<T>, Arc<AtomicWaker>),
 }
 
 impl<T: Unpin + Send> Stream for ShellStream<T> {
@@ -363,41 +396,29 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
         cx: &mut Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         match self.deref_mut() {
-            ShellStream::ReadyToSend(send_stream_request, waker_sender, output_receiver) => {
-                let waker = cx.waker().clone();
+            ShellStream::ReadyToSend(send_stream_request, shared_waker, output_receiver) => {
+                shared_waker.register(cx.waker());
 
                 // Need to do memory trickery in order to call the send_request
                 let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
                 std::mem::swap(&mut swapped_send_request, send_stream_request);
 
-                // Prepare the waker for the resolve callback
-                waker_sender
-                    .send(waker)
-                    .expect("ShellStream future could not send waker to Request");
-
-                *self = ShellStream::Sent(output_receiver.clone(), waker_sender.clone());
+                *self = ShellStream::Sent(output_receiver.clone(), shared_waker.clone());
 
                 // Send the request
                 swapped_send_request();
 
                 Poll::Pending
             }
-            ShellStream::Sent(output_receiver, waker_sender) => {
+            ShellStream::Sent(output_receiver, shared_waker) => {
                 match output_receiver.try_recv() {
-                    Ok(value) => {
-                        // Each subsequent resolve of the Request will look for a waker in the channel,
-                        // so we make sure there is one
-
-                        let waker = cx.waker().clone();
-                        waker_sender
-                            .send(waker)
-                            .expect("ShellStream future could not send waker to Request");
-
-                        Poll::Ready(Some(value))
-                    }
+                    Ok(value) => Poll::Ready(Some(value)),
                     // There are no values waiting, we return pending
                     // so that the parent future knows to keep waiting
-                    Err(TryRecvError::Empty) => Poll::Pending,
+                    Err(TryRecvError::Empty) => {
+                        shared_waker.register(cx.waker());
+                        Poll::Pending
+                    }
                     // Channel is closed, so the stream has ended
                     Err(TryRecvError::Disconnected) => Poll::Ready(None),
                 }
@@ -411,7 +432,7 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
 struct CommandWaker {
     task_id: TaskId,
     ready_queue: Sender<TaskId>,
-    parent_waker: Option<Waker>,
+    parent_waker: Arc<AtomicWaker>,
 }
 
 impl Wake for CommandWaker {
@@ -420,17 +441,14 @@ impl Wake for CommandWaker {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        // If we can't send the id to the ready queue,
-        // There is no Command to poll the task again anyway,
+        // If we can't send the id to the ready queue, there is no Command to poll the task again anyway,
         // nothing to do.
+        // TODO: Does that mean we should bail, since waking ourselves is
+        // now pointless?
         let _ = self.ready_queue.send(self.task_id);
 
-        if let Some(waker) = &self.parent_waker {
-            // If there is a parent waker, Command is being used as a stream
-            // so  we need to schedule ourselves (as the parent task) to wake
-            // since one of our subtasks is ready
-            waker.wake_by_ref();
-        }
+        // Note: calling `wake` before `register` is a no-op
+        self.parent_waker.wake();
     }
 }
 
@@ -452,7 +470,7 @@ impl<Effect, Event> Command<Effect, Event> {
             }
 
             while let Ok(task_id) = self.ready_queue.try_recv() {
-                match self.run_task(task_id, None) {
+                match self.run_task(task_id) {
                     TaskState::Missing => {
                         // The task has been evicted because it completed.  This can happen when
                         // a _running_ task schedules itself to wake, but then completes and gets
@@ -471,11 +489,12 @@ impl<Effect, Event> Command<Effect, Event> {
     }
 
     // Run task within our _own_ context
-    fn run_task(&mut self, task_id: TaskId, parent_waker: Option<Waker>) -> TaskState {
+    fn run_task(&mut self, task_id: TaskId) -> TaskState {
         let Some(task) = self.tasks.get_mut(task_id.0) else {
             return TaskState::Missing;
         };
         let ready_queue = self.ready_sender.clone();
+        let parent_waker = self.waker.clone();
 
         let waker = Arc::new(CommandWaker {
             task_id,
@@ -504,6 +523,7 @@ impl<Effect, Event> Command<Effect, Event> {
 
 // Command is an async Stream
 
+#[derive(Debug)]
 pub enum CommandOutput<Effect, Event> {
     Effect(Effect),
     Event(Event),
@@ -520,42 +540,33 @@ where
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Self::Item>> {
-        // FIXME: the spawning order is different for a stream than
-        // run_until_settled. We're more aggressive here and attempt to spawn
-        // after every task is polled. We should probably be consistent
+        self.waker.register(cx.waker());
+
         self.deref_mut().spawn_new_tasks();
 
         if self.is_done() {
             return Poll::Ready(None);
         }
 
-        loop {
-            let waker = cx.waker().clone();
-
-            match self.ready_queue.try_recv() {
-                Ok(task_id) => {
-                    match self.run_task(task_id, Some(waker)) {
-                        TaskState::Missing => continue,
-                        TaskState::Completed => {
-                            drop(self.tasks.remove(task_id.0));
-                        }
-                        TaskState::Suspended => {}
-                    }
-
-                    if let Ok(effect) = self.effects.try_recv() {
-                        return Poll::Ready(Some(CommandOutput::Effect(effect)));
-                    };
-
-                    if let Ok(event) = self.events.try_recv() {
-                        return Poll::Ready(Some(CommandOutput::Event(event)));
-                    }
+        while let Ok(task_id) = self.ready_queue.try_recv() {
+            match self.run_task(task_id) {
+                TaskState::Missing => continue,
+                TaskState::Completed => {
+                    drop(self.tasks.remove(task_id.0));
                 }
-                Err(_) => {
-                    // No more ready tasks, return pending
-                    return Poll::Pending;
-                }
+                TaskState::Suspended => {}
+            }
+
+            if let Ok(effect) = self.effects.try_recv() {
+                return Poll::Ready(Some(CommandOutput::Effect(effect)));
+            };
+
+            if let Ok(event) = self.events.try_recv() {
+                return Poll::Ready(Some(CommandOutput::Event(event)));
             }
         }
+
+        Poll::Pending
     }
 }
 

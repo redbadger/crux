@@ -409,6 +409,7 @@ mod combinators {
         type Output = AnOperationOutput;
     }
 
+    #[derive(Debug)]
     enum Effect {
         AnEffect(Request<AnOperation>),
     }
@@ -460,5 +461,101 @@ mod combinators {
         let events = cmd.events();
 
         assert_eq!(events[0], Event::Completed(AnOperationOutput::Two));
+
+        assert!(cmd.is_done());
+    }
+
+    #[test]
+    fn and() {
+        let cmd_one = Command::request_from_shell(AnOperation::One, Event::Completed);
+        let cmd_two = Command::request_from_shell(AnOperation::Two, Event::Completed);
+
+        let mut cmd = cmd_one.and(cmd_two);
+
+        assert!(cmd.events().is_empty());
+
+        let mut effects = cmd.effects();
+
+        assert_eq!(effects.len(), 2);
+
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::One);
+
+        request
+            .resolve(AnOperationOutput::One)
+            .expect("request should resolve");
+
+        // Still the original effects
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::Two);
+
+        request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        assert!(cmd.effects().is_empty());
+
+        let events = cmd.events();
+
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+        assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
+
+        eprintln!("! Running cmd.is_done()");
+        assert!(cmd.is_done());
+    }
+
+    #[test]
+    fn all() {
+        let cmd_one = Command::request_from_shell(AnOperation::One, Event::Completed);
+        let cmd_two = Command::request_from_shell(AnOperation::Two, Event::Completed);
+        let cmd_three = Command::request_from_shell(AnOperation::One, Event::Completed);
+
+        let mut cmd = Command::all([cmd_one, cmd_two, cmd_three]);
+
+        assert!(cmd.events().is_empty());
+
+        let mut effects = cmd.effects();
+
+        assert_eq!(effects.len(), 3);
+
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::One);
+
+        request
+            .resolve(AnOperationOutput::One)
+            .expect("request should resolve");
+
+        // Still the original effects
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::Two);
+
+        request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        assert!(cmd.effects().is_empty());
+
+        // Still the original effects
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::One);
+
+        request
+            .resolve(AnOperationOutput::Two)
+            .expect("request should resolve");
+
+        assert!(cmd.effects().is_empty());
+
+        let events = cmd.events();
+
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+        assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
+        assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
+
+        assert!(cmd.is_done());
     }
 }
