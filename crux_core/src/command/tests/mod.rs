@@ -397,12 +397,14 @@ mod combinators {
     enum AnOperation {
         One,
         Two,
+        More(&'static str),
     }
 
     #[derive(Debug, PartialEq, Deserialize)]
     enum AnOperationOutput {
         One,
         Two,
+        Other(String),
     }
 
     impl Operation for AnOperation {
@@ -555,6 +557,113 @@ mod combinators {
         assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
         assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
         assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
+
+        assert!(cmd.is_done());
+    }
+
+    #[test]
+    fn complex_concurrency() {
+        let mut cmd = Command::all([
+            Command::request_from_shell(AnOperation::More("1.1"), Event::Completed).then(
+                Command::request_from_shell(AnOperation::More("1.2"), Event::Completed),
+            ),
+            Command::request_from_shell(AnOperation::More("2.1"), Event::Completed).then(
+                Command::request_from_shell(AnOperation::More("2.2"), Event::Completed),
+            ),
+        ])
+        .then(Command::request_from_shell(
+            AnOperation::More("3.1"),
+            Event::Completed,
+        ));
+
+        // Phase 1
+
+        assert!(cmd.events().is_empty());
+        let mut effects = cmd.effects();
+
+        assert_eq!(effects.len(), 2);
+
+        let Effect::AnEffect(mut request_1) = effects.remove(0);
+        let Effect::AnEffect(mut request_2) = effects.remove(0);
+
+        assert_eq!(request_1.operation, AnOperation::More("1.1"));
+        assert_eq!(request_2.operation, AnOperation::More("2.1"));
+
+        request_1
+            .resolve(AnOperationOutput::Other("1.1".to_string()))
+            .expect("request should resolve");
+
+        request_2
+            .resolve(AnOperationOutput::Other("2.1".to_string()))
+            .expect("request should resolve");
+
+        // Phase 2
+
+        let events = cmd.events();
+        let mut effects = cmd.effects();
+
+        assert_eq!(events.len(), 2);
+
+        assert_eq!(
+            events[0],
+            Event::Completed(AnOperationOutput::Other("1.1".to_string()))
+        );
+        assert_eq!(
+            events[1],
+            Event::Completed(AnOperationOutput::Other("2.1".to_string()))
+        );
+
+        assert_eq!(effects.len(), 2);
+
+        let Effect::AnEffect(mut request_1) = effects.remove(0);
+        let Effect::AnEffect(mut request_2) = effects.remove(0);
+
+        assert_eq!(request_1.operation, AnOperation::More("1.2"));
+        assert_eq!(request_2.operation, AnOperation::More("2.2"));
+
+        request_1
+            .resolve(AnOperationOutput::Other("1.2".to_string()))
+            .expect("request should resolve");
+
+        request_2
+            .resolve(AnOperationOutput::Other("2.2".to_string()))
+            .expect("request should resolve");
+
+        // Phase 3
+
+        let events = cmd.events();
+        let mut effects = cmd.effects();
+
+        assert_eq!(events.len(), 2);
+
+        assert_eq!(
+            events[0],
+            Event::Completed(AnOperationOutput::Other("1.2".to_string()))
+        );
+        assert_eq!(
+            events[1],
+            Event::Completed(AnOperationOutput::Other("2.2".to_string()))
+        );
+
+        assert_eq!(effects.len(), 1);
+
+        let Effect::AnEffect(mut request_1) = effects.remove(0);
+
+        assert_eq!(request_1.operation, AnOperation::More("3.1"));
+
+        request_1
+            .resolve(AnOperationOutput::Other("3.1".to_string()))
+            .expect("request should resolve");
+
+        // Phase 4
+
+        let events = cmd.events();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(
+            events[0],
+            Event::Completed(AnOperationOutput::Other("3.1".to_string()))
+        );
 
         assert!(cmd.is_done());
     }
