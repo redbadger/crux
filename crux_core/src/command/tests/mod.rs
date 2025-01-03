@@ -62,7 +62,7 @@ mod basic_effects {
 
     #[test]
     fn request_effect_can_be_inspected() {
-        let mut cmd = Command::request_from_shell(AnOperation, Event::Completed);
+        let mut cmd = Command::request_from_shell(AnOperation).then_send(Event::Completed);
 
         let mut effects = cmd.effects();
 
@@ -75,7 +75,7 @@ mod basic_effects {
 
     #[test]
     fn request_effect_can_be_resolved() {
-        let mut cmd = Command::request_from_shell(AnOperation, Event::Completed);
+        let mut cmd = Command::request_from_shell(AnOperation).then_send(Event::Completed);
 
         let mut effects = cmd.effects();
 
@@ -397,14 +397,14 @@ mod combinators {
     enum AnOperation {
         One,
         Two,
-        More(&'static str),
+        More([u8; 2]),
     }
 
     #[derive(Debug, PartialEq, Deserialize)]
     enum AnOperationOutput {
         One,
         Two,
-        Other(String),
+        Other([u8; 2]),
     }
 
     impl Operation for AnOperation {
@@ -429,8 +429,8 @@ mod combinators {
 
     #[test]
     fn then() {
-        let cmd_one = Command::request_from_shell(AnOperation::One, Event::Completed);
-        let cmd_two = Command::request_from_shell(AnOperation::Two, Event::Completed);
+        let cmd_one = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
+        let cmd_two = Command::request_from_shell(AnOperation::Two).then_send(Event::Completed);
 
         let mut cmd = cmd_one.then(cmd_two);
 
@@ -468,9 +468,56 @@ mod combinators {
     }
 
     #[test]
+    fn chaining() {
+        let mut cmd: Command<Effect, Event> =
+            Command::request_from_shell(AnOperation::More([3, 4]))
+                .then(|first| {
+                    let AnOperationOutput::Other(first) = first else {
+                        // TODO: how do I bail quietly here?
+                        panic!("Invalid output!")
+                    };
+
+                    let second = [first[0] + 1, first[1] + 1];
+
+                    Command::request_from_shell(AnOperation::More(second))
+                })
+                .then_send(Event::Completed);
+
+        let mut effects = cmd.effects();
+        assert!(cmd.events().is_empty());
+
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, AnOperation::More([3, 4]));
+        request
+            .resolve(AnOperationOutput::Other([1, 2]))
+            .expect("to resolve");
+
+        let mut effects = cmd.effects();
+        assert!(cmd.events().is_empty());
+
+        let Effect::AnEffect(mut request) = effects.remove(0);
+        assert_eq!(request.operation, AnOperation::More([2, 3]));
+
+        request
+            .resolve(AnOperationOutput::Other([1, 2]))
+            .expect("to resolve");
+
+        let events = cmd.events();
+        assert!(cmd.effects().is_empty());
+
+        assert_eq!(
+            events[0],
+            Event::Completed(AnOperationOutput::Other([1, 2]))
+        );
+
+        assert!(cmd.is_done());
+    }
+
+    #[test]
     fn and() {
-        let cmd_one = Command::request_from_shell(AnOperation::One, Event::Completed);
-        let cmd_two = Command::request_from_shell(AnOperation::Two, Event::Completed);
+        let cmd_one = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
+        let cmd_two = Command::request_from_shell(AnOperation::Two).then_send(Event::Completed);
 
         let mut cmd = cmd_one.and(cmd_two);
 
@@ -510,9 +557,9 @@ mod combinators {
 
     #[test]
     fn all() {
-        let cmd_one = Command::request_from_shell(AnOperation::One, Event::Completed);
-        let cmd_two = Command::request_from_shell(AnOperation::Two, Event::Completed);
-        let cmd_three = Command::request_from_shell(AnOperation::One, Event::Completed);
+        let cmd_one = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
+        let cmd_two = Command::request_from_shell(AnOperation::Two).then_send(Event::Completed);
+        let cmd_three = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
 
         let mut cmd = Command::all([cmd_one, cmd_two, cmd_three]);
 
@@ -563,18 +610,23 @@ mod combinators {
 
     #[test]
     fn complex_concurrency() {
+        fn increment(output: AnOperationOutput) -> AnOperation {
+            let AnOperationOutput::Other([a, b]) = output else {
+                panic!("bad output");
+            };
+
+            AnOperation::More([a, b + 1])
+        }
+
         let mut cmd = Command::all([
-            Command::request_from_shell(AnOperation::More("1.1"), Event::Completed).then(
-                Command::request_from_shell(AnOperation::More("1.2"), Event::Completed),
-            ),
-            Command::request_from_shell(AnOperation::More("2.1"), Event::Completed).then(
-                Command::request_from_shell(AnOperation::More("2.2"), Event::Completed),
-            ),
+            Command::request_from_shell(AnOperation::More([1, 1]))
+                .then(|out| Command::request_from_shell(increment(out)))
+                .then_send(Event::Completed),
+            Command::request_from_shell(AnOperation::More([2, 1]))
+                .then(|out| Command::request_from_shell(increment(out)))
+                .then_send(Event::Completed),
         ])
-        .then(Command::request_from_shell(
-            AnOperation::More("3.1"),
-            Event::Completed,
-        ));
+        .then(Command::request_from_shell(AnOperation::More([3, 1])).then_send(Event::Completed));
 
         // Phase 1
 
@@ -586,47 +638,36 @@ mod combinators {
         let Effect::AnEffect(mut request_1) = effects.remove(0);
         let Effect::AnEffect(mut request_2) = effects.remove(0);
 
-        assert_eq!(request_1.operation, AnOperation::More("1.1"));
-        assert_eq!(request_2.operation, AnOperation::More("2.1"));
+        assert_eq!(request_1.operation, AnOperation::More([1, 1]));
+        assert_eq!(request_2.operation, AnOperation::More([2, 1]));
 
         request_1
-            .resolve(AnOperationOutput::Other("1.1".to_string()))
+            .resolve(AnOperationOutput::Other([1, 1]))
             .expect("request should resolve");
 
         request_2
-            .resolve(AnOperationOutput::Other("2.1".to_string()))
+            .resolve(AnOperationOutput::Other([2, 1]))
             .expect("request should resolve");
 
         // Phase 2
 
-        let events = cmd.events();
+        assert!(cmd.events().is_empty());
         let mut effects = cmd.effects();
-
-        assert_eq!(events.len(), 2);
-
-        assert_eq!(
-            events[0],
-            Event::Completed(AnOperationOutput::Other("1.1".to_string()))
-        );
-        assert_eq!(
-            events[1],
-            Event::Completed(AnOperationOutput::Other("2.1".to_string()))
-        );
 
         assert_eq!(effects.len(), 2);
 
         let Effect::AnEffect(mut request_1) = effects.remove(0);
         let Effect::AnEffect(mut request_2) = effects.remove(0);
 
-        assert_eq!(request_1.operation, AnOperation::More("1.2"));
-        assert_eq!(request_2.operation, AnOperation::More("2.2"));
+        assert_eq!(request_1.operation, AnOperation::More([1, 2]));
+        assert_eq!(request_2.operation, AnOperation::More([2, 2]));
 
         request_1
-            .resolve(AnOperationOutput::Other("1.2".to_string()))
+            .resolve(AnOperationOutput::Other([1, 2]))
             .expect("request should resolve");
 
         request_2
-            .resolve(AnOperationOutput::Other("2.2".to_string()))
+            .resolve(AnOperationOutput::Other([2, 2]))
             .expect("request should resolve");
 
         // Phase 3
@@ -638,21 +679,21 @@ mod combinators {
 
         assert_eq!(
             events[0],
-            Event::Completed(AnOperationOutput::Other("1.2".to_string()))
+            Event::Completed(AnOperationOutput::Other([1, 2]))
         );
         assert_eq!(
             events[1],
-            Event::Completed(AnOperationOutput::Other("2.2".to_string()))
+            Event::Completed(AnOperationOutput::Other([2, 2]))
         );
 
         assert_eq!(effects.len(), 1);
 
         let Effect::AnEffect(mut request_1) = effects.remove(0);
 
-        assert_eq!(request_1.operation, AnOperation::More("3.1"));
+        assert_eq!(request_1.operation, AnOperation::More([3, 1]));
 
         request_1
-            .resolve(AnOperationOutput::Other("3.1".to_string()))
+            .resolve(AnOperationOutput::Other([3, 1]))
             .expect("request should resolve");
 
         // Phase 4
@@ -662,7 +703,7 @@ mod combinators {
         assert_eq!(events.len(), 1);
         assert_eq!(
             events[0],
-            Event::Completed(AnOperationOutput::Other("3.1".to_string()))
+            Event::Completed(AnOperationOutput::Other([3, 1]))
         );
 
         assert!(cmd.is_done());
