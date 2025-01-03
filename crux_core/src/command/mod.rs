@@ -4,9 +4,10 @@ use std::sync::Arc;
 use std::task::{Context, Poll, Wake};
 
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use futures::future::BoxFuture;
 use futures::task::AtomicWaker;
 // TODO: do we want to use capability channel here?
-use futures::{future, stream, Stream};
+use futures::{stream, Stream};
 use futures::{FutureExt, StreamExt as _};
 use slab::Slab;
 
@@ -17,14 +18,14 @@ use crate::Request;
 #[derive(Clone, Copy, Debug)]
 struct TaskId(usize);
 
-type BoxFuture = future::BoxFuture<'static, ()>;
+type CommandTask = BoxFuture<'static, ()>;
 
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
     ready_queue: Receiver<TaskId>,
-    spawn_queue: Receiver<BoxFuture>,
-    tasks: Slab<BoxFuture>,
+    spawn_queue: Receiver<CommandTask>,
+    tasks: Slab<CommandTask>,
     ready_sender: Sender<TaskId>, // Used to make wakers
     waker: Arc<AtomicWaker>,      // Shared with task wakers when polled in async context
 }
@@ -41,6 +42,10 @@ where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
+        // RFC: do we need to think about backpressure? The channels are unbounded
+        // so a naughty Command can make massive amounts of requests or spawn a huge number of tasks.
+        // If these channels supported async, the CommandContext methods could also be async and
+        // we could give the channels some bounds
         let (effect_sender, effect_receiver) = crossbeam_channel::unbounded();
         let (event_sender, event_receiver) = crossbeam_channel::unbounded();
         let (ready_sender, ready_receiver) = crossbeam_channel::unbounded();
@@ -92,7 +97,7 @@ where
         Command::new(|ctx| async move { ctx.send_event(event) })
     }
 
-    pub fn notify_shell<Op>(operation: Op) -> Self
+    pub fn notify_shell<Op>(operation: Op) -> Command<Effect, Event>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
@@ -100,18 +105,14 @@ where
         Command::new(|ctx| async move { ctx.notify_shell(operation) })
     }
 
-    pub fn request_from_shell<Op, E>(operation: Op, event: E) -> Self
+    pub fn request_from_shell<Op>(
+        operation: Op,
+    ) -> CommandBuilder<Effect, Event, impl Future<Output = Op::Output>, Op::Output>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
-        E: FnOnce(Op::Output) -> Event + Send + 'static,
     {
-        Command::new(|ctx| async move {
-            let output = ctx.request_from_shell(operation).await;
-            let event = event(output);
-
-            ctx.send_event(event)
-        })
+        CommandBuilder::new(|ctx| async move { ctx.request_from_shell(operation).await })
     }
 
     pub fn stream_from_shell<Op, E>(operation: Op, event: E) -> Self
@@ -151,7 +152,8 @@ where
     // Combinators
 
     /// Create a command running self and the other command in sequence
-    // RFC: is this actually _useful_? In its current form, it doesn't allow other to use the results of self
+    // RFC: is this actually _useful_? Unlike `.and_then` on `CommandBuilder` this doesn't allow using
+    // the output of the first command in building the second one
     pub fn then(mut self, mut other: Self) -> Self
     where
         Effect: Unpin + std::fmt::Debug,
@@ -223,11 +225,78 @@ where
     }
 }
 
+pub struct CommandBuilder<Effect, Event, Fut, T>
+where
+    Fut: Future<Output = T> + 'static,
+{
+    make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Fut + Send>,
+}
+
+impl<Effect, Event, Fut, T> CommandBuilder<Effect, Event, Fut, T>
+where
+    T: 'static,
+    Fut: Future<Output = T> + Send,
+    Effect: Send + 'static,
+    Event: Send + 'static,
+{
+    pub fn new<F>(make_task: F) -> Self
+    where
+        F: FnOnce(CommandContext<Effect, Event>) -> Fut + Send + 'static,
+    {
+        let make_task = Box::new(make_task);
+
+        CommandBuilder { make_task }
+    }
+
+    /// Chain on a computation which can use the output of the first command.
+    /// The output is passed to a closure which must return another CommandBuilder
+    ///
+    /// TODO: example with expected capability API
+    pub fn then<NextF, NextFut, U>(
+        self,
+        next: NextF,
+    ) -> CommandBuilder<Effect, Event, impl Future<Output = U>, U>
+    where
+        NextF: FnOnce(T) -> CommandBuilder<Effect, Event, NextFut, U> + Send + 'static,
+        NextFut: Future<Output = U> + Send + 'static,
+        U: 'static,
+    {
+        CommandBuilder::new(|ctx| async move {
+            let output = self.into_future(ctx.clone()).await;
+
+            next(output).into_future(ctx).await
+        })
+    }
+
+    /// Convert into Command returning an event
+    pub fn then_send<E>(self, make_event: E) -> Command<Effect, Event>
+    where
+        E: FnOnce(T) -> Event + Send + 'static,
+    {
+        Command::new(|ctx| async move {
+            let make_task = self.make_task;
+            let output = make_task(ctx.clone()).await;
+            let event = make_event(output);
+
+            ctx.send_event(event);
+        })
+    }
+
+    /// Convert into a Future to use in an async context.
+    ///
+    /// See [`Command::new`] for more about async commands
+    pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Fut {
+        let make_task = self.make_task;
+
+        make_task(ctx)
+    }
+}
+
 // Context enabling futures to communicate with the Command
 pub struct CommandContext<Effect, Event> {
     effects: Sender<Effect>,
     events: Sender<Event>,
-    tasks: Sender<BoxFuture>,
+    tasks: Sender<CommandTask>,
 }
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
