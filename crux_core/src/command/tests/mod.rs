@@ -391,13 +391,12 @@ mod combinators {
     use serde::{Deserialize, Serialize};
 
     use super::super::Command;
-    use crate::{capability::Operation, Request};
+    use crate::{capability::Operation, command::builder::CommandBuilder as _, Request};
 
     #[derive(Debug, PartialEq, Clone, Serialize)]
     enum AnOperation {
         One,
         Two,
-        Three,
         More([u8; 2]),
     }
 
@@ -472,7 +471,7 @@ mod combinators {
     fn chaining() {
         let mut cmd: Command<Effect, Event> =
             Command::request_from_shell(AnOperation::More([3, 4]))
-                .then_request(|first| {
+                .then(|first| {
                     let AnOperationOutput::Other(first) = first else {
                         // TODO: how do I bail quietly here?
                         panic!("Invalid output!")
@@ -621,10 +620,10 @@ mod combinators {
 
         let mut cmd = Command::all([
             Command::request_from_shell(AnOperation::More([1, 1]))
-                .then_request(|out| Command::request_from_shell(increment(out)))
+                .then(|out| Command::request_from_shell(increment(out)))
                 .then_send(Event::Completed),
             Command::request_from_shell(AnOperation::More([2, 1]))
-                .then_request(|out| Command::request_from_shell(increment(out)))
+                .then(|out| Command::request_from_shell(increment(out)))
                 .then_send(Event::Completed),
         ])
         .then(Command::request_from_shell(AnOperation::More([3, 1])).then_send(Event::Completed));
@@ -714,7 +713,7 @@ mod combinators {
     fn concurrency_mixing_streams_and_requests() {
         let mut cmd: Command<Effect, Event> = Command::all([
             Command::stream_from_shell(AnOperation::One)
-                .then_request(|out| {
+                .then(|out| {
                     let AnOperationOutput::Other([a, b]) = out else {
                         panic!("Bad output");
                     };
@@ -723,7 +722,7 @@ mod combinators {
                 })
                 .then_send(Event::Completed),
             Command::request_from_shell(AnOperation::Two)
-                .then_stream(|out| {
+                .then(|out| {
                     let AnOperationOutput::Other([a, b]) = out else {
                         panic!("Bad output");
                     };
