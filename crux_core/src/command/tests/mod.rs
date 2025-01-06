@@ -101,7 +101,7 @@ mod basic_effects {
 
     #[test]
     fn stream_effect_can_be_resolved_multiple_times() {
-        let mut cmd = Command::stream_from_shell(AnOperation, Event::Completed);
+        let mut cmd = Command::stream_from_shell(AnOperation).then_send(Event::Completed);
 
         let mut effects = cmd.effects();
 
@@ -397,6 +397,7 @@ mod combinators {
     enum AnOperation {
         One,
         Two,
+        Three,
         More([u8; 2]),
     }
 
@@ -471,7 +472,7 @@ mod combinators {
     fn chaining() {
         let mut cmd: Command<Effect, Event> =
             Command::request_from_shell(AnOperation::More([3, 4]))
-                .then(|first| {
+                .then_request(|first| {
                     let AnOperationOutput::Other(first) = first else {
                         // TODO: how do I bail quietly here?
                         panic!("Invalid output!")
@@ -620,10 +621,10 @@ mod combinators {
 
         let mut cmd = Command::all([
             Command::request_from_shell(AnOperation::More([1, 1]))
-                .then(|out| Command::request_from_shell(increment(out)))
+                .then_request(|out| Command::request_from_shell(increment(out)))
                 .then_send(Event::Completed),
             Command::request_from_shell(AnOperation::More([2, 1]))
-                .then(|out| Command::request_from_shell(increment(out)))
+                .then_request(|out| Command::request_from_shell(increment(out)))
                 .then_send(Event::Completed),
         ])
         .then(Command::request_from_shell(AnOperation::More([3, 1])).then_send(Event::Completed));
@@ -707,5 +708,99 @@ mod combinators {
         );
 
         assert!(cmd.is_done());
+    }
+
+    #[test]
+    fn concurrency_mixing_streams_and_requests() {
+        let mut cmd: Command<Effect, Event> = Command::all([
+            Command::stream_from_shell(AnOperation::One)
+                .then_request(|out| {
+                    let AnOperationOutput::Other([a, b]) = out else {
+                        panic!("Bad output");
+                    };
+
+                    Command::request_from_shell(AnOperation::More([a + 1, b + 1]))
+                })
+                .then_send(Event::Completed),
+            Command::request_from_shell(AnOperation::Two)
+                .then_stream(|out| {
+                    let AnOperationOutput::Other([a, b]) = out else {
+                        panic!("Bad output");
+                    };
+
+                    Command::stream_from_shell(AnOperation::More([a + 2, b + 2]))
+                })
+                .then_send(Event::Completed),
+        ]);
+
+        assert!(cmd.events().is_empty());
+        let mut effects = cmd.effects();
+
+        assert_eq!(effects.len(), 2);
+
+        let Effect::AnEffect(mut stream_request) = effects.remove(0);
+        let Effect::AnEffect(mut request) = effects.remove(0);
+
+        assert_eq!(stream_request.operation, AnOperation::One);
+        assert_eq!(request.operation, AnOperation::Two);
+
+        stream_request
+            .resolve(AnOperationOutput::Other([1, 2]))
+            .expect("should resolve");
+
+        let mut effects = cmd.effects();
+
+        let Effect::AnEffect(mut plus_one_request) = effects.remove(0);
+        assert_eq!(plus_one_request.operation, AnOperation::More([2, 3]));
+
+        plus_one_request
+            .resolve(AnOperationOutput::One)
+            .expect("should resolve");
+
+        let events = cmd.events();
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+
+        // Can't request the plus one request again
+        assert!(plus_one_request.resolve(AnOperationOutput::One).is_err());
+
+        // but can get a new one by resolving stream request again
+        stream_request
+            .resolve(AnOperationOutput::Other([2, 3]))
+            .expect("should resolve");
+
+        let mut effects = cmd.effects();
+
+        let Effect::AnEffect(plus_one_request) = effects.remove(0);
+        assert_eq!(plus_one_request.operation, AnOperation::More([3, 4]));
+
+        // The second request is the opposite
+
+        request
+            .resolve(AnOperationOutput::Other([1, 2]))
+            .expect("should resolve");
+        assert!(request.resolve(AnOperationOutput::Other([1, 2])).is_err());
+
+        let mut effects = cmd.effects();
+
+        let Effect::AnEffect(mut plus_two_request) = effects.remove(0);
+
+        assert_eq!(plus_two_request.operation, AnOperation::More([3, 4]));
+
+        // Plus two request is a subscription
+
+        plus_two_request
+            .resolve(AnOperationOutput::One)
+            .expect("should resolve");
+        plus_two_request
+            .resolve(AnOperationOutput::Two)
+            .expect("should resolve");
+        plus_two_request
+            .resolve(AnOperationOutput::One)
+            .expect("should resolve");
+
+        let events = cmd.events();
+        assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+        assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
+        assert_eq!(events[2], Event::Completed(AnOperationOutput::One));
     }
 }

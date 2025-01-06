@@ -1,3 +1,5 @@
+mod builder;
+
 use std::future::Future;
 use std::ops::DerefMut as _;
 use std::sync::Arc;
@@ -107,26 +109,22 @@ where
 
     pub fn request_from_shell<Op>(
         operation: Op,
-    ) -> CommandBuilder<Effect, Event, impl Future<Output = Op::Output>, Op::Output>
+    ) -> builder::ShellRequest<Effect, Event, impl Future<Output = Op::Output>>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
     {
-        CommandBuilder::new(|ctx| async move { ctx.request_from_shell(operation).await })
+        builder::ShellRequest::new(|ctx| ctx.request_from_shell(operation))
     }
 
-    pub fn stream_from_shell<Op, E>(operation: Op, event: E) -> Self
+    pub fn stream_from_shell<Op>(
+        operation: Op,
+    ) -> builder::ShellStream<Effect, Event, impl Stream<Item = Op::Output>>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
-        E: Fn(Op::Output) -> Event + Send + 'static,
     {
-        Command::new(|ctx| async move {
-            let mut stream = ctx.stream_from_shell(operation);
-            while let Some(output) = stream.next().await {
-                ctx.send_event(event(output))
-            }
-        })
+        builder::ShellStream::new(|ctx| ctx.stream_from_shell(operation))
     }
 
     pub fn is_done(&self) -> bool {
@@ -222,73 +220,6 @@ where
                 }
             }
         })
-    }
-}
-
-pub struct CommandBuilder<Effect, Event, Fut, T>
-where
-    Fut: Future<Output = T> + 'static,
-{
-    make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Fut + Send>,
-}
-
-impl<Effect, Event, Fut, T> CommandBuilder<Effect, Event, Fut, T>
-where
-    T: 'static,
-    Fut: Future<Output = T> + Send,
-    Effect: Send + 'static,
-    Event: Send + 'static,
-{
-    pub fn new<F>(make_task: F) -> Self
-    where
-        F: FnOnce(CommandContext<Effect, Event>) -> Fut + Send + 'static,
-    {
-        let make_task = Box::new(make_task);
-
-        CommandBuilder { make_task }
-    }
-
-    /// Chain on a computation which can use the output of the first command.
-    /// The output is passed to a closure which must return another CommandBuilder
-    ///
-    /// TODO: example with expected capability API
-    pub fn then<NextF, NextFut, U>(
-        self,
-        next: NextF,
-    ) -> CommandBuilder<Effect, Event, impl Future<Output = U>, U>
-    where
-        NextF: FnOnce(T) -> CommandBuilder<Effect, Event, NextFut, U> + Send + 'static,
-        NextFut: Future<Output = U> + Send + 'static,
-        U: 'static,
-    {
-        CommandBuilder::new(|ctx| async move {
-            let output = self.into_future(ctx.clone()).await;
-
-            next(output).into_future(ctx).await
-        })
-    }
-
-    /// Convert into Command returning an event
-    pub fn then_send<E>(self, make_event: E) -> Command<Effect, Event>
-    where
-        E: FnOnce(T) -> Event + Send + 'static,
-    {
-        Command::new(|ctx| async move {
-            let make_task = self.make_task;
-            let output = make_task(ctx.clone()).await;
-            let event = make_event(output);
-
-            ctx.send_event(event);
-        })
-    }
-
-    /// Convert into a Future to use in an async context.
-    ///
-    /// See [`Command::new`] for more about async commands
-    pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Fut {
-        let make_task = self.make_task;
-
-        make_task(ctx)
     }
 }
 
