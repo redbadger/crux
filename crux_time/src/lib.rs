@@ -15,7 +15,15 @@ pub use instant::Instant;
 use serde::{Deserialize, Serialize};
 
 use crux_core::capability::{CapabilityContext, Operation};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    collections::HashSet,
+    future::Future,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        LazyLock, Mutex,
+    },
+    task::Poll,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,7 +34,7 @@ pub enum TimeRequest {
     Clear { id: TimerId },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TimerId(pub usize);
 
 fn get_timer_id() -> TimerId {
@@ -127,7 +135,8 @@ where
             let this = self.clone();
 
             async move {
-                context.update_app(callback(this.notify_at_async(tid, instant).await));
+                let response = this.notify_at_async(tid, instant).await;
+                context.update_app(callback(response));
             }
         });
 
@@ -136,10 +145,15 @@ where
 
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
-    pub async fn notify_at_async(&self, id: TimerId, instant: Instant) -> TimeResponse {
-        self.context
-            .request_from_shell(TimeRequest::NotifyAt { id, instant })
-            .await
+    pub fn notify_at_async(
+        &self,
+        id: TimerId,
+        instant: Instant,
+    ) -> TimerFuture<impl Future<Output = TimeResponse>> {
+        let future = self
+            .context
+            .request_from_shell(TimeRequest::NotifyAt { id, instant });
+        TimerFuture::new(id, future)
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.
@@ -162,22 +176,74 @@ where
 
     /// Ask to receive a notification when the specified duration has elapsed.
     /// This is an async call to use with [`crux_core::compose::Compose`].
-    pub async fn notify_after_async(&self, id: TimerId, duration: Duration) -> TimeResponse {
-        self.context
-            .request_from_shell(TimeRequest::NotifyAfter { id, duration })
-            .await
+    pub fn notify_after_async(
+        &self,
+        id: TimerId,
+        duration: Duration,
+    ) -> TimerFuture<impl Future<Output = TimeResponse>> {
+        let future = self
+            .context
+            .request_from_shell(TimeRequest::NotifyAfter { id, duration });
+        TimerFuture::new(id, future)
     }
 
     pub fn clear(&self, id: TimerId) {
         self.context.spawn({
-            let context = self.context.clone();
+            {
+                let mut lock = CLEARED_TIMER_IDS.lock().unwrap();
+                lock.insert(id);
+            }
 
+            let context = self.context.clone();
             async move {
                 context.notify_shell(TimeRequest::Clear { id }).await;
             }
         });
     }
 }
+
+pin_project_lite::pin_project! {
+    pub struct TimerFuture<F>
+    where
+        F: Future<Output = TimeResponse>,
+    {
+        timer_id: TimerId,
+        #[pin]
+        future: F,
+    }
+}
+
+impl<F> Future for TimerFuture<F>
+where
+    F: Future<Output = TimeResponse>,
+{
+    type Output = TimeResponse;
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let is_cleared = {
+            let lock = CLEARED_TIMER_IDS.lock().unwrap();
+            lock.contains(&self.timer_id)
+        };
+        if is_cleared {
+            Poll::Ready(TimeResponse::Cleared { id: self.timer_id })
+        } else {
+            let this = self.project();
+            this.future.poll(cx)
+        }
+    }
+}
+
+impl<F: Future<Output = TimeResponse>> TimerFuture<F> {
+    fn new(timer_id: TimerId, future: F) -> Self {
+        Self { timer_id, future }
+    }
+}
+
+static CLEARED_TIMER_IDS: LazyLock<Mutex<HashSet<TimerId>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
 
 #[cfg(test)]
 mod test {

@@ -17,6 +17,7 @@ mod shared {
 
         StartDebounce,
         DurationElapsed(usize, TimeResponse),
+        Cancel(TimerId),
     }
 
     #[derive(Default)]
@@ -95,6 +96,9 @@ mod shared {
                 }
                 Event::DurationElapsed(_, _) => {
                     panic!("Unexpected debounce event")
+                }
+                Event::Cancel(timer_id) => {
+                    caps.time.clear(timer_id);
                 }
             }
         }
@@ -249,27 +253,33 @@ mod tests {
     }
 
     #[test]
-    pub fn test_cancel_timer() {
+    pub fn test_start_debounce_then_clear() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
-
-        let request1 = &mut app
+        let mut debounce = app
             .update(Event::StartDebounce, &mut model)
             .expect_one_effect()
             .expect_time();
-
-        assert!(model.debounce_time_id.is_some());
-
-        app.resolve_to_event_then_update(
-            request1,
-            TimeResponse::Cleared {
-                id: model.debounce_time_id.unwrap(),
-            },
-            &mut model,
-        )
-        .assert_empty();
-
-        assert!(!model.debounce_complete);
-        assert!(model.debounce_time_id.is_none());
+        let timer_id = model.debounce_time_id.unwrap();
+        let _cancel = app
+            .update(Event::Cancel(timer_id), &mut model)
+            .expect_one_effect()
+            .expect_time();
+        // this is a little strange-looking. We have cleared the timer,
+        // so the in-flight debounce should have resolved. But to force that
+        // to happen, we have to run the app, and the easiest way to do that
+        // is to resolve the original debounce effect with a fake outcome -
+        // which will be ignored in favour of TimeResponse::Cleared
+        let ev = app
+            .resolve(
+                &mut debounce,
+                TimeResponse::DurationElapsed { id: timer_id },
+            )
+            .unwrap()
+            .expect_one_event();
+        let Event::DurationElapsed(_, TimeResponse::Cleared { id }) = ev else {
+            panic!()
+        };
+        assert_eq!(id, timer_id);
     }
 }
