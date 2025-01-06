@@ -208,6 +208,7 @@ pin_project_lite::pin_project! {
         F: Future<Output = TimeResponse>,
     {
         timer_id: TimerId,
+        is_cleared: bool,
         #[pin]
         future: F,
     }
@@ -223,14 +224,23 @@ where
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        let is_cleared = {
-            let lock = CLEARED_TIMER_IDS.lock().unwrap();
-            lock.contains(&self.timer_id)
+        if self.is_cleared {
+            // short-circuit return
+            return Poll::Ready(TimeResponse::Cleared { id: self.timer_id });
         };
-        if is_cleared {
-            Poll::Ready(TimeResponse::Cleared { id: self.timer_id })
+        // see if the timer has been cleared
+        let timer_is_cleared = {
+            let mut lock = CLEARED_TIMER_IDS.lock().unwrap();
+            lock.remove(&self.timer_id)
+        };
+        let this = self.project();
+        *this.is_cleared = timer_is_cleared;
+        if timer_is_cleared {
+            // if the timer has been cleared, immediately return 'Ready' without
+            // waiting for the timer to elapse
+            Poll::Ready(TimeResponse::Cleared { id: *this.timer_id })
         } else {
-            let this = self.project();
+            // otherwise, defer to the inner future
             this.future.poll(cx)
         }
     }
@@ -238,10 +248,18 @@ where
 
 impl<F: Future<Output = TimeResponse>> TimerFuture<F> {
     fn new(timer_id: TimerId, future: F) -> Self {
-        Self { timer_id, future }
+        Self {
+            timer_id,
+            future,
+            is_cleared: false,
+        }
     }
 }
 
+// Global HashSet containing the ids of timers which have been _cleared_
+// but the whose futures have _not since been polled_. When the future is next
+// polled, the timer id is evicted from this set and the timer is 'poisoned'
+// so as to return immediately without waiting on the shell.
 static CLEARED_TIMER_IDS: LazyLock<Mutex<HashSet<TimerId>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
 
