@@ -20,11 +20,12 @@ pub trait CommandBuilder<Effect, Event, T> {
 }
 
 // Task is a future which does the shell talking and returns an output
-pub struct ShellRequest<Effect, Event, Task> {
+pub struct RequestBuilder<Effect, Event, Task> {
     make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
 }
 
-impl<Effect, Event, Task, T> CommandBuilder<Effect, Event, T> for ShellRequest<Effect, Event, Task>
+impl<Effect, Event, Task, T> CommandBuilder<Effect, Event, T>
+    for RequestBuilder<Effect, Event, Task>
 where
     Task: Future<Output = T> + Send + 'static,
     Effect: Send + 'static,
@@ -37,7 +38,7 @@ where
         F: FnOnce(CommandContext<Effect, Event>) -> AsyncTask + Send + 'static,
         AsyncTask: Future<Output = Task> + Send + 'static,
     {
-        ShellRequest::new(|ctx| make_task(ctx).flatten())
+        RequestBuilder::new(|ctx| make_task(ctx).flatten())
     }
 
     fn into_async(self, ctx: CommandContext<Effect, Event>) -> Self::Task {
@@ -56,7 +57,7 @@ where
     }
 }
 
-impl<Effect, Event, Task, T> ShellRequest<Effect, Event, Task>
+impl<Effect, Event, Task, T> RequestBuilder<Effect, Event, Task>
 where
     Effect: Send + 'static,
     Event: Send + 'static,
@@ -68,7 +69,7 @@ where
     {
         let make_task = Box::new(make_task);
 
-        ShellRequest { make_task }
+        RequestBuilder { make_task }
     }
 
     pub fn then<F, NextBuilder, U>(
@@ -106,11 +107,11 @@ where
     }
 }
 
-pub struct ShellStream<Effect, Event, Task> {
+pub struct StreamBuilder<Effect, Event, Task> {
     make_stream: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
 }
 
-impl<Effect, Event, Task, T> CommandBuilder<Effect, Event, T> for ShellStream<Effect, Event, Task>
+impl<Effect, Event, Task, T> CommandBuilder<Effect, Event, T> for StreamBuilder<Effect, Event, Task>
 where
     Task: Stream<Item = T> + Send + 'static,
     Effect: Send + 'static,
@@ -123,10 +124,10 @@ where
         F: FnOnce(CommandContext<Effect, Event>) -> AsyncTask + Send + 'static,
         AsyncTask: Future<Output = Task> + Send + 'static,
     {
-        ShellStream::new(|ctx| make_task(ctx.clone()).flatten_stream())
+        StreamBuilder::new(|ctx| make_task(ctx.clone()).flatten_stream())
     }
 
-    fn into_async(self, ctx: CommandContext<Effect, Event>) -> Self::Task {
+    fn into_async(self, ctx: CommandContext<Effect, Event>) -> Task {
         self.into_stream(ctx)
     }
 
@@ -144,10 +145,11 @@ where
     }
 }
 
-impl<Effect, Event, Task> ShellStream<Effect, Event, Task>
+impl<Effect, Event, Task, T> StreamBuilder<Effect, Event, Task>
 where
     Effect: Send + 'static,
     Event: Send + 'static,
+    Task: Stream<Item = T> + Send + 'static,
 {
     pub fn new<F>(make_task: F) -> Self
     where
@@ -155,18 +157,17 @@ where
     {
         let make_task = Box::new(make_task);
 
-        ShellStream {
+        StreamBuilder {
             make_stream: make_task,
         }
     }
 
-    pub fn then<T, U, Out, F>(self, next: F) -> ShellStream<Effect, Event, impl Stream<Item = U>>
+    pub fn then<Out, F, U>(self, next: F) -> StreamBuilder<Effect, Event, impl Stream<Item = U>>
     where
-        Task: Stream<Item = T> + 'static,
-        F: Fn(T) -> ShellRequest<Effect, Event, Out> + Clone + Send + Sync + 'static,
-        Out: Future<Output = U>,
+        F: Fn(T) -> RequestBuilder<Effect, Event, Out> + Clone + Send + Sync + 'static,
+        Out: Future<Output = U> + Send + 'static,
     {
-        ShellStream::new(move |ctx| {
+        StreamBuilder::new(move |ctx| {
             self.into_stream(ctx.clone()).then({
                 let next = next.clone();
                 move |item| {
@@ -179,13 +180,12 @@ where
         })
     }
 
-    pub fn then_send<T, E>(self, event: E) -> Command<Effect, Event>
+    pub fn then_send<E>(self, event: E) -> Command<Effect, Event>
     where
         E: Fn(T) -> Event + Send + 'static,
-        Task: Stream<Item = T> + Unpin + Send + 'static,
     {
         Command::new(|ctx| async move {
-            let mut stream = self.into_stream(ctx.clone());
+            let mut stream = pin!(self.into_stream(ctx.clone()));
 
             while let Some(out) = stream.next().await {
                 ctx.send_event(event(out));
@@ -193,10 +193,7 @@ where
         })
     }
 
-    pub fn into_stream<T>(self, ctx: CommandContext<Effect, Event>) -> Task
-    where
-        Task: Stream<Item = T>,
-    {
+    pub fn into_stream(self, ctx: CommandContext<Effect, Event>) -> Task {
         let make_stream = self.make_stream;
 
         make_stream(ctx)
