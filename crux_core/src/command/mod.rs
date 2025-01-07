@@ -5,12 +5,12 @@ use std::ops::DerefMut as _;
 use std::sync::Arc;
 use std::task::{Context, Poll, Wake};
 
+// TODO: do we want to use flume?
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use futures::future::BoxFuture;
+use futures::stream;
 use futures::task::AtomicWaker;
-// TODO: do we want to use capability channel here?
-use futures::{stream, Stream};
-use futures::{FutureExt, StreamExt as _};
+use futures::{FutureExt as _, Stream, StreamExt as _};
 use slab::Slab;
 
 use crate::capability::Operation;
@@ -152,39 +152,17 @@ where
     /// Create a command running self and the other command in sequence
     // RFC: is this actually _useful_? Unlike `.and_then` on `CommandBuilder` this doesn't allow using
     // the output of the first command in building the second one
-    pub fn then(mut self, mut other: Self) -> Self
+    pub fn then(self, other: Self) -> Self
     where
         Effect: Unpin,
         Event: Unpin,
     {
         Command::new(|ctx| async move {
             // first run self until done
-            while let Some(output) = self.next().await {
-                match output {
-                    CommandOutput::Effect(effect) => ctx
-                        .effects
-                        .send(effect)
-                        .expect("Cannot send effect from then future"),
-                    CommandOutput::Event(event) => ctx
-                        .events
-                        .send(event)
-                        .expect("Cannot send event from then future"),
-                }
-            }
+            self.host(&ctx.effects, &ctx.events).await;
 
             // then run other until done
-            while let Some(output) = other.next().await {
-                match output {
-                    CommandOutput::Effect(effect) => ctx
-                        .effects
-                        .send(effect)
-                        .expect("Cannot send effect from then future"),
-                    CommandOutput::Event(event) => ctx
-                        .events
-                        .send(event)
-                        .expect("Cannot send event from then future"),
-                }
-            }
+            other.host(&ctx.effects, &ctx.events).await;
         })
     }
 
@@ -205,20 +183,9 @@ where
         Event: Unpin,
     {
         Command::new(|ctx| async move {
-            let mut select = stream::select_all(commands);
+            let select = stream::select_all(commands);
 
-            while let Some(output) = select.next().await {
-                match output {
-                    CommandOutput::Effect(effect) => ctx
-                        .effects
-                        .send(effect)
-                        .expect("Cannot send effect from all future"),
-                    CommandOutput::Event(event) => ctx
-                        .events
-                        .send(event)
-                        .expect("Cannot send event from all future"),
-                }
-            }
+            select.host(&ctx.effects, &ctx.events).await;
         })
     }
 
@@ -226,51 +193,35 @@ where
 
     pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event>
     where
-        F: Fn(Effect) -> NewEffect + Send + 'static,
-        NewEffect: Send + 'static,
+        F: Fn(Effect) -> NewEffect + Send + Sync + 'static,
+        NewEffect: Send + Unpin + 'static,
         Effect: Unpin,
         Event: Unpin,
     {
         Command::new(|ctx| async move {
-            let mut stream = self;
+            let mapped = self.map(|output| match output {
+                CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
+                CommandOutput::Event(event) => CommandOutput::Event(event),
+            });
 
-            while let Some(output) = stream.next().await {
-                match output {
-                    CommandOutput::Effect(effect) => ctx
-                        .effects
-                        .send(map(effect))
-                        .expect("Cannot send effect from map_effect future"),
-                    CommandOutput::Event(event) => ctx
-                        .events
-                        .send(event)
-                        .expect("Cannot send event from map_effect future"),
-                }
-            }
+            mapped.host(&ctx.effects, &ctx.events).await;
         })
     }
 
     pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent>
     where
-        F: Fn(Event) -> NewEvent + Send + 'static,
-        NewEvent: Send + 'static,
+        F: Fn(Event) -> NewEvent + Send + Sync + 'static,
+        NewEvent: Send + Unpin + 'static,
         Effect: Unpin,
         Event: Unpin,
     {
         Command::new(|ctx| async move {
-            let mut stream = self;
+            let mapped = self.map(|output| match output {
+                CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
+                CommandOutput::Event(event) => CommandOutput::Event(map(event)),
+            });
 
-            while let Some(output) = stream.next().await {
-                match output {
-                    CommandOutput::Effect(effect) => ctx
-                        .effects
-                        .send(effect)
-                        .expect("Cannot send effect from map_event future"),
-                    CommandOutput::Event(event) => ctx
-                        .events
-                        .send(map(event))
-                        .expect("Cannot send event from map_event future"),
-                }
-            }
+            mapped.host(&ctx.effects, &ctx.events).await;
         })
     }
 }
@@ -611,6 +562,34 @@ where
             Poll::Pending
         }
     }
+}
+
+// Command hosting on a pair of senders for Effect and Event
+
+trait CommandStreamExt<Effect, Event>: Stream<Item = CommandOutput<Effect, Event>> {
+    // connect this command to a pair of effect and event channels
+    async fn host(mut self, effects: &Sender<Effect>, events: &Sender<Event>)
+    where
+        Self: Unpin + Sized,
+        Effect: Unpin,
+        Event: Unpin + Send,
+    {
+        while let Some(output) = self.next().await {
+            match output {
+                CommandOutput::Effect(effect) => {
+                    effects.send(effect).expect("Cannot send effect to host")
+                }
+                CommandOutput::Event(event) => {
+                    events.send(event).expect("Cannot send event to host")
+                }
+            }
+        }
+    }
+}
+
+impl<S, Effect, Event> CommandStreamExt<Effect, Event> for S where
+    S: Stream<Item = CommandOutput<Effect, Event>>
+{
 }
 
 #[cfg(test)]
