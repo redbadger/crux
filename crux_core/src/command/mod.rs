@@ -44,6 +44,7 @@ pub struct Command<Effect, Event> {
     tasks: Slab<Task>,
     ready_sender: Sender<TaskId>, // Used to make wakers
     waker: Arc<AtomicWaker>,      // Shared with task wakers when polled in async context
+    aborted: Arc<AtomicBool>,
 }
 
 // Public API
@@ -73,10 +74,11 @@ where
             tasks: spawn_sender,
         };
 
+        let aborted: Arc<AtomicBool> = Default::default();
         let task = Task {
             join_handle_waker: Default::default(),
             finished: Default::default(),
-            aborted: Default::default(),
+            aborted: aborted.clone(),
             future: create_task(context).boxed(),
         };
 
@@ -95,6 +97,7 @@ where
             ready_sender,
             tasks,
             waker: Default::default(),
+            aborted,
         }
     }
 
@@ -112,6 +115,7 @@ where
             tasks: Slab::with_capacity(0),
             ready_sender,
             waker: Default::default(),
+            aborted: Default::default(),
         }
     }
 
@@ -147,8 +151,12 @@ where
         builder::StreamBuilder::new(|ctx| ctx.stream_from_shell(operation))
     }
 
-    pub fn is_done(&self) -> bool {
-        self.tasks.is_empty()
+    /// Run the effect state machine until it settles, then return true
+    /// if there is any more work to do - tasks to run or events or effects to receive
+    pub fn is_done(&mut self) -> bool {
+        self.run_until_settled();
+
+        self.effects.is_empty() && self.events.is_empty() && self.tasks.is_empty()
     }
 
     /// Run the effect state machine until it settles and collect all effects generated
@@ -243,6 +251,12 @@ where
 
             mapped.host(ctx.effects, ctx.events).await;
         })
+    }
+
+    pub fn abort_handle(&self) -> AbortHandle {
+        AbortHandle {
+            aborted: self.aborted.clone(),
+        }
     }
 }
 
@@ -377,37 +391,6 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     }
 }
 
-pub struct JoinHandle {
-    join_handle_waker: Arc<AtomicWaker>,
-    finished: Arc<AtomicBool>,
-    aborted: Arc<AtomicBool>,
-}
-
-// I'm sure Ordering::Relaxed is fine...? Right?
-impl JoinHandle {
-    pub fn abort(&self) {
-        self.aborted.store(true, Ordering::Relaxed);
-    }
-
-    fn is_finished(&self) -> bool {
-        self.finished.load(Ordering::Relaxed)
-    }
-}
-
-impl Future for JoinHandle {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if self.is_finished() {
-            Poll::Ready(())
-        } else {
-            self.join_handle_waker.register(cx.waker());
-
-            Poll::Pending
-        }
-    }
-}
-
 pub enum ShellRequest<T: Unpin + Send> {
     ReadyToSend(Box<dyn FnOnce() + Send>, Arc<AtomicWaker>, Receiver<T>),
     Sent(Receiver<T>, Arc<AtomicWaker>),
@@ -512,6 +495,48 @@ impl Wake for CommandWaker {
     }
 }
 
+#[derive(Clone)]
+pub struct AbortHandle {
+    aborted: Arc<AtomicBool>,
+}
+
+impl AbortHandle {
+    pub fn abort(&self) {
+        self.aborted.store(true, Ordering::Relaxed);
+    }
+}
+
+pub struct JoinHandle {
+    join_handle_waker: Arc<AtomicWaker>,
+    finished: Arc<AtomicBool>,
+    aborted: Arc<AtomicBool>,
+}
+
+// I'm sure Ordering::Relaxed is fine...? Right?
+impl JoinHandle {
+    pub fn abort(&self) {
+        self.aborted.store(true, Ordering::Relaxed);
+    }
+
+    fn is_finished(&self) -> bool {
+        self.finished.load(Ordering::Relaxed)
+    }
+}
+
+impl Future for JoinHandle {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if self.is_finished() {
+            Poll::Ready(())
+        } else {
+            self.join_handle_waker.register(cx.waker());
+
+            Poll::Pending
+        }
+    }
+}
+
 enum TaskState {
     Missing,
     Suspended,
@@ -522,6 +547,12 @@ enum TaskState {
 impl<Effect, Event> Command<Effect, Event> {
     // Run all tasks until all of them are pending
     fn run_until_settled(&mut self) {
+        if self.was_aborted() {
+            self.tasks.clear();
+
+            return;
+        }
+
         loop {
             self.spawn_new_tasks();
 
@@ -588,6 +619,10 @@ impl<Effect, Event> Command<Effect, Event> {
                 .send(TaskId(task_id))
                 .expect("Command can't spawn a task, ready_queue has disconnected");
         }
+    }
+
+    pub fn was_aborted(&self) -> bool {
+        self.aborted.load(Ordering::Relaxed)
     }
 }
 

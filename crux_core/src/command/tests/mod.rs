@@ -35,16 +35,20 @@ mod basic_effects {
 
     #[test]
     fn done_can_be_created() {
-        let cmd: Command<Effect, Event> = Command::done();
+        let mut cmd: Command<Effect, Event> = Command::done();
 
         assert!(cmd.is_done())
     }
 
     #[test]
     fn notify_can_be_created_with_an_operation() {
-        let cmd: Command<Effect, Event> = Command::notify_shell(AnOperation);
+        let mut cmd: Command<Effect, Event> = Command::notify_shell(AnOperation);
 
-        assert!(!cmd.is_done())
+        assert!(!cmd.is_done());
+
+        assert!(cmd.effects().next().is_some());
+
+        assert!(cmd.is_done());
     }
 
     #[test]
@@ -1190,5 +1194,37 @@ mod cancellation {
 
         // so has the whole command
         assert!(cmd.is_done());
+    }
+
+    #[test]
+    fn commands_can_be_aborted() {
+        let mut cmd: Command<Effect, Event> = Command::all([
+            Command::request_from_shell(Op::Basic).then_send(Event::OpDone),
+            Command::request_from_shell(Op::Basic).then_send(Event::OpDone),
+        ]);
+
+        let handle = cmd.abort_handle();
+
+        assert!(!cmd.was_aborted());
+
+        let mut effects: Vec<_> = cmd.effects().collect();
+        assert_eq!(effects.len(), 2);
+
+        handle.abort();
+
+        // Command is now finished
+        assert!(cmd.is_done());
+        assert!(cmd.was_aborted());
+
+        // We can still resolve requests, but nothing happens
+
+        let Effect::Op(mut first_request) = effects.remove(0);
+        let Effect::Op(mut second_request) = effects.remove(0);
+
+        first_request.resolve(1).expect("to resolve");
+        second_request.resolve(2).expect("to resolve");
+
+        assert!(cmd.events().next().is_none());
+        assert!(cmd.effects().next().is_none());
     }
 }
