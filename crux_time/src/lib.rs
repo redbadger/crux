@@ -19,10 +19,8 @@ use std::{
     collections::HashSet,
     future::Future,
     pin::Pin,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        LazyLock, Mutex,
-    },
+    sync::atomic::{AtomicUsize, Ordering},
+    sync::{LazyLock, Mutex},
     task::Poll,
 };
 
@@ -46,7 +44,7 @@ fn get_timer_id() -> TimerId {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TimeResponse {
-    Now(Instant),
+    Now { instant: Instant },
     InstantArrived { id: TimerId },
     DurationElapsed { id: TimerId },
     Cleared { id: TimerId },
@@ -130,31 +128,27 @@ where
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        let tid = get_timer_id();
+        let (future, id) = self.notify_at_async(instant);
         self.context.spawn({
             let context = self.context.clone();
-            let this = self.clone();
-
             async move {
-                let response = this.notify_at_async(tid, instant).await;
-                context.update_app(callback(response));
+                context.update_app(callback(future.await));
             }
         });
-
-        tid
+        id
     }
 
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub fn notify_at_async(
         &self,
-        id: TimerId,
         instant: Instant,
-    ) -> TimerFuture<impl Future<Output = TimeResponse>> {
+    ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
+        let id = get_timer_id();
         let future = self
             .context
             .request_from_shell(TimeRequest::NotifyAt { id, instant });
-        TimerFuture::new(id, future)
+        (TimerFuture::new(id, future), id)
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.
@@ -162,30 +156,27 @@ where
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        let tid = get_timer_id();
+        let (future, id) = self.notify_after_async(duration);
         self.context.spawn({
             let context = self.context.clone();
-            let this = self.clone();
-
             async move {
-                context.update_app(callback(this.notify_after_async(tid, duration).await));
+                context.update_app(callback(future.await));
             }
         });
-
-        tid
+        id
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub fn notify_after_async(
         &self,
-        id: TimerId,
         duration: Duration,
-    ) -> TimerFuture<impl Future<Output = TimeResponse>> {
+    ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
+        let id = get_timer_id();
         let future = self
             .context
             .request_from_shell(TimeRequest::NotifyAfter { id, duration });
-        TimerFuture::new(id, future)
+        (TimerFuture::new(id, future), id)
     }
 
     pub fn clear(&self, id: TimerId) {
@@ -309,10 +300,15 @@ mod test {
 
     #[test]
     fn test_serializing_the_response_types_as_json() {
-        let now = TimeResponse::Now(Instant::new(1, 2).expect("valid instant"));
+        let now = TimeResponse::Now {
+            instant: Instant::new(1, 2).expect("valid instant"),
+        };
 
         let serialized = serde_json::to_string(&now).unwrap();
-        assert_eq!(&serialized, r#"{"now":{"seconds":1,"nanos":2}}"#);
+        assert_eq!(
+            &serialized,
+            r#"{"now":{"instant":{"seconds":1,"nanos":2}}}"#
+        );
 
         let deserialized: TimeResponse = serde_json::from_str(&serialized).unwrap();
         assert_eq!(now, deserialized);

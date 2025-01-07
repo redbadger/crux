@@ -66,8 +66,8 @@ mod shared {
                     }
                 }),
                 Event::Set(time) => {
-                    if let TimeResponse::Now(time) = time {
-                        let time: DateTime<Utc> = time.try_into().unwrap();
+                    if let TimeResponse::Now { instant } = time {
+                        let time: DateTime<Utc> = instant.try_into().unwrap();
                         model.time = time.to_rfc3339();
                         caps.render.render()
                     }
@@ -155,8 +155,8 @@ mod shell {
 
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Time(mut request, result))) => {
-                    core.resolve(&mut request, TimeResponse::Now(result))
+                Some(CoreMessage::Response(Outcome::Time(mut request, instant))) => {
+                    core.resolve(&mut request, TimeResponse::Now { instant })
                 }
                 _ => vec![],
             };
@@ -205,7 +205,9 @@ mod tests {
             .expect_time();
 
         let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
-        let response = TimeResponse::Now(now.try_into().unwrap());
+        let response = TimeResponse::Now {
+            instant: now.try_into().unwrap(),
+        };
         let _update = app.resolve_to_event_then_update(request, response, &mut model);
 
         assert_eq!(app.view(&model).time, "2022-12-01T01:47:12.746202562+00:00");
