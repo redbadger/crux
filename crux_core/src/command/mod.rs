@@ -2,16 +2,18 @@ mod builder;
 
 use std::future::Future;
 use std::ops::DerefMut as _;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Wake};
 
 // TODO: do we want to use flume?
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use futures::future::BoxFuture;
-use futures::stream;
 use futures::task::AtomicWaker;
+use futures::{stream, Sink};
 use futures::{FutureExt as _, Stream, StreamExt as _};
 use slab::Slab;
+use thiserror::Error;
 
 use crate::capability::Operation;
 
@@ -159,10 +161,10 @@ where
     {
         Command::new(|ctx| async move {
             // first run self until done
-            self.host(&ctx.effects, &ctx.events).await;
+            self.host(ctx.effects.clone(), ctx.events.clone()).await;
 
             // then run other until done
-            other.host(&ctx.effects, &ctx.events).await;
+            other.host(ctx.effects, ctx.events).await;
         })
     }
 
@@ -185,7 +187,7 @@ where
         Command::new(|ctx| async move {
             let select = stream::select_all(commands);
 
-            select.host(&ctx.effects, &ctx.events).await;
+            select.host(ctx.effects, ctx.events).await;
         })
     }
 
@@ -204,7 +206,7 @@ where
                 CommandOutput::Event(event) => CommandOutput::Event(event),
             });
 
-            mapped.host(&ctx.effects, &ctx.events).await;
+            mapped.host(ctx.effects, ctx.events).await;
         })
     }
 
@@ -221,7 +223,7 @@ where
                 CommandOutput::Event(event) => CommandOutput::Event(map(event)),
             });
 
-            mapped.host(&ctx.effects, &ctx.events).await;
+            mapped.host(ctx.effects, ctx.events).await;
         })
     }
 }
@@ -350,10 +352,7 @@ pub enum ShellRequest<T: Unpin + Send> {
 impl<T: Unpin + Send> Future for ShellRequest<T> {
     type Output = T;
 
-    fn poll(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.deref_mut() {
             ShellRequest::ReadyToSend(send_request, atomic_waker, output_receiver) => {
                 // Need to do memory trickery in order to call the send_request
@@ -391,10 +390,7 @@ pub enum ShellStream<T: Unpin + Send> {
 impl<T: Unpin + Send> Stream for ShellStream<T> {
     type Item = T;
 
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.deref_mut() {
             ShellStream::ReadyToSend(send_stream_request, shared_waker, output_receiver) => {
                 shared_waker.register(cx.waker());
@@ -505,8 +501,8 @@ impl<Effect, Event> Command<Effect, Event> {
         let context = &mut Context::from_waker(&waker);
 
         match task.as_mut().poll(context) {
-            std::task::Poll::Pending => TaskState::Suspended,
-            std::task::Poll::Ready(_) => TaskState::Completed,
+            Poll::Pending => TaskState::Suspended,
+            Poll::Ready(_) => TaskState::Completed,
         }
     }
 
@@ -536,10 +532,7 @@ where
 {
     type Item = CommandOutput<Effect, Event>;
 
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.waker.register(cx.waker());
 
         // run_until_settled is idempotent
@@ -565,25 +558,66 @@ where
 }
 
 // Command hosting on a pair of senders for Effect and Event
+// TODO: the CommandSink may be avoidable with flume which implements Sink for Sender
+
+struct CommandSink<Effect, Event> {
+    effects: Sender<Effect>,
+    events: Sender<Event>,
+}
+
+impl<Effect, Event> CommandSink<Effect, Event> {
+    fn new(effects: Sender<Effect>, events: Sender<Event>) -> Self {
+        Self { effects, events }
+    }
+}
+
+#[derive(Debug, Error)]
+enum HostedCommandError {
+    #[error("Cannot send effect to host")]
+    CannotSendEffect,
+    #[error("Cannot send event to host")]
+    CannotSendEvent,
+}
+
+impl<Effect, Event> Sink<CommandOutput<Effect, Event>> for CommandSink<Effect, Event> {
+    type Error = HostedCommandError;
+
+    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn start_send(
+        self: Pin<&mut Self>,
+        item: CommandOutput<Effect, Event>,
+    ) -> Result<(), Self::Error> {
+        match item {
+            CommandOutput::Effect(effect) => self
+                .effects
+                .send(effect)
+                .map_err(|_| HostedCommandError::CannotSendEffect),
+            CommandOutput::Event(event) => self
+                .events
+                .send(event)
+                .map_err(|_| HostedCommandError::CannotSendEvent),
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+}
 
 trait CommandStreamExt<Effect, Event>: Stream<Item = CommandOutput<Effect, Event>> {
     // connect this command to a pair of effect and event channels
-    async fn host(mut self, effects: &Sender<Effect>, events: &Sender<Event>)
+    fn host(self, effects: Sender<Effect>, events: Sender<Event>) -> impl Future
     where
-        Self: Unpin + Sized,
-        Effect: Unpin,
-        Event: Unpin + Send,
+        Self: Send + Sized,
     {
-        while let Some(output) = self.next().await {
-            match output {
-                CommandOutput::Effect(effect) => {
-                    effects.send(effect).expect("Cannot send effect to host")
-                }
-                CommandOutput::Event(event) => {
-                    events.send(event).expect("Cannot send event to host")
-                }
-            }
-        }
+        self.map(Ok).forward(CommandSink::new(effects, events))
     }
 }
 
