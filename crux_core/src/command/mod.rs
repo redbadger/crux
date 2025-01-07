@@ -266,11 +266,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             let waker = shared_waker.clone();
 
             move |output| {
-                output_sender
-                    .send(output)
-                    .expect("Request could not send output to ShellRequest future");
-
-                waker.wake();
+                // If the channel is closed, the associated task has been cancelled
+                if output_sender.send(output).is_ok() {
+                    waker.wake();
+                }
             }
         });
 
@@ -299,9 +298,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             let waker = shared_waker.clone();
 
             move |output| {
-                output_sender
-                    .send(output)
-                    .expect("Request could not send output to ShellStream future");
+                // If the channel is closed, the associated task has been cancelled
+                output_sender.send(output).map_err(|_| ())?;
 
                 waker.wake();
 

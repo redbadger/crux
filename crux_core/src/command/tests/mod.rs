@@ -159,11 +159,13 @@ mod async_effects {
     enum AnOperation {
         One,
         Two,
+        Three,
     }
     #[derive(Debug, PartialEq, Deserialize)]
     enum AnOperationOutput {
         One,
         Two,
+        Three,
         Abort,
     }
 
@@ -279,31 +281,43 @@ mod async_effects {
         let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
             select! {
                 output = ctx.request_from_shell(AnOperation::One).fuse() => ctx.send_event(Event::Completed(output)),
-                output = ctx.request_from_shell(AnOperation::Two).fuse() => ctx.send_event(Event::Completed(output))
+                output = ctx.request_from_shell(AnOperation::Two).fuse() => ctx.send_event(Event::Completed(output)),
+                output = ctx.request_from_shell(AnOperation::Three).fuse() => ctx.send_event(Event::Completed(output))
             };
         });
 
         assert!(cmd.events().is_empty());
 
         let mut effects = cmd.effects();
-        let Effect::AnEffect(mut first_request) = effects.remove(0);
+        let Effect::AnEffect(mut third_request) = effects.remove(0);
         let Effect::AnEffect(mut second_request) = effects.remove(0);
+        let Effect::AnEffect(mut first_request) = effects.remove(0);
 
         assert_eq!(first_request.operation, AnOperation::One);
         assert_eq!(second_request.operation, AnOperation::Two);
+        assert_eq!(third_request.operation, AnOperation::Three);
 
         second_request
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
         first_request
-            .resolve(AnOperationOutput::Two)
+            .resolve(AnOperationOutput::One)
             .expect("request should resolve");
 
         let mut events = cmd.events();
 
         assert_eq!(events.len(), 1);
         assert_eq!(events.remove(0), Event::Completed(AnOperationOutput::Two));
+
+        third_request
+            .resolve(AnOperationOutput::Three)
+            .expect("request should resolve");
+
+        // The select! has finished
+        let events = cmd.events();
+
+        assert!(events.is_empty())
     }
 
     #[test]
