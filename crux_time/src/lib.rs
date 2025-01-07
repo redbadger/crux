@@ -15,7 +15,16 @@ pub use instant::Instant;
 use serde::{Deserialize, Serialize};
 
 use crux_core::capability::{CapabilityContext, Operation};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    collections::HashSet,
+    future::Future,
+    pin::Pin,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        LazyLock, Mutex,
+    },
+    task::Poll,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,7 +35,7 @@ pub enum TimeRequest {
     Clear { id: TimerId },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TimerId(pub usize);
 
 fn get_timer_id() -> TimerId {
@@ -127,7 +136,8 @@ where
             let this = self.clone();
 
             async move {
-                context.update_app(callback(this.notify_at_async(tid, instant).await));
+                let response = this.notify_at_async(tid, instant).await;
+                context.update_app(callback(response));
             }
         });
 
@@ -136,10 +146,15 @@ where
 
     /// Ask to receive a notification when the specified [`Instant`] has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
-    pub async fn notify_at_async(&self, id: TimerId, instant: Instant) -> TimeResponse {
-        self.context
-            .request_from_shell(TimeRequest::NotifyAt { id, instant })
-            .await
+    pub fn notify_at_async(
+        &self,
+        id: TimerId,
+        instant: Instant,
+    ) -> TimerFuture<impl Future<Output = TimeResponse>> {
+        let future = self
+            .context
+            .request_from_shell(TimeRequest::NotifyAt { id, instant });
+        TimerFuture::new(id, future)
     }
 
     /// Ask to receive a notification when the specified duration has elapsed.
@@ -162,22 +177,92 @@ where
 
     /// Ask to receive a notification when the specified duration has elapsed.
     /// This is an async call to use with [`crux_core::compose::Compose`].
-    pub async fn notify_after_async(&self, id: TimerId, duration: Duration) -> TimeResponse {
-        self.context
-            .request_from_shell(TimeRequest::NotifyAfter { id, duration })
-            .await
+    pub fn notify_after_async(
+        &self,
+        id: TimerId,
+        duration: Duration,
+    ) -> TimerFuture<impl Future<Output = TimeResponse>> {
+        let future = self
+            .context
+            .request_from_shell(TimeRequest::NotifyAfter { id, duration });
+        TimerFuture::new(id, future)
     }
 
     pub fn clear(&self, id: TimerId) {
         self.context.spawn({
-            let context = self.context.clone();
+            {
+                let mut lock = CLEARED_TIMER_IDS.lock().unwrap();
+                lock.insert(id);
+            }
 
+            let context = self.context.clone();
             async move {
                 context.notify_shell(TimeRequest::Clear { id }).await;
             }
         });
     }
 }
+
+pub struct TimerFuture<F>
+where
+    F: Future<Output = TimeResponse> + Unpin,
+{
+    timer_id: TimerId,
+    is_cleared: bool,
+    future: F,
+}
+
+impl<F> Future for TimerFuture<F>
+where
+    F: Future<Output = TimeResponse> + Unpin,
+{
+    type Output = TimeResponse;
+
+    fn poll(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        if self.is_cleared {
+            // short-circuit return
+            return Poll::Ready(TimeResponse::Cleared { id: self.timer_id });
+        };
+        // see if the timer has been cleared
+        let timer_is_cleared = {
+            let mut lock = CLEARED_TIMER_IDS.lock().unwrap();
+            lock.remove(&self.timer_id)
+        };
+        let this = self.get_mut();
+        this.is_cleared = timer_is_cleared;
+        if timer_is_cleared {
+            // if the timer has been cleared, immediately return 'Ready' without
+            // waiting for the timer to elapse
+            Poll::Ready(TimeResponse::Cleared { id: this.timer_id })
+        } else {
+            // otherwise, defer to the inner future
+            Pin::new(&mut this.future).poll(cx)
+        }
+    }
+}
+
+impl<F> TimerFuture<F>
+where
+    F: Future<Output = TimeResponse> + Unpin,
+{
+    fn new(timer_id: TimerId, future: F) -> Self {
+        Self {
+            timer_id,
+            future,
+            is_cleared: false,
+        }
+    }
+}
+
+// Global HashSet containing the ids of timers which have been _cleared_
+// but the whose futures have _not since been polled_. When the future is next
+// polled, the timer id is evicted from this set and the timer is 'poisoned'
+// so as to return immediately without waiting on the shell.
+static CLEARED_TIMER_IDS: LazyLock<Mutex<HashSet<TimerId>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
 
 #[cfg(test)]
 mod test {

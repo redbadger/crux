@@ -14,9 +14,9 @@ rust-version.workspace = true
 typegen = ["crux_core/typegen"]
 
 [dependencies]
+chrono = { version = "0.4.38", features = ["serde"], optional = true }
 crux_core = { version = "0.10.0", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
-chrono = { version = "0.4.38", features = ["serde"], optional = true }
 thiserror = "1.0.65"
 
 [dev-dependencies]
