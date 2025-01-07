@@ -3,6 +3,7 @@ mod builder;
 use std::future::Future;
 use std::ops::DerefMut as _;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll, Wake};
 
@@ -22,14 +23,19 @@ use crate::Request;
 #[derive(Clone, Copy, Debug)]
 struct TaskId(usize);
 
-type CommandTask = BoxFuture<'static, ()>;
+struct Task {
+    join_handle_waker: Arc<AtomicWaker>,
+    finished: Arc<AtomicBool>,
+    aborted: Arc<AtomicBool>,
+    future: BoxFuture<'static, ()>,
+}
 
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
     ready_queue: Receiver<TaskId>,
-    spawn_queue: Receiver<CommandTask>,
-    tasks: Slab<CommandTask>,
+    spawn_queue: Receiver<Task>,
+    tasks: Slab<Task>,
     ready_sender: Sender<TaskId>, // Used to make wakers
     waker: Arc<AtomicWaker>,      // Shared with task wakers when polled in async context
 }
@@ -61,7 +67,13 @@ where
             tasks: spawn_sender,
         };
 
-        let task = create_task(context).boxed();
+        let task = Task {
+            join_handle_waker: Default::default(),
+            finished: Default::default(),
+            aborted: Default::default(),
+            future: create_task(context).boxed(),
+        };
+
         let mut tasks = Slab::with_capacity(1);
         let task_id = TaskId(tasks.insert(task));
 
@@ -232,7 +244,7 @@ where
 pub struct CommandContext<Effect, Event> {
     effects: Sender<Effect>,
     events: Sender<Event>,
-    tasks: Sender<CommandTask>,
+    tasks: Sender<Task>,
 }
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
@@ -334,13 +346,63 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
     // RFC: this could return a join handle á la tokio, used to either await completion of the command or to cancel it early
     // RFC: should this have the same signature as `new` to avoid the boilerplate cloning of context in user code?
-    pub fn spawn<F>(&self, future: F)
+    pub fn spawn<F>(&self, future: F) -> JoinHandle
     where
         F: Future<Output = ()> + Send + 'static,
     {
+        let task = Task {
+            join_handle_waker: Default::default(),
+            finished: Default::default(),
+            aborted: Default::default(),
+            future: future.boxed(),
+        };
+
+        let handle = JoinHandle {
+            join_handle_waker: task.join_handle_waker.clone(),
+            finished: task.finished.clone(),
+            aborted: task.aborted.clone(),
+        };
+
         self.tasks
-            .send(future.boxed())
-            .expect("Command could not spawn task, tasks channel disconnected")
+            .send(task)
+            .expect("Command could not spawn task, tasks channel disconnected");
+
+        handle
+    }
+}
+
+pub struct JoinHandle {
+    join_handle_waker: Arc<AtomicWaker>,
+    finished: Arc<AtomicBool>,
+    aborted: Arc<AtomicBool>,
+}
+
+// I'm sure Ordering::Relaxed is fine...? Right?
+impl JoinHandle {
+    pub fn abort(&self) {
+        self.aborted.store(true, Ordering::Relaxed);
+    }
+
+    fn is_aborted(&self) -> bool {
+        self.aborted.load(Ordering::Relaxed)
+    }
+
+    fn is_finished(&self) -> bool {
+        self.finished.load(Ordering::Relaxed)
+    }
+}
+
+impl Future for JoinHandle {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if self.is_finished() {
+            Poll::Ready(())
+        } else {
+            self.join_handle_waker.register(cx.waker());
+
+            Poll::Pending
+        }
     }
 }
 
@@ -476,8 +538,13 @@ impl<Effect, Event> Command<Effect, Event> {
                         // Task suspended, we pick it up again when it's woken up
                     }
                     TaskState::Completed => {
-                        // Remove and drop the task it's finished
-                        drop(self.tasks.remove(task_id.0));
+                        // Remove and drop the task, it's finished
+                        let task = self.tasks.remove(task_id.0);
+
+                        task.finished.store(true, Ordering::Relaxed);
+                        task.join_handle_waker.wake();
+
+                        drop(task);
                     }
                 }
             }
@@ -500,7 +567,7 @@ impl<Effect, Event> Command<Effect, Event> {
         .into();
         let context = &mut Context::from_waker(&waker);
 
-        match task.as_mut().poll(context) {
+        match task.future.as_mut().poll(context) {
             Poll::Pending => TaskState::Suspended,
             Poll::Ready(_) => TaskState::Completed,
         }

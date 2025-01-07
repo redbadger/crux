@@ -342,7 +342,7 @@ mod async_effects {
 
                     ctx.send_event(Event::Aborted);
                 }
-            })
+            });
         });
 
         let mut effects: Vec<_> = cmd.effects().collect();
@@ -1051,5 +1051,65 @@ mod composition {
         let event = mapped_cmd.events().next().unwrap();
 
         assert_eq!(event, ParentEvent::Converted("three".to_string()));
+    }
+}
+
+mod cancellation {
+    use serde::Serialize;
+
+    use crate::{capability::Operation, Request};
+
+    use super::super::Command;
+
+    #[derive(Debug, Clone, PartialEq, Serialize)]
+    struct Op;
+
+    impl Operation for Op {
+        type Output = usize;
+    }
+
+    enum Effect {
+        Op(Request<Op>),
+    }
+
+    impl From<Request<Op>> for Effect {
+        fn from(value: Request<Op>) -> Self {
+            Effect::Op(value)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum Event {
+        OpDone(usize),
+        Ping,
+    }
+
+    #[test]
+    fn spawn_returns_join_handle() {
+        let mut cmd = Command::new(|ctx| async move {
+            let task_join = ctx.spawn({
+                let ctx = ctx.clone();
+                async move {
+                    ctx.request_from_shell(Op).await;
+                }
+            });
+
+            task_join.await;
+
+            ctx.send_event(Event::Ping);
+        });
+
+        assert!(cmd.events().next().is_none());
+
+        let effect = cmd.effects().next().unwrap();
+        let Effect::Op(mut request) = effect;
+
+        request.resolve(1).expect("should resolve");
+
+        let event = cmd.events().next().unwrap();
+
+        assert_eq!(event, Event::Ping);
+
+        assert!(cmd.is_done());
     }
 }
