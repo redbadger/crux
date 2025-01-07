@@ -18,6 +18,7 @@ use crux_core::capability::{CapabilityContext, Operation};
 use std::{
     collections::HashSet,
     future::Future,
+    pin::Pin,
     sync::{
         atomic::{AtomicUsize, Ordering},
         LazyLock, Mutex,
@@ -202,26 +203,23 @@ where
     }
 }
 
-pin_project_lite::pin_project! {
-    pub struct TimerFuture<F>
-    where
-        F: Future<Output = TimeResponse>,
-    {
-        timer_id: TimerId,
-        is_cleared: bool,
-        #[pin]
-        future: F,
-    }
+pub struct TimerFuture<F>
+where
+    F: Future<Output = TimeResponse> + Unpin,
+{
+    timer_id: TimerId,
+    is_cleared: bool,
+    future: F,
 }
 
 impl<F> Future for TimerFuture<F>
 where
-    F: Future<Output = TimeResponse>,
+    F: Future<Output = TimeResponse> + Unpin,
 {
     type Output = TimeResponse;
 
     fn poll(
-        self: std::pin::Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         if self.is_cleared {
@@ -233,20 +231,23 @@ where
             let mut lock = CLEARED_TIMER_IDS.lock().unwrap();
             lock.remove(&self.timer_id)
         };
-        let this = self.project();
-        *this.is_cleared = timer_is_cleared;
+        let this = self.get_mut();
+        this.is_cleared = timer_is_cleared;
         if timer_is_cleared {
             // if the timer has been cleared, immediately return 'Ready' without
             // waiting for the timer to elapse
-            Poll::Ready(TimeResponse::Cleared { id: *this.timer_id })
+            Poll::Ready(TimeResponse::Cleared { id: this.timer_id })
         } else {
             // otherwise, defer to the inner future
-            this.future.poll(cx)
+            Pin::new(&mut this.future).poll(cx)
         }
     }
 }
 
-impl<F: Future<Output = TimeResponse>> TimerFuture<F> {
+impl<F> TimerFuture<F>
+where
+    F: Future<Output = TimeResponse> + Unpin,
+{
     fn new(timer_id: TimerId, future: F) -> Self {
         Self {
             timer_id,

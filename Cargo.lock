@@ -441,7 +441,6 @@ version = "0.6.0"
 dependencies = [
  "chrono",
  "crux_core",
- "pin-project-lite",
  "serde",
  "serde_json",
  "thiserror",
