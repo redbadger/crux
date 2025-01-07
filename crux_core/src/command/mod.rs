@@ -135,18 +135,18 @@ where
 
     /// Run the effect state machine until it settles and collect all effects generated
     // RFC: should this collect?
-    pub fn effects(&mut self) -> Vec<Effect> {
+    pub fn effects(&mut self) -> impl Iterator<Item = Effect> + '_ {
         self.run_until_settled();
 
-        self.effects.try_iter().collect()
+        self.effects.try_iter()
     }
 
     /// Run the effect state machine until it settles and collect all events generated
     // RFC: should this collect?
-    pub fn events(&mut self) -> Vec<Event> {
+    pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
         self.run_until_settled();
 
-        self.events.try_iter().collect()
+        self.events.try_iter()
     }
 
     // Combinators
