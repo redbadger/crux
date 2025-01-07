@@ -51,11 +51,11 @@ mod basic_effects {
     fn notify_effect_can_be_inspected() {
         let mut cmd: Command<_, Event> = Command::notify_shell(AnOperation);
 
-        let mut effects = cmd.effects();
+        let effects = cmd.effects().next();
 
-        assert!(!effects.is_empty());
+        assert!(effects.is_some());
 
-        let Effect::AnEffect(request) = effects.remove(0);
+        let Effect::AnEffect(request) = effects.unwrap();
 
         assert_eq!(request.operation, AnOperation)
     }
@@ -64,11 +64,10 @@ mod basic_effects {
     fn request_effect_can_be_inspected() {
         let mut cmd = Command::request_from_shell(AnOperation).then_send(Event::Completed);
 
-        let mut effects = cmd.effects();
+        let effect = cmd.effects().next();
+        assert!(effect.is_some());
 
-        assert!(!effects.is_empty());
-
-        let Effect::AnEffect(request) = effects.remove(0);
+        let Effect::AnEffect(request) = effect.unwrap();
 
         assert_eq!(request.operation, AnOperation)
     }
@@ -77,11 +76,10 @@ mod basic_effects {
     fn request_effect_can_be_resolved() {
         let mut cmd = Command::request_from_shell(AnOperation).then_send(Event::Completed);
 
-        let mut effects = cmd.effects();
+        let effect = cmd.effects().next();
+        assert!(effect.is_some());
 
-        assert!(cmd.events().is_empty());
-
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let Effect::AnEffect(mut request) = effect.unwrap();
 
         assert_eq!(request.operation, AnOperation);
 
@@ -89,12 +87,9 @@ mod basic_effects {
             .resolve(AnOperationOutput)
             .expect("Resolve should succeed");
 
-        let mut events = cmd.events();
+        let event = cmd.events().next().unwrap();
 
-        assert!(matches!(
-            events.remove(0),
-            Event::Completed(AnOperationOutput)
-        ));
+        assert!(matches!(event, Event::Completed(AnOperationOutput)));
 
         assert!(cmd.is_done())
     }
@@ -103,11 +98,11 @@ mod basic_effects {
     fn stream_effect_can_be_resolved_multiple_times() {
         let mut cmd = Command::stream_from_shell(AnOperation).then_send(Event::Completed);
 
-        let mut effects = cmd.effects();
+        let effect = cmd.effects().next();
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let Effect::AnEffect(mut request) = effect.unwrap();
 
         assert_eq!(request.operation, AnOperation);
 
@@ -115,36 +110,30 @@ mod basic_effects {
             .resolve(AnOperationOutput)
             .expect("Resolve should succeed");
 
-        let mut events = cmd.events();
+        let event = cmd.events().next().unwrap();
 
-        assert!(matches!(
-            events.remove(0),
-            Event::Completed(AnOperationOutput)
-        ));
+        assert!(matches!(event, Event::Completed(AnOperationOutput)));
 
-        assert!(cmd.effects().is_empty());
-        assert!(cmd.events().is_empty());
+        assert!(cmd.effects().next().is_none());
+        assert!(cmd.events().next().is_none());
         assert!(!cmd.is_done());
 
         request
             .resolve(AnOperationOutput)
             .expect("Resolve should succeed");
 
-        let mut events = cmd.events();
+        let event = cmd.events().next().unwrap();
 
-        assert!(matches!(
-            events.remove(0),
-            Event::Completed(AnOperationOutput)
-        ));
+        assert!(matches!(event, Event::Completed(AnOperationOutput)));
     }
 
     #[test]
     fn event_can_be_created() {
         let mut cmd: Command<Effect, _> = Command::event(Event::Start);
 
-        let events = cmd.events();
+        let event = cmd.events().next().unwrap();
 
-        assert_eq!(events[0], Event::Start);
+        assert_eq!(event, Event::Start);
     }
 }
 
@@ -202,10 +191,10 @@ mod async_effects {
             ctx.send_event(Event::Completed(output));
         });
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let mut effects = cmd.effects();
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let effect = cmd.effects().next().unwrap();
+        let Effect::AnEffect(mut request) = effect;
 
         assert_eq!(request.operation, AnOperation::One);
 
@@ -213,14 +202,14 @@ mod async_effects {
             .resolve(AnOperationOutput::One)
             .expect("request should resolve");
 
-        let event = cmd.events().remove(0);
+        let event = cmd.events().next().unwrap();
 
         assert_eq!(event, Event::Completed(AnOperationOutput::One));
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let mut effects = cmd.effects();
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let effect = cmd.effects().next().unwrap();
+        let Effect::AnEffect(mut request) = effect;
 
         assert_eq!(request.operation, AnOperation::Two);
 
@@ -228,9 +217,9 @@ mod async_effects {
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
-        assert!(cmd.effects().is_empty());
+        assert!(cmd.effects().next().is_none());
 
-        let event = cmd.events().remove(0);
+        let event = cmd.events().next().unwrap();
 
         assert_eq!(event, Event::Completed(AnOperationOutput::Two))
     }
@@ -247,9 +236,9 @@ mod async_effects {
             ctx.send_event(Event::Completed(second));
         });
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let mut effects = cmd.effects();
+        let mut effects: Vec<_> = cmd.effects().collect();
         let Effect::AnEffect(mut first_request) = effects.remove(0);
         let Effect::AnEffect(mut second_request) = effects.remove(0);
 
@@ -260,15 +249,15 @@ mod async_effects {
             .resolve(AnOperationOutput::One)
             .expect("request should resolve");
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
         second_request
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
-        assert!(cmd.effects().is_empty());
+        assert!(cmd.effects().next().is_none());
 
-        let mut events = cmd.events();
+        let mut events: Vec<_> = cmd.events().collect();
 
         assert_eq!(events.len(), 2);
 
@@ -286,9 +275,9 @@ mod async_effects {
             };
         });
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let mut effects = cmd.effects();
+        let mut effects: Vec<_> = cmd.effects().collect();
         let Effect::AnEffect(mut third_request) = effects.remove(0);
         let Effect::AnEffect(mut second_request) = effects.remove(0);
         let Effect::AnEffect(mut first_request) = effects.remove(0);
@@ -305,7 +294,7 @@ mod async_effects {
             .resolve(AnOperationOutput::One)
             .expect("request should resolve");
 
-        let mut events = cmd.events();
+        let mut events: Vec<_> = cmd.events().collect();
 
         assert_eq!(events.len(), 1);
         assert_eq!(events.remove(0), Event::Completed(AnOperationOutput::Two));
@@ -315,9 +304,7 @@ mod async_effects {
             .expect("request should resolve");
 
         // The select! has finished
-        let events = cmd.events();
-
-        assert!(events.is_empty())
+        assert!(cmd.events().next().is_none())
     }
 
     #[test]
@@ -358,7 +345,7 @@ mod async_effects {
             })
         });
 
-        let mut effects = cmd.effects();
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         assert_eq!(effects.len(), 1);
 
@@ -367,8 +354,8 @@ mod async_effects {
             .resolve(AnOperationOutput::One)
             .expect("request should resolve");
 
-        let mut effects = cmd.effects();
-        let events = cmd.events();
+        let mut effects: Vec<_> = cmd.effects().collect();
+        let events: Vec<_> = cmd.events().collect();
 
         assert_eq!(effects.len(), 1);
         assert_eq!(events.len(), 1);
@@ -380,8 +367,8 @@ mod async_effects {
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
-        let mut effects = cmd.effects();
-        let events = cmd.events();
+        let mut effects: Vec<_> = cmd.effects().collect();
+        let events: Vec<_> = cmd.events().collect();
 
         assert_eq!(effects.len(), 1);
         assert_eq!(events.len(), 1);
@@ -393,9 +380,9 @@ mod async_effects {
             .resolve(AnOperationOutput::Abort)
             .expect("request should resolve");
 
-        assert!(cmd.effects().is_empty());
+        assert!(cmd.effects().next().is_none());
 
-        assert_eq!(cmd.events()[0], Event::Aborted);
+        assert_eq!(cmd.events().next().unwrap(), Event::Aborted);
 
         assert!(cmd.is_done());
     }
@@ -448,10 +435,10 @@ mod combinators {
 
         let mut cmd = cmd_one.then(cmd_two);
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let mut effects = cmd.effects();
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let effect = cmd.effects().next().unwrap();
+        let Effect::AnEffect(mut request) = effect;
 
         assert_eq!(request.operation, AnOperation::One);
 
@@ -459,12 +446,12 @@ mod combinators {
             .resolve(AnOperationOutput::One)
             .expect("request should resolve");
 
-        let events = cmd.events();
+        let event = cmd.events().next().unwrap();
 
-        assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+        assert_eq!(event, Event::Completed(AnOperationOutput::One));
 
-        let mut effects = cmd.effects();
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let effect = cmd.effects().next().unwrap();
+        let Effect::AnEffect(mut request) = effect;
 
         assert_eq!(request.operation, AnOperation::Two);
 
@@ -472,11 +459,11 @@ mod combinators {
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
-        assert!(cmd.effects().is_empty());
+        assert!(cmd.effects().next().is_none());
 
-        let events = cmd.events();
+        let event = cmd.events().next().unwrap();
 
-        assert_eq!(events[0], Event::Completed(AnOperationOutput::Two));
+        assert_eq!(event, Event::Completed(AnOperationOutput::Two));
 
         assert!(cmd.is_done());
     }
@@ -497,33 +484,30 @@ mod combinators {
                 })
                 .then_send(Event::Completed);
 
-        let mut effects = cmd.effects();
-        assert!(cmd.events().is_empty());
+        let effect = cmd.effects().next().unwrap();
+        assert!(cmd.events().next().is_none());
 
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let Effect::AnEffect(mut request) = effect;
 
         assert_eq!(request.operation, AnOperation::More([3, 4]));
         request
             .resolve(AnOperationOutput::Other([1, 2]))
             .expect("to resolve");
 
-        let mut effects = cmd.effects();
-        assert!(cmd.events().is_empty());
+        let effect = cmd.effects().next().unwrap();
+        assert!(cmd.events().next().is_none());
 
-        let Effect::AnEffect(mut request) = effects.remove(0);
+        let Effect::AnEffect(mut request) = effect;
         assert_eq!(request.operation, AnOperation::More([2, 3]));
 
         request
             .resolve(AnOperationOutput::Other([1, 2]))
             .expect("to resolve");
 
-        let events = cmd.events();
-        assert!(cmd.effects().is_empty());
+        let event = cmd.events().next().unwrap();
+        assert!(cmd.effects().next().is_none());
 
-        assert_eq!(
-            events[0],
-            Event::Completed(AnOperationOutput::Other([1, 2]))
-        );
+        assert_eq!(event, Event::Completed(AnOperationOutput::Other([1, 2])));
 
         assert!(cmd.is_done());
     }
@@ -535,9 +519,9 @@ mod combinators {
 
         let mut cmd = cmd_one.and(cmd_two);
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let mut effects = cmd.effects();
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         assert_eq!(effects.len(), 2);
 
@@ -558,9 +542,9 @@ mod combinators {
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
-        assert!(cmd.effects().is_empty());
+        assert!(cmd.effects().next().is_none());
 
-        let events = cmd.events();
+        let events: Vec<_> = cmd.events().collect();
 
         assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
         assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
@@ -577,9 +561,9 @@ mod combinators {
 
         let mut cmd = Command::all([cmd_one, cmd_two, cmd_three]);
 
-        assert!(cmd.events().is_empty());
+        assert!(cmd.events().next().is_none());
 
-        let mut effects = cmd.effects();
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         assert_eq!(effects.len(), 3);
 
@@ -600,7 +584,7 @@ mod combinators {
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
-        assert!(cmd.effects().is_empty());
+        assert!(cmd.effects().next().is_none());
 
         // Still the original effects
         let Effect::AnEffect(mut request) = effects.remove(0);
@@ -611,9 +595,9 @@ mod combinators {
             .resolve(AnOperationOutput::Two)
             .expect("request should resolve");
 
-        assert!(cmd.effects().is_empty());
+        assert!(cmd.effects().next().is_none());
 
-        let events = cmd.events();
+        let events: Vec<_> = cmd.events().collect();
 
         assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
         assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
@@ -644,8 +628,8 @@ mod combinators {
 
         // Phase 1
 
-        assert!(cmd.events().is_empty());
-        let mut effects = cmd.effects();
+        assert!(cmd.events().next().is_none());
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         assert_eq!(effects.len(), 2);
 
@@ -665,8 +649,8 @@ mod combinators {
 
         // Phase 2
 
-        assert!(cmd.events().is_empty());
-        let mut effects = cmd.effects();
+        assert!(cmd.events().next().is_none());
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         assert_eq!(effects.len(), 2);
 
@@ -686,8 +670,8 @@ mod combinators {
 
         // Phase 3
 
-        let events = cmd.events();
-        let mut effects = cmd.effects();
+        let events: Vec<_> = cmd.events().collect();
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         assert_eq!(events.len(), 2);
 
@@ -712,7 +696,7 @@ mod combinators {
 
         // Phase 4
 
-        let events = cmd.events();
+        let events: Vec<_> = cmd.events().collect();
 
         assert_eq!(events.len(), 1);
         assert_eq!(
@@ -746,8 +730,8 @@ mod combinators {
                 .then_send(Event::Completed),
         ]);
 
-        assert!(cmd.events().is_empty());
-        let mut effects = cmd.effects();
+        assert!(cmd.events().next().is_none());
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         assert_eq!(effects.len(), 2);
 
@@ -761,7 +745,7 @@ mod combinators {
             .resolve(AnOperationOutput::Other([1, 2]))
             .expect("should resolve");
 
-        let mut effects = cmd.effects();
+        let mut effects: Vec<_> = cmd.effects().collect();
 
         let Effect::AnEffect(mut plus_one_request) = effects.remove(0);
         assert_eq!(plus_one_request.operation, AnOperation::More([2, 3]));
@@ -770,7 +754,7 @@ mod combinators {
             .resolve(AnOperationOutput::One)
             .expect("should resolve");
 
-        let events = cmd.events();
+        let events: Vec<_> = cmd.events().collect();
         assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
 
         // Can't request the plus one request again
@@ -781,9 +765,9 @@ mod combinators {
             .resolve(AnOperationOutput::Other([2, 3]))
             .expect("should resolve");
 
-        let mut effects = cmd.effects();
+        let effect = cmd.effects().next().unwrap();
 
-        let Effect::AnEffect(plus_one_request) = effects.remove(0);
+        let Effect::AnEffect(plus_one_request) = effect;
         assert_eq!(plus_one_request.operation, AnOperation::More([3, 4]));
 
         // The second request is the opposite
@@ -793,9 +777,9 @@ mod combinators {
             .expect("should resolve");
         assert!(request.resolve(AnOperationOutput::Other([1, 2])).is_err());
 
-        let mut effects = cmd.effects();
+        let effect = cmd.effects().next().unwrap();
 
-        let Effect::AnEffect(mut plus_two_request) = effects.remove(0);
+        let Effect::AnEffect(mut plus_two_request) = effect;
 
         assert_eq!(plus_two_request.operation, AnOperation::More([3, 4]));
 
@@ -811,7 +795,7 @@ mod combinators {
             .resolve(AnOperationOutput::One)
             .expect("should resolve");
 
-        let events = cmd.events();
+        let events: Vec<_> = cmd.events().collect();
         assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
         assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
         assert_eq!(events[2], Event::Completed(AnOperationOutput::One));
@@ -899,10 +883,10 @@ mod capability_api {
         });
 
         for mut cmd in [sync_cmd, async_cmd] {
-            let mut effects = cmd.effects();
-            assert!(cmd.events.is_empty());
+            let effect = cmd.effects().next().unwrap();
+            assert!(cmd.events().next().is_none());
 
-            let Effect::AnEffect(mut request) = effects.remove(0);
+            let Effect::AnEffect(mut request) = effect;
 
             assert_eq!(request.operation, AnOperation::Request(10));
 
@@ -910,10 +894,10 @@ mod capability_api {
                 .resolve(AnOperationOutput::Response("ten".to_string()))
                 .expect("should work");
 
-            let events = cmd.events();
+            let event = cmd.events().next().unwrap();
 
             assert_eq!(
-                events[0],
+                event,
                 Event::Completed(AnOperationOutput::Response("ten".to_string()))
             );
 
@@ -936,9 +920,9 @@ mod capability_api {
         });
 
         for mut cmd in [sync_cmd, async_cmd] {
-            let mut effects = cmd.effects();
+            let effect = cmd.effects().next().unwrap();
 
-            let Effect::AnEffect(mut request) = effects.remove(0);
+            let Effect::AnEffect(mut request) = effect;
 
             for order in 1..10 {
                 assert_eq!(request.operation, AnOperation::Stream("hello".to_string()));
@@ -950,10 +934,10 @@ mod capability_api {
                     })
                     .expect("should work");
 
-                let events = cmd.events();
+                let event = cmd.events().next().unwrap();
 
                 assert_eq!(
-                    events[0],
+                    event,
                     Event::Completed(AnOperationOutput::StreamEvent {
                         order,
                         message: "Hi".to_string()
@@ -1028,9 +1012,9 @@ mod composition {
             Effect::Convert(request) => ParentEffect::Convert(request),
         });
 
-        let mut effects = mapped_cmd.effects();
+        let effect = mapped_cmd.effects().next().unwrap();
 
-        let ParentEffect::Convert(mut request) = effects.remove(0) else {
+        let ParentEffect::Convert(mut request) = effect else {
             panic!("Wrong effect variant!");
         };
 
@@ -1040,9 +1024,9 @@ mod composition {
             .resolve("three".to_string())
             .expect("should resolve");
 
-        let events = mapped_cmd.events();
+        let event = mapped_cmd.events().next().unwrap();
 
-        assert_eq!(events[0], Event::Converted("three".to_string()));
+        assert_eq!(event, Event::Converted("three".to_string()));
     }
 
     #[test]
@@ -1054,9 +1038,9 @@ mod composition {
             Event::Converted(out) => ParentEvent::Converted(out),
         });
 
-        let mut effects = mapped_cmd.effects();
+        let effect = mapped_cmd.effects().next().unwrap();
 
-        let Effect::Convert(mut request) = effects.remove(0);
+        let Effect::Convert(mut request) = effect;
 
         assert_eq!(request.operation, ToString(3));
 
@@ -1064,8 +1048,8 @@ mod composition {
             .resolve("three".to_string())
             .expect("should resolve");
 
-        let events = mapped_cmd.events();
+        let event = mapped_cmd.events().next().unwrap();
 
-        assert_eq!(events[0], ParentEvent::Converted("three".to_string()));
+        assert_eq!(event, ParentEvent::Converted("three".to_string()));
     }
 }
