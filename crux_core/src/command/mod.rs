@@ -109,22 +109,22 @@ where
 
     pub fn request_from_shell<Op>(
         operation: Op,
-    ) -> builder::ShellRequest<Effect, Event, impl Future<Output = Op::Output>>
+    ) -> builder::RequestBuilder<Effect, Event, impl Future<Output = Op::Output>>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
     {
-        builder::ShellRequest::new(|ctx| ctx.request_from_shell(operation))
+        builder::RequestBuilder::new(|ctx| ctx.request_from_shell(operation))
     }
 
     pub fn stream_from_shell<Op>(
         operation: Op,
-    ) -> builder::ShellStream<Effect, Event, impl Stream<Item = Op::Output>>
+    ) -> builder::StreamBuilder<Effect, Event, impl Stream<Item = Op::Output>>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
     {
-        builder::ShellStream::new(|ctx| ctx.stream_from_shell(operation))
+        builder::StreamBuilder::new(|ctx| ctx.stream_from_shell(operation))
     }
 
     pub fn is_done(&self) -> bool {
@@ -154,8 +154,8 @@ where
     // the output of the first command in building the second one
     pub fn then(mut self, mut other: Self) -> Self
     where
-        Effect: Unpin + std::fmt::Debug,
-        Event: Unpin + std::fmt::Debug,
+        Effect: Unpin,
+        Event: Unpin,
     {
         Command::new(|ctx| async move {
             // first run self until done
@@ -191,8 +191,8 @@ where
     /// Convenience for `Command:all` which runs another command concurrently with this one
     pub fn and(self, other: Self) -> Self
     where
-        Effect: Unpin + std::fmt::Debug,
-        Event: Unpin + std::fmt::Debug,
+        Effect: Unpin,
+        Event: Unpin,
     {
         Command::all([self, other])
     }
@@ -201,8 +201,8 @@ where
     pub fn all<I>(commands: I) -> Self
     where
         I: IntoIterator<Item = Self> + Send + 'static,
-        Effect: Unpin + std::fmt::Debug,
-        Event: Unpin + std::fmt::Debug,
+        Effect: Unpin,
+        Event: Unpin,
     {
         Command::new(|ctx| async move {
             let mut select = stream::select_all(commands);
