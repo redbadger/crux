@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.2](https://github.com/redbadger/crux/compare/crux_macros-v0.4.1...crux_macros-v0.4.2) - 2025-01-07
+
+### Other
+
+- deps
+
 ## [0.4.1](https://github.com/redbadger/crux/compare/crux_macros-v0.4.0...crux_macros-v0.4.1) - 2024-20-21
 
 - no changes, just updated dependencies

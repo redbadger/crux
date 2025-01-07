@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.1](https://github.com/redbadger/crux/compare/crux_core-v0.10.0...crux_core-v0.10.1) - 2025-01-07
+
+### Other
+
+- [drop model to avoid deadlock](https://github.com/redbadger/crux/pull/287)
+
 ## [0.10.0](https://github.com/redbadger/crux/compare/crux_core-v0.9.1...crux_core-v0.10.0) - 2024-10-23
 
 Several additional methods to help with testing Crux apps:
