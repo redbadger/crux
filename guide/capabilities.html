@@ -1,0 +1,457 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Capabilities - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/guide/capabilities.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="capabilities"><a class="header" href="#capabilities">Capabilities</a></h1>
+<p>In the last chapter, we spoke about Effects. In this one we'll look at the APIs
+your app will actually use to request them – the capabilities.</p>
+<p>Capabilities are reusable, platform agnostic APIs for a particular type of
+effect. They have two key jobs:</p>
+<ol>
+<li>Provide a nice ergonomic API for apps to use</li>
+<li>Manage the communication between the app and the Shell</li>
+</ol>
+<p>From the perspective of the app, you can think of capabilities as an equivalent
+to SDKs. And a lot of them will provide an interface to the actual platform
+specific SDKs.</p>
+<h2 id="intent-and-execution"><a class="header" href="#intent-and-execution">Intent and execution</a></h2>
+<p>The Capabilities are the key to Crux being portable across as many platforms as
+is sensible. Crux apps are, in a sense, built in the abstract, they describe
+<em>what</em> should happen in response to events, but not <em>how</em> it should happen. We
+think this is important both for portability, and for testing and general
+separation of concerns. What should happen is inherent to the product, and
+should behave the same way on any platform – it's part of what your app <em>is</em>.
+How it should be executed (and exactly what it looks like) often depends on the
+platform.</p>
+<p>Different platforms may support different ways, for example a biometric
+authentication may work very differently on various devices and some may not
+even support it at all, but it may also be a matter of convention. Different
+platforms may also have different practical restrictions: while it may be
+perfectly appropriate to write things to disk on one platform, but internet
+access can't be guaranteed (e.g. on a smart watch), on another, writing to disk
+may not be possible, but internet connection is virtually guaranteed (e.g. in an
+API service, or on an embedded device in a factory). A persistent caching
+capability would implement the specific storage solution differently on
+different platforms, but would potentially share the key format and eviction
+strategy across them. The hard part of designing a capability is working out
+exactly where to draw the line between what is the intent and what is the
+implementation detail, what's common across platforms and what may be different
+on each, and implementing the former in Rust in the capability and the latter on
+the native side in the Shell, however is appropriate.</p>
+<p>Because Capabilities can own the "language" used to express intent, and the
+interface to request the execution of the effect, your Crux application code can
+be portable onto any platform capable of executing the effect in some way.
+Clearly, the number of different effects we can think of, and platforms we can
+target is enormous, and Crux doesn't want to force you to implement the entire
+portfolio of them on every platform. That's why Capabilities are delivered as
+separate modules, typically in crates, and apps can declare which ones they
+need. The Shell implementations need to know how to handle all requests from
+those capabilities, but can choose to provide only stub implementations where
+appropriate. For example the
+<a href="https://github.com/redbadger/crux/tree/master/examples/cat_facts">Cat Facts example</a>,
+uses a key-value store capability for persisting the model after every
+interaction, which is crucial to make the CLI shell work statefully, but the
+other shells generally ignore the key-value requests, because state persistence
+across app launches is not crucial for them. The app itself (the Core) has no
+idea which is the case.</p>
+<p>In some cases, it may also make sense to implement an app-specific capability,
+for effects specific to your domain, which don't have a common implementation
+across platforms (e.g. registering a local user). Crux does not stop you from
+bundling a number of capabilities alongside your apps (i.e. they don't <em>have to</em>
+come from a crate). On the other hand, it might make sense to build a capability
+on top of an existing lower-level capability, for example a CRDT capability may
+use a general pub/sub capability as transport, or a specific protocol to speak
+to your synchronization server (e.g. over HTTP).</p>
+<p>There are clearly numerous scenarios, and the best rule of thumb we can think of
+is "focus on the intent". Provide an API to describe the intent of side-effects
+and then either pass the intent straight to the shell, or translate it to a
+sequence of more concrete intents for the Shell to execute. And keep in mind
+that the more complex the intent sent to the shell, the more complex the
+implementation on each platform. The translation between high-level intent and
+low level building blocks is why Capabilities exist.</p>
+<h2 id="the-core-and-the-shell"><a class="header" href="#the-core-and-the-shell">The Core and the Shell</a></h2>
+<p>As we've already covered, the capabilities effectively straddle the FFI boundary
+between the Core and the Shell. On the Core side they mediate between the FFI
+boundary and the application code. On the shell-side the requests produced by
+the capability need to be actually executed and fulfilled. Each capability
+therefore extends the Core/Shell interface with a set of defined (and type
+checked) messages, in a way that allows Crux to leverage exhaustive pattern
+matching on the native side to ensure all necessary capabilities required by the
+Core are implemented.</p>
+<p>At the moment the Shell implementation is up to you, but we think in the future
+it's likely that capability crates will come with platform native code as well,
+making building both the Core and the Shells easier, and allow you to focus on
+application behaviour in the Core and look and feel in the Shell.</p>
+<h2 id="using-capabilities"><a class="header" href="#using-capabilities">Using Capabilities</a></h2>
+<p>Okay, time to get practical. We'll look at what it takes (and why) to use a
+capability, and in the next couple of chapters, we'll continue to build one and
+implement the Shell side of it.</p>
+<p>Firstly, we need to have access to an instance of the capability in our <code>update</code>
+function. Recall that the function signature is:</p>
+<pre><code class="language-rust noplayground">fn update(&amp;self, msg: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities)</code></pre>
+<p>We get the capabilities in the <code>caps</code> argument. You may be wondering why that's
+necessary. At first glance, we could be able to just create a capability
+instance ourselves, or not need one at all, after all they just provide API to
+make effects. There are a few reasons.</p>
+<p>Firstly, capabilities need to be able to send a message to the shell, more
+precisely, they need to be able to add to the set of effects which result from
+the run of the update function. Sounds like a return value to you? It kind of
+is, and we tried that, and the type signatures involved quickly become quite
+unsightly. It's not the only reason though. They also need to be able to return
+information back to your app by queuing up events to be dispatched to the next
+run of the <code>update</code> function. But to be <em>really</em> useful, they need to be able to
+do a series of these things and suspend their execution in the meantime.</p>
+<p>In order to enable all that, Crux needs to be in charge of creating the instance
+of the capabilities to provide context to them, which they use to do the things
+we just listed. We'll see the details of this in the next chapter.</p>
+<p>Notice that the type of the argument is <code>Self::Capabilities</code> — you own the type.
+This is to allow you to declare which capabilities you want to use in your app.
+That type will most likely be a struct looking like the following:</p>
+<pre><code class="language-rust noplayground">#[derive(Effect)]
+pub struct Capabilities {
+    pub http: Http&lt;Event&gt;,
+    pub render: Render&lt;Event&gt;,
+}</code></pre>
+<p>Those two types come from <code>crux_core</code> and <code>crux_http</code>. Two things are suspicious
+about the above — the <code>Event</code> type, which describes your app's events and the
+<code>#[derive(Effect)]</code> derive macro.</p>
+<p>The latter generates an <code>Effect</code> enum for you, used as the payload of the
+messages to the Shell. It is one of the things you will need to expose via the
+FFI boundary. It's the type the Shell will use to understand what is being
+requested from it, and it mirrors the <code>Capabilities</code> struct: for each field,
+there is a tuple variant in the Effect enum, with the respective capability's
+<em>request</em> as payload, i.e. the data describing what's being asked of the Shell.</p>
+<p>The <code>Event</code> type argument enables the "shell side" of these capabilities to send
+you your specific events back as the <em>outcome</em> of their work. Typically, you'd
+probably set up an <code>Event</code> variant specifically for the individual uses of each
+capability, like this:</p>
+<pre><code class="language-rust noplayground">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum Event {
+    Hello,
+    #[serde(skip)]
+    Set(crux_http::Result&lt;crux_http::Response&lt;Counter&gt;&gt;), // &lt;- this
+}</code></pre>
+<p>In a real app, you'd likely have more than one interaction with a HTTP server,
+and would most likely need one variant for each. (<code>#[serde(skip)]</code> in the above
+code hides the variant from the type exposed to the Shell for direct calls –
+this event should not be dispatched directly. The other reason for it also has
+to do with serialization difficulties, which we'll eventually iron out).</p>
+<p>That's it for linking the capability into our app, now we can use it in the
+<code>update</code> function:</p>
+<pre><code class="language-rust noplayground">    fn update(&amp;self, msg: Self::Event, model: &amp;mut Self::Model, caps: &amp;Self::Capabilities) {
+        match msg {
+            Event::Get =&gt; {
+                caps.http
+                    .get(API_URL)
+                    .expect_json::&lt;Counter&gt;()
+                    .send(Event::Set);
+
+                caps.render.render();
+            }
+    // ...</code></pre>
+<p>You can see the use of the <code>Event::Set</code> variant we just discussed. <code>Event::Set</code>
+is technically a function with this signature:</p>
+<pre><code class="language-rust noplayground">fn Event::Set(crux_http::Result&lt;crux_http::Response&lt;Counter&gt;) -&gt; Event</code></pre>
+<p>Looks a lot like a callback, doesn't it. Yep. With the difference that the
+result is an <code>Event</code>. Generally, you should be able to completely ignore this
+detail and just use your variant names and the code should read pretty clearly:
+"When done, send me <code>Event::Set</code>".</p>
+<p>The other nuance to be aware of is that the capability calls return immediately.
+This should hopefully be relatively obvious by now, but all that's happening is
+effects are getting queued up to be requested from the Shell. In a way,
+capability calls are implicitly asynchronous (but you can't await them).</p>
+<p>That's generally all there is to it. What you'll notice is that most
+capabilities have essentially request/response semantics — you use their APIs,
+and provide an event you want back, and eventually your update function will get
+called with that event. Most capabilities take inputs for their effect, and
+return output in their outcomes, but some capabilities don't do one or either of
+those things. Render is an example of a capability which doesn't take payload
+and never calls back. You'll likely see all the different variations in Crux
+apps.</p>
+<h2 id="orchestrating-capability-calls"><a class="header" href="#orchestrating-capability-calls">Orchestrating capability calls</a></h2>
+<p>In more complex apps, you might run into situations where you need to run
+several effects in parallel, race them, run them in sequence or a combination of
+the above. In other words, in some scenarios, you really need the full control
+of <code>async</code>/<code>await</code> and the futures APIs.</p>
+<p>To support this case, Crux provides a built-in capability called <code>Compose</code>,
+which provides restricted but direct access to the capability runtime (more
+about the runtime in the next chapter), which supports <code>async</code>. To use it, first
+add it to your Capabilities struct:</p>
+<pre><code class="language-rust noplayground">use crux::compose::Compose;
+
+#[derive(crux_core::macros::Effect)]
+pub struct Capabilities {
+    pub http: Http&lt;Event&gt;,
+    pub render: Render&lt;Event&gt;,
+    #[effect(skip)] // skips the compose variant when deriving an Effect enum
+    pub compose: Compose&lt;Event&gt;,
+}</code></pre>
+<p>Then, you can use it in your update function like this:</p>
+<pre><code class="language-rust noplayground">fn update(&amp;self, msg: Event, model: &amp;mut Model, caps: &amp;Capabilities) {
+    match msg {
+        Event::GetDocuments =&gt; caps.compose.spawn(|context| {
+            let http = caps.http.clone();
+
+            async move {
+                let ids = http
+                    .get(DOCS_URL)
+                    .await
+                    .expect("Request should send")
+                    .body_json::&lt;Vec&lt;Id&gt;&gt;()
+                    .await
+                    .expect("Ids failed to parse as JSON");
+
+                let futs: Vec&lt;_&gt; = ids
+                    .iter()
+                    .map(|id| {
+                        let http = http.clone();
+
+                        async move {
+                            http.get(&amp;format!("{}/{}", DOCS_URL, id))
+                                .await
+                                .expect("request did not send")
+                                .body_json::&lt;Doc&gt;()
+                                .await
+                                .expect("doc failed to parse as JSON")
+                        }
+                    })
+                    .collect();
+
+                let docs = futures::future::join_all(futs).await;
+
+                context.update_app(Event::FetchedDocuments(docs))
+            }
+        }),
+        // ...
+    }
+}</code></pre>
+<p>The above code first fetches a list of document IDs, then fetches each document
+in parallel, and finally returns the list of documents as an event.</p>
+<p>The <code>spawn</code> method takes a closure which is passed a <code>ComposeContext</code> argument.
+This is a handle to the capability runtime, which allows you to send events back
+to the app. The closure must return a future, which is then spawned on the
+runtime. The runtime will drive the future to completion. You can call
+<code>context.update_app</code> multiple times if necessary.</p>
+<p>One consideration of this style of orchestration is that the more effects you
+string together this way, the harder it will be to test the behaviour of this
+ad-hoc capability, because you can't start the transaction in the middle.
+Generally, if you find yourself sending events using <code>update_app</code> and then
+continuing to emit more effects, you should probably break the orchestration up
+into smaller blocks executed in response to the events in the update function
+instead.</p>
+<p>Now that we know how to use capabilities, we're ready to look at building our
+own ones. You may never need to do that, or it might be one of the first hurdles
+you'll come across (and if we're honest, given how young Crux is, it's more
+likely the latter). Either way, it's what we'll do in the next chapter.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../guide/elm_architecture.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../guide/capability_apis.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../guide/elm_architecture.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../guide/capability_apis.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,642 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Capability runtime and Effects - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/internals/runtime.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="capability-runtime"><a class="header" href="#capability-runtime">Capability Runtime</a></h1>
+<p>In the previous sections we focused on building applications in Crux and using
+its public APIs to do so. In this and the following chapters, we'll look at how
+the internals of Crux work, starting with the capability runtime.</p>
+<p>The capability runtime is a set of components that processes effects, presenting
+the two perspectives we previously mentioned:</p>
+<ul>
+<li>For the core, the shell appears to be a platform with a message based system
+interface</li>
+<li>For the shell, the core appears as a stateful library responding to events
+with request for side-effects</li>
+</ul>
+<p>There are a few challenges to solve in order to facilitate this interface.
+First, each run of the <code>update</code> function can call several capabilities. The
+requested effects are expected to be emitted together, and each batch of effects
+will be processed concurrently, so the calls can't be blocking. Second, each effect requested from
+a capability may require multiple round-trips between the core and shell to
+conclude and we don't want to require a call to <code>update</code> per round trip, so we
+need some ability to "suspend" execution in capabilities while waiting for an
+effect to be fulfilled. The ability to suspend effects introduces a new
+challenge - effects started in a particular capability and suspended, once
+resolved, need to continue execution in the same capability.</p>
+<p>Given this concurrency and execution suspension, an async interface seems like a
+good candidate. Capabilities request work from the shell, <code>.await</code> the results,
+and continue their work when the result has arrived. The call to
+<code>request_from_shell</code> or <code>stream_from_shell</code> translates into an effect request
+returned from the current core "transaction" (one call to <code>process_event</code> or
+<code>resolve</code>).</p>
+<div id="admonition-note" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-title">
+<div class="admonition-title">
+<div id="admonition-note-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note"></a>
+</div>
+<div>
+<p>In this chapter, we will focus on the runtime and the core interface and ignore
+the serialization, bridge and FFI, and return to them in the following sections.
+The examples will assume a Rust based shell.</p>
+</div>
+</div>
+<h2 id="async-runtime"><a class="header" href="#async-runtime">Async runtime</a></h2>
+<p>One of the fairly unique aspects of Rust's async is the fact that it doesn't
+come with a bundled runtime. This is recognising that asynchronous execution is
+useful in various different scenarios, and no one runtime can serve all of them.
+Crux takes advantage of this and brings its own runtime, tailored to the
+execution of side-effects on top of a message based interface.</p>
+<p>For a deeper background on Rust's async architecture, we recommend the
+<a href="https://rust-lang.github.io/async-book/">Asynchronous Programming in Rust</a>
+book, especially the chapter about
+<a href="https://rust-lang.github.io/async-book/02_execution/01_chapter.html">executing futures and tasks</a>.
+We will assume you are familiar with the basic ideas and mechanics of async
+here.</p>
+<p>The job of an async runtime is to manage a number of tasks, each driving one
+future to completion. This management is done by an executor, which is
+responsible for scheduling the futures and <code>poll</code>ing them <em>at the right time</em> to
+drive their execution forward. Most "grown up" runtimes will do this on a number
+of threads in a thread pool, but in Crux, we run in the context of a single
+function call (of the app's <code>update</code> function) and potentially in a webassembly
+context which is single threaded anyway, so our baby runtime only needs to poll
+all the tasks sequentially, to see if any of them need to continue.</p>
+<p>Polling all the tasks would work, and in our case wouldn't even be that
+inefficient, but the async system is set up to avoid unnecessary polling of
+futures with one additional concept - wakers. A waker is a mechanism which can
+be used to signal to the executor that something that a given task is waiting on
+has changed, and the task's future should be polled, because it will be able to
+proceed. This is how "at the right time" from the above paragraph is decided.</p>
+<p>In our case there's a single situation which causes such a change - a result has
+arrived from the shell, for a particular effect requested earlier.</p>
+<div id="admonition-warning" class="admonition admonish-warning" role="note" aria-labelledby="admonition-warning-title">
+<div class="admonition-title">
+<div id="admonition-warning-title">
+<p>Warning</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-warning"></a>
+</div>
+<div>
+<p>Always use the capability APIs provided by Crux for async work (see the
+<a href="../guide/capability_apis.html">capabilities</a> chapter). Using other async APIs can
+lead to unexpected behaviour, because the resulting futures are not tied to crux
+effects. Such futures will resolve, but only after the next shell request causes
+the crux executor to execute.</p>
+</div>
+</div>
+<h2 id="one-effects-life-cycle"><a class="header" href="#one-effects-life-cycle">One effect's life cycle</a></h2>
+<p>So, step by step, our strategy for the capabilities to handle effects is:</p>
+<ol>
+<li>A capability <code>spawn</code>s a task and submits a future with some code to run</li>
+<li>The new task is scheduled to be polled next time the executor runs</li>
+<li>The executor goes through the list of ready tasks until it gets to our task
+and polls it</li>
+<li>The future runs to the point where the first async call is <code>await</code>ed. In
+capabilities, this <em>should</em> only be a future returned from one of the calls
+to request something from the shell, or a future resulting from a composition
+of such futures (through async method calls or combinators like <code>select</code> or
+<code>join</code>).</li>
+<li>The shell request future's first step is to create the request and prepare it
+to be sent. We will look at the mechanics of the sending shortly, but for now
+it's only important that part of this request is a callback used to resolve
+it.</li>
+<li>The request future, as part of the first poll by the executor, sends the
+request to be handed to the shell. As there is no result from the shell yet,
+it returns a pending state and the task is suspended.</li>
+<li>The request is passed on to the shell to resolve (as a return value from
+<code>process_event</code> or <code>resolve</code>)</li>
+<li>Eventually, the shell has a result ready for the request and asks the core to
+<code>resolve</code> the request.</li>
+<li>The request callback mentioned above is executed, puts the provided result in
+the future's mutable state, and calls the future's waker, also stored in the
+future's state, to wake the future up. The waker enqueues the future for
+processing on the executor.</li>
+<li>The executor runs again (asked to do so by the core's <code>resolve</code> API after
+calling the callback), and polls the awoken future.</li>
+<li>the future sees there is now a result available and continues the execution
+of the original task until a further await or until completion.</li>
+</ol>
+<p>The cycle may repeat a few times, depending on the capability implementation,
+but eventually the original task completes and is removed.</p>
+<p>This is probably a lot to take in, but the basic gist is that capability futures
+(the ones submitted to <code>spawn</code>) always pause on request futures (the ones
+returned from <code>request_from_shell</code> et al.), which submit requests. Resolving
+requests updates the state of the original future and wakes it up to continue
+execution.</p>
+<p>With that in mind we can look at the individual moving parts and how they
+communicate.</p>
+<h2 id="spawning-tasks-on-the-executor"><a class="header" href="#spawning-tasks-on-the-executor">Spawning tasks on the executor</a></h2>
+<p>The first step for anything to happen is spawning a task from a capability. Each
+capability is created with a <code>CapabilityContext</code>. This is the definition:</p>
+<pre><code class="language-rust no_run noplayground">pub struct CapabilityContext&lt;Op, Event&gt;
+where
+    Op: Operation,
+{
+    inner: std::sync::Arc&lt;ContextInner&lt;Op, Event&gt;&gt;,
+}
+
+struct ContextInner&lt;Op, Event&gt;
+where
+    Op: Operation,
+{
+    shell_channel: Sender&lt;Request&lt;Op&gt;&gt;,
+    app_channel: Sender&lt;Event&gt;,
+    spawner: executor::Spawner,
+}</code></pre>
+<p>There are a couple of sending ends of channels for requests and events, which we
+will get to soon, and also a spawner, from the executor module. The <code>Spawner</code>
+looks like this:</p>
+<pre><code class="language-rust no_run noplayground">#[derive(Clone)]
+pub struct Spawner {
+    future_sender: Sender&lt;BoxFuture&gt;,
+}</code></pre>
+<p>also holding a sending end of a channel, this one for <code>Task</code>s.</p>
+<p>Tasks are a fairly simple data structure, holding a future and another sending
+end of the tasks channel, because tasks need to be able to submit themselves
+when awoken.</p>
+<pre><code class="language-rust no_run noplayground"></code></pre>
+<p>Tasks are spawned by the Spawner as follows:</p>
+<pre><code class="language-rust no_run noplayground">impl Spawner {
+    pub fn spawn(&amp;self, future: impl Future&lt;Output = ()&gt; + 'static + Send) {
+        let future = future.boxed();
+        self.future_sender
+            .send(future)
+            .expect("unable to spawn an async task, task sender channel is disconnected.")
+    }
+}</code></pre>
+<p>after constructing a task, it is submitted using the task sender.</p>
+<p>The final piece of the puzzle is the executor itself:</p>
+<pre><code class="language-rust no_run noplayground">pub(crate) struct QueuingExecutor {
+    spawn_queue: Receiver&lt;BoxFuture&gt;,
+    ready_queue: Receiver&lt;TaskId&gt;,
+    ready_sender: Sender&lt;TaskId&gt;,
+    tasks: Mutex&lt;Slab&lt;Option&lt;BoxFuture&gt;&gt;&gt;,
+}</code></pre>
+<p>This is the receiving end of the channel from the spawner.</p>
+<p>The executor has a single public method, <code>run_all</code>:</p>
+<pre><code class="language-rust no_run noplayground">impl QueuingExecutor {
+    pub fn run_all(&amp;self) {
+        // we read off both queues and execute the tasks we receive.
+        // Since either queue can generate work for the other queue,
+        // we read from them in a loop until we are sure both queues
+        // are exhausted
+        let mut did_some_work = true;
+
+        while did_some_work {
+            did_some_work = false;
+            while let Ok(task) = self.spawn_queue.try_recv() {
+                let task_id = self
+                    .tasks
+                    .lock()
+                    .expect("Task slab poisoned")
+                    .insert(Some(task));
+                self.run_task(TaskId(task_id.try_into().expect("TaskId overflow")));
+                did_some_work = true;
+            }
+            while let Ok(task_id) = self.ready_queue.try_recv() {
+                match self.run_task(task_id) {
+                    RunTask::Unavailable =&gt; {
+                        // We were unable to run the task as it is (presumably) being run on
+                        // another thread. We re-queue the task for 'later' and do NOT set
+                        // `did_some_work = true`. That way we will keep looping and doing work
+                        // until all remaining work is 'unavailable', at which point we will bail
+                        // out of the loop, leaving the queued work to be finished by another thread.
+                        // This strategy should avoid dropping work or busy-looping
+                        self.ready_sender.send(task_id).expect("could not requeue");
+                    }
+                    RunTask::Missing =&gt; {
+                        // This is possible if a naughty future sends a wake notification while
+                        // still running, then runs to completion and is evicted from the slab.
+                        // Nothing to be done.
+                    }
+                    RunTask::Suspended | RunTask::Completed =&gt; did_some_work = true,
+                }
+            }
+        }
+    }
+
+    fn run_task(&amp;self, task_id: TaskId) -&gt; RunTask {
+        let mut lock = self.tasks.lock().expect("Task slab poisoned");
+        let Some(task) = lock.get_mut(*task_id as usize) else {
+            return RunTask::Missing;
+        };
+        let Some(mut task) = task.take() else {
+            // the slot exists but the task is missing - presumably it
+            // is being executed on another thread
+            return RunTask::Unavailable;
+        };
+
+        // free the mutex so other threads can make progress
+        drop(lock);
+
+        let waker = Arc::new(TaskWaker {
+            task_id,
+            sender: self.ready_sender.clone(),
+        })
+        .into();
+        let context = &amp;mut Context::from_waker(&amp;waker);
+
+        // poll the task
+        if task.as_mut().poll(context).is_pending() {
+            // If it's still pending, put the future back in the slot
+            self.tasks
+                .lock()
+                .expect("Task slab poisoned")
+                .get_mut(*task_id as usize)
+                .expect("Task slot is missing")
+                .replace(task);
+            RunTask::Suspended
+        } else {
+            // otherwise the future is completed and we can free the slot
+            self.tasks.lock().unwrap().remove(*task_id as usize);
+            RunTask::Completed
+        }
+    }
+}
+
+enum RunTask {
+    Missing,
+    Unavailable,
+    Suspended,
+    Completed,
+}
+</code></pre>
+<p>besides the locking and waker mechanics, the gist is quite simple - while there
+are tasks in the ready_queue, poll the future held in each one.</p>
+<p>The last interesting bit of this part is how the waker is provided to the <code>poll</code>
+call. The <code>waker_ref</code> creates a waker which, when asked to wake up, will call
+this method on the task:</p>
+<pre><code class="language-rust no_run noplayground">impl Wake for TaskWaker {
+    fn wake(self: Arc&lt;Self&gt;) {
+        self.wake_by_ref();
+    }
+
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        // This send can fail if the executor has been dropped.
+        // In which case, nothing to do
+        let _ = self.sender.send(self.task_id);
+    }
+}</code></pre>
+<p>this is where the task resubmits itself for processing on the next run.</p>
+<p>While there are a lot of moving pieces involved, the basic mechanics are
+relatively straightforward - tasks are submitted either by the spawner, or the
+futures awoken by arriving responses to the requests they submitted. The queue
+of tasks is processed whenever <code>run_all</code> is called on the executor. This happens
+in the <code>Core</code> API implementation. Both <code>process_event</code> and <code>resolve</code> call
+<code>run_all</code> after their respective task - calling the app's <code>update</code> function, or
+resolving the given task.</p>
+<p>Now we know how the futures get executed, suspended and resumed, we can examine
+the flow of information between capabilities and the Core API calls layered on
+top.</p>
+<h2 id="requests-flow-from-capabilities-to-the-shell"><a class="header" href="#requests-flow-from-capabilities-to-the-shell">Requests flow from capabilities to the shell</a></h2>
+<p>The key to understanding how the effects get processed and executed is to name
+all the various pieces of information, and discuss how they are wrapped in each
+other.</p>
+<p>The basic inner piece of the effect request is an <em>operation</em>. This is the
+intent which the capability is submitting to the shell. Each operation has an
+associated <em>output</em> value, with which the operation request can be resolved.
+There are multiple capabilities in each app, and in order for the shell to
+easily tell which capability's effect it needs to handle, we wrap the operation
+in an <em>effect</em>. The <code>Effect</code> type is a generated enum based on the app's set of
+capabilities, with one variant per capability. It allows us to multiplex (or
+type erase) the different typed operations into a single type, which can be
+<code>match</code>ed on to process the operations.</p>
+<p>Finally, the effect is wrapped in a <em>request</em> which carries the effect, and an
+associated <em>resolve</em> callback to which the output will eventually be given. We
+discussed this callback in the previous section - its job is to update the
+paused future's state and resume it. The request is the value passed to the
+shell, and used as both the description of the effect intent, and the "token"
+used to resolve it.</p>
+<p>Now we can look at how all this wrapping is facilitated. Recall from the
+previous section that each capability has access to a <code>CapabilityContext</code>, which
+holds a sending end of two channels, one for events - the <code>app_channel</code> and one
+for requests - the <code>shell_channel</code>, whose type is <code>Sender&lt;Request&lt;Op&gt;&gt;</code>. These
+channels serve both as thread synchronisation and queueing mechanism between the
+capabilities and the core of crux. As you can see, the requests expected are
+typed for the capability's operation type.</p>
+<p>Looking at the core itself, we see their <code>Receiver</code> ends.</p>
+<pre><code class="language-rust no_run noplayground">pub struct Core&lt;Ef, A&gt;
+where
+    A: App,
+{
+    // WARNING: The user controlled types _must_ be defined first
+    // so that they are dropped first, in case they contain coordination
+    // primitives which attempt to wake up a future when dropped. For that
+    // reason the executor _must_ outlive the user type instances
+
+    // user types
+    model: RwLock&lt;A::Model&gt;,
+    capabilities: A::Capabilities,
+    app: A,
+
+    // internals
+    requests: Receiver&lt;Ef&gt;,
+    capability_events: Receiver&lt;A::Event&gt;,
+    executor: QueuingExecutor,
+}</code></pre>
+<p>One detail to note is that the receiving end of the requests channel is a
+<code>Receiver&lt;Ef&gt;</code>. The channel has an additional feature - it can map between the
+input types and output types, and, in this case, serve as a multiplexer,
+wrapping the operation in the corresponding Effect variant. Each sending end is
+specialised for the respective capability, but the receiving end gets an already
+wrapped <code>Effect</code>.</p>
+<h2 id="a-single-update-cycle"><a class="header" href="#a-single-update-cycle">A single update cycle</a></h2>
+<p>To piece all these things together, lets look at processing a single call from
+the shell. Both <code>process_event</code> and <code>resolve</code> share a common step advancing the
+capability runtime.</p>
+<p>Here is <code>process_event</code>:</p>
+<pre><code class="language-rust no_run noplayground">    pub fn process_event(&amp;self, event: A::Event) -&gt; Vec&lt;Ef&gt; {
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+
+        self.app.update(event, &amp;mut model, &amp;self.capabilities);
+
+        // drop the model here, we don't want to hold the lock for the process() call
+        drop(model);
+
+        self.process()
+    }</code></pre>
+<p>and here is <code>resolve</code>:</p>
+<pre><code class="language-rust no_run noplayground">    pub fn resolve&lt;Op&gt;(&amp;self, request: &amp;mut Request&lt;Op&gt;, result: Op::Output) -&gt; Vec&lt;Ef&gt;
+    where
+        Op: Operation,
+    {
+        let resolve_result = request.resolve(result);
+        debug_assert!(resolve_result.is_ok());
+
+        self.process()
+    }</code></pre>
+<p>The interesting things happen in the common <code>process</code> method:</p>
+<pre><code class="language-rust no_run noplayground">    pub(crate) fn process(&amp;self) -&gt; Vec&lt;Ef&gt; {
+        self.executor.run_all();
+
+        while let Some(capability_event) = self.capability_events.receive() {
+            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            self.app
+                .update(capability_event, &amp;mut model, &amp;self.capabilities);
+            drop(model);
+            self.executor.run_all();
+        }
+
+        self.requests.drain().collect()
+    }</code></pre>
+<p>First, we run all ready tasks in the executor. There can be new tasks ready
+because we just ran the app's update function (which may have spawned some task
+via capability calls) or resolved some effects (which woke up their suspended
+futures).</p>
+<p>Next, we drain the events channel (where events are submitted from capabilities
+by <code>context.update_app</code>) and one by one, send them to the <code>update</code> function,
+running the executor after each one.</p>
+<p>Finally, we collect all of the effect requests submitted in the process and
+return them to the shell.</p>
+<h2 id="resolving-requests"><a class="header" href="#resolving-requests">Resolving requests</a></h2>
+<p>We've now seen everything other than the mechanics of resolving requests. This
+is ultimately just a callback carried by the request, but for additional type
+safety, it is tagged by the expected number of resolutions</p>
+<pre><code class="language-rust no_run noplayground">type ResolveOnce&lt;Out&gt; = Box&lt;dyn FnOnce(Out) + Send&gt;;
+type ResolveMany&lt;Out&gt; = Box&lt;dyn Fn(Out) -&gt; Result&lt;(), ()&gt; + Send&gt;;
+
+/// Resolve is a callback used to resolve an effect request and continue
+/// one of the capability Tasks running on the executor.
+pub(crate) enum Resolve&lt;Out&gt; {
+    Never,
+    Once(ResolveOnce&lt;Out&gt;),
+    Many(ResolveMany&lt;Out&gt;),
+}</code></pre>
+<p>We've already mentioned the resolve function itself briefly, but for
+completeness, here's an example from <code>request_from_shell</code>:</p>
+<pre><code class="language-rust no_run noplayground">        let request = Request::resolves_once(operation, move |result| {
+            let Some(shared_state) = callback_shared_state.upgrade() else {
+                // The ShellRequest was dropped before we were called, so just
+                // do nothing.
+                return;
+            };
+
+            let mut shared_state = shared_state.lock().unwrap();
+
+            // Attach the result to the shared state of the future
+            shared_state.result = Some(result);
+            // Signal the executor to wake the task holding this future
+            if let Some(waker) = shared_state.waker.take() {
+                waker.wake()
+            }
+        });</code></pre>
+<p>Bar the locking and sharing mechanics, all it does is update the state of the
+future (<code>shared_state</code>) and then calls <code>wake</code> on the future's waker to schedule
+it on the executor.</p>
+<p>In the next chapter, we will look at how this process changes when Crux is used
+via an FFI interface where requests and responses need to be serialised in order
+to pass across the language boundary.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../guide/composing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../internals/bridge.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../guide/composing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../internals/bridge.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

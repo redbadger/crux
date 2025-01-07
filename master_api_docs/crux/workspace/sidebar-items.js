@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CONFIG_FILE"],"fn":["read_config","write_config"]};

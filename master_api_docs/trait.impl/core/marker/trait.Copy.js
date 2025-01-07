@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["crux_http",[["impl&lt;'a&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.83.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"crux_http/middleware/struct.Next.html\" title=\"struct crux_http::middleware::Next\">Next</a>&lt;'a&gt;"]]],["crux_time",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.83.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"enum\" href=\"crux_time/enum.TimeResponse.html\" title=\"enum crux_time::TimeResponse\">TimeResponse</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.83.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"crux_time/duration/struct.Duration.html\" title=\"struct crux_time::duration::Duration\">Duration</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.83.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"crux_time/instant/struct.Instant.html\" title=\"struct crux_time::instant::Instant\">Instant</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.83.0/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"crux_time/struct.TimerId.html\" title=\"struct crux_time::TimerId\">TimerId</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[302,1076]}

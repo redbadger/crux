@@ -1,0 +1,436 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>TypeScript and Svelte (Parcel) - Crux: Cross-platform app development in Rust</title>
+
+
+        <!-- Custom HTML head -->
+        <script async defer src="https://beampipe.io/js/tracker.js" data-beampipe-domain="redbadger.github.io"></script>
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../.././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Crux: Cross-platform app development in Rust</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/redbadger/crux/edit/master/docs/src/getting_started/web/svelte.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="web---typescript-and-svelte-parcel"><a class="header" href="#web---typescript-and-svelte-parcel">Web - TypeScript and Svelte (Parcel)</a></h1>
+<p>These are the steps to set up and run a simple TypeScript Web app that calls
+into a shared core.</p>
+<div id="admonition-note" class="admonition admonish-note" role="note" aria-labelledby="admonition-note-title">
+<div class="admonition-title">
+<div id="admonition-note-title">
+<p>Note</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-note"></a>
+</div>
+<div>
+<p>This walk-through assumes you have already added the <code>shared</code> and <code>shared_types</code> libraries to your repo, as described in <a href="../core.html">Shared core and types</a>.</p>
+</div>
+</div>
+<div id="admonition-info" class="admonition admonish-info" role="note" aria-labelledby="admonition-info-title">
+<div class="admonition-title">
+<div id="admonition-info-title">
+<p>Info</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-info"></a>
+</div>
+<div>
+<p>There are many frameworks available for writing Web applications with JavaScript/TypeScript. We've chosen <a href="https://svelte.dev/">Svelte</a> with <a href="https://parceljs.org/">Parcel</a> for this walk-through. However, a similar setup would work for other frameworks.</p>
+</div>
+</div>
+<h2 id="create-a-svelte-app"><a class="header" href="#create-a-svelte-app">Create a Svelte App</a></h2>
+<p>Let's create a new project which we'll call <code>web-svelte</code>:</p>
+<pre><code class="language-sh">mkdir web-svelte
+cd web-svelte
+mkdir src/
+</code></pre>
+<h2 id="compile-our-rust-shared-library"><a class="header" href="#compile-our-rust-shared-library">Compile our Rust shared library</a></h2>
+<p>When we build our app, we also want to compile the Rust core to WebAssembly so
+that it can be referenced from our code.</p>
+<p>To do this, we'll use
+<a href="https://rustwasm.github.io/wasm-pack/installer/"><code>wasm-pack</code></a>, which you can
+install like this:</p>
+<pre><code class="language-sh"># with homebrew
+brew install wasm-pack
+
+# or directly
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+</code></pre>
+<p>Now that we have <code>wasm-pack</code> installed, we can build our <code>shared</code> library to
+WebAssembly for the browser.</p>
+<pre><code class="language-sh">(cd shared &amp;&amp; wasm-pack build --target web)
+</code></pre>
+<p>Create a <code>package.json</code> file and add the <code>wasm:build</code> script:</p>
+<pre><code class="language-json">"scripts": {
+    "wasm:build": "cd ../shared &amp;&amp; wasm-pack build --target web",
+    "start": "npm run build &amp;&amp; concurrently -k \"parcel serve src/index.html --port 8080 --hmr-port 1174\" ",
+    "build": "pnpm run wasm:build &amp;&amp; parcel build src/index.html",
+    "dev": "pnpm run wasm:build &amp;&amp; parcel build src/index.html"
+  },
+</code></pre>
+<p>Also make sure to add the <code>shared</code> and <code>shared_types</code> as local dependencies to
+the <code>package.json</code>:</p>
+<pre><code class="language-json">  "dependencies": {
+    // ...
+    "shared": "file:../shared/pkg",
+    "shared_types": "file:../shared_types/generated/typescript"
+    // ...
+  }
+</code></pre>
+<h4 id="create-an-app-to-render-the-ui"><a class="header" href="#create-an-app-to-render-the-ui">Create an app to render the UI</a></h4>
+<p>Create a <code>main.ts</code> file in <code>src/</code>:</p>
+<pre><code class="language-typescript">import "reflect-metadata";
+
+import App from "./App.svelte";
+
+document.body.setAttribute("data-app-container", "");
+
+export default new App({ target: document.body });
+</code></pre>
+<p>This file is the main entry point which instantiates a new <code>App</code> object. The
+<code>App</code> object is defined in the <code>App.svelte</code> file:</p>
+<pre><code class="language-js">&lt;script lang="ts"&gt;
+  import "bulma/css/bulma.css";
+  import { onMount } from "svelte";
+  import { update } from "./core";
+  import view from "./core";
+  import {
+    EventVariantReset,
+    EventVariantIncrement,
+    EventVariantDecrement,
+  } from "shared_types/types/shared_types";
+
+  onMount(async () =&gt; {
+    console.log("mount");
+  });
+&lt;/script&gt;
+
+&lt;section class="box container has-text-centered m-5"&gt;
+  &lt;p class="is-size-5"&gt;{$view.count}&lt;/p&gt;
+  &lt;div class="buttons section is-centered"&gt;
+    &lt;button
+      class="button is-primary is-danger"
+      on:click={() =&gt; update(new EventVariantReset())}
+    &gt;
+      {"Reset"}
+    &lt;/button&gt;
+    &lt;button
+      class="button is-primary is-success"
+      on:click={() =&gt; update(new EventVariantIncrement())}
+    &gt;
+      {"Increment"}
+    &lt;/button&gt;
+    &lt;button
+      class="button is-primary is-warning"
+      on:click={() =&gt; update(new EventVariantDecrement())}
+    &gt;
+      {"Decrement"}
+    &lt;/button&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+</code></pre>
+<p>This file implements the UI and the behaviour for various user actions.</p>
+<p>In order to serve the Svelte app, create a <code>index.html</code> in <code>src/</code>:</p>
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8" /&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=0.5, minimum-scale=0.5" /&gt;
+  &lt;title&gt;Simple Counter&lt;/title&gt;
+  &lt;meta name="apple-mobile-web-app-title" content="Simple Counter" /&gt;
+  &lt;meta name="application-name" content="Simple Counter" /&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;script type="module" src="main.ts"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>This file ensures that the main entry point gets called.</p>
+<h4 id="wrap-the-core-to-support-capabilities"><a class="header" href="#wrap-the-core-to-support-capabilities">Wrap the core to support capabilities</a></h4>
+<p>Let's add a file <code>src/core.ts</code> which will wrap our core and handle the
+capabilities that we are using.</p>
+<pre><code class="language-typescript">import { process_event, view } from "shared";
+import initCore from "shared";
+import { writable } from "svelte/store";
+import {
+  EffectVariantRender,
+  ViewModel,
+  Request,
+} from "shared_types/types/shared_types";
+import type { Effect, Event } from "shared_types/types/shared_types";
+import {
+  BincodeSerializer,
+  BincodeDeserializer,
+} from "shared_types/bincode/mod";
+
+const { subscribe, set } = writable(new ViewModel("0"));
+
+export async function update(event: Event) {
+  console.log("event", event);
+  await initCore();
+
+  const serializer = new BincodeSerializer();
+  event.serialize(serializer);
+
+  const effects = process_event(serializer.getBytes());
+  const requests = deserializeRequests(effects);
+  for (const { id, effect } of requests) {
+    processEffect(id, effect);
+  }
+}
+
+function processEffect(_id: number, effect: Effect) {
+  console.log("effect", effect);
+  switch (effect.constructor) {
+    case EffectVariantRender: {
+      set(deserializeView(view()));
+      break;
+    }
+  }
+}
+
+function deserializeRequests(bytes: Uint8Array): Request[] {
+  const deserializer = new BincodeDeserializer(bytes);
+  const len = deserializer.deserializeLen();
+  const requests: Request[] = [];
+  for (let i = 0; i &lt; len; i++) {
+    const request = Request.deserialize(deserializer);
+    requests.push(request);
+  }
+  return requests;
+}
+
+function deserializeView(bytes: Uint8Array): ViewModel {
+  return ViewModel.deserialize(new BincodeDeserializer(bytes));
+}
+
+export default {
+  subscribe,
+};
+</code></pre>
+<p>This code sends our (UI-generated) events to the core, and handles any effects
+that the core asks for via the <code>update()</code> function. Notice that we are creating
+a <a href="https://svelte.dev/docs/svelte-store">store</a> to update and manage the view
+model. Whenever <code>update()</code> gets called to send an event to the core, we are
+fetching the updated view model via <code>view()</code> and are updating the value in the
+store. Svelte components can import and use the store values.</p>
+<p>Notice that we have to serialize and deserialize the data that we pass between
+the core and the shell. This is because the core is running in a separate
+WebAssembly instance, and so we can't just pass the data directly.</p>
+<h2 id="build-and-serve-our-app"><a class="header" href="#build-and-serve-our-app">Build and serve our app</a></h2>
+<p>We can build our app, and serve it for the browser, in one simple step.</p>
+<pre><code class="language-sh">npm start
+</code></pre>
+<div id="admonition-success" class="admonition admonish-success" role="note" aria-labelledby="admonition-success-title">
+<div class="admonition-title">
+<div id="admonition-success-title">
+<p>Success</p>
+</div>
+<a class="admonition-anchor-link" href="#admonition-success"></a>
+</div>
+<div>
+<p>Your app should look like this:</p>
+<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+</div>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../getting_started/web/remix.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../getting_started/web/yew.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../getting_started/web/remix.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../getting_started/web/yew.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
