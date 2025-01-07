@@ -1055,6 +1055,7 @@ mod composition {
 }
 
 mod cancellation {
+    use futures::StreamExt;
     use serde::Serialize;
 
     use crate::{capability::Operation, Request};
@@ -1062,7 +1063,10 @@ mod cancellation {
     use super::super::Command;
 
     #[derive(Debug, Clone, PartialEq, Serialize)]
-    struct Op;
+    enum Op {
+        Basic,
+        Abort,
+    }
 
     impl Operation for Op {
         type Output = usize;
@@ -1090,7 +1094,7 @@ mod cancellation {
             let task_join = ctx.spawn({
                 let ctx = ctx.clone();
                 async move {
-                    ctx.request_from_shell(Op).await;
+                    ctx.request_from_shell(Op::Basic).await;
                 }
             });
 
@@ -1110,6 +1114,60 @@ mod cancellation {
 
         assert_eq!(event, Event::Ping);
 
+        assert!(cmd.is_done());
+    }
+
+    #[test]
+    fn join_handle_can_abort_a_task() {
+        let mut cmd = Command::new(|ctx| async move {
+            let stream_handle = ctx.spawn({
+                let ctx = ctx.clone();
+
+                async move {
+                    let mut stream = ctx.stream_from_shell(Op::Basic);
+
+                    while stream.next().await.is_some() {
+                        ctx.send_event(Event::Ping);
+                    }
+                }
+            });
+
+            ctx.spawn({
+                let ctx = ctx.clone();
+                async move {
+                    ctx.request_from_shell(Op::Abort).await;
+
+                    stream_handle.abort();
+                }
+            });
+        });
+
+        assert!(cmd.events().next().is_none());
+
+        let mut effects: Vec<_> = cmd.effects().collect();
+
+        let Effect::Op(mut stream_request) = effects.remove(0);
+        let Effect::Op(mut abort_request) = effects.remove(0);
+
+        assert_eq!(abort_request.operation, Op::Abort);
+        assert_eq!(stream_request.operation, Op::Basic);
+
+        for i in 1..10 {
+            stream_request.resolve(i).expect("to resolve");
+            let event = cmd.events().next().unwrap();
+
+            assert_eq!(event, Event::Ping);
+        }
+
+        assert!(!cmd.is_done());
+
+        abort_request.resolve(0).expect("to resolve");
+
+        // Stream has ended
+        stream_request.resolve(1).expect("to resolve"); // FIXME: should this be an error?
+        assert!(cmd.events().next().is_none());
+
+        // so has the whole command
         assert!(cmd.is_done());
     }
 }

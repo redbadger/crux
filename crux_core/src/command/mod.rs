@@ -30,6 +30,12 @@ struct Task {
     future: BoxFuture<'static, ()>,
 }
 
+impl Task {
+    fn is_aborted(&self) -> bool {
+        self.aborted.load(Ordering::Relaxed)
+    }
+}
+
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
@@ -383,10 +389,6 @@ impl JoinHandle {
         self.aborted.store(true, Ordering::Relaxed);
     }
 
-    fn is_aborted(&self) -> bool {
-        self.aborted.load(Ordering::Relaxed)
-    }
-
     fn is_finished(&self) -> bool {
         self.finished.load(Ordering::Relaxed)
     }
@@ -556,6 +558,11 @@ impl<Effect, Event> Command<Effect, Event> {
         let Some(task) = self.tasks.get_mut(task_id.0) else {
             return TaskState::Missing;
         };
+
+        if task.is_aborted() {
+            return TaskState::Completed;
+        }
+
         let ready_queue = self.ready_sender.clone();
         let parent_waker = self.waker.clone();
 
