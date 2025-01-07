@@ -176,7 +176,7 @@ fn test_set() {
         request.operation,
         KeyValueOperation::Set {
             key: "test".to_string(),
-            value: 42i32.to_ne_bytes().to_vec().into(),
+            value: 42i32.to_ne_bytes().to_vec(),
         }
     );
 
@@ -318,7 +318,7 @@ pub fn test_kv_async() -> Result<()> {
         request.operation,
         KeyValueOperation::Set {
             key: "test_num".to_string(),
-            value: 18u32.to_ne_bytes().to_vec().into(),
+            value: 18u32.to_ne_bytes().to_vec(),
         }
     );
 

@@ -247,12 +247,13 @@ mod tests {
                 }
                 if rand::thread_rng().gen_bool(0.1) {
                     cx.waker().wake_by_ref();
-                    return Poll::Pending;
+
+                    Poll::Pending
                 } else {
                     let mut ready = true;
                     let this = self.get_mut();
                     for child in &mut this.children {
-                        if let Poll::Pending = child.poll_unpin(cx) {
+                        if child.poll_unpin(cx).is_pending() {
                             ready = false;
                         }
                     }
