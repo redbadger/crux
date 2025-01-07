@@ -8,6 +8,24 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.0](https://github.com/redbadger/crux/compare/crux_time-v0.6.0...crux_time-v0.7.0) - 2025-01-07
+
+### Breaking change
+
+The API has been improved, which is a breaking change. More details in these PR descriptions:
+
+- [crux_time API improvement](https://github.com/redbadger/crux/pull/284)
+- [Cancelling a timer also aborts the cancelled task](https://github.com/redbadger/crux/pull/292)
+
+
+### Other
+
+- :Now is struct-like
+- improve crux_time API
+- remove pin_project
+- add some more comments
+- cancelling a timer also aborts the cancelled task
+
 ## [0.6.0](https://github.com/redbadger/crux/compare/crux_time-v0.5.1...crux_time-v0.6.0) - 2024-10-23
 
 ### Added
@@ -17,7 +35,7 @@ and this project adheres to
 
 ### Other
 
-- tidy and docs udpate
+- tidy and docs update
 - remove unused test event
 
 ## [0.5.1](https://github.com/redbadger/crux/compare/crux_time-v0.5.0...crux_time-v0.5.1) - 2024-10-21
