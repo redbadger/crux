@@ -1170,4 +1170,25 @@ mod cancellation {
         // so has the whole command
         assert!(cmd.is_done());
     }
+
+    #[test]
+    fn tasks_can_be_aborted_immediately() {
+        let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+            let handle = ctx.spawn({
+                let ctx = ctx.clone();
+                async move {
+                    ctx.request_from_shell(Op::Abort).await;
+                }
+            });
+
+            handle.abort();
+        });
+
+        // Need to poll at least once
+        assert!(cmd.effects().next().is_none());
+        assert!(cmd.events().next().is_none());
+
+        // so has the whole command
+        assert!(cmd.is_done());
+    }
 }
