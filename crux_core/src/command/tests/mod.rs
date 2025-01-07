@@ -965,3 +965,105 @@ mod capability_api {
         }
     }
 }
+
+mod composition {
+    use serde::Serialize;
+
+    use crate::{capability::Operation, Command, Request};
+
+    #[derive(Debug, PartialEq, Clone, Serialize)]
+    struct ToString(usize);
+
+    impl Operation for ToString {
+        type Output = String;
+    }
+
+    #[derive(PartialEq, Clone, Serialize)]
+    struct HowMany;
+
+    impl Operation for HowMany {
+        type Output = usize;
+    }
+
+    enum Effect {
+        Convert(Request<ToString>),
+    }
+
+    impl From<Request<ToString>> for Effect {
+        fn from(value: Request<ToString>) -> Self {
+            Effect::Convert(value)
+        }
+    }
+
+    enum ParentEffect {
+        Convert(Request<ToString>),
+        Count(Request<HowMany>),
+    }
+
+    impl From<Request<ToString>> for ParentEffect {
+        fn from(value: Request<ToString>) -> Self {
+            ParentEffect::Convert(value)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum Event {
+        Converted(String),
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum ParentEvent {
+        Converted(String),
+        Counted(usize),
+    }
+
+    #[test]
+    fn map_effect() {
+        let cmd: Command<Effect, Event> =
+            Command::request_from_shell(ToString(3)).then_send(Event::Converted);
+
+        let mut mapped_cmd = cmd.map_effect(|ef| match ef {
+            Effect::Convert(request) => ParentEffect::Convert(request),
+        });
+
+        let mut effects = mapped_cmd.effects();
+
+        let ParentEffect::Convert(mut request) = effects.remove(0) else {
+            panic!("Wrong effect variant!");
+        };
+
+        assert_eq!(request.operation, ToString(3));
+
+        request
+            .resolve("three".to_string())
+            .expect("should resolve");
+
+        let events = mapped_cmd.events();
+
+        assert_eq!(events[0], Event::Converted("three".to_string()));
+    }
+
+    #[test]
+    fn map_event() {
+        let cmd: Command<Effect, Event> =
+            Command::request_from_shell(ToString(3)).then_send(Event::Converted);
+
+        let mut mapped_cmd = cmd.map_event(|ef| match ef {
+            Event::Converted(out) => ParentEvent::Converted(out),
+        });
+
+        let mut effects = mapped_cmd.effects();
+
+        let Effect::Convert(mut request) = effects.remove(0);
+
+        assert_eq!(request.operation, ToString(3));
+
+        request
+            .resolve("three".to_string())
+            .expect("should resolve");
+
+        let events = mapped_cmd.events();
+
+        assert_eq!(events[0], ParentEvent::Converted("three".to_string()));
+    }
+}
