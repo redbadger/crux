@@ -995,6 +995,7 @@ mod composition {
         }
     }
 
+    #[allow(dead_code)]
     enum ParentEffect {
         Convert(Request<ToString>),
         Count(Request<HowMany>),
@@ -1011,6 +1012,7 @@ mod composition {
         Converted(String),
     }
 
+    #[allow(dead_code)]
     #[derive(Debug, PartialEq)]
     enum ParentEvent {
         Converted(String),
