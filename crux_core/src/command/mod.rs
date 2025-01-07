@@ -212,11 +212,63 @@ where
                     CommandOutput::Effect(effect) => ctx
                         .effects
                         .send(effect)
-                        .expect("Cannot send effect from then future"),
+                        .expect("Cannot send effect from all future"),
                     CommandOutput::Event(event) => ctx
                         .events
                         .send(event)
-                        .expect("Cannot send event from then future"),
+                        .expect("Cannot send event from all future"),
+                }
+            }
+        })
+    }
+
+    // Mapping for composition
+
+    pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event>
+    where
+        F: Fn(Effect) -> NewEffect + Send + 'static,
+        NewEffect: Send + 'static,
+        Effect: Unpin,
+        Event: Unpin,
+    {
+        Command::new(|ctx| async move {
+            let mut stream = self;
+
+            while let Some(output) = stream.next().await {
+                match output {
+                    CommandOutput::Effect(effect) => ctx
+                        .effects
+                        .send(map(effect))
+                        .expect("Cannot send effect from map_effect future"),
+                    CommandOutput::Event(event) => ctx
+                        .events
+                        .send(event)
+                        .expect("Cannot send event from map_effect future"),
+                }
+            }
+        })
+    }
+
+    pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent>
+    where
+        F: Fn(Event) -> NewEvent + Send + 'static,
+        NewEvent: Send + 'static,
+        Effect: Unpin,
+        Event: Unpin,
+    {
+        Command::new(|ctx| async move {
+            let mut stream = self;
+
+            while let Some(output) = stream.next().await {
+                match output {
+                    CommandOutput::Effect(effect) => ctx
+                        .effects
+                        .send(effect)
+                        .expect("Cannot send effect from map_event future"),
+                    CommandOutput::Event(event) => ctx
+                        .events
+                        .send(map(event))
+                        .expect("Cannot send event from map_event future"),
                 }
             }
         })
