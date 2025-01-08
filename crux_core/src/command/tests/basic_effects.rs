@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 
 use super::super::Command;
@@ -93,7 +92,7 @@ fn request_effect_can_be_resolved() {
 
     let event = cmd.events().next().unwrap();
 
-    assert!(matches!(event, Event::Completed(AnOperationOutput)));
+    assert_eq!(event, Event::Completed(AnOperationOutput));
 
     assert!(cmd.is_done())
 }
