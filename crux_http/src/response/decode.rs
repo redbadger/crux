@@ -1,4 +1,4 @@
-use crate::http::Error;
+use http_types::Error;
 
 use std::fmt;
 use std::io;

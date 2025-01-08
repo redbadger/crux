@@ -1,11 +1,11 @@
 use super::{decode::decode_body, new_headers};
-use crate::http::{
+use http_types::{
     self,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
     Mime, StatusCode, Version,
 };
 
-use http::{headers::CONTENT_TYPE, Headers};
+use http_types::{headers::CONTENT_TYPE, Headers};
 use serde::de::DeserializeOwned;
 
 use std::fmt;
@@ -14,8 +14,8 @@ use std::ops::Index;
 /// An HTTP Response that will be passed to in a message to an apps update function
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
-    version: Option<http::Version>,
-    status: http::StatusCode,
+    version: Option<http_types::Version>,
+    status: http_types::StatusCode,
     #[serde(with = "header_serde")]
     headers: Headers,
     body: Option<Body>,
@@ -64,7 +64,7 @@ impl<Body> Response<Body> {
     ///
     /// ```no_run
     /// # let res = crux_http::testing::ResponseBuilder::ok().build();
-    /// use crux_http::http::Version;
+    /// use crux_http::http_types::Version;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
     /// ```
     pub fn version(&self) -> Option<Version> {
@@ -146,7 +146,7 @@ impl<Body> Response<Body> {
     /// # let res = crux_http::testing::ResponseBuilder::ok()
     /// #   .header("Content-Type", "application/json")
     /// #   .build();
-    /// use crux_http::http::mime;
+    /// use crux_http::http_types::mime;
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// ```
     pub fn content_type(&self) -> Option<Mime> {
@@ -172,7 +172,7 @@ impl<Body> Response<Body> {
 }
 
 impl Response<Vec<u8>> {
-    pub(crate) fn new_with_status(status: http::StatusCode) -> Self {
+    pub(crate) fn new_with_status(status: http_types::StatusCode) -> Self {
         let headers = new_headers();
 
         Response {
@@ -290,14 +290,14 @@ impl Response<Vec<u8>> {
     }
 }
 
-impl<Body> AsRef<http::Headers> for Response<Body> {
-    fn as_ref(&self) -> &http::Headers {
+impl<Body> AsRef<http_types::Headers> for Response<Body> {
+    fn as_ref(&self) -> &http_types::Headers {
         &self.headers
     }
 }
 
-impl<Body> AsMut<http::Headers> for Response<Body> {
-    fn as_mut(&mut self) -> &mut http::Headers {
+impl<Body> AsMut<http_types::Headers> for Response<Body> {
+    fn as_mut(&mut self) -> &mut http_types::Headers {
         &mut self.headers
     }
 }
@@ -362,12 +362,55 @@ where
 
 impl<Body> Eq for Response<Body> where Body: Eq {}
 
+#[cfg(feature = "http-compat")]
+impl<Body> TryInto<http::Response<Body>> for Response<Body> {
+	type Error = ();
+
+	fn try_into(self) -> Result<http::Response<Body>, Self::Error> {
+        let mut response = http::Response::new(self.body.ok_or(())?);
+
+        if let Some(version) = self.version {
+	        let version = match version {
+	            Version::Http0_9 => Some(http::Version::HTTP_09),
+	            Version::Http1_0 => Some(http::Version::HTTP_10),
+	            Version::Http1_1 => Some(http::Version::HTTP_11),
+	            Version::Http2_0 => Some(http::Version::HTTP_2),
+	            Version::Http3_0 => Some(http::Version::HTTP_3),
+	            _ => None,
+            };
+	        
+	        if let Some(version) = version {
+		        *response.version_mut() = version;
+	        }
+        }
+		
+		let mut headers = self.headers;
+        headers_to_hyperium_headers(&mut headers, response.headers_mut());
+
+        Ok(response)
+    }
+}
+
+#[cfg(feature = "http-compat")]
+fn headers_to_hyperium_headers(headers: &mut Headers, hyperium_headers: &mut http::HeaderMap) {
+	for (name, values) in headers {
+		let name = format!("{}", name).into_bytes();
+		let name = http::header::HeaderName::from_bytes(&name).unwrap();
+
+		for value in values.iter() {
+			let value = format!("{}", value).into_bytes();
+			let value = http::header::HeaderValue::from_bytes(&value).unwrap();
+			hyperium_headers.append(&name, value);
+		}
+	}
+}
+
 mod header_serde {
     use crate::{
-        http::{self, Headers},
+        http_types::{self, Headers},
         response::new_headers,
     };
-    use http::headers::HeaderName;
+    use http_types::headers::HeaderName;
     use serde::{de::Error, Deserializer, Serializer};
 
     pub fn serialize<S>(headers: &Headers, serializer: S) -> Result<S::Ok, S::Error>

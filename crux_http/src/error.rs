@@ -6,7 +6,7 @@ pub enum HttpError {
     #[error("HTTP error {code}: {message}")]
     #[serde(skip)]
     Http {
-        code: crate::http::StatusCode,
+        code: http_types::StatusCode,
         message: String,
         body: Option<Vec<u8>>,
     },
@@ -21,8 +21,8 @@ pub enum HttpError {
     Timeout,
 }
 
-impl From<crate::http::Error> for HttpError {
-    fn from(e: crate::http::Error) -> Self {
+impl From<http_types::Error> for HttpError {
+    fn from(e: http_types::Error) -> Self {
         HttpError::Http {
             code: e.status(),
             message: e.to_string(),
@@ -50,7 +50,7 @@ mod tests {
     #[test]
     fn test_error_display() {
         let error = HttpError::Http {
-            code: crate::http::StatusCode::BadRequest,
+            code: http_types::StatusCode::BadRequest,
             message: "Bad Request".to_string(),
             body: None,
         };
