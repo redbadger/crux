@@ -54,6 +54,8 @@ use stream::{CommandOutput, CommandStreamExt as _};
 use crate::capability::Operation;
 use crate::Request;
 
+pub use builder::CommandBuilder;
+
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,

@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 
 use super::super::Command;
@@ -80,19 +79,18 @@ fn then() {
 
 #[test]
 fn chaining() {
-    let mut cmd: Command<Effect, Event> =
-        Command::request_from_shell(AnOperation::More([3, 4]))
-            .then(|first| {
-                let AnOperationOutput::Other(first) = first else {
-                    // TODO: how do I bail quietly here?
-                    panic!("Invalid output!")
-                };
+    let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
+        .then(|first| {
+            let AnOperationOutput::Other(first) = first else {
+                // TODO: how do I bail quietly here?
+                panic!("Invalid output!")
+            };
 
-                let second = [first[0] + 1, first[1] + 1];
+            let second = [first[0] + 1, first[1] + 1];
 
-                Command::request_from_shell(AnOperation::More(second))
-            })
-            .then_send(Event::Completed);
+            Command::request_from_shell(AnOperation::More(second))
+        })
+        .then_send(Event::Completed);
 
     let effect = cmd.effects().next().unwrap();
     assert!(cmd.events().next().is_none());
@@ -118,6 +116,69 @@ fn chaining() {
     assert!(cmd.effects().next().is_none());
 
     assert_eq!(event, Event::Completed(AnOperationOutput::Other([1, 2])));
+
+    assert!(cmd.is_done());
+}
+
+#[test]
+fn long_chain_support() {
+    let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
+        .then(|first| {
+            let AnOperationOutput::Other(first) = first else {
+                // TODO: how do I bail quietly here?
+                panic!("Invalid output!")
+            };
+
+            let second = [first[0] + 1, first[1] + 1];
+
+            Command::request_from_shell(AnOperation::More(second))
+        })
+        .then(|second| {
+            let AnOperationOutput::Other(second) = second else {
+                // TODO: how do I bail quietly here?
+                panic!("Invalid output!")
+            };
+
+            let second = [second[0] + 2, second[1] + 2];
+
+            Command::request_from_shell(AnOperation::More(second))
+        })
+        .then_send(Event::Completed);
+
+    let effect = cmd.effects().next().unwrap();
+    assert!(cmd.events().next().is_none());
+
+    let Effect::AnEffect(mut request) = effect;
+
+    assert_eq!(request.operation, AnOperation::More([3, 4]));
+    request
+        .resolve(AnOperationOutput::Other([1, 2]))
+        .expect("to resolve");
+
+    let effect = cmd.effects().next().unwrap();
+    assert!(cmd.events().next().is_none());
+
+    let Effect::AnEffect(mut request) = effect;
+    assert_eq!(request.operation, AnOperation::More([2, 3]));
+
+    request
+        .resolve(AnOperationOutput::Other([2, 3]))
+        .expect("to resolve");
+
+    let effect = cmd.effects().next().unwrap();
+    assert!(cmd.events().next().is_none());
+
+    let Effect::AnEffect(mut request) = effect;
+    assert_eq!(request.operation, AnOperation::More([4, 5]));
+
+    request
+        .resolve(AnOperationOutput::Other([4, 5]))
+        .expect("to resolve");
+
+    let event = cmd.events().next().unwrap();
+    assert!(cmd.effects().next().is_none());
+
+    assert_eq!(event, Event::Completed(AnOperationOutput::Other([4, 5])));
 
     assert!(cmd.is_done());
 }
@@ -409,4 +470,70 @@ fn concurrency_mixing_streams_and_requests() {
     assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
     assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
     assert_eq!(events[2], Event::Completed(AnOperationOutput::One));
+}
+
+#[test]
+fn stream_followed_by_a_stream() {
+    let mut cmd = Command::stream_from_shell(AnOperation::One)
+        .then(|out| {
+            let AnOperationOutput::Other([a, b]) = out else {
+                panic!("Bad output");
+            };
+
+            Command::stream_from_shell(AnOperation::More([a + 1, b + 1]))
+        })
+        .then_send(Event::Completed);
+
+    let effect = cmd.effects().next().unwrap();
+    let Effect::AnEffect(mut spawner_request) = effect;
+
+    assert!(cmd.effects().next().is_none());
+    assert!(cmd.events().next().is_none());
+
+    // This is a bit of a mind bend. Every time we resolve the `spawner_request` we receive a _new_
+    // stream request.
+    //
+    // Resolving any of those requests should all result in an event immediately
+
+    // 1. resolve the initial stream three times
+
+    let mut streams = [1, 2, 3].map(|i| {
+        spawner_request
+            .resolve(AnOperationOutput::Other([i, i + 1]))
+            .expect("should resolve");
+
+        let effect = cmd.effects().next().unwrap();
+        let Effect::AnEffect(stream) = effect;
+
+        // Check the then logic has applied
+        assert_eq!(stream.operation, AnOperation::More([i + 1, i + 2]));
+
+        stream
+    });
+
+    // 2. now every time we resolve the stream, the next event we get
+    // is triggered by this stream.
+
+    for i in 1..=5 {
+        for stream in &mut streams {
+            assert!(cmd.events().next().is_none());
+
+            let AnOperation::More([a, b]) = stream.operation else {
+                panic!();
+            };
+
+            let resolved_with = [a + i, b + i];
+
+            stream
+                .resolve(AnOperationOutput::Other(resolved_with))
+                .expect("should resolve");
+
+            assert_eq!(
+                Event::Completed(AnOperationOutput::Other(resolved_with)),
+                cmd.events().next().unwrap()
+            )
+        }
+    }
+
+    assert!(cmd.events().next().is_none())
 }
