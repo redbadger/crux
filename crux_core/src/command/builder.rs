@@ -1,9 +1,23 @@
+//! Command builders are an abstraction allowing chaining effects,
+//! where outputs of one effect can serve as inputs to further effects,
+//! without requiring an async context.
+//!
+//! Only simple chaining is supported by this API:
+//! * Request responses can be used for further requests
+//! * Request responses can be used to start a stream
+//! * Stream output can be used to issue requests
+//!
+//! Chaining streams with streams is currently not supported, as the semantics
+//! of the composition are unclear. If you need to compose streams, use the async
+//! API and tools from the `futures` crate.
+
 use std::{future::Future, pin::pin};
 
 use futures::{FutureExt, Stream, StreamExt};
 
-use super::{Command, CommandContext};
+use super::{context::CommandContext, Command};
 
+/// A common behaviour for RequestBuilder and Stream builder
 pub trait CommandBuilder<Effect, Event, T> {
     type Task;
 
@@ -12,13 +26,19 @@ pub trait CommandBuilder<Effect, Event, T> {
         F: FnOnce(CommandContext<Effect, Event>) -> AsyncTask + Send + 'static,
         AsyncTask: Future<Output = Self::Task> + Send + 'static;
 
+    /// Convert the builder into its async representation - a Future or a Stream
     fn into_async(self, ctx: CommandContext<Effect, Event>) -> Self::Task;
 
+    // FIXME: add a `.then` method so that the chaining can be infinite
+
+    /// Convert the builder into a command which sends the event returned by the provided
+    /// closure upon resolution
     fn then_send<E>(self, make_event: E) -> Command<Effect, Event>
     where
         E: Fn(T) -> Event + Send + 'static;
 }
 
+/// A builder of one-off request command
 // Task is a future which does the shell talking and returns an output
 pub struct RequestBuilder<Effect, Event, Task> {
     make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
@@ -107,6 +127,7 @@ where
     }
 }
 
+/// A builder of stream command
 pub struct StreamBuilder<Effect, Event, Task> {
     make_stream: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
 }

@@ -1,49 +1,72 @@
+//! Command represents one or more side-effects, resulting in interactions with the shell.
+//! Core creates Commands and returns them from the `update` function in response to events.
+//! Commands can be created directly, but more often they will be created and returned
+//! by capability APIs.
+//!
+//! A Command can execute side-effects in parallel, in sequence or a combination of both. To
+//! allow this orchestration they provide both a simple synchronous API and access to an
+//! asynchronous API.
+//!
+//! Command surfaces the effect requests and events sent in response with
+//! the [`Command::effects`] and [`Command::events`] methods. These can be used when testing
+//! the side effects requested by an `update` call.
+//!
+//! Internally, Command resembles [`FuturesUnordered`](futures::stream::FuturesUnordered):
+//! it manages and polls a number of futures and provides a context which they can use
+//! to submit effects to the shell and events back to the application.
+//!
+//! Command implements [`Stream`](futures::Stream), making it useful in an async context,
+//! enabling, for example, wrapping Commands in one another.
+//!
+//! # Examples
+//!
+//! TODO: simple command example with a capability API
+//!
+//! TODO: complex example with sync API
+//!
+//! TODO: basic async example
+//!
+//! TODO: async example with `spawn`
+//!
+//! TODO: cancellation example
+//!
+//! TODO: testing example
+//!
+//! TODO: composition example
+
 mod builder;
+mod context;
+mod executor;
+mod stream;
 
 use std::future::Future;
-use std::ops::DerefMut as _;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use std::task::{Context, Poll, Wake};
 
-// TODO: do we want to use flume?
-use crossbeam_channel::{Receiver, Sender, TryRecvError};
-use futures::future::BoxFuture;
+// TODO: consider switching to flume
+use crossbeam_channel::{Receiver, Sender};
+use executor::{AbortHandle, Task, TaskId};
 use futures::task::AtomicWaker;
-use futures::{stream, Sink};
 use futures::{FutureExt as _, Stream, StreamExt as _};
 use slab::Slab;
-use thiserror::Error;
+use stream::{CommandOutput, CommandStreamExt as _};
 
 use crate::capability::Operation;
-
 use crate::Request;
-
-#[derive(Clone, Copy, Debug)]
-struct TaskId(usize);
-
-struct Task {
-    join_handle_waker: Arc<AtomicWaker>,
-    finished: Arc<AtomicBool>,
-    aborted: Arc<AtomicBool>,
-    future: BoxFuture<'static, ()>,
-}
-
-impl Task {
-    fn is_aborted(&self) -> bool {
-        self.aborted.load(Ordering::Relaxed)
-    }
-}
 
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
+
+    // Executor internals
+    // TODO: should this be a separate type?
     ready_queue: Receiver<TaskId>,
     spawn_queue: Receiver<Task>,
     tasks: Slab<Task>,
-    ready_sender: Sender<TaskId>, // Used to make wakers
+    ready_sender: Sender<TaskId>, // Used in creating wakers for tasks
     waker: Arc<AtomicWaker>,      // Shared with task wakers when polled in async context
+
+    // Signaling
     aborted: Arc<AtomicBool>,
 }
 
@@ -54,9 +77,17 @@ where
     Effect: Send + 'static,
     Event: Send + 'static,
 {
+    /// Create a new command orchestrating effects with async Rust. This is the lowest level
+    /// API to create a Command if you need full control over its execution. In most cases you will
+    /// more likely want to create Commands with capabilities, and using the combinator APIs
+    /// ([`then`], [`and`] and [`all`]) to orchestrate them.
+    ///
+    /// The `create_task` closure receives a [`CommandContext`] it can use to send shell request,
+    /// events back to the app and spawn additional tasks. The closure is expected to return a future
+    /// which becomes the command's main asynchronous task.
     pub fn new<F, Fut>(create_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
+        F: FnOnce(context::CommandContext<Effect, Event>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
         // RFC: do we need to think about backpressure? The channels are unbounded
@@ -68,7 +99,7 @@ where
         let (ready_sender, ready_receiver) = crossbeam_channel::unbounded();
         let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
 
-        let context = CommandContext {
+        let context = context::CommandContext {
             effects: effect_sender,
             events: event_sender,
             tasks: spawn_sender,
@@ -101,6 +132,8 @@ where
         }
     }
 
+    /// Create an empty, completed Command. This is useful as a return value from `update` if
+    /// there are no side-effects to perform.
     pub fn done() -> Self {
         let (_, effects) = crossbeam_channel::bounded(0);
         let (_, events) = crossbeam_channel::bounded(0);
@@ -119,10 +152,18 @@ where
         }
     }
 
+    /// Create a Command which dispatches an event and terminates. This is an alternative
+    /// to calling `update` recursively. The only difference is that the two `update` calls
+    /// will be visible to Crux and can show up in logs or any tooling. The trade-off is that
+    /// the event is not guaranteed to dispatch instantly - another `update` call which is
+    /// already scheduled may happen first.
     pub fn event(event: Event) -> Self {
         Command::new(|ctx| async move { ctx.send_event(event) })
     }
 
+    /// Create a Command which sends a notification to the shell with a provided `operation`.
+    ///
+    /// This ia synchronous equivalent of [`CommandContext::notify_shell`].
     pub fn notify_shell<Op>(operation: Op) -> Command<Effect, Event>
     where
         Op: Operation,
@@ -131,6 +172,14 @@ where
         Command::new(|ctx| async move { ctx.notify_shell(operation) })
     }
 
+    /// Start a creation of a Command which sends a one-time request to the shell with a provided
+    /// operation.
+    ///
+    /// Retuns a `RequestBuilder`, which can be converted into a Command directly, or chained
+    /// with another command builder using `.then`.
+    ///
+    /// In an async context, `RequestBuilder` can be turned into a future that resolves to the
+    /// operation output type.
     pub fn request_from_shell<Op>(
         operation: Op,
     ) -> builder::RequestBuilder<Effect, Event, impl Future<Output = Op::Output>>
@@ -141,6 +190,14 @@ where
         builder::RequestBuilder::new(|ctx| ctx.request_from_shell(operation))
     }
 
+    /// Start a creation of a Command which sends a stream request to the shell with a provided
+    /// operation.
+    ///
+    /// Retuns a `StreamBuilder`, which can be converted into a Command directly, or chained
+    /// with a `RequestBuilder` builder using `.then`.
+    ///
+    /// In an async context, `StreamBuilder` can be turned into a stream that with the
+    /// operation output type as item.
     pub fn stream_from_shell<Op>(
         operation: Op,
     ) -> builder::StreamBuilder<Effect, Event, impl Stream<Item = Op::Output>>
@@ -160,7 +217,6 @@ where
     }
 
     /// Run the effect state machine until it settles and collect all effects generated
-    // RFC: should this collect?
     pub fn effects(&mut self) -> impl Iterator<Item = Effect> + '_ {
         self.run_until_settled();
 
@@ -168,7 +224,6 @@ where
     }
 
     /// Run the effect state machine until it settles and collect all events generated
-    // RFC: should this collect?
     pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
         self.run_until_settled();
 
@@ -178,8 +233,9 @@ where
     // Combinators
 
     /// Create a command running self and the other command in sequence
-    // RFC: is this actually _useful_? Unlike `.and_then` on `CommandBuilder` this doesn't allow using
-    // the output of the first command in building the second one
+    // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
+    // the output of the first command in building the second one, it just runs them in sequence,
+    // and the benefit is unclear.
     pub fn then(self, other: Self) -> Self
     where
         Effect: Unpin,
@@ -194,7 +250,7 @@ where
         })
     }
 
-    /// Convenience for `Command:all` which runs another command concurrently with this one
+    /// Convenience for [`Command::all`] which runs another command concurrently with this one
     pub fn and(self, other: Self) -> Self
     where
         Effect: Unpin,
@@ -211,7 +267,7 @@ where
         Event: Unpin,
     {
         Command::new(|ctx| async move {
-            let select = stream::select_all(commands);
+            let select = futures::stream::select_all(commands);
 
             select.host(ctx.effects, ctx.events).await;
         })
@@ -219,6 +275,10 @@ where
 
     // Mapping for composition
 
+    /// Map effects requested as part of this command to a different effect type.
+    ///
+    /// This is useful when composing apps to convert a command from a child app to a
+    /// command of the parent app.
     pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event>
     where
         F: Fn(Effect) -> NewEffect + Send + Sync + 'static,
@@ -236,6 +296,10 @@ where
         })
     }
 
+    /// Map events sent as part of this command to a different effect type
+    ///
+    /// This is useful when composing apps to convert a command from a child app to a
+    /// command of the parent app.
     pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent>
     where
         F: Fn(Event) -> NewEvent + Send + Sync + 'static,
@@ -253,486 +317,16 @@ where
         })
     }
 
+    /// Returns an abort handle which can be used to remotely terminate a running Command
+    /// and all its subtask.
+    ///
+    /// This is specifically useful for cancelling subscriptions and long running effects
+    /// which may get superseded, like timers
     pub fn abort_handle(&self) -> AbortHandle {
         AbortHandle {
             aborted: self.aborted.clone(),
         }
     }
-}
-
-// Context enabling futures to communicate with the Command
-pub struct CommandContext<Effect, Event> {
-    effects: Sender<Effect>,
-    events: Sender<Event>,
-    tasks: Sender<Task>,
-}
-
-// derive(Clone) wants Effect and Event to be clone which is not actually necessary
-impl<Effect, Event> Clone for CommandContext<Effect, Event> {
-    fn clone(&self) -> Self {
-        Self {
-            effects: self.effects.clone(),
-            events: self.events.clone(),
-            tasks: self.tasks.clone(),
-        }
-    }
-}
-
-impl<Effect, Event> CommandContext<Effect, Event> {
-    pub fn notify_shell<Op>(&self, operation: Op)
-    where
-        Op: Operation,
-        Effect: From<Request<Op>>,
-    {
-        let request = Request::resolves_never(operation);
-
-        self.effects
-            .send(request.into())
-            .expect("Command could not send notification, effect channel disconnected");
-    }
-
-    pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
-    where
-        Op: Operation,
-        Effect: From<Request<Op>> + Send + 'static,
-    {
-        let (output_sender, output_receiver) = crossbeam_channel::bounded(1);
-        let shared_waker = Arc::new(AtomicWaker::new());
-
-        let request = Request::resolves_once(operation, {
-            let waker = shared_waker.clone();
-
-            move |output| {
-                // If the channel is closed, the associated task has been cancelled
-                if output_sender.send(output).is_ok() {
-                    waker.wake();
-                }
-            }
-        });
-
-        let send_request = {
-            let effect = request.into();
-            let effects = self.effects.clone();
-            move || {
-                effects
-                    .send(effect)
-                    .expect("Command could not send request effect, effect channel disconnected")
-            }
-        };
-
-        ShellRequest::ReadyToSend(Box::new(send_request), shared_waker, output_receiver)
-    }
-
-    pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
-    where
-        Op: Operation,
-        Effect: From<Request<Op>> + Send + 'static,
-    {
-        let (output_sender, output_receiver) = crossbeam_channel::unbounded();
-        let shared_waker = Arc::new(AtomicWaker::new());
-
-        let request = Request::resolves_many_times(operation, {
-            let waker = shared_waker.clone();
-
-            move |output| {
-                // If the channel is closed, the associated task has been cancelled
-                output_sender.send(output).map_err(|_| ())?;
-
-                waker.wake();
-
-                // TODO: revisit the error handling in here
-                Ok(())
-            }
-        });
-
-        let send_request = {
-            let effect = request.into();
-            let effects = self.effects.clone();
-            move || {
-                effects
-                    .send(effect)
-                    .expect("Command could not send stream effect, effect channel disconnected")
-            }
-        };
-
-        ShellStream::ReadyToSend(Box::new(send_request), shared_waker, output_receiver)
-    }
-
-    pub fn send_event(&self, event: Event) {
-        self.events
-            .send(event)
-            .expect("Command could not send event, event channel disconnected")
-    }
-
-    // RFC: this could return a join handle á la tokio, used to either await completion of the command or to cancel it early
-    // RFC: should this have the same signature as `new` to avoid the boilerplate cloning of context in user code?
-    pub fn spawn<F>(&self, future: F) -> JoinHandle
-    where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        let task = Task {
-            join_handle_waker: Default::default(),
-            finished: Default::default(),
-            aborted: Default::default(),
-            future: future.boxed(),
-        };
-
-        let handle = JoinHandle {
-            join_handle_waker: task.join_handle_waker.clone(),
-            finished: task.finished.clone(),
-            aborted: task.aborted.clone(),
-        };
-
-        self.tasks
-            .send(task)
-            .expect("Command could not spawn task, tasks channel disconnected");
-
-        handle
-    }
-}
-
-pub enum ShellRequest<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, Arc<AtomicWaker>, Receiver<T>),
-    Sent(Receiver<T>, Arc<AtomicWaker>),
-}
-
-impl<T: Unpin + Send> Future for ShellRequest<T> {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match self.deref_mut() {
-            ShellRequest::ReadyToSend(send_request, atomic_waker, output_receiver) => {
-                // Need to do memory trickery in order to call the send_request
-                let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
-                std::mem::swap(&mut swapped_send_request, send_request);
-
-                // Prepare the waker for the resolve callback
-                atomic_waker.register(cx.waker());
-
-                *self = ShellRequest::Sent(output_receiver.clone(), atomic_waker.clone());
-
-                // Send the request
-                swapped_send_request();
-
-                Poll::Pending
-            }
-            ShellRequest::Sent(receiver, atomic_waker) => match receiver.try_recv() {
-                Ok(value) => Poll::Ready(value),
-                // not ready yet. We may be polled in a join for example
-                // TODO: do we need to send the waker again here? It has not changed
-                Err(_) => {
-                    atomic_waker.register(cx.waker());
-                    Poll::Pending
-                }
-            },
-        }
-    }
-}
-
-pub enum ShellStream<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, Arc<AtomicWaker>, Receiver<T>),
-    Sent(Receiver<T>, Arc<AtomicWaker>),
-}
-
-impl<T: Unpin + Send> Stream for ShellStream<T> {
-    type Item = T;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match self.deref_mut() {
-            ShellStream::ReadyToSend(send_stream_request, shared_waker, output_receiver) => {
-                shared_waker.register(cx.waker());
-
-                // Need to do memory trickery in order to call the send_request
-                let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
-                std::mem::swap(&mut swapped_send_request, send_stream_request);
-
-                *self = ShellStream::Sent(output_receiver.clone(), shared_waker.clone());
-
-                // Send the request
-                swapped_send_request();
-
-                Poll::Pending
-            }
-            ShellStream::Sent(output_receiver, shared_waker) => {
-                match output_receiver.try_recv() {
-                    Ok(value) => Poll::Ready(Some(value)),
-                    // There are no values waiting, we return pending
-                    // so that the parent future knows to keep waiting
-                    Err(TryRecvError::Empty) => {
-                        shared_waker.register(cx.waker());
-                        Poll::Pending
-                    }
-                    // Channel is closed, so the stream has ended
-                    Err(TryRecvError::Disconnected) => Poll::Ready(None),
-                }
-            }
-        }
-    }
-}
-
-// Async executor stuff
-
-struct CommandWaker {
-    task_id: TaskId,
-    ready_queue: Sender<TaskId>,
-    parent_waker: Arc<AtomicWaker>,
-}
-
-impl Wake for CommandWaker {
-    fn wake(self: Arc<Self>) {
-        self.wake_by_ref();
-    }
-
-    fn wake_by_ref(self: &Arc<Self>) {
-        // If we can't send the id to the ready queue, there is no Command to poll the task again anyway,
-        // nothing to do.
-        // TODO: Does that mean we should bail, since waking ourselves is
-        // now pointless?
-        let _ = self.ready_queue.send(self.task_id);
-
-        // Note: calling `wake` before `register` is a no-op
-        self.parent_waker.wake();
-    }
-}
-
-#[derive(Clone)]
-pub struct AbortHandle {
-    aborted: Arc<AtomicBool>,
-}
-
-impl AbortHandle {
-    pub fn abort(&self) {
-        self.aborted.store(true, Ordering::Relaxed);
-    }
-}
-
-pub struct JoinHandle {
-    join_handle_waker: Arc<AtomicWaker>,
-    finished: Arc<AtomicBool>,
-    aborted: Arc<AtomicBool>,
-}
-
-// I'm sure Ordering::Relaxed is fine...? Right?
-impl JoinHandle {
-    pub fn abort(&self) {
-        self.aborted.store(true, Ordering::Relaxed);
-    }
-
-    fn is_finished(&self) -> bool {
-        self.finished.load(Ordering::Relaxed)
-    }
-}
-
-impl Future for JoinHandle {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if self.is_finished() {
-            Poll::Ready(())
-        } else {
-            self.join_handle_waker.register(cx.waker());
-
-            Poll::Pending
-        }
-    }
-}
-
-enum TaskState {
-    Missing,
-    Suspended,
-    Completed,
-}
-
-// Command is actually an async executor of sorts
-impl<Effect, Event> Command<Effect, Event> {
-    // Run all tasks until all of them are pending
-    fn run_until_settled(&mut self) {
-        if self.was_aborted() {
-            self.tasks.clear();
-
-            return;
-        }
-
-        loop {
-            self.spawn_new_tasks();
-
-            if self.ready_queue.is_empty() {
-                break;
-            }
-
-            while let Ok(task_id) = self.ready_queue.try_recv() {
-                match self.run_task(task_id) {
-                    TaskState::Missing => {
-                        // The task has been evicted because it completed.  This can happen when
-                        // a _running_ task schedules itself to wake, but then completes and gets
-                        // removed
-                    }
-                    TaskState::Suspended => {
-                        // Task suspended, we pick it up again when it's woken up
-                    }
-                    TaskState::Completed => {
-                        // Remove and drop the task, it's finished
-                        let task = self.tasks.remove(task_id.0);
-
-                        task.finished.store(true, Ordering::Relaxed);
-                        task.join_handle_waker.wake();
-
-                        drop(task);
-                    }
-                }
-            }
-        }
-    }
-
-    // Run task within our _own_ context
-    fn run_task(&mut self, task_id: TaskId) -> TaskState {
-        let Some(task) = self.tasks.get_mut(task_id.0) else {
-            return TaskState::Missing;
-        };
-
-        if task.is_aborted() {
-            return TaskState::Completed;
-        }
-
-        let ready_queue = self.ready_sender.clone();
-        let parent_waker = self.waker.clone();
-
-        let waker = Arc::new(CommandWaker {
-            task_id,
-            ready_queue,
-            parent_waker,
-        })
-        .into();
-        let context = &mut Context::from_waker(&waker);
-
-        match task.future.as_mut().poll(context) {
-            Poll::Pending => TaskState::Suspended,
-            Poll::Ready(_) => TaskState::Completed,
-        }
-    }
-
-    fn spawn_new_tasks(&mut self) {
-        while let Ok(task) = self.spawn_queue.try_recv() {
-            let task_id = self.tasks.insert(task);
-
-            self.ready_sender
-                .send(TaskId(task_id))
-                .expect("Command can't spawn a task, ready_queue has disconnected");
-        }
-    }
-
-    pub fn was_aborted(&self) -> bool {
-        self.aborted.load(Ordering::Relaxed)
-    }
-}
-
-// Command is an async Stream
-
-#[derive(Debug)]
-pub enum CommandOutput<Effect, Event> {
-    Effect(Effect),
-    Event(Event),
-}
-
-impl<Effect, Event> Stream for Command<Effect, Event>
-where
-    Effect: Unpin + Send + 'static,
-    Event: Unpin + Send + 'static,
-{
-    type Item = CommandOutput<Effect, Event>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.waker.register(cx.waker());
-
-        // run_until_settled is idempotent
-        self.deref_mut().run_until_settled();
-
-        // Check events first to preserve the order in which items were emitted. This is because
-        // sending events doesn't yield, and the next request/stream await point will be
-        // reached in the same poll, so any follow up effects will _also_ be available
-        if let Ok(event) = self.events.try_recv() {
-            return Poll::Ready(Some(CommandOutput::Event(event)));
-        }
-
-        if let Ok(effect) = self.effects.try_recv() {
-            return Poll::Ready(Some(CommandOutput::Effect(effect)));
-        };
-
-        if self.is_done() {
-            Poll::Ready(None)
-        } else {
-            Poll::Pending
-        }
-    }
-}
-
-// Command hosting on a pair of senders for Effect and Event
-// TODO: the CommandSink may be avoidable with flume which implements Sink for Sender
-
-struct CommandSink<Effect, Event> {
-    effects: Sender<Effect>,
-    events: Sender<Event>,
-}
-
-impl<Effect, Event> CommandSink<Effect, Event> {
-    fn new(effects: Sender<Effect>, events: Sender<Event>) -> Self {
-        Self { effects, events }
-    }
-}
-
-#[derive(Debug, Error)]
-enum HostedCommandError {
-    #[error("Cannot send effect to host")]
-    CannotSendEffect,
-    #[error("Cannot send event to host")]
-    CannotSendEvent,
-}
-
-impl<Effect, Event> Sink<CommandOutput<Effect, Event>> for CommandSink<Effect, Event> {
-    type Error = HostedCommandError;
-
-    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn start_send(
-        self: Pin<&mut Self>,
-        item: CommandOutput<Effect, Event>,
-    ) -> Result<(), Self::Error> {
-        match item {
-            CommandOutput::Effect(effect) => self
-                .effects
-                .send(effect)
-                .map_err(|_| HostedCommandError::CannotSendEffect),
-            CommandOutput::Event(event) => self
-                .events
-                .send(event)
-                .map_err(|_| HostedCommandError::CannotSendEvent),
-        }
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-}
-
-trait CommandStreamExt<Effect, Event>: Stream<Item = CommandOutput<Effect, Event>> {
-    // connect this command to a pair of effect and event channels
-    fn host(self, effects: Sender<Effect>, events: Sender<Event>) -> impl Future
-    where
-        Self: Send + Sized,
-    {
-        self.map(Ok).forward(CommandSink::new(effects, events))
-    }
-}
-
-impl<S, Effect, Event> CommandStreamExt<Effect, Event> for S where
-    S: Stream<Item = CommandOutput<Effect, Event>>
-{
 }
 
 #[cfg(test)]
