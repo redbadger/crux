@@ -85,6 +85,7 @@ impl AbortHandle {
 }
 
 /// A handle used to await a task completion of abort the task
+#[derive(Clone)]
 pub struct JoinHandle {
     pub(crate) join_handle_waker: Arc<AtomicWaker>,
     pub(crate) finished: Arc<AtomicBool>,

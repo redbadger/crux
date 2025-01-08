@@ -164,7 +164,7 @@ use serde::Serialize;
 pub use self::{
     capabilities::*,
     capability::{Capability, WithContext},
-    command::Command,
+    command::{Command, CommandBuilder},
     core::{Core, Effect, Request},
 };
 pub use crux_macros as macros;

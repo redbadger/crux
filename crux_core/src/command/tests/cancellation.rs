@@ -1,4 +1,3 @@
-
 use futures::StreamExt;
 use serde::Serialize;
 
@@ -138,7 +137,68 @@ fn tasks_can_be_aborted_immediately() {
 
 #[test]
 fn aborted_tasks_notify_their_join_handles() {
-    todo!()
+    let mut cmd = Command::new(|ctx| async move {
+        let stream_handle = ctx.spawn({
+            let ctx = ctx.clone();
+
+            async move {
+                let mut stream = ctx.stream_from_shell(Op::Basic);
+
+                while stream.next().await.is_some() {
+                    ctx.send_event(Event::Ping);
+                }
+            }
+        });
+
+        ctx.spawn({
+            let ctx = ctx.clone();
+            let stream_handle = stream_handle.clone();
+            async move {
+                ctx.request_from_shell(Op::Abort).await;
+
+                stream_handle.abort();
+            }
+        });
+
+        ctx.spawn({
+            let ctx = ctx.clone();
+            async move {
+                stream_handle.await;
+
+                ctx.send_event(Event::OpDone(3));
+            }
+        });
+    });
+
+    assert!(cmd.events().next().is_none());
+
+    let mut effects: Vec<_> = cmd.effects().collect();
+
+    let Effect::Op(mut stream_request) = effects.remove(0);
+    let Effect::Op(mut abort_request) = effects.remove(0);
+
+    assert_eq!(abort_request.operation, Op::Abort);
+    assert_eq!(stream_request.operation, Op::Basic);
+
+    for i in 1..10 {
+        stream_request.resolve(i).expect("to resolve");
+        let event = cmd.events().next().unwrap();
+
+        assert_eq!(event, Event::Ping);
+    }
+
+    assert!(!cmd.is_done());
+
+    abort_request.resolve(0).expect("to resolve");
+
+    // Stream has ended
+    stream_request.resolve(1).expect("to resolve"); // FIXME: should this be an error?
+
+    // Third task woke and produced an event
+    assert_eq!(Event::OpDone(3), cmd.events().next().unwrap());
+
+    // Command has completed
+    assert!(cmd.is_done());
 }
 
 #[test]

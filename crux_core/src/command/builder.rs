@@ -2,11 +2,6 @@
 //! where outputs of one effect can serve as inputs to further effects,
 //! without requiring an async context.
 //!
-//! Only simple chaining is supported by this API:
-//! * Request responses can be used for further requests
-//! * Request responses can be used to start a stream
-//! * Stream output can be used to issue requests
-//!
 //! Chaining streams with streams is currently not supported, as the semantics
 //! of the composition are unclear. If you need to compose streams, use the async
 //! API and tools from the `futures` crate.
@@ -18,24 +13,49 @@ use futures::{FutureExt, Stream, StreamExt};
 use super::{context::CommandContext, Command};
 
 /// A common behaviour for RequestBuilder and Stream builder
+// TODO: is it possible split this trait into the public builder API and the internal one
 pub trait CommandBuilder<Effect, Event, T> {
     type Task;
 
-    fn new_with_context<F, AsyncTask>(make_task: F) -> impl CommandBuilder<Effect, Event, T>
+    /// Chain on a computation passing the result of the command builder into the provicded closure `make_next_builder`.
+    ///
+    /// The return value of the closure must be an implementation of `CommandBuilder`
+    ///
+    /// Returns a new command builder representing the sequence. The semantics of the resulting builder are as follows:
+    ///
+    /// Calling .then on a RequestBuilder with a closure returning
+    /// * a request builder will use the output of the first request to issue the second request
+    /// * a stream builder will use the output of the first request to start a stream
+    ///
+    /// Calling .then on a StreamBuilder with a closure returning
+    /// * a request builder will issue the second request for each output of the stream
+    /// * a stream builder will perform an equivalent of .map followed by .flatten_unordered: for each item of the first stream,
+    ///   a new stream will be started and items from the growing collection of streams will be mixed into a single combined stream
+    ///   as they arrive
+    fn then<F, NextBuilder, U>(self, make_next_builder: F) -> impl CommandBuilder<Effect, Event, U>
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> AsyncTask + Send + 'static,
-        AsyncTask: Future<Output = Self::Task> + Send + 'static;
-
-    /// Convert the builder into its async representation - a Future or a Stream
-    fn into_async(self, ctx: CommandContext<Effect, Event>) -> Self::Task;
-
-    // FIXME: add a `.then` method so that the chaining can be infinite
+        F: Fn(T) -> NextBuilder + Send + 'static,
+        NextBuilder: CommandBuilder<Effect, Event, U>;
 
     /// Convert the builder into a command which sends the event returned by the provided
     /// closure upon resolution
     fn then_send<E>(self, make_event: E) -> Command<Effect, Event>
     where
         E: Fn(T) -> Event + Send + 'static;
+
+    // Internal support methods
+
+    fn new_with_context<F, AsyncTask>(make_task: F) -> impl CommandBuilder<Effect, Event, T>
+    where
+        F: FnOnce(CommandContext<Effect, Event>) -> AsyncTask + Send + 'static,
+        AsyncTask: Future<Output = Self::Task> + Send + 'static;
+
+    fn into_async(self, ctx: CommandContext<Effect, Event>) -> Self::Task;
+
+    fn into_stream(
+        self,
+        ctx: CommandContext<Effect, Event>,
+    ) -> impl Stream<Item = T> + Send + 'static;
 }
 
 /// A builder of one-off request command
@@ -65,6 +85,18 @@ where
         self.into_future(ctx)
     }
 
+    fn then<F, NextBuilder, U>(self, make_next_builder: F) -> impl CommandBuilder<Effect, Event, U>
+    where
+        F: Fn(T) -> NextBuilder + Send + 'static,
+        NextBuilder: CommandBuilder<Effect, Event, U>,
+    {
+        NextBuilder::new_with_context(|ctx| async move {
+            let out = self.into_future(ctx.clone()).await;
+
+            make_next_builder(out).into_async(ctx)
+        })
+    }
+
     fn then_send<E>(self, make_event: E) -> Command<Effect, Event>
     where
         E: Fn(T) -> Event + Send + 'static,
@@ -74,6 +106,13 @@ where
 
             ctx.send_event(make_event(out));
         })
+    }
+
+    fn into_stream(
+        self,
+        ctx: CommandContext<Effect, Event>,
+    ) -> impl Stream<Item = T> + Send + 'static {
+        self.into_future(ctx).into_stream()
     }
 }
 
@@ -92,28 +131,13 @@ where
         RequestBuilder { make_task }
     }
 
-    pub fn then<F, NextBuilder, U>(
-        self,
-        make_next_builder: F,
-    ) -> impl CommandBuilder<Effect, Event, U>
-    where
-        F: FnOnce(T) -> NextBuilder + Send + 'static,
-        NextBuilder: CommandBuilder<Effect, Event, U>,
-    {
-        NextBuilder::new_with_context(|ctx| async {
-            let out = self.into_future(ctx.clone()).await;
-
-            make_next_builder(out).into_async(ctx)
-        })
-    }
-
-    // Create the command in an async context
+    /// Convert the request builder into a future to use in an async context
     pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Task {
         let make_task = self.make_task;
         make_task(ctx)
     }
 
-    // Create the command in an evented context
+    /// Create the command in an evented context
     pub fn then_send<E>(self, event: E) -> Command<Effect, Event>
     where
         E: FnOnce(T) -> Event + Send + 'static,
@@ -152,6 +176,29 @@ where
         self.into_stream(ctx)
     }
 
+    fn into_stream(
+        self,
+        ctx: CommandContext<Effect, Event>,
+    ) -> impl Stream<Item = T> + Send + 'static {
+        self.into_stream(ctx)
+    }
+
+    fn then<F, NextBuilder, U>(self, make_next_builder: F) -> impl CommandBuilder<Effect, Event, U>
+    where
+        F: Fn(T) -> NextBuilder + Send + 'static,
+        NextBuilder: CommandBuilder<Effect, Event, U>,
+    {
+        StreamBuilder::new(move |ctx| {
+            self.into_stream(ctx.clone())
+                .map(move |item| {
+                    let next_builder = make_next_builder(item);
+
+                    Box::pin(next_builder.into_stream(ctx.clone()))
+                })
+                .flatten_unordered(None)
+        })
+    }
+
     fn then_send<E>(self, make_event: E) -> Command<Effect, Event>
     where
         E: Fn(T) -> Event + Send + 'static,
@@ -183,24 +230,7 @@ where
         }
     }
 
-    pub fn then<Out, F, U>(self, next: F) -> StreamBuilder<Effect, Event, impl Stream<Item = U>>
-    where
-        F: Fn(T) -> RequestBuilder<Effect, Event, Out> + Clone + Send + Sync + 'static,
-        Out: Future<Output = U> + Send + 'static,
-    {
-        StreamBuilder::new(move |ctx| {
-            self.into_stream(ctx.clone()).then({
-                let next = next.clone();
-                move |item| {
-                    let request = next(item);
-                    let make_task = request.make_task;
-
-                    make_task(ctx.clone())
-                }
-            })
-        })
-    }
-
+    /// Create the command in an evented context
     pub fn then_send<E>(self, event: E) -> Command<Effect, Event>
     where
         E: Fn(T) -> Event + Send + 'static,
@@ -214,7 +244,8 @@ where
         })
     }
 
-    pub fn into_stream(self, ctx: CommandContext<Effect, Event>) -> Task {
+    /// Convert the stream builder into a stream to use in an async context
+    fn into_stream(self, ctx: CommandContext<Effect, Event>) -> Task {
         let make_stream = self.make_stream;
 
         make_stream(ctx)

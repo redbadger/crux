@@ -1,4 +1,3 @@
-
 use futures::{Stream, StreamExt as _};
 use std::future::Future;
 
@@ -7,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::super::Command;
 use crate::{
     capability::Operation,
-    command::builder::{RequestBuilder, StreamBuilder},
+    command::builder::{CommandBuilder as _, RequestBuilder, StreamBuilder},
     Request,
 };
 
