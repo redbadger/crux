@@ -4,3 +4,5 @@ mod cancellation;
 mod capability_api;
 mod combinators;
 mod composition;
+
+mod integration;
