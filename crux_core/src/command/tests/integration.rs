@@ -92,8 +92,6 @@ enum Event {
 
     #[serde(skip)]
     GotCount(http::Response),
-    #[serde(skip)]
-    Done(http::Response),
 }
 
 enum Effect {
@@ -119,14 +117,14 @@ impl App for Counter {
     ) -> Command<Self::Effect, Self::Event> {
         match event {
             Event::Get => Http::get("http://example.com/counter").then_send(Event::GotCount),
-            Event::Increment => {
-                Http::post("http://example.com/counter/increment", "").then_send(Event::Done)
-            }
+            Event::Increment => Http::post("http://example.com/counter/increment", "")
+                .then(|_response| Http::get("http://example.com/counter"))
+                .then_send(Event::GotCount),
 
-            Event::Decrement => {
-                Http::post("http://example.com/counter/decrement", "").then_send(Event::Done)
-            }
-            Event::GotCount(response) | Event::Done(response) => {
+            Event::Decrement => Http::post("http://example.com/counter/decrement", "")
+                .then(|_response| Http::get("http://example.com/counter"))
+                .then_send(Event::GotCount),
+            Event::GotCount(response) => {
                 if response.status == 200 {
                     if let Ok(count) = response.body.parse() {
                         *model = count;
@@ -185,6 +183,19 @@ fn get_increment_and_decrement() {
 
     request
         .resolve(http::Response {
+            status: 201,
+            body: "".to_string(),
+        })
+        .expect("to resolve");
+
+    let Effect::Http(mut request) = cmd.effects().next().unwrap();
+    let http_request = &request.operation;
+
+    assert_eq!(http_request.method, "GET".to_string());
+    assert_eq!(http_request.url, "http://example.com/counter".to_string());
+
+    request
+        .resolve(http::Response {
             status: 200,
             body: "11".to_string(),
         })
@@ -209,6 +220,19 @@ fn get_increment_and_decrement() {
         http_request.url,
         "http://example.com/counter/decrement".to_string()
     );
+
+    request
+        .resolve(http::Response {
+            status: 201,
+            body: "".to_string(),
+        })
+        .expect("to resolve");
+
+    let Effect::Http(mut request) = cmd.effects().next().unwrap();
+    let http_request = &request.operation;
+
+    assert_eq!(http_request.method, "GET".to_string());
+    assert_eq!(http_request.url, "http://example.com/counter".to_string());
 
     request
         .resolve(http::Response {
