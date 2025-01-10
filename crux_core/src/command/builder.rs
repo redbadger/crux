@@ -17,7 +17,7 @@ use super::{context::CommandContext, Command};
 pub trait CommandBuilder<Effect, Event, T> {
     type Task;
 
-    /// Chain on a computation passing the result of the command builder into the provicded closure `make_next_builder`.
+    /// Chain on a computation passing the result of the command builder into the provided closure `make_next_builder`.
     ///
     /// The return value of the closure must be an implementation of `CommandBuilder`
     ///
