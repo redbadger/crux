@@ -53,7 +53,6 @@ use syn::parse_macro_input;
 ///     #[effect(skip)]
 ///     pub compose: Compose<MyEvent>,
 /// }
-
 #[proc_macro_derive(Effect, attributes(effect))]
 #[proc_macro_error]
 pub fn effect(input: TokenStream) -> TokenStream {

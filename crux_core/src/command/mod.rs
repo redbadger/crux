@@ -177,7 +177,7 @@ where
     /// Start a creation of a Command which sends a one-time request to the shell with a provided
     /// operation.
     ///
-    /// Retuns a `RequestBuilder`, which can be converted into a Command directly, or chained
+    /// Returns a `RequestBuilder`, which can be converted into a Command directly, or chained
     /// with another command builder using `.then`.
     ///
     /// In an async context, `RequestBuilder` can be turned into a future that resolves to the
@@ -195,7 +195,7 @@ where
     /// Start a creation of a Command which sends a stream request to the shell with a provided
     /// operation.
     ///
-    /// Retuns a `StreamBuilder`, which can be converted into a Command directly, or chained
+    /// Returns a `StreamBuilder`, which can be converted into a Command directly, or chained
     /// with a `RequestBuilder` builder using `.then`.
     ///
     /// In an async context, `StreamBuilder` can be turned into a stream that with the

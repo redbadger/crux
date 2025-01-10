@@ -117,6 +117,7 @@ impl App for Counter {
     ) -> Command<Self::Effect, Self::Event> {
         match event {
             Event::Get => Http::get("http://example.com/counter").then_send(Event::GotCount),
+
             Event::Increment => Http::post("http://example.com/counter/increment", "")
                 .then(|_response| Http::get("http://example.com/counter"))
                 .then_send(Event::GotCount),
@@ -124,6 +125,7 @@ impl App for Counter {
             Event::Decrement => Http::post("http://example.com/counter/decrement", "")
                 .then(|_response| Http::get("http://example.com/counter"))
                 .then_send(Event::GotCount),
+
             Event::GotCount(response) => {
                 if response.status == 200 {
                     if let Ok(count) = response.body.parse() {
@@ -151,8 +153,8 @@ fn get_increment_and_decrement() {
     let Effect::Http(mut request) = cmd.effects().next().unwrap();
     let http_request = &request.operation;
 
-    assert_eq!(http_request.method, "GET".to_string());
-    assert_eq!(http_request.url, "http://example.com/counter".to_string());
+    assert_eq!(http_request.method, "GET");
+    assert_eq!(http_request.url, "http://example.com/counter");
 
     request
         .resolve(http::Response {
@@ -175,15 +177,12 @@ fn get_increment_and_decrement() {
     let Effect::Http(mut request) = cmd.effects().next().unwrap();
     let http_request = &request.operation;
 
-    assert_eq!(http_request.method, "POST".to_string());
-    assert_eq!(
-        http_request.url,
-        "http://example.com/counter/increment".to_string()
-    );
+    assert_eq!(http_request.method, "POST");
+    assert_eq!(http_request.url, "http://example.com/counter/increment");
 
     request
         .resolve(http::Response {
-            status: 201,
+            status: 204,
             body: "".to_string(),
         })
         .expect("to resolve");
@@ -191,8 +190,8 @@ fn get_increment_and_decrement() {
     let Effect::Http(mut request) = cmd.effects().next().unwrap();
     let http_request = &request.operation;
 
-    assert_eq!(http_request.method, "GET".to_string());
-    assert_eq!(http_request.url, "http://example.com/counter".to_string());
+    assert_eq!(http_request.method, "GET");
+    assert_eq!(http_request.url, "http://example.com/counter");
 
     request
         .resolve(http::Response {
@@ -215,15 +214,12 @@ fn get_increment_and_decrement() {
     let Effect::Http(mut request) = cmd.effects().next().unwrap();
     let http_request = &request.operation;
 
-    assert_eq!(http_request.method, "POST".to_string());
-    assert_eq!(
-        http_request.url,
-        "http://example.com/counter/decrement".to_string()
-    );
+    assert_eq!(http_request.method, "POST");
+    assert_eq!(http_request.url, "http://example.com/counter/decrement");
 
     request
         .resolve(http::Response {
-            status: 201,
+            status: 204,
             body: "".to_string(),
         })
         .expect("to resolve");
@@ -231,8 +227,8 @@ fn get_increment_and_decrement() {
     let Effect::Http(mut request) = cmd.effects().next().unwrap();
     let http_request = &request.operation;
 
-    assert_eq!(http_request.method, "GET".to_string());
-    assert_eq!(http_request.url, "http://example.com/counter".to_string());
+    assert_eq!(http_request.method, "GET");
+    assert_eq!(http_request.url, "http://example.com/counter");
 
     request
         .resolve(http::Response {

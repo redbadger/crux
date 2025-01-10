@@ -30,7 +30,7 @@ The temptation is to build custom types and functions, pass capability instances
 
 The intent of Crux is to very strictly separate code updating state from code interacting with the outside world with side-effects. Borrowing ChatGPT's analogy - separate the brain of the robot from its body. The instructions for movement of the body should be an overall result of the brain's decision making, not sprinkled around it.
 
-The practical consequence of the sprinkling is that code using capabilities is difficult to test fully without the `AppTester` for the same reason it is difficult to test any other code doing I/O of any sort. In our case it's practically impossible to test code using capabilities withou the `AppTester`, because creating instances of capabilities is not easy.
+The practical consequence of the sprinkling is that code using capabilities is difficult to test fully without the `AppTester` for the same reason it is difficult to test any other code doing I/O of any sort. In our case it's practically impossible to test code using capabilities without the `AppTester`, because creating instances of capabilities is not easy.
 
 The original API doesn't make it obvious that the intent is to avoid this mixing and so people using it tend to try to mix it and find themselves in various levels of trouble.
 
@@ -230,14 +230,14 @@ I'm sure we'll find some. :)
 
 For one, the return type signature for capabilities is not great, for example: `RequestBuilder<Effect, Event, impl Future<Output = AnOperationOutput>>`. The command builder chaining is using dirty trait tricks, and as a result requires the `CommandBuilder` trait to be in scope - not completely ideal (but the same is true for `FutureExt` and `StreamExt`).
 
-One major perceived limitation which still remains is that `model` is not accesible from the effect code. This is by design, to avoid data races from concurrent access to the model. It should hopefully be a bit more obvious now that the effect code is _returned_ from the `update` function wrapped in a Command.
+One major perceived limitation which still remains is that `model` is not accessible from the effect code. This is by design, to avoid data races from concurrent access to the model. It should hopefully be a bit more obvious now that the effect code is _returned_ from the `update` function wrapped in a Command.
 
 I suspect there are ways around this by storing some `Arc<Mutex<T>>`s in the model and cloning them into the effect code, etc., but do so at your own peril - tracking causality will become a lot more complex in that world.
 
 ## Open questions and other considerations
 
 * I have not fully formed a migration plan yet - it should be possible for the two APIs to coexist for a few versions while people move over
-* The command API expects the `Effect` type to implement `From<Requst<Op>>` for any capability Operations it is used with. We should probably allow these trivial implentations to be macro derived
+* The command API expects the `Effect` type to implement `From<Request<Op>>` for any capability Operations it is used with. We should probably allow these trivial implementations to be macro derived
 * I have not fully thought about back-pressure in the Commands (for events, effects and spawned tasks) even to the level of "is any needed?"
 * I am not super sure about my implementation of task cancellation using atomics, because they break my head. Help.
 

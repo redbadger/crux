@@ -59,7 +59,7 @@ pub struct Drain<'a, T> {
     receiver: &'a Receiver<T>,
 }
 
-impl<'a, T> Iterator for Drain<'a, T> {
+impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
