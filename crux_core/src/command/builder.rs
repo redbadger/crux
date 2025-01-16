@@ -77,7 +77,6 @@ where
     {
         Command::new(|ctx| async move {
             let out = self.into_future(ctx.clone()).await;
-
             ctx.send_event(event(out));
         })
     }

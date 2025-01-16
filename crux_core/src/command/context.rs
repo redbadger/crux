@@ -1,19 +1,17 @@
 use std::future::Future;
-use std::ops::DerefMut as _;
-use std::pin::Pin;
-use std::sync::Arc;
+use std::pin::{pin, Pin};
+
 use std::task::{Context, Poll};
 
-use crossbeam_channel::{Receiver, Sender, TryRecvError};
-
-use futures::task::AtomicWaker;
+use crossbeam_channel::Sender;
+use futures::channel::mpsc;
+use futures::channel::oneshot::{self, Canceled};
 use futures::{FutureExt as _, Stream};
 
 use crate::capability::Operation;
 use crate::Request;
 
-use super::executor::JoinHandle;
-use super::executor::Task;
+use super::executor::{JoinHandle, Task};
 
 /// Context enabling tasks to communicate with the parent Command,
 /// specifically submit effects, events and spawn further tasks
@@ -55,18 +53,13 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
     {
-        let (output_sender, output_receiver) = crossbeam_channel::bounded(1);
-        let shared_waker = Arc::new(AtomicWaker::new());
+        let (output_sender, output_receiver) = oneshot::channel();
 
-        let request = Request::resolves_once(operation, {
-            let waker = shared_waker.clone();
-
-            move |output| {
-                // If the channel is closed, the associated task has been cancelled
-                if output_sender.send(output).is_ok() {
-                    waker.wake();
-                }
-            }
+        let request = Request::resolves_once(operation, |output| {
+            // If the channel is closed, the associated task has been cancelled
+            let ok = output_sender
+                .send(output)
+                .map_err(|_| eprintln!("Request: ERROR SENDING VALUE BACK"));
         });
 
         let send_request = {
@@ -79,7 +72,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             }
         };
 
-        ShellRequest::ReadyToSend(Box::new(send_request), shared_waker, output_receiver)
+        ShellRequest::ReadyToSend(Box::new(send_request), output_receiver)
     }
 
     /// Create a stream request for an operation. Returns a stream producing the
@@ -89,17 +82,12 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
     {
-        let (output_sender, output_receiver) = crossbeam_channel::unbounded();
-        let shared_waker = Arc::new(AtomicWaker::new());
+        let (output_sender, output_receiver) = mpsc::unbounded();
 
         let request = Request::resolves_many_times(operation, {
-            let waker = shared_waker.clone();
-
             move |output| {
                 // If the channel is closed, the associated task has been cancelled
-                output_sender.send(output).map_err(|_| ())?;
-
-                waker.wake();
+                output_sender.unbounded_send(output).map_err(|_| ())?;
 
                 // TODO: revisit the error handling in here
                 Ok(())
@@ -116,7 +104,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             }
         };
 
-        ShellStream::ReadyToSend(Box::new(send_request), shared_waker, output_receiver)
+        ShellStream::ReadyToSend(Box::new(send_request), output_receiver)
     }
 
     /// Send an event which should be handed to the update function. This is used to communicate the result
@@ -159,19 +147,24 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 }
 
 pub enum ShellRequest<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, Arc<AtomicWaker>, Receiver<T>),
-    Sent(Receiver<T>, Arc<AtomicWaker>),
+    ReadyToSend(Box<dyn FnOnce() + Send>, oneshot::Receiver<T>),
+    Sent(oneshot::Receiver<T>),
 }
 
 impl<T: Unpin + Send> ShellRequest<T> {
     fn send(&mut self) {
-        if let ShellRequest::ReadyToSend(_, atomic_waker, output_receiver) = &self {
-            let ShellRequest::ReadyToSend(send_request, _, _) = std::mem::replace(
-                self,
-                ShellRequest::Sent(output_receiver.clone(), atomic_waker.clone()),
-            ) else {
-                unreachable!()
+        if let ShellRequest::ReadyToSend(_, _) = self {
+            // Since neither part is Clone, we'll need to do an Indiana Jones
+
+            // 1. take items out of self
+            let ShellRequest::ReadyToSend(send_request, output_receiver) =
+                std::mem::replace(self, ShellRequest::Sent(oneshot::channel().1))
+            else {
+                unreachable!();
             };
+
+            // 2. replace self with with a Sent using the original receiver
+            *self = ShellRequest::Sent(output_receiver);
 
             send_request()
         }
@@ -183,40 +176,49 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match *self {
-            ShellRequest::ReadyToSend(_, ref atomic_waker, _) => {
-                atomic_waker.register(cx.waker());
+            ShellRequest::ReadyToSend(_, ref mut output_receiver) => {
+                let poll = pin!(output_receiver).poll(cx);
+                assert!(matches!(poll, Poll::Pending)); // we have not sent the request yet
+
                 self.send();
 
                 Poll::Pending
             }
-            ShellRequest::Sent(ref receiver, ref atomic_waker) => match receiver.try_recv() {
-                Ok(value) => Poll::Ready(value),
-                Err(_) => {
-                    atomic_waker.register(cx.waker());
-                    Poll::Pending
+            ShellRequest::Sent(ref mut output_receiver) => {
+                match pin!(output_receiver).poll(cx) {
+                    Poll::Ready(Ok(value)) => Poll::Ready(value),
+                    Poll::Pending => Poll::Pending,
+                    // FIXME: This is a terminal Pending - can we detect it and cancel the task?
+                    Poll::Ready(Err(Canceled)) => {
+                        eprintln!("REQUEST HAS BEEN DROPPED, NEED TO CANCEL TASK!");
+                        Poll::Pending
+                    }
                 }
-            },
+            }
         }
     }
 }
 
 pub enum ShellStream<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, Arc<AtomicWaker>, Receiver<T>),
-    Sent(Receiver<T>, Arc<AtomicWaker>),
+    ReadyToSend(Box<dyn FnOnce() + Send>, mpsc::UnboundedReceiver<T>),
+    Sent(mpsc::UnboundedReceiver<T>),
 }
 
 impl<T: Unpin + Send> ShellStream<T> {
     fn send(&mut self) {
-        if let ShellStream::ReadyToSend(_, atomic_waker, output_receiver) = &self {
-            let ShellStream::ReadyToSend(send_request, _, _) = std::mem::replace(
-                self,
-                ShellStream::Sent(output_receiver.clone(), atomic_waker.clone()),
-            ) else {
-                unreachable!()
-            };
+        // Since neither part is Clone, we'll need to do an Indiana Jones
 
-            send_request()
-        }
+        // 1. take items out of self
+        let ShellStream::ReadyToSend(send_request, output_receiver) =
+            std::mem::replace(self, ShellStream::Sent(mpsc::unbounded().1))
+        else {
+            unreachable!();
+        };
+
+        // 2. replace self with with a Sent using the original receiver
+        *self = ShellStream::Sent(output_receiver);
+
+        send_request()
     }
 }
 
@@ -224,26 +226,16 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
     type Item = T;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match self.deref_mut() {
-            ShellStream::ReadyToSend(_, shared_waker, _) => {
-                shared_waker.register(cx.waker());
+        match *self {
+            ShellStream::ReadyToSend(_, ref mut output_receiver) => {
+                let poll = pin!(output_receiver).poll_next(cx);
+                assert!(matches!(poll, Poll::Pending)); // we have not sent the request yet
+
                 self.send();
 
                 Poll::Pending
             }
-            ShellStream::Sent(output_receiver, shared_waker) => {
-                match output_receiver.try_recv() {
-                    Ok(value) => Poll::Ready(Some(value)),
-                    // There are no values waiting, we return pending
-                    // so that the parent future knows to keep waiting
-                    Err(TryRecvError::Empty) => {
-                        shared_waker.register(cx.waker());
-                        Poll::Pending
-                    }
-                    // Channel is closed, so the stream has ended
-                    Err(TryRecvError::Disconnected) => Poll::Ready(None),
-                }
-            }
+            ShellStream::Sent(ref mut output_receiver) => pin!(output_receiver).poll_next(cx),
         }
     }
 }
