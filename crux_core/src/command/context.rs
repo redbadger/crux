@@ -163,30 +163,34 @@ pub enum ShellRequest<T: Unpin + Send> {
     Sent(Receiver<T>, Arc<AtomicWaker>),
 }
 
+impl<T: Unpin + Send> ShellRequest<T> {
+    fn send(&mut self) {
+        if let ShellRequest::ReadyToSend(_, atomic_waker, output_receiver) = &self {
+            let ShellRequest::ReadyToSend(send_request, _, _) = std::mem::replace(
+                self,
+                ShellRequest::Sent(output_receiver.clone(), atomic_waker.clone()),
+            ) else {
+                unreachable!()
+            };
+
+            send_request()
+        }
+    }
+}
+
 impl<T: Unpin + Send> Future for ShellRequest<T> {
     type Output = T;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match self.deref_mut() {
-            ShellRequest::ReadyToSend(send_request, atomic_waker, output_receiver) => {
-                // Need to do memory trickery in order to call the send_request
-                let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
-                std::mem::swap(&mut swapped_send_request, send_request);
-
-                // Prepare the waker for the resolve callback
+        match *self {
+            ShellRequest::ReadyToSend(_, ref atomic_waker, _) => {
                 atomic_waker.register(cx.waker());
-
-                *self = ShellRequest::Sent(output_receiver.clone(), atomic_waker.clone());
-
-                // Send the request
-                swapped_send_request();
+                self.send();
 
                 Poll::Pending
             }
-            ShellRequest::Sent(receiver, atomic_waker) => match receiver.try_recv() {
+            ShellRequest::Sent(ref receiver, ref atomic_waker) => match receiver.try_recv() {
                 Ok(value) => Poll::Ready(value),
-                // not ready yet. We may be polled in a join for example
-                // TODO: do we need to send the waker again here? It has not changed
                 Err(_) => {
                     atomic_waker.register(cx.waker());
                     Poll::Pending
@@ -201,22 +205,29 @@ pub enum ShellStream<T: Unpin + Send> {
     Sent(Receiver<T>, Arc<AtomicWaker>),
 }
 
+impl<T: Unpin + Send> ShellStream<T> {
+    fn send(&mut self) {
+        if let ShellStream::ReadyToSend(_, atomic_waker, output_receiver) = &self {
+            let ShellStream::ReadyToSend(send_request, _, _) = std::mem::replace(
+                self,
+                ShellStream::Sent(output_receiver.clone(), atomic_waker.clone()),
+            ) else {
+                unreachable!()
+            };
+
+            send_request()
+        }
+    }
+}
+
 impl<T: Unpin + Send> Stream for ShellStream<T> {
     type Item = T;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.deref_mut() {
-            ShellStream::ReadyToSend(send_stream_request, shared_waker, output_receiver) => {
+            ShellStream::ReadyToSend(_, shared_waker, _) => {
                 shared_waker.register(cx.waker());
-
-                // Need to do memory trickery in order to call the send_request
-                let mut swapped_send_request: Box<dyn FnOnce() + Send + 'static> = Box::new(|| {});
-                std::mem::swap(&mut swapped_send_request, send_stream_request);
-
-                *self = ShellStream::Sent(output_receiver.clone(), shared_waker.clone());
-
-                // Send the request
-                swapped_send_request();
+                self.send();
 
                 Poll::Pending
             }
