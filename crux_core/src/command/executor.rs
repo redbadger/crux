@@ -123,10 +123,12 @@ impl Future for JoinHandle {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub(crate) enum TaskState {
     Missing,
     Suspended,
     Completed,
+    Canceled,
 }
 
 // Command is actually an async executor of sorts, similar to futures::FuturesUnordered
@@ -156,7 +158,7 @@ impl<Effect, Event> Command<Effect, Event> {
                     TaskState::Suspended => {
                         // Task suspended, we pick it up again when it's woken up
                     }
-                    TaskState::Completed => {
+                    TaskState::Completed | TaskState::Canceled => {
                         // Remove and drop the task, it's finished
                         let task = self.tasks.remove(task_id.0);
 
@@ -182,18 +184,30 @@ impl<Effect, Event> Command<Effect, Event> {
         let ready_queue = self.ready_sender.clone();
         let parent_waker = self.waker.clone();
 
-        let waker = Arc::new(CommandWaker {
+        let arc_waker = Arc::new(CommandWaker {
             task_id,
             ready_queue,
             parent_waker,
-        })
-        .into();
+        });
+
+        let waker = arc_waker.clone().into();
         let context = &mut Context::from_waker(&waker);
 
-        match task.future.as_mut().poll(context) {
+        let result = match task.future.as_mut().poll(context) {
             Poll::Pending => TaskState::Suspended,
             Poll::Ready(_) => TaskState::Completed,
+        };
+
+        drop(waker);
+
+        // If the task is pending, but there's only one copy of the waker - our one -
+        // it can never wake up again so we need to evict it
+        // This happens for shell communication futures when their requests are dropped
+        if result == TaskState::Suspended && Arc::strong_count(&arc_waker) < 2 {
+            return TaskState::Canceled;
         }
+
+        result
     }
 
     pub(crate) fn spawn_new_tasks(&mut self) {

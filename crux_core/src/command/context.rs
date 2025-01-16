@@ -57,9 +57,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
         let request = Request::resolves_once(operation, |output| {
             // If the channel is closed, the associated task has been cancelled
-            let ok = output_sender
-                .send(output)
-                .map_err(|_| eprintln!("Request: ERROR SENDING VALUE BACK"));
+            let _ = output_sender.send(output);
         });
 
         let send_request = {
@@ -184,17 +182,10 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
 
                 Poll::Pending
             }
-            ShellRequest::Sent(ref mut output_receiver) => {
-                match pin!(output_receiver).poll(cx) {
-                    Poll::Ready(Ok(value)) => Poll::Ready(value),
-                    Poll::Pending => Poll::Pending,
-                    // FIXME: This is a terminal Pending - can we detect it and cancel the task?
-                    Poll::Ready(Err(Canceled)) => {
-                        eprintln!("REQUEST HAS BEEN DROPPED, NEED TO CANCEL TASK!");
-                        Poll::Pending
-                    }
-                }
-            }
+            ShellRequest::Sent(ref mut output_receiver) => match pin!(output_receiver).poll(cx) {
+                Poll::Ready(Ok(value)) => Poll::Ready(value),
+                Poll::Ready(Err(Canceled)) | Poll::Pending => Poll::Pending,
+            },
         }
     }
 }

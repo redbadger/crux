@@ -15,7 +15,6 @@ enum AnOperationOutput {
     One,
     Two,
     Three,
-    Abort,
 }
 
 impl Operation for AnOperation {
@@ -184,10 +183,6 @@ fn effects_can_spawn_communicating_tasks() {
                 loop {
                     let output = ctx.request_from_shell(AnOperation::One).await;
 
-                    if output == AnOperationOutput::Abort {
-                        break;
-                    }
-
                     tx.send(output).await.unwrap();
                 }
             }
@@ -235,10 +230,10 @@ fn effects_can_spawn_communicating_tasks() {
 
     assert_eq!(events[0], Event::Completed(AnOperationOutput::Two));
 
-    let Effect::AnEffect(mut first_request) = effects.remove(0);
-    first_request
-        .resolve(AnOperationOutput::Abort)
-        .expect("request should resolve");
+    let Effect::AnEffect(first_request) = effects.remove(0);
+
+    // Dropping the task cancels it
+    drop(first_request);
 
     assert!(cmd.effects().next().is_none());
 

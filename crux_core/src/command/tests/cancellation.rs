@@ -232,3 +232,18 @@ fn commands_can_be_aborted() {
     assert!(cmd.events().next().is_none());
     assert!(cmd.effects().next().is_none());
 }
+
+#[test]
+fn dropping_request_cancels_its_future() {
+    let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+        ctx.request_from_shell(Op::Basic).await;
+        ctx.send_event(Event::Ping);
+    });
+
+    assert!(cmd.events().next().is_none());
+
+    let Effect::Op(request) = cmd.effects().next().unwrap();
+    drop(request);
+
+    assert!(cmd.is_done());
+}
