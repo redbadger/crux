@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::super::Command;
-use crate::{capability::Operation, command::builder::CommandBuilder, Request};
+use crate::{capability::Operation, Request};
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 enum AnOperation {
@@ -80,7 +80,7 @@ fn then() {
 #[test]
 fn chaining() {
     let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
-        .then(|first| {
+        .then_request(|first| {
             let AnOperationOutput::Other(first) = first else {
                 // TODO: how do I bail quietly here?
                 panic!("Invalid output!")
@@ -123,7 +123,7 @@ fn chaining() {
 #[test]
 fn long_chain_support() {
     let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
-        .then(|first| {
+        .then_request(|first| {
             let AnOperationOutput::Other(first) = first else {
                 // TODO: how do I bail quietly here?
                 panic!("Invalid output!")
@@ -133,7 +133,7 @@ fn long_chain_support() {
 
             Command::request_from_shell(AnOperation::More(second))
         })
-        .then(|second| {
+        .then_request(|second| {
             let AnOperationOutput::Other(second) = second else {
                 // TODO: how do I bail quietly here?
                 panic!("Invalid output!")
@@ -289,10 +289,10 @@ fn complex_concurrency() {
 
     let mut cmd = Command::all([
         Command::request_from_shell(AnOperation::More([1, 1]))
-            .then(|out| Command::request_from_shell(increment(out)))
+            .then_request(|out| Command::request_from_shell(increment(out)))
             .then_send(Event::Completed),
         Command::request_from_shell(AnOperation::More([2, 1]))
-            .then(|out| Command::request_from_shell(increment(out)))
+            .then_request(|out| Command::request_from_shell(increment(out)))
             .then_send(Event::Completed),
     ])
     .then(Command::request_from_shell(AnOperation::More([3, 1])).then_send(Event::Completed));
@@ -382,7 +382,7 @@ fn complex_concurrency() {
 fn concurrency_mixing_streams_and_requests() {
     let mut cmd: Command<Effect, Event> = Command::all([
         Command::stream_from_shell(AnOperation::One)
-            .then(|out| {
+            .then_request(|out| {
                 let AnOperationOutput::Other([a, b]) = out else {
                     panic!("Bad output");
                 };
@@ -391,7 +391,7 @@ fn concurrency_mixing_streams_and_requests() {
             })
             .then_send(Event::Completed),
         Command::request_from_shell(AnOperation::Two)
-            .then(|out| {
+            .then_stream(|out| {
                 let AnOperationOutput::Other([a, b]) = out else {
                     panic!("Bad output");
                 };
@@ -475,7 +475,7 @@ fn concurrency_mixing_streams_and_requests() {
 #[test]
 fn stream_followed_by_a_stream() {
     let mut cmd = Command::stream_from_shell(AnOperation::One)
-        .then(|out| {
+        .then_stream(|out| {
             let AnOperationOutput::Other([a, b]) = out else {
                 panic!("Bad output");
             };

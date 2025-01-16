@@ -1,7 +1,7 @@
 use http::Http;
 use serde::{Deserialize, Serialize};
 
-use crate::{Command, CommandBuilder, Request};
+use crate::{Command, Request};
 
 // The future version of the app trait
 pub trait App: Default {
@@ -21,9 +21,11 @@ pub trait App: Default {
 
 // A faux HTTP capability, because using the real one would cause a circular crate reference
 mod http {
+    use std::future::Future;
+
     use serde::{Deserialize, Serialize};
 
-    use crate::{capability::Operation, Command, CommandBuilder};
+    use crate::{capability::Operation, command::builder::RequestBuilder, Command};
 
     pub struct Http;
 
@@ -47,7 +49,7 @@ mod http {
     impl Http {
         pub fn get<Effect, Event>(
             url: impl Into<String>,
-        ) -> impl CommandBuilder<Effect, Event, Response>
+        ) -> RequestBuilder<Effect, Event, impl Future<Output = Response>>
         where
             Effect: From<crate::Request<Request>> + Send + 'static,
             Event: Send + 'static,
@@ -64,7 +66,7 @@ mod http {
         pub fn post<Effect, Event>(
             url: impl Into<String>,
             body: impl Into<String>,
-        ) -> impl CommandBuilder<Effect, Event, Response>
+        ) -> RequestBuilder<Effect, Event, impl Future<Output = Response>>
         where
             Effect: From<crate::Request<Request>> + Send + 'static,
             Event: Send + 'static,
@@ -117,13 +119,20 @@ impl App for Counter {
     ) -> Command<Self::Effect, Self::Event> {
         match event {
             Event::Get => Http::get("http://example.com/counter").then_send(Event::GotCount),
+            Event::Increment => Command::new(|ctx| async move {
+                let _ = Http::post("http://example.com/counter/increment", "")
+                    .into_future(ctx.clone())
+                    .await;
 
-            Event::Increment => Http::post("http://example.com/counter/increment", "")
-                .then(|_response| Http::get("http://example.com/counter"))
-                .then_send(Event::GotCount),
+                let response = Http::get("http://example.com/counter")
+                    .into_future(ctx.clone())
+                    .await;
+
+                ctx.send_event(Event::GotCount(response));
+            }),
 
             Event::Decrement => Http::post("http://example.com/counter/decrement", "")
-                .then(|_response| Http::get("http://example.com/counter"))
+                .then_request(|_response| Http::get("http://example.com/counter"))
                 .then_send(Event::GotCount),
 
             Event::GotCount(response) => {

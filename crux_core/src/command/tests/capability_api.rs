@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::super::Command;
 use crate::{
     capability::Operation,
-    command::builder::{CommandBuilder as _, RequestBuilder, StreamBuilder},
+    command::builder::{RequestBuilder, StreamBuilder},
     Request,
 };
 
