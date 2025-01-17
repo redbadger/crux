@@ -33,7 +33,7 @@ pub(crate) struct Task {
 
 impl Task {
     pub(crate) fn is_aborted(&self) -> bool {
-        self.aborted.load(Ordering::Relaxed)
+        self.aborted.load(Ordering::Acquire)
     }
 
     fn wake_join_handles(&self) {
@@ -88,7 +88,7 @@ impl AbortHandle {
     /// If you use this, make sure the tasks the Command is running are all cancellation
     /// safe, as they can be stopped at any of the await points or even before they are first polled
     pub fn abort(&self) {
-        self.aborted.store(true, Ordering::Relaxed);
+        self.aborted.store(true, Ordering::Release);
     }
 }
 
@@ -100,7 +100,7 @@ pub struct JoinHandle {
     pub(crate) aborted: Arc<AtomicBool>,
 }
 
-// RFC: I'm sure Ordering::Relaxed is fine...? Right? :) In all seriousness, how would
+// RFC: I'm sure the ordering as used is fine...? Right? :) In all seriousness, how would
 // one test this to make sure it works as intended in a multi-threaded context?
 impl JoinHandle {
     /// Abort the task associated with this join handle. The task will be aborted at the
@@ -109,11 +109,11 @@ impl JoinHandle {
     // the tasks have a parent-child relationship where cancelling the parent cancels all
     // the children?
     pub fn abort(&self) {
-        self.aborted.store(true, Ordering::Relaxed);
+        self.aborted.store(true, Ordering::Release);
     }
 
     pub(crate) fn is_finished(&self) -> bool {
-        self.finished.load(Ordering::Relaxed)
+        self.finished.load(Ordering::Acquire)
     }
 }
 
@@ -172,7 +172,7 @@ impl<Effect, Event> Command<Effect, Event> {
                         // Remove and drop the task, it's finished
                         let task = self.tasks.remove(task_id.0);
 
-                        task.finished.store(true, Ordering::Relaxed);
+                        task.finished.store(true, Ordering::Release);
                         task.wake_join_handles();
 
                         drop(task);
@@ -231,6 +231,6 @@ impl<Effect, Event> Command<Effect, Event> {
     }
 
     pub fn was_aborted(&self) -> bool {
-        self.aborted.load(Ordering::Relaxed)
+        self.aborted.load(Ordering::Acquire)
     }
 }
