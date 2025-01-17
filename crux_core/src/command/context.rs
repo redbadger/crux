@@ -118,12 +118,15 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     ///
     /// Returns a JoinHandle which can be used as a future to await the completion of the task. It can also
     /// be used to abort the task.
-    // RFC: should this have the same signature as `new` to avoid the boilerplate cloning of context in user code?
-    pub fn spawn<F>(&self, future: F) -> JoinHandle
+    pub fn spawn<F, Fut>(&self, make_future: F) -> JoinHandle
     where
-        F: Future<Output = ()> + Send + 'static,
+        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
+        Fut: Future<Output = ()> + Send + 'static,
     {
         let (sender, receiver) = crossbeam_channel::unbounded();
+
+        let ctx = self.clone();
+        let future = make_future(ctx);
 
         let task = Task {
             finished: Default::default(),

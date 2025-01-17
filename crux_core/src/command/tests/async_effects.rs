@@ -177,26 +177,20 @@ fn effects_can_spawn_communicating_tasks() {
     let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
         let (tx, rx) = async_channel::unbounded();
 
-        ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                loop {
-                    let output = ctx.request_from_shell(AnOperation::One).await;
+        ctx.spawn(|ctx| async move {
+            loop {
+                let output = ctx.request_from_shell(AnOperation::One).await;
 
-                    tx.send(output).await.unwrap();
-                }
+                tx.send(output).await.unwrap();
             }
         });
 
-        ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                while let Ok(value) = rx.recv().await {
-                    ctx.send_event(Event::Completed(value));
-                }
-
-                ctx.send_event(Event::Aborted);
+        ctx.spawn(|ctx| async move {
+            while let Ok(value) = rx.recv().await {
+                ctx.send_event(Event::Completed(value));
             }
+
+            ctx.send_event(Event::Aborted);
         });
     });
 

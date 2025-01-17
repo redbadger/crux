@@ -34,11 +34,8 @@ enum Event {
 #[test]
 fn spawn_returns_join_handle() {
     let mut cmd = Command::new(|ctx| async move {
-        let task_join = ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                ctx.request_from_shell(Op::Basic).await;
-            }
+        let task_join = ctx.spawn(|ctx| async move {
+            ctx.request_from_shell(Op::Basic).await;
         });
 
         task_join.await;
@@ -63,28 +60,23 @@ fn spawn_returns_join_handle() {
 #[test]
 fn all_join_handles_get_notified() {
     let mut cmd = Command::new(|ctx| async move {
-        let task_join = ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                ctx.request_from_shell(Op::Basic).await;
-            }
+        let task_join = ctx.spawn(|ctx| async move {
+            ctx.request_from_shell(Op::Basic).await;
         });
 
         ctx.spawn({
-            let ctx = ctx.clone();
             let task_join = task_join.clone();
 
-            async move {
+            |ctx| async move {
                 task_join.await;
                 ctx.send_event(Event::OpDone(1));
             }
         });
 
         ctx.spawn({
-            let ctx = ctx.clone();
             let task_join = task_join.clone();
 
-            async move {
+            |ctx| async move {
                 task_join.await;
                 ctx.send_event(Event::OpDone(2));
             }
@@ -111,11 +103,8 @@ fn all_join_handles_get_notified() {
 #[test]
 fn awaiting_multiple_copies_of_handle_works() {
     let mut cmd = Command::new(|ctx| async move {
-        let task_join = ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                ctx.request_from_shell(Op::Basic).await;
-            }
+        let task_join = ctx.spawn(|ctx| async move {
+            ctx.request_from_shell(Op::Basic).await;
         });
 
         let join_one = task_join.clone();
@@ -144,25 +133,18 @@ fn awaiting_multiple_copies_of_handle_works() {
 #[test]
 fn join_handle_can_abort_a_task() {
     let mut cmd = Command::new(|ctx| async move {
-        let stream_handle = ctx.spawn({
-            let ctx = ctx.clone();
+        let stream_handle = ctx.spawn(|ctx| async move {
+            let mut stream = ctx.stream_from_shell(Op::Basic);
 
-            async move {
-                let mut stream = ctx.stream_from_shell(Op::Basic);
-
-                while stream.next().await.is_some() {
-                    ctx.send_event(Event::Ping);
-                }
+            while stream.next().await.is_some() {
+                ctx.send_event(Event::Ping);
             }
         });
 
-        ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                ctx.request_from_shell(Op::Abort).await;
+        ctx.spawn(|ctx| async move {
+            ctx.request_from_shell(Op::Abort).await;
 
-                stream_handle.abort();
-            }
+            stream_handle.abort();
         });
     });
 
@@ -198,11 +180,8 @@ fn join_handle_can_abort_a_task() {
 #[test]
 fn tasks_can_be_aborted_immediately() {
     let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
-        let handle = ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                ctx.request_from_shell(Op::Abort).await;
-            }
+        let handle = ctx.spawn(|ctx| async move {
+            ctx.request_from_shell(Op::Abort).await;
         });
 
         handle.abort();
@@ -219,35 +198,27 @@ fn tasks_can_be_aborted_immediately() {
 #[test]
 fn aborted_tasks_notify_their_join_handles() {
     let mut cmd = Command::new(|ctx| async move {
-        let stream_handle = ctx.spawn({
-            let ctx = ctx.clone();
+        let stream_handle = ctx.spawn(|ctx| async move {
+            let mut stream = ctx.stream_from_shell(Op::Basic);
 
-            async move {
-                let mut stream = ctx.stream_from_shell(Op::Basic);
-
-                while stream.next().await.is_some() {
-                    ctx.send_event(Event::Ping);
-                }
+            while stream.next().await.is_some() {
+                ctx.send_event(Event::Ping);
             }
         });
 
         ctx.spawn({
-            let ctx = ctx.clone();
             let stream_handle = stream_handle.clone();
-            async move {
+            |ctx| async move {
                 ctx.request_from_shell(Op::Abort).await;
 
                 stream_handle.abort();
             }
         });
 
-        ctx.spawn({
-            let ctx = ctx.clone();
-            async move {
-                stream_handle.await;
+        ctx.spawn(|ctx| async move {
+            stream_handle.await;
 
-                ctx.send_event(Event::OpDone(3));
-            }
+            ctx.send_event(Event::OpDone(3));
         });
     });
 
