@@ -5,8 +5,8 @@ use std::task::{Context, Poll};
 
 use crossbeam_channel::Sender;
 use futures::channel::mpsc;
-use futures::channel::oneshot::{self, Canceled};
-use futures::{FutureExt as _, Stream};
+use futures::stream::StreamFuture;
+use futures::{FutureExt as _, Stream, StreamExt};
 
 use crate::capability::Operation;
 use crate::Request;
@@ -53,11 +53,11 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
     {
-        let (output_sender, output_receiver) = oneshot::channel();
+        let (output_sender, output_receiver) = mpsc::unbounded();
 
-        let request = Request::resolves_once(operation, |output| {
+        let request = Request::resolves_once(operation, move |output| {
             // If the channel is closed, the associated task has been cancelled
-            let _ = output_sender.send(output);
+            let _ = output_sender.unbounded_send(output);
         });
 
         let send_request = {
@@ -70,7 +70,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             }
         };
 
-        ShellRequest::ReadyToSend(Box::new(send_request), output_receiver)
+        ShellRequest::new(Box::new(send_request), output_receiver)
     }
 
     /// Create a stream request for an operation. Returns a stream producing the
@@ -82,14 +82,11 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     {
         let (output_sender, output_receiver) = mpsc::unbounded();
 
-        let request = Request::resolves_many_times(operation, {
-            move |output| {
-                // If the channel is closed, the associated task has been cancelled
-                output_sender.unbounded_send(output).map_err(|_| ())?;
+        let request = Request::resolves_many_times(operation, move |output| {
+            output_sender.unbounded_send(output).map_err(|_| ())?;
 
-                // TODO: revisit the error handling in here
-                Ok(())
-            }
+            // TODO: revisit the error handling in here
+            Ok(())
         });
 
         let send_request = {
@@ -102,7 +99,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             }
         };
 
-        ShellStream::ReadyToSend(Box::new(send_request), output_receiver)
+        ShellStream::new(send_request, output_receiver)
     }
 
     /// Send an event which should be handed to the update function. This is used to communicate the result
@@ -149,58 +146,19 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     }
 }
 
-pub enum ShellRequest<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, oneshot::Receiver<T>),
-    Sent(oneshot::Receiver<T>),
-}
-
-impl<T: Unpin + Send> ShellRequest<T> {
-    fn send(&mut self) {
-        if let ShellRequest::ReadyToSend(_, _) = self {
-            // Since neither part is Clone, we'll need to do an Indiana Jones
-
-            // 1. take items out of self
-            let ShellRequest::ReadyToSend(send_request, output_receiver) =
-                std::mem::replace(self, ShellRequest::Sent(oneshot::channel().1))
-            else {
-                unreachable!();
-            };
-
-            // 2. replace self with with a Sent using the original receiver
-            *self = ShellRequest::Sent(output_receiver);
-
-            send_request()
-        }
-    }
-}
-
-impl<T: Unpin + Send> Future for ShellRequest<T> {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match *self {
-            ShellRequest::ReadyToSend(_, ref mut output_receiver) => {
-                let poll = pin!(output_receiver).poll(cx);
-                assert!(matches!(poll, Poll::Pending)); // we have not sent the request yet
-
-                self.send();
-
-                Poll::Pending
-            }
-            ShellRequest::Sent(ref mut output_receiver) => match pin!(output_receiver).poll(cx) {
-                Poll::Ready(Ok(value)) => Poll::Ready(value),
-                Poll::Ready(Err(Canceled)) | Poll::Pending => Poll::Pending,
-            },
-        }
-    }
-}
-
 pub enum ShellStream<T: Unpin + Send> {
     ReadyToSend(Box<dyn FnOnce() + Send>, mpsc::UnboundedReceiver<T>),
     Sent(mpsc::UnboundedReceiver<T>),
 }
 
 impl<T: Unpin + Send> ShellStream<T> {
+    fn new(
+        send_request: impl FnOnce() + Send + 'static,
+        output_receiver: mpsc::UnboundedReceiver<T>,
+    ) -> Self {
+        ShellStream::ReadyToSend(Box::new(send_request), output_receiver)
+    }
+
     fn send(&mut self) {
         // Since neither part is Clone, we'll need to do an Indiana Jones
 
@@ -232,6 +190,33 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
                 Poll::Pending
             }
             ShellStream::Sent(ref mut output_receiver) => pin!(output_receiver).poll_next(cx),
+        }
+    }
+}
+
+pub struct ShellRequest<T: Unpin + Send> {
+    inner: StreamFuture<ShellStream<T>>,
+}
+
+impl<T: Unpin + Send + 'static> ShellRequest<T> {
+    fn new(
+        send_request: impl FnOnce() + Send + 'static,
+        output_receiver: mpsc::UnboundedReceiver<T>,
+    ) -> Self {
+        let inner = ShellStream::new(send_request, output_receiver).into_future();
+
+        Self { inner }
+    }
+}
+
+impl<T: Unpin + Send> Future for ShellRequest<T> {
+    type Output = T;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.inner.poll_unpin(cx) {
+            Poll::Ready((Some(output), _rest)) => Poll::Ready(output),
+            Poll::Ready((None, _rest)) => Poll::Pending,
+            Poll::Pending => Poll::Pending,
         }
     }
 }
