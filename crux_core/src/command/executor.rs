@@ -3,9 +3,9 @@ use super::super::Command;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::Ordering;
-use std::task::{Context, Poll, Wake};
+use std::task::{Context, Poll, Wake, Waker};
 
-use crossbeam_channel::Sender;
+use crossbeam_channel::{Receiver, Sender};
 
 use futures::future::BoxFuture;
 
@@ -20,7 +20,7 @@ pub(crate) struct TaskId(pub(crate) usize);
 
 pub(crate) struct Task {
     // Used to wake the join handle when the task concludes
-    pub(crate) join_handle_waker: Arc<AtomicWaker>,
+    pub(crate) join_handle_wakers: Receiver<Waker>,
     // Set to true when the task finishes, used by the join handle
     // RFC: is there a safe way to do this relying on the waker alone?
     pub(crate) finished: Arc<AtomicBool>,
@@ -34,6 +34,14 @@ pub(crate) struct Task {
 impl Task {
     pub(crate) fn is_aborted(&self) -> bool {
         self.aborted.load(Ordering::Relaxed)
+    }
+
+    fn wake_join_handles(&self) {
+        for waker in self.join_handle_wakers.try_iter() {
+            // TODO: this potentially wakes tasks which are no longer interested
+            // and wakes tasks more than once if they await multiple copies of the same join handle
+            waker.wake();
+        }
     }
 }
 
@@ -87,7 +95,7 @@ impl AbortHandle {
 /// A handle used to await a task completion of abort the task
 #[derive(Clone)]
 pub struct JoinHandle {
-    pub(crate) join_handle_waker: Arc<AtomicWaker>,
+    pub(crate) register_waker: Sender<Waker>,
     pub(crate) finished: Arc<AtomicBool>,
     pub(crate) aborted: Arc<AtomicBool>,
 }
@@ -116,9 +124,11 @@ impl Future for JoinHandle {
         if self.is_finished() {
             Poll::Ready(())
         } else {
-            self.join_handle_waker.register(cx.waker());
-
-            Poll::Pending
+            match self.register_waker.send(cx.waker().clone()) {
+                Ok(_) => Poll::Pending,
+                // The task no longer exists, we report ready immediately
+                Err(_) => Poll::Ready(()),
+            }
         }
     }
 }
@@ -163,7 +173,7 @@ impl<Effect, Event> Command<Effect, Event> {
                         let task = self.tasks.remove(task_id.0);
 
                         task.finished.store(true, Ordering::Relaxed);
-                        task.join_handle_waker.wake();
+                        task.wake_join_handles();
 
                         drop(task);
                     }

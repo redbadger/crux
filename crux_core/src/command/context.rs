@@ -123,17 +123,19 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     where
         F: Future<Output = ()> + Send + 'static,
     {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+
         let task = Task {
-            join_handle_waker: Default::default(),
             finished: Default::default(),
             aborted: Default::default(),
             future: future.boxed(),
+            join_handle_wakers: receiver,
         };
 
         let handle = JoinHandle {
-            join_handle_waker: task.join_handle_waker.clone(),
             finished: task.finished.clone(),
             aborted: task.aborted.clone(),
+            register_waker: sender,
         };
 
         self.tasks

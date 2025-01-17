@@ -98,6 +98,7 @@ where
         let (event_sender, event_receiver) = crossbeam_channel::unbounded();
         let (ready_sender, ready_receiver) = crossbeam_channel::unbounded();
         let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
+        let (_, waker_receiver) = crossbeam_channel::unbounded();
 
         let context = context::CommandContext {
             effects: effect_sender,
@@ -107,10 +108,10 @@ where
 
         let aborted: Arc<AtomicBool> = Default::default();
         let task = Task {
-            join_handle_waker: Default::default(),
             finished: Default::default(),
             aborted: aborted.clone(),
             future: create_task(context).boxed(),
+            join_handle_wakers: waker_receiver,
         };
 
         let mut tasks = Slab::with_capacity(1);

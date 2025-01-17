@@ -61,6 +61,87 @@ fn spawn_returns_join_handle() {
 }
 
 #[test]
+fn all_join_handles_get_notified() {
+    let mut cmd = Command::new(|ctx| async move {
+        let task_join = ctx.spawn({
+            let ctx = ctx.clone();
+            async move {
+                ctx.request_from_shell(Op::Basic).await;
+            }
+        });
+
+        ctx.spawn({
+            let ctx = ctx.clone();
+            let task_join = task_join.clone();
+
+            async move {
+                task_join.await;
+                ctx.send_event(Event::OpDone(1));
+            }
+        });
+
+        ctx.spawn({
+            let ctx = ctx.clone();
+            let task_join = task_join.clone();
+
+            async move {
+                task_join.await;
+                ctx.send_event(Event::OpDone(2));
+            }
+        });
+    });
+
+    assert!(cmd.events().next().is_none());
+
+    let effect = cmd.effects().next().unwrap();
+    let Effect::Op(mut request) = effect;
+
+    request.resolve(1).expect("should resolve");
+
+    let events: Vec<_> = cmd.events().collect();
+
+    assert_eq!(events.len(), 2);
+
+    assert_eq!(events[0], Event::OpDone(1));
+    assert_eq!(events[1], Event::OpDone(2));
+
+    assert!(cmd.is_done());
+}
+
+#[test]
+fn awaiting_multiple_copies_of_handle_works() {
+    let mut cmd = Command::new(|ctx| async move {
+        let task_join = ctx.spawn({
+            let ctx = ctx.clone();
+            async move {
+                ctx.request_from_shell(Op::Basic).await;
+            }
+        });
+
+        let join_one = task_join.clone();
+        let join_two = task_join.clone();
+        let join_three = task_join.clone();
+
+        futures::join!(join_one, join_two, join_three);
+
+        ctx.send_event(Event::Ping);
+    });
+
+    assert!(cmd.events().next().is_none());
+
+    let effect = cmd.effects().next().unwrap();
+    let Effect::Op(mut request) = effect;
+
+    request.resolve(1).expect("should resolve");
+
+    let event = cmd.events().next().unwrap();
+
+    assert_eq!(event, Event::Ping);
+
+    assert!(cmd.is_done());
+}
+
+#[test]
 fn join_handle_can_abort_a_task() {
     let mut cmd = Command::new(|ctx| async move {
         let stream_handle = ctx.spawn({
