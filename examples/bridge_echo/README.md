@@ -1,6 +1,6 @@
 # Shell/Core bridge performance tester
 
-This exsample benchmarks the message passing between the shell and the core.
+This example benchmarks the message passing between the shell and the core.
 All versions attempt to send as many messages across the bridge as they can,
 and the core responds with `Render` to every one of them. This way we measure
 how many full interaction-to-ui-update roundtrips we can do per second.
