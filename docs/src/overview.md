@@ -23,6 +23,10 @@ There are two places to find API documentation: the latest published version on 
 
 - **crux_core** - the main Crux crate: [latest release](https://docs.rs/crux_core/latest/crux_core/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_core/)
 - **crux_http** - HTTP client capability: [latest release](https://docs.rs/crux_http/latest/crux_http/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_http/)
+- **crux_kv** - Key-value store capability: [latest release](https://docs.rs/crux_kv/latest/crux_kv/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_kv/)
+- **crux_time** - Time capability: [latest release](https://docs.rs/crux_time/latest/crux_time/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_time/)
+
+You can see the latest version of this book (generated from the master branch) on [Github Pages](https://redbadger.github.io/crux/latest_master/).
 
 Crux is open source on [Github](https://github.com/redbadger/crux). A good way to learn Crux is to explore the code, play with the [examples](https://github.com/redbadger/crux/tree/master/examples), and raise issues or pull requests. We'd love you to get involved.
 
@@ -81,18 +85,18 @@ overall goals of Crux are to:
 
 ## Path to 1.0
 
-Crux is used in production apps today, and we consider it production ready. However, we still have a number of things to work on to call it 1.0, with a stable API, and other things one would expect from a mature framework. 
+Crux is used in production apps today, and we consider it production ready. However, we still have a number of things to work on to call it 1.0, with a stable API, and other things one would expect from a mature framework.
 
 Below is a list of some of the things we know we want to do before 1.0:
 
 * Improved documentation, code examples, and example apps for newcomers
 * Improved onboarding experience, with less boilerplate code that end users have
   to deal with
-* Better FFI code generation to enable support for more languages (e.g. C#, Dart, even C++...) 
+* Better FFI code generation to enable support for more languages (e.g. C#, Dart, even C++...)
   and in trurn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
 * Revised capabilities and effects to allow for better, more natural
-  [app composition](./guide/composing.md) in larger apps, for composing capabilities, 
+  [app composition](./guide/composing.md) in larger apps, for composing capabilities,
   and generally for a more ergonomic effect API overall
 
 Until then, we hope you will work with us on the rough edges, and adapt to the necessary
-API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable. 
+API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable.

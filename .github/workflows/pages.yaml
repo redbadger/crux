@@ -33,11 +33,13 @@ jobs:
             --jq .tag_name \
             /repos/redbadger/crux/releases/latest)" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v4
+      - name: Checkout latest master
+        uses: actions/checkout@v4
         with:
           path: latest_master
 
-      - uses: actions/checkout@v4
+      - name: Checkout latest release
+        uses: actions/checkout@v4
         with:
           ref: ${{ env.LATEST_TAG }}
           path: latest_release
