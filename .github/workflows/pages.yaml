@@ -2,7 +2,16 @@ name: pages
 on:
   push:
     branches:
-      - master
+      - $default-branch
+    tags:
+      - "crux_core-v*"
+  workflow_dispatch:
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 env:
   CARGO_INCREMENTAL: 0
@@ -13,10 +22,9 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-  pages:
+  build:
     if: github.repository == 'redbadger/crux'
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -26,11 +34,15 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Setup mdBook
-        uses: jontze/action-mdbook@v2
+        uses: jontze/action-mdbook@v3
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           use-linkcheck: true
           use-admonish: true
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
 
       - name: Build Documentation
         run: cargo doc --all --no-deps
@@ -46,10 +58,26 @@ jobs:
           mv ./target/doc ./public/master_api_docs
           mv ./docs/book/html/* ./public/
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload GitHub Pages artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./public
-          force_orphan: true
+          path: public/
+
+  deploy:
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
