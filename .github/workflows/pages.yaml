@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Export LATEST_TAG
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "LATEST_TAG=$(gh api \
             -H "Accept: application/vnd.github+json" \
@@ -75,7 +77,7 @@ jobs:
       - name: Move outputs
         run: |
           set -e
-          mkdir ./public
+          mkdir -p ./public/latest_master
           mv latest_master/target/doc ./public/latest_master/master_api_docs
           mv latest_master/docs/book/html/* ./public/latest_master/
           mv latest_release/target/doc ./public/master_api_docs
