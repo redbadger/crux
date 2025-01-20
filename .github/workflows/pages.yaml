@@ -23,7 +23,22 @@ jobs:
     if: github.repository == 'redbadger/crux'
     runs-on: ubuntu-latest
     steps:
+      - name: Export LATEST_TAG
+        run: |
+          echo "LATEST_TAG=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            --jq .tag_name \
+            /repos/redbadger/crux/releases/latest)" >> $GITHUB_ENV
+
       - uses: actions/checkout@v4
+        with:
+          path: latest_master
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.LATEST_TAG }}
+          path: latest_release
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -41,19 +56,30 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
-      - name: Build Documentation
+      - name: Build Documentation (latest_master)
+        working-directory: latest_master
         run: cargo doc --all --no-deps
 
-      - name: Build book
-        working-directory: docs
+      - name: Build Documentation (latest_release)
+        working-directory: latest_release
+        run: cargo doc --all --no-deps
+
+      - name: Build book (latest_master)
+        working-directory: latest_master/docs
+        run: mdbook build
+
+      - name: Build book (latest_release)
+        working-directory: latest_release/docs
         run: mdbook build
 
       - name: Move outputs
         run: |
           set -e
           mkdir ./public
-          mv ./target/doc ./public/master_api_docs
-          mv ./docs/book/html/* ./public/
+          mv latest_master/target/doc ./public/latest_master/master_api_docs
+          mv latest_master/docs/book/html/* ./public/latest_master/
+          mv latest_release/target/doc ./public/master_api_docs
+          mv latest_release/docs/book/html/* ./public/
 
       - name: Upload GitHub Pages artifact
         id: deployment
