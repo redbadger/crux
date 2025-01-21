@@ -6,7 +6,7 @@ use shared::{App, Effect, Event, ViewModel};
 
 use crate::{http, sse};
 
-pub type Core = Rc<shared::Core<Effect, App>>;
+pub type Core = Rc<shared::Core<App>>;
 
 pub fn new() -> Core {
     Rc::new(shared::Core::new())

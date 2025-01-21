@@ -9,12 +9,12 @@ use std::sync::Arc;
 use tauri::Emitter;
 
 lazy_static! {
-    static ref CORE: Arc<Core<Effect, App>> = Arc::new(Core::new());
+    static ref CORE: Arc<Core<App>> = Arc::new(Core::new());
 }
 
 fn handle_event(
     event: Event,
-    core: &Arc<Core<Effect, App>>,
+    core: &Arc<Core<App>>,
     tauri_app: tauri::AppHandle,
 ) -> anyhow::Result<()> {
     for effect in core.process_event(event) {
@@ -26,7 +26,7 @@ fn handle_event(
 
 fn process_effect(
     effect: Effect,
-    core: &Arc<Core<Effect, App>>,
+    core: &Arc<Core<App>>,
     tauri_app: tauri::AppHandle,
 ) -> anyhow::Result<()> {
     match effect {

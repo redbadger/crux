@@ -1,6 +1,6 @@
 use crate::capabilities::sse::ServerSentEvents;
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
-use crux_core::render::Render;
+use crux_core::{render::Render, Command};
 use crux_http::Http;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -58,8 +58,14 @@ impl crux_core::App for App {
     type Event = Event;
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
+    type Effect = Effect;
 
-    fn update(&self, msg: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        msg: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Effect, Event> {
         match msg {
             Event::Get => {
                 caps.http.get(API_URL).expect_json().send(Event::Set);
@@ -107,6 +113,8 @@ impl crux_core::App for App {
                 caps.sse.get_json(url, Event::Update);
             }
         }
+
+        Command::done()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -141,7 +149,7 @@ mod tests {
     #[test]
     fn get_counter() {
         // instantiate our app via the test harness, which gives us access to the model
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
 
         // set up our initial model
         let mut model = Model::default();
@@ -181,7 +189,7 @@ mod tests {
     #[test]
     fn set_counter() {
         // instantiate our app via the test harness, which gives us access to the model
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
 
         // set up our initial model
         let mut model = Model::default();
@@ -213,7 +221,7 @@ mod tests {
     #[test]
     fn increment_counter() {
         // instantiate our app via the test harness, which gives us access to the model
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -271,7 +279,7 @@ mod tests {
     #[test]
     fn decrement_counter() {
         // instantiate our app via the test harness, which gives us access to the model
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -327,7 +335,7 @@ mod tests {
 
     #[test]
     fn get_sse() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = app
@@ -345,7 +353,7 @@ mod tests {
 
     #[test]
     fn set_sse() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let count = Count {

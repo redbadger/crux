@@ -1,6 +1,9 @@
 // ANCHOR: app
 
-use crux_core::{render::Render, App};
+use crux_core::{
+    render::{render, Render},
+    App, Command,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -17,6 +20,7 @@ pub struct ViewModel {
 }
 
 #[derive(crux_core::macros::Effect)]
+#[allow(unused)]
 pub struct Capabilities {
     render: Render<Event>,
 }
@@ -29,9 +33,15 @@ impl App for Hello {
     type Model = Model;
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
+    type Effect = Effect;
 
-    fn update(&self, _event: Self::Event, _model: &mut Self::Model, caps: &Self::Capabilities) {
-        caps.render.render();
+    fn update(
+        &self,
+        _event: Self::Event,
+        _model: &mut Self::Model,
+        _caps: &Self::Capabilities,
+    ) -> Command<Effect, Event> {
+        render()
     }
 
     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -51,7 +61,7 @@ mod tests {
 
     #[test]
     fn hello_says_hello_world() {
-        let hello = AppTester::<Hello, _>::default();
+        let hello = AppTester::<Hello>::default();
         let mut model = Model;
 
         // Call 'update' and request effects

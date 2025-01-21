@@ -8,7 +8,7 @@ use futures_util::StreamExt;
 use shared::{Counter, Effect, Event, ViewModel};
 use tracing::debug;
 
-type Core = Rc<shared::Core<Effect, Counter>>;
+type Core = Rc<shared::Core<Counter>>;
 
 pub struct CoreService {
     core: Core,

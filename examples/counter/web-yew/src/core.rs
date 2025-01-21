@@ -6,7 +6,7 @@ use yew::{platform::spawn_local, Callback};
 
 use crate::{http, sse};
 
-pub type Core = Rc<shared::Core<Effect, App>>;
+pub type Core = Rc<shared::Core<App>>;
 
 pub enum Message {
     Event(Event),
