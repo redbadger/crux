@@ -74,6 +74,7 @@ impl<Ev> Compose<Ev> {
     ///
     /// For example:
     /// ```
+    /// # use crux_core::Command;
     /// # use crux_core::macros::Effect;
     /// # use serde::Serialize;
     /// # #[derive(Default, Clone)]
@@ -98,8 +99,9 @@ impl<Ev> Compose<Ev> {
     /// #    type Model = Model;
     /// #    type ViewModel = Model;
     /// #    type Capabilities = Capabilities;
+    /// #    type Effect = Effect;
     /// #
-    ///     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    ///     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) -> Command<Effect, Event> {
     ///         match event {
     ///             Event::Trigger => caps.compose.spawn(|context| {
     ///                 let one = caps.one.clone();
@@ -119,6 +121,7 @@ impl<Ev> Compose<Ev> {
     ///                 model.total = one + two;
     ///             }
     ///         }
+    ///         Command::done()
     ///     }
     /// #
     /// #    fn view(&self, _model: &Self::Model) -> Self::ViewModel {

@@ -40,7 +40,7 @@
 //!
 //! ```rust
 //!// src/app.rs
-//!use crux_core::{render::Render, App, macros::Effect};
+//!use crux_core::{render::{self, Render}, App, macros::Effect, Command};
 //!use serde::{Deserialize, Serialize};
 //!
 //!// Model describing the application state
@@ -76,8 +76,10 @@
 //!    type ViewModel = String;
 //!    // Use the above Capabilities
 //!    type Capabilities = Capabilities;
+//!    // Use the above generated Effect
+//!    type Effect = Effect;
 //!
-//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Effect, Event> {
 //!        match event {
 //!            Event::Increment => model.count += 1,
 //!            Event::Decrement => model.count -= 1,
@@ -85,7 +87,7 @@
 //!        };
 //!
 //!        // Request a UI update
-//!        caps.render.render()
+//!        render::render()
 //!    }
 //!
 //!    fn view(&self, model: &Model) -> Self::ViewModel {

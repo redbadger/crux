@@ -10,6 +10,7 @@
 //!
 //! ```rust
 //!# use url::Url;
+//!# use crux_core::Command;
 //!# const API_URL: &str = "";
 //!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
 //!# #[derive(crux_core::macros::Effect)]
@@ -25,7 +26,8 @@
 //!#     type Model = Model;
 //!#     type ViewModel = ();
 //!#     type Capabilities = Capabilities;
-//! fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+//!#     type Effect = Effect;
+//! fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) -> Command<Effect, Event> {
 //!     match event {
 //!         //...
 //!         Event::Increment => {
@@ -38,6 +40,7 @@
 //!         }
 //!         Event::Set(_) => todo!(),
 //!     }
+//!     Command::done()
 //! }
 //!# fn view(&self, model: &Self::Model) {
 //!#     unimplemented!()
@@ -58,7 +61,7 @@
 //!
 //! // An app module which can be reused in different apps
 //! mod my_app {
-//!     use crux_core::{capability::CapabilityContext, App, render::Render};
+//!     use crux_core::{capability::CapabilityContext, App, render::{self, Render, RenderOperation}, Command, Request};
 //!     use crux_core::macros::Effect;
 //!     use serde::{Serialize, Deserialize};
 //!
@@ -80,9 +83,10 @@
 //!         type Event = Event;
 //!         type ViewModel = ();
 //!         type Capabilities = Capabilities;
+//!         type Effect = Effect;
 //!
-//!         fn update(&self, event: Event, model: &mut (), caps: &Capabilities) {
-//!             caps.render.render();
+//!         fn update(&self, event: Event, model: &mut (), caps: &Capabilities) -> Command<Effect, Event> {
+//!             render::render()
 //!         }
 //!
 //!         fn view(&self, model: &()) {
@@ -333,7 +337,8 @@ pub trait Capability<Ev> {
 /// #     type Model = ();
 /// #     type ViewModel = ();
 /// #     type Capabilities = Capabilities;
-/// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) {
+/// #     type Effect = Effect;
+/// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) -> crux_core::Command<Effect, Event> {
 /// #         unimplemented!()
 /// #     }
 /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -571,7 +576,7 @@ where
     /// In a typical case you would implement `From` on the submodule's `Capabilities` type
     ///
     /// ```rust
-    /// # use crux_core::Capability;
+    /// # use crux_core::{Capability, Command};
     /// # #[derive(Default)]
     /// # struct App;
     /// # pub enum Event {
@@ -587,12 +592,13 @@ where
     /// #     type Model = ();
     /// #     type ViewModel = ();
     /// #     type Capabilities = Capabilities;
+    /// #     type Effect = Effect;
     /// #     fn update(
     /// #         &self,
     /// #         _event: Self::Event,
     /// #         _model: &mut Self::Model,
     /// #         _caps: &Self::Capabilities,
-    /// #     ) {
+    /// #     ) -> Command<Effect, Event> {
     /// #         unimplemented!()
     /// #     }
     /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -621,12 +627,13 @@ where
     /// #         type Model = ();
     /// #         type ViewModel = ();
     /// #         type Capabilities = Capabilities;
+    /// #         type Effect = Effect;
     /// #         fn update(
     /// #             &self,
     /// #             _event: Self::Event,
     /// #             _model: &mut Self::Model,
     /// #             _caps: &Self::Capabilities,
-    /// #         ) {
+    /// #         ) -> crux_core::Command<Effect, Event> {
     /// #             unimplemented!()
     /// #         }
     /// #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
