@@ -14,12 +14,12 @@ console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
 futures-util = "0.3.31"
 gloo-net = { version = "0.6.0", features = ["http"] }
-js-sys = "0.3.72"
+js-sys = "0.3.77"
 leptos = { version = "0.6.6", features = ["csr"] }
-log = "0.4.22"
+log = "0.4.25"
 shared = { path = "../shared" }
-wasm-bindgen = "0.2.95"
-wasm-streams = "0.4.1"
+wasm-bindgen = "0.2.100"
+wasm-streams = "0.4.2"
 
 [lints.clippy]
 empty_docs = "allow"

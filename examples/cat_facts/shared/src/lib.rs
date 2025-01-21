@@ -17,7 +17,7 @@ pub use app::*;
 uniffi::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Bridge<Effect, CatFacts> = Bridge::new(Core::new());
+    static ref CORE: Bridge<CatFacts> = Bridge::new(Core::new());
 }
 
 #[wasm_bindgen]

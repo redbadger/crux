@@ -11,7 +11,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::{http, sse};
 
-type Core = Rc<shared::Core<Effect, App>>;
+type Core = Rc<shared::Core<App>>;
 
 pub struct CoreService {
     core: Core,

@@ -20,7 +20,7 @@ use shared::{
 
 use crate::http;
 
-pub type Core = Arc<shared::Core<Effect, CatFacts>>;
+pub type Core = Arc<shared::Core<CatFacts>>;
 
 pub fn new() -> Core {
     Arc::new(shared::Core::new())
@@ -134,9 +134,10 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
 
         Effect::Time(mut request) => {
             let now: DateTime<Utc> = SystemTime::now().into();
-            let response = TimeResponse::Now(
-                Instant::new(now.timestamp() as u64, now.timestamp_subsec_nanos()).unwrap(),
-            );
+            let response = TimeResponse::Now {
+                instant: Instant::new(now.timestamp() as u64, now.timestamp_subsec_nanos())
+                    .unwrap(),
+            };
 
             for effect in core.resolve(&mut request, response) {
                 process_effect(core, effect, tx)?;

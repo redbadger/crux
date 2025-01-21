@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 uniffi::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Bridge<Effect, App> = Bridge::new(Core::new());
+    static ref CORE: Bridge<App> = Bridge::new(Core::new());
 }
 
 pub fn process_event(data: &[u8]) -> Vec<u8> {

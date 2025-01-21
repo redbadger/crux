@@ -12,9 +12,9 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap = { version = "4.3.24", features = ["derive"] }
-crossbeam-channel = "0.5.13"
+crossbeam-channel = "0.5.14"
 futures = "0.3"
-reqwest = { version = "0.12.8", features = ["stream"] }
+reqwest = { version = "0.12.12", features = ["stream"] }
 shared = { path = "../shared" }
 tokio = { version = "1.38.1", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"

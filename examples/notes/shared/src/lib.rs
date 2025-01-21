@@ -12,7 +12,7 @@ pub use app::*;
 uniffi::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Bridge<Effect, NoteEditor> = Bridge::new(Core::new());
+    static ref CORE: Bridge<NoteEditor> = Bridge::new(Core::new());
 }
 
 #[wasm_bindgen]

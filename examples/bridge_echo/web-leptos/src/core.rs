@@ -3,7 +3,7 @@ use std::rc::Rc;
 use leptos::{SignalUpdate, WriteSignal};
 use shared::{App, Effect, Event, ViewModel};
 
-pub type Core = Rc<shared::Core<Effect, App>>;
+pub type Core = Rc<shared::Core<App>>;
 
 pub fn new() -> Core {
     Rc::new(shared::Core::new())

@@ -2,7 +2,7 @@ use shared::{Counter, Effect, Event};
 use std::rc::Rc;
 use yew::Callback;
 
-pub type Core = Rc<shared::Core<Effect, Counter>>;
+pub type Core = Rc<shared::Core<Counter>>;
 
 pub enum Message {
     Event(Event),

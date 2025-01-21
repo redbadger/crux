@@ -3,7 +3,10 @@ mod note;
 use std::ops::Range;
 
 use automerge::Change;
-use crux_core::{render::Render, App};
+use crux_core::{
+    render::{self, Render},
+    App, Command,
+};
 use crux_kv::{error::KeyValueError, KeyValue};
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +109,7 @@ impl From<&Model> for ViewModel {
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
+#[allow(unused)]
 pub struct Capabilities {
     timer: Timer<Event>,
     render: Render<Event>,
@@ -119,10 +123,16 @@ impl App for NoteEditor {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
+    type Effect = Effect;
 
     type Capabilities = Capabilities;
 
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Effect, Event> {
         match event {
             Event::Insert(text) => {
                 let mut change = match &model.cursor {
@@ -144,7 +154,7 @@ impl App for NoteEditor {
                 };
                 model.cursor = TextCursor::Position(idx + len);
 
-                caps.render.render();
+                return render::render();
             }
             Event::Replace(from, to, text) => {
                 let idx = from + text.chars().count();
@@ -155,17 +165,17 @@ impl App for NoteEditor {
                 caps.pub_sub.publish(change.bytes().to_vec());
                 model.edit_timer.start(&caps.timer);
 
-                caps.render.render();
+                return render::render();
             }
             Event::MoveCursor(idx) => {
                 model.cursor = TextCursor::Position(idx);
 
-                caps.render.render();
+                return render::render();
             }
             Event::Select(from, to) => {
                 model.cursor = TextCursor::Selection(from..to);
 
-                caps.render.render();
+                return render::render();
             }
             Event::Backspace | Event::Delete => {
                 let (new_index, mut change) = match &model.cursor {
@@ -199,7 +209,7 @@ impl App for NoteEditor {
                 caps.pub_sub.publish(change.bytes().to_vec());
                 model.edit_timer.start(&caps.timer);
 
-                caps.render.render();
+                return render::render();
             }
             Event::ReceiveChanges(bytes) => {
                 let change = Change::from_bytes(bytes).expect("a valid change");
@@ -210,7 +220,7 @@ impl App for NoteEditor {
                 model.note.apply_changes_with([change], &mut observer);
                 model.cursor = observer.cursor;
 
-                caps.render.render();
+                return render::render();
             }
             Event::EditTimer(TimerOutput::Created { id }) => {
                 model.edit_timer.was_created(id);
@@ -235,12 +245,14 @@ impl App for NoteEditor {
                     model.note = Note::load(&value.unwrap_or_default());
                 }
                 caps.pub_sub.subscribe(Event::ReceiveChanges);
-                caps.render.render();
+                return render::render();
             }
             Event::Load(Err(_)) => {
                 // FIXME handle error
             }
         }
+
+        Command::done()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -303,7 +315,7 @@ mod editing_tests {
 
     #[test]
     fn renders_text_and_cursor() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let model = Model {
             note: Note::with_text("hello"),
@@ -322,7 +334,7 @@ mod editing_tests {
 
     #[test]
     fn moves_cursor() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -342,7 +354,7 @@ mod editing_tests {
 
     #[test]
     fn changes_selection() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -362,7 +374,7 @@ mod editing_tests {
 
     #[test]
     fn inserts_text_at_cursor_and_renders() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -381,7 +393,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_selection_and_renders() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -400,7 +412,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_range_and_renders() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -419,7 +431,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_empty_range_and_renders() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -441,7 +453,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_before_cursor() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -460,7 +472,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_after_cursor() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -479,7 +491,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_delete() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -498,7 +510,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_backspace() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -517,7 +529,7 @@ mod editing_tests {
 
     #[test]
     fn handles_emoji() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             // the emoji has a skintone modifier, which is a separate unicode character
@@ -549,7 +561,7 @@ mod save_load_tests {
 
     #[test]
     fn opens_a_document() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
         let mut note = Note::with_text("LOADED");
 
         let mut model = Model {
@@ -587,7 +599,7 @@ mod save_load_tests {
 
     #[test]
     fn creates_a_document_if_it_cant_open_one() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -638,7 +650,7 @@ mod save_load_tests {
 
     #[test]
     fn starts_a_timer_after_an_edit() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -732,7 +744,7 @@ mod save_load_tests {
 
     #[test]
     fn saves_document_when_typing_stops() {
-        let app = AppTester::<NoteEditor, _>::default();
+        let app = AppTester::<NoteEditor>::default();
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -773,7 +785,7 @@ mod sync_tests {
     use super::*;
 
     struct Peer {
-        app: AppTester<NoteEditor, Effect>,
+        app: AppTester<NoteEditor>,
         model: Model,
         subscription: Option<Request<PubSubOperation>>,
         edits: VecDeque<Vec<u8>>,
@@ -783,7 +795,7 @@ mod sync_tests {
 
     impl Peer {
         fn new() -> Self {
-            let app = AppTester::<_, _>::default();
+            let app = AppTester::<_>::default();
             let model = Default::default();
 
             Self {
