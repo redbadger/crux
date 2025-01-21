@@ -38,7 +38,7 @@ The Shell thus has two sides: the _driving_ side – the interactions causing ev
 
 Effects encode potentially quite complex, but common interactions, so they are the perfect candidate for some improved ergonomics in the APIs. This is where Crux capabilities come in. They provide a nicer API for creating effects, and in the future, they will likely provide implementations of the effect execution for the various supported platforms. Capabilities can also implement more complex interactions with the outside world, such as chained network API calls or processing results of effects, like parsing JSON API responses.
 
-We will look at how capabilities work, and will build our own in the next chapter.
+We will look at how effects are created and passed to the shell in the next chapter. In the one following that we'll explore how capabilities work, and will build our own.
 
 ---
 

@@ -1,12 +1,5 @@
 
-
-### Note for reviewers
-
-Have no fear! About 1500 of the total lines of this PR is int tests. They do demonstrate the APIs quite well, but hopefully don't require very thorough checking. Another 250 lines is a copy of this PR description (so it stays around).
-
-I've left a number of comments in places starting `RFC:` - these are places where I have specific questions about the details of this proposal and would love your feedback. Thank you!!
-
-## What is this RFC?
+# RFC: New side effect API - Command
 
 This is a proposed implementation of a new API for creating (requesting) side-effects in crux apps. It is quite a significant part of the Crux API surface, so I'd like feedback on the direction this is taking, rather than just hitting merge.
 
@@ -110,13 +103,13 @@ Instead, to create a request followed by another request you can use the builder
 
 ```rust
 let command = Command::request_from_shell(a_request)
-    .then(|response| Command::request_from_shell(make_another_request_from(response)))
+    .then_request(|response| Command::request_from_shell(make_another_request_from(response)))
     .then_send(Event::Done);
 ```
 
 This works just the same with streams or combinations of requests and streams.
 
-`.then` and `Command::all` are nice, but on occasion, you will need the full power of async. The equivalent of the above with async works like this:
+`.then_*` and `Command::all` are nice, but on occasion, you will need the full power of async. The equivalent of the above with async works like this:
 
 ```rust
 let command = Command::new(|ctx| async {
@@ -222,23 +215,18 @@ A grab bag of other things:
 * Tasks can be aborted by calling `.abort()` on a `JoinHandle`
 * Whole commands can be aborted using an `AbortHandle` returned by `.abort_handle()`. The handle can be stored in the model and used later.
 * Commands can be "hosted" on a pair of channel senders returning a future which should be compatible with the existing executor enabling a reasonably smooth migration path
-* I havent looked at implementing any, but this API should in theory enable declarative effect middlewares like caching, retries, throttling, timeouts, etc...
+* This API should in theory enable declarative effect middlewares like caching, retries, throttling, timeouts, etc...
 
 ### Limitations and drawbacks
 
 I'm sure we'll find some. :)
 
-For one, the return type signature for capabilities is not great, for example: `RequestBuilder<Effect, Event, impl Future<Output = AnOperationOutput>>`. The command builder chaining is using dirty trait tricks, and as a result requires the `CommandBuilder` trait to be in scope - not completely ideal (but the same is true for `FutureExt` and `StreamExt`).
+For one, the return type signature for capabilities is not great, for example: `RequestBuilder<Effect, Event, impl Future<Output = AnOperationOutput>>`.
 
 One major perceived limitation which still remains is that `model` is not accessible from the effect code. This is by design, to avoid data races from concurrent access to the model. It should hopefully be a bit more obvious now that the effect code is _returned_ from the `update` function wrapped in a Command.
 
-I suspect there are ways around this by storing some `Arc<Mutex<T>>`s in the model and cloning them into the effect code, etc., but do so at your own peril - tracking causality will become a lot more complex in that world.
-
 ## Open questions and other considerations
 
-* I have not fully formed a migration plan yet - it should be possible for the two APIs to coexist for a few versions while people move over
-* The command API expects the `Effect` type to implement `From<Request<Op>>` for any capability Operations it is used with.
-* I have not fully thought about back-pressure in the Commands (for events, effects and spawned tasks) even to the level of "is any needed?"
-* I am not super sure about my implementation of task cancellation using atomics, because they break my head. Help.
-
-I thank and salute you for reading all the way down here. If you have, I 100% owe you a beer - tell me "I've read your entire RFC treatise, and I'm here for my free beer" next time you see me in or near a pub :).
+* The command API expects the `Effect` type to implement `From<Request<Op>>` for any capability Operations it is used with. This is derived by the `Effect` macro, and is expected to be supported by a derive macro even in the future state.
+* We have not fully thought about back-pressure in the Commands (for events, effects and spawned tasks) even to the level of "is any needed?"
+* We will explore ways to make the code that interleaves effects and state updates more "linear" - require fewer intermediate events - separately at a later stage

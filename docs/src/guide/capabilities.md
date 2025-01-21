@@ -13,6 +13,12 @@ From the perspective of the app, you can think of capabilities as an equivalent
 to SDKs. And a lot of them will provide an interface to the actual platform
 specific SDKs.
 
+```admonish warning title="Capability API Migration"
+The capability API is in the middle of a migration. While all the instructions in
+this chapter will work, you should probably read the [Managed Effects](./effects.md)
+chapter first to see where Crux is headed.
+```
+
 ## Intent and execution
 
 The Capabilities are the key to Crux being portable across as many platforms as
