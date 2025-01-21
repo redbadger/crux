@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.5.4](https://github.com/redbadger/crux/compare/crux_kv-v0.5.3...crux_kv-v0.5.4) - 2025-01-21
+
+### Other
+
+- Integrate Commands into the Core so apps can mix and match
+- Update App trait to support Command, fix all tests
+- Fix clippy warnings
+
 ## [0.5.3](https://github.com/redbadger/crux/compare/crux_kv-v0.5.2...crux_kv-v0.5.3) - 2025-01-07
 
 ### Other

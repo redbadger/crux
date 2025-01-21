@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.3](https://github.com/redbadger/crux/compare/crux_macros-v0.4.2...crux_macros-v0.4.3) - 2025-01-21
+
+### Other
+
+- Fix doctests
+- update Effect derive macro for From<request<Op>>
+- Fix clippy warnings
+
 ## [0.4.2](https://github.com/redbadger/crux/compare/crux_macros-v0.4.1...crux_macros-v0.4.2) - 2025-01-07
 
 ### Other

@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.5](https://github.com/redbadger/crux/compare/crux_http-v0.10.4...crux_http-v0.10.5) - 2025-01-21
+
+### Fixed
+
+- fix failing cargo check
+
+### Other
+
+- Update http test to use command for rendering
+- Integrate Commands into the Core so apps can mix and match
+- Update App trait to support Command, fix all tests
+- add body_form to http request builder
+
 ## [0.10.4](https://github.com/redbadger/crux/compare/crux_http-v0.10.3...crux_http-v0.10.4) - 2025-01-07
 
 ### Other

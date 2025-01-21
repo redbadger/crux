@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.1](https://github.com/redbadger/crux/compare/crux_time-v0.7.0...crux_time-v0.7.1) - 2025-01-21
+
+### Other
+
+- Integrate Commands into the Core so apps can mix and match
+- Update App trait to support Command, fix all tests
+
 ## [0.7.0](https://github.com/redbadger/crux/compare/crux_time-v0.6.0...crux_time-v0.7.0) - 2025-01-07
 
 ### Breaking change

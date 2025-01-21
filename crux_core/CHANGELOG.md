@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.0](https://github.com/redbadger/crux/compare/crux_core-v0.10.1...crux_core-v0.11.0) - 2025-01-21
+
+_This release is a breaking change._
+
+### Changes
+
+The `App` trait has changed to support the new `Command` API. This will break every app,
+but migration is straight-forward. Please see the
+[Migration Guide](https://redbadger.github.io/crux/guide/effects.html#migrating-from-previous-versions-of-crux)
+
+
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_core-v0.10.0...crux_core-v0.10.1) - 2025-01-07
 
 ### Other
