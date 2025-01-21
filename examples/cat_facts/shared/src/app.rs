@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 pub use crux_core::App;
-use crux_core::{render::Render, Capability};
+use crux_core::{
+    render::{self, Render},
+    Capability, Command,
+};
 use crux_http::Http;
 use crux_kv::{error::KeyValueError, KeyValue};
 use crux_platform::Platform;
@@ -110,27 +113,35 @@ impl App for CatFacts {
     type Event = Event;
     type ViewModel = ViewModel;
     type Capabilities = CatFactCapabilities;
+    type Effect = Effect;
 
-    fn update(&self, msg: Event, model: &mut Model, caps: &CatFactCapabilities) {
+    fn update(
+        &self,
+        msg: Event,
+        model: &mut Model,
+        caps: &CatFactCapabilities,
+    ) -> Command<Effect, Event> {
         match msg {
             Event::GetPlatform => {
                 self.platform
-                    .update(platform::Event::Get, &mut model.platform, &caps.into())
+                    .update(platform::Event::Get, &mut model.platform, &caps.into());
             }
-            Event::Platform(msg) => self.platform.update(msg, &mut model.platform, &caps.into()),
+            Event::Platform(msg) => {
+                self.platform.update(msg, &mut model.platform, &caps.into());
+            }
             Event::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
-                caps.render.render();
+                return render::render();
             }
             Event::Get => {
                 if let Some(_fact) = &model.cat_fact {
-                    caps.render.render()
+                    return render::render();
                 } else {
-                    self.update(Event::Fetch, model, caps)
+                    return Command::event(Event::Fetch);
                 }
             }
             Event::Fetch => {
@@ -146,7 +157,7 @@ impl App for CatFacts {
                     .expect_json()
                     .send(Event::SetImage);
 
-                caps.render.render();
+                return render::render();
             }
             Event::SetFact(Ok(mut response)) => {
                 model.cat_fact = Some(response.take_body().unwrap());
@@ -159,19 +170,19 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
-                caps.render.render();
+                return render::render();
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
                 // TODO: Display an error
             }
-            Event::CurrentTime(TimeResponse::Now(instant)) => {
+            Event::CurrentTime(TimeResponse::Now { instant }) => {
                 let time: DateTime<Utc> = instant.try_into().unwrap();
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
 
                 let bytes = serde_json::to_vec(&model).unwrap();
                 caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
-                caps.render.render();
+                return render::render();
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
             Event::Restore => {
@@ -180,7 +191,7 @@ impl App for CatFacts {
             Event::SetState(Ok(Some(value))) => {
                 if let Ok(m) = serde_json::from_slice::<Model>(&value) {
                     *model = m;
-                    caps.render.render();
+                    return render::render();
                 };
             }
             Event::SetState(Ok(None)) => {
@@ -190,7 +201,9 @@ impl App for CatFacts {
                 // handle error
             }
             Event::None => {}
-        }
+        };
+
+        Command::done()
     }
 
     fn view(&self, model: &Model) -> ViewModel {
@@ -225,7 +238,7 @@ mod tests {
 
     #[test]
     fn fetch_results_in_set_fact_and_set_image() {
-        let app = AppTester::<CatFacts, _>::default();
+        let app = AppTester::<CatFacts>::default();
         let mut model = Model::default();
 
         // send fetch event to app
@@ -270,7 +283,9 @@ mod tests {
 
         let request = &mut time_events.pop_front().unwrap().expect_time();
 
-        let response = TimeResponse::Now(Instant::new(0, 0).unwrap());
+        let response = TimeResponse::Now {
+            instant: Instant::new(0, 0).unwrap(),
+        };
         let event = app
             .resolve(request, response)
             .expect("should resolve successfully")

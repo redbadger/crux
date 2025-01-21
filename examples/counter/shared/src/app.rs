@@ -1,6 +1,9 @@
 use crate::capabilities::sse::ServerSentEvents;
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
-use crux_core::{render::Render, Command};
+use crux_core::{
+    render::{self, Render},
+    Command,
+};
 use crux_http::Http;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -72,14 +75,14 @@ impl crux_core::App for App {
             }
             Event::Set(Ok(mut response)) => {
                 let count = response.take_body().unwrap();
-                self.update(Event::Update(count), model, caps);
+                return self.update(Event::Update(count), model, caps);
             }
             Event::Set(Err(e)) => {
                 panic!("Oh no something went wrong: {e:?}");
             }
             Event::Update(count) => {
                 model.count = count;
-                caps.render.render();
+                return render::render();
             }
             Event::Increment => {
                 // optimistic update
@@ -87,12 +90,13 @@ impl crux_core::App for App {
                     value: model.count.value + 1,
                     updated_at: None,
                 };
-                caps.render.render();
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/inc").unwrap();
                 caps.http.post(url).expect_json().send(Event::Set);
+
+                return render::render();
             }
             Event::Decrement => {
                 // optimistic update
@@ -100,12 +104,13 @@ impl crux_core::App for App {
                     value: model.count.value - 1,
                     updated_at: None,
                 };
-                caps.render.render();
 
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/dec").unwrap();
                 caps.http.post(url).expect_json().send(Event::Set);
+
+                return render::render();
             }
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
@@ -205,6 +210,7 @@ mod tests {
             &mut model,
         );
 
+        dbg!(&update);
         // check that the app asked the shell to render
         assert_effect!(update, Effect::Render(_));
 

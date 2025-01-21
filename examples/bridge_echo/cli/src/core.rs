@@ -5,7 +5,7 @@ use tracing::debug;
 
 use shared::{App, Effect, Event};
 
-pub type Core = Arc<shared::Core<Effect, App>>;
+pub type Core = Arc<shared::Core<App>>;
 
 pub fn new() -> Core {
     Arc::new(shared::Core::new())

@@ -1,5 +1,8 @@
 // ANCHOR: app
-use crux_core::render::Render;
+use crux_core::{
+    render::{render, Render},
+    Command,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -23,6 +26,7 @@ pub struct ViewModel {
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
+#[allow(unused)]
 pub struct Capabilities {
     render: Render<Event>,
 }
@@ -36,8 +40,14 @@ impl crux_core::App for App {
     type Model = Model;
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
+    type Effect = Effect;
 
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        _caps: &Self::Capabilities,
+    ) -> Command<Effect, Event> {
         match event {
             Event::Tick => model.count += 1,
             Event::NewPeriod => {
@@ -50,7 +60,7 @@ impl crux_core::App for App {
             }
         };
 
-        caps.render.render();
+        render()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -71,7 +81,7 @@ mod test {
 
     #[test]
     fn shows_initial_count() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let model = Model::default();
 
         let actual_view = app.view(&model);
@@ -85,7 +95,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::Tick, &mut model);
@@ -103,7 +113,7 @@ mod test {
 
     #[test]
     fn logs_previous_counts() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::Tick, &mut model);
@@ -124,7 +134,7 @@ mod test {
 
     #[test]
     fn renders_on_tick() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         app.update(Event::Tick, &mut model)
@@ -134,7 +144,7 @@ mod test {
 
     #[test]
     fn renders_on_new_period() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         app.update(Event::NewPeriod, &mut model)

@@ -9,7 +9,7 @@ use yew::{platform::spawn_local, Callback};
 
 use crate::{http, platform, time};
 
-pub type Core = Rc<shared::Core<Effect, CatFacts>>;
+pub type Core = Rc<shared::Core<CatFacts>>;
 
 pub enum Message {
     Event(Event),
@@ -60,7 +60,7 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
 
         Effect::Time(mut request) => {
             let now = Instant::new(time::get() as u64, 0).unwrap();
-            let response = TimeResponse::Now(now);
+            let response = TimeResponse::Now { instant: now };
 
             for effect in core.resolve(&mut request, response) {
                 process_effect(core, effect, callback);

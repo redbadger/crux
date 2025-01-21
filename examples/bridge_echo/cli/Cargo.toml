@@ -12,7 +12,7 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 tokio = { version = "1.38", features = ["full"] }
-crossbeam-channel = "0.5.13"
+crossbeam-channel = "0.5.14"
 shared = { path = "../shared" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

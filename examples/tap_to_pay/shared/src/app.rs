@@ -1,6 +1,9 @@
 mod payment;
 
-use crux_core::render::Render;
+use crux_core::{
+    render::{render, Render},
+    Command,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::delay::Delay;
@@ -37,6 +40,7 @@ pub enum Screen {
 
 #[derive(crux_core::macros::Effect)]
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
+#[allow(unused)]
 pub struct Capabilities {
     render: Render<Event>,
     delay: Delay<Event>,
@@ -50,8 +54,14 @@ impl crux_core::App for App {
     type Model = Model;
     type ViewModel = ViewModel;
     type Capabilities = Capabilities;
+    type Effect = Effect;
 
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Effect, Event> {
         match event {
             Event::SetAmount(amount) => {
                 match &model.payment {
@@ -124,7 +134,7 @@ impl crux_core::App for App {
             }
         };
 
-        caps.render.render();
+        render()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -152,7 +162,7 @@ mod tests {
 
     #[test]
     fn starts_with_new_payment() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let model = Model::default();
 
         let expected = ViewModel {
@@ -165,7 +175,7 @@ mod tests {
 
     #[test]
     fn basic_happy_path_payment_journey() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(1000), &mut model);
@@ -261,7 +271,7 @@ mod tests {
 
     #[test]
     fn does_not_start_payment_of_zero() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(0), &mut model);
