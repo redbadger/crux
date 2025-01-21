@@ -230,7 +230,7 @@ where
 
     /// Pass form data as the request body. The form data needs to be
     /// serializable to name-value pairs.
-    /// 
+    ///
     /// # Mime
     ///
     /// The `content-type` is set to `application/x-www-form-urlencoded`.
@@ -241,7 +241,7 @@ where
     /// form data.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```no_run
     /// # use std::collections::HashMap;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
