@@ -24,6 +24,7 @@
 
 1. [Hello world](./guide/hello_world.md)
 1. [Elm Architecture](./guide/elm_architecture.md)
+1. [Managed Effects](./guide/effects.md)
 1. [Capabilities](./guide/capabilities.md)
    1. [Capability APIs](./guide/capability_apis.md)
 1. [Testing](./guide/testing.md)
@@ -36,3 +37,7 @@
 1. [FFI bridge](./internals/bridge.md)
 1. [The Effect type](./internals/effect.md)
 1. [Type generation](./internals/typegen.md)
+
+# RFCs
+
+1. [Command API](./rfcs/command.md)
