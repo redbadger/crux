@@ -3,9 +3,8 @@
 use crux_core::testing::AppTester;
 
 mod app {
-    use crux_core::render::RenderOperation;
     use crux_core::{macros::Effect, Command};
-    use crux_core::{render, App, Request};
+    use crux_core::{render, App};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -17,13 +16,6 @@ mod app {
     #[allow(dead_code)]
     pub struct Capabilities {
         render: crux_core::render::Render<Event>,
-    }
-
-    // FIXME: Remove after macro derive
-    impl From<Request<RenderOperation>> for Effect {
-        fn from(value: Request<RenderOperation>) -> Self {
-            Self::Render(value)
-        }
     }
 
     #[derive(Default)]

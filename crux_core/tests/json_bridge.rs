@@ -1,6 +1,5 @@
 mod app {
-    use crux_core::render::{self, Render, RenderOperation};
-    use crux_core::Request;
+    use crux_core::render::{self, Render};
     use crux_core::{macros::Effect, Command};
     use serde::{Deserialize, Serialize};
 
@@ -39,13 +38,6 @@ mod app {
     #[allow(dead_code)]
     pub struct Capabilities {
         pub render: Render<Event>,
-    }
-
-    // FIXME: Remove after macro derive
-    impl From<Request<RenderOperation>> for Effect {
-        fn from(value: Request<RenderOperation>) -> Self {
-            Self::Render(value)
-        }
     }
 }
 

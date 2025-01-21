@@ -140,6 +140,11 @@ impl ToTokens for EffectStructReceiver {
                             }
                         }
                     }
+                    impl From<crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>> for #effect_name {
+                        fn from(value: crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>) -> Self {
+                            Self::#variant(value)
+                        }
+                    }
                 });
             }
         }
@@ -240,7 +245,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
         pub enum Effect {
             Render(
@@ -296,7 +301,20 @@ mod tests {
                 }
             }
         }
-        "###);
+        impl From<
+            crux_core::Request<
+                <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+            >,
+        > for Effect {
+            fn from(
+                value: crux_core::Request<
+                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                >,
+            ) -> Self {
+                Self::Render(value)
+            }
+        }
+        "##);
     }
 
     #[test]
@@ -314,7 +332,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
         pub enum Effect {
             Render(
@@ -378,7 +396,20 @@ mod tests {
                 }
             }
         }
-        "###);
+        impl From<
+            crux_core::Request<
+                <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+            >,
+        > for Effect {
+            fn from(
+                value: crux_core::Request<
+                    <Render<Event> as ::crux_core::capability::Capability<Event>>::Operation,
+                >,
+            ) -> Self {
+                Self::Render(value)
+            }
+        }
+        "##);
     }
 
     #[test]
@@ -399,7 +430,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
         pub enum MyEffect {
             Http(
@@ -505,6 +536,23 @@ mod tests {
                 }
             }
         }
+        impl From<
+            crux_core::Request<
+                <crux_http::Http<
+                    MyEvent,
+                > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            >,
+        > for MyEffect {
+            fn from(
+                value: crux_core::Request<
+                    <crux_http::Http<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ) -> Self {
+                Self::Http(value)
+            }
+        }
         impl MyEffect {
             pub fn is_key_value(&self) -> bool {
                 if let MyEffect::KeyValue(_) = self { true } else { false }
@@ -530,6 +578,21 @@ mod tests {
                 } else {
                     panic!("not a {} effect", "key_value")
                 }
+            }
+        }
+        impl From<
+            crux_core::Request<
+                <KeyValue<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            >,
+        > for MyEffect {
+            fn from(
+                value: crux_core::Request<
+                    <KeyValue<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ) -> Self {
+                Self::KeyValue(value)
             }
         }
         impl MyEffect {
@@ -559,6 +622,21 @@ mod tests {
                 }
             }
         }
+        impl From<
+            crux_core::Request<
+                <Platform<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            >,
+        > for MyEffect {
+            fn from(
+                value: crux_core::Request<
+                    <Platform<
+                        MyEvent,
+                    > as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ) -> Self {
+                Self::Platform(value)
+            }
+        }
         impl MyEffect {
             pub fn is_render(&self) -> bool {
                 if let MyEffect::Render(_) = self { true } else { false }
@@ -582,6 +660,19 @@ mod tests {
                 } else {
                     panic!("not a {} effect", "render")
                 }
+            }
+        }
+        impl From<
+            crux_core::Request<
+                <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            >,
+        > for MyEffect {
+            fn from(
+                value: crux_core::Request<
+                    <Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ) -> Self {
+                Self::Render(value)
             }
         }
         impl MyEffect {
@@ -609,7 +700,20 @@ mod tests {
                 }
             }
         }
-        "###);
+        impl From<
+            crux_core::Request<
+                <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+            >,
+        > for MyEffect {
+            fn from(
+                value: crux_core::Request<
+                    <Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation,
+                >,
+            ) -> Self {
+                Self::Time(value)
+            }
+        }
+        "##);
     }
 
     #[test]
