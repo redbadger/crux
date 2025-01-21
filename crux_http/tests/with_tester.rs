@@ -1,6 +1,6 @@
 mod shared {
 
-    use std::{cmp::max, future::IntoFuture};
+    use std::{cmp::max, collections::HashMap, future::IntoFuture};
 
     use crux_core::compose::Compose;
     use crux_core::macros::Effect;
@@ -16,6 +16,7 @@ mod shared {
     pub enum Event {
         Get,
         Post,
+        PostForm,
         GetPostChain,
         ConcurrentGets,
         ComposeComplete(StatusCode),
@@ -55,6 +56,15 @@ mod shared {
                     caps.http
                         .post("http://example.com")
                         .body_bytes("The Body".as_bytes())
+                        .expect_string()
+                        .send(Event::Set);
+                }
+                Event::PostForm => {
+                    let form = HashMap::from([("key", "value")]);
+                    caps.http
+                        .post("http://example.com")
+                        .body_form(&form)
+                        .expect("could not serialize form data")
                         .expect_string()
                         .send(Event::Set);
                 }
@@ -209,6 +219,37 @@ mod tests {
 
         assert_matches!(actual, Event::Set(Ok(response)) => {
             assert_eq!(response.body().unwrap(), "\"The Body\"");
+        });
+    }
+
+    #[test]
+    fn post_form() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        let request = &mut app
+            .update(Event::PostForm, &mut model)
+            .expect_one_effect()
+            .expect_http();
+
+        assert_eq!(
+            request.operation,
+            HttpRequest::post("http://example.com/")
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body("key=value")
+                .build()
+        );
+
+        let actual = app
+            .resolve(
+                request,
+                HttpResult::Ok(HttpResponse::ok().json("key=value").build()),
+            )
+            .expect("Resolves successfully")
+            .expect_one_event();
+
+        assert_matches!(actual, Event::Set(Ok(response)) => {
+            assert_eq!(response.body().unwrap(), "\"key=value\"");
         });
     }
 

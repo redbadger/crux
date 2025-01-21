@@ -228,6 +228,40 @@ where
         self.body(Body::from(bytes.as_ref()))
     }
 
+    /// Pass form data as the request body. The form data needs to be
+    /// serializable to name-value pairs.
+    ///
+    /// # Mime
+    ///
+    /// The `content-type` is set to `application/x-www-form-urlencoded`.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if the provided data cannot be serialized to
+    /// form data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use std::collections::HashMap;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # fn update(caps: &Capabilities) {
+    /// let form_data = HashMap::from([
+    ///     ("name", "Alice"),
+    ///     ("location", "UK"),
+    /// ]);
+    /// caps.http
+    ///     .post("https://httpbin.org/post")
+    ///     .body_form(&form_data)
+    ///     .expect("could not serialize body")
+    ///     .send(Event::ReceiveResponse)
+    /// # }
+    /// ```
+    pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
+        Ok(self.body(Body::from_form(form)?))
+    }
+
     /// Set the URL querystring.
     ///
     /// # Examples
