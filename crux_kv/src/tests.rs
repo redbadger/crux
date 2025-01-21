@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crux_core::{macros::Effect, render::Render, testing::AppTester};
+use crux_core::{macros::Effect, render::Render, testing::AppTester, Command};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -44,8 +44,14 @@ impl crux_core::App for App {
     type ViewModel = ViewModel;
 
     type Capabilities = Capabilities;
+    type Effect = Effect;
 
-    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+    fn update(
+        &self,
+        event: Event,
+        model: &mut Model,
+        caps: &Capabilities,
+    ) -> Command<Effect, Event> {
         let key = "test".to_string();
         match event {
             Event::Get => caps.key_value.get(key, Event::GetResponse),
@@ -115,6 +121,8 @@ impl crux_core::App for App {
                 panic!("Error: {:?}", error);
             }
         }
+
+        Command::done()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {

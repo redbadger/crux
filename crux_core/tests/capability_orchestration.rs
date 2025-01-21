@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::macros::Effect;
+    use crux_core::{macros::Effect, Command};
     use futures::future::join;
     use serde::Serialize;
 
@@ -30,8 +30,14 @@ mod app {
         type Model = Model;
         type ViewModel = Model;
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+        fn update(
+            &self,
+            event: Self::Event,
+            model: &mut Self::Model,
+            caps: &Self::Capabilities,
+        ) -> Command<Effect, Event> {
             match event {
                 Event::Trigger => caps.compose.spawn(|context| {
                     let one = caps.one.clone();
@@ -48,6 +54,8 @@ mod app {
                     model.total = one + two;
                 }
             }
+
+            Command::done()
         }
 
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {

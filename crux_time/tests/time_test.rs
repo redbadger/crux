@@ -1,8 +1,8 @@
 #[cfg(feature = "chrono")]
 mod shared {
     use chrono::{DateTime, Utc};
-    use crux_core::macros::Effect;
     use crux_core::render::Render;
+    use crux_core::{macros::Effect, Command};
     use crux_time::{Time, TimeResponse, TimerId};
     use serde::{Deserialize, Serialize};
 
@@ -54,8 +54,14 @@ mod shared {
         type Model = Model;
         type ViewModel = ViewModel;
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(
+            &self,
+            event: Event,
+            model: &mut Model,
+            caps: &Capabilities,
+        ) -> Command<Effect, Event> {
             match event {
                 Event::Get => caps.time.now(Event::Set),
                 Event::GetAsync => caps.compose.spawn(|ctx| {
@@ -101,6 +107,8 @@ mod shared {
                     caps.time.clear(timer_id);
                 }
             }
+
+            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {

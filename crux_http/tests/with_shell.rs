@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::macros::Effect;
     use crux_core::render::Render;
+    use crux_core::{macros::Effect, Command};
     use crux_http::Http;
     use serde::{Deserialize, Serialize};
 
@@ -37,8 +37,14 @@ mod shared {
         type ViewModel = ViewModel;
 
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(
+            &self,
+            event: Event,
+            model: &mut Model,
+            caps: &Capabilities,
+        ) -> Command<Effect, Event> {
             match event {
                 Event::Get => {
                     caps.http.get("http://example.com").send(Event::Set);
@@ -60,6 +66,8 @@ mod shared {
                     caps.render.render()
                 }
             }
+
+            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {

@@ -3,8 +3,8 @@
 use crux_core::testing::AppTester;
 
 mod app {
-    use crux_core::macros::Effect;
     use crux_core::App;
+    use crux_core::{macros::Effect, Command};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -25,9 +25,17 @@ mod app {
         type Model = String;
         type ViewModel = String;
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, _event: Self::Event, _model: &mut Self::Model, caps: &Self::Capabilities) {
-            caps.render.render()
+        fn update(
+            &self,
+            _event: Self::Event,
+            _model: &mut Self::Model,
+            caps: &Self::Capabilities,
+        ) -> Command<Effect, Event> {
+            caps.render.render();
+
+            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {

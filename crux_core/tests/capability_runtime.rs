@@ -152,8 +152,8 @@ mod capability {
 }
 
 mod app {
-    use crux_core::macros::Effect;
     use crux_core::App;
+    use crux_core::{macros::Effect, Command};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -178,8 +178,14 @@ mod app {
         type Model = Vec<usize>;
         type ViewModel = Vec<usize>;
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+        fn update(
+            &self,
+            event: Self::Event,
+            model: &mut Self::Model,
+            caps: &Self::Capabilities,
+        ) -> Command<Effect, Event> {
             match event {
                 Event::Fetch => caps.crawler.fetch_tree(0, Event::Done),
                 Event::Pause => caps.crawler.pause(),
@@ -189,6 +195,8 @@ mod app {
                     caps.render.render();
                 }
             }
+
+            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
