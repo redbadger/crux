@@ -49,7 +49,9 @@ use executor::{AbortHandle, Task, TaskId};
 use futures::task::AtomicWaker;
 use futures::{FutureExt as _, Stream, StreamExt as _};
 use slab::Slab;
-use stream::{CommandOutput, CommandStreamExt as _};
+use stream::CommandStreamExt as _;
+
+pub use stream::CommandOutput;
 
 use crate::capability::Operation;
 use crate::Request;

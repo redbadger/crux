@@ -10,6 +10,7 @@
 //!
 //! ```rust
 //!# use url::Url;
+//!# use crux_core::Command;
 //!# const API_URL: &str = "";
 //!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
 //!# #[derive(crux_core::macros::Effect)]
@@ -25,7 +26,8 @@
 //!#     type Model = Model;
 //!#     type ViewModel = ();
 //!#     type Capabilities = Capabilities;
-//! fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+//!#     type Effect = Effect;
+//! fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) -> Command<Effect, Event> {
 //!     match event {
 //!         //...
 //!         Event::Increment => {
@@ -38,6 +40,7 @@
 //!         }
 //!         Event::Set(_) => todo!(),
 //!     }
+//!     Command::done()
 //! }
 //!# fn view(&self, model: &Self::Model) {
 //!#     unimplemented!()
@@ -58,7 +61,7 @@
 //!
 //! // An app module which can be reused in different apps
 //! mod my_app {
-//!     use crux_core::{capability::CapabilityContext, App, render::Render};
+//!     use crux_core::{capability::CapabilityContext, App, render::{self, Render, RenderOperation}, Command, Request};
 //!     use crux_core::macros::Effect;
 //!     use serde::{Serialize, Deserialize};
 //!
@@ -80,9 +83,10 @@
 //!         type Event = Event;
 //!         type ViewModel = ();
 //!         type Capabilities = Capabilities;
+//!         type Effect = Effect;
 //!
-//!         fn update(&self, event: Event, model: &mut (), caps: &Capabilities) {
-//!             caps.render.render();
+//!         fn update(&self, event: Event, model: &mut (), caps: &Capabilities) -> Command<Effect, Event> {
+//!             render::render()
 //!         }
 //!
 //!         fn view(&self, model: &()) {
@@ -192,14 +196,14 @@ mod executor;
 mod shell_request;
 mod shell_stream;
 
-use futures::Future;
+use futures::{Future, Stream, StreamExt as _};
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
 pub(crate) use channel::channel;
 pub(crate) use executor::{executor_and_spawner, QueuingExecutor};
 
-use crate::Request;
+use crate::{command::CommandOutput, Command, Request};
 use channel::Sender;
 
 /// Operation trait links together input and output of a side-effect.
@@ -333,7 +337,8 @@ pub trait Capability<Ev> {
 /// #     type Model = ();
 /// #     type ViewModel = ();
 /// #     type Capabilities = Capabilities;
-/// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) {
+/// #     type Effect = Effect;
+/// #     fn update(&self, _event: Self::Event, _model: &mut Self::Model, _caps: &Self::Capabilities) -> crux_core::Command<Effect, Event> {
 /// #         unimplemented!()
 /// #     }
 /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -423,6 +428,49 @@ pub struct ProtoContext<Eff, Event> {
     shell_channel: Sender<Eff>,
     app_channel: Sender<Event>,
     spawner: executor::Spawner,
+}
+
+impl<Eff, Event> Clone for ProtoContext<Eff, Event> {
+    fn clone(&self) -> Self {
+        Self {
+            shell_channel: self.shell_channel.clone(),
+            app_channel: self.app_channel.clone(),
+            spawner: self.spawner.clone(),
+        }
+    }
+}
+
+// CommandSpawner is a temporary bridge between the channel type used by the Command and the channel type
+// used by the core. Once the old capability support is removed, we should be able to remove this in favour
+// of the Command's ability to be hosted on a pair of channels
+pub(crate) struct CommandSpawner<Effect, Event> {
+    context: ProtoContext<Effect, Event>,
+}
+
+impl<Effect, Event> CommandSpawner<Effect, Event> {
+    pub(crate) fn new(context: ProtoContext<Effect, Event>) -> Self {
+        Self { context }
+    }
+
+    pub(crate) fn spawn(&self, mut command: Command<Effect, Event>)
+    where
+        Command<Effect, Event>: Stream<Item = CommandOutput<Effect, Event>>,
+        Effect: Unpin + Send + 'static,
+        Event: Unpin + Send + 'static,
+    {
+        self.context.spawner.spawn({
+            let context = self.context.clone();
+
+            async move {
+                while let Some(output) = command.next().await {
+                    match output {
+                        CommandOutput::Effect(effect) => context.shell_channel.send(effect),
+                        CommandOutput::Event(event) => context.app_channel.send(event),
+                    }
+                }
+            }
+        });
+    }
 }
 
 impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
@@ -528,7 +576,7 @@ where
     /// In a typical case you would implement `From` on the submodule's `Capabilities` type
     ///
     /// ```rust
-    /// # use crux_core::Capability;
+    /// # use crux_core::{Capability, Command};
     /// # #[derive(Default)]
     /// # struct App;
     /// # pub enum Event {
@@ -544,12 +592,13 @@ where
     /// #     type Model = ();
     /// #     type ViewModel = ();
     /// #     type Capabilities = Capabilities;
+    /// #     type Effect = Effect;
     /// #     fn update(
     /// #         &self,
     /// #         _event: Self::Event,
     /// #         _model: &mut Self::Model,
     /// #         _caps: &Self::Capabilities,
-    /// #     ) {
+    /// #     ) -> Command<Effect, Event> {
     /// #         unimplemented!()
     /// #     }
     /// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -578,12 +627,13 @@ where
     /// #         type Model = ();
     /// #         type ViewModel = ();
     /// #         type Capabilities = Capabilities;
+    /// #         type Effect = Effect;
     /// #         fn update(
     /// #             &self,
     /// #             _event: Self::Event,
     /// #             _model: &mut Self::Model,
     /// #             _caps: &Self::Capabilities,
-    /// #         ) {
+    /// #         ) -> crux_core::Command<Effect, Event> {
     /// #             unimplemented!()
     /// #         }
     /// #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     capability::{CapabilityContext, Operation},
-    Capability,
+    Capability, Command, Request,
 };
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
@@ -65,4 +65,13 @@ impl<Ev> Capability<Ev> for Render<Ev> {
     {
         Render::new(self.context.map_event(f))
     }
+}
+
+/// Signal the shell that UI should be redrawn. Returns a `Command`.
+pub fn render<Effect, Event>() -> Command<Effect, Event>
+where
+    Effect: From<Request<RenderOperation>> + Send + 'static,
+    Event: Send + 'static,
+{
+    Command::notify_shell(RenderOperation)
 }

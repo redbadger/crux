@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::macros::Effect;
-    use crux_core::render::Render;
+    use crux_core::render::{self, Render};
+    use crux_core::{macros::Effect, Command};
     use crux_http::Http;
     use serde::{Deserialize, Serialize};
 
@@ -37,8 +37,14 @@ mod shared {
         type ViewModel = ViewModel;
 
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(
+            &self,
+            event: Event,
+            model: &mut Model,
+            caps: &Capabilities,
+        ) -> Command<Effect, Event> {
             match event {
                 Event::Get => {
                     caps.http.get("http://example.com").send(Event::Set);
@@ -53,13 +59,17 @@ mod shared {
                     let mut response = response.unwrap();
                     model.status = response.status().into();
                     model.body = response.take_body().unwrap();
-                    caps.render.render()
+
+                    return render::render();
                 }
                 Event::SetJson(response) => {
                     model.json_body = response.unwrap().take_body().unwrap();
-                    caps.render.render()
+
+                    return render::render();
                 }
             }
+
+            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -75,6 +85,7 @@ mod shared {
     }
 
     #[derive(Effect)]
+    #[allow(dead_code)]
     pub(crate) struct Capabilities {
         pub http: Http<Event>,
         pub render: Render<Event>,
@@ -93,7 +104,7 @@ mod shell {
         Effect(Effect),
     }
 
-    pub(crate) fn run(core: &Core<Effect, App>, event: Event) -> Result<Vec<HttpRequest>> {
+    pub(crate) fn run(core: &Core<App>, event: Event) -> Result<Vec<HttpRequest>> {
         let mut queue: VecDeque<Task> = VecDeque::new();
 
         queue.push_back(Task::Event(event));
@@ -134,7 +145,7 @@ mod shell {
 
 mod tests {
     use crate::{
-        shared::{App, Effect, Event},
+        shared::{App, Event},
         shell::run,
     };
     use anyhow::Result;
@@ -143,7 +154,7 @@ mod tests {
 
     #[test]
     pub fn test_http() -> Result<()> {
-        let core: Core<Effect, App> = Core::default();
+        let core: Core<App> = Core::default();
 
         let received = run(&core, Event::Get)?;
 
@@ -161,7 +172,7 @@ mod tests {
 
     #[test]
     pub fn test_http_json() -> Result<()> {
-        let core: Core<Effect, App> = Core::default();
+        let core: Core<App> = Core::default();
 
         let received = run(&core, Event::GetJson)?;
 

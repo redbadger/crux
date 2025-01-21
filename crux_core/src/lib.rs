@@ -40,7 +40,7 @@
 //!
 //! ```rust
 //!// src/app.rs
-//!use crux_core::{render::Render, App, macros::Effect};
+//!use crux_core::{render::{self, Render}, App, macros::Effect, Command};
 //!use serde::{Deserialize, Serialize};
 //!
 //!// Model describing the application state
@@ -76,8 +76,10 @@
 //!    type ViewModel = String;
 //!    // Use the above Capabilities
 //!    type Capabilities = Capabilities;
+//!    // Use the above generated Effect
+//!    type Effect = Effect;
 //!
-//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Effect, Event> {
 //!        match event {
 //!            Event::Increment => model.count += 1,
 //!            Event::Decrement => model.count -= 1,
@@ -85,7 +87,7 @@
 //!        };
 //!
 //!        // Request a UI update
-//!        caps.render.render()
+//!        render::render()
 //!    }
 //!
 //!    fn view(&self, model: &Model) -> Self::ViewModel {
@@ -173,7 +175,7 @@ pub use crux_macros as macros;
 /// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
 pub trait App: Default {
     /// Event, typically an `enum`, defines the actions that can be taken to update the application state.
-    type Event: Send + 'static;
+    type Event: Unpin + Send + 'static;
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// ViewModel, typically a `struct` describes the user interface that should be
@@ -182,17 +184,30 @@ pub trait App: Default {
     /// Capabilities, typically a `struct`, lists the capabilities used by this application
     /// Typically, Capabilities should contain at least an instance of the built-in [`Render`](crate::render::Render) capability.
     type Capabilities;
+    /// Effect, the enum carrying effect requests created by capabilities.
+    /// Normally this type is derived from `Capabilities` using the `crux_macros::Effect` derive macro
+    type Effect: Effect + Unpin;
 
     /// Update method defines the transition from one `model` state to another in response to an `event`.
     ///
-    /// Update function can mutate the `model` and use the capabilities provided by the `caps` argument
+    /// `update` may mutate the `model` and returns a [`Command`](crate::command::Command) describing
+    /// the managed side-effects to perform as a result of the `event`. Commands can be constructed by capabilities
+    /// and combined to run sequentially or concurrently. If migrating from previous version of crux, you
+    /// can return `Command::done()` for compatibility.
+    ///
+    /// For backwards compatibility, `update` may also use the capabilities provided by the `caps` argument
     /// to instruct the shell to perform side-effects. The side-effects will run concurrently (capability
-    /// calls behave the same as go routines in Go or Promises in JavaScript). Capability calls
-    /// don't return anything, but may take a `callback` event which should be dispatched when the
-    /// effect completes.
+    /// calls behave the same as go routines in Go or Promises in JavaScript) with each other and any
+    /// effects captured by the returned `Command`. Capability calls don't return anything, but may
+    /// take a `callback` event which should be dispatched when the effect completes.
     ///
     /// Typically, `update` should call at least [`Render::render`](crate::render::Render::render).
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities);
+    fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        caps: &Self::Capabilities,
+    ) -> Command<Self::Effect, Self::Event>;
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;

@@ -1,6 +1,6 @@
 mod shared {
-    use crux_core::macros::Effect;
     use crux_core::render::Render;
+    use crux_core::{macros::Effect, Command};
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
 
@@ -28,8 +28,14 @@ mod shared {
         type Model = Model;
         type ViewModel = ViewModel;
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(
+            &self,
+            event: Event,
+            model: &mut Model,
+            caps: &Capabilities,
+        ) -> Command<Effect, Event> {
             match event {
                 Event::PlatformGet => caps.platform.get(Event::PlatformSet),
                 Event::PlatformSet(platform) => {
@@ -37,6 +43,8 @@ mod shared {
                     caps.render.render()
                 }
             }
+
+            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -68,7 +76,7 @@ mod shell {
         Response(Outcome),
     }
 
-    pub fn run(core: &Core<Effect, App>) {
+    pub fn run(core: &Core<App>) {
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Event(Event::PlatformGet));
@@ -98,15 +106,12 @@ mod shell {
 }
 
 mod tests {
-    use crate::{
-        shared::{App, Effect},
-        shell::run,
-    };
+    use crate::{shared::App, shell::run};
     use crux_core::Core;
 
     #[test]
     pub fn test_platform() {
-        let core: Core<Effect, App> = Core::default();
+        let core: Core<App> = Core::default();
 
         run(&core);
 

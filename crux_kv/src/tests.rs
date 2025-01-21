@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crux_core::{macros::Effect, render::Render, testing::AppTester};
+use crux_core::{macros::Effect, render::Render, testing::AppTester, Command};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -44,8 +44,14 @@ impl crux_core::App for App {
     type ViewModel = ViewModel;
 
     type Capabilities = Capabilities;
+    type Effect = Effect;
 
-    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+    fn update(
+        &self,
+        event: Event,
+        model: &mut Model,
+        caps: &Capabilities,
+    ) -> Command<Effect, Event> {
         let key = "test".to_string();
         match event {
             Event::Get => caps.key_value.get(key, Event::GetResponse),
@@ -115,6 +121,8 @@ impl crux_core::App for App {
                 panic!("Error: {:?}", error);
             }
         }
+
+        Command::done()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -134,7 +142,7 @@ pub struct Capabilities {
 
 #[test]
 fn test_get() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -164,7 +172,7 @@ fn test_get() {
 
 #[test]
 fn test_set() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -195,7 +203,7 @@ fn test_set() {
 
 #[test]
 fn test_delete() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -225,7 +233,7 @@ fn test_delete() {
 
 #[test]
 fn test_exists() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -253,7 +261,7 @@ fn test_exists() {
 
 #[test]
 fn test_list_keys() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -286,7 +294,7 @@ fn test_list_keys() {
 
 #[test]
 pub fn test_kv_async() -> Result<()> {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app

@@ -4,7 +4,8 @@ use std::{collections::VecDeque, sync::Arc};
 
 use crate::{
     capability::{
-        channel::Receiver, executor_and_spawner, Operation, ProtoContext, QueuingExecutor,
+        channel::Receiver, executor_and_spawner, CommandSpawner, Operation, ProtoContext,
+        QueuingExecutor,
     },
     Request, WithContext,
 };
@@ -20,13 +21,14 @@ use crate::{
 /// ```rust,ignore
 /// let app = AppTester::<ExampleApp, ExampleEffect>::default();
 /// ```
-pub struct AppTester<App, Ef>
+pub struct AppTester<App>
 where
     App: crate::App,
 {
     app: App,
     capabilities: App::Capabilities,
-    context: Arc<AppContext<Ef, App::Event>>,
+    context: Arc<AppContext<App::Effect, App::Event>>,
+    command_spawner: CommandSpawner<App::Effect, App::Event>,
 }
 
 struct AppContext<Ef, Ev> {
@@ -35,7 +37,7 @@ struct AppContext<Ef, Ev> {
     executor: QueuingExecutor,
 }
 
-impl<App, Ef> AppTester<App, Ef>
+impl<App> AppTester<App>
 where
     App: crate::App,
 {
@@ -44,8 +46,7 @@ where
     /// configuration from the parent
     pub fn new(app: App) -> Self
     where
-        Ef: Send + 'static,
-        App::Capabilities: WithContext<App::Event, Ef>,
+        App::Capabilities: WithContext<App::Event, App::Effect>,
     {
         Self {
             app,
@@ -57,8 +58,14 @@ where
     ///
     /// You can use the resulting [`Update`] to inspect the effects which were requested
     /// and potential further events dispatched by capabilities.
-    pub fn update(&self, event: App::Event, model: &mut App::Model) -> Update<Ef, App::Event> {
-        self.app.update(event, model, &self.capabilities);
+    pub fn update(
+        &self,
+        event: App::Event,
+        model: &mut App::Model,
+    ) -> Update<App::Effect, App::Event> {
+        let command = self.app.update(event, model, &self.capabilities);
+        self.command_spawner.spawn(command);
+
         self.context.updates()
     }
 
@@ -70,7 +77,7 @@ where
         &self,
         request: &mut Request<Op>,
         value: Op::Output,
-    ) -> Result<Update<Ef, App::Event>> {
+    ) -> Result<Update<App::Effect, App::Event>> {
         request.resolve(value)?;
 
         Ok(self.context.updates())
@@ -85,7 +92,7 @@ where
         request: &mut Request<Op>,
         value: Op::Output,
         model: &mut App::Model,
-    ) -> Update<Ef, App::Event> {
+    ) -> Update<App::Effect, App::Event> {
         request.resolve(value).expect("failed to resolve request");
         let event = self.context.updates().expect_one_event();
         self.update(event, model)
@@ -97,17 +104,17 @@ where
     }
 }
 
-impl<App, Ef> Default for AppTester<App, Ef>
+impl<App> Default for AppTester<App>
 where
     App: crate::App,
-    App::Capabilities: WithContext<App::Event, Ef>,
-    Ef: Send + 'static,
+    App::Capabilities: WithContext<App::Event, App::Effect>,
 {
     fn default() -> Self {
         let (command_sender, commands) = crate::capability::channel();
         let (event_sender, events) = crate::capability::channel();
         let (executor, spawner) = executor_and_spawner();
         let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
+        let command_spawner = CommandSpawner::new(capability_context.clone());
 
         Self {
             app: App::default(),
@@ -117,11 +124,12 @@ where
                 events,
                 executor,
             }),
+            command_spawner,
         }
     }
 }
 
-impl<App, Ef> AsRef<App::Capabilities> for AppTester<App, Ef>
+impl<App> AsRef<App::Capabilities> for AppTester<App>
 where
     App: crate::App,
 {

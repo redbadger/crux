@@ -237,7 +237,7 @@ I suspect there are ways around this by storing some `Arc<Mutex<T>>`s in the mod
 ## Open questions and other considerations
 
 * I have not fully formed a migration plan yet - it should be possible for the two APIs to coexist for a few versions while people move over
-* The command API expects the `Effect` type to implement `From<Request<Op>>` for any capability Operations it is used with. We should probably allow these trivial implementations to be macro derived
+* The command API expects the `Effect` type to implement `From<Request<Op>>` for any capability Operations it is used with.
 * I have not fully thought about back-pressure in the Commands (for events, effects and spawned tasks) even to the level of "is any needed?"
 * I am not super sure about my implementation of task cancellation using atomics, because they break my head. Help.
 

@@ -2,8 +2,8 @@ mod shared {
 
     use std::{cmp::max, collections::HashMap, future::IntoFuture};
 
-    use crux_core::compose::Compose;
     use crux_core::macros::Effect;
+    use crux_core::{compose::Compose, Command};
     use crux_http::Http;
     use futures_util::join;
     use http_types::StatusCode;
@@ -42,8 +42,14 @@ mod shared {
         type ViewModel = ViewModel;
 
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) {
+        fn update(
+            &self,
+            event: Event,
+            model: &mut Model,
+            caps: &Capabilities,
+        ) -> Command<Effect, Event> {
             match event {
                 Event::Get => {
                     caps.http
@@ -124,6 +130,8 @@ mod shared {
                 }
                 Event::Set(Err(_)) => {}
             }
+
+            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -150,7 +158,7 @@ mod tests {
 
     #[test]
     fn get() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -193,7 +201,7 @@ mod tests {
 
     #[test]
     fn post() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -224,7 +232,7 @@ mod tests {
 
     #[test]
     fn post_form() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -255,7 +263,7 @@ mod tests {
 
     #[test]
     fn get_post_chain() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -294,7 +302,7 @@ mod tests {
 
     #[test]
     fn concurrent_gets() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let mut requests = app
@@ -342,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_shell_error() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app

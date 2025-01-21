@@ -1,6 +1,6 @@
 mod app {
-    use crux_core::macros::Effect;
-    use crux_core::render::Render;
+    use crux_core::render::{self, Render};
+    use crux_core::{macros::Effect, Command};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -18,9 +18,15 @@ mod app {
         type Model = ();
         type ViewModel = ViewModel;
         type Capabilities = Capabilities;
+        type Effect = Effect;
 
-        fn update(&self, _event: Event, _model: &mut Self::Model, caps: &Capabilities) {
-            caps.render.render();
+        fn update(
+            &self,
+            _event: Event,
+            _model: &mut Self::Model,
+            _caps: &Capabilities,
+        ) -> Command<Effect, Event> {
+            render::render()
         }
 
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -29,6 +35,7 @@ mod app {
     }
 
     #[derive(Effect)]
+    #[allow(dead_code)]
     pub struct Capabilities {
         pub render: Render<Event>,
     }
@@ -37,9 +44,9 @@ mod app {
 mod core {
     use crux_core::bridge::BridgeWithSerializer;
 
-    use crate::app::{App, Effect};
+    use crate::app::App;
 
-    pub type Bridge = BridgeWithSerializer<Effect, App>;
+    pub type Bridge = BridgeWithSerializer<App>;
 }
 
 mod tests {
