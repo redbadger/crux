@@ -1,5 +1,5 @@
 mod shared {
-    use crux_core::render::Render;
+    use crux_core::render::{self, Render};
     use crux_core::{macros::Effect, Command};
     use crux_http::Http;
     use serde::{Deserialize, Serialize};
@@ -59,11 +59,13 @@ mod shared {
                     let mut response = response.unwrap();
                     model.status = response.status().into();
                     model.body = response.take_body().unwrap();
-                    caps.render.render()
+
+                    return render::render();
                 }
                 Event::SetJson(response) => {
                     model.json_body = response.unwrap().take_body().unwrap();
-                    caps.render.render()
+
+                    return render::render();
                 }
             }
 
@@ -83,6 +85,7 @@ mod shared {
     }
 
     #[derive(Effect)]
+    #[allow(dead_code)]
     pub(crate) struct Capabilities {
         pub http: Http<Event>,
         pub render: Render<Event>,
