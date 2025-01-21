@@ -10,6 +10,7 @@ pub use resolve::ResolveError;
 
 pub(crate) use resolve::Resolve;
 
+use crate::capability::CommandSpawner;
 use crate::capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor};
 use crate::{App, WithContext};
 
@@ -23,7 +24,7 @@ use crate::{App, WithContext};
 /// in the request and the corresponding capability output type.
 // used in docs/internals/runtime.md
 // ANCHOR: core
-pub struct Core<Ef, A>
+pub struct Core<A>
 where
     A: App,
 {
@@ -38,15 +39,17 @@ where
     app: A,
 
     // internals
-    requests: Receiver<Ef>,
+    requests: Receiver<A::Effect>,
     capability_events: Receiver<A::Event>,
     executor: QueuingExecutor,
+
+    // temporary command support
+    command_spawner: CommandSpawner<A::Effect, A::Event>,
 }
 // ANCHOR_END: core
 
-impl<Ef, A> Core<Ef, A>
+impl<A> Core<A>
 where
-    Ef: Effect,
     A: App,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
@@ -57,20 +60,22 @@ where
     ///
     pub fn new() -> Self
     where
-        A::Capabilities: WithContext<A::Event, Ef>,
+        A::Capabilities: WithContext<A::Event, A::Effect>,
     {
         let (request_sender, request_receiver) = capability::channel();
         let (event_sender, event_receiver) = capability::channel();
         let (executor, spawner) = capability::executor_and_spawner();
-        let capability_context = ProtoContext::new(request_sender, event_sender, spawner);
+        let proto_context = ProtoContext::new(request_sender, event_sender, spawner);
+        let command_spawner = CommandSpawner::new(proto_context.clone());
 
         Self {
             model: Default::default(),
             executor,
             app: Default::default(),
-            capabilities: <<A as App>::Capabilities>::new_with_context(capability_context),
+            capabilities: <<A as App>::Capabilities>::new_with_context(proto_context),
             requests: request_receiver,
             capability_events: event_receiver,
+            command_spawner,
         }
     }
 
@@ -78,14 +83,15 @@ where
     /// effect requests.
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
-    pub fn process_event(&self, event: A::Event) -> Vec<Ef> {
+    pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        self.app.update(event, &mut model, &self.capabilities);
+        let command = self.app.update(event, &mut model, &self.capabilities);
 
         // drop the model here, we don't want to hold the lock for the process() call
         drop(model);
 
+        self.command_spawner.spawn(command);
         self.process()
     }
     // ANCHOR_END: process_event
@@ -98,7 +104,7 @@ where
     // used in docs/internals/runtime.md and docs/internals/bridge.md
     // ANCHOR: resolve
     // ANCHOR: resolve_sig
-    pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<Ef>
+    pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<A::Effect>
     where
         Op: Operation,
         // ANCHOR_END: resolve_sig
@@ -112,14 +118,18 @@ where
 
     // used in docs/internals/runtime.md
     // ANCHOR: process
-    pub(crate) fn process(&self) -> Vec<Ef> {
+    pub(crate) fn process(&self) -> Vec<A::Effect> {
         self.executor.run_all();
 
         while let Some(capability_event) = self.capability_events.receive() {
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            self.app
+            let command = self
+                .app
                 .update(capability_event, &mut model, &self.capabilities);
+
             drop(model);
+
+            self.command_spawner.spawn(command);
             self.executor.run_all();
         }
 
@@ -135,11 +145,10 @@ where
     }
 }
 
-impl<Ef, A> Default for Core<Ef, A>
+impl<A> Default for Core<A>
 where
-    Ef: Effect,
     A: App,
-    A::Capabilities: WithContext<A::Event, Ef>,
+    A::Capabilities: WithContext<A::Event, A::Effect>,
 {
     fn default() -> Self {
         Self::new()

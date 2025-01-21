@@ -173,7 +173,7 @@ pub use crux_macros as macros;
 /// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
 pub trait App: Default {
     /// Event, typically an `enum`, defines the actions that can be taken to update the application state.
-    type Event: Send + 'static;
+    type Event: Unpin + Send + 'static;
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// ViewModel, typically a `struct` describes the user interface that should be
@@ -184,7 +184,7 @@ pub trait App: Default {
     type Capabilities;
     /// Effect, the enum carrying effect requests created by capabilities.
     /// Normally this type is derived from `Capabilities` using the `crux_macros::Effect` derive macro
-    type Effect;
+    type Effect: Effect + Unpin;
 
     /// Update method defines the transition from one `model` state to another in response to an `event`.
     ///

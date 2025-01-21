@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn fetches_a_tree() {
-        let core: Core<Effect, MyApp> = Core::new();
+        let core: Core<MyApp> = Core::new();
 
         let mut effects: VecDeque<Effect> = core.process_event(Event::Fetch).into();
 
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn doesnt_crash_when_core_is_dropped() {
-        let core: Core<Effect, MyApp> = Core::new();
+        let core: Core<MyApp> = Core::new();
 
         // Spawns the task
         core.process_event(Event::Fetch);

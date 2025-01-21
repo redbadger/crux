@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn get() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn post() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn post_form() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn get_post_chain() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn concurrent_gets() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let mut requests = app
@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_shell_error() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app

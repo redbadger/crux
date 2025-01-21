@@ -101,7 +101,7 @@ mod shell {
         Effect(Effect),
     }
 
-    pub(crate) fn run(core: &Core<Effect, App>, event: Event) -> Result<Vec<HttpRequest>> {
+    pub(crate) fn run(core: &Core<App>, event: Event) -> Result<Vec<HttpRequest>> {
         let mut queue: VecDeque<Task> = VecDeque::new();
 
         queue.push_back(Task::Event(event));
@@ -142,7 +142,7 @@ mod shell {
 
 mod tests {
     use crate::{
-        shared::{App, Effect, Event},
+        shared::{App, Event},
         shell::run,
     };
     use anyhow::Result;
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     pub fn test_http() -> Result<()> {
-        let core: Core<Effect, App> = Core::default();
+        let core: Core<App> = Core::default();
 
         let received = run(&core, Event::Get)?;
 
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     pub fn test_http_json() -> Result<()> {
-        let core: Core<Effect, App> = Core::default();
+        let core: Core<App> = Core::default();
 
         let received = run(&core, Event::GetJson)?;
 

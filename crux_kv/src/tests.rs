@@ -142,7 +142,7 @@ pub struct Capabilities {
 
 #[test]
 fn test_get() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -172,7 +172,7 @@ fn test_get() {
 
 #[test]
 fn test_set() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -203,7 +203,7 @@ fn test_set() {
 
 #[test]
 fn test_delete() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -233,7 +233,7 @@ fn test_delete() {
 
 #[test]
 fn test_exists() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -261,7 +261,7 @@ fn test_exists() {
 
 #[test]
 fn test_list_keys() {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app
@@ -294,7 +294,7 @@ fn test_list_keys() {
 
 #[test]
 pub fn test_kv_async() -> Result<()> {
-    let app = AppTester::<App, _>::default();
+    let app = AppTester::<App>::default();
     let mut model = Model::default();
 
     let request = &mut app

@@ -5,7 +5,6 @@ use bincode::{DefaultOptions, Options};
 use erased_serde::Serialize as _;
 use serde::{Deserialize, Serialize};
 
-use crate::Effect;
 use crate::{App, Core};
 use registry::{EffectId, ResolveRegistry};
 // ResolveByte is public to be accessible from crux_macros
@@ -29,21 +28,19 @@ where
 
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
 /// serialized form, using bincode as the serialization format.
-pub struct Bridge<Eff, A>
+pub struct Bridge<A>
 where
-    Eff: Effect,
     A: App,
 {
-    inner: BridgeWithSerializer<Eff, A>,
+    inner: BridgeWithSerializer<A>,
 }
 
-impl<Eff, A> Bridge<Eff, A>
+impl<A> Bridge<A>
 where
-    Eff: Effect + Send + 'static,
     A: App,
 {
     /// Create a new Bridge using the provided `core`.
-    pub fn new(core: Core<Eff, A>) -> Self {
+    pub fn new(core: Core<A>) -> Self {
         Self {
             inner: BridgeWithSerializer::new(core),
         }
@@ -122,22 +119,20 @@ where
 /// it using separate tooling.
 // used in docs/internals/bridge.md
 // ANCHOR: bridge_with_serializer
-pub struct BridgeWithSerializer<Eff, A>
+pub struct BridgeWithSerializer<A>
 where
-    Eff: Effect,
     A: App,
 {
-    core: Core<Eff, A>,
+    core: Core<A>,
     registry: ResolveRegistry,
 }
 // ANCHOR_END: bridge_with_serializer
 
-impl<Eff, A> BridgeWithSerializer<Eff, A>
+impl<A> BridgeWithSerializer<A>
 where
-    Eff: Effect,
     A: App,
 {
-    pub fn new(core: Core<Eff, A>) -> Self {
+    pub fn new(core: Core<A>) -> Self {
         Self {
             core,
             registry: Default::default(),

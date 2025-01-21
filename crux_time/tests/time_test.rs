@@ -153,7 +153,7 @@ mod shell {
         Response(Outcome),
     }
 
-    pub fn run(core: &Core<Effect, App>) {
+    pub fn run(core: &Core<App>) {
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Event(Event::Get));
@@ -186,7 +186,7 @@ mod shell {
 #[cfg(feature = "chrono")]
 mod tests {
     use crate::{
-        shared::{App, Effect, Event, Model},
+        shared::{App, Event, Model},
         shell::run,
     };
     use chrono::{DateTime, Utc};
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     pub fn test_time() {
-        let core: Core<Effect, App> = Core::default();
+        let core: Core<App> = Core::default();
 
         run(&core);
 
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     pub fn test_time_async() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request = &mut app
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     pub fn test_debounce_timer() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
 
         let request1 = &mut app
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     pub fn test_start_debounce_then_clear() {
-        let app = AppTester::<App, _>::default();
+        let app = AppTester::<App>::default();
         let mut model = Model::default();
         let mut debounce = app
             .update(Event::StartDebounce, &mut model)

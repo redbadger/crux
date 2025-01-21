@@ -76,7 +76,7 @@ mod shell {
         Response(Outcome),
     }
 
-    pub fn run(core: &Core<Effect, App>) {
+    pub fn run(core: &Core<App>) {
         let mut queue: VecDeque<CoreMessage> = VecDeque::new();
 
         queue.push_back(CoreMessage::Event(Event::PlatformGet));
@@ -106,15 +106,12 @@ mod shell {
 }
 
 mod tests {
-    use crate::{
-        shared::{App, Effect},
-        shell::run,
-    };
+    use crate::{shared::App, shell::run};
     use crux_core::Core;
 
     #[test]
     pub fn test_platform() {
-        let core: Core<Effect, App> = Core::default();
+        let core: Core<App> = Core::default();
 
         run(&core);
 

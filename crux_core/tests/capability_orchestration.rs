@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn updates_state_once_both_effects_are_done() {
-        let app: AppTester<App, Effect> = AppTester::default();
+        let app: AppTester<App> = AppTester::default();
         let mut model = Model::default();
 
         let update = app.update(Event::Trigger, &mut model);
