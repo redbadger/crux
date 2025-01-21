@@ -103,13 +103,13 @@ Instead, to create a request followed by another request you can use the builder
 
 ```rust
 let command = Command::request_from_shell(a_request)
-    .then(|response| Command::request_from_shell(make_another_request_from(response)))
+    .then_request(|response| Command::request_from_shell(make_another_request_from(response)))
     .then_send(Event::Done);
 ```
 
 This works just the same with streams or combinations of requests and streams.
 
-`.then` and `Command::all` are nice, but on occasion, you will need the full power of async. The equivalent of the above with async works like this:
+`.then_*` and `Command::all` are nice, but on occasion, you will need the full power of async. The equivalent of the above with async works like this:
 
 ```rust
 let command = Command::new(|ctx| async {
@@ -229,3 +229,4 @@ One major perceived limitation which still remains is that `model` is not access
 
 * The command API expects the `Effect` type to implement `From<Request<Op>>` for any capability Operations it is used with. This is derived by the `Effect` macro, and is expected to be supported by a derive macro even in the future state.
 * We have not fully thought about back-pressure in the Commands (for events, effects and spawned tasks) even to the level of "is any needed?"
+* We will explore ways to make the code that interleaves effects and state updates more "linear" - require fewer intermediate events - separately at a later stage
