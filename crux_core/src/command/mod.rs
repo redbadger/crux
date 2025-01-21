@@ -82,8 +82,8 @@ where
     /// more likely want to create Commands with capabilities, and using the combinator APIs
     /// ([`then`], [`and`] and [`all`]) to orchestrate them.
     ///
-    /// The `create_task` closure receives a [`CommandContext`] it can use to send shell request,
-    /// events back to the app and spawn additional tasks. The closure is expected to return a future
+    /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
+    /// events back to the app, and to spawn additional tasks. The closure is expected to return a future
     /// which becomes the command's main asynchronous task.
     pub fn new<F, Fut>(create_task: F) -> Self
     where
