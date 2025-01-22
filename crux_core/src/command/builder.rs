@@ -33,6 +33,13 @@ where
         RequestBuilder { make_task }
     }
 
+    pub fn map<F, U>(self, map: F) -> RequestBuilder<Effect, Event, impl Future<Output = U>>
+    where
+        F: FnOnce(T) -> U + Send + 'static,
+    {
+        RequestBuilder::new(|ctx| self.into_future(ctx.clone()).map(map))
+    }
+
     /// Chain another [`RequestBuilder`] to run after completion of this one,
     /// passing the result to the provided closure `make_next_builder`.
     ///
@@ -251,6 +258,13 @@ where
         StreamBuilder {
             make_stream: make_task,
         }
+    }
+
+    pub fn map<F, U>(self, map: F) -> StreamBuilder<Effect, Event, impl Stream<Item = U>>
+    where
+        F: FnMut(T) -> U + Send + 'static,
+    {
+        StreamBuilder::new(|ctx| self.into_stream(ctx.clone()).map(map))
     }
 
     /// Chain a [`RequestBuilder`] to run after completion of this [`StreamBuilder`],
