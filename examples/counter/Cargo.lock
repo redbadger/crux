@@ -1069,9 +1069,9 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.11.0"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69e77326a37ebdd9f718670c898f3abbb5b501728a303aa8830a4eb9ff15b201"
+checksum = "ad3fce0c3a782938c5c48fbc5a12a2919dfb9b7494465cdb508b766ff3d2e6ca"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1084,7 +1084,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
  "url",
  "web-sys",
 ]
