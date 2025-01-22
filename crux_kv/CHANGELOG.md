@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.1](https://github.com/redbadger/crux/compare/crux_kv-v0.6.0...crux_kv-v0.6.1) - 2025-01-22
+
+### Other
+
+- Return nicer types from crux_kv command builders
+- Add command API to crux_kv
+- update examples
+
 ## [0.6.0](https://github.com/redbadger/crux/compare/crux_kv-v0.5.3...crux_kv-v0.6.0) - 2025-01-21
 
 ### Other

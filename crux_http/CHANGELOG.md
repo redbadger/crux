@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.1](https://github.com/redbadger/crux/compare/crux_http-v0.11.0...crux_http-v0.11.1) - 2025-01-22
+
+### Other
+
+- `http` crate compatibility (conversions for request and response)
+- update examples
+
 ## [0.11.0](https://github.com/redbadger/crux/compare/crux_http-v0.10.4...crux_http-v0.11.0) - 2025-01-21
 
 ### Fixed

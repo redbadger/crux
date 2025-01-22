@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1](https://github.com/redbadger/crux/compare/crux_platform-v0.3.0...crux_platform-v0.3.1) - 2025-01-22
+
+### Other
+
+- update Cargo.toml dependencies
+
 ## [0.3.0](https://github.com/redbadger/crux/compare/crux_platform-v0.2.3...crux_platform-v0.3.0) - 2025-01-21
 
 ### Other

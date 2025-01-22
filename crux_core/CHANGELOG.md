@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.1](https://github.com/redbadger/crux/compare/crux_core-v0.11.0...crux_core-v0.11.1) - 2025-01-22
+
+### Other
+
+- Allow .map on Request and Stream builders
+- update examples
+
 ## [0.11.0](https://github.com/redbadger/crux/compare/crux_core-v0.10.1...crux_core-v0.11.0) - 2025-01-21
 
 _This release is a breaking change._
