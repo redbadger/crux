@@ -537,3 +537,101 @@ fn stream_followed_by_a_stream() {
 
     assert!(cmd.events().next().is_none())
 }
+
+#[test]
+fn chaining_with_mapping() {
+    let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
+        .map(|first| {
+            let AnOperationOutput::Other(first) = first else {
+                // TODO: how do I bail quietly here?
+                panic!("Invalid output!")
+            };
+
+            first
+        })
+        .then_request(|first| {
+            let second = [first[0] + 1, first[1] + 1];
+
+            Command::request_from_shell(AnOperation::More(second))
+        })
+        .then_send(Event::Completed);
+
+    let effect = cmd.effects().next().unwrap();
+    assert!(cmd.events().next().is_none());
+
+    let Effect::AnEffect(mut request) = effect;
+
+    assert_eq!(request.operation, AnOperation::More([3, 4]));
+    request
+        .resolve(AnOperationOutput::Other([1, 2]))
+        .expect("to resolve");
+
+    let effect = cmd.effects().next().unwrap();
+    assert!(cmd.events().next().is_none());
+
+    let Effect::AnEffect(mut request) = effect;
+    assert_eq!(request.operation, AnOperation::More([2, 3]));
+
+    request
+        .resolve(AnOperationOutput::Other([1, 2]))
+        .expect("to resolve");
+
+    let event = cmd.events().next().unwrap();
+    assert!(cmd.effects().next().is_none());
+
+    assert_eq!(event, Event::Completed(AnOperationOutput::Other([1, 2])));
+
+    assert!(cmd.is_done());
+}
+
+#[test]
+fn stream_mapping_and_chaining() {
+    let mut cmd: Command<Effect, Event> = Command::stream_from_shell(AnOperation::One)
+        .map(|out| {
+            let AnOperationOutput::Other([a, b]) = out else {
+                panic!("Bad output");
+            };
+
+            (a, b)
+        })
+        .then_request(|(a, b)| Command::request_from_shell(AnOperation::More([a + 1, b + 1])))
+        .then_send(Event::Completed);
+
+    assert!(cmd.events().next().is_none());
+    let mut effects: Vec<_> = cmd.effects().collect();
+
+    assert_eq!(effects.len(), 1);
+
+    let Effect::AnEffect(mut stream_request) = effects.remove(0);
+
+    assert_eq!(stream_request.operation, AnOperation::One);
+
+    stream_request
+        .resolve(AnOperationOutput::Other([1, 2]))
+        .expect("should resolve");
+
+    let mut effects: Vec<_> = cmd.effects().collect();
+
+    let Effect::AnEffect(mut plus_one_request) = effects.remove(0);
+    assert_eq!(plus_one_request.operation, AnOperation::More([2, 3]));
+
+    plus_one_request
+        .resolve(AnOperationOutput::One)
+        .expect("should resolve");
+
+    let events: Vec<_> = cmd.events().collect();
+    assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+
+    // Can't request the plus one request again
+    assert!(plus_one_request.resolve(AnOperationOutput::One).is_err());
+
+    // but can get a new one by resolving stream request again
+    stream_request
+        .resolve(AnOperationOutput::Other([2, 3]))
+        .expect("should resolve");
+
+    let effect = cmd.effects().next().unwrap();
+
+    let Effect::AnEffect(plus_one_request) = effect;
+    assert_eq!(plus_one_request.operation, AnOperation::More([3, 4]));
+}
