@@ -153,12 +153,12 @@
 
 pub mod bridge;
 pub mod capability;
+pub mod command;
 pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;
 
 mod capabilities;
-mod command;
 mod core;
 
 use serde::Serialize;

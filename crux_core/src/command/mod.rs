@@ -51,6 +51,7 @@ use futures::{FutureExt as _, Stream, StreamExt as _};
 use slab::Slab;
 use stream::CommandStreamExt as _;
 
+pub use builder::{RequestBuilder, StreamBuilder};
 pub use stream::CommandOutput;
 
 use crate::capability::Operation;
