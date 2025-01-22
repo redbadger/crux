@@ -8,7 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.7.1](https://github.com/redbadger/crux/compare/crux_time-v0.7.0...crux_time-v0.7.1) - 2025-01-21
+## [0.8.0](https://github.com/redbadger/crux/compare/crux_time-v0.7.0...crux_time-v0.8.0) - 2025-01-21
 
 ### Other
 
