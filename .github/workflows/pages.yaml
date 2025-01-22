@@ -69,7 +69,7 @@ jobs:
       - name: Move outputs
         run: |
           set -e
-          mkdir -p ./public/latest
+          mkdir -p ./public/latest_master
           mv latest/target/doc ./public/latest_master/master_api_docs
           mv latest/docs/book/html/* ./public/latest_master/
           mv stable/target/doc ./public/master_api_docs
