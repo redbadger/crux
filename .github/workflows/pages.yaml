@@ -23,26 +23,16 @@ jobs:
     if: github.repository == 'redbadger/crux'
     runs-on: ubuntu-latest
     steps:
-      - name: Export LATEST_TAG
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "LATEST_TAG=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            --jq .tag_name \
-            /repos/redbadger/crux/releases/latest)" >> $GITHUB_ENV
-
-      - name: Checkout latest master
+      - name: Checkout (latest)
         uses: actions/checkout@v4
         with:
-          path: latest_master
+          path: latest
 
-      - name: Checkout latest release
+      - name: Checkout (stable)
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.LATEST_TAG }}
-          path: latest_release
+          ref: book-stable
+          path: stable
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -60,30 +50,30 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
-      - name: Build Documentation (latest_master)
-        working-directory: latest_master
+      - name: Build Documentation (latest)
+        working-directory: latest
         run: cargo doc --all --no-deps
 
-      - name: Build Documentation (latest_release)
-        working-directory: latest_release
+      - name: Build Documentation (stable)
+        working-directory: stable
         run: cargo doc --all --no-deps
 
-      - name: Build book (latest_master)
-        working-directory: latest_master/docs
+      - name: Build book (latest)
+        working-directory: latest/docs
         run: mdbook build
 
-      - name: Build book (latest_release)
-        working-directory: latest_release/docs
+      - name: Build book (stable)
+        working-directory: stable/docs
         run: mdbook build
 
       - name: Move outputs
         run: |
           set -e
-          mkdir -p ./public/latest_master
-          mv latest_master/target/doc ./public/latest_master/master_api_docs
-          mv latest_master/docs/book/html/* ./public/latest_master/
-          mv latest_release/target/doc ./public/master_api_docs
-          mv latest_release/docs/book/html/* ./public/
+          mkdir -p ./public/latest
+          mv latest/target/doc ./public/latest_master/master_api_docs
+          mv latest/docs/book/html/* ./public/latest_master/
+          mv stable/target/doc ./public/master_api_docs
+          mv stable/docs/book/html/* ./public/
 
       - name: Upload GitHub Pages artifact
         id: deployment
