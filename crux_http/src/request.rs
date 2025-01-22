@@ -8,9 +8,7 @@ use serde::Serialize;
 
 use std::fmt;
 use std::ops::Index;
-use std::str::FromStr;
 use std::sync::Arc;
-use anyhow::anyhow;
 
 /// An HTTP request, returns a `Response`.
 #[derive(Clone)]
@@ -399,18 +397,22 @@ impl From<http_types::Request> for Request {
 
 #[cfg(feature = "http-compat")]
 impl<B: Into<Body>> TryFrom<http::Request<B>> for Request {
-	type Error = anyhow::Error;
+    type Error = anyhow::Error;
 
-	fn try_from(req: http::Request<B>) -> Result<Self, Self::Error> {
-		let mut o = Request::new(Method::from_str(req.method().as_str()).map_err(|e| anyhow!(e))?, req.uri().to_string().parse()?);
+    fn try_from(req: http::Request<B>) -> Result<Self, Self::Error> {
+        use std::str::FromStr;
+        let mut o = Request::new(
+            Method::from_str(req.method().as_str()).map_err(|e| anyhow::anyhow!(e))?,
+            req.uri().to_string().parse()?,
+        );
 
-		for (k, v) in req.headers().iter() {
-			o.append_header(k.as_str(), v.to_str()?);
-		}
+        for (k, v) in req.headers().iter() {
+            o.append_header(k.as_str(), v.to_str()?);
+        }
 
-		o.set_body(req.into_body());
-		Ok(o)
-	}
+        o.set_body(req.into_body());
+        Ok(o)
+    }
 }
 
 #[allow(clippy::from_over_into)]
