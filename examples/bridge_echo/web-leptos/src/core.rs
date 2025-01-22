@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use leptos::{SignalUpdate, WriteSignal};
+use leptos::prelude::{Update as _, WriteSignal};
 use shared::{App, Effect, Event, ViewModel};
 
 pub type Core = Rc<shared::Core<App>>;

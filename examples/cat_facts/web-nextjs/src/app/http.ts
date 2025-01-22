@@ -19,16 +19,12 @@ export async function request({
 
   const responseHeaders = Array.from(
     response.headers.entries(),
-    ([name, value]) => new HttpHeader(name, value)
+    ([name, value]) => new HttpHeader(name, value),
   );
 
   const body = await response.arrayBuffer();
 
   return new HttpResultVariantOk(
-    new HttpResponse(
-      response.status,
-      responseHeaders,
-      Array.from(new Uint8Array(body))
-    )
+    new HttpResponse(response.status, responseHeaders, new Uint8Array(body)),
   );
 }

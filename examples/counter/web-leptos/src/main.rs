@@ -2,16 +2,17 @@ mod core;
 mod http;
 mod sse;
 
-use leptos::{component, create_effect, create_signal, view, IntoView, SignalGet, SignalUpdate};
+use leptos::prelude::*;
+
 use shared::Event;
 
 #[component]
 fn root_component() -> impl IntoView {
     let core = core::new();
-    let (view, render) = create_signal(core.view());
-    let (event, set_event) = create_signal(Event::StartWatch);
+    let (view, render) = signal(core.view());
+    let (event, set_event) = signal(Event::StartWatch);
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         core::update(&core, event.get(), render);
     });
 
@@ -44,7 +45,7 @@ fn main() {
     _ = console_log::init_with_level(log::Level::Debug);
     console_error_panic_hook::set_once();
 
-    leptos::mount_to_body(|| {
+    leptos::mount::mount_to_body(|| {
         view! { <RootComponent /> }
     });
 }
