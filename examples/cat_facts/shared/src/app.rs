@@ -9,7 +9,7 @@ use crux_core::{
     Capability, Command,
 };
 use crux_http::Http;
-use crux_kv::{error::KeyValueError, KeyValue};
+use crux_kv::{command::KeyValue as key_value, error::KeyValueError, KeyValue};
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
 
@@ -168,9 +168,11 @@ impl App for CatFacts {
                 model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
-                return render::render();
+                return Command::all([
+                    key_value::set(KEY, bytes).then_send(|_| Event::None),
+                    render::render(),
+                ]);
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
                 // TODO: Display an error
@@ -180,14 +182,14 @@ impl App for CatFacts {
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
 
                 let bytes = serde_json::to_vec(&model).unwrap();
-                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
 
-                return render::render();
+                return Command::all([
+                    key_value::set(KEY, bytes).then_send(|_| Event::None),
+                    render::render(),
+                ]);
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
-            Event::Restore => {
-                caps.key_value.get(KEY.to_string(), Event::SetState);
-            }
+            Event::Restore => return key_value::get(KEY).then_send(Event::SetState),
             Event::SetState(Ok(Some(value))) => {
                 if let Ok(m) = serde_json::from_slice::<Model>(&value) {
                     *model = m;
