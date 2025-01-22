@@ -1,4 +1,4 @@
-use crate::http::{
+use http_types::{
     self,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
     Body, Mime, StatusCode, Version,
@@ -20,13 +20,13 @@ pin_project_lite::pin_project! {
     /// use and middleware.
     pub struct ResponseAsync {
         #[pin]
-        res: crate::http::Response,
+        res: http_types::Response,
     }
 }
 
 impl ResponseAsync {
     /// Create a new instance.
-    pub(crate) fn new(res: http::Response) -> Self {
+    pub(crate) fn new(res: http_types::Response) -> Self {
         Self { res }
     }
 
@@ -52,7 +52,7 @@ impl ResponseAsync {
     /// ```no_run
     /// # use crux_http::client::Client;
     /// # async fn middleware(client: Client) -> crux_http::Result<()> {
-    /// use crux_http::http::Version;
+    /// use crux_http::http_types::Version;
     ///
     /// let res = client.get("https://httpbin.org/get").await?;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
@@ -148,7 +148,7 @@ impl ResponseAsync {
     /// ```no_run
     /// # use crux_http::client::Client;
     /// # async fn middleware(client: Client) -> crux_http::Result<()> {
-    /// use crux_http::http::mime;
+    /// use crux_http::http_types::mime;
     /// let res = client.get("https://httpbin.org/json").await?;
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// # Ok(()) }
@@ -318,39 +318,39 @@ impl ResponseAsync {
     }
 }
 
-impl From<http::Response> for ResponseAsync {
-    fn from(response: http::Response) -> Self {
+impl From<http_types::Response> for ResponseAsync {
+    fn from(response: http_types::Response) -> Self {
         Self::new(response)
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl Into<http::Response> for ResponseAsync {
-    fn into(self) -> http::Response {
+impl Into<http_types::Response> for ResponseAsync {
+    fn into(self) -> http_types::Response {
         self.res
     }
 }
 
-impl AsRef<http::Headers> for ResponseAsync {
-    fn as_ref(&self) -> &http::Headers {
+impl AsRef<http_types::Headers> for ResponseAsync {
+    fn as_ref(&self) -> &http_types::Headers {
         self.res.as_ref()
     }
 }
 
-impl AsMut<http::Headers> for ResponseAsync {
-    fn as_mut(&mut self) -> &mut http::Headers {
+impl AsMut<http_types::Headers> for ResponseAsync {
+    fn as_mut(&mut self) -> &mut http_types::Headers {
         self.res.as_mut()
     }
 }
 
-impl AsRef<http::Response> for ResponseAsync {
-    fn as_ref(&self) -> &http::Response {
+impl AsRef<http_types::Response> for ResponseAsync {
+    fn as_ref(&self) -> &http_types::Response {
         &self.res
     }
 }
 
-impl AsMut<http::Response> for ResponseAsync {
-    fn as_mut(&mut self) -> &mut http::Response {
+impl AsMut<http_types::Response> for ResponseAsync {
+    fn as_mut(&mut self) -> &mut http_types::Response {
         &mut self.res
     }
 }
