@@ -406,10 +406,7 @@ fn headers_to_hyperium_headers(headers: &mut Headers, hyperium_headers: &mut htt
 }
 
 mod header_serde {
-    use crate::{
-        http_types::{self, Headers},
-        response::new_headers,
-    };
+    use crate::{http::Headers, response::new_headers};
     use http_types::headers::HeaderName;
     use serde::{de::Error, Deserializer, Serializer};
 

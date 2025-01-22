@@ -8,7 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.11.1](https://github.com/redbadger/crux/compare/crux_http-v0.11.0...crux_http-v0.11.1) - 2025-01-22
+## [0.11.2](https://github.com/redbadger/crux/compare/crux_http-v0.11.0...crux_http-v0.11.2) - 2025-01-22
 
 ### Other
 

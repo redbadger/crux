@@ -21,7 +21,7 @@ pub mod middleware;
 pub mod protocol;
 pub mod testing;
 
-pub use http_types;
+pub use http_types as http;
 
 pub use self::{
     config::Config,
