@@ -24,10 +24,13 @@ The easiest way of releasing is using `release-plz`
 
    **WARNING**: If `crux_macros` or `crux_core` had a breaking change, usually it means breaking changes in capabilities
    because of trait changes etc. and capabilities need a minor version bump even if their API has not changed in a breaking way
-3. Optionally - open a PR with the changes to the versions for review
-4. use `scripts/cargo_publish.fish` to publish the crates in the right order OR
+3. Commit the changes. Optionally, open a PR with the changes to the versions for review
+4. Make sure the changes are on `master`
+5. Use `scripts/cargo_publish.fish` to publish the crates in the right order OR
    - publish `crux_macros` if it changed
    - publish `crux_core` if it changed
    - publish any capability crates that changed
-5. tag the commit used for the release with [crate_name]-vX.Y.Z
-6. for `crux_core` create a GitHub release with release notes, especially breaking changes
+6. Tag the commit used for the release with `[crate_name]-vX.Y.Z`. You can use `scripts/tag.fish` to do that
+7. Push tags
+8. for the `crux_core` tag, create a GitHub release with release notes, especially breaking changes
+9. Give Zulip a heads up about the good news :)
