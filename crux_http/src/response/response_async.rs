@@ -52,7 +52,7 @@ impl ResponseAsync {
     /// ```no_run
     /// # use crux_http::client::Client;
     /// # async fn middleware(client: Client) -> crux_http::Result<()> {
-    /// use crux_http::http_types::Version;
+    /// use crux_http::http::Version;
     ///
     /// let res = client.get("https://httpbin.org/get").await?;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
@@ -148,7 +148,7 @@ impl ResponseAsync {
     /// ```no_run
     /// # use crux_http::client::Client;
     /// # async fn middleware(client: Client) -> crux_http::Result<()> {
-    /// use crux_http::http_types::mime;
+    /// use crux_http::http::mime;
     /// let res = client.get("https://httpbin.org/json").await?;
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// # Ok(()) }

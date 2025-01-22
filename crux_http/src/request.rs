@@ -30,7 +30,7 @@ impl Request {
     ///
     /// ```
     /// fn main() -> crux_http::Result<()> {
-    /// use crux_http::http_types::{Url, Method};
+    /// use crux_http::http::{Url, Method};
     ///
     /// let url = Url::parse("https://httpbin.org/get")?;
     /// let req = crux_http::Request::new(Method::Get, url);
@@ -198,7 +198,7 @@ impl Request {
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
     /// let req = caps.http.get("https://httpbin.org/get").build();
-    /// assert_eq!(req.method(), crux_http::http_types::Method::Get);
+    /// assert_eq!(req.method(), crux_http::http::Method::Get);
     /// # Ok(()) }
     /// ```
     pub fn method(&self) -> Method {
@@ -213,7 +213,7 @@ impl Request {
     /// # enum Event {}
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
-    /// use crux_http::http_types::Url;
+    /// use crux_http::http::Url;
     /// let req = caps.http.get("https://httpbin.org/get").build();
     /// assert_eq!(req.url(), &Url::parse("https://httpbin.org/get")?);
     /// # Ok(()) }

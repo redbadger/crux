@@ -21,7 +21,7 @@ use std::{fmt, marker::PhantomData};
 /// # Examples
 ///
 /// ```no_run
-/// use crux_http::http_types::{mime::HTML};
+/// use crux_http::http::{mime::HTML};
 /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
 /// # struct Capabilities { http: crux_http::Http<Event> }
 /// # fn update(caps: &Capabilities) {
@@ -105,7 +105,7 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # use crux_http::http_types::mime;
+    /// # use crux_http::http::mime;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) {
@@ -135,7 +135,7 @@ where
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # fn update(caps: &Capabilities) {
     /// use serde_json::json;
-    /// use crux_http::http_types::mime;
+    /// use crux_http::http::mime;
     /// caps.http
     ///     .post("https://httpbin.org/post")
     ///     .body(json!({"any": "Into<Body>"}))

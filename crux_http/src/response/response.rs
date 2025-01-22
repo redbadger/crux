@@ -64,7 +64,7 @@ impl<Body> Response<Body> {
     ///
     /// ```no_run
     /// # let res = crux_http::testing::ResponseBuilder::ok().build();
-    /// use crux_http::http_types::Version;
+    /// use crux_http::http::Version;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
     /// ```
     pub fn version(&self) -> Option<Version> {
@@ -146,7 +146,7 @@ impl<Body> Response<Body> {
     /// # let res = crux_http::testing::ResponseBuilder::ok()
     /// #   .header("Content-Type", "application/json")
     /// #   .build();
-    /// use crux_http::http_types::mime;
+    /// use crux_http::http::mime;
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// ```
     pub fn content_type(&self) -> Option<Mime> {
