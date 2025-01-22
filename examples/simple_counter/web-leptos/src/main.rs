@@ -1,15 +1,15 @@
 mod core;
 
-use leptos::{component, create_effect, create_signal, view, IntoView, SignalGet, SignalUpdate};
+use leptos::prelude::*;
 use shared::Event;
 
 #[component]
 fn RootComponent() -> impl IntoView {
     let core = core::new();
-    let (view, render) = create_signal(core.view());
-    let (event, set_event) = create_signal(Event::Reset);
+    let (view, render) = signal(core.view());
+    let (event, set_event) = signal(Event::Reset);
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         core::update(&core, event.get(), render);
     });
 
@@ -38,7 +38,7 @@ fn RootComponent() -> impl IntoView {
 }
 
 fn main() {
-    leptos::mount_to_body(|| {
+    leptos::mount::mount_to_body(|| {
         view! { <RootComponent /> }
     });
 }

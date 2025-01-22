@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 anyhow.workspace = true
 console_error_panic_hook = "0.1.7"
-dioxus = { version = "0.6.1", features = ["web"] }
-dioxus-logger = "0.6.1"
+dioxus = { version = "0.6.2", features = ["web"] }
+dioxus-logger = "0.6.2"
 futures-util = "0.3.31"
 gloo-net = "0.6.0"
 js-sys = "0.3.77"

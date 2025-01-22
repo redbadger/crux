@@ -35,7 +35,7 @@ import {
   BincodeSerializer,
   BincodeDeserializer,
 } from "shared_types/bincode/mod";
-import { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { Dispatch, RefObject, SetStateAction } from "react";
 
 type Response = Message | TimerOutput | KeyValueResult;
 
@@ -51,14 +51,14 @@ export type SyncMessage = {
 export class Core {
   setState: Dispatch<SetStateAction<ViewModel>>;
   setTimers: Dispatch<SetStateAction<Timers>>;
-  channel: MutableRefObject<BroadcastChannel>;
-  subscriptionId: MutableRefObject<number | null>;
+  channel: RefObject<BroadcastChannel>;
+  subscriptionId: RefObject<number | null>;
 
   constructor(
     setState: Dispatch<SetStateAction<ViewModel>>,
     setTimers: Dispatch<SetStateAction<Timers>>,
-    channel: MutableRefObject<BroadcastChannel>,
-    subscriptionId: MutableRefObject<number | null>,
+    channel: RefObject<BroadcastChannel>,
+    subscriptionId: RefObject<number | null>,
   ) {
     this.setState = setState;
     this.setTimers = setTimers;
@@ -160,14 +160,16 @@ export class Core {
             const { key: readKey } = request as KeyValueOperationVariantGet;
 
             const data = window.localStorage.getItem(readKey);
-            const bytes: number[] | null =
-              data == null ? data : JSON.parse(data);
+            const bytes =
+              data == null
+                ? new Uint8Array()
+                : new Uint8Array(JSON.parse(data));
             const value =
-              bytes == null
+              bytes.length === 0
                 ? new ValueVariantNone()
                 : new ValueVariantBytes(bytes);
 
-            console.log(`Loaded document (${bytes?.length || 0} bytes)`);
+            console.log(`Loaded document (${bytes.length} bytes)`);
             this.respond(
               id,
               new KeyValueResultVariantOk(
@@ -183,8 +185,10 @@ export class Core {
               request as KeyValueOperationVariantSet;
 
             console.log(`Saving document (${writeValue.length} bytes)`);
-            // FIXME JSON is not exactly a space efficient format
-            window.localStorage.setItem(writeKey, JSON.stringify(writeValue));
+            window.localStorage.setItem(
+              writeKey,
+              JSON.stringify(Array.from(writeValue)),
+            );
 
             this.respond(
               id,

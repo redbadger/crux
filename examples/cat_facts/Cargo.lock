@@ -428,7 +428,9 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crux_core"
-version = "0.10.1"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "359b0a4e21e08b5adcf533e87189ce92326f4d0f17fc3b1fe70ba506ab2de9b3"
 dependencies = [
  "anyhow",
  "bincode",
@@ -446,7 +448,9 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.10.4"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69e77326a37ebdd9f718670c898f3abbb5b501728a303aa8830a4eb9ff15b201"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -466,7 +470,9 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.5.3"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a2ae6db4299c0cdf26f7ea9170c4af1da4bc661b2e76baaba8b2d3d1c1eb8c1"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -477,7 +483,9 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.4.2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11023dd86d35f8b42c42d8ce5e5cf48a8d8ecb27e6994b19d6d8e4df872f017f"
 dependencies = [
  "darling",
  "proc-macro-error",
@@ -488,7 +496,9 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.2.3"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cb2afd85bfdefbc509575cabcb843509f1e164cb5993d3aedbf1149072a4687"
 dependencies = [
  "crux_core",
  "serde",
@@ -496,7 +506,9 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.7.0"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f8df32283a22ad9ed35c716067c91fb5f2ee09b04adf86e1d3939d5f0c10ef1"
 dependencies = [
  "chrono",
  "crux_core",
@@ -2252,9 +2264,9 @@ checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
 
 [[package]]
 name = "rustix"
-version = "0.38.43"
+version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a78891ee6bf2340288408954ac787aa063d8e8817e9f53abb37c695c6d834ef6"
+checksum = "fdb5bc1ae2baa591800df16c9ca78619bf65c0488b41b96ccec5d11220d8c154"
 dependencies = [
  "bitflags",
  "errno",

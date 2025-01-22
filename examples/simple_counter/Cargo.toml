@@ -12,9 +12,21 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.95"
-# crux_core = "0.10"
-crux_core = { path = "../../crux_core" }
+crux_core = "0.11"
+# crux_core = { path = "../../crux_core" }
 serde = "1.0.217"
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }
+
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

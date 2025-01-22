@@ -15,7 +15,7 @@ export const meta = () => {
 };
 
 export default function Index() {
-  const [view, setView] = useState(new ViewModel(BigInt(0)));
+  const [view, setView] = useState(new ViewModel(BigInt(0), []));
 
   // Tick as fast as we can
   useEffect(() => {

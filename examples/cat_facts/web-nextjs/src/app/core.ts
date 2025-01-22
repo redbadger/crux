@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import UAParser from "ua-parser-js";
+import { UAParser } from "ua-parser-js";
 
 import { handle_response, process_event, view } from "shared/shared";
 import {
