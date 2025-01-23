@@ -371,18 +371,14 @@ where
                 .expect("should be able to convert request to protocol request");
 
             let result = Command::request_from_shell(operation)
-                .map(|http_result| match http_result {
-                    HttpResult::Ok(response) => Ok(response),
-                    HttpResult::Err(error) => Err(error.clone()),
-                })
                 .into_future(ctx)
                 .await;
 
             match result {
-                Ok(response) => Response::<Vec<u8>>::new(response.into())
+                HttpResult::Ok(response) => Response::<Vec<u8>>::new(response.into())
                     .await
                     .and_then(|r| self.expectation.decode(r)),
-                Err(error) => Err(error),
+                HttpResult::Err(error) => Err(error),
             }
         })
     }

@@ -75,14 +75,14 @@ mod shared {
                         .build()
                         .into_future(ctx.clone())
                         .await
-                        .expect("Send async should succeed");
+                        .unwrap();
                     let text = response.body_string().expect("response should have body");
 
                     let response = command::Http::post(format!("http://example.com/{}", text))
                         .build()
                         .into_future(ctx.clone())
                         .await
-                        .expect("Send async should succeed");
+                        .unwrap();
 
                     ctx.send_event(Event::ComposeComplete(response.status()))
                 }),
@@ -96,8 +96,8 @@ mod shared {
 
                     let (response_one, response_two) = join!(one, two);
 
-                    let one = response_one.expect("Send async should succeed");
-                    let two = response_two.expect("Send async should succeed");
+                    let one = response_one.unwrap();
+                    let two = response_two.unwrap();
 
                     let status =
                         StatusCode::try_from(max::<u16>(one.status().into(), two.status().into()))
