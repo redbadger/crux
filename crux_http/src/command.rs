@@ -29,6 +29,42 @@ where
     pub fn get(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
         RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap())
     }
+
+    pub fn head(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap())
+    }
+
+    pub fn post(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap())
+    }
+
+    pub fn put(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap())
+    }
+
+    pub fn delete(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap())
+    }
+
+    pub fn patch(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap())
+    }
+
+    pub fn options(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap())
+    }
+
+    pub fn trace(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap())
+    }
+
+    pub fn connect(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap())
+    }
+
+    pub fn request(method: Method, url: Url) -> RequestBuilder<Effect, Event> {
+        RequestBuilder::new(method, url)
+    }
 }
 
 /// Request Builder

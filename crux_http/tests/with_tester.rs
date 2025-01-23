@@ -1,9 +1,9 @@
 mod shared {
 
-    use std::{cmp::max, collections::HashMap, future::IntoFuture};
+    use std::{cmp::max, collections::HashMap};
 
     use crux_core::macros::Effect;
-    use crux_core::{compose::Compose, Command};
+    use crux_core::Command;
     use crux_http::{command, Http};
     use futures_util::join;
     use http_types::StatusCode;
@@ -48,76 +48,66 @@ mod shared {
             &self,
             event: Event,
             model: &mut Model,
-            caps: &Capabilities,
+            _caps: &Capabilities,
         ) -> Command<Effect, Event> {
             match event {
-                Event::Get => {
-                    return command::Http::get("http://example.com")
-                        .header("Authorization", "secret-token")
-                        .expect_string()
-                        .build()
-                        .then_send(Event::Set);
-                }
-                Event::Post => {
-                    caps.http
-                        .post("http://example.com")
-                        .body_bytes("The Body".as_bytes())
-                        .expect_string()
-                        .send(Event::Set);
-                }
+                Event::Get => command::Http::get("http://example.com")
+                    .header("Authorization", "secret-token")
+                    .expect_string()
+                    .build()
+                    .then_send(Event::Set),
+                Event::Post => command::Http::post("http://example.com")
+                    .body_bytes("The Body".as_bytes())
+                    .expect_string()
+                    .build()
+                    .then_send(Event::Set),
                 Event::PostForm => {
                     let form = HashMap::from([("key", "value")]);
-                    caps.http
-                        .post("http://example.com")
+                    command::Http::post("http://example.com")
                         .body_form(&form)
                         .expect("could not serialize form data")
                         .expect_string()
-                        .send(Event::Set);
+                        .build()
+                        .then_send(Event::Set)
                 }
-                Event::GetPostChain => caps.compose.spawn(|context| {
-                    let http = caps.http.clone();
+                Event::GetPostChain => Command::new(|ctx| async move {
+                    let mut response = command::Http::get("http://example.com")
+                        .build()
+                        .into_future(ctx.clone())
+                        .await
+                        .expect("Send async should succeed");
+                    let text = response.body_string().expect("response should have body");
 
-                    async move {
-                        let mut response = http
-                            .get("http://example.com")
-                            .await
-                            .expect("Send async should succeed");
-                        let text = response
-                            .body_string()
-                            .await
-                            .expect("response should have body");
+                    let response = command::Http::post(format!("http://example.com/{}", text))
+                        .build()
+                        .into_future(ctx.clone())
+                        .await
+                        .expect("Send async should succeed");
 
-                        let response = http
-                            .post(format!("http://example.com/{}", text))
-                            .await
-                            .expect("Send async should succeed");
-
-                        context.update_app(Event::ComposeComplete(response.status()))
-                    }
+                    ctx.send_event(Event::ComposeComplete(response.status()))
                 }),
-                Event::ConcurrentGets => caps.compose.spawn(|ctx| {
-                    let http = caps.http.clone();
+                Event::ConcurrentGets => Command::new(|ctx| async move {
+                    let one = command::Http::get("http://example.com/one")
+                        .build()
+                        .into_future(ctx.clone());
+                    let two = command::Http::get("http://example.com/two")
+                        .build()
+                        .into_future(ctx.clone());
 
-                    async move {
-                        let one = http.get("http://example.com/one").into_future();
-                        let two = http.get("http://example.com/two").send_async();
+                    let (response_one, response_two) = join!(one, two);
 
-                        let (response_one, response_two) = join!(one, two);
+                    let one = response_one.expect("Send async should succeed");
+                    let two = response_two.expect("Send async should succeed");
 
-                        let one = response_one.expect("Send async should succeed");
-                        let two = response_two.expect("Send async should succeed");
+                    let status =
+                        StatusCode::try_from(max::<u16>(one.status().into(), two.status().into()))
+                            .unwrap();
 
-                        let status = StatusCode::try_from(max::<u16>(
-                            one.status().into(),
-                            two.status().into(),
-                        ))
-                        .unwrap();
-
-                        ctx.update_app(Event::ComposeComplete(status))
-                    }
+                    ctx.send_event(Event::ComposeComplete(status))
                 }),
                 Event::ComposeComplete(status) => {
                     model.values.push(status.to_string());
+                    Command::done()
                 }
                 Event::Set(Ok(mut response)) => {
                     model.body = response.take_body().unwrap();
@@ -127,11 +117,10 @@ mod shared {
                         .iter()
                         .map(|v| v.to_string())
                         .collect();
+                    Command::done()
                 }
-                Event::Set(Err(_)) => {}
+                Event::Set(Err(_)) => Command::done(),
             }
-
-            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -142,10 +131,9 @@ mod shared {
     }
 
     #[derive(Effect)]
+    #[allow(unused)]
     pub(crate) struct Capabilities {
         pub http: Http<Event>,
-        #[effect(skip)]
-        pub compose: Compose<Event>,
     }
 }
 

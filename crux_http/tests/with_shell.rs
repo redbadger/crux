@@ -45,7 +45,7 @@ mod shared {
             model: &mut Model,
             _caps: &Capabilities,
         ) -> Command<Effect, Event> {
-            return match event {
+            match event {
                 Event::Get => command::Http::get("http://example.com")
                     .build()
                     .then_send(Event::Set),
@@ -65,7 +65,7 @@ mod shared {
 
                     render::render()
                 }
-            };
+            }
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
