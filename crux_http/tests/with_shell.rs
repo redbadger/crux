@@ -1,7 +1,7 @@
 mod shared {
     use crux_core::render::{self, Render};
     use crux_core::{macros::Effect, Command};
-    use crux_http::Http;
+    use crux_http::{command, Http};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -43,33 +43,29 @@ mod shared {
             &self,
             event: Event,
             model: &mut Model,
-            caps: &Capabilities,
+            _caps: &Capabilities,
         ) -> Command<Effect, Event> {
-            match event {
-                Event::Get => {
-                    caps.http.get("http://example.com").send(Event::Set);
-                }
-                Event::GetJson => {
-                    caps.http
-                        .get("http://example.com")
-                        .expect_json::<String>()
-                        .send(Event::SetJson);
-                }
+            return match event {
+                Event::Get => command::Http::get("http://example.com")
+                    .build()
+                    .then_send(Event::Set),
+                Event::GetJson => command::Http::get("http://example.com")
+                    .expect_json::<String>()
+                    .build()
+                    .then_send(Event::SetJson),
                 Event::Set(response) => {
                     let mut response = response.unwrap();
                     model.status = response.status().into();
                     model.body = response.take_body().unwrap();
 
-                    return render::render();
+                    render::render()
                 }
                 Event::SetJson(response) => {
                     model.json_body = response.unwrap().take_body().unwrap();
 
-                    return render::render();
+                    render::render()
                 }
-            }
-
-            Command::done()
+            };
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {

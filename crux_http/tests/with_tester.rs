@@ -4,7 +4,7 @@ mod shared {
 
     use crux_core::macros::Effect;
     use crux_core::{compose::Compose, Command};
-    use crux_http::Http;
+    use crux_http::{command, Http};
     use futures_util::join;
     use http_types::StatusCode;
     use serde::{Deserialize, Serialize};
@@ -52,11 +52,11 @@ mod shared {
         ) -> Command<Effect, Event> {
             match event {
                 Event::Get => {
-                    caps.http
-                        .get("http://example.com")
+                    return command::Http::get("http://example.com")
                         .header("Authorization", "secret-token")
                         .expect_string()
-                        .send(Event::Set);
+                        .build()
+                        .then_send(Event::Set);
                 }
                 Event::Post => {
                     caps.http

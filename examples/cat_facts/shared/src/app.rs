@@ -91,11 +91,12 @@ pub struct CatFacts {
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
 pub struct CatFactCapabilities {
-    pub http: Http<Event>,
-    pub key_value: KeyValue<Event>,
-    pub platform: Platform<Event>,
-    pub render: Render<Event>,
-    pub time: Time<Event>,
+    http: Http<Event>,
+    #[allow(unused)]
+    key_value: KeyValue<Event>,
+    platform: Platform<Event>,
+    render: Render<Event>,
+    time: Time<Event>,
 }
 
 // Allow easily using Platform as a submodule
@@ -134,15 +135,17 @@ impl App for CatFacts {
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                caps.key_value.set(KEY.to_string(), bytes, |_| Event::None);
-                return render::render();
+                return Command::all([
+                    key_value::set(KEY, bytes).then_send(|_| Event::None),
+                    render::render(),
+                ]);
             }
             Event::Get => {
-                if let Some(_fact) = &model.cat_fact {
-                    return render::render();
+                return if let Some(_fact) = &model.cat_fact {
+                    render::render()
                 } else {
-                    return Command::event(Event::Fetch);
-                }
+                    Command::event(Event::Fetch)
+                };
             }
             Event::Fetch => {
                 model.cat_image = Some(CatImage::default());

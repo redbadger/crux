@@ -4,9 +4,7 @@ use std::{future::Future, marker::PhantomData};
 
 use crux_core::{command::RequestBuilder, Command, Request};
 
-use crate::error::KeyValueError;
-
-use super::KeyValueOperation;
+use crate::{error::KeyValueError, KeyValueOperation};
 
 pub struct KeyValue<Effect, Event> {
     // Allow the impl to declare trait bounds once. Thanks rustc
