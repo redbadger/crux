@@ -2,9 +2,8 @@ mod shared {
 
     use std::{cmp::max, collections::HashMap};
 
-    use crux_core::macros::Effect;
-    use crux_core::Command;
-    use crux_http::{command, Http};
+    use crux_core::{macros::Effect, Command};
+    use crux_http::command::Http;
     use futures_util::join;
     use http_types::StatusCode;
     use serde::{Deserialize, Serialize};
@@ -51,19 +50,19 @@ mod shared {
             _caps: &Capabilities,
         ) -> Command<Effect, Event> {
             match event {
-                Event::Get => command::Http::get("http://example.com")
+                Event::Get => Http::get("http://example.com")
                     .header("Authorization", "secret-token")
                     .expect_string()
                     .build()
                     .then_send(Event::Set),
-                Event::Post => command::Http::post("http://example.com")
+                Event::Post => Http::post("http://example.com")
                     .body_bytes("The Body".as_bytes())
                     .expect_string()
                     .build()
                     .then_send(Event::Set),
                 Event::PostForm => {
                     let form = HashMap::from([("key", "value")]);
-                    command::Http::post("http://example.com")
+                    Http::post("http://example.com")
                         .body_form(&form)
                         .expect("could not serialize form data")
                         .expect_string()
@@ -71,14 +70,14 @@ mod shared {
                         .then_send(Event::Set)
                 }
                 Event::GetPostChain => Command::new(|ctx| async move {
-                    let mut response = command::Http::get("http://example.com")
+                    let mut response = Http::get("http://example.com")
                         .build()
                         .into_future(ctx.clone())
                         .await
                         .unwrap();
                     let text = response.body_string().expect("response should have body");
 
-                    let response = command::Http::post(format!("http://example.com/{}", text))
+                    let response = Http::post(format!("http://example.com/{}", text))
                         .build()
                         .into_future(ctx.clone())
                         .await
@@ -87,10 +86,10 @@ mod shared {
                     ctx.send_event(Event::ComposeComplete(response.status()))
                 }),
                 Event::ConcurrentGets => Command::new(|ctx| async move {
-                    let one = command::Http::get("http://example.com/one")
+                    let one = Http::get("http://example.com/one")
                         .build()
                         .into_future(ctx.clone());
-                    let two = command::Http::get("http://example.com/two")
+                    let two = Http::get("http://example.com/two")
                         .build()
                         .into_future(ctx.clone());
 
@@ -133,7 +132,7 @@ mod shared {
     #[derive(Effect)]
     #[allow(unused)]
     pub(crate) struct Capabilities {
-        pub http: Http<Event>,
+        pub http: crux_http::Http<Event>,
     }
 }
 

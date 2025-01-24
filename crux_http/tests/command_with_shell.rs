@@ -1,7 +1,10 @@
 mod shared {
-    use crux_core::render::{self, Render};
-    use crux_core::{macros::Effect, Command};
-    use crux_http::{command, Http};
+    use crux_core::{
+        macros::Effect,
+        render::{self, Render},
+        Command,
+    };
+    use crux_http::command::Http;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -46,10 +49,10 @@ mod shared {
             _caps: &Capabilities,
         ) -> Command<Effect, Event> {
             match event {
-                Event::Get => command::Http::get("http://example.com")
+                Event::Get => Http::get("http://example.com")
                     .build()
                     .then_send(Event::Set),
-                Event::GetJson => command::Http::get("http://example.com")
+                Event::GetJson => Http::get("http://example.com")
                     .expect_json::<String>()
                     .build()
                     .then_send(Event::SetJson),
@@ -83,7 +86,7 @@ mod shared {
     #[derive(Effect)]
     #[allow(dead_code)]
     pub(crate) struct Capabilities {
-        pub http: Http<Event>,
+        pub http: crux_http::Http<Event>,
         pub render: Render<Event>,
     }
 }

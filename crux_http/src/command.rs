@@ -10,11 +10,12 @@ use http_types::{
 };
 use serde::Serialize;
 
-use crate::expect::{ExpectBytes, ExpectJson, ExpectString};
-use crate::protocol::{HttpRequest, ProtocolRequestBuilder};
-use crate::{expect::ResponseExpectation, protocol::HttpResult};
-use crate::{middleware::Middleware, Response};
-use crate::{HttpError, Request};
+use crate::{
+    expect::{ExpectBytes, ExpectJson, ExpectString, ResponseExpectation},
+    middleware::Middleware,
+    protocol::{HttpRequest, HttpResult, ProtocolRequestBuilder},
+    HttpError, Request, Response,
+};
 
 pub struct Http<Effect, Event> {
     effect: PhantomData<Effect>,
@@ -199,7 +200,7 @@ where
     /// # #[allow(unused)]
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # type Http = crux_http::command::Http<Effect, Event>;
-    /// Http::patch("https://httpbin.org/get")
+    /// Http::options("https://httpbin.org/get")
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn options(url: impl AsRef<str>) -> RequestBuilder<Effect, Event> {
@@ -387,16 +388,14 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// use serde_json::json;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
     /// # struct Capabilities { http: crux_http::Http<Event> }
     /// # type Http = crux_http::command::Http<Effect, Event>;
-    /// use crux_http::http::mime;
     /// Http::post("https://httpbin.org/post")
-    ///     .body(json!({"any": "Into<Body>"}))
-    ///     .content_type(mime::HTML)
+    ///     .body(serde_json::json!({"any": "Into<Body>"}))
+    ///     .content_type(crux_http::http::mime::HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
@@ -639,12 +638,15 @@ where
     /// Decode a `T` from a JSON response body prior to dispatching it to the apps `update`
     /// function.
     ///
-    /// This has no effect when used with the [async API](RequestBuilder::send_async).
-    ///
     /// # Examples
     ///
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Slideshow>>) }
+    /// # #[derive(crux_core::macros::Effect)]
+    /// # #[allow(unused)]
+    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
     /// #[derive(Deserialize)]
     /// struct Response {
     ///     slideshow: Slideshow
@@ -655,11 +657,6 @@ where
     ///     author: String
     /// }
     ///
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Slideshow>>) }
-    /// # #[derive(crux_core::macros::Effect)]
-    /// # #[allow(unused)]
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # type Http = crux_http::command::Http<Effect, Event>;
     /// Http::post("https://httpbin.org/json")
     ///     .expect_json::<Slideshow>()
     ///     .build()
