@@ -68,7 +68,7 @@ impl crux_core::App for App {
         &self,
         msg: Self::Event,
         model: &mut Self::Model,
-        caps: &Self::Capabilities,
+        _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
         match msg {
             Event::Get => Http::get(API_URL)
@@ -77,7 +77,7 @@ impl crux_core::App for App {
                 .then_send(Event::Set),
             Event::Set(Ok(mut response)) => {
                 let count = response.take_body().unwrap();
-                self.update(Event::Update(count), model, caps)
+                Command::event(Event::Update(count))
             }
             Event::Set(Err(e)) => {
                 panic!("Oh no something went wrong: {e:?}");
@@ -202,7 +202,7 @@ mod tests {
         let mut model = Model::default();
 
         // send a `Set` event (containing the HTTP response) to the app
-        let update = app.update(
+        let mut update = app.update(
             Event::Set(Ok(ResponseBuilder::ok()
                 .body(Count {
                     value: 1,
@@ -213,6 +213,11 @@ mod tests {
         );
 
         dbg!(&update);
+
+        // submit the generated `Update` event back to the app
+        let event = update.events.pop().unwrap();
+        let update = app.update(event, &mut model);
+
         // check that the app asked the shell to render
         assert_effect!(update, Effect::Render(_));
 
@@ -271,8 +276,12 @@ mod tests {
         let response = HttpResponse::ok()
             .body(r#"{ "value": 2, "updated_at": 1672531200000 }"#)
             .build();
-        let _updated =
+        let mut update =
             app.resolve_to_event_then_update(request, HttpResult::Ok(response), &mut model);
+
+        // submit the generated `Update` event back to the app
+        let event = update.events.pop().unwrap();
+        let _updated = app.update(event, &mut model);
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
@@ -329,8 +338,12 @@ mod tests {
         let response = HttpResponse::ok()
             .body(r#"{ "value": -1, "updated_at": 1672531200000 }"#)
             .build();
-        let _updated =
+        let mut update =
             app.resolve_to_event_then_update(request, HttpResult::Ok(response), &mut model);
+
+        // submit the generated `Update` event back to the app
+        let event = update.events.pop().unwrap();
+        let _updated = app.update(event, &mut model);
 
         // check that the model has been updated correctly
         insta::assert_yaml_snapshot!(model, @r###"
