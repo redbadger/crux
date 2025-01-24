@@ -3,6 +3,7 @@
 //! `crux_kv` allows Crux apps to store and retrieve arbitrary data by asking the Shell to
 //! persist the data using platform native capabilities (e.g. disk or web localStorage)
 
+pub mod command;
 pub mod error;
 pub mod value;
 
@@ -419,8 +420,6 @@ impl KeyValueResult {
         }
     }
 }
-
-pub mod command;
 
 #[cfg(test)]
 mod tests;

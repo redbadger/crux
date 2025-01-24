@@ -17,6 +17,7 @@ mod request_builder;
 mod response;
 
 pub mod client;
+pub mod command;
 pub mod middleware;
 pub mod protocol;
 pub mod testing;
