@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.4](https://github.com/redbadger/crux/compare/crux_http-v0.11.3...crux_http-v0.11.4) - 2025-01-24
+
+This release adds a new [`command`](https://docs.rs/crux_http/latest/crux_http/command/index.html)
+module with support for generating commands for HTTP requests.
+
+This is to support the new Crux API. Please see the
+[Migration Guide](https://redbadger.github.io/crux/guide/effects.html#migrating-from-previous-versions-of-crux)
+
 ## [0.11.3](https://github.com/redbadger/crux/compare/crux_http-v0.11.2...crux_http-v0.11.3) - 2025-01-22
 
 ### Other
