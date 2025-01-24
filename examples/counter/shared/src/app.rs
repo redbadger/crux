@@ -4,7 +4,7 @@ use crux_core::{
     render::{self, Render},
     Command,
 };
-use crux_http::Http;
+use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -49,7 +49,7 @@ pub enum Event {
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
     pub render: Render<Event>,
-    pub http: Http<Event>,
+    pub http: crux_http::Http<Event>,
     pub sse: ServerSentEvents<Event>,
 }
 
@@ -70,19 +70,20 @@ impl crux_core::App for App {
         caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
         match msg {
-            Event::Get => {
-                caps.http.get(API_URL).expect_json().send(Event::Set);
-            }
+            Event::Get => Http::get(API_URL)
+                .expect_json()
+                .build()
+                .then_send(Event::Set),
             Event::Set(Ok(mut response)) => {
                 let count = response.take_body().unwrap();
-                return self.update(Event::Update(count), model, caps);
+                self.update(Event::Update(count), model, caps)
             }
             Event::Set(Err(e)) => {
                 panic!("Oh no something went wrong: {e:?}");
             }
             Event::Update(count) => {
                 model.count = count;
-                return render::render();
+                render::render()
             }
             Event::Increment => {
                 // optimistic update
@@ -94,9 +95,10 @@ impl crux_core::App for App {
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/inc").unwrap();
-                caps.http.post(url).expect_json().send(Event::Set);
-
-                return render::render();
+                Command::all([
+                    Http::post(url).expect_json().build().then_send(Event::Set),
+                    render::render(),
+                ])
             }
             Event::Decrement => {
                 // optimistic update
@@ -108,18 +110,18 @@ impl crux_core::App for App {
                 // real update
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/dec").unwrap();
-                caps.http.post(url).expect_json().send(Event::Set);
-
-                return render::render();
+                Command::all([
+                    Http::post(url).expect_json().build().then_send(Event::Set),
+                    render::render(),
+                ])
             }
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
                 caps.sse.get_json(url, Event::Update);
+                Command::done()
             }
         }
-
-        Command::done()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {

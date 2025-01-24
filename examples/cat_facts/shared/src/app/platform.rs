@@ -1,4 +1,7 @@
-use crux_core::{render::Render, Command};
+use crux_core::{
+    render::{self, Render},
+    Command,
+};
 use crux_platform::{Platform, PlatformResponse};
 use serde::{Deserialize, Serialize};
 
@@ -31,14 +34,15 @@ impl crux_core::App for App {
 
     fn update(&self, msg: Event, model: &mut Model, caps: &Capabilities) -> Command<Effect, Event> {
         match msg {
-            Event::Get => caps.platform.get(Event::Set),
+            Event::Get => {
+                caps.platform.get(Event::Set);
+                Command::done()
+            }
             Event::Set(PlatformResponse(platform)) => {
                 model.platform = platform;
-                return crux_core::render::render();
+                render::render()
             }
         }
-
-        Command::done()
     }
 
     fn view(&self, model: &Model) -> Model {

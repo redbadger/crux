@@ -1,6 +1,7 @@
 pub mod platform;
 
 use chrono::{DateTime, Utc};
+use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
 
 pub use crux_core::App;
@@ -8,7 +9,6 @@ use crux_core::{
     render::{self, Render},
     Capability, Command,
 };
-use crux_http::Http;
 use crux_kv::{command::KeyValue as key_value, error::KeyValueError, KeyValue};
 use crux_platform::Platform;
 use crux_time::{Time, TimeResponse};
@@ -91,7 +91,8 @@ pub struct CatFacts {
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
 pub struct CatFactCapabilities {
-    http: Http<Event>,
+    #[allow(unused)]
+    http: crux_http::Http<Event>,
     #[allow(unused)]
     key_value: KeyValue<Event>,
     platform: Platform<Event>,
@@ -126,59 +127,63 @@ impl App for CatFacts {
             Event::GetPlatform => {
                 self.platform
                     .update(platform::Event::Get, &mut model.platform, &caps.into());
+                Command::done()
             }
             Event::Platform(msg) => {
                 self.platform.update(msg, &mut model.platform, &caps.into());
+                Command::done()
             }
             Event::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                return Command::all([
+                Command::all([
                     key_value::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
-                ]);
+                ])
             }
             Event::Get => {
-                return if let Some(_fact) = &model.cat_fact {
+                if let Some(_fact) = &model.cat_fact {
                     render::render()
                 } else {
                     Command::event(Event::Fetch)
-                };
+                }
             }
             Event::Fetch => {
                 model.cat_image = Some(CatImage::default());
 
-                caps.http
-                    .get(FACT_API_URL)
-                    .expect_json()
-                    .send(Event::SetFact);
-
-                caps.http
-                    .get(IMAGE_API_URL)
-                    .expect_json()
-                    .send(Event::SetImage);
-
-                return render::render();
+                Command::all([
+                    Http::get(FACT_API_URL)
+                        .expect_json()
+                        .build()
+                        .then_send(Event::SetFact),
+                    Http::get(IMAGE_API_URL)
+                        .expect_json()
+                        .build()
+                        .then_send(Event::SetImage),
+                    render::render(),
+                ])
             }
             Event::SetFact(Ok(mut response)) => {
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 caps.time.now(Event::CurrentTime);
+                Command::done()
             }
             Event::SetImage(Ok(mut response)) => {
                 model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                return Command::all([
+                Command::all([
                     key_value::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
-                ]);
+                ])
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
-                // TODO: Display an error
+                // handle error
+                Command::done()
             }
             Event::CurrentTime(TimeResponse::Now { instant }) => {
                 let time: DateTime<Utc> = instant.try_into().unwrap();
@@ -186,29 +191,33 @@ impl App for CatFacts {
 
                 let bytes = serde_json::to_vec(&model).unwrap();
 
-                return Command::all([
+                Command::all([
                     key_value::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
-                ]);
+                ])
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
-            Event::Restore => return key_value::get(KEY).then_send(Event::SetState),
-            Event::SetState(Ok(Some(value))) => {
-                if let Ok(m) = serde_json::from_slice::<Model>(&value) {
+            Event::Restore => key_value::get(KEY).then_send(Event::SetState),
+            Event::SetState(Ok(Some(value))) => match serde_json::from_slice::<Model>(&value) {
+                Ok(m) => {
                     *model = m;
-                    return render::render();
-                };
-            }
+                    render::render()
+                }
+                Err(_) => {
+                    // handle error
+                    Command::done()
+                }
+            },
             Event::SetState(Ok(None)) => {
                 // no state to restore
+                Command::done()
             }
             Event::SetState(Err(_)) => {
                 // handle error
+                Command::done()
             }
-            Event::None => {}
-        };
-
-        Command::done()
+            Event::None => Command::done(),
+        }
     }
 
     fn view(&self, model: &Model) -> ViewModel {
