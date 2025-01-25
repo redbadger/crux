@@ -1,6 +1,6 @@
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::{
-    render::{self, Render},
+    render::{render, Render},
     Command,
 };
 use crux_http::command::Http;
@@ -107,7 +107,7 @@ impl App {
             }
             Event::Update(count) => {
                 model.count = count;
-                render::render()
+                render()
             }
             Event::Increment => {
                 // optimistic update
@@ -116,13 +116,13 @@ impl App {
                     updated_at: None,
                 };
 
-                // real update
-                let base = Url::parse(API_URL).unwrap();
-                let url = base.join("/inc").unwrap();
-                Command::all([
-                    Http::post(url).expect_json().build().then_send(Event::Set),
-                    render::render(),
-                ])
+                let call_api = {
+                    let base = Url::parse(API_URL).unwrap();
+                    let url = base.join("/inc").unwrap();
+                    Http::post(url).expect_json().build().then_send(Event::Set)
+                };
+
+                render().and(call_api)
             }
             Event::Decrement => {
                 // optimistic update
@@ -131,13 +131,13 @@ impl App {
                     updated_at: None,
                 };
 
-                // real update
-                let base = Url::parse(API_URL).unwrap();
-                let url = base.join("/dec").unwrap();
-                Command::all([
-                    Http::post(url).expect_json().build().then_send(Event::Set),
-                    render::render(),
-                ])
+                let call_api = {
+                    let base = Url::parse(API_URL).unwrap();
+                    let url = base.join("/dec").unwrap();
+                    Http::post(url).expect_json().build().then_send(Event::Set)
+                };
+
+                render().and(call_api)
             }
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
@@ -153,7 +153,7 @@ mod tests {
     use chrono::{TimeZone, Utc};
 
     use super::{App, Event, Model};
-    use crate::{capabilities::sse::SseRequest, Count, Effect};
+    use crate::{capabilities::sse::SseRequest, sse::SseResponse, Count, Effect};
 
     use crux_core::{assert_effect, App as _};
     use crux_http::{
@@ -169,16 +169,17 @@ mod tests {
         let app = App::default();
         let mut model = Model::default();
 
+        // send a `Get` event to the app
         let mut cmd = app.update(Event::Get, &mut model);
 
-        // check that an HTTP request was emitted,
-        // capturing the request in the process
+        // the app should emit an HTTP request to fetch the counter
         let mut request = cmd.effects().next().unwrap().expect_http();
 
-        // check that the request is a GET to the correct URL
-        let actual = &request.operation;
-        let expected = &HttpRequest::get("https://crux-counter.fly.dev/").build();
-        assert_eq!(actual, expected);
+        // and the request should be a GET to the correct URL
+        assert_eq!(
+            &request.operation,
+            &HttpRequest::get("https://crux-counter.fly.dev/").build()
+        );
 
         // resolve the request with a simulated response from the web API
         request
@@ -189,7 +190,7 @@ mod tests {
             ))
             .unwrap();
 
-        // check that an (internal) event was emitted to update the model
+        // the app should emit a `Set` event with the HTTP response
         let actual = cmd.events().next().unwrap();
         let expected = Event::Set(Ok(ResponseBuilder::ok()
             .body(Count {
@@ -198,38 +199,39 @@ mod tests {
             })
             .build()));
         assert_eq!(actual, expected);
-    }
 
-    /// Test that a `Set` event causes the app to update the model
-    #[test]
-    fn set_counter() {
-        let app = App::default();
-        let mut model = Model::default();
+        // send the `Set` event back to the app
+        let mut cmd = app.update(actual, &mut model);
 
-        // send a `Set` event (containing the HTTP response) to the app
-        let mut cmd = app.update(
-            Event::Set(Ok(ResponseBuilder::ok()
-                .body(Count {
-                    value: 1,
-                    updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
-                })
-                .build())),
-            &mut model,
+        // this should generate an `Update` event
+        let event = cmd.events().next().unwrap();
+        assert_eq!(
+            event,
+            Event::Update(Count {
+                value: 1,
+                updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
+            })
         );
 
-        // submit the generated `Update` event back to the app
-        let event = cmd.events().next().unwrap();
+        // send the `Update` event back to the app
         let mut cmd = app.update(event, &mut model);
 
-        // check that the app asked the shell to render
+        // the model should be updated
+        assert_eq!(
+            model.count,
+            Count {
+                value: 1,
+                updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
+            }
+        );
+
+        // the app should ask the shell to render
         assert_effect!(cmd, Effect::Render(_));
 
-        // check that the view has been updated correctly
-        insta::assert_yaml_snapshot!(app.view(&model), @r###"
-        ---
-        text: "1 (2023-01-01 00:00:00 UTC)"
-        confirmed: true
-        "###);
+        // the view should be updated
+        let view = app.view(&model);
+        assert_eq!(view.text, "1 (2023-01-01 00:00:00 UTC)");
+        assert_eq!(view.confirmed, true);
     }
     // ANCHOR_END: simple_tests
 
@@ -249,14 +251,15 @@ mod tests {
         // send an `Increment` event to the app
         let mut cmd = app.update(Event::Increment, &mut model);
 
-        // the first effect should be an Http post
-        let mut request = cmd.effects().next().unwrap().expect_http();
-        let actual = &request.operation;
-        let expected = &HttpRequest::post("https://crux-counter.fly.dev/inc").build();
-        assert_eq!(actual, expected);
-
-        // we should also get a render effect
+        // the app should ask the shell to render the optimistic update
         assert_effect!(cmd, Effect::Render(_));
+
+        // and send an HTTP post
+        let mut request = cmd.effects().next().unwrap().expect_http();
+        assert_eq!(
+            &request.operation,
+            &HttpRequest::post("https://crux-counter.fly.dev/inc").build()
+        );
 
         // we are expecting our model to be updated "optimistically" before the
         // HTTP request completes, so the value should have been updated
@@ -278,14 +281,14 @@ mod tests {
             ))
             .unwrap();
 
-        // this should generate a Set event
+        // this should generate a `Set` event
         let event = cmd.events().next().unwrap();
         assert!(matches!(event, Event::Set(_)));
 
-        // let's send that back to the app
+        // send the `Set` event back to the app
         let mut cmd = app.update(event, &mut model);
 
-        // this should generate an Update event
+        // this should generate an `Update` event
         let event = cmd.events().next().unwrap();
         assert_eq!(
             event,
@@ -295,13 +298,13 @@ mod tests {
             })
         );
 
-        // let's send that back to the app
+        // send the `Update` event back to the app
         let mut cmd = app.update(event, &mut model);
 
-        // check that the app asked the shell to render
+        // the app should ask the shell to render
         assert_effect!(cmd, Effect::Render(_));
 
-        // check that the model has been updated correctly
+        // the model should be updated
         insta::assert_yaml_snapshot!(model, @r###"
         ---
         count:
@@ -326,14 +329,15 @@ mod tests {
         // send a `Decrement` event to the app
         let mut update = app.update(Event::Decrement, &mut model);
 
-        // the first effect should be an Http post
-        let mut request = update.effects().next().unwrap().expect_http();
-        let actual = &request.operation;
-        let expected = &HttpRequest::post("https://crux-counter.fly.dev/dec").build();
-        assert_eq!(actual, expected);
-
-        // we should also get a render effect
+        // the app should ask the shell to render the optimistic update
         assert_effect!(update, Effect::Render(_));
+
+        // and send an HTTP post
+        let mut request = update.effects().next().unwrap().expect_http();
+        assert_eq!(
+            &request.operation,
+            &HttpRequest::post("https://crux-counter.fly.dev/dec").build()
+        );
 
         // we are expecting our model to be updated "optimistically" before the
         // HTTP request completes, so the value should have been updated
@@ -355,14 +359,14 @@ mod tests {
             ))
             .unwrap();
 
-        // this should generate a Set event
+        // this should generate a `Set` event
         let event = update.events().next().unwrap();
         assert!(matches!(event, Event::Set(_)));
 
-        // let's send that back to the app
+        // send the `Set` event back to the app
         let mut update = app.update(event, &mut model);
 
-        // this should generate an Update event
+        // this should generate an `Update` event
         let event = update.events().next().unwrap();
         assert_eq!(
             event,
@@ -372,13 +376,13 @@ mod tests {
             })
         );
 
-        // let's send that back to the app
+        // send the `Update` event back to the app
         let mut update = app.update(event, &mut model);
 
-        // check that the app asked the shell to render
+        // the app should ask the shell to render
         assert_effect!(update, Effect::Render(_));
 
-        // check that the model has been updated correctly
+        // the model should be updated
         insta::assert_yaml_snapshot!(model, @r###"
         ---
         count:
@@ -388,43 +392,60 @@ mod tests {
     }
 
     #[test]
-    fn get_sse() {
+    fn server_sent_events() {
         let app = App::default();
         let mut model = Model::default();
 
+        // start a SSE subscription to watch for updates from the server
         let mut cmd = app.update(Event::StartWatch, &mut model);
 
-        let request = cmd.effects().next().unwrap().expect_sse();
-
+        // the app should request a Server-Sent Events stream
+        let mut request = cmd.effects().next().unwrap().expect_sse();
         assert_eq!(
             request.operation,
             SseRequest {
                 url: "https://crux-counter.fly.dev/sse".to_string(),
             }
         );
-    }
 
-    #[test]
-    fn set_sse() {
-        let app = App::default();
-        let mut model = Model::default();
+        // resolve the request with a simulated response from the web API
+        request
+            .resolve(SseResponse::Chunk(
+                br#"data: {"value":1,"updated_at":1672531200000}
 
-        let count = Count {
-            value: 1,
-            updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
-        };
-        let event = Event::Update(count);
+                    "#
+                .to_vec(),
+            ))
+            .unwrap();
 
-        let mut cmd = app.update(event, &mut model);
+        // the app should emit an `Update` event with the new `Count`
+        let event = cmd.events().next().unwrap();
+        assert_eq!(
+            event,
+            Event::Update(Count {
+                value: 1,
+                updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
+            })
+        );
 
-        assert_effect!(cmd, Effect::Render(_));
+        // we can resolve the request with another simulated response
+        request
+            .resolve(SseResponse::Chunk(
+                br#"data: {"value":2,"updated_at":1672531200000}
 
-        // check that the model has been updated correctly
-        insta::assert_yaml_snapshot!(model, @r###"
-        ---
-        count:
-          value: 1
-          updated_at: "2023-01-01T00:00:00Z"
-        "###);
+                    "#
+                .to_vec(),
+            ))
+            .unwrap();
+
+        // the app should emit another `Update` event with the new `Count`
+        let event = cmd.events().next().unwrap();
+        assert_eq!(
+            event,
+            Event::Update(Count {
+                value: 2,
+                updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
+            })
+        );
     }
 }
