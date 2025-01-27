@@ -52,6 +52,7 @@ use slab::Slab;
 use stream::CommandStreamExt as _;
 
 pub use builder::{RequestBuilder, StreamBuilder};
+pub use context::CommandContext;
 pub use stream::CommandOutput;
 
 use crate::capability::Operation;
@@ -91,7 +92,7 @@ where
     /// which becomes the command's main asynchronous task.
     pub fn new<F, Fut>(create_task: F) -> Self
     where
-        F: FnOnce(context::CommandContext<Effect, Event>) -> Fut,
+        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
         // RFC: do we need to think about backpressure? The channels are unbounded

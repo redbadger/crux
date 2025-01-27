@@ -142,7 +142,7 @@ impl App {
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
-                ServerSentEvents::get_json(url, Event::Update)
+                ServerSentEvents::get(url).then_send(Event::Update)
             }
         }
     }
