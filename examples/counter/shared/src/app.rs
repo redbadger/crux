@@ -1,4 +1,3 @@
-use crate::capabilities::sse::ServerSentEvents;
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::{
     render::{self, Render},
@@ -7,6 +6,8 @@ use crux_core::{
 use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
 use url::Url;
+
+use crate::sse::ServerSentEvents;
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
@@ -118,8 +119,7 @@ impl crux_core::App for App {
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
-                caps.sse.get_json(url, Event::Update);
-                Command::done()
+                ServerSentEvents::get_json(url, Event::Update)
             }
         }
     }

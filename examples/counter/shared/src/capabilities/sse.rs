@@ -1,9 +1,14 @@
-use async_sse::{decode, Event};
+use std::convert::From;
+
+use async_sse::{decode, Event as SseEvent};
 use async_std::io::Cursor;
 use futures::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crux_core::capability::{CapabilityContext, Operation};
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    Command, Request,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SseRequest {
@@ -21,48 +26,45 @@ impl Operation for SseRequest {
 }
 
 #[derive(crux_core::macros::Capability)]
-pub struct ServerSentEvents<Ev> {
-    context: CapabilityContext<SseRequest, Ev>,
+pub struct ServerSentEvents<Event> {
+    context: CapabilityContext<SseRequest, Event>,
 }
 
-impl<Ev> ServerSentEvents<Ev>
+impl<Event> ServerSentEvents<Event>
 where
-    Ev: 'static,
+    Event: Send + 'static,
 {
-    pub fn new(context: CapabilityContext<SseRequest, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<SseRequest, Event>) -> Self {
         Self { context }
     }
 
-    pub fn get_json<F, T>(&self, url: impl AsRef<str>, make_event: F)
+    pub fn get_json<Effect, F, T>(url: impl AsRef<str>, make_event: F) -> Command<Effect, Event>
     where
-        F: Fn(T) -> Ev + Clone + Send + 'static,
+        Effect: From<Request<SseRequest>> + Send + 'static,
+        F: Fn(T) -> Event + Clone + Send + 'static,
         T: DeserializeOwned,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-            let url = url.as_ref().to_string();
+        let url = url.as_ref().to_string();
 
-            async move {
-                let mut stream = context.stream_from_shell(SseRequest { url });
+        Command::new(|ctx| async move {
+            let mut stream =
+                Command::stream_from_shell(SseRequest { url }).into_stream(ctx.clone());
 
-                while let Some(response) = stream.next().await {
-                    let make_event = make_event.clone();
+            while let Some(response) = stream.next().await {
+                match response {
+                    SseResponse::Chunk(data) => {
+                        let mut reader = decode(Cursor::new(data));
 
-                    match response {
-                        SseResponse::Chunk(data) => {
-                            let mut reader = decode(Cursor::new(data));
-
-                            while let Some(sse_event) = reader.next().await {
-                                if let Ok(Event::Message(msg)) = sse_event {
-                                    let t: T = serde_json::from_slice(msg.data()).unwrap();
-                                    context.update_app(make_event(t));
-                                }
+                        while let Some(sse_event) = reader.next().await {
+                            if let Ok(SseEvent::Message(msg)) = sse_event {
+                                let t: T = serde_json::from_slice(msg.data()).unwrap();
+                                ctx.send_event(make_event(t));
                             }
                         }
-                        SseResponse::Done => break,
                     }
+                    SseResponse::Done => break,
                 }
             }
-        });
+        })
     }
 }
