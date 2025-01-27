@@ -57,6 +57,7 @@ pub use stream::CommandOutput;
 use crate::capability::Operation;
 use crate::Request;
 
+#[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
