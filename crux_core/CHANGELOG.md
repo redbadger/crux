@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.2](https://github.com/redbadger/crux/compare/crux_core-v0.11.1...crux_core-v0.11.2) - 2025-01-27
+
+### Other
+
+- Make the SSE capability in counter example universal (usable in sync and async context)  [#310](https://github.com/redbadger/crux/pull/310)
+- add `#[must_use]` to `Command`
+- Make CommandContext a public type
+- add from/into helpers to Command
+
 ## [0.11.1](https://github.com/redbadger/crux/compare/crux_core-v0.11.0...crux_core-v0.11.1) - 2025-01-22
 
 ### Other
