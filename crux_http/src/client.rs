@@ -112,7 +112,10 @@ impl Client {
 
         let next = Next::new(&mw_stack, &|req, client| {
             Box::pin(async move {
-                let req = req.into_protocol_request().await.unwrap();
+                let req = req
+                    .into_protocol_request()
+                    .await
+                    .expect("Failed to create request");
                 match client.effect_sender.send(req).await {
                     HttpResult::Ok(res) => Ok(res.into()),
                     HttpResult::Err(e) => Err(e),
