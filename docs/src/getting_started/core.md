@@ -56,9 +56,9 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 rust-version = "1.66"
 
 [workspace.dependencies]
-anyhow = "1.0.86"
-crux_core = "0.8"
-serde = "1.0.203"
+anyhow = "1.0.95"
+crux_core = "0.11.1"
+serde = "1.0.217"
 ```
 
 The library's manifest, at `/shared/Cargo.toml`, should look something like the

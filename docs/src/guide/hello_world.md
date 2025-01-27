@@ -370,20 +370,25 @@ side-effect.
 That gives us the following update function, with some placeholders:
 
 ```rust,noplayground
-fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        _caps: &Self::Capabilities,
+    ) -> Command<Effect, Event> {
     match event {
         Event::Get => {
             // TODO "GET /"
         }
         Event::Set(_response) => {
             // TODO Get the data and update the model
-            caps.render.render();
+            render::render()
         }
         Event::Increment => {
             // optimistic update
             model.count.value += 1;
             model.count.updated_at = None;
-            caps.render.render();
+            render::render()
 
             // real update
             // TODO "POST /inc"
@@ -392,7 +397,7 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capab
             // optimistic update
             model.count.value -= 1;
             model.count.updated_at = None;
-            caps.render.render();
+            render::render()
 
             // real update
             // TODO "POST /dec"
@@ -432,7 +437,13 @@ sent by the Shell across the FFI boundary, which is the reason for the need to
 serialize in the first place — in a way, it is private to the Core.
 
 Finally, let's get rid of those TODOs. We'll need to add crux_http in the
-`Capabilities` type, so that the `update` function has access to it:
+`Capabilities` type, so that the `update` function has access to it.
+
+```admonish note
+In the latest versions of `crux_http` (>= `v0.11.0`), this `Capabilities` type
+id being deprecated in favour of the new `Command` API (see the description of
+[Managed Effects](./effects.md) for more details).
+```
 
 ```rust,noplayground
 use crux_http::Http;
@@ -450,22 +461,30 @@ anyone. Later on, we'll also see that Crux apps [compose](composing.md), relying
 on each app's `Capabilities` type to declare its needs, and making sure the
 necessary capabilities exist in the parent app.
 
-We can now implement those TODOs, so lets do it.
+We can now implement those TODOs, so lets do it. We're using the latest `Command` API
+and so the `update` function will return a `Command` that has been created by
+the `crux_http` and `render` capabilities (rather than using the `caps` parameter
+in the method signature):
 
 ```rust,noplayground
 const API_URL: &str = "https://crux-counter.fly.dev";
 
 //...
 
-fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
-        match event {
-            Event::Get => {
-                caps.http.get(API_URL).expect_json().send(Event::Set);
-            }
+fn update(
+        &self,
+        event: Self::Event,
+        model: &mut Self::Model,
+        _caps: &Self::Capabilities,
+    ) -> Command<Effect, Event> {        match event {
+            Event::Get => Http::get(API_URL)
+                .expect_json()
+                .build()
+                .then_send(Event::Set),
             Event::Set(Ok(mut response)) => {
                 let count = response.take_body().unwrap();
                 model.count = count;
-                caps.render.render();
+                render::render()
             }
             Event::Set(Err(_)) => {
                 panic!("Oh no something went wrong");
@@ -476,12 +495,14 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capab
                     value: model.count.value + 1,
                     updated_at: None,
                 };
-                caps.render.render();
 
-                // real update
-                let base = Url::parse(API_URL).unwrap();
-                let url = base.join("/inc").unwrap();
-                caps.http.post(url).expect_json().send(Event::Set);
+                let call_api = {
+                    let base = Url::parse(API_URL).unwrap();
+                    let url = base.join("/inc").unwrap();
+                    Http::post(url).expect_json().build().then_send(Event::Set)
+                };
+
+                render().and(call_api)
             }
             Event::Decrement => {
                 // optimistic update
@@ -489,19 +510,21 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capab
                     value: model.count.value - 1,
                     updated_at: None,
                 };
-                caps.render.render();
 
-                // real update
-                let base = Url::parse(API_URL).unwrap();
-                let url = base.join("/dec").unwrap();
-                caps.http.post(url).expect_json().send(Event::Set);
+                let call_api = {
+                    let base = Url::parse(API_URL).unwrap();
+                    let url = base.join("/dec").unwrap();
+                    Http::post(url).expect_json().build().then_send(Event::Set)
+                };
+
+                render().and(call_api)
             }
         }
     }
 
 ```
 
-There's a few things of note. The first one is that the `.send` API at the end
+There's a few things of note. The first one is that the `.then_send` API at the end
 of each chain of calls to `crux_http` expects a function that wraps its argument
 (a `Result` of a http response) in a variant of `Event`. Fortunately, enum tuple
 variants create just such a function, and we can use it. The way to read the
@@ -511,21 +534,29 @@ result". Interestingly, we didn't need to specifically mention the `Count` type,
 as the type inference from the `Event::Set` variant is enough, making it really
 easy to read.
 
-The other thing of note is that the capability calls don't block. They queue up
+The other thing of note is that the Commands don't block. They queue up
 requests to send to the shell and execution continues immediately. The requests
 will be sent in the order they were queued and the asynchronous execution is the
 job of the shell.
 
-You can find the the complete example, including the shell implementations
+You can find the the complete example, including the tests and shell implementations
 [in the Crux repo](https://github.com/redbadger/crux/blob/master/examples/counter/).
-It's interesting to take a closer look at the unit tests
+It's interesting to take a closer look at the unit tests:
+
+```admonish note
+These tests are taken from the Counter example
+[implementation](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)
+where we delegate to our own update function that does not take the `Capabilities`
+parameter, allowing us to test the app directly, without having to rely on
+the `AppTester`.
+```
 
 ```rust,noplayground
 {{#include ../../../examples/counter/shared/src/app.rs:simple_tests}}
 ```
 
-Incidentally, we're using [`insta`](https://crates.io/crates/insta) in that last
-test to assert that the view model is correct. If you don't know it already,
+For bigger `Model` or `ViewModel` structs, it may be easier to assert their correctness with
+[`insta`](https://crates.io/crates/insta). If you don't know it already,
 check it out. The really cool thing is that if the test fails, it shows you a
 diff of the actual and expected output, and if you're happy with the new output,
 you can accept the change (or not) by running `cargo insta review` — it will
