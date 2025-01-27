@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.5](https://github.com/redbadger/crux/compare/crux_http-v0.11.4...crux_http-v0.11.5) - 2025-01-27
+
+- crux_http: change an unwrap to an expect [#307](https://github.com/redbadger/crux/pull/307)
+
 ## [0.11.4](https://github.com/redbadger/crux/compare/crux_http-v0.11.3...crux_http-v0.11.4) - 2025-01-24
 
 This release adds a new [`command`](https://docs.rs/crux_http/latest/crux_http/command/index.html)
