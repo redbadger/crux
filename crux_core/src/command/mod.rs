@@ -156,6 +156,28 @@ where
         }
     }
 
+    /// Create a command from another command with compatible `Effect` and `Event` types
+    pub fn from<Ef, Ev>(subcmd: Command<Ef, Ev>) -> Self
+    where
+        Ef: Send + 'static + Into<Effect> + Unpin,
+        Ev: Send + 'static + Into<Event> + Unpin,
+        Effect: Unpin,
+        Event: Unpin,
+    {
+        subcmd.map_effect(|ef| ef.into()).map_event(|ev| ev.into())
+    }
+
+    /// Turn the command into another command with compatible `Effect` and `Event` types
+    pub fn into<Ef, Ev>(self) -> Command<Ef, Ev>
+    where
+        Ef: Send + 'static + Unpin,
+        Ev: Send + 'static + Unpin,
+        Effect: Unpin + Into<Ef>,
+        Event: Unpin + Into<Ev>,
+    {
+        self.map_effect(|ef| ef.into()).map_event(|ev| ev.into())
+    }
+
     /// Create a Command which dispatches an event and terminates. This is an alternative
     /// to calling `update` recursively. The only difference is that the two `update` calls
     /// will be visible to Crux and can show up in logs or any tooling. The trade-off is that
