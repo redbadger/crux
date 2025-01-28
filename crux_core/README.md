@@ -12,8 +12,9 @@
   [SwiftUI](https://developer.apple.com/xcode/swiftui/),
   [Jetpack Compose](https://developer.android.com/jetpack/compose),
   [React](https://reactjs.org/)/[Vue](https://vuejs.org/), or a WebAssembly
-  based framework (like [Yew](https://yew.rs/)) — however, it aims to keep this
-  UI layer as thin as it can be, with all other work done by the shared core.
+  based framework (like [Leptos](https://leptos.dev/), or
+  [Yew](https://yew.rs/)) — however, it aims to keep this UI layer as thin as it
+  can be, with all other work done by the shared core.
 - **Type Generation** - the interface with the core has static type checking
   across languages — types and serialization code are generated for Swift,
   Kotlin and TypeScript. Rust shells can import the core directly.
@@ -84,14 +85,24 @@ signature:
 ```rust,ignore
 fn update(
     &self,
-    event: Event,
+    msg: Event,
     model: &mut Model,
-    capabilities: &Capabilities,
-)
+    caps: &Capabilities,
+) -> Command<Effect, Event> {
+    // ...
+}
 ```
 
 The job of the `update` function is to process an `Event`, update the model
 accordingly, and potentially request some side-effects using capabilities.
+
+<!--prettier-ignore-->
+> [!NOTE]
+> The `Capability` API is being deprecated in favour of a more flexible `Command` API.
+>
+> To learn more about the new [`Command` API](https://docs.rs/crux_core/latest/crux_core/command/index.html),
+> see the page in the book that describes [Managed Effects](https://redbadger.github.io/crux/guide/effects.html),
+> or look at [examples/counter](https://github.com/redbadger/crux/tree/master/examples/counter).
 
 ### Application Shell
 
