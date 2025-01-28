@@ -1,4 +1,35 @@
 //! This is support code for doc tests
+
+pub mod command {
+    use crux_core::{capability::Operation, Request};
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, PartialEq, Clone, Serialize)]
+    pub struct AnOperation;
+    #[derive(Debug, PartialEq, Deserialize)]
+    pub struct AnOperationOutput;
+
+    impl Operation for AnOperation {
+        type Output = AnOperationOutput;
+    }
+
+    pub enum Effect {
+        AnEffect(Request<AnOperation>),
+    }
+
+    impl From<Request<AnOperation>> for Effect {
+        fn from(request: Request<AnOperation>) -> Self {
+            Self::AnEffect(request)
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub enum Event {
+        Start,
+        Completed(AnOperationOutput),
+    }
+}
+
 pub mod compose {
     pub mod capabilities {
         pub mod capability_one {

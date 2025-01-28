@@ -43,7 +43,7 @@ enum Event {
 
 #[test]
 fn effects_execute_in_sequence() {
-    let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+    let mut cmd = Command::new(|ctx| async move {
         let output = ctx.request_from_shell(AnOperation::One).await;
         ctx.send_event(Event::Completed(output));
         let output = ctx.request_from_shell(AnOperation::Two).await;
@@ -85,7 +85,7 @@ fn effects_execute_in_sequence() {
 
 #[test]
 fn effects_execute_in_parallel() {
-    let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+    let mut cmd = Command::new(|ctx| async move {
         let (first, second) = join!(
             ctx.request_from_shell(AnOperation::One),
             ctx.request_from_shell(AnOperation::Two)
@@ -126,7 +126,7 @@ fn effects_execute_in_parallel() {
 
 #[test]
 fn effects_race() {
-    let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+    let mut cmd = Command::new(|ctx| async move {
         select! {
             output = ctx.request_from_shell(AnOperation::One).fuse() => ctx.send_event(Event::Completed(output)),
             output = ctx.request_from_shell(AnOperation::Two).fuse() => ctx.send_event(Event::Completed(output)),
@@ -174,7 +174,7 @@ fn effects_can_spawn_communicating_tasks() {
     // the first task continues until an ::Abort resolution is sent
     // the second continues until it can't read from the channel
 
-    let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+    let mut cmd = Command::new(|ctx| async move {
         let (tx, rx) = async_channel::unbounded();
 
         ctx.spawn(|ctx| async move {
