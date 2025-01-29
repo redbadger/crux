@@ -16,6 +16,7 @@ typegen = ["crux_core/typegen"]
 [dependencies]
 chrono = { version = "0.4.39", features = ["serde"], optional = true }
 crux_core = { version = "0.11.1", path = "../crux_core" }
+futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }
 thiserror = "2.0.11"
 
