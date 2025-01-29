@@ -4,6 +4,7 @@
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
 
+pub mod command;
 pub mod duration;
 pub mod error;
 pub mod instant;

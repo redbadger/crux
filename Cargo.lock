@@ -449,6 +449,7 @@ version = "0.8.1"
 dependencies = [
  "chrono",
  "crux_core",
+ "futures",
  "serde",
  "serde_json",
  "thiserror 2.0.11",
