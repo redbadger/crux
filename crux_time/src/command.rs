@@ -33,20 +33,15 @@ where
         let (sender, mut receiver) = oneshot::channel();
 
         let builder = RequestBuilder::new(move |ctx| async move {
-            // We loop so that we can ignore the Err case of the oneshot receiver and still wait for the original request
-            loop {
-                select! {
-                    response = ctx.request_from_shell(TimeRequest::NotifyAt { id, instant }).fuse() => return response,
-                    cleared = receiver => {
-                        match cleared {
-                            Ok(_) => {
-                                return ctx.request_from_shell(TimeRequest::Clear { id }).await;
-                            }
-                            Err(_) => {
-                                // The handle was dropped, so now we just wait for the original request to finish
-                            },
-                        }
-                    }
+            select! {
+                response = ctx.request_from_shell(TimeRequest::NotifyAt { id, instant }).fuse() => return response,
+                cleared = receiver => {
+                    // The Err variant would mean the sender was dropped, but `receiver` is a fused future,
+                    // which signals `is_terminated` true in that case, so this branch of the select will
+                    // never run for the Err case
+
+                    let id = cleared.unwrap();
+                    return ctx.request_from_shell(TimeRequest::Clear { id }).await;
                 }
             }
         });
@@ -69,20 +64,14 @@ where
         let (sender, mut receiver) = oneshot::channel();
 
         let builder = RequestBuilder::new(move |ctx| async move {
-            // We loop so that we can ignore the Err case of the oneshot receiver and still wait for the original request
-            loop {
-                select! {
-                    response = ctx.request_from_shell(TimeRequest::NotifyAfter { id, duration }).fuse() => return response,
-                    cleared = receiver => {
-                        match cleared {
-                            Ok(_) => {
-                                return ctx.request_from_shell(TimeRequest::Clear { id }).await;
-                            }
-                            Err(_) => {
-                                // The handle was dropped, so now we just wait for the original request to finish
-                            },
-                        }
-                    }
+            select! {
+                response = ctx.request_from_shell(TimeRequest::NotifyAfter { id, duration }).fuse() => return response,
+                cleared = receiver => {
+                    // The Err variant would mean the sender was dropped, but `receiver` is a fused future,
+                    // which signals `is_terminated` true in that case, so this branch of the select will
+                    // never run for the Err case
+                    let id = cleared.unwrap();
+                    ctx.request_from_shell(TimeRequest::Clear { id }).await
                 }
             }
         });
@@ -176,8 +165,9 @@ mod tests {
     #[test]
     fn dropping_a_timer_handle_does_not_clear_the_request() {
         let (cmd, handle) = Time::notify_after(Duration::from_secs(2).unwrap());
-        let mut cmd = cmd.then_send(Event::Elapsed);
+        drop(handle);
 
+        let mut cmd = cmd.then_send(Event::Elapsed);
         let effect = cmd.effects().next();
 
         assert!(cmd.events().next().is_none());
@@ -185,8 +175,6 @@ mod tests {
         let Some(Effect::Time(mut request)) = effect else {
             panic!("should get an effect");
         };
-
-        drop(handle);
 
         let TimeRequest::NotifyAfter { id, .. } = request.operation else {
             panic!("Expected a NotifyAfter");
