@@ -20,27 +20,58 @@
 //!
 //! # Examples
 //! ----
-//! 1. Using `Command`s with a capability that returns a builder
+//! 1. Using `Command`s in an app's update function,
+//!    to request an HTTP POST and render the UI
 //!
 //! ```
-//!# use std::future::Future;
-//!# use crux_core::{Command, command::RequestBuilder, Request};
-//!# use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
-
-//! struct Capability;
+//!# use url::Url;
+//!# use crux_core::{Command, render};
+//!# use crux_http::command::Http;
+//!# const API_URL: &str = "";
+//!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
+//!# #[derive(crux_core::macros::Effect)]
+//!# pub struct Capabilities {
+//!#     pub render: crux_core::render::Render<Event>,
+//!#     pub http: crux_http::Http<Event>,
+//!# }
+//!# #[derive(Default)] pub struct Model { count: usize }
+//!# #[derive(Default)] pub struct App;
+//!#
+//!# impl crux_core::App for App {
+//!#     type Event = Event;
+//!#     type Model = Model;
+//!#     type ViewModel = ();
+//!#     type Capabilities = Capabilities;
+//!#     type Effect = Effect;
+//! fn update(
+//!     &self,
+//!     event: Self::Event,
+//!     model: &mut Self::Model,
+//!     _caps: &Self::Capabilities)
+//! -> Command<Effect, Event> {
+//!     match event {
+//!         //...
+//!         Event::Increment => {
+//!             let base = Url::parse(API_URL).unwrap();
+//!             let url = base.join("/inc").unwrap();
 //!
-//! impl Capability
-//! where
-//!     Effect: Send + 'static,
-//!     Event: Send + 'static,
-//! {
-//!     fn request(value: u8) -> RequestBuilder<Effect, Event, impl Future<Output = AnOperationOutput>> {
-//!         Command::request_from_shell(AnOperation::One(value))
+//!             Http::post(url)
+//!                 .expect_json()
+//!                 .build()
+//!                 .then_send(Event::Set)
+//!         }
+//!         Event::Set(Ok(mut response)) => {
+//!              let count = response.take_body().unwrap();
+//!              model.count = count;
+//!              render::render()
+//!         }
+//!         Event::Set(Err(_)) => todo!()
 //!     }
 //! }
-//!
-//! // a Command to return from the app's update function
-//! let cmd = Capability::request(1).then_send(Event::Completed);
+//!# fn view(&self, model: &Self::Model) {
+//!#     unimplemented!()
+//!# }
+//!# }
 //! ```
 //! ----
 //! 2. Chaining Commands using the synchronous API
