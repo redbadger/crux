@@ -12,6 +12,7 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 crux_core = { path = "../crux_core" }
+crux_http = { path = "../crux_http" }
 serde = { version = "1.0", features = ["derive"] }
 
 [lints]

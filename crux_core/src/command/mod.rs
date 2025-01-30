@@ -19,15 +19,16 @@
 //! enabling, for example, wrapping Commands in one another.
 //!
 //! # Examples
-//! ----
-//! 1. Using `Command`s in an app's update function,
-//!    to request an HTTP POST and render the UI
+//!
+//! Commands are typically created by a capability and returned from the update function. Capabilities
+//! normally return a builder, which can be used in both sync and async context. The basic sync use
+//! is to bind th command to an Event which will be sent with the result of the command:
 //!
 //! ```
 //!# use url::Url;
 //!# use crux_core::{Command, render};
 //!# use crux_http::command::Http;
-//!# const API_URL: &str = "";
+//!# const API_URL: &str = "https://example.com/";
 //!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
 //!# #[derive(crux_core::macros::Effect)]
 //!# pub struct Capabilities {
@@ -36,7 +37,6 @@
 //!# }
 //!# #[derive(Default)] pub struct Model { count: usize }
 //!# #[derive(Default)] pub struct App;
-//!#
 //!# impl crux_core::App for App {
 //!#     type Event = Event;
 //!#     type Model = Model;
@@ -57,8 +57,8 @@
 //!
 //!             Http::post(url)
 //!                 .expect_json()
-//!                 .build()
-//!                 .then_send(Event::Set)
+//!                 .build()               // creates a RequestBuilder
+//!                 .then_send(Event::Set) // creates a Command
 //!         }
 //!         Event::Set(Ok(mut response)) => {
 //!              let count = response.take_body().unwrap();
@@ -73,42 +73,64 @@
 //!# }
 //!# }
 //! ```
-//! ----
-//! 2. Chaining Commands using the synchronous API
+//!
+//! Commands can be chained, allowing the outputs of the first effect to be used in constructing the second
+//! effect. For example, the following code creates a new post, then fetches the full created post based
+//! on a url read from the response to the creation request:
 //!
 //! ```
 //!# use crux_core::Command;
-//!# use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
+//!# use crux_http::command::Http;
+//!# use crux_core::render::render;
+//!# use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput, Post};
+//!# const API_URL: &str = "https://example.com/";
+//!# let result = {
 //! let cmd: Command<Effect, Event> =
-//!     Command::request_from_shell(AnOperation::One(1))
-//!     .then_request(|first| {
-//!         let AnOperationOutput::One(first) = first else {
-//!             panic!("Expected One")
-//!         };
-//!         let second = first + 1;
-//!         Command::request_from_shell(AnOperation::Two(second))
-//!     })
-//!     .then_send(Event::Completed);
+//!     Http::post(API_URL)
+//!         .body(serde_json::json!({"title":"New Post", "body":"Hello!"}))
+//!         .expect_json::<Post>()
+//!         .build()
+//!         .then_request(|result| {
+//!             let post = result.unwrap();
+//!             let url = &post.body().unwrap().url;
 //!
+//!             Http::get(url).expect_json().build()
+//!         })
+//!         .then_send(Event::GotPost);
+//!
+//! // Run the http request concurrently with notifying the shell to render
+//! Command::all([cmd, render()])
+//!# };
 //! ```
-//! ----
-//! 3. Chaining Commands using the async API
+//!
+//! The same can be done with the async API, if you need more complex orchestration that is
+//! more naturally expressed in async rust
 //!
 //! ```
 //! # use crux_core::Command;
-//! # use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
+//! # use crux_http::command::Http;
+//! # use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput, Post};
+//!# const API_URL: &str = "";
 //! let cmd: Command<Effect, Event> = Command::new(|ctx| async move {
-//!     let first = ctx.request_from_shell(AnOperation::One(1)).await;
-//!     let AnOperationOutput::One(first) = first else {
-//!         panic!("Expected One")
-//!     };
-//!     let second = first + 1;
-//!     let second = ctx.request_from_shell(AnOperation::Two(second)).await;
-//!     ctx.send_event(Event::Completed(second));
+//!     let first = Http::post(API_URL)
+//!         .body(serde_json::json!({"title":"New Post", "body":"Hello!"}))
+//!         .expect_json::<Post>()
+//!         .build()
+//!         .into_future(ctx.clone())
+//!         .await;
+//!
+//!     let post = first.unwrap();
+//!     let url = &post.body().unwrap().url;
+//!
+//!     let second = Http::get(url).expect_json().build().into_future(ctx.clone()).await;
+//!
+//!     ctx.send_event(Event::GotPost(second));
 //! });
 //! ```
-//! ----
-//! 4. An async example with `spawn`
+//!
+//! In the async context, you can spawn additional concurrent tasks, which can, for example,
+//! communicate with each other via channels, to enable more complex orchstrations, stateful
+//! connection handling and other advanced uses.
 //!
 //! ```
 //! # use crux_core::Command;
@@ -159,7 +181,9 @@
 //! let effect = cmd.effects().next();
 //! assert!(effect.is_some());
 //!
-//! let Effect::AnEffect(mut request) = effect.unwrap();
+//! let Effect::AnEffect(mut request) = effect.unwrap() else {
+//!     panic!("Expected a HTTP effect")
+//! };
 //!
 //! assert_eq!(request.operation, AnOperation::One(1));
 //!

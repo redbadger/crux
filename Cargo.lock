@@ -549,6 +549,7 @@ name = "doctest_support"
 version = "0.1.0"
 dependencies = [
  "crux_core",
+ "crux_http",
  "serde",
 ]
 

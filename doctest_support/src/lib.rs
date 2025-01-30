@@ -22,6 +22,8 @@ pub mod command {
 
     pub enum Effect {
         AnEffect(Request<AnOperation>),
+        Http(Request<crux_http::protocol::HttpRequest>),
+        Render(Request<crux_core::render::RenderOperation>),
     }
 
     impl From<Request<AnOperation>> for Effect {
@@ -30,11 +32,31 @@ pub mod command {
         }
     }
 
+    impl From<Request<crux_http::protocol::HttpRequest>> for Effect {
+        fn from(request: Request<crux_http::protocol::HttpRequest>) -> Self {
+            Self::Http(request)
+        }
+    }
+
+    impl From<Request<crux_core::render::RenderOperation>> for Effect {
+        fn from(request: Request<crux_core::render::RenderOperation>) -> Self {
+            Self::Render(request)
+        }
+    }
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    pub struct Post {
+        pub url: String,
+        pub title: String,
+        pub body: String,
+    }
+
     #[derive(Debug, PartialEq)]
     pub enum Event {
         Start,
         Completed(AnOperationOutput),
         Aborted,
+        GotPost(Result<crux_http::Response<Post>, crux_http::HttpError>),
     }
 }
 
