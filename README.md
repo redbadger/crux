@@ -40,7 +40,7 @@ You can also join the friendly conversation on our
 
 > [!NOTE]
 > Crux is pre 1.0 and under active development. It is production-ready, but
-> occasional breaking changes to the API can be epxected. We do our best to
+> occasional breaking changes to the API can be expected. We do our best to
 > limit the extent of these and provide a smooth, gradual migration path
 
 ## Architectural Overview
