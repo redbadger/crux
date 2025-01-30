@@ -9,9 +9,9 @@ use crux_core::{
     render::{self, Render},
     Capability, Command,
 };
-use crux_kv::{command::KeyValue as key_value, error::KeyValueError, KeyValue};
+use crux_kv::{command::KeyValue, error::KeyValueError};
 use crux_platform::Platform;
-use crux_time::{Time, TimeResponse};
+use crux_time::{command::Time, TimeResponse};
 
 use platform::Capabilities;
 
@@ -94,10 +94,11 @@ pub struct CatFactCapabilities {
     #[allow(unused)]
     http: crux_http::Http<Event>,
     #[allow(unused)]
-    key_value: KeyValue<Event>,
+    key_value: crux_kv::KeyValue<Event>,
     platform: Platform<Event>,
     render: Render<Event>,
-    time: Time<Event>,
+    #[allow(unused)]
+    time: crux_time::Time<Event>,
 }
 
 // Allow easily using Platform as a submodule
@@ -125,12 +126,13 @@ impl App for CatFacts {
     ) -> Command<Effect, Event> {
         match msg {
             Event::GetPlatform => {
-                self.platform
-                    .update(platform::Event::Get, &mut model.platform, &caps.into());
+                let _ =
+                    self.platform
+                        .update(platform::Event::Get, &mut model.platform, &caps.into());
                 Command::done()
             }
             Event::Platform(msg) => {
-                self.platform.update(msg, &mut model.platform, &caps.into());
+                let _ = self.platform.update(msg, &mut model.platform, &caps.into());
                 Command::done()
             }
             Event::Clear => {
@@ -139,7 +141,7 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 Command::all([
-                    key_value::set(KEY, bytes).then_send(|_| Event::None),
+                    KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
                 ])
             }
@@ -168,8 +170,7 @@ impl App for CatFacts {
             Event::SetFact(Ok(mut response)) => {
                 model.cat_fact = Some(response.take_body().unwrap());
 
-                caps.time.now(Event::CurrentTime);
-                Command::done()
+                Time::now().then_send(Event::CurrentTime)
             }
             Event::SetImage(Ok(mut response)) => {
                 model.cat_image = Some(response.take_body().unwrap());
@@ -177,7 +178,7 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 Command::all([
-                    key_value::set(KEY, bytes).then_send(|_| Event::None),
+                    KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
                 ])
             }
@@ -192,12 +193,12 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 Command::all([
-                    key_value::set(KEY, bytes).then_send(|_| Event::None),
+                    KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
                 ])
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
-            Event::Restore => key_value::get(KEY).then_send(Event::SetState),
+            Event::Restore => KeyValue::get(KEY).then_send(Event::SetState),
             Event::SetState(Ok(Some(value))) => match serde_json::from_slice::<Model>(&value) {
                 Ok(m) => {
                     *model = m;
