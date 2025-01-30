@@ -19,20 +19,163 @@
 //! enabling, for example, wrapping Commands in one another.
 //!
 //! # Examples
+//! ----
+//! 1. Using `Command`s with a capability that returns a builder
 //!
-//! TODO: simple command example with a capability API
+//! ```
+//!# use std::future::Future;
+//!# use crux_core::{Command, command::RequestBuilder, Request};
+//!# use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
+
+//! struct Capability;
 //!
-//! TODO: complex example with sync API
+//! impl Capability
+//! where
+//!     Effect: Send + 'static,
+//!     Event: Send + 'static,
+//! {
+//!     fn request(value: u8) -> RequestBuilder<Effect, Event, impl Future<Output = AnOperationOutput>> {
+//!         Command::request_from_shell(AnOperation::One(value))
+//!     }
+//! }
 //!
-//! TODO: basic async example
+//! // a Command to return from the app's update function
+//! let cmd = Capability::request(1).then_send(Event::Completed);
+//! ```
+//! ----
+//! 2. Chaining Commands using the synchronous API
 //!
-//! TODO: async example with `spawn`
+//! ```
+//!# use crux_core::Command;
+//!# use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
+//! let cmd: Command<Effect, Event> =
+//!     Command::request_from_shell(AnOperation::One(1))
+//!     .then_request(|first| {
+//!         let AnOperationOutput::One(first) = first else {
+//!             panic!("Expected One")
+//!         };
+//!         let second = first + 1;
+//!         Command::request_from_shell(AnOperation::Two(second))
+//!     })
+//!     .then_send(Event::Completed);
 //!
-//! TODO: cancellation example
+//! ```
+//! ----
+//! 3. Chaining Commands using the async API
 //!
-//! TODO: testing example
+//! ```
+//! # use crux_core::Command;
+//! # use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
+//! let cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+//!     let first = ctx.request_from_shell(AnOperation::One(1)).await;
+//!     let AnOperationOutput::One(first) = first else {
+//!         panic!("Expected One")
+//!     };
+//!     let second = first + 1;
+//!     let second = ctx.request_from_shell(AnOperation::Two(second)).await;
+//!     ctx.send_event(Event::Completed(second));
+//! });
+//! ```
+//! ----
+//! 4. An async example with `spawn`
 //!
-//! TODO: composition example
+//! ```
+//! # use crux_core::Command;
+//! # use doctest_support::command::{Effect, Event, AnOperation};
+//! let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+//!     let (tx, rx) = async_channel::unbounded();
+//!
+//!     ctx.spawn(|ctx| async move {
+//!         for i in 0..10u8 {
+//!             let output = ctx.request_from_shell(AnOperation::One(i)).await;
+//!             tx.send(output).await.unwrap();
+//!         }
+//!     });
+//!
+//!     ctx.spawn(|ctx| async move {
+//!         while let Ok(value) = rx.recv().await {
+//!             ctx.send_event(Event::Completed(value));
+//!         }
+//!         ctx.send_event(Event::Aborted);
+//!     });
+//! });
+
+//! ```
+//! ----
+//! 5. A cancellation example
+//!
+//! ```
+//! # use crux_core::Command;
+//! # use doctest_support::command::{Effect, Event, AnOperation};
+//! let mut cmd: Command<Effect, Event> = Command::all([
+//!     Command::request_from_shell(AnOperation::One(1)).then_send(Event::Completed),
+//!     Command::request_from_shell(AnOperation::Two(1)).then_send(Event::Completed),
+//! ]);
+//!
+//! let handle = cmd.abort_handle();
+//!
+//! assert!(!cmd.was_aborted());
+//!
+//! ```
+//! ----
+//! 6. A testing example
+//!
+//! ```
+//! # use crux_core::Command;
+//! # use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
+//! let mut cmd = Command::request_from_shell(AnOperation::One(1)).then_send(Event::Completed);
+//!
+//! let effect = cmd.effects().next();
+//! assert!(effect.is_some());
+//!
+//! let Effect::AnEffect(mut request) = effect.unwrap();
+//!
+//! assert_eq!(request.operation, AnOperation::One(1));
+//!
+//! request
+//!     .resolve(AnOperationOutput::One(2))
+//!     .expect("Resolve should succeed");
+//!
+//! let event = cmd.events().next().unwrap();
+//!
+//! assert_eq!(event, Event::Completed(AnOperationOutput::One(2)));
+//!
+//! assert!(cmd.is_done())
+//! ```
+//! ----
+//! 7. A composition example
+//! ```
+//! # use crux_core::{Command, Request};
+//! # use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput};
+//! enum ParentEffect {
+//!    AnEffect(Request<AnOperation>),
+//! }
+//! #[derive(Debug, PartialEq)]
+//! enum ParentEvent {
+//!   Completed(AnOperationOutput),
+//! }
+//! let cmd: Command<Effect, Event> =
+//!    Command::request_from_shell(AnOperation::One(1)).then_send(Event::Completed);
+//!
+//! let mut mapped_cmd = cmd
+//!     .map_effect(|ef| match ef {
+//!         Effect::AnEffect(request) => ParentEffect::AnEffect(request),
+//!         _ => panic!("unexpected effect"),
+//!     })
+//!     .map_event(|ev| match ev {
+//!         Event::Completed(output) => ParentEvent::Completed(output),
+//!         _ => panic!("unexpected event"),
+//!     });
+//!
+//! let effect = mapped_cmd.effects().next().unwrap();
+//! let ParentEffect::AnEffect(mut request) = effect;
+//! assert_eq!(request.operation, AnOperation::One(1));
+//!
+//! request.resolve(AnOperationOutput::One(2)).expect("should resolve");
+//!
+//! let event = mapped_cmd.events().next().unwrap();
+//! assert_eq!(event, ParentEvent::Completed(AnOperationOutput::One(2)));
+//! ```
 
 mod builder;
 mod context;

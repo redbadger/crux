@@ -5,9 +5,16 @@ pub mod command {
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, PartialEq, Clone, Serialize)]
-    pub struct AnOperation;
+    pub enum AnOperation {
+        One(u8),
+        Two(u8),
+    }
+
     #[derive(Debug, PartialEq, Deserialize)]
-    pub struct AnOperationOutput;
+    pub enum AnOperationOutput {
+        One(u8),
+        Two(u8),
+    }
 
     impl Operation for AnOperation {
         type Output = AnOperationOutput;
@@ -27,6 +34,7 @@ pub mod command {
     pub enum Event {
         Start,
         Completed(AnOperationOutput),
+        Aborted,
     }
 }
 
