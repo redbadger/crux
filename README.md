@@ -2,6 +2,8 @@
 
 <a href="https://red-badger.com/crux"><img src="./docs/crux_logo.svg" height="100" /></a>
 
+**[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g&t=5s) | [Read the book](https://redbadger.github.io/crux) | [Read API docs](https://docs.rs/crux_core/latest/crux_core/) | [Join Zulip community](https://crux-community.zulipchat.com)**
+
 ## Cross-platform app development in Rust
 
 - **Shared Core for Behavior** - Crux helps you share your app's business logic
@@ -18,17 +20,14 @@
 - **Type Generation** - the interface with the core has static type checking
   across languages — types and serialization code are generated for Swift,
   Kotlin and TypeScript. Rust shells can import the core directly.
-- **Capabilities** - capabilities express the intent for side effects such as
-  calling an API. Because all side effects (including UI) are performed by the
-  shell, the core becomes trivial to test comprehensively — test suites run in
-  milliseconds (not in minutes or hours).
+- **Managed effects** - Side effects such as calling an API are captured as values
+  and executed by the Shell. The core stays side-effect free, making it portable
+  across platforms and allowing high-level user journey tests to run in miliseconds
+  (rather than minutes or even hours)
 
 ## Getting Started
 
 [Learn how to use Crux in your project](https://redbadger.github.io/crux).
-
-Follow the
-[readme in the project's repository on Github](https://github.com/redbadger/crux).
 
 Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/)
 
@@ -39,19 +38,17 @@ London.
 You can also join the friendly conversation on our
 [Zulip channel](https://crux-community.zulipchat.com).
 
-> Note, that Crux is experimental and currently under active development
-> (probably not ready for use in production apps just yet). However, the master
-> branch should always be working well, and we will try to keep the examples and
-> documentation up to date as we go. We _do_ think that the API has now settled,
-> so have a play! :-)
+> [!NOTE]
+> Crux is pre 1.0 and under active development. It is production-ready, but
+> occasional breaking changes to the API can be epxected. We do our best to
+> limit the extent of these and provide a smooth, gradual migration path
 
 ## Architectural Overview
 
 ![Logical architecture](./crux_core/architecture.svg)
 
-The fundamental architectural concept is the strict separation of pure
-computational tasks from tasks that cause side effects. This is similar to the
-way [Elm](https://guide.elm-lang.org/architecture/) works.
+Crux has managed side-effects, it strictly separates pure computational tasks from tasks that
+cause side effects. This is similar to the way [Elm](https://guide.elm-lang.org/architecture/) works.
 
 ### Side-effect-free core
 
@@ -76,9 +73,10 @@ the application:
 
 - `Event` — an `enum` describing the events which the core can handle
 - `Model` — describes the internal state of the application
+- `Effect` – the kinds of side-effects the core will request
 - `ViewModel` — represents information that should be displayed to the user
 
-The former two are tied together by the `update` function, familiar from Elm,
+The first three are tied together by the `update` function, familiar from Elm,
 Redux or other event sourcing architectures, which currently has this type
 signature:
 
@@ -87,14 +85,14 @@ fn update(
     &self,
     msg: Event,
     model: &mut Model,
-    caps: &Capabilities,
+    _caps: &Capabilities, // soon to be deprecated
 ) -> Command<Effect, Event> {
     // ...
 }
 ```
 
 The job of the `update` function is to process an `Event`, update the model
-accordingly, and potentially request some side-effects using capabilities.
+accordingly, and potentially request some side-effects.
 
 <!--prettier-ignore-->
 > [!NOTE]
@@ -111,50 +109,59 @@ for the platform, and acts as the runtime environment within which all the
 non-pure tasks are performed. From the perspective of the core, the shell is the
 platform on which the core runs.
 
+### Testing
+
+Tests can act as another Shell, exercising the Core in the same way a real app would,
+observing and resolving the requested effects and checking the model and view model
+are correct. No need for fakes, mocks or stubs.
+
 ## Communication Between the Application Shell and the Core
 
 Following the Elm architecture, the interface with the core is message based.
-This means that the core is unable to perform anything other than pure
-calculations. To perform any task that creates a side-effect (such as an HTTP
-call or random number generation), the core must request it from the shell.
+To perform any task that creates a side-effect (such as an HTTP
+call or random number generation), the core must request it from the shell as an `Effect`.
+Effects support fire-and-forget, request/response, and streaming semantics.
 
-The core has a concept of Capabilities — reusable interfaces for common
-side-effects — supporting fire-and-forget, request/response, and streaming
-semantics.
+Crux has a concept of Capabilities — reusable interfaces for common
+side-effects which can be used in the Core as a more ergonomic API.
 
 The only built-in capability is `Render`. But this repository contains a few
 capabilities at various stages of maturity, and you can easily write your own if
 you want to:
 
+![crux](./docs/src/crux.png)
+
+### Published capabilities
+
 1. `Render` (ask UI to render the ViewModel) —
    [source](./crux_core/src/capabilities/render.rs), built-in to `crux_core`,
    request only
-2. `Http` (full HTTP implementation based on the
+1. `Http` (full HTTP implementation based on the
    [Surf](https://crates.io/crates/surf) API) — [source](./crux_http/README.md),
    [crate](https://crates.io/crates/crux_http), request/response
-3. `KeyValue` (basic key-value store API) — [source](./crux_kv/README.md),
+1. `KeyValue` (basic key-value store API) — [source](./crux_kv/README.md),
    [crate](https://crates.io/crates/crux_kv), request/response
-4. `Time` (get current time, notify after duration, notify at instant) —
+1. `Time` (get current time, notify after duration, notify at instant) —
    [source](./crux_time/README.md), [crate](https://crates.io/crates/crux_time),
    request/response
-5. `Platform` (get the current platform) — [source](./crux_platform/README.md),
+1. `Platform` (get the current platform) — [source](./crux_platform/README.md),
    [crate](https://crates.io/crates/crux_platform), request/response
-6. `SSE` (basic Server-Sent Events) —
+
+### Example custom capabilities
+
+1. `SSE` (basic Server-Sent Events) —
    [source](./examples/counter/shared/src/capabilities/sse.rs),
    request/streaming
-7. `PubSub` (pub sub with streaming) —
+1. `PubSub` (pub sub with streaming) —
    [source](./examples/notes/shared/src/capabilities/pub_sub.rs),
    request/response/streaming
-8. `Timer` (timer start, finish, cancel) —
-   [source](./examples/notes/shared/src/capabilities/timer.rs),
-   request/response/streaming
-9. `Delay` — part of
+1. `Delay` — part of
    [tutorial](https://redbadger.github.io/crux/guide/capability_apis.html#basic-delay-capability)
    in the [book](https://redbadger.github.io/crux)
 
-![crux](./docs/src/crux.png)
+### Foreign Function Interface with type generation
 
-This means the core interface is simple:
+The core API interface is very minimal:
 
 - `process_event: Event -> Vec<Request>` - processes a user interaction event
   and potentially responds with capability requests. This is the API for the
@@ -165,13 +172,6 @@ This means the core interface is simple:
 - `view: () -> ViewModel` - provides the shell with the current data for
   displaying user interface
 
-Updating the user interface is considered a side-effect and is provided by the
-built-in `Render` capability.
-
-This design means the core can be tested very easily, without any mocking and
-stubbing, by simply checking the Input/Output behaviour of the three functions.
-
-### Foreign Function Interface
 
 The Foreign Function Interface allowing the shell to call the above functions is
 provided by Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/) on a mobile
@@ -204,11 +204,11 @@ Three types of message are exchanged between the application and the core.
   an earlier request.
 
 `Request` messages contain the inputs for the requested side-effect, along with
-a `uuid` used by the core to pair requests and their responses together. The
-exact mechanics are not important, but it is important for the request's `uuid`
+a `id` used by the core to pair requests and their responses together. The
+exact mechanics are not important, but it is important for the request's `id`
 to be passed on to the corresponding response.
 
-## Typical Message Exchange Cycle
+## Example Message Exchange Cycle
 
 A typical message exchange cycle may look like this:
 
@@ -218,7 +218,8 @@ A typical message exchange cycle may look like this:
    argument
 1. The Core performs the required processing, updating both its inner state and
    the view model
-1. The Core returns one or more `Request` messages to the Shell
+1. The Core returns one or more `Request` messages to the Shell (inside an enum
+   tagging the type of request)
 
 In the simplest case, the Core will respond to an `Event` by returning the
 single `Request` - render.
@@ -242,17 +243,7 @@ responsible for passing responses back to the core (to the `handle_response`
 function), which may respond with further requests.
 
 This exchange continues until the core stops requesting further side-effects
-(typically the last side-effect requested would be `Render`).
-
-## Run the Counter Example locally
-
-Refer to [examples/counter](./examples/counter/README.md) README
-
-## How to Start Your Own New Project
-
-Refer to the
-[Getting Started](https://redbadger.github.io/crux/getting_started/core.html)
-section of the tutorials.
+(typically the last side-effect requested would again be `Render`).
 
 ---
 
