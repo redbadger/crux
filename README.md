@@ -1,6 +1,6 @@
 # [Crux](https://red-badger.com/crux) &middot; [![GitHub license](https://img.shields.io/github/license/redbadger/crux?color=blue)](https://github.com/redbadger/crux/blob/master/LICENSE) [![Crate version](https://img.shields.io/crates/v/crux_core.svg)](https://crates.io/crates/crux_core) [![Docs](https://img.shields.io/badge/docs.rs-crux_core-green)](https://docs.rs/crux_core/) [![Build status](https://img.shields.io/github/actions/workflow/status/redbadger/crux/build.yaml)](https://github.com/redbadger/crux/actions)
 
-<a href="https://red-badger.com/crux"><img src="./docs/crux_logo.svg" height="100" /></a>
+<a href="https://red-badger.com/crux"><img src="./crux_core/crux_logo.svg" height="100" /></a>
 
 **[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g&t=5s) | [Read the book](https://redbadger.github.io/crux) | [Read API docs](https://docs.rs/crux_core/latest/crux_core/) | [Join Zulip community](https://crux-community.zulipchat.com)**
 
@@ -100,7 +100,7 @@ accordingly, and potentially request some side-effects.
 >
 > To learn more about the new [`Command` API](https://docs.rs/crux_core/latest/crux_core/command/index.html),
 > see the page in the book that describes [Managed Effects](https://redbadger.github.io/crux/guide/effects.html),
-> or look at [examples/counter](./examples/counter/README.md).
+> or look at [examples/counter](https://github.com/redbadger/crux/tree/master/examples/counter).
 
 ### Application Shell
 
@@ -129,7 +129,7 @@ The only built-in capability is `Render`. But this repository contains a few
 capabilities at various stages of maturity, and you can easily write your own if
 you want to:
 
-![crux](./docs/src/crux.png)
+![crux](https://github.com/redbadger/crux/raw/master/docs/src/crux.png)
 
 ### Published capabilities
 
@@ -137,23 +137,23 @@ you want to:
    [source](./crux_core/src/capabilities/render.rs), built-in to `crux_core`,
    request only
 1. `Http` (full HTTP implementation based on the
-   [Surf](https://crates.io/crates/surf) API) — [source](./crux_http/README.md),
+   [Surf](https://crates.io/crates/surf) API) — [source](https://github.com/redbadger/crux/tree/master/crux_http),
    [crate](https://crates.io/crates/crux_http), request/response
-1. `KeyValue` (basic key-value store API) — [source](./crux_kv/README.md),
+1. `KeyValue` (basic key-value store API) — [source](https://github.com/redbadger/crux/tree/master/crux_kv),
    [crate](https://crates.io/crates/crux_kv), request/response
 1. `Time` (get current time, notify after duration, notify at instant) —
-   [source](./crux_time/README.md), [crate](https://crates.io/crates/crux_time),
+   [source](https://github.com/redbadger/crux/tree/master/crux_time), [crate](https://crates.io/crates/crux_time),
    request/response
-1. `Platform` (get the current platform) — [source](./crux_platform/README.md),
+1. `Platform` (get the current platform) — [source](https://github.com/redbadger/crux/tree/master/crux_platform),
    [crate](https://crates.io/crates/crux_platform), request/response
 
 ### Example custom capabilities
 
 1. `SSE` (basic Server-Sent Events) —
-   [source](./examples/counter/shared/src/capabilities/sse.rs),
+   [source](https://github.com/redbadger/crux/tree/master/examples/counter/shared/src/capabilities/sse.rs),
    request/streaming
 1. `PubSub` (pub sub with streaming) —
-   [source](./examples/notes/shared/src/capabilities/pub_sub.rs),
+   [source](https://github.com/redbadger/crux/tree/master/examples/notes/shared/src/capabilities/pub_sub.rs),
    request/response/streaming
 1. `Delay` — part of
    [tutorial](https://redbadger.github.io/crux/guide/capability_apis.html#basic-delay-capability)
@@ -256,7 +256,7 @@ appreciated.
 
 ### Red Badger Consulting Limited
 
-<img src="./docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
+<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
 
 [Red Badger](https://red-badger.com/) is the digital product consultancy trusted
 by blue chips and global brands. Our product design and technical pedigree allow
@@ -268,7 +268,7 @@ capabilities to power continuous innovation.
 
 ### Zulip
 
-<img src="./docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
+<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
 
 [Zulip](https://zulip.com/) is an open-source modern team chat app designed to
 keep both live and asynchronous conversations organized.
