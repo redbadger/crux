@@ -21,6 +21,7 @@ name = "shared"
 automerge = "0.4.1"
 crux_core.workspace = true
 crux_kv.workspace = true
+crux_time.workspace = true
 futures = "0.3"
 lazy_static = "1.5"
 serde = { workspace = true, features = ["derive"] }
@@ -35,6 +36,3 @@ uniffi = { version = "0.28.3", features = ["cli"] }
 
 [build-dependencies]
 uniffi = { version = "0.28.3", features = ["build"] }
-
-[dev-dependencies]
-assert_let_bind = "0.1.1"

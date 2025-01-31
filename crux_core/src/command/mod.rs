@@ -244,14 +244,14 @@ where
         self.effects.is_empty() && self.events.is_empty() && self.tasks.is_empty()
     }
 
-    /// Run the effect state machine until it settles and collect all effects generated
+    /// Run the effect state machine until it settles and return an iterator over the effects
     pub fn effects(&mut self) -> impl Iterator<Item = Effect> + '_ {
         self.run_until_settled();
 
         self.effects.try_iter()
     }
 
-    /// Run the effect state machine until it settles and collect all events generated
+    /// Run the effect state machine until it settles and return an iterator over the events
     pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
         self.run_until_settled();
 

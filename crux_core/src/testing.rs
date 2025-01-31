@@ -7,7 +7,7 @@ use crate::{
         channel::Receiver, executor_and_spawner, CommandSpawner, Operation, ProtoContext,
         QueuingExecutor,
     },
-    Request, WithContext,
+    Command, Request, WithContext,
 };
 
 /// AppTester is a simplified execution environment for Crux apps for use in
@@ -234,6 +234,25 @@ impl<Ef, Ev> Update<Ef, Ev> {
         std::mem::take(&mut self.effects)
             .into_iter()
             .partition(predicate)
+    }
+}
+
+impl<Effect, Event> Command<Effect, Event>
+where
+    Effect: Send + 'static,
+    Event: Send + 'static,
+{
+    /// Assert that the Command contains _exactly_ one effect and zero events,
+    /// and return the effect
+    pub fn expect_one_effect(&mut self) -> Effect {
+        if self.events().next().is_some() {
+            panic!("Expected only one effect, but found an event");
+        }
+        if let Some(effect) = self.effects().next() {
+            effect
+        } else {
+            panic!("Expected one effect but found none");
+        }
     }
 }
 
