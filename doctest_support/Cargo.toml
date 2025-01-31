@@ -15,5 +15,8 @@ crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
 serde = { version = "1.0", features = ["derive"] }
 
+[dev-dependencies]
+serde_json = "1.0"
+
 [lints]
 workspace = true

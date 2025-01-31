@@ -551,6 +551,7 @@ dependencies = [
  "crux_core",
  "crux_http",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

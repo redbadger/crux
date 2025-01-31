@@ -194,7 +194,7 @@ pub trait App: Default {
 
     /// Update method defines the transition from one `model` state to another in response to an `event`.
     ///
-    /// `update` may mutate the `model` and returns a [`Command`](crate::command::Command) describing
+    /// `update` may mutate the `model` and returns a [`Command`] describing
     /// the managed side-effects to perform as a result of the `event`. Commands can be constructed by capabilities
     /// and combined to run sequentially or concurrently. If migrating from previous version of crux, you
     /// can return `Command::done()` for compatibility.
