@@ -235,3 +235,19 @@ fn effects_can_spawn_communicating_tasks() {
 
     assert!(cmd.is_done());
 }
+
+#[test]
+fn tasks_can_be_spawned_on_existing_effects() {
+    let mut cmd: Command<Effect, Event> = Command::done();
+
+    assert!(cmd.is_done());
+    assert!(cmd.effects().next().is_none());
+
+    cmd.spawn(|ctx| async move {
+        ctx.request_from_shell(AnOperation::One).await;
+    });
+
+    // Command is not done any more
+    assert!(!cmd.is_done());
+    assert!(cmd.effects().next().is_some());
+}

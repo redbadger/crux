@@ -225,6 +225,27 @@ fn and() {
 }
 
 #[test]
+fn and_doesnt_blow_the_stack() {
+    let mut cmd: Command<Effect, Event> = Command::done();
+
+    for _ in 1..2000 {
+        cmd = cmd.and(Command::done());
+    }
+
+    // Polling the task should work
+    let _ = cmd.effects();
+}
+
+#[test]
+fn all_doesnt_blow_the_stack() {
+    let commands: Vec<Command<Effect, Event>> = (1..2000).map(|_| Command::done()).collect();
+    let mut cmd = Command::all(commands);
+
+    // Polling the task should work
+    let _ = cmd.effects();
+}
+
+#[test]
 fn all() {
     let cmd_one = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
     let cmd_two = Command::request_from_shell(AnOperation::Two).then_send(Event::Completed);

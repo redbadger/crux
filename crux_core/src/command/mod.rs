@@ -62,6 +62,7 @@ use crate::Request;
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
+    context: CommandContext<Effect, Event>,
 
     // Executor internals
     // TODO: should this be a separate type?
@@ -115,7 +116,7 @@ where
         let task = Task {
             finished: Default::default(),
             aborted: aborted.clone(),
-            future: create_task(context).boxed(),
+            future: create_task(context.clone()).boxed(),
             join_handle_wakers: waker_receiver,
         };
 
@@ -129,6 +130,7 @@ where
         Command {
             effects: effect_receiver,
             events: event_receiver,
+            context,
             ready_queue: ready_receiver,
             spawn_queue: spawn_receiver,
             ready_sender,
@@ -141,21 +143,7 @@ where
     /// Create an empty, completed Command. This is useful as a return value from `update` if
     /// there are no side-effects to perform.
     pub fn done() -> Self {
-        let (_, effects) = crossbeam_channel::bounded(0);
-        let (_, events) = crossbeam_channel::bounded(0);
-        let (_, spawn_queue) = crossbeam_channel::bounded(0);
-        let (ready_sender, ready_queue) = crossbeam_channel::bounded(0);
-
-        Command {
-            effects,
-            events,
-            ready_queue,
-            spawn_queue,
-            tasks: Slab::with_capacity(0),
-            ready_sender,
-            waker: Default::default(),
-            aborted: Default::default(),
-        }
+        Command::new(|_ctx| futures::future::ready(()))
     }
 
     /// Create a command from another command with compatible `Effect` and `Event` types
@@ -279,12 +267,16 @@ where
     }
 
     /// Convenience for [`Command::all`] which runs another command concurrently with this one
-    pub fn and(self, other: Self) -> Self
+    pub fn and(mut self, other: Self) -> Self
     where
         Effect: Unpin,
         Event: Unpin,
     {
-        Command::all([self, other])
+        self.spawn(|ctx| async move {
+            other.host(ctx.effects, ctx.events).await;
+        });
+
+        self
     }
 
     /// Create a command running a number of commands concurrently
@@ -343,6 +335,19 @@ where
 
             mapped.host(ctx.effects, ctx.events).await;
         })
+    }
+
+    /// Spawn an additional task on the command. The task will execute concurrently with
+    /// existing tasks
+    ///
+    /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
+    /// events back to the app, and to spawn additional tasks. The closure is expected to return a future.
+    pub fn spawn<F, Fut>(&mut self, create_task: F)
+    where
+        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        self.context.spawn(create_task);
     }
 
     /// Returns an abort handle which can be used to remotely terminate a running Command
