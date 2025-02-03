@@ -1,6 +1,11 @@
-use crux_core::capability::{CapabilityContext, Operation};
-use futures::StreamExt;
+use futures::Stream;
 use serde::{Deserialize, Serialize};
+
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    command::StreamBuilder,
+    Command, Request,
+};
 
 // TODO add topics
 
@@ -22,40 +27,25 @@ pub struct PubSub<Event> {
     context: CapabilityContext<PubSubOperation, Event>,
 }
 
-impl<Ev> PubSub<Ev>
+impl<Event> PubSub<Event>
 where
-    Ev: 'static,
+    Event: Send + 'static,
 {
-    pub fn new(context: CapabilityContext<PubSubOperation, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<PubSubOperation, Event>) -> Self {
         Self { context }
     }
 
-    pub fn subscribe<F>(&self, make_event: F)
+    pub fn subscribe<Effect>() -> StreamBuilder<Effect, Event, impl Stream<Item = Vec<u8>>>
     where
-        F: FnOnce(Vec<u8>) -> Ev + Clone + Send + 'static,
+        Effect: From<Request<PubSubOperation>> + Send + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                let mut stream = context.stream_from_shell(PubSubOperation::Subscribe);
-
-                while let Some(message) = stream.next().await {
-                    let make_event = make_event.clone();
-
-                    context.update_app(make_event(message.0));
-                }
-            }
-        })
+        Command::stream_from_shell(PubSubOperation::Subscribe).map(|Message(data)| data)
     }
 
-    pub fn publish(&self, data: Vec<u8>) {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                context.notify_shell(PubSubOperation::Publish(data)).await;
-            }
-        })
+    pub fn publish<Effect>(data: Vec<u8>) -> Command<Effect, Event>
+    where
+        Effect: From<Request<PubSubOperation>> + Send + 'static,
+    {
+        Command::notify_shell(PubSubOperation::Publish(data))
     }
 }
