@@ -8,7 +8,7 @@ import type {
   Event,
   KeyValueResult,
   Message,
-  TimerOutput,
+  TimeResponse,
 } from "shared_types/types/shared_types";
 import {
   EffectVariantRender,
@@ -16,13 +16,9 @@ import {
   Request,
   EffectVariantKeyValue,
   EffectVariantPubSub,
-  EffectVariantTimer,
+  EffectVariantTime,
   PubSubOperationVariantPublish,
   PubSubOperationVariantSubscribe,
-  TimerOperationVariantStart,
-  TimerOutputVariantFinished,
-  TimerOutputVariantCreated,
-  TimerOperationVariantCancel,
   KeyValueOperationVariantGet,
   KeyValueOperationVariantSet,
   KeyValueResultVariantOk,
@@ -30,6 +26,9 @@ import {
   KeyValueResponseVariantSet,
   ValueVariantNone,
   ValueVariantBytes,
+  TimeRequestVariantnotifyAfter,
+  TimeResponseVariantdurationElapsed,
+  TimeRequestVariantclear,
 } from "shared_types/types/shared_types";
 import {
   BincodeSerializer,
@@ -37,7 +36,7 @@ import {
 } from "shared_types/bincode/mod";
 import { Dispatch, RefObject, SetStateAction } from "react";
 
-type Response = Message | TimerOutput | KeyValueResult;
+type Response = Message | TimeResponse | KeyValueResult;
 
 export type Timers = {
   [key: number]: number;
@@ -115,12 +114,14 @@ export class Core {
         break;
       }
 
-      case EffectVariantTimer: {
-        const timerOp = (effect as EffectVariantTimer).value;
+      case EffectVariantTime: {
+        const timerOp = (effect as EffectVariantTime).value;
 
         switch (timerOp.constructor) {
-          case TimerOperationVariantStart: {
-            let { id: startId, millis } = timerOp as TimerOperationVariantStart;
+          case TimeRequestVariantnotifyAfter: {
+            let { id: startId, duration } =
+              timerOp as TimeRequestVariantnotifyAfter;
+            let millis = Number(duration.nanos) / 1e6;
 
             let handle = window.setTimeout(() => {
               // Drop the timer
@@ -130,20 +131,18 @@ export class Core {
                 return rest;
               });
 
-              this.respond(id, new TimerOutputVariantFinished(startId));
-            }, Number(millis));
+              this.respond(id, new TimeResponseVariantdurationElapsed(startId));
+            }, millis);
             this.setTimers((ts) => ({ [Number(startId)]: handle, ...ts }));
-
-            this.respond(id, new TimerOutputVariantCreated(startId));
 
             break;
           }
 
-          case TimerOperationVariantCancel: {
-            let { id: cancelId } = timerOp as TimerOperationVariantCancel;
+          case TimeRequestVariantclear: {
+            let { id: cancelId } = timerOp as TimeRequestVariantclear;
 
             this.setTimers((ts) => {
-              let { [Number(cancelId)]: handle, ...rest } = ts;
+              let { [Number(cancelId.value)]: handle, ...rest } = ts;
               window.clearTimeout(handle);
 
               return rest;
