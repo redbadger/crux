@@ -57,7 +57,7 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};
@@ -146,7 +146,7 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};
@@ -284,7 +284,7 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};
@@ -373,7 +373,7 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};

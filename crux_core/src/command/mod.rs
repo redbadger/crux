@@ -15,24 +15,225 @@
 //! it manages and polls a number of futures and provides a context which they can use
 //! to submit effects to the shell and events back to the application.
 //!
-//! Command implements [`Stream`](futures::Stream), making it useful in an async context,
+//! Command implements [`Stream`], making it useful in an async context,
 //! enabling, for example, wrapping Commands in one another.
 //!
 //! # Examples
 //!
-//! TODO: simple command example with a capability API
+//! Commands are typically created by a capability and returned from the update function. Capabilities
+//! normally return a builder, which can be used in both sync and async context. The basic sync use
+//! is to bind the command to an Event which will be sent with the result of the command:
 //!
-//! TODO: complex example with sync API
+//! ```
+//!# use url::Url;
+//!# use crux_core::{Command, render};
+//!# use crux_http::command::Http;
+//!# const API_URL: &str = "https://example.com/";
+//!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
+//!# #[derive(crux_core::macros::Effect)]
+//!# pub struct Capabilities {
+//!#     pub render: crux_core::render::Render<Event>,
+//!#     pub http: crux_http::Http<Event>,
+//!# }
+//!# #[derive(Default)] pub struct Model { count: usize }
+//!# #[derive(Default)] pub struct App;
+//!# impl crux_core::App for App {
+//!#     type Event = Event;
+//!#     type Model = Model;
+//!#     type ViewModel = ();
+//!#     type Capabilities = Capabilities;
+//!#     type Effect = Effect;
+//! fn update(
+//!     &self,
+//!     event: Self::Event,
+//!     model: &mut Self::Model,
+//!     _caps: &Self::Capabilities)
+//! -> Command<Effect, Event> {
+//!     match event {
+//!         //...
+//!         Event::Increment => {
+//!             let base = Url::parse(API_URL).unwrap();
+//!             let url = base.join("/inc").unwrap();
 //!
-//! TODO: basic async example
+//!             Http::post(url)            // creates an HTTP RequestBuilder
+//!                 .expect_json()
+//!                 .build()               // creates a Command RequestBuilder
+//!                 .then_send(Event::Set) // creates a Command
+//!         }
+//!         Event::Set(Ok(mut response)) => {
+//!              let count = response.take_body().unwrap();
+//!              model.count = count;
+//!              render::render()
+//!         }
+//!         Event::Set(Err(_)) => todo!()
+//!     }
+//! }
+//!# fn view(&self, model: &Self::Model) {
+//!#     unimplemented!()
+//!# }
+//!# }
+//! ```
 //!
-//! TODO: async example with `spawn`
+//! Commands can be chained, allowing the outputs of the first effect to be used in constructing the second
+//! effect. For example, the following code creates a new post, then fetches the full created post based
+//! on a url read from the response to the creation request:
 //!
-//! TODO: cancellation example
+//! ```
+//!# use crux_core::Command;
+//!# use crux_http::command::Http;
+//!# use crux_core::render::render;
+//!# use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput, Post};
+//!# const API_URL: &str = "https://example.com/";
+//!# let result = {
+//! let cmd: Command<Effect, Event> =
+//!     Http::post(API_URL)
+//!         .body(serde_json::json!({"title":"New Post", "body":"Hello!"}))
+//!         .expect_json::<Post>()
+//!         .build()
+//!         .then_request(|result| {
+//!             let post = result.unwrap();
+//!             let url = &post.body().unwrap().url;
 //!
-//! TODO: testing example
+//!             Http::get(url).expect_json().build()
+//!         })
+//!         .then_send(Event::GotPost);
 //!
-//! TODO: composition example
+//! // Run the http request concurrently with notifying the shell to render
+//! Command::all([cmd, render()])
+//!# };
+//! ```
+//!
+//! The same can be done with the async API, if you need more complex orchestration that is
+//! more naturally expressed in async rust
+//!
+//! ```
+//! # use crux_core::Command;
+//! # use crux_http::command::Http;
+//! # use doctest_support::command::{Effect, Event, AnOperation, AnOperationOutput, Post};
+//! # const API_URL: &str = "";
+//! let cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+//!     let first = Http::post(API_URL)
+//!         .body(serde_json::json!({"title":"New Post", "body":"Hello!"}))
+//!         .expect_json::<Post>()
+//!         .build()
+//!         .into_future(ctx.clone())
+//!         .await;
+//!
+//!     let post = first.unwrap();
+//!     let url = &post.body().unwrap().url;
+//!
+//!     let second = Http::get(url).expect_json().build().into_future(ctx.clone()).await;
+//!
+//!     ctx.send_event(Event::GotPost(second));
+//! });
+//! ```
+//!
+//! In the async context, you can spawn additional concurrent tasks, which can, for example,
+//! communicate with each other via channels, to enable more complex orchestrations, stateful
+//! connection handling and other advanced uses.
+//!
+//! ```
+//! # use crux_core::Command;
+//! # use doctest_support::command::{Effect, Event, AnOperation};
+//! let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+//!     let (tx, rx) = async_channel::unbounded();
+//!
+//!     ctx.spawn(|ctx| async move {
+//!         for i in 0..10u8 {
+//!             let output = ctx.request_from_shell(AnOperation::One(i)).await;
+//!             tx.send(output).await.unwrap();
+//!         }
+//!     });
+//!
+//!     ctx.spawn(|ctx| async move {
+//!         while let Ok(value) = rx.recv().await {
+//!             ctx.send_event(Event::Completed(value));
+//!         }
+//!         ctx.send_event(Event::Aborted);
+//!     });
+//! });
+//! ```
+//!
+//! Commands can be cancelled, by calling [`Command::abort_handle`]
+//! and then calling `abort` on the returned handle.
+//!
+//! ```
+//! # use crux_core::Command;
+//! # use doctest_support::command::{Effect, Event, AnOperation};
+//! let mut cmd: Command<Effect, Event> = Command::all([
+//!     Command::request_from_shell(AnOperation::One(1)).then_send(Event::Completed),
+//!     Command::request_from_shell(AnOperation::Two(1)).then_send(Event::Completed),
+//! ]);
+//!
+//! let handle = cmd.abort_handle();
+//!
+//! // Command is still running
+//! assert!(!cmd.was_aborted());
+//!
+//! handle.abort();
+//!
+//! // Command is now finished
+//! assert!(cmd.is_done());
+//! // And was aborted
+//! assert!(cmd.was_aborted());
+//!
+//! ```
+//!
+//! You can test that Commands yield the expected effects and events.
+//! Commands can be tested in isolation by creating them explicitly
+//! in a test, and then checking the effects and events they generated.
+//! Or you can call your app's `update` function in a test, and perform
+//! the same checks on the returned Command.
+//!
+//! ```
+//! # use crux_http::{
+//! #     command::Http,
+//! #     protocol::{HttpRequest, HttpResponse, HttpResult},
+//! #     testing::ResponseBuilder,
+//! # };
+//! # use doctest_support::command::{Effect, Event, Post};
+//! const API_URL: &str = "https://example.com/api/posts";
+//!
+//! // Create a command to post a new Post to API_URL
+//! // and then dispatch an event with the result
+//! let mut cmd = Http::post(API_URL)
+//!     .body(serde_json::json!({"title":"New Post", "body":"Hello!"}))
+//!     .expect_json()
+//!     .build()
+//!     .then_send(Event::GotPost);
+//!
+//! // Check the effect is an HTTP request ...
+//! let effect = cmd.effects().next().unwrap();
+//! let Effect::Http(mut request) = effect else {
+//!     panic!("Expected a HTTP effect")
+//! };
+//!
+//! // ... and the request is a POST to API_URL
+//! assert_eq!(
+//!     &request.operation,
+//!     &HttpRequest::post(API_URL)
+//!         .header("content-type", "application/json")
+//!         .body(r#"{"body":"Hello!","title":"New Post"}"#)
+//!         .build()
+//! );
+//!
+//! // Resolve the request with a successful response
+//! let body = Post {
+//!     url: API_URL.to_string(),
+//!     title: "New Post".to_string(),
+//!     body: "Hello!".to_string(),
+//! };
+//! request
+//!     .resolve(HttpResult::Ok(HttpResponse::ok().json(&body).build()))
+//!     .expect("Resolve should succeed");
+//!
+//! // Check the event is a GotPost event with the successful response
+//! let actual = cmd.events().next().unwrap();
+//! let expected = Event::GotPost(Ok(ResponseBuilder::ok().body(body).build()));
+//! assert_eq!(actual, expected);
+//!
+//! assert!(cmd.is_done());
+//! ```
 
 mod builder;
 mod context;
@@ -86,7 +287,7 @@ where
     /// Create a new command orchestrating effects with async Rust. This is the lowest level
     /// API to create a Command if you need full control over its execution. In most cases you will
     /// more likely want to create Commands with capabilities, and using the combinator APIs
-    /// ([`then`], [`and`] and [`all`]) to orchestrate them.
+    /// ([`and`](Command::and) and [`all`](Command::all)) to orchestrate them.
     ///
     /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
     /// events back to the app, and to spawn additional tasks. The closure is expected to return a future

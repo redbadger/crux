@@ -22,7 +22,7 @@
 //! * Shell - the native side of the app on each platform handling UI and executing side effects
 //!
 //! * App - the main module of the core containing the application logic, especially model changes
-//!   and side-effects triggered by events. App can be composed from modules, each resembling a smaller, simpler app.
+//!   and side-effects triggered by events. An App can delegate to child apps, mapping Events and Effects.
 //!
 //! * Event - main input for the core, typically triggered by user interaction in the UI
 //!
@@ -34,7 +34,11 @@
 //!   interaction with the host platform. Updating the UI is considered an effect.
 //!
 //! * Capability - A user-friendly API used to request effects and provide events that should be dispatched
-//!   when the effect is completed. For example, a HTTP client is a capability.
+//!   when an effect is completed. For example, a HTTP client is a capability.
+//!
+//! * Command - A description of a side-effect to be executed by the shell. Commands can be combined
+//!   (synchronously with combinators, or asynchronously with Rust async) to run
+//!   sequentially or concurrently, or any combination thereof.
 //!
 //! Below is a minimal example of a Crux-based application Core:
 //!
@@ -190,7 +194,7 @@ pub trait App: Default {
 
     /// Update method defines the transition from one `model` state to another in response to an `event`.
     ///
-    /// `update` may mutate the `model` and returns a [`Command`](crate::command::Command) describing
+    /// `update` may mutate the `model` and returns a [`Command`] describing
     /// the managed side-effects to perform as a result of the `event`. Commands can be constructed by capabilities
     /// and combined to run sequentially or concurrently. If migrating from previous version of crux, you
     /// can return `Command::done()` for compatibility.

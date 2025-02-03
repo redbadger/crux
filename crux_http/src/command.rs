@@ -39,7 +39,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -66,7 +66,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -91,7 +91,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -117,7 +117,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -143,7 +143,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -168,7 +168,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -194,7 +194,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -219,7 +219,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -244,7 +244,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -269,7 +269,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use http_types::Method;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
@@ -293,7 +293,7 @@ where
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```
 /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
 /// # #[derive(crux_core::macros::Effect)]
 /// # #[allow(unused)]
@@ -340,7 +340,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -361,7 +361,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -387,7 +387,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -416,7 +416,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
@@ -447,7 +447,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -470,7 +470,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -499,7 +499,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use std::collections::HashMap;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
@@ -524,7 +524,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
@@ -562,7 +562,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -614,7 +614,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
     /// # #[derive(crux_core::macros::Effect)]
     /// # #[allow(unused)]
@@ -640,7 +640,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Slideshow>>) }
     /// # #[derive(crux_core::macros::Effect)]

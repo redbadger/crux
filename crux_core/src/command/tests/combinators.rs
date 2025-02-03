@@ -79,7 +79,7 @@ fn then() {
 
 #[test]
 fn chaining() {
-    let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
+    let mut cmd = Command::request_from_shell(AnOperation::More([3, 4]))
         .then_request(|first| {
             let AnOperationOutput::Other(first) = first else {
                 // TODO: how do I bail quietly here?
@@ -122,7 +122,7 @@ fn chaining() {
 
 #[test]
 fn long_chain_support() {
-    let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
+    let mut cmd = Command::request_from_shell(AnOperation::More([3, 4]))
         .then_request(|first| {
             let AnOperationOutput::Other(first) = first else {
                 // TODO: how do I bail quietly here?
@@ -401,7 +401,7 @@ fn complex_concurrency() {
 
 #[test]
 fn concurrency_mixing_streams_and_requests() {
-    let mut cmd: Command<Effect, Event> = Command::all([
+    let mut cmd = Command::all([
         Command::stream_from_shell(AnOperation::One)
             .then_request(|out| {
                 let AnOperationOutput::Other([a, b]) = out else {
@@ -561,7 +561,7 @@ fn stream_followed_by_a_stream() {
 
 #[test]
 fn chaining_with_mapping() {
-    let mut cmd: Command<Effect, Event> = Command::request_from_shell(AnOperation::More([3, 4]))
+    let mut cmd = Command::request_from_shell(AnOperation::More([3, 4]))
         .map(|first| {
             let AnOperationOutput::Other(first) = first else {
                 // TODO: how do I bail quietly here?
@@ -607,7 +607,7 @@ fn chaining_with_mapping() {
 
 #[test]
 fn stream_mapping_and_chaining() {
-    let mut cmd: Command<Effect, Event> = Command::stream_from_shell(AnOperation::One)
+    let mut cmd = Command::stream_from_shell(AnOperation::One)
         .map(|out| {
             let AnOperationOutput::Other([a, b]) = out else {
                 panic!("Bad output");

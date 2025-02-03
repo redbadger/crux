@@ -111,7 +111,7 @@ where
 /// A bridge with a user supplied serializer
 ///
 /// This is exactly the same as [`Bridge`], except instead of using the default
-/// bincode serialization, you can provide your own [`Serializer`].
+/// bincode serialization, you can provide your own [`Serializer`](::serde::ser::Serializer).
 ///
 /// **Warning**: the support for custom serialization is **experimental** and
 /// does not have a corresponding type generation support - you will need
