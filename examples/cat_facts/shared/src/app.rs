@@ -7,13 +7,11 @@ use serde::{Deserialize, Serialize};
 pub use crux_core::App;
 use crux_core::{
     render::{self, Render},
-    Capability, Command,
+    Command,
 };
 use crux_kv::{command::KeyValue, error::KeyValueError};
 use crux_platform::Platform;
 use crux_time::{command::Time, TimeResponse};
-
-use platform::Capabilities;
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
@@ -90,25 +88,13 @@ pub struct CatFacts {
 
 #[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
 #[derive(crux_core::macros::Effect)]
+#[allow(unused)]
 pub struct CatFactCapabilities {
-    #[allow(unused)]
     http: crux_http::Http<Event>,
-    #[allow(unused)]
     key_value: crux_kv::KeyValue<Event>,
     platform: Platform<Event>,
     render: Render<Event>,
-    #[allow(unused)]
     time: crux_time::Time<Event>,
-}
-
-// Allow easily using Platform as a submodule
-impl From<&CatFactCapabilities> for Capabilities {
-    fn from(incoming: &CatFactCapabilities) -> Self {
-        Capabilities {
-            platform: incoming.platform.map_event(super::Event::Platform),
-            render: incoming.render.map_event(super::Event::Platform),
-        }
-    }
 }
 
 impl App for CatFacts {
@@ -122,19 +108,42 @@ impl App for CatFacts {
         &self,
         msg: Event,
         model: &mut Model,
-        caps: &CatFactCapabilities,
+        _caps: &CatFactCapabilities,
     ) -> Command<Effect, Event> {
+        self.update(msg, model)
+    }
+
+    fn view(&self, model: &Model) -> ViewModel {
+        let fact = match (&model.cat_fact, &model.time) {
+            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+            (Some(fact), _) => fact.format(),
+            _ => "No fact".to_string(),
+        };
+
+        let platform =
+            <platform::App as crux_core::App>::view(&self.platform, &model.platform).platform;
+
+        ViewModel {
+            platform,
+            fact,
+            image: model.cat_image.clone(),
+        }
+    }
+}
+
+impl CatFacts {
+    fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
         match msg {
-            Event::GetPlatform => {
-                let _ =
-                    self.platform
-                        .update(platform::Event::Get, &mut model.platform, &caps.into());
-                Command::done()
-            }
-            Event::Platform(msg) => {
-                let _ = self.platform.update(msg, &mut model.platform, &caps.into());
-                Command::done()
-            }
+            Event::GetPlatform => self
+                .platform
+                .update(platform::Event::Get, &mut model.platform)
+                .map_event(Into::into)
+                .map_effect(Into::into),
+            Event::Platform(msg) => self
+                .platform
+                .update(msg, &mut model.platform)
+                .map_event(Into::into)
+                .map_effect(Into::into),
             Event::Clear => {
                 model.cat_fact = None;
                 model.cat_image = None;
@@ -156,6 +165,7 @@ impl App for CatFacts {
                 model.cat_image = Some(CatImage::default());
 
                 Command::all([
+                    render::render(),
                     Http::get(FACT_API_URL)
                         .expect_json()
                         .build()
@@ -164,7 +174,6 @@ impl App for CatFacts {
                         .expect_json()
                         .build()
                         .then_send(Event::SetImage),
-                    render::render(),
                 ])
             }
             Event::SetFact(Ok(mut response)) => {
@@ -178,8 +187,8 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 Command::all([
-                    KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
+                    KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                 ])
             }
             Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
@@ -193,8 +202,8 @@ impl App for CatFacts {
                 let bytes = serde_json::to_vec(&model).unwrap();
 
                 Command::all([
-                    KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                     render::render(),
+                    KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                 ])
             }
             Event::CurrentTime(_) => panic!("Unexpected time response"),
@@ -220,28 +229,25 @@ impl App for CatFacts {
             Event::None => Command::done(),
         }
     }
+}
 
-    fn view(&self, model: &Model) -> ViewModel {
-        let fact = match (&model.cat_fact, &model.time) {
-            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
-            (Some(fact), _) => fact.format(),
-            _ => "No fact".to_string(),
-        };
+impl From<platform::Event> for Event {
+    fn from(event: platform::Event) -> Self {
+        Event::Platform(event)
+    }
+}
 
-        let platform =
-            <platform::App as crux_core::App>::view(&self.platform, &model.platform).platform;
-
-        ViewModel {
-            platform,
-            fact,
-            image: model.cat_image.clone(),
+impl From<platform::Effect> for Effect {
+    fn from(effect: platform::Effect) -> Self {
+        match effect {
+            platform::Effect::Platform(request) => Effect::Platform(request),
+            platform::Effect::Render(request) => Effect::Render(request),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crux_core::testing::AppTester;
     use crux_http::{
         protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
@@ -253,20 +259,18 @@ mod tests {
 
     #[test]
     fn fetch_results_in_set_fact_and_set_image() {
-        let app = AppTester::<CatFacts>::default();
+        let app = CatFacts::default();
         let mut model = Model::default();
 
         // send fetch event to app
-        let (mut http_effects, mut render_effects) = app
-            .update(Event::Fetch, &mut model)
-            .take_effects_partitioned_by(Effect::is_http);
+        let mut fetch_command = app.update(Event::Fetch, &mut model);
 
         // receive render effect
-        render_effects.pop_front().unwrap().expect_render();
+        fetch_command.effects().next().unwrap().expect_render();
 
         // receive two HTTP effects, one to fetch the fact and one to fetch the image
         // we'll handle the fact request first
-        let request = &mut http_effects.pop_front().unwrap().expect_http();
+        let mut request = fetch_command.effects().next().unwrap().expect_http();
         assert_eq!(request.operation, HttpRequest::get(FACT_API_URL).build());
 
         let a_fact = CatFact {
@@ -275,47 +279,43 @@ mod tests {
         };
 
         // resolve the request with a simulated response from the web API
-        let event = app
-            .resolve(
-                request,
-                HttpResult::Ok(
-                    HttpResponse::ok()
-                        .body(r#"{ "fact": "cats are good", "length": 13 }"#)
-                        .build(),
-                ),
-            )
-            .expect("should resolve successfully")
-            .expect_one_event();
+        request
+            .resolve(HttpResult::Ok(
+                HttpResponse::ok()
+                    .body(r#"{ "fact": "cats are good", "length": 13 }"#)
+                    .build(),
+            ))
+            .expect("should resolve successfully");
 
         // check that the app emitted an (internal) event to update the model
+        let event = fetch_command.events().next().unwrap();
         assert_eq!(
             event,
             Event::SetFact(Ok(ResponseBuilder::ok().body(a_fact.clone()).build()))
         );
 
-        // Setting the fact should trigger a time event
-        let mut time_events = app.update(event, &mut model).take_effects(|e| e.is_time());
+        // Setting the fact should trigger a time effect
+        let mut cmd = app.update(event, &mut model);
 
-        let request = &mut time_events.pop_front().unwrap().expect_time();
+        let request = &mut cmd.effects().next().unwrap().expect_time();
 
         let response = TimeResponse::Now {
             instant: Instant::new(0, 0).unwrap(),
         };
-        let event = app
-            .resolve(request, response)
-            .expect("should resolve successfully")
-            .expect_one_event();
+        request
+            .resolve(response.clone())
+            .expect("should resolve successfully");
 
+        let event = cmd.events().next().unwrap();
         assert_eq!(event, Event::CurrentTime(response));
 
         // update the app with the current time event
-        // and check that we get a key value set event and a render event
-        let (mut key_value_effects, mut render_effects) = app
-            .update(event, &mut model)
-            .take_effects_partitioned_by(Effect::is_key_value);
-        render_effects.pop_front().unwrap().expect_render();
+        // and check that we get a render event ...
+        let mut cmd = app.update(event, &mut model);
+        cmd.effects().next().unwrap().expect_render();
 
-        let request = &mut key_value_effects.pop_front().unwrap().expect_key_value();
+        // ... and a key value set event
+        let mut request = cmd.effects().next().unwrap().expect_key_value();
         assert_eq!(
             request.operation,
             KeyValueOperation::Set {
@@ -324,18 +324,16 @@ mod tests {
             }
         );
 
-        let _updated = app.resolve_to_event_then_update(
-            request,
-            KeyValueResult::Ok {
+        request
+            .resolve(KeyValueResult::Ok {
                 response: KeyValueResponse::Set {
                     previous: Value::None,
                 },
-            },
-            &mut model,
-        );
+            })
+            .unwrap();
 
         // Now we'll handle the image
-        let request = &mut http_effects.pop_front().unwrap().expect_http();
+        let mut request = fetch_command.effects().next().unwrap().expect_http();
         assert_eq!(request.operation, HttpRequest::get(IMAGE_API_URL).build());
 
         let an_image = CatImage {
@@ -343,7 +341,16 @@ mod tests {
         };
 
         let response = HttpResult::Ok(HttpResponse::ok().body(r#"{"href":"image_url"}"#).build());
-        let _updated = app.resolve_to_event_then_update(request, response, &mut model);
+        request.resolve(response).unwrap();
+
+        let event = fetch_command.events().next().unwrap();
+        assert_eq!(
+            event,
+            Event::SetImage(Ok(ResponseBuilder::ok().body(an_image.clone()).build()))
+        );
+
+        let mut cmd = app.update(event, &mut model);
+        cmd.effects().next().unwrap().expect_render();
 
         assert_eq!(model.cat_fact, Some(a_fact));
         assert_eq!(model.cat_image, Some(an_image));
