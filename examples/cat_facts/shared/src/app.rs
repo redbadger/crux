@@ -137,12 +137,12 @@ impl CatFacts {
             Event::GetPlatform => self
                 .platform
                 .update(platform::Event::Get, &mut model.platform)
-                .map_event(Into::into)
+                .map_event(Event::Platform)
                 .map_effect(Into::into),
             Event::Platform(msg) => self
                 .platform
                 .update(msg, &mut model.platform)
-                .map_event(Into::into)
+                .map_event(Event::Platform)
                 .map_effect(Into::into),
             Event::Clear => {
                 model.cat_fact = None;
@@ -228,12 +228,6 @@ impl CatFacts {
             }
             Event::None => Command::done(),
         }
-    }
-}
-
-impl From<platform::Event> for Event {
-    fn from(event: platform::Event) -> Self {
-        Event::Platform(event)
     }
 }
 
