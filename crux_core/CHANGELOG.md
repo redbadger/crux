@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.3](https://github.com/redbadger/crux/compare/crux_core-v0.11.2...crux_core-v0.11.3) - 2025-02-03
+
+This is an API compatible release.
+
+Fixes a bug in `Command::and` that could cause a stack overflow when chaining many commands together.
+see [#315](https://github.com/redbadger/crux/pull/315)
+
+### Other
+
+- Merge pull request [#311](https://github.com/redbadger/crux/pull/311) from redbadger/command-docs
+- crux_core command docs
+- crux_core readme
+
 ## [0.11.2](https://github.com/redbadger/crux/compare/crux_core-v0.11.1...crux_core-v0.11.2) - 2025-01-27
 
 ### Other

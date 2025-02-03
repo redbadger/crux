@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.8.2](https://github.com/redbadger/crux/compare/crux_time-v0.8.1...crux_time-v0.8.2) - 2025-02-03
+
+### Other
+
+- Command interface for crux_time
+- Rely on FusedFuture skipping the select branch
+
 ## [0.8.1](https://github.com/redbadger/crux/compare/crux_time-v0.8.0...crux_time-v0.8.1) - 2025-01-22
 
 ### Other

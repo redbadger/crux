@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.6](https://github.com/redbadger/crux/compare/crux_http-v0.11.5...crux_http-v0.11.6) - 2025-02-03
+
+### Other
+
+- crux_core command docs wip
+
 ## [0.11.5](https://github.com/redbadger/crux/compare/crux_http-v0.11.4...crux_http-v0.11.5) - 2025-01-27
 
 - crux_http: change an unwrap to an expect [#307](https://github.com/redbadger/crux/pull/307)
