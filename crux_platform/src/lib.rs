@@ -1,5 +1,7 @@
 //! TODO mod docs
 
+pub mod command;
+
 use crux_core::capability::{CapabilityContext, Operation};
 use crux_core::macros::Capability;
 use serde::{Deserialize, Serialize};
