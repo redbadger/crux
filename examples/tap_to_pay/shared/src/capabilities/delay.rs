@@ -1,5 +1,12 @@
-use crux_core::capability::{CapabilityContext, Operation};
+use std::future::Future;
+
 use serde::{Deserialize, Serialize};
+
+use crux_core::{
+    capability::{CapabilityContext, Operation},
+    command::RequestBuilder,
+    Command, Request,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum DelayOperation {
@@ -15,28 +22,18 @@ pub struct Delay<Event> {
     context: CapabilityContext<DelayOperation, Event>,
 }
 
-impl<Ev> Delay<Ev>
+impl<Event> Delay<Event>
 where
-    Ev: 'static,
+    Event: Send + 'static,
 {
-    pub fn new(context: CapabilityContext<DelayOperation, Ev>) -> Self {
+    pub fn new(context: CapabilityContext<DelayOperation, Event>) -> Self {
         Self { context }
     }
 
-    pub fn start(&self, millis: usize, event: Ev)
+    pub fn start<Effect>(millis: usize) -> RequestBuilder<Effect, Event, impl Future<Output = ()>>
     where
-        Ev: Send,
+        Effect: From<Request<DelayOperation>> + Send + 'static,
     {
-        self.context.spawn({
-            let context = self.context.clone();
-
-            async move {
-                context
-                    .request_from_shell(DelayOperation::Start { millis })
-                    .await;
-
-                context.update_app(event);
-            }
-        })
+        Command::request_from_shell(DelayOperation::Start { millis })
     }
 }
