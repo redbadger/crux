@@ -60,81 +60,9 @@ impl crux_core::App for App {
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        caps: &Self::Capabilities,
+        _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
-        match event {
-            Event::SetAmount(amount) => {
-                match &model.payment {
-                    Some(payment) if payment.status == PaymentStatus::New => {
-                        model.payment = Some(Payment::new(amount))
-                    }
-                    Some(_) => (),
-                    None => model.payment = Some(Payment::new(amount)),
-                };
-            }
-            Event::StartPayment => {
-                if let Some(payment) = &mut model.payment {
-                    payment.start()
-                }
-            }
-            Event::AbortPayment => {
-                if let Some(Payment {
-                    status: PaymentStatus::PendingTap,
-                    ..
-                }) = &model.payment
-                {
-                    model.payment = None
-                }
-            }
-            Event::SendPayment => {
-                if let Some(payment) = &mut model.payment {
-                    payment.send();
-
-                    // Simulate processing delay
-                    caps.delay.start(2500, Event::ConfirmSend)
-                }
-            }
-            Event::ConfirmSend => {
-                if let Some(payment) = &mut model.payment {
-                    payment.confirm_send();
-                }
-            }
-            Event::CompletePayment => {
-                if let Some(Payment {
-                    status: PaymentStatus::Completed(_),
-                    ..
-                }) = &model.payment
-                {
-                    model.payment = None
-                }
-            }
-            Event::SetReceiptEmail(email) => {
-                if let Some(payment) = &mut model.payment {
-                    if let Some(receipt) = payment.receipt() {
-                        receipt.email = email;
-                    }
-                }
-            }
-            Event::SendReceipt => {
-                if let Some(payment) = &mut model.payment {
-                    if let Some(receipt) = payment.receipt() {
-                        receipt.send();
-
-                        // Simulate processing delay
-                        caps.delay.start(1200, Event::ConfirmSendReceipt)
-                    }
-                }
-            }
-            Event::ConfirmSendReceipt => {
-                if let Some(payment) = &mut model.payment {
-                    if let Some(receipt) = payment.receipt() {
-                        receipt.confirm_send();
-                    }
-                }
-            }
-        };
-
-        render()
+        self.update(event, model)
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -149,10 +77,106 @@ impl crux_core::App for App {
     }
 }
 
+impl App {
+    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
+        match event {
+            Event::SetAmount(amount) => match &model.payment {
+                Some(payment) if payment.status == PaymentStatus::New => {
+                    model.payment = Some(Payment::new(amount));
+                    render()
+                }
+                Some(_) => Command::done(),
+                None => {
+                    model.payment = Some(Payment::new(amount));
+                    render()
+                }
+            },
+            Event::StartPayment => {
+                if let Some(payment) = &mut model.payment {
+                    payment.start();
+                };
+                render()
+            }
+            Event::AbortPayment => {
+                if let Some(Payment {
+                    status: PaymentStatus::PendingTap,
+                    ..
+                }) = &model.payment
+                {
+                    model.payment = None;
+                    render()
+                } else {
+                    Command::done()
+                }
+            }
+            Event::SendPayment => {
+                let mut commands = Vec::new();
+                if let Some(payment) = &mut model.payment {
+                    payment.send();
+
+                    // Simulate processing delay
+                    commands.push(Delay::start(2500).then_send(|()| Event::ConfirmSend));
+                }
+                commands.push(render());
+                Command::all(commands)
+            }
+            Event::ConfirmSend => {
+                if let Some(payment) = &mut model.payment {
+                    payment.confirm_send();
+                    render()
+                } else {
+                    Command::done()
+                }
+            }
+            Event::CompletePayment => {
+                if let Some(Payment {
+                    status: PaymentStatus::Completed(_),
+                    ..
+                }) = &model.payment
+                {
+                    model.payment = None;
+                    render()
+                } else {
+                    Command::done()
+                }
+            }
+            Event::SetReceiptEmail(email) => {
+                if let Some(payment) = &mut model.payment {
+                    if let Some(receipt) = payment.receipt() {
+                        receipt.email = email;
+                    }
+                };
+                render()
+            }
+            Event::SendReceipt => {
+                let mut commands = Vec::new();
+                if let Some(payment) = &mut model.payment {
+                    if let Some(receipt) = payment.receipt() {
+                        receipt.send();
+
+                        // Simulate processing delay
+                        commands.push(Delay::start(1200).then_send(|()| Event::ConfirmSendReceipt));
+                    }
+                }
+                commands.push(render());
+                Command::all(commands)
+            }
+            Event::ConfirmSendReceipt => {
+                if let Some(payment) = &mut model.payment {
+                    if let Some(receipt) = payment.receipt() {
+                        receipt.confirm_send();
+                    }
+                }
+                render()
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use assert_let_bind::assert_let;
-    use crux_core::testing::AppTester;
+    use crux_core::App as _;
 
     use crate::{App, Effect, Event, Model, Payment, PaymentStatus, Receipt, Screen, ViewModel};
 
@@ -162,7 +186,7 @@ mod tests {
 
     #[test]
     fn starts_with_new_payment() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let model = Model::default();
 
         let expected = ViewModel {
@@ -175,7 +199,7 @@ mod tests {
 
     #[test]
     fn basic_happy_path_payment_journey() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(1000), &mut model);
@@ -194,8 +218,8 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::PendingTap))
         );
 
-        let mut update = app.update(Event::SendPayment, &mut model);
-        assert_let!(Effect::Delay(request), &mut update.effects[0]);
+        let mut cmd = app.update(Event::SendPayment, &mut model);
+        assert_let!(Effect::Delay(request), &mut cmd.effects().next().unwrap());
 
         let view = app.view(&model);
 
@@ -205,8 +229,8 @@ mod tests {
         );
 
         // Time passed
-        let update = app.resolve(request, ()).expect("should resolve");
-        for event in update.events {
+        request.resolve(()).expect("should resolve");
+        for event in cmd.events() {
             let _ = app.update(event, &mut model);
         }
 
@@ -232,8 +256,8 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::Completed(expected_receipt)))
         );
 
-        let mut update = app.update(Event::SendReceipt, &mut model);
-        assert_let!(Effect::Delay(request), &mut update.effects[0]);
+        let mut cmd = app.update(Event::SendReceipt, &mut model);
+        assert_let!(Effect::Delay(request), &mut cmd.effects().next().unwrap());
 
         let view = app.view(&model);
         let expected_receipt = Receipt {
@@ -247,8 +271,8 @@ mod tests {
         );
 
         // Time passed
-        let update = app.resolve(request, ()).expect("should update");
-        for event in update.events {
+        request.resolve(()).unwrap();
+        for event in cmd.events() {
             let _ = app.update(event, &mut model);
         }
 
@@ -271,7 +295,7 @@ mod tests {
 
     #[test]
     fn does_not_start_payment_of_zero() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(0), &mut model);
