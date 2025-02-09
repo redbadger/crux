@@ -2,10 +2,11 @@ mod registry;
 mod request_serde;
 
 use bincode::{DefaultOptions, Options};
+use either::Either;
 use erased_serde::Serialize as _;
 use serde::{Deserialize, Serialize};
 
-use crate::{App, Core};
+use crate::{core::Middleware, App};
 use registry::{EffectId, ResolveRegistry};
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
@@ -28,19 +29,19 @@ where
 
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
 /// serialized form, using bincode as the serialization format.
-pub struct Bridge<A>
+pub struct Bridge<Core>
 where
-    A: App,
+    Core: Middleware,
 {
-    inner: BridgeWithSerializer<A>,
+    inner: BridgeWithSerializer<Core>,
 }
 
-impl<A> Bridge<A>
+impl<Core> Bridge<Core>
 where
-    A: App,
+    Core: Middleware,
 {
     /// Create a new Bridge using the provided `core`.
-    pub fn new(core: Core<A>) -> Self {
+    pub fn new(core: Core) -> Self {
         Self {
             inner: BridgeWithSerializer::new(core),
         }
@@ -52,7 +53,7 @@ where
     /// to your app.
     pub fn process_event(&self, event: &[u8]) -> Vec<u8>
     where
-        A::Event: for<'a> Deserialize<'a>,
+        <Core::App as App>::Event: for<'a> Deserialize<'a>,
     {
         let options = Self::bincode_options();
 
@@ -75,7 +76,7 @@ where
     pub fn handle_response(&self, id: u32, output: &[u8]) -> Vec<u8>
     // ANCHOR_END: handle_response_sig
     where
-        A::Event: for<'a> Deserialize<'a>,
+        <Core::App as App>::Event: for<'a> Deserialize<'a>,
     {
         let options = Self::bincode_options();
 
@@ -119,20 +120,20 @@ where
 /// it using separate tooling.
 // used in docs/internals/bridge.md
 // ANCHOR: bridge_with_serializer
-pub struct BridgeWithSerializer<A>
+pub struct BridgeWithSerializer<Core>
 where
-    A: App,
+    Core: Middleware,
 {
-    core: Core<A>,
+    core: Core,
     registry: ResolveRegistry,
 }
 // ANCHOR_END: bridge_with_serializer
 
-impl<A> BridgeWithSerializer<A>
+impl<Core> BridgeWithSerializer<Core>
 where
-    A: App,
+    Core: Middleware,
 {
-    pub fn new(core: Core<A>) -> Self {
+    pub fn new(core: Core) -> Self {
         Self {
             core,
             registry: Default::default(),
@@ -145,7 +146,7 @@ where
     /// to your app.
     pub fn process_event<'de, D, S>(&self, event: D, requests_out: S)
     where
-        for<'a> A::Event: Deserialize<'a>,
+        for<'a> <Core::App as App>::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de> + 'de,
         S: ::serde::ser::Serializer,
     {
@@ -163,7 +164,7 @@ where
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
     pub fn handle_response<'de, D, S>(&self, id: u32, response: D, requests_out: S)
     where
-        for<'a> A::Event: Deserialize<'a>,
+        for<'a> <Core::App as App>::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de>,
         S: ::serde::ser::Serializer,
     {
@@ -181,28 +182,25 @@ where
         data: &mut dyn erased_serde::Deserializer,
         requests_out: &mut dyn erased_serde::Serializer,
     ) where
-        A::Event: for<'a> Deserialize<'a>,
+        <Core::App as App>::Event: for<'a> Deserialize<'a>,
     {
         let effects = match id {
             None => {
                 let shell_event =
                     erased_serde::deserialize(data).expect("Message deserialization failed.");
 
-                self.core.process_event(shell_event)
+                Either::Left(self.core.process_event(shell_event))
             }
             Some(id) => {
                 self.registry.resume(id, data).expect(
                     "Response could not be handled. The request did not expect a response.",
                 );
 
-                self.core.process()
+                Either::Right(self.core.process_effects())
             }
         };
 
-        let requests: Vec<_> = effects
-            .into_iter()
-            .map(|eff| self.registry.register(eff))
-            .collect();
+        let requests: Vec<_> = effects.map(|eff| self.registry.register(eff)).collect();
 
         requests
             .erased_serialize(requests_out)
