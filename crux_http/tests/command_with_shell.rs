@@ -137,7 +137,7 @@ mod shell {
         Ok(received)
     }
 
-    fn enqueue_effects(queue: &mut VecDeque<Task>, effects: Vec<Effect>) {
+    fn enqueue_effects(queue: &mut VecDeque<Task>, effects: impl Iterator<Item = Effect>) {
         queue.append(&mut effects.into_iter().map(Task::Effect).collect())
     }
 }

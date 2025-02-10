@@ -85,9 +85,9 @@ mod shell {
             let msg = queue.pop_front();
 
             let effs = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(m),
+                Some(CoreMessage::Event(m)) => core.process_event(m).collect(),
                 Some(CoreMessage::Response(Outcome::Platform(mut request, outcome))) => {
-                    core.resolve(&mut request, outcome)
+                    core.resolve(&mut request, outcome).collect()
                 }
 
                 _ => vec![],

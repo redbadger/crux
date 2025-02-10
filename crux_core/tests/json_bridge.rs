@@ -42,11 +42,11 @@ mod app {
 }
 
 mod core {
-    use crux_core::bridge::BridgeWithSerializer;
+    use crux_core::{bridge::BridgeWithSerializer, Core};
 
     use crate::app::App;
 
-    pub type Bridge = BridgeWithSerializer<App>;
+    pub type Bridge = BridgeWithSerializer<Core<App>>;
 }
 
 mod tests {

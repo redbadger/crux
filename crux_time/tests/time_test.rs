@@ -162,10 +162,10 @@ mod shell {
             let msg = queue.pop_front();
 
             let effs = match msg {
-                Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Time(mut request, instant))) => {
-                    core.resolve(&mut request, TimeResponse::Now { instant })
-                }
+                Some(CoreMessage::Event(m)) => core.process_event(m).collect(),
+                Some(CoreMessage::Response(Outcome::Time(mut request, instant))) => core
+                    .resolve(&mut request, TimeResponse::Now { instant })
+                    .collect(),
                 _ => vec![],
             };
 

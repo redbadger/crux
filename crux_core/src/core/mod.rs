@@ -1,10 +1,12 @@
 mod effect;
+mod middleware;
 mod request;
 mod resolve;
 
 use std::sync::RwLock;
 
 pub use effect::Effect;
+pub use middleware::Middleware;
 pub use request::Request;
 pub use resolve::ResolveError;
 
@@ -83,7 +85,7 @@ where
     /// effect requests.
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
-    pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
+    pub fn process_event(&self, event: A::Event) -> impl Iterator<Item = A::Effect> + '_ {
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
         let command = self.app.update(event, &mut model, &self.capabilities);
@@ -104,7 +106,11 @@ where
     // used in docs/internals/runtime.md and docs/internals/bridge.md
     // ANCHOR: resolve
     // ANCHOR: resolve_sig
-    pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<A::Effect>
+    pub fn resolve<Op>(
+        &self,
+        request: &mut Request<Op>,
+        result: Op::Output,
+    ) -> impl Iterator<Item = A::Effect> + '_
     where
         Op: Operation,
         // ANCHOR_END: resolve_sig
@@ -118,7 +124,7 @@ where
 
     // used in docs/internals/runtime.md
     // ANCHOR: process
-    pub(crate) fn process(&self) -> Vec<A::Effect> {
+    pub(crate) fn process(&self) -> impl Iterator<Item = A::Effect> + '_ {
         self.executor.run_all();
 
         while let Some(capability_event) = self.capability_events.receive() {
@@ -133,7 +139,7 @@ where
             self.executor.run_all();
         }
 
-        self.requests.drain().collect()
+        self.requests.drain()
     }
     // ANCHOR_END: process
 
