@@ -174,7 +174,7 @@ mod middlware {
         Core: Middleware,
     {
         kv_requests: VecDeque<Request<KeyValueOperation>>,
-        inner: Option<Box<dyn Iterator<Item = <<Core as Middleware>::App as App>::Effect> + 'core>>,
+        inner: Box<dyn Iterator<Item = <<Core as Middleware>::App as App>::Effect> + 'core>,
         store: Storage,
         core: &'core Core,
     }
@@ -188,39 +188,41 @@ mod middlware {
 
         fn next(&mut self) -> Option<Self::Item> {
             loop {
-                if let Some(effects) = &mut self.inner {
-                    if let Some(effect) = effects.next() {
-                        if effect.is_kv() {
-                            let Some(kv_request) = effect.into_kv() else {
-                                unreachable!();
-                            };
-
-                            self.kv_requests.push_back(kv_request);
-                        } else {
-                            return Some(effect);
-                        }
+                while let Some(effect) = self.inner.next() {
+                    if !effect.is_kv() {
+                        // Found a non-KV effect return it
+                        return Some(effect);
                     }
-                }
 
-                // Pull the next request, process it and swap the inner iterator for the
-                // follow up effects
-                if let Some(mut kv_request) = self.kv_requests.pop_front() {
-                    let mut operation = KeyValueOperation::Get {
-                        key: "".to_string(),
+                    let Some(kv_request) = effect.into_kv() else {
+                        unreachable!();
                     };
-                    std::mem::swap(&mut kv_request.operation, &mut operation);
 
-                    let result = self.store.process_kv_operation(operation);
-
-                    kv_request.resolve(result).expect("to resolve");
-
-                    let follow_ups = self.core.process_effects();
-
-                    self.inner = Some(Box::new(follow_ups));
-                } else {
-                    // Nothing more to do
-                    return None;
+                    // collect the KV effect and continue iterating
+                    self.kv_requests.push_back(kv_request);
                 }
+
+                let Some(mut kv_request) = self.kv_requests.pop_front() else {
+                    // No more KV requests, we're finished
+                    return None;
+                };
+
+                // process the next KV request and swap the inner iterator
+                // for the iterator over follow-up effects
+
+                let mut operation = KeyValueOperation::Get {
+                    key: "".to_string(),
+                };
+                std::mem::swap(&mut kv_request.operation, &mut operation);
+
+                let result = self.store.process_kv_operation(operation);
+
+                kv_request.resolve(result).expect("to resolve");
+
+                let follow_ups = self.core.process_effects();
+
+                self.inner = Box::new(follow_ups);
+                // Now we go back up to the while let to process the new iterator
             }
         }
     }
@@ -245,7 +247,7 @@ mod middlware {
         {
             QueueKV {
                 kv_requests: VecDeque::new(),
-                inner: Some(Box::new(effects)),
+                inner: Box::new(effects),
                 store: self.store.clone(),
                 core: &self.core,
             }
