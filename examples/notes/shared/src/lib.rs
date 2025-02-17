@@ -17,15 +17,24 @@ lazy_static! {
 
 #[wasm_bindgen]
 pub fn process_event(data: &[u8]) -> Vec<u8> {
-    CORE.process_event(data)
+    match CORE.process_event(data) {
+        Ok(effects) => effects,
+        Err(e) => panic!("{e}"),
+    }
 }
 
 #[wasm_bindgen]
 pub fn handle_response(id: u32, data: &[u8]) -> Vec<u8> {
-    CORE.handle_response(id, data)
+    match CORE.handle_response(id, data) {
+        Ok(effects) => effects,
+        Err(e) => panic!("{e}"),
+    }
 }
 
 #[wasm_bindgen]
 pub fn view() -> Vec<u8> {
-    CORE.view()
+    match CORE.view() {
+        Ok(view) => view,
+        Err(e) => panic!("{e}"),
+    }
 }
