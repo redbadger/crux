@@ -98,14 +98,18 @@ impl App for NoteEditor {
 
     type Capabilities = Capabilities;
 
+    // ANCHOR: update
     fn update(
         &self,
         event: Self::Event,
         model: &mut Self::Model,
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
+        // delegate to our own update method for testing. This will not be necessary
+        // once the `App` trait has been modified to remove the `caps` parameter.
         self.update(event, model)
     }
+    // ANCHOR_END: update
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         model.into()
@@ -386,6 +390,7 @@ mod editing_tests {
         assert_eq!(view.cursor, TextCursor::Position(12));
     }
 
+    // ANCHOR: replaces_selection_and_renders
     #[test]
     fn replaces_selection_and_renders() {
         let app = NoteEditor::default();
@@ -396,7 +401,8 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Insert("ter skelter".to_string()), &mut model);
+        let event = Event::Insert("ter skelter".to_string());
+        let mut cmd = app.update(event, &mut model);
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -404,6 +410,7 @@ mod editing_tests {
         assert_eq!(view.text, "helter skelter".to_string());
         assert_eq!(view.cursor, TextCursor::Position(14));
     }
+    // ANCHOR_END: replaces_selection_and_renders
 
     #[test]
     fn replaces_range_and_renders() {
@@ -642,6 +649,7 @@ mod save_load_tests {
         );
     }
 
+    // ANCHOR: starts_a_timer_after_an_edit
     #[test]
     fn starts_a_timer_after_an_edit() {
         let app = NoteEditor::default();
@@ -653,14 +661,16 @@ mod save_load_tests {
         };
 
         // An edit should trigger a timer
-        let mut cmd1 = app.update(Event::Insert("something".to_string()), &mut model);
+        let event = Event::Insert("something".to_string());
+        let mut cmd1 = app.update(event, &mut model);
         let mut requests = cmd1.effects().filter_map(Effect::into_timer);
 
         let request = requests.next().unwrap();
-        let first_id = match &request.operation {
-            TimeRequest::NotifyAfter { id, duration: _ } => id.clone(),
+        let (first_id, duration) = match &request.operation {
+            TimeRequest::NotifyAfter { id, duration } => (id.clone(), duration),
             _ => panic!("expected a NotifyAfter"),
         };
+        assert_eq!(duration, &Duration::from_secs(1).unwrap());
 
         assert!(requests.next().is_none());
         drop(requests); // so we can use cmd1 later
@@ -712,6 +722,7 @@ mod save_load_tests {
 
         assert_ne!(third_id, second_id);
     }
+    // ANCHOR_END: starts_a_timer_after_an_edit
 
     #[test]
     fn saves_document_when_typing_stops() {
