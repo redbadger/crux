@@ -40,9 +40,14 @@ fn process_effect(
 
                 async move {
                     let response = http::request(&request.operation).await;
-                    for effect in core.resolve(&mut request, response.into()) {
-                        let _ = process_effect(effect, &core, tauri_app.clone());
+                    for effect in core
+                        .resolve(&mut request, response.into())
+                        .map_err(|e| anyhow!(e))?
+                    {
+                        process_effect(effect, &core, tauri_app.clone())?;
                     }
+
+                    anyhow::Ok(())
                 }
             });
 
@@ -53,15 +58,18 @@ fn process_effect(
                 let core = core.clone();
 
                 async move {
-                    let mut stream = sse::request(&request.operation)
-                        .await
-                        .expect("error processing SSE effect");
+                    let mut stream = sse::request(&request.operation).await?;
 
                     while let Ok(Some(response)) = stream.try_next().await {
-                        for effect in core.resolve(&mut request, response) {
-                            let _ = process_effect(effect, &core, tauri_app.clone());
+                        for effect in core
+                            .resolve(&mut request, response)
+                            .map_err(|e| anyhow!(e))?
+                        {
+                            let _ = process_effect(effect, &core, tauri_app.clone())?;
                         }
                     }
+
+                    anyhow::Ok(())
                 }
             });
 

@@ -40,7 +40,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                 async move {
                     let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, response.into()) {
+                    for effect in core.resolve(&mut request, response.into())? {
                         process_effect(&core, effect, &tx)?;
                     }
                     Result::<()>::Ok(())
@@ -57,7 +57,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                     let mut stream = sse::request(&request.operation).await?;
 
                     while let Ok(Some(response)) = stream.try_next().await {
-                        for effect in core.resolve(&mut request, response) {
+                        for effect in core.resolve(&mut request, response)? {
                             process_effect(&core, effect, &tx)?;
                         }
                     }

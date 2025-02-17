@@ -69,7 +69,10 @@ fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
                 async move {
                     let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, response.into()) {
+                    for effect in core
+                        .resolve(&mut request, response.into())
+                        .expect("should resolve")
+                    {
                         process_effect(&core, effect, &mut view);
                     }
                 }
@@ -85,7 +88,10 @@ fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
                     let mut stream = sse::request(&request.operation).await.unwrap();
 
                     while let Ok(Some(response)) = stream.try_next().await {
-                        for effect in core.resolve(&mut request, response) {
+                        for effect in core
+                            .resolve(&mut request, response)
+                            .expect("should resolve")
+                        {
                             process_effect(&core, effect, &mut view);
                         }
                     }
