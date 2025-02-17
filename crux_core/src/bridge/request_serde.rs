@@ -36,13 +36,12 @@ impl ResolveSerialized {
             ResolveSerialized::Many(f) => f(bytes),
             ResolveSerialized::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                if let ResolveSerialized::Once(f) =
-                    std::mem::replace(self, ResolveSerialized::Never)
-                {
-                    f(bytes)?
-                }
+                let ResolveSerialized::Once(f) = std::mem::replace(self, ResolveSerialized::Never)
+                else {
+                    unreachable!();
+                };
 
-                Ok(())
+                f(bytes)
             }
         }
     }
