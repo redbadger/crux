@@ -1,6 +1,7 @@
 mod app {
     use crux_core::render::{self, Render};
     use crux_core::{macros::Effect, Command};
+    use crux_http::command::Http;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -9,6 +10,7 @@ mod app {
     #[derive(Serialize, Deserialize, Debug)]
     pub enum Event {
         Trigger,
+        Get,
     }
 
     #[derive(Serialize, Deserialize)]
@@ -22,11 +24,16 @@ mod app {
 
         fn update(
             &self,
-            _event: Event,
+            event: Event,
             _model: &mut Self::Model,
             _caps: &Capabilities,
         ) -> Command<Effect, Event> {
-            render::render()
+            match event {
+                Event::Trigger => render::render(),
+                Event::Get => Http::get("http://example.com/")
+                    .build()
+                    .then_send(|_| Event::Trigger),
+            }
         }
 
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
@@ -37,6 +44,7 @@ mod app {
     #[derive(Effect)]
     #[allow(dead_code)]
     pub struct Capabilities {
+        pub http: crux_http::Http<Event>,
         pub render: Render<Event>,
     }
 }
@@ -51,9 +59,11 @@ mod core {
 
 mod tests {
 
-    use crate::core::Bridge;
-    use crux_core::Core;
-    use serde_json::{json, Value};
+    use crate::app::EffectFfi;
+
+    use super::core::Bridge;
+    use crux_core::{bridge::Request, Core};
+    use serde_json::{json, Deserializer, Value};
 
     #[test]
     fn event_effect_loop() {
@@ -63,7 +73,9 @@ mod tests {
         let mut effects_bytes = vec![];
         let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
-        bridge.process_event(&event, &mut result_ser);
+        bridge
+            .process_event(&event, &mut result_ser)
+            .expect("event should process");
 
         let actual_value: Value = serde_json::from_slice(&effects_bytes).unwrap();
 
@@ -93,5 +105,119 @@ mod tests {
                 &effect
             )
         };
+    }
+
+    #[test]
+    fn unknown_event() {
+        // Unknown
+        let bridge = Bridge::new(Core::default());
+        let event = json!("Nopes");
+
+        let mut effects_bytes = vec![];
+        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
+
+        let result = bridge.process_event(&event, &mut result_ser);
+
+        let Err(error) = result else {
+            panic!("Expected a DeserializeEvent error");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "could not deserialize event: unknown variant `Nopes`, expected `Trigger` or `Get`"
+        )
+    }
+
+    #[test]
+    fn bad_bytes_event() {
+        // Unknown
+        let bridge = Bridge::new(Core::default());
+        let event: Vec<u8> = vec![1, 2, 3];
+        let mut de = Deserializer::from_slice(&event);
+
+        let mut effects_bytes = vec![];
+        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
+
+        let result = bridge.process_event(&mut de, &mut result_ser);
+
+        let Err(error) = result else {
+            panic!("Expected a DeserializeEvent error");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "could not deserialize event: expected value at line 1 column 1"
+        )
+    }
+
+    #[test]
+    fn resolve_error() {
+        let bridge = Bridge::new(Core::default());
+        let event = json!("Trigger");
+
+        let mut effects_bytes = vec![];
+        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
+
+        bridge
+            .process_event(&event, &mut result_ser)
+            .expect("event should process");
+
+        let mut effects: Vec<Request<EffectFfi>> =
+            serde_json::from_slice(&effects_bytes).expect("to deserialise");
+
+        let render = effects.remove(0);
+
+        let mut effects_bytes = vec![];
+        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
+
+        let value = json!("Hi");
+
+        // Render does not expect a value!
+        let result = bridge.handle_response(render.id.0, value, &mut result_ser);
+
+        let Err(error) = result else {
+            panic!("expected an error");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "could not process response: Attempted to resolve a request that is not expected to be resolved."
+        );
+    }
+
+    #[test]
+    fn resolve_bad_value() {
+        let bridge = Bridge::new(Core::default());
+        let event = json!("Get");
+
+        let mut effects_bytes = vec![];
+        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
+
+        bridge
+            .process_event(&event, &mut result_ser)
+            .expect("event should process");
+
+        let mut effects: Vec<Request<EffectFfi>> =
+            serde_json::from_slice(&effects_bytes).expect("to deserialise");
+
+        let http = effects.remove(0);
+
+        let mut effects_bytes = vec![];
+        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
+
+        let event: Vec<u8> = vec![1, 2, 3];
+        let mut de = Deserializer::from_slice(&event);
+
+        // Resolve HTTP with a bad value
+        let result = bridge.handle_response(http.id.0, &mut de, &mut result_ser);
+
+        let Err(error) = result else {
+            panic!("expected an error");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "could not deserialize provided effect output: expected value at line 1 column 1"
+        );
     }
 }

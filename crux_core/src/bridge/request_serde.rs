@@ -4,11 +4,14 @@ use crate::{
     Request,
 };
 
+use super::BridgeError;
+
 // used in docs/internals/bridge.md
 // ANCHOR: resolve_serialized
-type ResolveOnceSerialized = Box<dyn FnOnce(&mut dyn erased_serde::Deserializer) + Send>;
+type ResolveOnceSerialized =
+    Box<dyn FnOnce(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + Send>;
 type ResolveManySerialized =
-    Box<dyn FnMut(&mut dyn erased_serde::Deserializer) -> Result<(), ()> + Send>;
+    Box<dyn FnMut(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + Send>;
 
 /// A deserializing version of Resolve
 ///
@@ -27,19 +30,18 @@ impl ResolveSerialized {
     pub(crate) fn resolve(
         &mut self,
         bytes: &mut dyn erased_serde::Deserializer,
-    ) -> Result<(), ResolveError> {
+    ) -> Result<(), BridgeError> {
         match self {
-            ResolveSerialized::Never => Err(ResolveError::Never),
-            ResolveSerialized::Many(f) => f(bytes).map_err(|_| ResolveError::FinishedMany),
+            ResolveSerialized::Never => Err(BridgeError::ProcessResponse(ResolveError::Never)),
+            ResolveSerialized::Many(f) => f(bytes),
             ResolveSerialized::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                if let ResolveSerialized::Once(f) =
-                    std::mem::replace(self, ResolveSerialized::Never)
-                {
-                    f(bytes);
-                }
+                let ResolveSerialized::Once(f) = std::mem::replace(self, ResolveSerialized::Never)
+                else {
+                    unreachable!();
+                };
 
-                Ok(())
+                f(bytes)
             }
         }
     }
@@ -63,7 +65,7 @@ where
         let (operation, resolve) = (self.operation, self.resolve);
 
         let resolve = resolve.deserializing(move |deserializer| {
-            erased_serde::deserialize(deserializer).expect("Deserialization failed")
+            erased_serde::deserialize(deserializer).map_err(BridgeError::DeserializeOutput)
         });
 
         (effect(operation), resolve)
@@ -75,18 +77,21 @@ impl<Out> Resolve<Out> {
     /// The `func` argument is a 'deserializer' converting from bytes into the `Out` type.
     fn deserializing<F>(self, mut func: F) -> ResolveSerialized
     where
-        F: (FnMut(&mut dyn erased_serde::Deserializer) -> Out) + Send + Sync + 'static,
+        F: (FnMut(&mut dyn erased_serde::Deserializer) -> Result<Out, BridgeError>)
+            + Send
+            + Sync
+            + 'static,
         Out: 'static,
     {
         match self {
             Resolve::Never => ResolveSerialized::Never,
             Resolve::Once(resolve) => ResolveSerialized::Once(Box::new(move |deser| {
-                let out = func(deser);
-                resolve(out)
+                let out = func(deser)?;
+                Ok(resolve(out))
             })),
             Resolve::Many(resolve) => ResolveSerialized::Many(Box::new(move |deser| {
-                let out = func(deser);
-                resolve(out)
+                let out = func(deser)?;
+                resolve(out).map_err(|_| BridgeError::ProcessResponse(ResolveError::FinishedMany))
             })),
         }
     }

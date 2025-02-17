@@ -128,7 +128,8 @@ mod shell {
 
                         enqueue_effects(
                             &mut queue,
-                            core.resolve(&mut request, HttpResult::Ok(response)),
+                            core.resolve(&mut request, HttpResult::Ok(response))
+                                .expect("effect should resolve"),
                         );
                     }
                 },

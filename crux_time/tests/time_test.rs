@@ -163,9 +163,9 @@ mod shell {
 
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Time(mut request, instant))) => {
-                    core.resolve(&mut request, TimeResponse::Now { instant })
-                }
+                Some(CoreMessage::Response(Outcome::Time(mut request, instant))) => core
+                    .resolve(&mut request, TimeResponse::Now { instant })
+                    .expect("effect should resolve"),
                 _ => vec![],
             };
 

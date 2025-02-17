@@ -30,7 +30,8 @@ impl Component for RootComponent {
             link.send_message(msg);
         });
         if let Message::Event(event) = msg {
-            core::update(&self.core, event, &callback);
+            // TODO: error handling
+            let _ = core::update(&self.core, event, &callback);
             false
         } else {
             true

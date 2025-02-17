@@ -234,7 +234,7 @@ mod tests {
 
                     counter += 3;
 
-                    let effs: Vec<Effect> = core.resolve(&mut request, output);
+                    let effs: Vec<Effect> = core.resolve(&mut request, output).expect("to resolve");
 
                     for e in effs {
                         effects.push_back(e)

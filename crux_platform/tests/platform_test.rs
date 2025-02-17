@@ -86,9 +86,9 @@ mod shell {
 
             let effs = match msg {
                 Some(CoreMessage::Event(m)) => core.process_event(m),
-                Some(CoreMessage::Response(Outcome::Platform(mut request, outcome))) => {
-                    core.resolve(&mut request, outcome)
-                }
+                Some(CoreMessage::Response(Outcome::Platform(mut request, outcome))) => core
+                    .resolve(&mut request, outcome)
+                    .expect("effect should resolve"),
 
                 _ => vec![],
             };
