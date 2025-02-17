@@ -473,9 +473,7 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        self.spawn(|ctx| async move {
-            other.host(ctx.effects, ctx.events).await;
-        });
+        self.spawn(|ctx| other.host(ctx.effects, ctx.events).map(|_| ()));
 
         self
     }
@@ -483,15 +481,17 @@ where
     /// Create a command running a number of commands concurrently
     pub fn all<I>(commands: I) -> Self
     where
-        I: IntoIterator<Item = Self> + Send + 'static,
+        I: IntoIterator<Item = Self>,
         Effect: Unpin,
         Event: Unpin,
     {
-        Command::new(|ctx| async move {
-            let select = futures::stream::select_all(commands);
+        let mut command = Command::done();
 
-            select.host(ctx.effects, ctx.events).await;
-        })
+        for c in commands {
+            command.spawn(|ctx| c.host(ctx.effects, ctx.events).map(|_| ()))
+        }
+
+        command
     }
 
     // Mapping for composition
@@ -560,6 +560,16 @@ where
         AbortHandle {
             aborted: self.aborted.clone(),
         }
+    }
+}
+
+impl<Effect, Event> FromIterator<Command<Effect, Event>> for Command<Effect, Event>
+where
+    Effect: Send + Unpin + 'static,
+    Event: Send + Unpin + 'static,
+{
+    fn from_iter<I: IntoIterator<Item = Command<Effect, Event>>>(iter: I) -> Self {
+        Command::all(iter)
     }
 }
 

@@ -299,6 +299,61 @@ fn all() {
 }
 
 #[test]
+fn iterator_of_commnands_collects_as_all() {
+    let cmd_one = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
+    let cmd_two = Command::request_from_shell(AnOperation::Two).then_send(Event::Completed);
+    let cmd_three = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
+
+    let cmds = vec![cmd_one, cmd_two, cmd_three];
+
+    let mut cmd: Command<Effect, Event> = cmds.into_iter().collect();
+
+    assert!(cmd.events().next().is_none());
+
+    let mut effects: Vec<_> = cmd.effects().collect();
+
+    assert_eq!(effects.len(), 3);
+
+    let Effect::AnEffect(mut request) = effects.remove(0);
+
+    assert_eq!(request.operation, AnOperation::One);
+
+    request
+        .resolve(AnOperationOutput::One)
+        .expect("request should resolve");
+
+    // Still the original effects
+    let Effect::AnEffect(mut request) = effects.remove(0);
+
+    assert_eq!(request.operation, AnOperation::Two);
+
+    request
+        .resolve(AnOperationOutput::Two)
+        .expect("request should resolve");
+
+    assert!(cmd.effects().next().is_none());
+
+    // Still the original effects
+    let Effect::AnEffect(mut request) = effects.remove(0);
+
+    assert_eq!(request.operation, AnOperation::One);
+
+    request
+        .resolve(AnOperationOutput::Two)
+        .expect("request should resolve");
+
+    assert!(cmd.effects().next().is_none());
+
+    let events: Vec<_> = cmd.events().collect();
+
+    assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
+    assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
+    assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
+
+    assert!(cmd.is_done());
+}
+
+#[test]
 fn complex_concurrency() {
     fn increment(output: AnOperationOutput) -> AnOperation {
         let AnOperationOutput::Other([a, b]) = output else {
