@@ -473,9 +473,7 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        self.spawn(|ctx| async move {
-            other.host(ctx.effects, ctx.events).await;
-        });
+        self.spawn(|ctx| other.host(ctx.effects, ctx.events).map(|_| ()));
 
         self
     }
@@ -490,9 +488,7 @@ where
         let mut command = Command::done();
 
         for c in commands {
-            command.spawn(|ctx| async move {
-                c.host(ctx.effects, ctx.events).await;
-            })
+            command.spawn(|ctx| c.host(ctx.effects, ctx.events).map(|_| ()))
         }
 
         command
