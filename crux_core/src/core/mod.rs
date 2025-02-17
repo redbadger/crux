@@ -104,7 +104,11 @@ where
     // used in docs/internals/runtime.md and docs/internals/bridge.md
     // ANCHOR: resolve
     // ANCHOR: resolve_sig
-    pub fn resolve<Op>(&self, request: &mut Request<Op>, result: Op::Output) -> Vec<A::Effect>
+    pub fn resolve<Op>(
+        &self,
+        request: &mut Request<Op>,
+        result: Op::Output,
+    ) -> Result<Vec<A::Effect>, ResolveError>
     where
         Op: Operation,
         // ANCHOR_END: resolve_sig
@@ -112,7 +116,9 @@ where
         let resolve_result = request.resolve(result);
         debug_assert!(resolve_result.is_ok());
 
-        self.process()
+        resolve_result?;
+
+        Ok(self.process())
     }
     // ANCHOR_END: resolve
 

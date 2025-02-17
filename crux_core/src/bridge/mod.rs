@@ -2,10 +2,11 @@ mod registry;
 mod request_serde;
 
 use bincode::{DefaultOptions, Options};
-use erased_serde::Serialize as _;
+use erased_serde::{Error as SerdeError, Serialize as _};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::{App, Core};
+use crate::{core::ResolveError, App, Core};
 use registry::{EffectId, ResolveRegistry};
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
@@ -35,6 +36,20 @@ where
     inner: BridgeWithSerializer<A>,
 }
 
+#[derive(Debug, Error)]
+pub enum BridgeError {
+    #[error("could not deserialize event")]
+    DeserializeEvent(SerdeError),
+    #[error("could not deserialize provided effect output")]
+    DeserializeOutput(SerdeError),
+    #[error("could not process event - the request did not expect a response")]
+    ProcessResponse(#[from] ResolveError),
+    #[error("could not serialize effect requests")]
+    SerializeRequests(SerdeError),
+    #[error("could not serialize view model")]
+    SerializeView(SerdeError),
+}
+
 impl<A> Bridge<A>
 where
     A: App,
@@ -50,7 +65,7 @@ where
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
-    pub fn process_event(&self, event: &[u8]) -> Vec<u8>
+    pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError>
     where
         A::Event: for<'a> Deserialize<'a>,
     {
@@ -61,9 +76,9 @@ where
         let mut return_buffer = vec![];
         let mut ser = bincode::Serializer::new(&mut return_buffer, options);
 
-        self.inner.process_event(&mut deser, &mut ser);
+        self.inner.process_event(&mut deser, &mut ser)?;
 
-        return_buffer
+        Ok(return_buffer)
     }
 
     /// Receive a response to a capability request from the shell.
@@ -72,7 +87,7 @@ where
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
     // used in docs/internals/bridge.md
     // ANCHOR: handle_response_sig
-    pub fn handle_response(&self, id: u32, output: &[u8]) -> Vec<u8>
+    pub fn handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError>
     // ANCHOR_END: handle_response_sig
     where
         A::Event: for<'a> Deserialize<'a>,
@@ -84,21 +99,21 @@ where
         let mut return_buffer = vec![];
         let mut ser = bincode::Serializer::new(&mut return_buffer, options);
 
-        self.inner.handle_response(id, &mut deser, &mut ser);
+        self.inner.handle_response(id, &mut deser, &mut ser)?;
 
-        return_buffer
+        Ok(return_buffer)
     }
 
     /// Get the current state of the app's view model (serialized).
-    pub fn view(&self) -> Vec<u8> {
+    pub fn view(&self) -> Result<Vec<u8>, BridgeError> {
         let options = Self::bincode_options();
 
         let mut return_buffer = vec![];
 
         self.inner
-            .view(&mut bincode::Serializer::new(&mut return_buffer, options));
+            .view(&mut bincode::Serializer::new(&mut return_buffer, options))?;
 
-        return_buffer
+        Ok(return_buffer)
     }
 
     fn bincode_options() -> impl bincode::Options + Copy {
@@ -143,7 +158,7 @@ where
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
-    pub fn process_event<'de, D, S>(&self, event: D, requests_out: S)
+    pub fn process_event<'de, D, S>(&self, event: D, requests_out: S) -> Result<(), BridgeError>
     where
         for<'a> A::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de> + 'de,
@@ -154,14 +169,19 @@ where
             None,
             &mut erased_de,
             &mut <dyn erased_serde::Serializer>::erase(requests_out),
-        );
+        )
     }
 
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de, D, S>(&self, id: u32, response: D, requests_out: S)
+    pub fn handle_response<'de, D, S>(
+        &self,
+        id: u32,
+        response: D,
+        requests_out: S,
+    ) -> Result<(), BridgeError>
     where
         for<'a> A::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de>,
@@ -172,7 +192,7 @@ where
             Some(EffectId(id)),
             &mut erased_response,
             &mut <dyn erased_serde::Serializer>::erase(requests_out),
-        );
+        )
     }
 
     fn process(
@@ -180,20 +200,19 @@ where
         id: Option<EffectId>,
         data: &mut dyn erased_serde::Deserializer,
         requests_out: &mut dyn erased_serde::Serializer,
-    ) where
+    ) -> Result<(), BridgeError>
+    where
         A::Event: for<'a> Deserialize<'a>,
     {
         let effects = match id {
             None => {
                 let shell_event =
-                    erased_serde::deserialize(data).expect("Message deserialization failed.");
+                    erased_serde::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
 
                 self.core.process_event(shell_event)
             }
             Some(id) => {
-                self.registry.resume(id, data).expect(
-                    "Response could not be handled. The request did not expect a response.",
-                );
+                self.registry.resume(id, data)?;
 
                 self.core.process()
             }
@@ -206,17 +225,19 @@ where
 
         requests
             .erased_serialize(requests_out)
-            .expect("Request serialization failed.")
+            .map_err(BridgeError::SerializeRequests)?;
+
+        Ok(())
     }
 
     /// Get the current state of the app's view model (serialized).
-    pub fn view<S>(&self, ser: S)
+    pub fn view<S>(&self, ser: S) -> Result<(), BridgeError>
     where
         S: ::serde::ser::Serializer,
     {
         self.core
             .view()
             .erased_serialize(&mut <dyn erased_serde::Serializer>::erase(ser))
-            .expect("View should serialize")
+            .map_err(BridgeError::SerializeView)
     }
 }

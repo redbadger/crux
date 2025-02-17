@@ -63,7 +63,9 @@ mod tests {
         let mut effects_bytes = vec![];
         let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
-        bridge.process_event(&event, &mut result_ser);
+        bridge
+            .process_event(&event, &mut result_ser)
+            .expect("event should process");
 
         let actual_value: Value = serde_json::from_slice(&effects_bytes).unwrap();
 

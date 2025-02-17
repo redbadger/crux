@@ -3,9 +3,8 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 
-use super::Request;
+use super::{BridgeError, Request};
 use crate::bridge::request_serde::ResolveSerialized;
-use crate::core::ResolveError;
 use crate::Effect;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,7 +52,7 @@ impl ResolveRegistry {
         &self,
         id: EffectId,
         body: &mut dyn erased_serde::Deserializer,
-    ) -> Result<(), ResolveError> {
+    ) -> Result<(), BridgeError> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
         let entry = registry_lock.get_mut(id.0 as usize);
