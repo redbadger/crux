@@ -38,15 +38,15 @@ where
 
 #[derive(Debug, Error)]
 pub enum BridgeError {
-    #[error("could not deserialize event")]
+    #[error("could not deserialize event: {0}")]
     DeserializeEvent(SerdeError),
-    #[error("could not deserialize provided effect output")]
+    #[error("could not deserialize provided effect output: {0}")]
     DeserializeOutput(SerdeError),
-    #[error("could not process event - the request did not expect a response")]
+    #[error("could not process response: {0}")]
     ProcessResponse(#[from] ResolveError),
-    #[error("could not serialize effect requests")]
+    #[error("could not serialize effect requests: {0}")]
     SerializeRequests(SerdeError),
-    #[error("could not serialize view model")]
+    #[error("could not serialize view model: {0}")]
     SerializeView(SerdeError),
 }
 

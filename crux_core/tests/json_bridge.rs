@@ -62,10 +62,7 @@ mod tests {
     use crate::app::EffectFfi;
 
     use super::core::Bridge;
-    use crux_core::{
-        bridge::{BridgeError, Request},
-        Core,
-    };
+    use crux_core::{bridge::Request, Core};
     use serde_json::{json, Deserializer, Value};
 
     #[test]
@@ -121,13 +118,13 @@ mod tests {
 
         let result = bridge.process_event(&event, &mut result_ser);
 
-        let Err(BridgeError::DeserializeEvent(deser_err)) = result else {
+        let Err(error) = result else {
             panic!("Expected a DeserializeEvent error");
         };
 
         assert_eq!(
-            deser_err.to_string(),
-            "unknown variant `Nopes`, expected `Trigger` or `Get`"
+            error.to_string(),
+            "could not deserialize event: unknown variant `Nopes`, expected `Trigger` or `Get`"
         )
     }
 
@@ -143,11 +140,14 @@ mod tests {
 
         let result = bridge.process_event(&mut de, &mut result_ser);
 
-        let Err(BridgeError::DeserializeEvent(deser_err)) = result else {
+        let Err(error) = result else {
             panic!("Expected a DeserializeEvent error");
         };
 
-        assert_eq!(deser_err.to_string(), "expected value at line 1 column 1")
+        assert_eq!(
+            error.to_string(),
+            "could not deserialize event: expected value at line 1 column 1"
+        )
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "could not process event - the request did not expect a response"
+            "could not process response: Attempted to resolve a request that is not expected to be resolved."
         );
     }
 
@@ -217,7 +217,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "could not deserialize provided effect output"
+            "could not deserialize provided effect output: expected value at line 1 column 1"
         );
     }
 }
