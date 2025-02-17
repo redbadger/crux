@@ -32,8 +32,8 @@ impl ResolveSerialized {
         bytes: &mut dyn erased_serde::Deserializer,
     ) -> Result<(), BridgeError> {
         match self {
-            ResolveSerialized::Never => Err(ResolveError::Never),
-            ResolveSerialized::Many(f) => f(bytes).map_err(|_| ResolveError::FinishedMany),
+            ResolveSerialized::Never => Err(BridgeError::ProcessResponse(ResolveError::Never)),
+            ResolveSerialized::Many(f) => f(bytes),
             ResolveSerialized::Once(_) => {
                 // The resolve has been used, turn it into a Never
                 if let ResolveSerialized::Once(f) =
@@ -45,7 +45,6 @@ impl ResolveSerialized {
                 Ok(())
             }
         }
-        .map_err(BridgeError::ProcessResponse)
     }
 }
 
