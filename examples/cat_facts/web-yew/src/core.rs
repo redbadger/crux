@@ -21,14 +21,20 @@ pub fn new() -> Core {
     Rc::new(shared::Core::new())
 }
 
-pub fn update(core: &Core, event: Event, callback: &Callback<Message>) {
+pub fn update(core: &Core, event: Event, callback: &Callback<Message>) -> anyhow::Result<()> {
     log!(format!("event: {:?}", event));
     for effect in core.process_event(event) {
-        process_effect(core, effect, callback);
+        process_effect(core, effect, callback)?;
     }
+
+    Ok(())
 }
 
-pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>) {
+pub fn process_effect(
+    core: &Core,
+    effect: Effect,
+    callback: &Callback<Message>,
+) -> anyhow::Result<()> {
     log!(format!("effect: {:?}", effect));
     match effect {
         render @ Effect::Render(_) => callback.emit(Message::Effect(render)),
@@ -40,8 +46,11 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
                 async move {
                     let response = http::request(&request.operation).await;
 
-                    for effect in core.resolve(&mut request, response.into()) {
-                        process_effect(&core, effect, &callback);
+                    for effect in core
+                        .resolve(&mut request, response.into())
+                        .expect("effect should resolve")
+                    {
+                        process_effect(&core, effect, &callback).expect("effect should process");
                     }
                 }
             });
@@ -53,8 +62,8 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
             let response =
                 PlatformResponse(platform::get().unwrap_or_else(|_| "Unknown browser".to_string()));
 
-            for effect in core.resolve(&mut request, response) {
-                process_effect(core, effect, callback);
+            for effect in core.resolve(&mut request, response)? {
+                process_effect(core, effect, callback)?;
             }
         }
 
@@ -62,9 +71,11 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
             let now = Instant::new(time::get() as u64, 0).unwrap();
             let response = TimeResponse::Now { instant: now };
 
-            for effect in core.resolve(&mut request, response) {
-                process_effect(core, effect, callback);
+            for effect in core.resolve(&mut request, response)? {
+                process_effect(core, effect, callback)?;
             }
         }
     }
+
+    Ok(())
 }
