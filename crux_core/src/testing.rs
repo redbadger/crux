@@ -13,6 +13,15 @@ use crate::{
 /// AppTester is a simplified execution environment for Crux apps for use in
 /// tests.
 ///
+/// Please note that the AppTester is strictly no longer required now that Crux
+/// has a new [`Command`] API. To test apps without the AppTester, you can call
+/// the `update` method on your app directly, and then inspect the effects
+/// returned by the command. For examples of how to do this, consult any of the
+/// [examples in the Crux repository](https://github.com/redbadger/crux/tree/master/examples).
+/// The AppTester is still provided for backwards compatibility, and to allow you to
+/// migrate to the new API without changing the tests,
+/// giving you increased confidence in your refactor.
+///
 /// Create an instance of `AppTester` with your `App` and an `Effect` type
 /// using [`AppTester::default`].
 ///

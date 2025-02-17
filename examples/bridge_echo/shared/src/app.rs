@@ -48,6 +48,20 @@ impl crux_core::App for App {
         model: &mut Self::Model,
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
+        self.update(event, model)
+    }
+
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        ViewModel {
+            count: model.count,
+            log: model.log.clone(),
+        }
+    }
+}
+// ANCHOR_END: impl_app
+
+impl App {
+    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
             Event::Tick => model.count += 1,
             Event::NewPeriod => {
@@ -62,26 +76,19 @@ impl crux_core::App for App {
 
         render()
     }
-
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        ViewModel {
-            count: model.count,
-            log: model.log.clone(),
-        }
-    }
 }
-// ANCHOR_END: impl_app
 // ANCHOR_END: app
 
 // ANCHOR: test
 #[cfg(test)]
 mod test {
+    use crux_core::App as _;
+
     use super::*;
-    use crux_core::testing::AppTester;
 
     #[test]
     fn shows_initial_count() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let model = Model::default();
 
         let actual_view = app.view(&model);
@@ -95,7 +102,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::Tick, &mut model);
@@ -113,7 +120,7 @@ mod test {
 
     #[test]
     fn logs_previous_counts() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let mut model = Model::default();
 
         let _ = app.update(Event::Tick, &mut model);
@@ -134,7 +141,7 @@ mod test {
 
     #[test]
     fn renders_on_tick() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let mut model = Model::default();
 
         app.update(Event::Tick, &mut model)
@@ -144,7 +151,7 @@ mod test {
 
     #[test]
     fn renders_on_new_period() {
-        let app = AppTester::<App>::default();
+        let app = App::default();
         let mut model = Model::default();
 
         app.update(Event::NewPeriod, &mut model)
