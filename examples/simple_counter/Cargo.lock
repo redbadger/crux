@@ -484,6 +484,8 @@ checksum = "43da5946c66ffcc7745f48db692ffbb10a83bfe0afd96235c5c2a4fb23994929"
 [[package]]
 name = "crux_core"
 version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "698fd9872826b070544cf8304306af17fa3b6454dc82238188ad910eb392fd88"
 dependencies = [
  "anyhow",
  "bincode",
@@ -502,6 +504,8 @@ dependencies = [
 [[package]]
 name = "crux_macros"
 version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "110cb24c2e0842bc5dd2d4dff1bda74a56143d0ce20771cdaabad80ee3567a4f"
 dependencies = [
  "darling",
  "proc-macro-error",
@@ -1015,15 +1019,6 @@ name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
-
-[[package]]
-name = "erased-discriminant"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "373f74784b51403f16c5fa6dc667488389e629811329c1c6719c25874da2ba4f"
-dependencies = [
- "typeid",
-]
 
 [[package]]
 name = "erased-serde"
@@ -2865,9 +2860,9 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.28.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c10980a37006e94d778cad2d7bb8e9e843f7ac5495eda41e2ddb59bb27ccef60"
+checksum = "8309fc8d475cf5884e92a463b3a003d433684335be19c3f739af0451b027254b"
 dependencies = [
  "heck 0.3.3",
  "include_dir",
@@ -2879,15 +2874,13 @@ dependencies = [
 
 [[package]]
 name = "serde-reflection"
-version = "0.5.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5bef77b40d103fda6c10d29c21f5c78c980e8570e1a290a648a9ff5011f96e1"
+checksum = "5b6798a64289ff550d8d79847467789a5fd30b42c9c406a4d6dc0bc9b567e55c"
 dependencies = [
- "erased-discriminant",
  "once_cell",
  "serde",
  "thiserror 1.0.69",
- "typeid",
 ]
 
 [[package]]
