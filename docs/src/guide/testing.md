@@ -212,7 +212,7 @@ Effect::is_render(&self) -> bool
 Effect::is_pub_sub(&self) -> bool
 Effect::is_key_value(&self) -> bool
 // filter_maps
-Effect::into_timer(self) -> Option<Request<TimerOperation>>
+Effect::into_timer(self) -> Option<Request<TimeRequest>>
 Effect::into_render(self) -> Option<Request<RenderOperation>>
 Effect::into_pub_sub(self) -> Option<Request<PubSubOperation>>
 Effect::into_key_value(self) -> Option<Request<KeyValueOperation>>
