@@ -247,7 +247,7 @@ mod tests {
                 if self.ready_once {
                     return Poll::Ready(());
                 }
-                if rand::thread_rng().gen_bool(0.1) {
+                if rand::rng().random_bool(0.1) {
                     cx.waker().wake_by_ref();
 
                     Poll::Pending
