@@ -241,7 +241,7 @@ mod tests {
                     }
 
                     // Simulate network timing
-                    effects.make_contiguous().shuffle(&mut rand::thread_rng());
+                    effects.make_contiguous().shuffle(&mut rand::rng());
                 }
                 Effect::Render(_) => {
                     let view: Vec<usize> = core.view();

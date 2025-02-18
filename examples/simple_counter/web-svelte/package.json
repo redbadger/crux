@@ -9,21 +9,21 @@
   },
   "dependencies": {
     "bincode": "file:../shared_types/generated/typescript/bincode",
-    "bulma": "^1.0.2",
-    "concurrently": "^9.0.1",
-    "parcel": "^2.12.0",
+    "bulma": "^1.0.3",
+    "concurrently": "^9.1.2",
+    "parcel": "^2.13.3",
     "parcel-transformer-svelte3-plus": "^0.2.10",
     "reflect-metadata": "^0.2.2",
     "shared": "file:../shared/pkg",
     "shared_types": "file:../shared_types/generated/typescript",
-    "svelte": "^5.0.3",
-    "typescript": "^5.6.3"
+    "svelte": "^5.20.1",
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
-    "@parcel/config-default": "^2.12.0",
-    "@parcel/transformer-inline-string": "^2.12.0",
-    "@parcel/transformer-webmanifest": "^2.12.0",
-    "@types/node": "^22.7.7",
+    "@parcel/config-default": "^2.13.3",
+    "@parcel/transformer-inline-string": "^2.13.3",
+    "@parcel/transformer-webmanifest": "^2.13.3",
+    "@types/node": "^22.13.4",
     "@types/webpack": "^5.28.5",
     "process": "^0.11.10"
   },

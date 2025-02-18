@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "bulma": "^1.0.3",
-    "eslint": "9.18.0",
-    "eslint-config-next": "15.1.5",
-    "next": "15.1.5",
+    "eslint": "9.20.1",
+    "eslint-config-next": "15.1.7",
+    "next": "15.1.7",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "shared": "link:../shared/pkg",
@@ -21,9 +21,9 @@
     "typescript": "5.7.3"
   },
   "devDependencies": {
-    "@types/node": "22.10.7",
-    "@types/react": "19.0.7",
-    "@types/react-dom": "19.0.3"
+    "@types/node": "22.13.4",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4"
   },
-  "packageManager": "pnpm@7.28.0+sha1.48be3292711ad554fe944f6caaf9b0f5477524fe"
+  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
 }

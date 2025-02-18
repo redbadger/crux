@@ -20,16 +20,16 @@ crux_http.workspace = true
 futures = "0.3.31"
 lazy_static = "1.5.0"
 serde = { workspace = true, features = ["derive"] }
-serde_json = "1.0.137"
-uniffi = "0.28.3"
+serde_json = "1.0.138"
+uniffi = "0.29.0"
 url = "2.5.4"
 wasm-bindgen = "0.2.100"
 
 [dev-dependencies]
-insta = { version = "1.42.0", features = ["yaml"] }
+insta = { version = "1.42.1", features = ["yaml"] }
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.28.3", features = ["cli"] }
+uniffi = { version = "0.29.0", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.28.3", features = ["build"] }
+uniffi = { version = "0.29.0", features = ["build"] }

@@ -17,7 +17,7 @@ darling = "0.20.10"
 proc-macro-error = "1.0.4"
 proc-macro2 = "1.0.93"
 quote = "1.0.38"
-syn = "2.0.96"
+syn = "2.0.98"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
