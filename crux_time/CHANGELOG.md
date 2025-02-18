@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.8.3](https://github.com/redbadger/crux/compare/crux_time-v0.8.2...crux_time-v0.8.3) - 2025-02-18
+
+### Other
+
+- Updates internal tests for error handling when resolving requests
+
 ## [0.8.2](https://github.com/redbadger/crux/compare/crux_time-v0.8.1...crux_time-v0.8.2) - 2025-02-03
 
 ### Other

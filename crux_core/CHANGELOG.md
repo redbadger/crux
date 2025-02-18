@@ -8,6 +8,29 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.12.0](https://github.com/redbadger/crux/compare/crux_core-v0.11.3...crux_core-v0.12.0) - 2025-02-18
+
+***Note this is a breaking change!***
+
+The 3 bridge functions now return a Result instead of panicking.
+The error type is [`BridgeError`](https://docs.rs/crux_core/latest/crux_core/bridge/enum.BridgeError.html),
+which is a custom error type that can be used to
+handle errors that occur with serialization and deserialization of messages,
+as well as other errors that may occur during message processing.
+
+All the [examples](https://github.com/redbadger/crux/tree/master/examples)
+have been updated to use the new error handling as well as the recent `Command` API.
+
+### Other
+
+- Introduce error handling in the bridge
+- Add tests for various ways of abusing the bridge
+- Better error messages and testing to_string on BridgeError
+- update testing page in book to reflect changes
+- More readable resolve
+- Fix up counter
+- Update dependencies
+
 ## [0.11.3](https://github.com/redbadger/crux/compare/crux_core-v0.11.2...crux_core-v0.11.3) - 2025-02-03
 
 This is an API compatible release.

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3](https://github.com/redbadger/crux/compare/crux_platform-v0.3.2...crux_platform-v0.3.3) - 2025-02-18
+
+### Other
+
+- Updates internal tests for error handling when resolving requests
+
 ## [0.3.2](https://github.com/redbadger/crux/compare/crux_platform-v0.3.1...crux_platform-v0.3.2) - 2025-02-03
 
 ### Other

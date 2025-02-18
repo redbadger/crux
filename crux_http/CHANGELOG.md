@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.7](https://github.com/redbadger/crux/compare/crux_http-v0.11.6...crux_http-v0.11.7) - 2025-02-18
+
+### Other
+
+- Updates internal tests for error handling when resolving requests
+
 ## [0.11.6](https://github.com/redbadger/crux/compare/crux_http-v0.11.5...crux_http-v0.11.6) - 2025-02-03
 
 ### Other
