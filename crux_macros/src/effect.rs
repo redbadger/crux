@@ -132,6 +132,7 @@ impl ToTokens for EffectStructReceiver {
                                 None
                             }
                         }
+                        #[track_caller]
                         pub fn #expect_fn(self) -> crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation> {
                             if let #effect_name::#variant(request) = self {
                                 request
@@ -289,6 +290,7 @@ mod tests {
             > {
                 if let Effect::Render(request) = self { Some(request) } else { None }
             }
+            #[track_caller]
             pub fn expect_render(
                 self,
             ) -> crux_core::Request<
@@ -384,6 +386,7 @@ mod tests {
             > {
                 if let Effect::Render(request) = self { Some(request) } else { None }
             }
+            #[track_caller]
             pub fn expect_render(
                 self,
             ) -> crux_core::Request<
@@ -522,6 +525,7 @@ mod tests {
             > {
                 if let MyEffect::Http(request) = self { Some(request) } else { None }
             }
+            #[track_caller]
             pub fn expect_http(
                 self,
             ) -> crux_core::Request<
@@ -568,6 +572,7 @@ mod tests {
             > {
                 if let MyEffect::KeyValue(request) = self { Some(request) } else { None }
             }
+            #[track_caller]
             pub fn expect_key_value(
                 self,
             ) -> crux_core::Request<
@@ -610,6 +615,7 @@ mod tests {
             > {
                 if let MyEffect::Platform(request) = self { Some(request) } else { None }
             }
+            #[track_caller]
             pub fn expect_platform(
                 self,
             ) -> crux_core::Request<
@@ -650,6 +656,7 @@ mod tests {
             > {
                 if let MyEffect::Render(request) = self { Some(request) } else { None }
             }
+            #[track_caller]
             pub fn expect_render(
                 self,
             ) -> crux_core::Request<
@@ -688,6 +695,7 @@ mod tests {
             > {
                 if let MyEffect::Time(request) = self { Some(request) } else { None }
             }
+            #[track_caller]
             pub fn expect_time(
                 self,
             ) -> crux_core::Request<
