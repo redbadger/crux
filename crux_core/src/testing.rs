@@ -183,6 +183,7 @@ impl<Ef, Ev> Update<Ef, Ev> {
 
     /// Assert that the update contains exactly one effect and zero events,
     /// and return the effect
+    #[track_caller]
     pub fn expect_one_effect(mut self) -> Ef {
         if self.events.is_empty() && self.effects.len() == 1 {
             self.effects.pop().unwrap()
@@ -197,6 +198,7 @@ impl<Ef, Ev> Update<Ef, Ev> {
 
     /// Assert that the update contains exactly one event and zero effects,
     /// and return the event
+    #[track_caller]
     pub fn expect_one_event(mut self) -> Ev {
         if self.effects.is_empty() && self.events.len() == 1 {
             self.events.pop().unwrap()
@@ -210,6 +212,7 @@ impl<Ef, Ev> Update<Ef, Ev> {
     }
 
     /// Assert that the update contains no effects or events
+    #[track_caller]
     pub fn assert_empty(self) {
         if self.effects.is_empty() && self.events.is_empty() {
             return;
@@ -253,6 +256,7 @@ where
 {
     /// Assert that the Command contains _exactly_ one effect and zero events,
     /// and return the effect
+    #[track_caller]
     pub fn expect_one_effect(&mut self) -> Effect {
         if self.events().next().is_some() {
             panic!("Expected only one effect, but found an event");
