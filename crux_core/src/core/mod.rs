@@ -55,7 +55,7 @@ where
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
     /// ```rust,ignore
-    /// let core: Core<HelloEffect, Hello> = Core::new();
+    /// let core: Core<MyApp> = Core::new();
     /// ```
     ///
     pub fn new() -> Self
