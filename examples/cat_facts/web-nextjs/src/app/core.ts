@@ -69,7 +69,10 @@ async function processEffect(
     }
     case EffectVariantTime: {
       const now = new Date();
-      const instant = new Instant(BigInt(now.getSeconds()), 0);
+      const millis = now.getTime();
+      const seconds = Math.floor(millis / 1000);
+      const nanos = Math.floor((millis % 1000) * 1e6);
+      const instant = new Instant(BigInt(seconds), nanos);
       const response = new TimeResponseVariantnow(instant);
       respond(id, response, callback);
       break;
