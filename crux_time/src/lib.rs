@@ -53,8 +53,8 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+        use crate::{Duration, Instant};
         use crux_core::capability::Operation;
-        use protocol::{duration::Duration, instant::Instant};
 
         generator.register_type::<Instant>()?;
         generator.register_type::<Duration>()?;
@@ -104,11 +104,11 @@ where
 
     /// Ask to receive a notification when the specified
     /// [`SystemTime`](std::time::SystemTime) has arrived.
-    pub fn notify_at<F>(&self, instant: SystemTime, callback: F) -> TimerId
+    pub fn notify_at<F>(&self, system_time: SystemTime, callback: F) -> TimerId
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        let (future, id) = self.notify_at_async(instant);
+        let (future, id) = self.notify_at_async(system_time);
         self.context.spawn({
             let context = self.context.clone();
             async move {
@@ -123,12 +123,12 @@ where
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub fn notify_at_async(
         &self,
-        instant: SystemTime,
+        system_time: SystemTime,
     ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
         let id = get_timer_id();
         let future = self.context.request_from_shell(TimeRequest::NotifyAt {
             id,
-            instant: instant.into(),
+            instant: system_time.into(),
         });
         (TimerFuture::new(id, future), id)
     }

@@ -144,7 +144,7 @@ mod shell {
     use super::shared::{App, Effect, Event};
     use chrono::{DateTime, Utc};
     use crux_core::{Core, Request};
-    use crux_time::{protocol::TimeRequest, protocol::TimeResponse, Instant};
+    use crux_time::{Instant, TimeRequest, TimeResponse};
     use std::collections::VecDeque;
 
     pub enum Outcome {
