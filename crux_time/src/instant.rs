@@ -1,11 +1,16 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{duration::NANOS_PER_SEC, error::TimeResult, TimeError};
+use crate::{error::TimeResult, TimeError};
+
+/// The number of nanoseconds in seconds.
+pub const NANOS_PER_SEC: u32 = 1_000_000_000;
 
 /// Represents a point in time (UTC):
 ///
 /// - seconds: number of seconds since the Unix epoch (1970-01-01T00:00:00Z)
 /// - nanos: number of nanoseconds since the last second
+///
+/// Note: We cannot use `std::time::Instant` because it is not deserializable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Instant {

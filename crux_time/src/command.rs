@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn timer_can_be_cleared() {
-        let (cmd, handle) = Time::notify_after(Duration::from_secs(2).unwrap());
+        let (cmd, handle) = Time::notify_after(Duration::from_secs(2));
         let mut cmd = cmd.then_send(Event::Elapsed);
 
         let effect = cmd.effects().next();
@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn dropping_a_timer_handle_does_not_clear_the_request() {
-        let (cmd, handle) = Time::notify_after(Duration::from_secs(2).unwrap());
+        let (cmd, handle) = Time::notify_after(Duration::from_secs(2));
         drop(handle);
 
         let mut cmd = cmd.then_send(Event::Elapsed);

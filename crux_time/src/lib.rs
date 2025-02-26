@@ -5,11 +5,9 @@
 //! interface to do so.
 
 pub mod command;
-pub mod duration;
 pub mod error;
 pub mod instant;
 
-pub use duration::Duration;
 pub use error::TimeError;
 pub use instant::Instant;
 
@@ -20,9 +18,12 @@ use std::{
     collections::HashSet,
     future::Future,
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering},
-    sync::{LazyLock, Mutex},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        LazyLock, Mutex,
+    },
     task::Poll,
+    time::Duration,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -286,13 +287,13 @@ mod test {
 
         let now = TimeRequest::NotifyAfter {
             id: TimerId(2),
-            duration: Duration::from_secs(1).expect("valid duration"),
+            duration: Duration::from_secs(1),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();
         assert_eq!(
             &serialized,
-            r#"{"notifyAfter":{"id":2,"duration":{"nanos":1000000000}}}"#
+            r#"{"notifyAfter":{"id":2,"duration":{"secs":1,"nanos":0}}}"#
         );
 
         let deserialized: TimeRequest = serde_json::from_str(&serialized).unwrap();

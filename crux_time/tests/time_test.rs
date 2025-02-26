@@ -82,7 +82,7 @@ mod shared {
                     let pending = model.debounce.start();
 
                     let tid = caps.time.notify_after(
-                        crux_time::Duration::from_millis(300).expect("valid duration"),
+                        std::time::Duration::from_millis(300),
                         event_with_user_info(pending, Event::DurationElapsed),
                     );
 
