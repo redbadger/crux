@@ -34,14 +34,14 @@ where
 
         let builder = RequestBuilder::new(move |ctx| async move {
             select! {
-                response = ctx.request_from_shell(TimeRequest::NotifyAt { id, instant }).fuse() => return response,
+                response = ctx.request_from_shell(TimeRequest::NotifyAt { id, instant }).fuse() =>  response,
                 cleared = receiver => {
                     // The Err variant would mean the sender was dropped, but `receiver` is a fused future,
                     // which signals `is_terminated` true in that case, so this branch of the select will
                     // never run for the Err case
 
                     let id = cleared.unwrap();
-                    return ctx.request_from_shell(TimeRequest::Clear { id }).await;
+                    ctx.request_from_shell(TimeRequest::Clear { id }).await
                 }
             }
         });
@@ -65,7 +65,7 @@ where
 
         let builder = RequestBuilder::new(move |ctx| async move {
             select! {
-                response = ctx.request_from_shell(TimeRequest::NotifyAfter { id, duration: duration.into() }).fuse() => return response,
+                response = ctx.request_from_shell(TimeRequest::NotifyAfter { id, duration: duration.into() }).fuse() => response,
                 cleared = receiver => {
                     // The Err variant would mean the sender was dropped, but `receiver` is a fused future,
                     // which signals `is_terminated` true in that case, so this branch of the select will

@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{error::TimeResult, TimeError};
@@ -31,6 +33,21 @@ impl Instant {
             return Err(TimeError::InvalidInstant);
         }
         Ok(Self { seconds, nanos })
+    }
+}
+
+impl From<SystemTime> for Instant {
+    fn from(time: SystemTime) -> Self {
+        let duration = time.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        let seconds = duration.as_secs();
+        let nanos = duration.subsec_nanos();
+        Self { seconds, nanos }
+    }
+}
+
+impl From<Instant> for SystemTime {
+    fn from(time: Instant) -> Self {
+        SystemTime::UNIX_EPOCH + std::time::Duration::new(time.seconds, time.nanos)
     }
 }
 
@@ -74,6 +91,27 @@ mod test {
     fn new_instant_invalid_nanos() {
         let instant = Instant::new(1_000_000_000, 1_000_000_000);
         assert_eq!(instant.unwrap_err(), TimeError::InvalidInstant);
+    }
+
+    #[test]
+    fn new_instant_invalid_nanos_and_seconds() {
+        let instant = Instant::new(1_000_000_000_000, 1_000_000_000);
+        assert_eq!(instant.unwrap_err(), TimeError::InvalidInstant);
+    }
+
+    #[test]
+    fn instant_to_std() {
+        let actual: SystemTime = Instant::new(1_000_000_000, 10).unwrap().into();
+        let expected = SystemTime::UNIX_EPOCH + std::time::Duration::new(1_000_000_000, 10);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn std_to_instant() {
+        let sys_time = SystemTime::UNIX_EPOCH + std::time::Duration::new(1_000_000_000, 10);
+        let actual: Instant = sys_time.into();
+        let expected = Instant::new(1_000_000_000, 10).unwrap();
+        assert_eq!(actual, expected);
     }
 }
 

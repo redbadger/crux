@@ -65,7 +65,7 @@ fn process_effect(
                             .resolve(&mut request, response)
                             .map_err(|e| anyhow!(e))?
                         {
-                            let _ = process_effect(effect, &core, tauri_app.clone())?;
+                            process_effect(effect, &core, tauri_app.clone())?;
                         }
                     }
 

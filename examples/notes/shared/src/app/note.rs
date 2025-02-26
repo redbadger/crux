@@ -109,7 +109,7 @@ struct Observer<'a> {
     edit_observer: &'a mut dyn EditObserver,
 }
 
-impl<'a> OpObserver for Observer<'a> {
+impl OpObserver for Observer<'_> {
     fn insert<R: automerge::ReadDoc>(
         &mut self,
         _doc: &R,

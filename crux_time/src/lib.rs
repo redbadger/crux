@@ -17,6 +17,7 @@ use std::{
         LazyLock, Mutex,
     },
     task::Poll,
+    time::SystemTime,
 };
 
 use crux_core::capability::CapabilityContext;
@@ -101,8 +102,9 @@ where
         self.context.request_from_shell(TimeRequest::Now).await
     }
 
-    /// Ask to receive a notification when the specified [`Instant`] has arrived.
-    pub fn notify_at<F>(&self, instant: Instant, callback: F) -> TimerId
+    /// Ask to receive a notification when the specified
+    /// [`SystemTime`](std::time::SystemTime) has arrived.
+    pub fn notify_at<F>(&self, instant: SystemTime, callback: F) -> TimerId
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
@@ -116,16 +118,18 @@ where
         id
     }
 
-    /// Ask to receive a notification when the specified [`Instant`] has arrived.
+    /// Ask to receive a notification when the specified
+    /// [`SystemTime`](std::time::SystemTime) has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub fn notify_at_async(
         &self,
-        instant: Instant,
+        instant: SystemTime,
     ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
         let id = get_timer_id();
-        let future = self
-            .context
-            .request_from_shell(TimeRequest::NotifyAt { id, instant });
+        let future = self.context.request_from_shell(TimeRequest::NotifyAt {
+            id,
+            instant: instant.into(),
+        });
         (TimerFuture::new(id, future), id)
     }
 
