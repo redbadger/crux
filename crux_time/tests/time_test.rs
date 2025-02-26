@@ -3,7 +3,10 @@ mod shared {
     use chrono::{DateTime, Utc};
     use crux_core::render::Render;
     use crux_core::{macros::Effect, Command};
-    use crux_time::{Time, TimeResponse, TimerId};
+    use crux_time::{
+        protocol::{TimeResponse, TimerId},
+        Time,
+    };
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -141,7 +144,7 @@ mod shell {
     use super::shared::{App, Effect, Event};
     use chrono::{DateTime, Utc};
     use crux_core::{Core, Request};
-    use crux_time::{Instant, TimeRequest, TimeResponse};
+    use crux_time::{protocol::TimeRequest, protocol::TimeResponse, Instant};
     use std::collections::VecDeque;
 
     pub enum Outcome {
@@ -191,7 +194,7 @@ mod tests {
     };
     use chrono::{DateTime, Utc};
     use crux_core::{testing::AppTester, Core};
-    use crux_time::TimeResponse;
+    use crux_time::protocol::TimeResponse;
 
     #[test]
     pub fn test_time() {

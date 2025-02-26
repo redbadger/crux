@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{error::TimeResult, TimeError};
 
 /// The number of nanoseconds in seconds.
-pub const NANOS_PER_SEC: u32 = 1_000_000_000;
+const NANOS_PER_SEC: u32 = 1_000_000_000;
 
 /// Represents a point in time (UTC):
 ///

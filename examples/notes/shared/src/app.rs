@@ -1,6 +1,6 @@
 mod note;
 
-use std::ops::Range;
+use std::{ops::Range, time::Duration};
 
 use automerge::Change;
 use crux_core::{
@@ -10,7 +10,7 @@ use crux_core::{
 use crux_kv::{command::KeyValue, error::KeyValueError};
 use crux_time::{
     command::{Time, TimerHandle},
-    Duration, TimeResponse,
+    TimeResponse,
 };
 use serde::{Deserialize, Serialize};
 
@@ -255,7 +255,7 @@ fn restart_timer(current_handle: &mut Option<TimerHandle>) -> Command<Effect, Ev
         handle.clear()
     }
 
-    let duration = Duration::from_millis(EDIT_TIMER).unwrap();
+    let duration = Duration::from_millis(EDIT_TIMER);
     let (notify_after, handle) = Time::notify_after(duration);
     current_handle.replace(handle);
     notify_after.then_send(Event::EditTimer)
@@ -670,7 +670,7 @@ mod save_load_tests {
             TimeRequest::NotifyAfter { id, duration } => (id.clone(), duration),
             _ => panic!("expected a NotifyAfter"),
         };
-        assert_eq!(duration, &Duration::from_secs(1).unwrap());
+        assert_eq!(duration, &Duration::from_secs(1).into());
 
         assert!(requests.next().is_none());
         drop(requests); // so we can use cmd1 later

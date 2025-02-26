@@ -1,4 +1,4 @@
-use std::{future::Future, marker::PhantomData};
+use std::{future::Future, marker::PhantomData, time::Duration};
 
 use crux_core::{command::RequestBuilder, Command, Request};
 use futures::{
@@ -6,7 +6,7 @@ use futures::{
     select, FutureExt,
 };
 
-use crate::{get_timer_id, Duration, Instant, TimeRequest, TimeResponse, TimerId};
+use crate::{get_timer_id, Instant, TimeRequest, TimeResponse, TimerId};
 
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
@@ -65,7 +65,7 @@ where
 
         let builder = RequestBuilder::new(move |ctx| async move {
             select! {
-                response = ctx.request_from_shell(TimeRequest::NotifyAfter { id, duration }).fuse() => return response,
+                response = ctx.request_from_shell(TimeRequest::NotifyAfter { id, duration: duration.into() }).fuse() => return response,
                 cleared = receiver => {
                     // The Err variant would mean the sender was dropped, but `receiver` is a fused future,
                     // which signals `is_terminated` true in that case, so this branch of the select will
@@ -104,10 +104,12 @@ impl TimerHandle {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crux_core::Request;
 
     use super::Time;
-    use crate::{Duration, TimeRequest, TimeResponse};
+    use crate::{TimeRequest, TimeResponse};
 
     enum Effect {
         Time(Request<TimeRequest>),
