@@ -5,7 +5,6 @@
 //! interface to do so.
 
 pub mod command;
-pub mod error;
 pub mod protocol;
 
 use std::{
@@ -22,7 +21,6 @@ use std::{
 
 use crux_core::capability::CapabilityContext;
 
-pub use error::TimeError;
 pub use protocol::{duration::Duration, instant::Instant, TimeRequest, TimeResponse, TimerId};
 
 fn get_timer_id() -> TimerId {
@@ -254,7 +252,7 @@ mod test {
 
         let now = TimeRequest::NotifyAt {
             id: TimerId(1),
-            instant: Instant::new(1, 2).expect("valid instant"),
+            instant: Instant::new(1, 2),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();
@@ -268,7 +266,7 @@ mod test {
 
         let now = TimeRequest::NotifyAfter {
             id: TimerId(2),
-            duration: crate::Duration::from_secs(1).unwrap(),
+            duration: crate::Duration::from_secs(1),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();
@@ -284,7 +282,7 @@ mod test {
     #[test]
     fn test_serializing_the_response_types_as_json() {
         let now = TimeResponse::Now {
-            instant: Instant::new(1, 2).expect("valid instant"),
+            instant: Instant::new(1, 2),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();

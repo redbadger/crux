@@ -1,3 +1,5 @@
+#[cfg(feature = "chrono")]
+pub mod chrono;
 pub mod duration;
 pub mod instant;
 
