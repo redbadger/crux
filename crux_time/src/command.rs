@@ -1,4 +1,8 @@
-use std::{future::Future, marker::PhantomData};
+use std::{
+    future::Future,
+    marker::PhantomData,
+    time::{Duration, SystemTime},
+};
 
 use crux_core::{command::RequestBuilder, Command, Request};
 use futures::{
@@ -6,7 +10,7 @@ use futures::{
     select, FutureExt,
 };
 
-use crate::{get_timer_id, Duration, Instant, TimeRequest, TimeResponse, TimerId};
+use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
 
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
@@ -19,12 +23,15 @@ where
     Effect: Send + From<Request<TimeRequest>> + 'static,
     Event: Send + 'static,
 {
+    /// Ask for the current wall-clock time.
     pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = TimeResponse>> {
         Command::request_from_shell(TimeRequest::Now)
     }
 
+    /// Ask to receive a notification when the specified
+    /// [`SystemTime`](std::time::SystemTime) has arrived.
     pub fn notify_at(
-        instant: Instant,
+        system_time: SystemTime,
     ) -> (
         RequestBuilder<Effect, Event, impl Future<Output = TimeResponse>>,
         TimerHandle,
@@ -34,14 +41,21 @@ where
 
         let builder = RequestBuilder::new(move |ctx| async move {
             select! {
-                response = ctx.request_from_shell(TimeRequest::NotifyAt { id, instant }).fuse() => return response,
+                response = ctx.request_from_shell(
+                    TimeRequest::NotifyAt {
+                        id,
+                        instant: system_time.into()
+                    }
+                ).fuse() =>  response,
                 cleared = receiver => {
-                    // The Err variant would mean the sender was dropped, but `receiver` is a fused future,
-                    // which signals `is_terminated` true in that case, so this branch of the select will
+                    // The Err variant would mean the sender was dropped,
+                    // but `receiver` is a fused future,
+                    // which signals `is_terminated` true in that case,
+                    // so this branch of the select will
                     // never run for the Err case
 
                     let id = cleared.unwrap();
-                    return ctx.request_from_shell(TimeRequest::Clear { id }).await;
+                    ctx.request_from_shell(TimeRequest::Clear { id }).await
                 }
             }
         });
@@ -54,6 +68,8 @@ where
         (builder, handle)
     }
 
+    /// Ask to receive a notification after the specified
+    /// [`Duration`](std::time::Duration) has elapsed.
     pub fn notify_after(
         duration: Duration,
     ) -> (
@@ -65,10 +81,17 @@ where
 
         let builder = RequestBuilder::new(move |ctx| async move {
             select! {
-                response = ctx.request_from_shell(TimeRequest::NotifyAfter { id, duration }).fuse() => return response,
+                response = ctx.request_from_shell(
+                    TimeRequest::NotifyAfter {
+                        id,
+                        duration: duration.into()
+                    }
+                ).fuse() => response,
                 cleared = receiver => {
-                    // The Err variant would mean the sender was dropped, but `receiver` is a fused future,
-                    // which signals `is_terminated` true in that case, so this branch of the select will
+                    // The Err variant would mean the sender was dropped,
+                    // but `receiver` is a fused future,
+                    // which signals `is_terminated` true in that case,
+                    // so this branch of the select will
                     // never run for the Err case
                     let id = cleared.unwrap();
                     ctx.request_from_shell(TimeRequest::Clear { id }).await
@@ -94,8 +117,10 @@ pub struct TimerHandle {
 }
 
 impl TimerHandle {
-    /// Clear the associated timer request. The original task will resolve with `TimeResponse::Cleared`
-    /// and the shell will be notified that the timer has been cleared with `TimeRequest::Cleared { id }`,
+    /// Clear the associated timer request. The original task will resolve
+    /// with `TimeResponse::Cleared`
+    /// and the shell will be notified that the timer has been cleared
+    /// with `TimeRequest::Cleared { id }`,
     /// so it can clean up associated resources
     pub fn clear(self) {
         let _ = self.abort.send(self.timer_id);
@@ -104,10 +129,12 @@ impl TimerHandle {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crux_core::Request;
 
     use super::Time;
-    use crate::{Duration, TimeRequest, TimeResponse};
+    use crate::{TimeRequest, TimeResponse};
 
     enum Effect {
         Time(Request<TimeRequest>),
@@ -126,7 +153,7 @@ mod tests {
 
     #[test]
     fn timer_can_be_cleared() {
-        let (cmd, handle) = Time::notify_after(Duration::from_secs(2).unwrap());
+        let (cmd, handle) = Time::notify_after(Duration::from_secs(2));
         let mut cmd = cmd.then_send(Event::Elapsed);
 
         let effect = cmd.effects().next();
@@ -164,7 +191,7 @@ mod tests {
 
     #[test]
     fn dropping_a_timer_handle_does_not_clear_the_request() {
-        let (cmd, handle) = Time::notify_after(Duration::from_secs(2).unwrap());
+        let (cmd, handle) = Time::notify_after(Duration::from_secs(2));
         drop(handle);
 
         let mut cmd = cmd.then_send(Event::Elapsed);

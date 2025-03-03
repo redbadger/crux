@@ -294,7 +294,7 @@ mod tests {
         let request = &mut cmd.effects().next().unwrap().expect_time();
 
         let response = TimeResponse::Now {
-            instant: Instant::new(0, 0).unwrap(),
+            instant: Instant::new(0, 0),
         };
         request
             .resolve(response.clone())

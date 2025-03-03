@@ -1,9 +1,5 @@
 use gloo_console::log;
-use shared::{
-    platform::PlatformResponse,
-    time::{Instant, TimeResponse},
-    CatFacts, Effect, Event,
-};
+use shared::{platform::PlatformResponse, time::TimeResponse, CatFacts, Effect, Event};
 use std::rc::Rc;
 use yew::{platform::spawn_local, Callback};
 
@@ -68,8 +64,9 @@ pub fn process_effect(
         }
 
         Effect::Time(mut request) => {
-            let now = Instant::new(time::get() as u64, 0).unwrap();
-            let response = TimeResponse::Now { instant: now };
+            let response = TimeResponse::Now {
+                instant: time::get(),
+            };
 
             for effect in core.resolve(&mut request, response)? {
                 process_effect(core, effect, callback)?;

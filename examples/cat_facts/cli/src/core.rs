@@ -135,8 +135,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
         Effect::Time(mut request) => {
             let now: DateTime<Utc> = SystemTime::now().into();
             let response = TimeResponse::Now {
-                instant: Instant::new(now.timestamp() as u64, now.timestamp_subsec_nanos())
-                    .unwrap(),
+                instant: Instant::new(now.timestamp() as u64, now.timestamp_subsec_nanos()),
             };
 
             for effect in core.resolve(&mut request, response)? {

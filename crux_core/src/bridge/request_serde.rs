@@ -87,7 +87,8 @@ impl<Out> Resolve<Out> {
             Resolve::Never => ResolveSerialized::Never,
             Resolve::Once(resolve) => ResolveSerialized::Once(Box::new(move |deser| {
                 let out = func(deser)?;
-                Ok(resolve(out))
+                resolve(out);
+                Ok(())
             })),
             Resolve::Many(resolve) => ResolveSerialized::Many(Box::new(move |deser| {
                 let out = func(deser)?;

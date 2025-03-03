@@ -5,54 +5,27 @@
 //! interface to do so.
 
 pub mod command;
-pub mod duration;
-pub mod error;
-pub mod instant;
+pub mod protocol;
 
-pub use duration::Duration;
-pub use error::TimeError;
-pub use instant::Instant;
-
-use serde::{Deserialize, Serialize};
-
-use crux_core::capability::{CapabilityContext, Operation};
 use std::{
     collections::HashSet,
     future::Future,
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering},
-    sync::{LazyLock, Mutex},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        LazyLock, Mutex,
+    },
     task::Poll,
+    time::SystemTime,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TimeRequest {
-    Now,
-    NotifyAt { id: TimerId, instant: Instant },
-    NotifyAfter { id: TimerId, duration: Duration },
-    Clear { id: TimerId },
-}
+use crux_core::capability::CapabilityContext;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TimerId(pub usize);
+pub use protocol::{duration::Duration, instant::Instant, TimeRequest, TimeResponse, TimerId};
 
 fn get_timer_id() -> TimerId {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
     TimerId(COUNTER.fetch_add(1, Ordering::Relaxed))
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TimeResponse {
-    Now { instant: Instant },
-    InstantArrived { id: TimerId },
-    DurationElapsed { id: TimerId },
-    Cleared { id: TimerId },
-}
-
-impl Operation for TimeRequest {
-    type Output = TimeResponse;
 }
 
 /// The Time capability API
@@ -78,6 +51,9 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+        use crate::{Duration, Instant};
+        use crux_core::capability::Operation;
+
         generator.register_type::<Instant>()?;
         generator.register_type::<Duration>()?;
         generator.register_type::<Self::Operation>()?;
@@ -124,12 +100,13 @@ where
         self.context.request_from_shell(TimeRequest::Now).await
     }
 
-    /// Ask to receive a notification when the specified [`Instant`] has arrived.
-    pub fn notify_at<F>(&self, instant: Instant, callback: F) -> TimerId
+    /// Ask to receive a notification when the specified
+    /// [`SystemTime`](std::time::SystemTime) has arrived.
+    pub fn notify_at<F>(&self, system_time: SystemTime, callback: F) -> TimerId
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
-        let (future, id) = self.notify_at_async(instant);
+        let (future, id) = self.notify_at_async(system_time);
         self.context.spawn({
             let context = self.context.clone();
             async move {
@@ -139,21 +116,23 @@ where
         id
     }
 
-    /// Ask to receive a notification when the specified [`Instant`] has arrived.
+    /// Ask to receive a notification when the specified
+    /// [`SystemTime`](std::time::SystemTime) has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub fn notify_at_async(
         &self,
-        instant: Instant,
+        system_time: SystemTime,
     ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
         let id = get_timer_id();
-        let future = self
-            .context
-            .request_from_shell(TimeRequest::NotifyAt { id, instant });
+        let future = self.context.request_from_shell(TimeRequest::NotifyAt {
+            id,
+            instant: system_time.into(),
+        });
         (TimerFuture::new(id, future), id)
     }
 
-    /// Ask to receive a notification when the specified duration has elapsed.
-    pub fn notify_after<F>(&self, duration: Duration, callback: F) -> TimerId
+    /// Ask to receive a notification when the specified [`Duration`](std::time::Duration) has elapsed.
+    pub fn notify_after<F>(&self, duration: std::time::Duration, callback: F) -> TimerId
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
     {
@@ -167,16 +146,17 @@ where
         id
     }
 
-    /// Ask to receive a notification when the specified duration has elapsed.
+    /// Ask to receive a notification when the specified [`Duration`](std::time::Duration) has elapsed.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub fn notify_after_async(
         &self,
-        duration: Duration,
+        duration: std::time::Duration,
     ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
         let id = get_timer_id();
-        let future = self
-            .context
-            .request_from_shell(TimeRequest::NotifyAfter { id, duration });
+        let future = self.context.request_from_shell(TimeRequest::NotifyAfter {
+            id,
+            duration: duration.into(),
+        });
         (TimerFuture::new(id, future), id)
     }
 
@@ -272,7 +252,7 @@ mod test {
 
         let now = TimeRequest::NotifyAt {
             id: TimerId(1),
-            instant: Instant::new(1, 2).expect("valid instant"),
+            instant: Instant::new(1, 2),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();
@@ -286,7 +266,7 @@ mod test {
 
         let now = TimeRequest::NotifyAfter {
             id: TimerId(2),
-            duration: Duration::from_secs(1).expect("valid duration"),
+            duration: crate::Duration::from_secs(1),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();
@@ -302,7 +282,7 @@ mod test {
     #[test]
     fn test_serializing_the_response_types_as_json() {
         let now = TimeResponse::Now {
-            instant: Instant::new(1, 2).expect("valid instant"),
+            instant: Instant::new(1, 2),
         };
 
         let serialized = serde_json::to_string(&now).unwrap();

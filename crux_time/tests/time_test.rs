@@ -3,7 +3,10 @@ mod shared {
     use chrono::{DateTime, Utc};
     use crux_core::render::Render;
     use crux_core::{macros::Effect, Command};
-    use crux_time::{Time, TimeResponse, TimerId};
+    use crux_time::{
+        protocol::{TimeResponse, TimerId},
+        Time,
+    };
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -82,7 +85,7 @@ mod shared {
                     let pending = model.debounce.start();
 
                     let tid = caps.time.notify_after(
-                        crux_time::Duration::from_millis(300).expect("valid duration"),
+                        std::time::Duration::from_millis(300),
                         event_with_user_info(pending, Event::DurationElapsed),
                     );
 
@@ -191,7 +194,7 @@ mod tests {
     };
     use chrono::{DateTime, Utc};
     use crux_core::{testing::AppTester, Core};
-    use crux_time::TimeResponse;
+    use crux_time::protocol::TimeResponse;
 
     #[test]
     pub fn test_time() {
