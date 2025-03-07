@@ -14,11 +14,11 @@ rust-version.workspace = true
 typegen = ["crux_core/typegen"]
 
 [dependencies]
-chrono = { version = "0.4.39", features = ["serde"], optional = true }
+chrono = { version = "0.4.40", features = ["serde"], optional = true }
 crux_core = { version = "0.12.0", path = "../crux_core" }
 futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }
-thiserror = "2.0.11"
+thiserror = "2.0.12"
 
 [dev-dependencies]
-serde_json = "1.0.138"
+serde_json = "1.0.140"

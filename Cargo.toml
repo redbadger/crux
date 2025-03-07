@@ -20,8 +20,8 @@ keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
 rust-version = "1.80"
 
 [workspace.dependencies]
-anyhow = "1.0.95"
-serde = "1.0.217"
+anyhow = "1.0.97"
+serde = "1.0.218"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

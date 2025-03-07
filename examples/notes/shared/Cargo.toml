@@ -18,7 +18,7 @@ name = "shared"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-automerge = "0.4.1"
+automerge = { version = "0.4.1", features = ["wasm"] }
 crux_core.workspace = true
 crux_kv.workspace = true
 crux_time.workspace = true
@@ -29,7 +29,7 @@ uniffi = "0.29"
 wasm-bindgen = "0.2"
 
 # see https://docs.rs/getrandom/latest/getrandom/#webassembly-support
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "=0.2", features = ["js"] }
 
 [target.uniffi-bindgen.dependencies]
 uniffi = { version = "0.29", features = ["cli"] }
