@@ -1,33 +1,45 @@
 {
-  "name": "web-svelte",
+  "name": "simple_counter",
   "private": true,
+  "version": "0.0.1",
+  "type": "module",
   "scripts": {
     "wasm:build": "cd ../shared && wasm-pack build --target web",
-    "build": "pnpm wasm:build && parcel build src/index.html",
-    "dev": "pnpm build && concurrently -k 'parcel serve src/index.html --port 8080 --hmr-port 1174'",
-    "clean": "rm -rf dist node_modules .parcel-cache"
-  },
-  "dependencies": {
-    "bincode": "file:../shared_types/generated/typescript/bincode",
-    "bulma": "^1.0.3",
-    "concurrently": "^9.1.2",
-    "parcel": "^2.13.3",
-    "parcel-transformer-svelte3-plus": "^0.2.10",
-    "reflect-metadata": "^0.2.2",
-    "shared": "file:../shared/pkg",
-    "shared_types": "file:../shared_types/generated/typescript",
-    "svelte": "^5.20.1",
-    "typescript": "^5.7.3"
+    "dev": "pnpm run wasm:build && vite dev",
+    "build": "pnpm run wasm:build && vite build",
+    "preview": "pnpm run wasm:build && vite preview",
+    "prepare": "svelte-kit sync || echo ''",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "format": "prettier --write .",
+    "lint": "prettier --check . && eslint ."
   },
   "devDependencies": {
-    "@parcel/config-default": "^2.13.3",
-    "@parcel/transformer-inline-string": "^2.13.3",
-    "@parcel/transformer-webmanifest": "^2.13.3",
-    "@types/node": "^22.13.4",
-    "@types/webpack": "^5.28.5",
-    "process": "^0.11.10"
+    "@eslint/compat": "^1.2.7",
+    "@eslint/js": "^9.21.0",
+    "@sveltejs/adapter-static": "^3.0.8",
+    "@sveltejs/kit": "^2.18.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "bincode": "file:../shared_types/generated/typescript/bincode",
+    "bulma": "^1.0.3",
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-svelte": "^3.0.3",
+    "globals": "^16.0.0",
+    "prettier": "^3.5.3",
+    "prettier-plugin-svelte": "^3.3.3",
+    "shared": "file:../shared/pkg",
+    "shared_types": "file:../shared_types/generated/typescript",
+    "svelte": "^5.22.6",
+    "svelte-check": "^4.1.5",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0",
+    "vite": "^6.2.1",
+    "vite-plugin-wasm-esm": "^1.0.3"
   },
-  "@parcel/resolver-default": {
-    "packageExports": true
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

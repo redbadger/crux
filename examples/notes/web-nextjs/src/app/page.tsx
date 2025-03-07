@@ -153,10 +153,10 @@ const Home: NextPage = () => {
         <title>Notes</title>
       </Head>
 
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-slate-200">
         <Navbar title="A note" />
-        <main className="flex-grow flex flex-col bg-slate-100 ">
-          <div className="flex-grow basis-1 flex flex-col bg-slate-200 ">
+        <main className="flex-grow flex flex-col">
+          <div className="flex-grow basis-1 flex flex-col">
             <Textarea
               className="p-3 flex-grow resize-none w-full focus:outline-none"
               selectionStart={selection.start}
