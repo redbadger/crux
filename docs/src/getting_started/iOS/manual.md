@@ -85,7 +85,7 @@ if [ "$ENABLE_PREVIEWS" = "YES" ]; then
 fi
 
 cd "${INPUT_FILE_DIR}/.."
-"${BUILD_DIR}/debug/uniffi-bindgen" generate "src/${INPUT_FILE_NAME}" --language swift --out-dir "${PROJECT_DIR}/generated"
+"${BUILD_DIR}/${Configuration}/uniffi-bindgen" generate "src/${INPUT_FILE_NAME}" --language swift --out-dir "${PROJECT_DIR}/generated"
 
 ```
 
