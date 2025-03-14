@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.redbadger.catfacts'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.redbadger.catfacts"

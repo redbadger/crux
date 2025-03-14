@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.example.bridge_echo'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.bridge_echo"
