@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.example.counter'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.counter"
@@ -39,7 +39,7 @@ android {
 dependencies {
     // our shared library
     implementation project(path: ':shared')
-    
+
     // added dependencies
     implementation libs.lifecycle.viewmodel.compose
     implementation libs.ktor.client

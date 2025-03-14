@@ -26,14 +26,14 @@ class Core: ObservableObject {
         case let .http(req):
             Task {
                 let response = try! await requestHttp(req).get()
-
+                
                 let effects = [UInt8](
                     handleResponse(
                         request.id,
                         Data(try! HttpResult.ok(response).bincodeSerialize())
                     )
                 )
-
+                
                 let requests: [Request] = try! .bincodeDeserialize(input: effects)
                 for request in requests {
                     processEffect(request)
@@ -41,19 +41,19 @@ class Core: ObservableObject {
             }
         case .time:
             let now = Date().timeIntervalSince1970;
-            let response = TimeResponse.now(Instant(seconds: UInt64(now), nanos: 0))
-
+            let response = TimeResponse.now(instant: Instant(seconds: UInt64(now), nanos: 0))
+            
             let effects = [UInt8](handleResponse(request.id, Data(try! response.bincodeSerialize())))
-
+            
             let requests: [Request] = try! .bincodeDeserialize(input: effects)
             for request in requests {
                 processEffect(request)
             }
         case .platform:
             let response = PlatformResponse(value: get_platform())
-
+            
             let effects = [UInt8](handleResponse(request.id, Data(try! response.bincodeSerialize())))
-
+            
             let requests: [Request] = try! .bincodeDeserialize(input: effects)
             for request in requests {
                 processEffect(request)
