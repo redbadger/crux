@@ -76,7 +76,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SimpleCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpleCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		258EC994D7C693E3141C4563 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		642CF26F4B57B0FF7348C6BF /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		842F8D01CC76E9BFCDBD2862 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -291,7 +291,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = SimpleCounter/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -313,7 +313,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = SimpleCounter/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
