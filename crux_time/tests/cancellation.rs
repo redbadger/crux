@@ -2,16 +2,16 @@ use std::time::Duration;
 
 use crux_core::{App, Command, Request};
 use crux_time::{
-    command::{Time, TimerHandle},
-    TimeRequest, TimeResponse, TimerId,
+    command::{CompletedTimerHandle, Time, TimerError, TimerHandle},
+    TimeRequest, TimerId,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Event {
     Start,
-    Tick(TimeResponse),
-    Cancel(TimerId),
+    Tick(Result<CompletedTimerHandle, TimerError>),
+    Cancel,
 }
 
 pub enum Effect {
@@ -67,18 +67,16 @@ impl App for Timer {
                 request.then_send(Event::Tick)
             }
             Event::Tick(response) => {
-                let TimeResponse::DurationElapsed { id: _ } = response else {
-                    panic!("Unexpected response");
-                };
-                model.ticks += 1;
+                if response.is_ok() {
+                    model.ticks += 1;
+                }
+
                 Command::done()
             }
-            Event::Cancel(id) => {
+            Event::Cancel => {
                 if let Some(handle) = model.timer_handle.take() {
-                    if id == handle {
-                        println!("Timer cancelled");
-                        handle.clear();
-                    }
+                    println!("Timer cancelled");
+                    handle.clear();
                 }
                 Command::done()
             }
@@ -110,7 +108,7 @@ fn ticking_timer_can_be_cancelled() {
     );
 
     // cancel the timer
-    let mut cmd2 = app.update(Event::Cancel(TIMER_ID), &mut model, &());
+    let mut cmd2 = app.update(Event::Cancel, &mut model, &());
     assert!(cmd2.effects().next().is_none());
 
     // the first command should resolve with a TimeRequest::Clear
