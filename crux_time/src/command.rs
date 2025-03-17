@@ -124,12 +124,25 @@ impl PartialEq for TimerHandle {
     }
 }
 
+impl PartialEq<TimerId> for TimerHandle {
+    fn eq(&self, other: &TimerId) -> bool {
+        self.timer_id == *other
+    }
+}
+
+impl PartialEq<TimerHandle> for TimerId {
+    fn eq(&self, other: &TimerHandle) -> bool {
+        *self == other.timer_id
+    }
+}
+
 impl TimerHandle {
-    /// Clear the associated timer request. The original task will resolve
-    /// with `TimeResponse::Cleared`
-    /// and the shell will be notified that the timer has been cleared
-    /// with `TimeRequest::Cleared { id }`,
-    /// so it can clean up associated resources
+    /// Clear the associated timer request.
+    /// The shell will be notified that the timer has been cleared
+    /// with `TimeRequest::Clear { id }`,
+    /// so it can clean up associated resources.
+    /// The original task will resolve
+    /// with `TimeResponse::Cleared { id }`.
     pub fn clear(self) {
         let _ = self.abort.send(self.timer_id);
     }
