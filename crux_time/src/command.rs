@@ -116,6 +116,14 @@ pub struct TimerHandle {
     abort: Sender<TimerId>,
 }
 
+impl Eq for TimerHandle {}
+
+impl PartialEq for TimerHandle {
+    fn eq(&self, other: &Self) -> bool {
+        self.timer_id == other.timer_id
+    }
+}
+
 impl TimerHandle {
     /// Clear the associated timer request. The original task will resolve
     /// with `TimeResponse::Cleared`
