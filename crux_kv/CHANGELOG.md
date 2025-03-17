@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.4](https://github.com/redbadger/crux/compare/crux_kv-v0.6.3...crux_kv-v0.6.4) - 2025-03-17
+
+This is a maintenance release (minor non-breaking changes and dependency updates).
+
+### Other
+
+- rust deps
+
 ## [0.6.3](https://github.com/redbadger/crux/compare/crux_kv-v0.6.2...crux_kv-v0.6.3) - 2025-02-18
 
 ### Other

@@ -8,6 +8,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.12.1](https://github.com/redbadger/crux/compare/crux_core-v0.12.0...crux_core-v0.12.1) - 2025-03-17
+
+This is a maintenance release (minor non-breaking changes and dependency updates).
+
+Note: For iOS shells, we have fixed a bug in the documentation that didn't account correctly for release builds.
+You may need to update your build rules accordingly.
+Please see the use of `${Configuration}` in the
+[documentation](https://redbadger.github.io/crux/latest_master/getting_started/iOS/with_xcodegen.html#generate-the-xcode-project-for-our-ios-app).
+
+### Other
+
+- rust deps
+- use SystemTime in crux_time API
+- update doc for Core::new()
+- add track_caller to test helpers
+
 ## [0.12.0](https://github.com/redbadger/crux/compare/crux_core-v0.11.3...crux_core-v0.12.0) - 2025-02-18
 
 ***Note this is a breaking change!***

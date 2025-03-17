@@ -8,6 +8,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.4.5](https://github.com/redbadger/crux/compare/crux_macros-v0.4.4...crux_macros-v0.4.5) - 2025-03-17
+
+This is a maintenance release (minor non-breaking changes and dependency updates).
+
+We have also added the `#[track_caller]` attribute to various test helper functions,
+so that we can get a more useful line number for test failures.
+
+### Fixed
+
+- fix tests
+
+### Other
+
+- updated rust dependencies
+- add track_caller to test helpers
+
 ## [0.4.4](https://github.com/redbadger/crux/compare/crux_macros-v0.4.3...crux_macros-v0.4.4) - 2025-01-22
 
 ### Other

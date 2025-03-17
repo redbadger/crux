@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.8](https://github.com/redbadger/crux/compare/crux_http-v0.11.7...crux_http-v0.11.8) - 2025-03-17
+
+This is a maintenance release (minor non-breaking changes and dependency updates).
+
+### Other
+
+- rust deps
+
 ## [0.11.7](https://github.com/redbadger/crux/compare/crux_http-v0.11.6...crux_http-v0.11.7) - 2025-02-18
 
 ### Other

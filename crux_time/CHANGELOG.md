@@ -8,6 +8,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.0](https://github.com/redbadger/crux/compare/crux_time-v0.8.3...crux_time-v0.9.0) - 2025-03-17
+
+**This is a breaking-change release**
+
+This release changes the public API of crux_time.
+
+Whilst the protocol over the bridge has not changed, the implementation has been updated
+to use `std::time::SystemTime` instead of `crux_time::Instant`
+and to use `std::time::Duration` instead of `crux_time::Duration`.
+
+### Other
+
+- add PartialEq and Eq to TimerHandle
+- update rust dependencies
+- panic on overflow for protocol types
+- use `std::time::SystemTime` and `std::time::Duration` in crux_time API
+
 ## [0.8.3](https://github.com/redbadger/crux/compare/crux_time-v0.8.2...crux_time-v0.8.3) - 2025-02-18
 
 ### Other
