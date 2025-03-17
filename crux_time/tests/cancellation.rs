@@ -88,7 +88,7 @@ impl App for Timer {
 
 #[test]
 fn ticking_timer_can_be_cancelled() {
-    let app = Timer::default();
+    let app = Timer;
     let mut model = Model::default();
 
     const TIMER_ID: TimerId = TimerId(1);
@@ -119,7 +119,7 @@ fn ticking_timer_can_be_cancelled() {
     };
 
     let cancel_id = match &request.operation {
-        TimeRequest::Clear { id } => id.clone(),
+        TimeRequest::Clear { id } => *id,
         _ => panic!("expected a Clear"),
     };
     assert_eq!(cancel_id, TIMER_ID);
