@@ -3,15 +3,18 @@ use std::time::Duration;
 use crux_core::{App, Command, Request};
 use crux_time::{
     command::{CompletedTimerHandle, Time, TimerError, TimerHandle},
-    TimeRequest, TimerId,
+    TimeRequest, TimeResponse, TimerId,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Event {
+    // from shell
     Start,
-    Tick(Result<CompletedTimerHandle, TimerError>),
     Cancel,
+
+    // from core
+    Stop(Result<CompletedTimerHandle, TimerError>),
 }
 
 pub enum Effect {
@@ -38,10 +41,18 @@ impl From<Request<TimeRequest>> for Effect {
     }
 }
 
+#[derive(Default, Debug, PartialEq, Eq)]
+enum Status {
+    #[default]
+    Stopped,
+    Started,
+    Cancelled,
+}
+
 #[derive(Default)]
 struct Model {
-    timer_handle: Option<TimerHandle>,
-    ticks: u32,
+    handle: Option<TimerHandle>,
+    status: Status,
 }
 
 #[derive(Default)]
@@ -63,20 +74,22 @@ impl App for Timer {
         match event {
             Event::Start => {
                 let (request, handle) = Time::notify_after(Duration::from_secs(1));
-                model.timer_handle = Some(handle);
-                request.then_send(Event::Tick)
+                model.handle = Some(handle);
+                model.status = Status::Started;
+                request.then_send(Event::Stop)
             }
-            Event::Tick(response) => {
+            Event::Stop(response) => {
                 if response.is_ok() {
-                    model.ticks += 1;
+                    model.status = Status::Stopped;
                 }
 
                 Command::done()
             }
             Event::Cancel => {
-                if let Some(handle) = model.timer_handle.take() {
+                if let Some(handle) = model.handle.take() {
                     println!("Timer cancelled");
                     handle.clear();
+                    model.status = Status::Cancelled;
                 }
                 Command::done()
             }
@@ -87,18 +100,20 @@ impl App for Timer {
 }
 
 #[test]
-fn ticking_timer_can_be_cancelled() {
+fn cancellation_of_a_started_timer() {
     let app = Timer;
     let mut model = Model::default();
 
     const TIMER_ID: TimerId = TimerId(1);
 
-    // start the timer
+    // start the timer...
     let mut cmd1 = app.update(Event::Start, &mut model, &());
 
-    let effect = cmd1.effects().next().unwrap();
+    // ...no events
+    assert!(cmd1.events().next().is_none());
 
-    let Effect::Time(request) = effect;
+    // ...but an effect to ask the shell to start the timer
+    let Effect::Time(request) = cmd1.effects().next().unwrap();
     assert_eq!(
         request.operation,
         TimeRequest::NotifyAfter {
@@ -107,20 +122,39 @@ fn ticking_timer_can_be_cancelled() {
         }
     );
 
-    // cancel the timer
+    // ...and the model is updated
+    assert_eq!(model.status, Status::Started);
+
+    // cancel the timer...
     let mut cmd2 = app.update(Event::Cancel, &mut model, &());
+
+    // ...no events or effects
+    assert!(cmd2.events().next().is_none());
     assert!(cmd2.effects().next().is_none());
+    // ...but the model is updated
+    assert_eq!(model.status, Status::Cancelled);
 
-    // the first command should resolve with a TimeRequest::Clear
-    let effect = cmd1.effects().next();
-
-    let Some(Effect::Time(request)) = effect else {
-        panic!("should get an effect");
-    };
-
+    // ...however, the _first_ command should resolve with a TimeRequest::Clear
+    // so that the shell can clean up
+    let Effect::Time(mut request) = cmd1.effects().next().unwrap();
     let cancel_id = match &request.operation {
         TimeRequest::Clear { id } => *id,
         _ => panic!("expected a Clear"),
     };
     assert_eq!(cancel_id, TIMER_ID);
+
+    // note, the shell does _not_ need to respond to say it has cleaned up,
+    // but if it does, the core should ignore it, as it has already been cancelled...
+    let response = TimeResponse::Cleared { id: TIMER_ID };
+    request.resolve(response).unwrap();
+
+    // ...no effects
+    assert!(cmd1.effects().next().is_none());
+    // ...but one event with an error to say it is already cleared,
+    assert_eq!(
+        cmd1.events().next().unwrap(),
+        Event::Stop(Err(TimerError::Cleared))
+    );
+    // ...and the model is not updated
+    assert_eq!(model.status, Status::Cancelled);
 }

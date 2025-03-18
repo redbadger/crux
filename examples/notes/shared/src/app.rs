@@ -8,10 +8,7 @@ use crux_core::{
     App, Command,
 };
 use crux_kv::{command::KeyValue, error::KeyValueError};
-use crux_time::{
-    command::{Time, TimerHandle},
-    TimeResponse,
-};
+use crux_time::command::{CompletedTimerHandle, Time, TimerError, TimerHandle};
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::pub_sub::PubSub;
@@ -23,7 +20,7 @@ use self::note::EditObserver;
 #[derive(Default)]
 pub struct NoteEditor;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Event {
     // events from the shell
     Open,
@@ -34,9 +31,10 @@ pub enum Event {
     Backspace,
     Delete,
     ReceiveChanges(Vec<u8>),
-    EditTimer(TimeResponse),
 
     // events local to the core
+    #[serde(skip)]
+    EditTimerElapsed(Result<CompletedTimerHandle, TimerError>),
     #[serde(skip)]
     Written(Result<Option<Vec<u8>>, KeyValueError>),
     #[serde(skip)]
@@ -214,8 +212,8 @@ impl NoteEditor {
 
                 render::render()
             }
-            Event::EditTimer(response) => match response {
-                TimeResponse::DurationElapsed { id: _ } => {
+            Event::EditTimerElapsed(response) => match response {
+                Ok(_) => {
                     KeyValue::set("note".to_string(), model.note.save()).then_send(Event::Written)
                 }
                 _ => Command::done(),
@@ -258,7 +256,7 @@ fn restart_timer(current_handle: &mut Option<TimerHandle>) -> Command<Effect, Ev
     let duration = Duration::from_millis(EDIT_TIMER);
     let (notify_after, handle) = Time::notify_after(duration);
     current_handle.replace(handle);
-    notify_after.then_send(Event::EditTimer)
+    notify_after.then_send(Event::EditTimerElapsed)
 }
 
 struct CursorObserver {
@@ -702,52 +700,43 @@ mod save_load_tests {
         assert_ne!(first_id, second_id);
 
         assert!(requests.next().is_none());
+        drop(requests); // so we can use cmd2 later
 
         // Time passes
-
         start_request
-            .resolve(TimeResponse::DurationElapsed { id: second_id })
+            .resolve(crux_time::TimeResponse::DurationElapsed { id: second_id })
             .unwrap();
 
-        // One more edit. Should result in a timer, but not in cancellation
-        let mut cmd3 = app.update(Event::Backspace, &mut model);
-        let mut timer_requests = cmd3.effects().filter_map(Effect::into_timer);
+        // send the elapsed event back into the app
+        let event = cmd2.events().next().unwrap();
+        let mut cmd3 = app.update(event, &mut model);
 
-        let start_request = timer_requests.next().unwrap();
-        let third_id = match &start_request.operation {
-            TimeRequest::NotifyAfter { id, duration: _ } => id.clone(),
-            _ => panic!("expected a NotifyAfter"),
-        };
-        assert!(timer_requests.next().is_none());
-
-        assert_ne!(third_id, second_id);
-    }
-    // ANCHOR_END: starts_a_timer_after_an_edit
-
-    #[test]
-    fn saves_document_when_typing_stops() {
-        let app = NoteEditor::default();
-
-        let mut model = Model {
-            note: Note::with_text("hello"),
-            cursor: TextCursor::Position(5),
-            timer: None,
-        };
-
-        let mut cmd = app.update(
-            Event::EditTimer(TimeResponse::DurationElapsed { id: TimerId(1) }),
-            &mut model,
-        );
-        let write_request = cmd.effects().find_map(Effect::into_key_value).unwrap();
-
+        // we should see an effect to save the note
+        let mut effects = cmd3.effects();
+        let save = effects.next().unwrap().expect_key_value();
         assert_eq!(
-            write_request.operation,
+            save.operation,
             KeyValueOperation::Set {
                 key: "note".to_string(),
-                value: model.note.save().into()
+                value: model.note.save().into(),
+            }
+        );
+
+        // One more edit. Should result in a new timer
+        let mut cmd4 = app.update(Event::Backspace, &mut model);
+        let mut effects = cmd4.effects();
+
+        let _publish = effects.next().unwrap().expect_pub_sub();
+        let timer = effects.next().unwrap().expect_timer();
+        assert_eq!(
+            timer.operation,
+            TimeRequest::NotifyAfter {
+                id: TimerId(3),
+                duration: crux_time::Duration::from_millis(1000)
             }
         );
     }
+    // ANCHOR_END: starts_a_timer_after_an_edit
 }
 
 #[cfg(test)]
@@ -822,7 +811,7 @@ mod sync_tests {
 
                 if let Some(cmd) = self.command.as_mut() {
                     for event in cmd.events().collect::<Vec<_>>() {
-                        self.update(event.clone());
+                        self.update(event);
                     }
                 }
             }

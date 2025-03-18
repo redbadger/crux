@@ -142,7 +142,6 @@ where
                         duration: duration.into()
                     }
                 ).fuse() => {
-
                     let TimeResponse::DurationElapsed { id } = response else {
                         panic!("Unexpected response to TimeRequest::NotifyAt");
                     };
