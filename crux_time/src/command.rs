@@ -217,6 +217,12 @@ impl PartialEq<CompletedTimerHandle> for TimerHandle {
     }
 }
 
+impl PartialEq<TimerHandle> for CompletedTimerHandle {
+    fn eq(&self, other: &TimerHandle) -> bool {
+        self.timer_id == other.timer_id
+    }
+}
+
 impl From<TimerHandle> for CompletedTimerHandle {
     fn from(value: TimerHandle) -> Self {
         Self {

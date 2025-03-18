@@ -143,14 +143,13 @@ fn cancellation_of_a_started_timer() {
     };
     assert_eq!(cancel_id, TIMER_ID);
 
-    // note, the shell does _not_ need to respond to say it has cleaned up,
-    // but if it does, the core should ignore it, as it has already been cancelled...
+    // the shell can respond to say it has cleaned up
     let response = TimeResponse::Cleared { id: TIMER_ID };
     request.resolve(response).unwrap();
 
     // ...no effects
     assert!(cmd1.effects().next().is_none());
-    // ...but one event with an error to say it is already cleared,
+    // ...and one event with an error to say it is already cleared,
     assert_eq!(
         cmd1.events().next().unwrap(),
         Event::Stop(Err(TimerError::Cleared))
