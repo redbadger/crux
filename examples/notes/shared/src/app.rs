@@ -212,12 +212,10 @@ impl NoteEditor {
 
                 render::render()
             }
-            Event::EditTimerElapsed(response) => match response {
-                Ok(_) => {
-                    KeyValue::set("note".to_string(), model.note.save()).then_send(Event::Written)
-                }
-                _ => Command::done(),
-            },
+            Event::EditTimerElapsed(Ok(_)) => {
+                KeyValue::set("note".to_string(), model.note.save()).then_send(Event::Written)
+            }
+            Event::EditTimerElapsed(Err(_)) => Command::done(),
             Event::Written(_) => {
                 // FIXME assuming successful write
                 Command::done()
@@ -346,7 +344,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "hello".to_string());
+        assert_eq!(view.text, "hello");
         assert_eq!(view.cursor, TextCursor::Position(5));
     }
 
@@ -365,7 +363,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "hello".to_string());
+        assert_eq!(view.text, "hello");
         assert_eq!(view.cursor, TextCursor::Selection(2..5));
     }
 
@@ -384,7 +382,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "hell to the lo".to_string());
+        assert_eq!(view.text, "hell to the lo");
         assert_eq!(view.cursor, TextCursor::Position(12));
     }
 
@@ -405,7 +403,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "helter skelter".to_string());
+        assert_eq!(view.text, "helter skelter");
         assert_eq!(view.cursor, TextCursor::Position(14));
     }
     // ANCHOR_END: replaces_selection_and_renders
@@ -425,7 +423,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "hi, yo".to_string());
+        assert_eq!(view.text, "hi, yo");
         assert_eq!(view.cursor, TextCursor::Position(5));
     }
 
@@ -447,7 +445,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "hey, just saying hello".to_string());
+        assert_eq!(view.text, "hey, just saying hello");
         assert_eq!(view.cursor, TextCursor::Position(18));
     }
 
@@ -466,7 +464,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "hllo".to_string());
+        assert_eq!(view.text, "hllo");
         assert_eq!(view.cursor, TextCursor::Position(1));
     }
 
@@ -485,7 +483,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "helo".to_string());
+        assert_eq!(view.text, "helo");
         assert_eq!(view.cursor, TextCursor::Position(2));
     }
 
@@ -504,7 +502,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "heo".to_string());
+        assert_eq!(view.text, "heo");
         assert_eq!(view.cursor, TextCursor::Position(2));
     }
 
@@ -523,7 +521,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "heo".to_string());
+        assert_eq!(view.text, "heo");
         assert_eq!(view.cursor, TextCursor::Position(2));
     }
 
@@ -544,7 +542,7 @@ mod editing_tests {
 
         let view = app.view(&model);
 
-        assert_eq!(view.text, "Hello 🙌🏻🥳🙌🏻 world.".to_string());
+        assert_eq!(view.text, "Hello 🙌🏻🥳🙌🏻 world.");
         assert_eq!(view.cursor, TextCursor::Position(13));
     }
 }
@@ -865,7 +863,7 @@ mod sync_tests {
         let alice_view = alice.view();
         let bob_view = bob.view();
 
-        assert_eq!(alice_view.text, "Hello world".to_string());
+        assert_eq!(alice_view.text, "Hello world");
         assert_eq!(alice_view.text, bob_view.text);
     }
 
@@ -891,7 +889,7 @@ mod sync_tests {
         let alice_view = alice.view();
         let bob_view = bob.view();
 
-        assert_eq!(alice_view.text, "Hello world".to_string());
+        assert_eq!(alice_view.text, "Hello world");
         assert_eq!(alice_view.text, bob_view.text);
     }
 
@@ -924,7 +922,7 @@ mod sync_tests {
         let alice_view = alice.view();
         let bob_view = bob.view();
 
-        assert_eq!(alice_view.text, "Hello dear world!".to_string());
+        assert_eq!(alice_view.text, "Hello dear world!");
         assert_eq!(alice_view.text, bob_view.text);
     }
 
@@ -977,7 +975,7 @@ mod sync_tests {
         let alice_view = alice.view();
         let bob_view = bob.view();
 
-        assert_eq!(alice_view.text, "Hello world!".to_string());
+        assert_eq!(alice_view.text, "Hello world!");
         assert_eq!(alice_view.text, bob_view.text);
     }
 
@@ -1006,7 +1004,7 @@ mod sync_tests {
         let alice_view = alice.view();
         let bob_view = bob.view();
 
-        assert_eq!(alice_view.text, "Hello dear world".to_string());
+        assert_eq!(alice_view.text, "Hello dear world");
         assert_eq!(alice_view.text, bob_view.text);
     }
 }
