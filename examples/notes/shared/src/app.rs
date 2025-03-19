@@ -8,7 +8,7 @@ use crux_core::{
     App, Command,
 };
 use crux_kv::{command::KeyValue, error::KeyValueError};
-use crux_time::command::{CompletedTimerHandle, Time, TimerError, TimerHandle};
+use crux_time::command::{Time, TimerHandle, TimerOutcome};
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::pub_sub::PubSub;
@@ -34,7 +34,7 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
-    EditTimerElapsed(Result<CompletedTimerHandle, TimerError>),
+    EditTimerElapsed(TimerOutcome),
     #[serde(skip)]
     Written(Result<Option<Vec<u8>>, KeyValueError>),
     #[serde(skip)]
@@ -212,10 +212,10 @@ impl NoteEditor {
 
                 render::render()
             }
-            Event::EditTimerElapsed(Ok(_)) => {
+            Event::EditTimerElapsed(TimerOutcome::Completed(_)) => {
                 KeyValue::set("note".to_string(), model.note.save()).then_send(Event::Written)
             }
-            Event::EditTimerElapsed(Err(_)) => Command::done(),
+            Event::EditTimerElapsed(TimerOutcome::Cleared) => Command::done(),
             Event::Written(_) => {
                 // FIXME assuming successful write
                 Command::done()

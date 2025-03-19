@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crux_core::{App, Command, Request};
 use crux_time::{
-    command::{Time, TimerHandle, TimerStatus},
+    command::{Time, TimerHandle, TimerOutcome},
     TimeRequest, TimeResponse, TimerId,
 };
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub enum Event {
     Cancel,
 
     // from core
-    Complete(TimerStatus),
+    Completed(TimerOutcome),
 }
 
 pub enum Effect {
@@ -76,13 +76,13 @@ impl App for Timer {
                 let (request, handle) = Time::notify_after(Duration::from_secs(1));
                 model.handle = Some(handle);
                 model.status = Status::Pending;
-                request.then_send(Event::Complete)
+                request.then_send(Event::Completed)
             }
-            Event::Complete(TimerStatus::Completed(_)) => {
+            Event::Completed(TimerOutcome::Completed(_)) => {
                 model.status = Status::Completed;
                 Command::done()
             }
-            Event::Complete(TimerStatus::Cleared) => {
+            Event::Completed(TimerOutcome::Cleared) => {
                 model.status = Status::Cleared;
                 Command::done()
             }
@@ -150,7 +150,7 @@ fn cancellation_of_a_started_timer() {
     assert!(cmd1.effects().next().is_none());
     // ...and one event to signify that the timer has been cleared
     let event = cmd1.events().next().unwrap();
-    assert_eq!(&event, &Event::Complete(TimerStatus::Cleared));
+    assert_eq!(&event, &Event::Completed(TimerOutcome::Cleared));
 
     // now we send the event back into the app
     let _ = app.update(event, &mut model, &());

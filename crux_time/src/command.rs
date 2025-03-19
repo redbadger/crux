@@ -14,7 +14,7 @@ use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
 
 /// Result of the timer run. Timers can either run to completion or be cleared early.
 #[derive(Debug, PartialEq, Eq)]
-pub enum TimerStatus {
+pub enum TimerOutcome {
     /// Timer completed successfully.
     Completed(CompletedTimerHandle),
     /// Timer was cleared early.
@@ -48,7 +48,7 @@ where
     pub fn notify_at(
         system_time: SystemTime,
     ) -> (
-        RequestBuilder<Effect, Event, impl Future<Output = TimerStatus>>,
+        RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
         TimerHandle,
     ) {
         let timer_id = get_timer_id();
@@ -82,7 +82,7 @@ where
                             panic!("InstantArrived with unexpected timer ID");
                         }
 
-                        TimerStatus::Completed(completed_handle)
+                        TimerOutcome::Completed(completed_handle)
                     },
                     cleared = receiver => {
                         // The Err variant would mean the sender was dropped,
@@ -101,7 +101,7 @@ where
                             panic!("Cleared with unexpected timer ID");
                         }
 
-                        TimerStatus::Cleared
+                        TimerOutcome::Cleared
                     }
                 }
             }
@@ -115,7 +115,7 @@ where
     pub fn notify_after(
         duration: Duration,
     ) -> (
-        RequestBuilder<Effect, Event, impl Future<Output = TimerStatus>>,
+        RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
         TimerHandle,
     ) {
         let timer_id = get_timer_id();
@@ -144,7 +144,7 @@ where
                         panic!("InstantArrived with unexpected timer ID");
                     }
 
-                    TimerStatus::Completed(completed_handle)
+                    TimerOutcome::Completed(completed_handle)
                 }
                 cleared = receiver => {
                     // The Err variant would mean the sender was dropped,
@@ -163,7 +163,7 @@ where
                         panic!("Cleared with unexpected timer ID");
                     }
 
-                    TimerStatus::Cleared
+                    TimerOutcome::Cleared
                 }
             }
         });
@@ -231,7 +231,7 @@ mod tests {
 
     use crux_core::Request;
 
-    use super::{Time, TimerStatus};
+    use super::{Time, TimerOutcome};
     use crate::{TimeRequest, TimeResponse};
 
     enum Effect {
@@ -246,7 +246,7 @@ mod tests {
 
     #[derive(Debug, PartialEq)]
     enum Event {
-        Elapsed(TimerStatus),
+        Elapsed(TimerOutcome),
     }
 
     #[test]
@@ -281,7 +281,7 @@ mod tests {
 
         let event = cmd.events().next();
 
-        assert!(matches!(event, Some(Event::Elapsed(TimerStatus::Cleared))));
+        assert!(matches!(event, Some(Event::Elapsed(TimerOutcome::Cleared))));
     }
 
     #[test]
@@ -310,7 +310,7 @@ mod tests {
 
         assert!(matches!(
             event,
-            Some(Event::Elapsed(TimerStatus::Completed(_)))
+            Some(Event::Elapsed(TimerOutcome::Completed(_)))
         ));
     }
 }
