@@ -12,9 +12,12 @@ use futures::{
 
 use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
 
+/// Result of the timer run. Timers can either run to completion or be cleared early.
 #[derive(Debug, PartialEq, Eq)]
 pub enum TimerStatus {
+    /// Timer completed successfully.
     Completed(CompletedTimerHandle),
+    /// Timer was cleared early.
     Cleared,
 }
 
