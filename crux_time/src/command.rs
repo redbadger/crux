@@ -9,20 +9,19 @@ use futures::{
     channel::oneshot::{self, Sender},
     select, FutureExt,
 };
-use thiserror::Error;
 
 use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum TimerStatus {
+    Completed(CompletedTimerHandle),
+    Cleared,
+}
 
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
     effect: PhantomData<Effect>,
     event: PhantomData<Event>,
-}
-
-#[derive(Error, Debug, PartialEq, Eq)]
-pub enum TimerError {
-    #[error("Timer was cleared before it finished")]
-    Cleared,
 }
 
 impl<Effect, Event> Time<Effect, Event>
@@ -46,11 +45,7 @@ where
     pub fn notify_at(
         system_time: SystemTime,
     ) -> (
-        RequestBuilder<
-            Effect,
-            Event,
-            impl Future<Output = Result<CompletedTimerHandle, TimerError>>,
-        >,
+        RequestBuilder<Effect, Event, impl Future<Output = TimerStatus>>,
         TimerHandle,
     ) {
         let timer_id = get_timer_id();
@@ -84,7 +79,7 @@ where
                             panic!("InstantArrived with unexpected timer ID");
                         }
 
-                        Ok(completed_handle)
+                        TimerStatus::Completed(completed_handle)
                     },
                     cleared = receiver => {
                         // The Err variant would mean the sender was dropped,
@@ -103,7 +98,7 @@ where
                             panic!("Cleared with unexpected timer ID");
                         }
 
-                        Err(TimerError::Cleared)
+                        TimerStatus::Cleared
                     }
                 }
             }
@@ -117,11 +112,7 @@ where
     pub fn notify_after(
         duration: Duration,
     ) -> (
-        RequestBuilder<
-            Effect,
-            Event,
-            impl Future<Output = Result<CompletedTimerHandle, TimerError>>,
-        >,
+        RequestBuilder<Effect, Event, impl Future<Output = TimerStatus>>,
         TimerHandle,
     ) {
         let timer_id = get_timer_id();
@@ -150,7 +141,7 @@ where
                         panic!("InstantArrived with unexpected timer ID");
                     }
 
-                    Ok(completed_handle)
+                    TimerStatus::Completed(completed_handle)
                 }
                 cleared = receiver => {
                     // The Err variant would mean the sender was dropped,
@@ -169,7 +160,7 @@ where
                         panic!("Cleared with unexpected timer ID");
                     }
 
-                    Err(TimerError::Cleared)
+                    TimerStatus::Cleared
                 }
             }
         });
@@ -237,7 +228,7 @@ mod tests {
 
     use crux_core::Request;
 
-    use super::{CompletedTimerHandle, Time, TimerError};
+    use super::{Time, TimerStatus};
     use crate::{TimeRequest, TimeResponse};
 
     enum Effect {
@@ -252,7 +243,7 @@ mod tests {
 
     #[derive(Debug, PartialEq)]
     enum Event {
-        Elapsed(Result<CompletedTimerHandle, TimerError>),
+        Elapsed(TimerStatus),
     }
 
     #[test]
@@ -287,7 +278,7 @@ mod tests {
 
         let event = cmd.events().next();
 
-        assert!(matches!(event, Some(Event::Elapsed(Err(_)))));
+        assert!(matches!(event, Some(Event::Elapsed(TimerStatus::Cleared))));
     }
 
     #[test]
@@ -314,6 +305,9 @@ mod tests {
 
         let event = cmd.events().next();
 
-        assert!(matches!(event, Some(Event::Elapsed(Ok(_)))));
+        assert!(matches!(
+            event,
+            Some(Event::Elapsed(TimerStatus::Completed(_)))
+        ));
     }
 }

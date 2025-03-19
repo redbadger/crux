@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crux_core::{App, Command, Request};
 use crux_time::{
-    command::{CompletedTimerHandle, Time, TimerError, TimerHandle},
+    command::{Time, TimerHandle, TimerStatus},
     TimeRequest, TimeResponse, TimerId,
 };
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub enum Event {
     Cancel,
 
     // from core
-    Stop(Result<CompletedTimerHandle, TimerError>),
+    Complete(TimerStatus),
 }
 
 pub enum Effect {
@@ -44,9 +44,9 @@ impl From<Request<TimeRequest>> for Effect {
 #[derive(Default, Debug, PartialEq, Eq)]
 enum Status {
     #[default]
-    Stopped,
-    Started,
-    Cancelled,
+    Completed,
+    Pending,
+    Cleared,
 }
 
 #[derive(Default)]
@@ -75,21 +75,20 @@ impl App for Timer {
             Event::Start => {
                 let (request, handle) = Time::notify_after(Duration::from_secs(1));
                 model.handle = Some(handle);
-                model.status = Status::Started;
-                request.then_send(Event::Stop)
+                model.status = Status::Pending;
+                request.then_send(Event::Complete)
             }
-            Event::Stop(response) => {
-                if response.is_ok() {
-                    model.status = Status::Stopped;
-                }
-
+            Event::Complete(TimerStatus::Completed(_)) => {
+                model.status = Status::Completed;
+                Command::done()
+            }
+            Event::Complete(TimerStatus::Cleared) => {
+                model.status = Status::Cleared;
                 Command::done()
             }
             Event::Cancel => {
                 if let Some(handle) = model.handle.take() {
-                    println!("Timer cancelled");
                     handle.clear();
-                    model.status = Status::Cancelled;
                 }
                 Command::done()
             }
@@ -123,7 +122,7 @@ fn cancellation_of_a_started_timer() {
     );
 
     // ...and the model is updated
-    assert_eq!(model.status, Status::Started);
+    assert_eq!(model.status, Status::Pending);
 
     // cancel the timer...
     let mut cmd2 = app.update(Event::Cancel, &mut model, &());
@@ -131,10 +130,10 @@ fn cancellation_of_a_started_timer() {
     // ...no events or effects
     assert!(cmd2.events().next().is_none());
     assert!(cmd2.effects().next().is_none());
-    // ...but the model is updated
-    assert_eq!(model.status, Status::Cancelled);
+    // ...and the model is not yet updated (still at pending)
+    assert_eq!(model.status, Status::Pending);
 
-    // ...however, the _first_ command should resolve with a TimeRequest::Clear
+    // ...however, the _first_ command resolves with a TimeRequest::Clear
     // so that the shell can clean up
     let Effect::Time(mut request) = cmd1.effects().next().unwrap();
     let cancel_id = match &request.operation {
@@ -143,17 +142,19 @@ fn cancellation_of_a_started_timer() {
     };
     assert_eq!(cancel_id, TIMER_ID);
 
-    // the shell can respond to say it has cleaned up
+    // the shell then responds, to say it has cleaned up
     let response = TimeResponse::Cleared { id: TIMER_ID };
     request.resolve(response).unwrap();
 
     // ...no effects
     assert!(cmd1.effects().next().is_none());
-    // ...and one event with an error to say it is already cleared,
-    assert_eq!(
-        cmd1.events().next().unwrap(),
-        Event::Stop(Err(TimerError::Cleared))
-    );
-    // ...and the model is not updated
-    assert_eq!(model.status, Status::Cancelled);
+    // ...and one event to signify that the timer has been cleared
+    let event = cmd1.events().next().unwrap();
+    assert_eq!(&event, &Event::Complete(TimerStatus::Cleared));
+
+    // now we send the event back into the app
+    let _ = app.update(event, &mut model, &());
+
+    // ...and the model is updated
+    assert_eq!(model.status, Status::Cleared);
 }
