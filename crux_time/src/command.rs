@@ -13,7 +13,7 @@ use futures::{
 use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
 
 /// Result of the timer run. Timers can either run to completion or be cleared early.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TimerOutcome {
     /// Timer completed successfully.
     Completed(CompletedTimerHandle),
@@ -192,7 +192,7 @@ impl TimerHandle {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CompletedTimerHandle {
     timer_id: TimerId,
 }
