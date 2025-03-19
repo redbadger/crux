@@ -1,9 +1,11 @@
 mod capability;
 mod effect;
+mod effect2;
 mod export;
 
 use capability::capability_impl;
 use effect::effect_impl;
+use effect2::effect2_macro_impl;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
@@ -58,6 +60,11 @@ use syn::parse_macro_input;
 #[proc_macro_error]
 pub fn effect(input: TokenStream) -> TokenStream {
     effect_impl(&parse_macro_input!(input)).into()
+}
+
+#[proc_macro]
+pub fn effect2(tokens: TokenStream) -> TokenStream {
+    effect2_macro_impl(tokens)
 }
 
 #[proc_macro_derive(Export)]
