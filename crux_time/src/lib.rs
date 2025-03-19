@@ -51,13 +51,10 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
 
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
-        use crate::{Duration, Instant};
-        use crux_core::capability::Operation;
-
         generator.register_type::<Instant>()?;
         generator.register_type::<Duration>()?;
-        generator.register_type::<Self::Operation>()?;
-        generator.register_type::<<Self::Operation as Operation>::Output>()?;
+        generator.register_type::<TimeRequest>()?;
+        generator.register_type::<TimeResponse>()?;
         Ok(())
     }
 }
