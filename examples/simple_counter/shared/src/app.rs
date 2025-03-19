@@ -1,7 +1,9 @@
 // ANCHOR: app
 use crux_core::{
-    render::{render, Render},
-    App, Command,
+    capability::ProtoContext,
+    macros::{caps, effect2},
+    render::{render, Render, RenderOperation},
+    App, Command, WithContext,
 };
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +12,16 @@ pub enum Event {
     Increment,
     Decrement,
     Reset,
+}
+
+effect2! {
+    pub enum Effect {
+        Render(RenderOperation),
+    }
+}
+
+caps! {
+    (Event, Effect, Render)
 }
 
 #[derive(Default)]
@@ -22,13 +34,6 @@ pub struct ViewModel {
     pub count: String,
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(crux_core::macros::Effect)]
-#[allow(unused)]
-pub struct Capabilities {
-    render: Render<Event>,
-}
-
 #[derive(Default)]
 pub struct Counter;
 
@@ -37,7 +42,7 @@ impl App for Counter {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = Caps;
     type Effect = Effect;
 
     fn update(

@@ -1,16 +1,15 @@
-use proc_macro::TokenStream;
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, Ident, ItemEnum, Type};
+use syn::{Ident, ItemEnum, Type};
 
 struct Effect {
     ident: Ident,
     operation: Type,
 }
 
-pub fn effect2_macro_impl(tokens: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(tokens as ItemEnum);
-
+pub fn effect2_macro_impl(input: ItemEnum) -> TokenStream {
     let enum_ident = input.ident.clone();
+    let enum_ident_str = enum_ident.to_string();
 
     let mut ffi_enum = input.clone();
     ffi_enum.ident = format_ident!("{}Ffi", enum_ident);
@@ -57,6 +56,7 @@ pub fn effect2_macro_impl(tokens: TokenStream) -> TokenStream {
         }
 
         #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = #enum_ident_str)]
         #ffi_enum
 
         impl crux_core::Effect for #enum_ident {
@@ -70,5 +70,52 @@ pub fn effect2_macro_impl(tokens: TokenStream) -> TokenStream {
 
         #(#from_impls)*
     }
-    .into()
+}
+
+#[cfg(test)]
+mod test {
+    use syn::parse_quote;
+
+    use super::*;
+
+    #[test]
+    fn simple() {
+        let input = parse_quote! {
+            pub enum Effect {
+                Render(RenderOperation),
+            }
+        };
+
+        let actual = effect2_macro_impl(input);
+
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        #[derive(Debug)]
+        pub enum Effect {
+            Render(::crux_core::Request<RenderOperation>),
+        }
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "Effect")]
+        pub enum EffectFfi {
+            Render(RenderOperation),
+        }
+        impl crux_core::Effect for Effect {
+            type Ffi = EffectFfi;
+            fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+                match self {
+                    Effect::Render(request) => request.serialize(EffectFfi::Render),
+                }
+            }
+        }
+        impl From<::crux_core::Request<RenderOperation>> for Effect {
+            fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
+                Self::Render(value)
+            }
+        }
+        "##);
+    }
+
+    fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
+        let file = syn::parse_file(&ts.to_string()).unwrap();
+        prettyplease::unparse(&file)
+    }
 }
