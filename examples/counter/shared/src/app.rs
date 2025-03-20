@@ -1,13 +1,14 @@
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::{
-    render::{render, Render},
+    macros::{caps, effect2},
+    render::{render, RenderOperation},
     Command,
 };
-use crux_http::command::Http;
+use crux_http::{command::Http, protocol::HttpRequest};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::sse::ServerSentEvents;
+use crate::sse::{ServerSentEvents, SseRequest};
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
@@ -46,13 +47,21 @@ pub enum Event {
     Update(Count),
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(crux_core::macros::Effect)]
-pub struct Capabilities {
-    pub render: Render<Event>,
-    pub http: crux_http::Http<Event>,
-    pub sse: ServerSentEvents<Event>,
+effect2! {
+    pub enum Effect {
+        Render(RenderOperation),
+        Http(HttpRequest),
+        ServerSentEvents(SseRequest)
+    }
 }
+
+caps!((
+    Event,
+    Effect,
+    crux_core::render::Render,
+    crux_http::Http,
+    ServerSentEvents
+));
 
 #[derive(Default)]
 pub struct App;
@@ -61,7 +70,7 @@ impl crux_core::App for App {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = Caps;
     type Effect = Effect;
 
     // During the migration to the new Command API, the `update` method
@@ -400,7 +409,7 @@ mod tests {
         let mut cmd = app.update(Event::StartWatch, &mut model);
 
         // the app should request a Server-Sent Events stream
-        let mut request = cmd.effects().next().unwrap().expect_sse();
+        let mut request = cmd.effects().next().unwrap().expect_server_sent_events();
         assert_eq!(
             request.operation,
             SseRequest {
