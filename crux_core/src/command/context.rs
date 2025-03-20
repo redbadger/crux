@@ -163,8 +163,9 @@ impl<T: Unpin + Send> ShellStream<T> {
         // Since neither part is Clone, we'll need to do an Indiana Jones
 
         // 1. take items out of self
+        let dummy = ShellStream::Sent(mpsc::unbounded().1);
         let ShellStream::ReadyToSend(send_request, output_receiver) =
-            std::mem::replace(self, ShellStream::Sent(mpsc::unbounded().1))
+            std::mem::replace(self, dummy)
         else {
             unreachable!();
         };
@@ -215,7 +216,14 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.inner.poll_unpin(cx) {
             Poll::Ready((Some(output), _rest)) => Poll::Ready(output),
-            Poll::Ready((None, _rest)) => Poll::Pending,
+            Poll::Ready((None, rest)) => {
+                // We need to make sure that the inner future can be polled again,
+                // because we could be used in a select! and polled repeatedly, even though
+                // the request on the shell side is a goner.
+                self.inner = rest.into_future();
+
+                Poll::Pending
+            }
             Poll::Pending => Poll::Pending,
         }
     }
