@@ -7,7 +7,7 @@ use std::{
 use crux_core::{command::RequestBuilder, Command, Request};
 use futures::{
     channel::oneshot::{self, Sender},
-    select, FutureExt,
+    select_biased, FutureExt,
 };
 
 use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
@@ -67,7 +67,13 @@ where
         // in the shell.
         let builder = RequestBuilder::new(move |ctx| {
             async move {
-                select! {
+                if let Ok(Some(cleared_id)) = receiver.try_recv() {
+                    if cleared_id == timer_id {
+                        return TimerOutcome::Cleared;
+                    }
+                }
+
+                select_biased! {
                     response = ctx.request_from_shell(
                         TimeRequest::NotifyAt {
                             id: timer_id,
@@ -129,7 +135,13 @@ where
         let completed_handle = CompletedTimerHandle { timer_id };
 
         let builder = RequestBuilder::new(move |ctx| async move {
-            select! {
+            if let Ok(Some(cleared_id)) = receiver.try_recv() {
+                if cleared_id == timer_id {
+                    return TimerOutcome::Cleared;
+                }
+            }
+
+            select_biased! {
                 response = ctx.request_from_shell(
                     TimeRequest::NotifyAfter {
                         id: timer_id,
