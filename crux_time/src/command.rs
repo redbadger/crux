@@ -153,6 +153,9 @@ where
                     // so this branch of the select will
                     // never run for the Err case
                     let cleared_id = cleared.unwrap();
+                    if cleared_id != timer_id {
+                        unreachable!("Cleared with the wrong ID");
+                    }
 
                     // Follow up by asking the shell to clear the timer
                     let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: cleared_id }).await else {
@@ -160,7 +163,7 @@ where
                     };
 
                     if id != cleared_id {
-                        panic!("Cleared with unexpected timer ID");
+                        panic!("Cleared resolved with unexpected timer ID");
                     }
 
                     TimerOutcome::Cleared
