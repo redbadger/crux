@@ -1,5 +1,7 @@
 pub mod platform;
 
+use std::time::SystemTime;
+
 use chrono::{DateTime, Utc};
 use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
@@ -11,7 +13,7 @@ use crux_core::{
 };
 use crux_kv::{command::KeyValue, error::KeyValueError};
 use crux_platform::Platform;
-use crux_time::{command::Time, TimeResponse};
+use crux_time::command::Time;
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
@@ -74,7 +76,7 @@ pub enum Event {
     #[serde(skip)]
     SetState(Result<Option<Vec<u8>>, KeyValueError>), // receive the data to restore state with
     #[serde(skip)]
-    CurrentTime(TimeResponse),
+    CurrentTime(SystemTime),
     #[serde(skip)]
     SetFact(crux_http::Result<crux_http::Response<CatFact>>),
     #[serde(skip)]
@@ -195,8 +197,8 @@ impl CatFacts {
                 // handle error
                 Command::done()
             }
-            Event::CurrentTime(TimeResponse::Now { instant }) => {
-                let time: DateTime<Utc> = instant.try_into().unwrap();
+            Event::CurrentTime(time) => {
+                let time: DateTime<Utc> = time.into();
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
 
                 let bytes = serde_json::to_vec(&model).unwrap();
@@ -206,7 +208,6 @@ impl CatFacts {
                     KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                 ])
             }
-            Event::CurrentTime(_) => panic!("Unexpected time response"),
             Event::Restore => KeyValue::get(KEY).then_send(Event::SetState),
             Event::SetState(Ok(Some(value))) => match serde_json::from_slice::<Model>(&value) {
                 Ok(m) => {
@@ -247,7 +248,7 @@ mod tests {
         testing::ResponseBuilder,
     };
     use crux_kv::{value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult};
-    use crux_time::Instant;
+    use crux_time::{Instant, TimeResponse};
 
     use super::*;
 
@@ -293,15 +294,11 @@ mod tests {
 
         let request = &mut cmd.effects().next().unwrap().expect_time();
 
-        let response = TimeResponse::Now {
-            instant: Instant::new(0, 0),
-        };
-        request
-            .resolve(response.clone())
-            .expect("should resolve successfully");
+        let instant = Instant::new(0, 0);
+        request.resolve(TimeResponse::Now { instant }).unwrap();
 
         let event = cmd.events().next().unwrap();
-        assert_eq!(event, Event::CurrentTime(response));
+        assert_eq!(event, Event::CurrentTime(instant.into()));
 
         // update the app with the current time event
         // and check that we get a render event ...

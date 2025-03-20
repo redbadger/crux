@@ -230,7 +230,7 @@ let (first_id, duration) = match &request.operation {
     TimeRequest::NotifyAfter { id, duration } => (id.clone(), duration),
     _ => panic!("expected a NotifyAfter"),
 };
-assert_eq!(duration, &Duration::from_secs(1).unwrap());
+assert_eq!(duration, &Duration::from_secs(1).into());
 assert!(requests.next().is_none());
 ```
 
@@ -240,9 +240,9 @@ There are other ways to analyze effects from the update.
 You can take all the effects that match a predicate out of the update:
 
 ```rust,ignore,no_run
-let mut requests = cmd2.effects().filter(|effect| effect.is_timer());
+let mut effects = cmd2.effects().filter(|effect| effect.is_timer());
 // or
-let mut requests = cmd2.effects().filter(Effect::is_timer);
+let mut effects = cmd2.effects().filter(Effect::is_timer);
 ```
 
 Or you can filter and map at the same time:
@@ -301,18 +301,19 @@ start_request
 Another edit should result in another timer, but not in a cancellation:
 
 ```rust,ignore,no_run
-// One more edit. Should result in a timer, but not in cancellation
-let mut cmd3 = app.update(Event::Backspace, &mut model);
-let mut timer_requests = cmd3.effects().filter_map(Effect::into_timer);
+// One more edit. Should result in a new timer
+let mut cmd4 = app.update(Event::Backspace, &mut model);
+let mut effects = cmd4.effects();
 
-let start_request = timer_requests.next().unwrap();
-let third_id = match &start_request.operation {
-    TimeRequest::NotifyAfter { id, duration: _ } => id.clone(),
-    _ => panic!("expected a NotifyAfter"),
-};
-assert!(timer_requests.next().is_none());
-
-assert_ne!(third_id, second_id);
+let _publish = effects.next().unwrap().expect_pub_sub();
+let timer = effects.next().unwrap().expect_timer();
+assert_eq!(
+    timer.operation,
+    TimeRequest::NotifyAfter {
+        id: TimerId(3),
+        duration: crux_time::Duration::from_millis(1000)
+    }
+);
 ```
 
 Note that this test was not about testing whether the model was updated

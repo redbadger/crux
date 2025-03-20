@@ -12,6 +12,15 @@ use futures::{
 
 use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
 
+/// Result of the timer run. Timers can either run to completion or be cleared early.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum TimerOutcome {
+    /// Timer completed successfully.
+    Completed(CompletedTimerHandle),
+    /// Timer was cleared early.
+    Cleared,
+}
+
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
     effect: PhantomData<Effect>,
@@ -24,8 +33,14 @@ where
     Event: Send + 'static,
 {
     /// Ask for the current wall-clock time.
-    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = TimeResponse>> {
-        Command::request_from_shell(TimeRequest::Now)
+    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = SystemTime>> {
+        Command::request_from_shell(TimeRequest::Now).map(|r| {
+            let TimeResponse::Now { instant } = r else {
+                panic!("Incorrect response received for TimeRequest::Now")
+            };
+
+            instant.into()
+        })
     }
 
     /// Ask to receive a notification when the specified
@@ -33,37 +48,64 @@ where
     pub fn notify_at(
         system_time: SystemTime,
     ) -> (
-        RequestBuilder<Effect, Event, impl Future<Output = TimeResponse>>,
+        RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
         TimerHandle,
     ) {
-        let id = get_timer_id();
+        let timer_id = get_timer_id();
         let (sender, mut receiver) = oneshot::channel();
 
-        let builder = RequestBuilder::new(move |ctx| async move {
-            select! {
-                response = ctx.request_from_shell(
-                    TimeRequest::NotifyAt {
-                        id,
-                        instant: system_time.into()
-                    }
-                ).fuse() =>  response,
-                cleared = receiver => {
-                    // The Err variant would mean the sender was dropped,
-                    // but `receiver` is a fused future,
-                    // which signals `is_terminated` true in that case,
-                    // so this branch of the select will
-                    // never run for the Err case
+        let handle = TimerHandle {
+            timer_id,
+            abort: sender,
+        };
 
-                    let id = cleared.unwrap();
-                    ctx.request_from_shell(TimeRequest::Clear { id }).await
+        let completed_handle = CompletedTimerHandle { timer_id };
+
+        // The `panic`s in the body of the builder would be `unreachable`s in Rust,
+        // but since the shell is involved we can't check for them statically. Either way,
+        // they are a developer error and suggest something quite wrong with the time implementation
+        // in the shell.
+        let builder = RequestBuilder::new(move |ctx| {
+            async move {
+                select! {
+                    response = ctx.request_from_shell(
+                        TimeRequest::NotifyAt {
+                            id: timer_id,
+                            instant: system_time.into()
+                        }
+                    ).fuse() =>  {
+                        let TimeResponse::InstantArrived { id } = response else {
+                            panic!("Unexpected response to TimeRequest::NotifyAt");
+                        };
+
+                        if id != timer_id {
+                            panic!("InstantArrived with unexpected timer ID");
+                        }
+
+                        TimerOutcome::Completed(completed_handle)
+                    },
+                    cleared = receiver => {
+                        // The Err variant would mean the sender was dropped,
+                        // but `receiver` is a fused future,
+                        // which signals `is_terminated` true in that case,
+                        // so this branch of the select will
+                        // never run for the Err case
+                        let cleared_id = cleared.unwrap();
+
+                        // Follow up by asking the shell to clear the timer
+                        let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: cleared_id }).await else {
+                            panic!("Unexpected response to TimeRequest::Clear");
+                        };
+
+                        if id != cleared_id {
+                            panic!("Cleared with unexpected timer ID");
+                        }
+
+                        TimerOutcome::Cleared
+                    }
                 }
             }
         });
-
-        let handle = TimerHandle {
-            timer_id: id,
-            abort: sender,
-        };
 
         (builder, handle)
     }
@@ -73,36 +115,58 @@ where
     pub fn notify_after(
         duration: Duration,
     ) -> (
-        RequestBuilder<Effect, Event, impl Future<Output = TimeResponse>>,
+        RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
         TimerHandle,
     ) {
-        let id = get_timer_id();
+        let timer_id = get_timer_id();
         let (sender, mut receiver) = oneshot::channel();
+
+        let handle = TimerHandle {
+            timer_id,
+            abort: sender,
+        };
+
+        let completed_handle = CompletedTimerHandle { timer_id };
 
         let builder = RequestBuilder::new(move |ctx| async move {
             select! {
                 response = ctx.request_from_shell(
                     TimeRequest::NotifyAfter {
-                        id,
+                        id: timer_id,
                         duration: duration.into()
                     }
-                ).fuse() => response,
+                ).fuse() => {
+                    let TimeResponse::DurationElapsed { id } = response else {
+                        panic!("Unexpected response to TimeRequest::NotifyAt");
+                    };
+
+                    if id != timer_id {
+                        panic!("InstantArrived with unexpected timer ID");
+                    }
+
+                    TimerOutcome::Completed(completed_handle)
+                }
                 cleared = receiver => {
                     // The Err variant would mean the sender was dropped,
                     // but `receiver` is a fused future,
                     // which signals `is_terminated` true in that case,
                     // so this branch of the select will
                     // never run for the Err case
-                    let id = cleared.unwrap();
-                    ctx.request_from_shell(TimeRequest::Clear { id }).await
+                    let cleared_id = cleared.unwrap();
+
+                    // Follow up by asking the shell to clear the timer
+                    let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: cleared_id }).await else {
+                        panic!("Unexpected response to TimeRequest::Clear");
+                    };
+
+                    if id != cleared_id {
+                        panic!("Cleared with unexpected timer ID");
+                    }
+
+                    TimerOutcome::Cleared
                 }
             }
         });
-
-        let handle = TimerHandle {
-            timer_id: id,
-            abort: sender,
-        };
 
         (builder, handle)
     }
@@ -116,6 +180,23 @@ pub struct TimerHandle {
     abort: Sender<TimerId>,
 }
 
+impl TimerHandle {
+    /// Clear the associated timer request.
+    /// The shell will be notified that the timer has been cleared
+    /// with `TimeRequest::Clear { id }`,
+    /// so it can clean up associated resources.
+    /// The original task will resolve
+    /// with `TimeResponse::Cleared { id }`.
+    pub fn clear(self) {
+        let _ = self.abort.send(self.timer_id);
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct CompletedTimerHandle {
+    timer_id: TimerId,
+}
+
 impl Eq for TimerHandle {}
 
 impl PartialEq for TimerHandle {
@@ -124,14 +205,23 @@ impl PartialEq for TimerHandle {
     }
 }
 
-impl TimerHandle {
-    /// Clear the associated timer request. The original task will resolve
-    /// with `TimeResponse::Cleared`
-    /// and the shell will be notified that the timer has been cleared
-    /// with `TimeRequest::Cleared { id }`,
-    /// so it can clean up associated resources
-    pub fn clear(self) {
-        let _ = self.abort.send(self.timer_id);
+impl PartialEq<CompletedTimerHandle> for TimerHandle {
+    fn eq(&self, other: &CompletedTimerHandle) -> bool {
+        self.timer_id == other.timer_id
+    }
+}
+
+impl PartialEq<TimerHandle> for CompletedTimerHandle {
+    fn eq(&self, other: &TimerHandle) -> bool {
+        self.timer_id == other.timer_id
+    }
+}
+
+impl From<TimerHandle> for CompletedTimerHandle {
+    fn from(value: TimerHandle) -> Self {
+        Self {
+            timer_id: value.timer_id,
+        }
     }
 }
 
@@ -141,7 +231,7 @@ mod tests {
 
     use crux_core::Request;
 
-    use super::Time;
+    use super::{Time, TimerOutcome};
     use crate::{TimeRequest, TimeResponse};
 
     enum Effect {
@@ -156,7 +246,7 @@ mod tests {
 
     #[derive(Debug, PartialEq)]
     enum Event {
-        Elapsed(TimeResponse),
+        Elapsed(TimerOutcome),
     }
 
     #[test]
@@ -191,10 +281,7 @@ mod tests {
 
         let event = cmd.events().next();
 
-        assert!(matches!(
-            event,
-            Some(Event::Elapsed(TimeResponse::Cleared { .. }))
-        ));
+        assert!(matches!(event, Some(Event::Elapsed(TimerOutcome::Cleared))));
     }
 
     #[test]
@@ -221,9 +308,9 @@ mod tests {
 
         let event = cmd.events().next();
 
-        assert_eq!(
+        assert!(matches!(
             event,
-            Some(Event::Elapsed(TimeResponse::DurationElapsed { id }))
-        );
+            Some(Event::Elapsed(TimerOutcome::Completed(_)))
+        ));
     }
 }
