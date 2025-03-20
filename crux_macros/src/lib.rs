@@ -1,11 +1,11 @@
-mod capabilities;
 mod capability;
+mod caps;
 mod effect;
 mod effect2;
 mod export;
 
-use capabilities::caps_macro_impl;
 use capability::capability_impl;
+use caps::caps_macro_impl;
 use effect::effect_impl;
 use effect2::effect2_macro_impl;
 use export::export_impl;

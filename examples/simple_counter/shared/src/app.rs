@@ -1,9 +1,8 @@
 // ANCHOR: app
 use crux_core::{
-    capability::ProtoContext,
     macros::{caps, effect2},
     render::{render, Render, RenderOperation},
-    App, Command, WithContext,
+    App, Command,
 };
 use serde::{Deserialize, Serialize};
 

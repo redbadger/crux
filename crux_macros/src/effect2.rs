@@ -1,4 +1,5 @@
-use proc_macro2::TokenStream;
+use heck::AsSnakeCase;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Ident, ItemEnum, Type};
 
@@ -49,6 +50,42 @@ pub fn effect2_macro_impl(input: ItemEnum) -> TokenStream {
         }
     });
 
+    let filters = effects.clone().map(|effect| {
+        let effect_ident = &effect.ident;
+        let effect_ident_str = effect.ident.to_string();
+        let effect_ident_snake = AsSnakeCase(&effect_ident_str);
+        let operation = &effect.operation;
+        let filter_fn = Ident::new(&format!("is_{}", effect_ident_snake), Span::call_site());
+        let map_fn = Ident::new(&format!("into_{}", effect_ident_snake), Span::call_site());
+        let expect_fn = Ident::new(&format!("expect_{}", effect_ident_snake), Span::call_site());
+        quote! {
+            impl #enum_ident {
+                pub fn #filter_fn(&self) -> bool {
+                    if let #enum_ident::#effect_ident(_) = self {
+                        true
+                    } else {
+                        false
+                    }
+                }
+                pub fn #map_fn(self) -> Option<::crux_core::Request<#operation>> {
+                    if let #enum_ident::#effect_ident(request) = self {
+                        Some(request)
+                    } else {
+                        None
+                    }
+                }
+                #[track_caller]
+                pub fn #expect_fn(self) -> ::crux_core::Request<#operation> {
+                    if let #enum_ident::#effect_ident(request) = self {
+                        request
+                    } else {
+                        panic!("not a {} effect", #effect_ident_str)
+                    }
+                }
+            }
+        }
+    });
+
     quote! {
         #[derive(Debug)]
         pub enum #enum_ident {
@@ -69,6 +106,8 @@ pub fn effect2_macro_impl(input: ItemEnum) -> TokenStream {
         }
 
         #(#from_impls)*
+
+        #(#filters)*
     }
 }
 
@@ -109,6 +148,22 @@ mod test {
         impl From<::crux_core::Request<RenderOperation>> for Effect {
             fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
                 Self::Render(value)
+            }
+        }
+        impl Effect {
+            pub fn is_render(&self) -> bool {
+                if let Effect::Render(_) = self { true } else { false }
+            }
+            pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
+                if let Effect::Render(request) = self { Some(request) } else { None }
+            }
+            #[track_caller]
+            pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
+                if let Effect::Render(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "Render")
+                }
             }
         }
         "##);
