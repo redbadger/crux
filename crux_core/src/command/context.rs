@@ -5,6 +5,7 @@ use std::task::{Context, Poll};
 
 use crossbeam_channel::Sender;
 use futures::channel::mpsc;
+use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
 
@@ -196,7 +197,7 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
 }
 
 pub struct ShellRequest<T: Unpin + Send> {
-    inner: StreamFuture<ShellStream<T>>,
+    inner: Fuse<StreamFuture<ShellStream<T>>>,
 }
 
 impl<T: Unpin + Send + 'static> ShellRequest<T> {
@@ -204,7 +205,9 @@ impl<T: Unpin + Send + 'static> ShellRequest<T> {
         send_request: impl FnOnce() + Send + 'static,
         output_receiver: mpsc::UnboundedReceiver<T>,
     ) -> Self {
-        let inner = ShellStream::new(send_request, output_receiver).into_future();
+        let inner = ShellStream::new(send_request, output_receiver)
+            .into_future()
+            .fuse();
 
         Self { inner }
     }
@@ -216,14 +219,7 @@ impl<T: Unpin + Send> Future for ShellRequest<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.inner.poll_unpin(cx) {
             Poll::Ready((Some(output), _rest)) => Poll::Ready(output),
-            Poll::Ready((None, rest)) => {
-                // We need to make sure that the inner future can be polled again,
-                // because we could be used in a select! and polled repeatedly, even though
-                // the request on the shell side is a goner.
-                self.inner = rest.into_future();
-
-                Poll::Pending
-            }
+            Poll::Ready((None, _rest)) => Poll::Pending,
             Poll::Pending => Poll::Pending,
         }
     }
