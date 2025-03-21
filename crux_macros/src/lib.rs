@@ -1,13 +1,17 @@
 mod capability;
+mod caps;
 mod effect;
+mod effect2;
 mod export;
 
 use capability::capability_impl;
+use caps::caps_macro_impl;
 use effect::effect_impl;
+use effect2::effect2_macro_impl;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use syn::parse_macro_input;
+use syn::{parse_macro_input, ItemEnum, TypeTuple};
 
 /// Procedural macro to derive an Effect enum, with a variant for
 /// each non-skipped capability.
@@ -58,6 +62,18 @@ use syn::parse_macro_input;
 #[proc_macro_error]
 pub fn effect(input: TokenStream) -> TokenStream {
     effect_impl(&parse_macro_input!(input)).into()
+}
+
+#[proc_macro]
+pub fn effect2(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemEnum);
+    effect2_macro_impl(input).into()
+}
+
+#[proc_macro]
+pub fn caps(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as TypeTuple);
+    caps_macro_impl(input).into()
 }
 
 #[proc_macro_derive(Export)]
