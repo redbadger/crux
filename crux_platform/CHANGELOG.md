@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5](https://github.com/redbadger/crux/compare/crux_platform-v0.3.4...crux_platform-v0.3.5) - 2025-03-21
+
+### Other
+
+- updated the following local packages: crux_core
+
 ## [0.3.4](https://github.com/redbadger/crux/compare/crux_platform-v0.3.3...crux_platform-v0.3.4) - 2025-03-17
 
 This is a maintenance release (minor non-breaking changes and dependency updates).

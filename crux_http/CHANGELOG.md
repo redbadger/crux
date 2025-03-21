@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.9](https://github.com/redbadger/crux/compare/crux_http-v0.11.8...crux_http-v0.11.9) - 2025-03-21
+
+Patch release, no API changes.
+
+### Other
+
+- updated the following local packages: crux_core
+
 ## [0.11.8](https://github.com/redbadger/crux/compare/crux_http-v0.11.7...crux_http-v0.11.8) - 2025-03-17
 
 This is a maintenance release (minor non-breaking changes and dependency updates).

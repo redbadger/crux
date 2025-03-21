@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.5](https://github.com/redbadger/crux/compare/crux_kv-v0.6.4...crux_kv-v0.6.5) - 2025-03-21
+
+Patch release, no API changes.
+
+### Other
+
+- updated the following local packages: crux_core
+
 ## [0.6.4](https://github.com/redbadger/crux/compare/crux_kv-v0.6.3...crux_kv-v0.6.4) - 2025-03-17
 
 This is a maintenance release (minor non-breaking changes and dependency updates).

@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.12.2](https://github.com/redbadger/crux/compare/crux_core-v0.12.1...crux_core-v0.12.2) - 2025-03-21
+
+Patch release, no API changes.
+
+- Fixes a bug in the command runtime, where it was possible, under certain circumstances, to cause a panic by polling a future that had already completed.
+
 ## [0.12.1](https://github.com/redbadger/crux/compare/crux_core-v0.12.0...crux_core-v0.12.1) - 2025-03-17
 
 This is a maintenance release (minor non-breaking changes and dependency updates).

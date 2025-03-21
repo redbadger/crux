@@ -8,6 +8,24 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.0](https://github.com/redbadger/crux/compare/crux_time-v0.9.0...crux_time-v0.10.0) - 2025-03-21
+
+Breaking changes:
+  - Introduced `TimerOutcome` to distinguish between timer cancellation and completion
+
+### Other
+
+- Make time effects deterministic, and avoid emitting immediately cancelled ones
+- Fix a bug in the command runtime
+- Improved panic message
+- TimerOutcome should be Clone
+- Introduce TimerOutcome and notes example
+- add reverse PartialEq for handles
+- update tests and examples
+- Fix clippys
+- Do not leak TimerResponse outside of the capability when using commands
+- test cancellation with app
+
 ## [0.9.0](https://github.com/redbadger/crux/compare/crux_time-v0.8.3...crux_time-v0.9.0) - 2025-03-17
 
 **This is a breaking-change release**
