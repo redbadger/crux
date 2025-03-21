@@ -16,4 +16,5 @@ crux_core = { workspace = true, features = ["typegen"] }
 crux_http = { workspace = true, features = ["typegen"] }
 crux_kv = { workspace = true, features = ["typegen"] }
 crux_time = { workspace = true, features = ["typegen"] }
+serde_json = "1.0.133"
 shared = { path = "../shared", features = ["typegen"] }

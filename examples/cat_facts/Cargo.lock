@@ -2537,6 +2537,7 @@ dependencies = [
  "crux_http",
  "crux_kv",
  "crux_time",
+ "serde_json",
  "shared",
 ]
 

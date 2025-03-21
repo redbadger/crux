@@ -10,7 +10,7 @@ pub struct App {}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Model {
-    pub platform: String,
+    pub(crate) platform: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -21,8 +21,8 @@ pub enum Event {
 
 #[derive(crux_core::macros::Effect)]
 pub struct Capabilities {
-    pub platform: crux_platform::Platform<Event>,
-    pub render: Render<Event>,
+    pub(crate) platform: crux_platform::Platform<Event>,
+    pub(crate) render: Render<Event>,
 }
 
 impl crux_core::App for App {
