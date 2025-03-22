@@ -1,16 +1,31 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { process_event, view } from "shared/shared";
+import { process_event, view, init } from "shared/shared";
 import type { Effect, Event } from "shared_types/types/shared_types";
 import {
   EffectVariantRender,
   ViewModel,
   Request,
+  // EffectVariantInterval,
+  EventVariantStartInterval,
+  // IntervalTick,
 } from "shared_types/types/shared_types";
 import {
   BincodeSerializer,
   BincodeDeserializer,
 } from "shared_types/bincode/mod";
+
+export function initialize(callback: Dispatch<SetStateAction<ViewModel>>) {
+  init((data: Uint8Array) => handleEffects(callback, data));
+  update(new EventVariantStartInterval(), () => {});
+}
+
+function handleEffects(callback: Dispatch<SetStateAction<ViewModel>>, data: Uint8Array) {
+  const requests = deserializeRequests(data);
+  for (const { id, effect } of requests) {
+    processEffect(id, effect, callback);
+  }
+}
 
 export function update(
   event: Event,
@@ -30,7 +45,7 @@ export function update(
 }
 
 function processEffect(
-  _id: number,
+  id: number,
   effect: Effect,
   callback: Dispatch<SetStateAction<ViewModel>>,
 ) {

@@ -1,16 +1,27 @@
+mod nacre;
 mod registry;
 mod request_serde;
+mod shell;
+
+use std::sync::Arc;
 
 use bincode::{DefaultOptions, Options};
+use either::Either;
 use erased_serde::{Error as SerdeError, Serialize as _};
+use nacre::ShellEffects;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{core::ResolveError, App, Core};
+use crate::{
+    core::{Middleware, ResolveError},
+    App, Effect, NacreEffect,
+};
 use registry::{EffectId, ResolveRegistry};
 // ResolveByte is public to be accessible from crux_macros
+pub use nacre::{Nacre, NacreBridge};
 #[doc(hidden)]
 pub use request_serde::ResolveSerialized;
+pub use shell::Shell;
 
 /// Request for a side-effect passed from the Core to the Shell. The `EffectId` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
@@ -27,13 +38,43 @@ where
 }
 // ANCHOR_END: request
 
+pub type RequestFfi<A> = Request<<<A as App>::Effect as Effect>::Ffi>;
+
+pub trait NacreTrait<A: App>
+where
+    A::Effect: NacreEffect,
+{
+    fn register_callback(
+        &self,
+        receiver: async_std::channel::Receiver<ShellEffects<A>>,
+        cb: impl Fn(ShellEffects<A>) -> Vec<u8> + Send + 'static,
+    );
+}
+
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
 /// serialized form, using bincode as the serialization format.
-pub struct Bridge<A>
+pub struct Bridge<Core>
 where
-    A: App,
+    Core: Middleware,
 {
-    inner: BridgeWithSerializer<A>,
+    inner: Arc<BridgeWithSerializer<Core>>,
+}
+
+impl<Core> Bridge<Core>
+where
+    Core: NacreTrait<Core::App> + Middleware + Send + Sync + 'static,
+    <<Core as Middleware>::App as App>::Effect: NacreEffect,
+    <<Core as Middleware>::App as App>::Effect:
+        From<<<<Core as Middleware>::App as App>::Effect as NacreEffect>::ShellEffect>,
+{
+    pub fn from_nacre(
+        nacre: Core,
+        receiver: async_std::channel::Receiver<ShellEffects<Core::App>>,
+    ) -> Self {
+        Self {
+            inner: BridgeWithSerializer::from_nacre(nacre, receiver),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -50,14 +91,14 @@ pub enum BridgeError {
     SerializeView(SerdeError),
 }
 
-impl<A> Bridge<A>
+impl<Core> Bridge<Core>
 where
-    A: App,
+    Core: Middleware,
 {
     /// Create a new Bridge using the provided `core`.
-    pub fn new(core: Core<A>) -> Self {
+    pub fn new(core: Core) -> Self {
         Self {
-            inner: BridgeWithSerializer::new(core),
+            inner: Arc::new(BridgeWithSerializer::new(core)),
         }
     }
 
@@ -67,7 +108,7 @@ where
     /// to your app.
     pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError>
     where
-        A::Event: for<'a> Deserialize<'a>,
+        <Core::App as App>::Event: for<'a> Deserialize<'a>,
     {
         let options = Self::bincode_options();
 
@@ -90,7 +131,7 @@ where
     pub fn handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError>
     // ANCHOR_END: handle_response_sig
     where
-        A::Event: for<'a> Deserialize<'a>,
+        <Core::App as App>::Event: for<'a> Deserialize<'a>,
     {
         let options = Self::bincode_options();
 
@@ -123,6 +164,41 @@ where
     }
 }
 
+impl<Core> BridgeWithSerializer<Core>
+where
+    Core: NacreTrait<Core::App> + Middleware + Send + Sync + 'static,
+    <<Core as Middleware>::App as App>::Effect: NacreEffect,
+    <<Core as Middleware>::App as App>::Effect:
+        From<<<<Core as Middleware>::App as App>::Effect as NacreEffect>::ShellEffect>,
+{
+    pub fn from_nacre(
+        nacre: Core,
+        receiver: async_std::channel::Receiver<ShellEffects<Core::App>>,
+    ) -> Arc<Self> {
+        let core = Arc::new(nacre);
+        let cloned_core = core.clone();
+        let this = Arc::new(Self {
+            core,
+            registry: Default::default(),
+        });
+        let cloned = this.clone();
+        let callback = move |effects: ShellEffects<Core::App>| {
+            let mut return_buffer = vec![];
+            let mut ser =
+                bincode::Serializer::new(&mut return_buffer, Bridge::<Core>::bincode_options());
+            cloned
+                .register(
+                    effects.into_iter().map(std::convert::Into::into),
+                    &mut <dyn erased_serde::Serializer>::erase(&mut ser),
+                )
+                .unwrap();
+            return_buffer
+        };
+        cloned_core.register_callback(receiver, callback);
+        this
+    }
+}
+
 /// A bridge with a user supplied serializer
 ///
 /// This is exactly the same as [`Bridge`], except instead of using the default
@@ -134,22 +210,22 @@ where
 /// it using separate tooling.
 // used in docs/internals/bridge.md
 // ANCHOR: bridge_with_serializer
-pub struct BridgeWithSerializer<A>
+pub struct BridgeWithSerializer<Core>
 where
-    A: App,
+    Core: Middleware,
 {
-    core: Core<A>,
+    core: Arc<Core>,
     registry: ResolveRegistry,
 }
 // ANCHOR_END: bridge_with_serializer
 
-impl<A> BridgeWithSerializer<A>
+impl<Core> BridgeWithSerializer<Core>
 where
-    A: App,
+    Core: Middleware,
 {
-    pub fn new(core: Core<A>) -> Self {
+    pub fn new(core: Core) -> Self {
         Self {
-            core,
+            core: Arc::new(core),
             registry: Default::default(),
         }
     }
@@ -160,7 +236,7 @@ where
     /// to your app.
     pub fn process_event<'de, D, S>(&self, event: D, requests_out: S) -> Result<(), BridgeError>
     where
-        for<'a> A::Event: Deserialize<'a>,
+        for<'a> <Core::App as App>::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de> + 'de,
         S: ::serde::ser::Serializer,
     {
@@ -183,7 +259,7 @@ where
         requests_out: S,
     ) -> Result<(), BridgeError>
     where
-        for<'a> A::Event: Deserialize<'a>,
+        for<'a> <Core::App as App>::Event: Deserialize<'a>,
         D: ::serde::de::Deserializer<'de>,
         S: ::serde::ser::Serializer,
     {
@@ -202,32 +278,47 @@ where
         requests_out: &mut dyn erased_serde::Serializer,
     ) -> Result<(), BridgeError>
     where
-        A::Event: for<'a> Deserialize<'a>,
+        <Core::App as App>::Event: for<'a> Deserialize<'a>,
     {
         let effects = match id {
             None => {
                 let shell_event =
                     erased_serde::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
 
-                self.core.process_event(shell_event)
+                Either::Left(self.core.process_event(shell_event))
             }
             Some(id) => {
-                self.registry.resume(id, data)?;
+                self.registry.resume(id, data).expect(
+                    "Response could not be handled. The request did not expect a response.",
+                );
 
-                self.core.process()
+                Either::Right(self.core.process_effects())
             }
         };
 
+        self.register(effects, requests_out)
+    }
+
+    fn register(
+        &self,
+        effects: impl Iterator<Item = <Core::App as App>::Effect>,
+        requests_out: &mut dyn erased_serde::Serializer,
+    ) -> Result<(), BridgeError> {
         let requests: Vec<_> = effects
             .into_iter()
             .map(|eff| self.registry.register(eff))
             .collect();
+        tracing::info!("bridge registered {} effects", requests.len());
 
         requests
             .erased_serialize(requests_out)
             .map_err(BridgeError::SerializeRequests)?;
 
         Ok(())
+    }
+
+    pub fn inner(&self) -> &Core {
+        &self.core
     }
 
     /// Get the current state of the app's view model (serialized).

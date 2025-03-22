@@ -5,8 +5,9 @@ import {
   EventVariantReset,
   EventVariantIncrement,
   EventVariantDecrement,
+  EventVariantDelayReset,
 } from "shared_types/types/shared_types";
-import { update } from "../core";
+import { initialize, update } from "../core";
 
 export const meta = () => {
   return [
@@ -25,6 +26,7 @@ export default function Index() {
       if (!initialized.current) {
         initialized.current = true;
 
+        initialize(setView);
         // Initial event
         update(new EventVariantReset(), setView);
       }
@@ -40,7 +42,7 @@ export default function Index() {
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantReset(), setView)}
+            onClick={() => update(new EventVariantDelayReset(), setView)}
           >
             {"Reset"}
           </button>

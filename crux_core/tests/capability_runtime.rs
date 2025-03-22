@@ -217,7 +217,7 @@ mod tests {
     fn fetches_a_tree() {
         let core: Core<MyApp> = Core::new();
 
-        let mut effects: VecDeque<Effect> = core.process_event(Event::Fetch).into();
+        let mut effects: VecDeque<Effect> = core.process_event(Event::Fetch).collect();
 
         let mut counter: usize = 1;
 
@@ -234,7 +234,10 @@ mod tests {
 
                     counter += 3;
 
-                    let effs: Vec<Effect> = core.resolve(&mut request, output).expect("to resolve");
+                    let effs: Vec<Effect> = core
+                        .resolve(&mut request, output)
+                        .expect("to resolve")
+                        .collect();
 
                     for e in effs {
                         effects.push_back(e)
@@ -262,7 +265,7 @@ mod tests {
         let core: Core<MyApp> = Core::new();
 
         // Spawns the task
-        core.process_event(Event::Fetch);
+        let _ = core.process_event(Event::Fetch);
 
         drop(core);
     }

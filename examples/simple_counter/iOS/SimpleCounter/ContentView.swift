@@ -11,14 +11,17 @@ struct ContentView: View {
                 .foregroundColor(.accentColor)
             Text(core.view.count)
             HStack {
-                ActionButton(label: "Reset", color: .red) {
-                    core.update(.reset)
+                ActionButton(label: "0", color: .red) {
+                    core.update(.delayReset)
                 }
                 ActionButton(label: "Inc", color: .green) {
                     core.update(.increment)
                 }
                 ActionButton(label: "Dec", color: .yellow) {
                     core.update(.decrement)
+                }
+                ActionButton(label: "int", color: .blue) {
+                    core.update(.startInterval)
                 }
             }
         }

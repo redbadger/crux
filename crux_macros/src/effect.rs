@@ -3,7 +3,7 @@ use proc_macro2::{Literal, TokenStream};
 use proc_macro_error::{abort_call_site, OptionExt};
 use quote::{format_ident, quote};
 use std::collections::BTreeMap;
-use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
+use syn::{DeriveInput, GenericArgument, Ident, Path, PathArguments, Type};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(effect), supports(struct_named))]
@@ -20,6 +20,9 @@ pub struct EffectFieldReceiver {
     ty: Type,
     #[darling(default)]
     skip: bool,
+    notify_handler: Option<Path>,
+    request_handler: Option<Path>,
+    stream_handler: Option<Path>,
 }
 
 struct Field {
@@ -27,6 +30,9 @@ struct Field {
     variant: Ident,
     event: Type,
     skip: bool,
+    notify_handler: Option<Path>,
+    request_handler: Option<Path>,
+    stream_handler: Option<Path>,
 }
 
 impl From<&EffectFieldReceiver> for Field {
@@ -37,6 +43,9 @@ impl From<&EffectFieldReceiver> for Field {
             variant,
             event,
             skip: f.skip,
+            notify_handler: f.notify_handler.clone(),
+            request_handler: f.request_handler.clone(),
+            stream_handler: f.stream_handler.clone(),
         }
     }
 }
@@ -45,14 +54,15 @@ impl ToTokens for EffectStructReceiver {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
 
-        let (effect_name, ffi_effect_name, ffi_effect_rename) = match self.name {
+        let (effect_name, shell_effect_name, ffi_effect_name, ffi_effect_rename) = match self.name {
             Some(ref name) => {
                 let ffi_ef_name = format_ident!("{}Ffi", name);
                 let ffi_ef_rename = Literal::string(&name.to_string());
+                let shell_ef_name = format_ident!("Shell{}", name);
 
-                (quote!(#name), quote!(#ffi_ef_name), quote!(#ffi_ef_rename))
+                (quote!(#name), quote!(#shell_ef_name), quote!(#ffi_ef_name), quote!(#ffi_ef_rename))
             }
-            None => (quote!(Effect), quote!(EffectFfi), quote!("Effect")),
+            None => (quote!(Effect), quote!(ShellEffect), quote!(EffectFfi), quote!("Effect")),
         };
 
         let fields = self
@@ -83,6 +93,11 @@ impl ToTokens for EffectStructReceiver {
         let mut ffi_variants = Vec::new();
         let mut match_arms = Vec::new();
         let mut filters = Vec::new();
+        let mut handlers = Vec::new();
+
+        let mut shell_variants = Vec::new();
+        let mut from_effect_to_shell_effect_impl = Vec::new();
+        let mut from_shell_effect_to_effect_impl = Vec::new();
 
         for (
             field_name,
@@ -91,9 +106,63 @@ impl ToTokens for EffectStructReceiver {
                 variant,
                 event,
                 skip,
+                notify_handler,
+                request_handler,
+                stream_handler,
             },
         ) in fields.iter()
         {
+            if notify_handler.is_some() && request_handler.is_some() {
+                panic!(
+                    "Field {} can't have both a sync and an async handler",
+                    field_name.to_string()
+                );
+            }
+            let once_handler = notify_handler.is_some() || request_handler.is_some();
+
+            if once_handler && stream_handler.is_some() {
+                panic!(
+                    "Field {} can't have both a regular and a stream handler",
+                    field_name.to_string()
+                );
+            }
+            if let Some(handler) = notify_handler {
+                handlers.push(quote! {
+                    #effect_name::#variant(mut request) => {
+                        ::futures::stream::once(async move {
+                            // Fire and forget, no need to resolve / process
+                            let output: () = #handler(&request.operation).await;
+                        }).boxed()
+                    }
+                });
+            } else if let Some(handler) = request_handler {
+                handlers.push(quote! {
+                    #effect_name::#variant(mut request) => {
+                        // We rely on nacre to provide a runtime here
+                        ::futures::stream::once(async move {
+                            let output = #handler(&request.operation).await;
+                            request.resolve(output).unwrap();
+                            core.process().map(::std::convert::Into::into).collect()
+                        }).boxed()
+                    }
+                });
+            }
+
+            if let Some(handler) = stream_handler {
+                handlers.push(quote! {
+                    #effect_name::#variant(mut request) => {
+                        #handler(&request.operation)
+                            .map(move |output| {
+                                request.resolve(output).unwrap();
+                                core.process().map(::std::convert::Into::into).collect()
+                            }).boxed()
+                    }
+                });
+            }
+
+            let is_shell_capability =
+                notify_handler.is_none() && request_handler.is_none() && stream_handler.is_none();
+
             if *skip {
                 let msg = format!("Requesting effects from capability \"{variant}\" is impossible because it was skipped",);
                 with_context_fields.push(quote! {
@@ -108,10 +177,28 @@ impl ToTokens for EffectStructReceiver {
                     #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>)
                 });
 
-                ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
+                if is_shell_capability {
 
-                match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+                    shell_variants.push(quote!{
+                        #variant(::crux_core::Request<<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation>)
+                    });
 
+                    ffi_variants.push(quote! { #variant(<#capability<#event> as ::crux_core::capability::Capability<#event>>::Operation) });
+
+                    from_effect_to_shell_effect_impl.push(
+                        quote! { #effect_name::#variant(request) => #shell_effect_name::#variant(request) }
+                    );
+
+                    from_shell_effect_to_effect_impl.push(
+                        quote! { #shell_effect_name::#variant(request) => #effect_name::#variant(request) }
+                    );
+                    match_arms.push(quote! { #effect_name::#variant(request) => request.serialize(#ffi_effect_name::#variant) });
+                } else {
+                    let name_and_variant = quote! { #effect_name::#variant };
+
+                    from_effect_to_shell_effect_impl.push(quote! { #effect_name::#variant(request) => panic!("capability {} is not implemented in the shell", stringify!(#name_and_variant)) });
+                    match_arms.push(quote! { #effect_name::#variant(request) => panic!("capability {} is not implemented in the shell", stringify!(#name_and_variant)) });
+                }
                 let filter_fn = format_ident!("is_{}", field_name);
                 let map_fn = format_ident!("into_{}", field_name);
                 let expect_fn = format_ident!("expect_{}", field_name);
@@ -154,6 +241,58 @@ impl ToTokens for EffectStructReceiver {
             #[derive(Debug)]
             pub enum #effect_name {
                 #(#variants ,)*
+            }
+            
+            #[derive(Debug)]
+            pub enum #shell_effect_name {
+                #(#shell_variants ,)*
+            }
+
+            impl From<#effect_name> for #shell_effect_name {
+                fn from(value: #effect_name) -> Self {
+                    match value {
+                        #(#from_effect_to_shell_effect_impl,)*
+                    }
+                }
+            }
+
+            impl From<#shell_effect_name> for #effect_name {
+                fn from(value: #shell_effect_name) -> Self {
+                    match value {
+                        #(#from_shell_effect_to_effect_impl,)*
+                    }
+                }
+            }
+
+            impl ::crux_core::NacreEffect for #effect_name {
+                type ShellEffect = #shell_effect_name;
+
+                #[cfg(not(target_arch = "wasm32"))]
+                fn handle<A>(mut self, core: ::std::sync::Arc<::crux_core::Core<A>>) -> impl ::futures::Stream<Item = Vec<Self::ShellEffect>> + Send
+                where
+                    A: ::crux_core::App<Effect = #effect_name> + 'static,
+                    ::crux_core::Core<A>: Send + Sync
+                {
+                    use futures::StreamExt;
+
+                    match self {
+                        #(#handlers,)*
+                        other => ::futures::stream::once(async move { vec![other.into()] }).boxed()
+                    }
+                }
+                #[cfg(target_arch = "wasm32")]
+                fn handle<A>(mut self, core: ::std::sync::Arc<::crux_core::Core<A>>) -> impl ::futures::Stream<Item = Vec<Self::ShellEffect>> + Send
+                where
+                    A: ::crux_core::App<Effect = #effect_name> + 'static,
+                    ::crux_core::Core<A>: Send + Sync
+                {
+                    use futures::StreamExt;
+
+                    match self {
+                        #(#handlers ,)*
+                        other => ::futures::stream::once(async move { vec![other.into()] }).boxed()
+                    }
+                }
             }
 
             #[derive(::serde::Serialize, ::serde::Deserialize)]

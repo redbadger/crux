@@ -9,26 +9,25 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@remix-run/css-bundle": "^2.16.0",
-    "@remix-run/node": "^2.16.0",
-    "@remix-run/react": "^2.16.0",
-    "@remix-run/serve": "^2.16.0",
-    "isbot": "^5.1.23",
+    "@remix-run/css-bundle": "^2.15.3",
+    "@remix-run/node": "^2.15.3",
+    "@remix-run/react": "^2.15.3",
+    "@remix-run/serve": "^2.15.3",
+    "isbot": "^5.1.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "shared": "link:../shared/pkg",
     "shared_types": "link:../shared_types/generated/typescript"
   },
   "devDependencies": {
-    "@remix-run/dev": "^2.16.0",
-    "@remix-run/eslint-config": "^2.16.0",
+    "@remix-run/dev": "^2.15.3",
+    "@remix-run/eslint-config": "^2.15.3",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
-    "eslint": "^9.21.0",
-    "typescript": "^5.8.2"
+    "eslint": "^9.20.1",
+    "typescript": "^5.7.3"
   },
   "engines": {
     "node": ">=14.0.0"
-  },
-  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+  }
 }
