@@ -171,7 +171,7 @@ pub use self::{
     capabilities::*,
     capability::{Capability, WithContext},
     command::Command,
-    core::{Core, Effect, Request, ResolveError},
+    core::{Core, Effect, Middleware, NacreEffect, Request, ResolveError},
 };
 pub use crux_macros as macros;
 

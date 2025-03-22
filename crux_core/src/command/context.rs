@@ -5,7 +5,6 @@ use std::task::{Context, Poll};
 
 use crossbeam_channel::Sender;
 use futures::channel::mpsc;
-use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
 
@@ -164,9 +163,8 @@ impl<T: Unpin + Send> ShellStream<T> {
         // Since neither part is Clone, we'll need to do an Indiana Jones
 
         // 1. take items out of self
-        let dummy = ShellStream::Sent(mpsc::unbounded().1);
         let ShellStream::ReadyToSend(send_request, output_receiver) =
-            std::mem::replace(self, dummy)
+            std::mem::replace(self, ShellStream::Sent(mpsc::unbounded().1))
         else {
             unreachable!();
         };
@@ -197,7 +195,7 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
 }
 
 pub struct ShellRequest<T: Unpin + Send> {
-    inner: Fuse<StreamFuture<ShellStream<T>>>,
+    inner: StreamFuture<ShellStream<T>>,
 }
 
 impl<T: Unpin + Send + 'static> ShellRequest<T> {
@@ -205,9 +203,7 @@ impl<T: Unpin + Send + 'static> ShellRequest<T> {
         send_request: impl FnOnce() + Send + 'static,
         output_receiver: mpsc::UnboundedReceiver<T>,
     ) -> Self {
-        let inner = ShellStream::new(send_request, output_receiver)
-            .into_future()
-            .fuse();
+        let inner = ShellStream::new(send_request, output_receiver).into_future();
 
         Self { inner }
     }
