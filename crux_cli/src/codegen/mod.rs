@@ -1,5 +1,6 @@
 mod filter;
 mod formatter;
+mod generate;
 mod indexed;
 mod item;
 mod node;
@@ -42,11 +43,27 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let registry = run(lib.name(), |name| load_crate(&name, &manifest_paths))?;
 
-    let output_root = PathBuf::from("./generated");
+    let output_root = PathBuf::from(format!("./{}/generated", lib.name()));
     fs::create_dir_all(&output_root)?;
-    let s = serde_json::to_string_pretty(&registry)?;
-    fs::write(output_root.join("registry.json"), s)?;
+    let s = serde_json::to_vec(&registry)?;
+    let registry: serde_reflection::Registry = serde_json::from_slice(&s)?;
+    generate::swift(
+        &registry,
+        "SharedTypes", // TODO: parameterise this
+        output_root.join("swift"),
+    )?;
 
+    generate::java(
+        &registry,
+        &format!("com.crux.{}.types", lib.name()), // TODO: parameterise this
+        output_root.join("java"),
+    )?;
+
+    generate::typescript(
+        &registry,
+        "shared_types", // TODO: parameterise this
+        output_root.join("typescript"),
+    )?;
     Ok(())
 }
 
