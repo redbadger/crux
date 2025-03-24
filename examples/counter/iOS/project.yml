@@ -4,7 +4,7 @@ projectReferences:
     path: ../shared/shared.xcodeproj
 packages:
   SharedTypes:
-    path: ../shared_types/generated/swift/SharedTypes
+    path: ../shared/generated/swift/SharedTypes
 options:
   bundleIdPrefix: com.example.counter
 targets:
