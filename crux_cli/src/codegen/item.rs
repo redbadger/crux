@@ -210,11 +210,11 @@ pub fn is_impl(item: &Item) -> bool {
         item,
         Item {
             inner: ItemEnum::Impl(Impl {
-                trait_: Some(Path { name, .. }),
+                trait_: Some(Path { path, .. }),
                 ..
             }),
             ..
-            } if (&["App", "Effect", "Capability", "Operation"]).contains(&name.as_str())
+            } if (&["App", "Effect", "Capability", "Operation"]).contains(&path.as_str())
     )
 }
 
@@ -223,12 +223,12 @@ pub fn is_impl_for(item: &Item, for_: &Item, trait_name: &str) -> bool {
         Item {
             inner:
                 ItemEnum::Impl(Impl {
-                    trait_: Some(Path { name, .. }),
+                    trait_: Some(Path { path, .. }),
                     for_: Type::ResolvedPath(Path { id, .. }),
                     ..
                 }),
             ..
-        } if name == trait_name && id == &for_.id => true,
+        } if path == trait_name && id == &for_.id => true,
         _ => false,
     }
 }

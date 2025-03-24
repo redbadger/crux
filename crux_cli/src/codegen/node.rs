@@ -146,9 +146,9 @@ impl ItemNode {
         matches!(
             &self.item,
             Item {
-                inner: ItemEnum::StructField(Type::ResolvedPath(Path { name, .. })),
+                inner: ItemEnum::StructField(Type::ResolvedPath(Path { path, .. })),
                 ..
-            } if name == "std::ops::Range"
+            } if path == "std::ops::Range"
         )
     }
 
@@ -264,14 +264,14 @@ fn check_type(parent: &GlobalId, type_: &Type, is_remote: bool) -> bool {
 fn check_path(
     parent: &GlobalId,
     Path {
-        name,
+        path,
         id: Id(id),
         args,
     }: &Path,
     is_remote: bool,
 ) -> bool {
     if is_remote {
-        if let "Option" | "String" | "Vec" | "std::ops::Range" = name.as_str() {
+        if let "Option" | "String" | "Vec" | "std::ops::Range" = path.as_str() {
             return false;
         }
     }
@@ -293,6 +293,7 @@ fn check_args(parent: &GlobalId, args: &Box<GenericArgs>, is_remote: bool) -> bo
         GenericArgs::Parenthesized { inputs, .. } => {
             inputs.iter().any(|t| check_type(parent, t, is_remote))
         }
+        GenericArgs::ReturnTypeNotation => todo!(),
     }
 }
 

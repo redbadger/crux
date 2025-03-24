@@ -342,12 +342,13 @@ impl From<&Type> for Format {
     fn from(type_: &Type) -> Self {
         match type_ {
             Type::ResolvedPath(path) => {
+                let name = path_to_string(path);
                 if let Some(args) = &path.args {
                     match args.as_ref() {
                         GenericArgs::AngleBracketed {
                             args,
                             constraints: _,
-                        } => match path.name.as_str() {
+                        } => match name.as_str() {
                             "Option" => {
                                 let format = match args[0] {
                                     GenericArg::Type(ref type_) => type_.into(),
@@ -363,15 +364,16 @@ impl From<&Type> for Format {
                                 };
                                 Format::Seq(Box::new(format))
                             }
-                            _ => Format::TypeName(path_to_string(path)),
+                            _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
                             inputs: _,
                             output: _,
                         } => todo!(),
+                        GenericArgs::ReturnTypeNotation => todo!(),
                     }
                 } else {
-                    Format::TypeName(path_to_string(path))
+                    Format::TypeName(name)
                 }
             }
             Type::DynTrait(_dyn_trait) => todo!(),
@@ -431,10 +433,10 @@ impl From<&Type> for Format {
 }
 
 fn path_to_string(path: &rustdoc_types::Path) -> String {
-    if let Some((_mod, name)) = path.name.rsplit_once("::") {
+    if let Some((_mod, name)) = path.path.rsplit_once("::") {
         name.to_string()
     } else {
-        path.name.clone()
+        path.path.clone()
     }
 }
 

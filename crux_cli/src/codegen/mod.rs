@@ -42,7 +42,7 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let registry = run(lib.name(), |name| load_crate(&name, &manifest_paths))?;
 
-    info!("{:#?}", registry);
+    info!("registry: {:#?}", registry);
 
     Ok(())
 }

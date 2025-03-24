@@ -17,26 +17,26 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { version = "4.5.35", features = ["derive"] }
 console = "0.15.11"
-guppy = "0.17.5"
+guppy = "0.17.4"
 ascent = "0.7.0"
 env_logger = "0.10.2"
 ignore = "0.4.23"
 iter_tools = "0.24.0"
-lazy-regex = "3.3.0"
-libc = "0.2.167"
-log = "0.4.22"
+lazy-regex = "3.4.1"
+libc = "0.2.171"
+log = "0.4.26"
 ramhorns = "1.0.1"
-rustdoc-json = "0.9.3"
-rustdoc-types = "0.33.0"
+rustdoc-json = "0.9.5"
+rustdoc-types = "0.38.0"
 serde = { workspace = true, features = ["derive"] }
 similar = { version = "2.7.0", features = ["inline"] }
 toml = "0.8.20"
-serde_json = "1.0.133"
-thiserror = "2.0.5"
-tokio = { version = "1.42.0", features = ["full"] }
+serde_json = "1.0.140"
+thiserror = "2.0.12"
+tokio = { version = "1.44.1", features = ["full"] }
 tokio-fd = "0.3.0"
 
 [dev-dependencies]
-insta = { version = "1.41.1" }
+insta = { version = "1.42.2" }
 pretty_assertions = "1.4.1"
-rstest = "0.23.0"
+rstest = "0.25.0"
