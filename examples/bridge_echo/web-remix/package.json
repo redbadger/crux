@@ -16,8 +16,8 @@
     "isbot": "^5.1.23",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "shared": "link:../shared/pkg",
-    "shared_types": "link:../shared_types/generated/typescript"
+    "shared": "file:../shared/pkg",
+    "shared_types": "file:../shared_types/generated/typescript"
   },
   "devDependencies": {
     "@remix-run/dev": "^2.16.0",

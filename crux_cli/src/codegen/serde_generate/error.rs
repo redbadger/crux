@@ -20,7 +20,7 @@ pub enum Error {
     #[error("Not supported: {0}")]
     NotSupported(&'static str),
     #[error("Failed to deserialize {0}")]
-    DeserializationError(&'static str),
+    Deserialization(&'static str),
     #[error("In container {0}, recorded value for serialization format {1:?} failed to deserialize into {2}")]
     UnexpectedDeserializationFormat(&'static str, ContainerFormat, &'static str),
     #[error("Incompatible formats detected: {0} {1}")]
@@ -72,7 +72,7 @@ To fix this, avoid unsupported Serde attributes or use custom (de)serialize impl
 behaviors depending on the Serde callback `(De)Serializer::is_human_readable()`.
 "#.to_string()
             }
-            DeserializationError(_) => {
+            Deserialization(_) => {
                 r#"
 This internal error should not be surfaced during tracing.
 "#.to_string()

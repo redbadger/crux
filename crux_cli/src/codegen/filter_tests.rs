@@ -105,7 +105,7 @@ fn field_is_option_of_t() {
                     inner: StructField(
                         ResolvedPath(
                             Path {
-                                name: "Option",
+                                path: "Option",
                                 id: Id(
                                     173,
                                 ),
@@ -115,7 +115,7 @@ fn field_is_option_of_t() {
                                             Type(
                                                 ResolvedPath(
                                                     Path {
-                                                        name: "CatImage",
+                                                        path: "CatImage",
                                                         id: Id(
                                                             281,
                                                         ),
@@ -181,7 +181,7 @@ fn field_is_option_of_t() {
                     inner: StructField(
                         ResolvedPath(
                             Path {
-                                name: "Option",
+                                path: "Option",
                                 id: Id(
                                     173,
                                 ),
@@ -191,7 +191,7 @@ fn field_is_option_of_t() {
                                             Type(
                                                 ResolvedPath(
                                                     Path {
-                                                        name: "CatImage",
+                                                        path: "CatImage",
                                                         id: Id(
                                                             281,
                                                         ),

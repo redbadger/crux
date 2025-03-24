@@ -122,7 +122,7 @@ ascent! {
         let container = make_request();
 }
 
-fn make_format(field: &ItemNode, all_fields: &Vec<ItemNode>) -> Option<Indexed<Format>> {
+fn make_format(field: &ItemNode, all_fields: &[ItemNode]) -> Option<Indexed<Format>> {
     let index = all_fields.iter().position(|f| f == field)?;
     match &field.item.inner {
         ItemEnum::StructField(type_) => Some(Indexed {
@@ -146,7 +146,7 @@ fn make_format(field: &ItemNode, all_fields: &Vec<ItemNode>) -> Option<Indexed<F
 
 fn make_named_format(
     field: &ItemNode,
-    all_fields: &Vec<ItemNode>,
+    all_fields: &[ItemNode],
     struct_: &ItemNode,
 ) -> Option<Indexed<Named<Format>>> {
     match field.name() {
@@ -166,92 +166,83 @@ fn make_named_format(
 
 fn make_plain_variant_format(
     variant: &ItemNode,
-    all_variants: &Vec<ItemNode>,
+    all_variants: &[ItemNode],
     enum_: &ItemNode,
 ) -> Option<Indexed<Named<VariantFormat>>> {
     let index = all_variants.iter().position(|f| f == variant)?;
     match &variant.item {
         Item {
             name: Some(name),
-            inner,
+            inner: ItemEnum::Variant(_),
             ..
-        } => match inner {
-            ItemEnum::Variant(_) => Some(Indexed {
-                index: index as u32,
-                value: Named {
-                    name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
-                    value: VariantFormat::Unit,
-                },
-            }),
-            _ => None,
-        },
+        } => Some(Indexed {
+            index: index as u32,
+            value: Named {
+                name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
+                value: VariantFormat::Unit,
+            },
+        }),
         _ => None,
     }
 }
 
 fn make_struct_variant_format(
     variant: &ItemNode,
-    fields: &Vec<(&Indexed<Named<Format>>,)>,
-    all_variants: &Vec<ItemNode>,
+    fields: &[(&Indexed<Named<Format>>,)],
+    all_variants: &[ItemNode],
     enum_: &ItemNode,
 ) -> Option<Indexed<Named<VariantFormat>>> {
     let index = all_variants.iter().position(|f| f == variant)?;
     match &variant.item {
         Item {
             name: Some(name),
-            inner,
+            inner: ItemEnum::Variant(_),
             ..
-        } => match inner {
-            ItemEnum::Variant(_) => {
-                let mut fields = fields.clone();
-                fields.sort();
-                let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
-                Some(Indexed {
-                    index: index as u32,
-                    value: Named {
-                        name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
-                        value: VariantFormat::Struct(fields),
-                    },
-                })
-            }
-            _ => None,
-        },
+        } => {
+            let mut fields = fields.to_owned();
+            fields.sort();
+            let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
+            Some(Indexed {
+                index: index as u32,
+                value: Named {
+                    name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
+                    value: VariantFormat::Struct(fields),
+                },
+            })
+        }
         _ => None,
     }
 }
 
 fn make_tuple_variant_format(
     variant: &ItemNode,
-    fields: &Vec<(&Indexed<Format>,)>,
-    all_variants: &Vec<ItemNode>,
+    fields: &[(&Indexed<Format>,)],
+    all_variants: &[ItemNode],
     enum_: &ItemNode,
 ) -> Option<Indexed<Named<VariantFormat>>> {
     let index = all_variants.iter().position(|v| v == variant)?;
     match &variant.item {
         Item {
             name: Some(name),
-            inner,
+            inner: ItemEnum::Variant(_),
             ..
-        } => match inner {
-            ItemEnum::Variant(_) => {
-                let mut fields = fields.clone();
-                fields.sort();
-                let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
-                let value = match fields.len() {
-                    0 => VariantFormat::Unit,
-                    1 => VariantFormat::NewType(Box::new(fields[0].clone())),
-                    _ => VariantFormat::Tuple(fields),
-                };
-                Some(Indexed {
-                    index: index as u32,
-                    value: Named {
-                        name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
-                        value,
-                    },
-                })
-            }
-            _ => None,
-        },
+        } => {
+            let mut fields = fields.to_owned();
+            fields.sort();
+            let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
+            let value = match fields.len() {
+                0 => VariantFormat::Unit,
+                1 => VariantFormat::NewType(Box::new(fields[0].clone())),
+                _ => VariantFormat::Tuple(fields),
+            };
+            Some(Indexed {
+                index: index as u32,
+                value: Named {
+                    name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
+                    value,
+                },
+            })
+        }
         _ => None,
     }
 }
@@ -260,8 +251,8 @@ fn make_struct_unit() -> ContainerFormat {
     ContainerFormat::UnitStruct
 }
 
-fn make_struct_plain(fields: &Vec<(&Indexed<Named<Format>>,)>) -> ContainerFormat {
-    let mut fields = fields.clone();
+fn make_struct_plain(fields: &[(&Indexed<Named<Format>>,)]) -> ContainerFormat {
+    let mut fields = fields.to_owned();
     fields.sort();
     let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
     match fields.len() {
@@ -270,8 +261,8 @@ fn make_struct_plain(fields: &Vec<(&Indexed<Named<Format>>,)>) -> ContainerForma
     }
 }
 
-fn make_struct_tuple(fields: &Vec<(&Indexed<Format>,)>) -> ContainerFormat {
-    let mut fields = fields.clone();
+fn make_struct_tuple(fields: &[(&Indexed<Format>,)]) -> ContainerFormat {
+    let mut fields = fields.to_owned();
     fields.sort();
     let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
     match fields.len() {
@@ -281,9 +272,9 @@ fn make_struct_tuple(fields: &Vec<(&Indexed<Format>,)>) -> ContainerFormat {
     }
 }
 
-fn make_enum(formats: &Vec<(&Indexed<Named<VariantFormat>>,)>) -> ContainerFormat {
+fn make_enum(formats: &[(&Indexed<Named<VariantFormat>>,)]) -> ContainerFormat {
     let mut map = BTreeMap::default();
-    for (Indexed { index, value },) in formats.clone() {
+    for (Indexed { index, value },) in formats {
         map.insert(*index, value.clone());
     }
     ContainerFormat::Enum(map)
