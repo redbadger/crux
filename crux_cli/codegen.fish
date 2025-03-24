@@ -1,5 +1,5 @@
 #!/usr/bin/env fish
-argparse 'h/help' -- $argv
+argparse h/help -- $argv
 or return
 
 if set -q _flag_help
@@ -13,5 +13,5 @@ or return
 cargo build
 
 pushd $argv[1]
-../../target/debug/crux codegen --lib shared
+RUST_LOG=info ../../target/debug/crux codegen --lib shared
 popd
