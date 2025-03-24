@@ -8,7 +8,7 @@ mod serde_generate;
 
 use std::{
     collections::{BTreeMap, HashMap},
-    fs::File,
+    fs::{self, File},
     io::Read,
     path::PathBuf,
     process::Command,
@@ -16,7 +16,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
-use log::{debug, info};
+use log::debug;
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
@@ -42,7 +42,10 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let registry = run(lib.name(), |name| load_crate(&name, &manifest_paths))?;
 
-    info!("registry: {:#?}", registry);
+    let output_root = PathBuf::from("./generated");
+    fs::create_dir_all(&output_root)?;
+    let s = serde_json::to_string_pretty(&registry)?;
+    fs::write(output_root.join("registry.json"), s)?;
 
     Ok(())
 }
