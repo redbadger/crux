@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.simple_counter.shared_types.Event
+import com.crux.shared.types.Event
 import com.example.simple_counter.ui.theme.SimpleCounterTheme
 
 class MainActivity : ComponentActivity() {

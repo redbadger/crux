@@ -5,11 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.simple_counter.shared.processEvent
 import com.example.simple_counter.shared.view
-import com.example.simple_counter.shared_types.Effect
-import com.example.simple_counter.shared_types.Event
-import com.example.simple_counter.shared_types.Request
-import com.example.simple_counter.shared_types.Requests
-import com.example.simple_counter.shared_types.ViewModel
+import com.crux.shared.types.Effect
+import com.crux.shared.types.Event
+import com.crux.shared.types.Request
+import com.crux.shared.types.Requests
+import com.crux.shared.types.ViewModel
 
 class Core : androidx.lifecycle.ViewModel() {
     var view: ViewModel? by mutableStateOf(null)

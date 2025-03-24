@@ -78,7 +78,7 @@
 /* Begin PBXFileReference section */
 		1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpleCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		258EC994D7C693E3141C4563 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
-		642CF26F4B57B0FF7348C6BF /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		642CF26F4B57B0FF7348C6BF /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		842F8D01CC76E9BFCDBD2862 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
 		8EA6E09EE87596B896068D0E /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
