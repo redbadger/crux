@@ -35,6 +35,8 @@ serde_json = "1.0.140"
 thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["full"] }
 tokio-fd = "0.3.0"
+serde-generate = "0.29.0"
+serde-reflection = "0.5.0"
 
 [dev-dependencies]
 insta = { version = "1.42.2" }
