@@ -41,7 +41,7 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
         bail!("Could not find workspace package with path {}", args.lib)
     };
 
-    let registry = run(lib.name(), |name| load_crate(&name, &manifest_paths))?;
+    let registry = run(lib.name(), |name| load_crate(name, &manifest_paths))?;
 
     let output_root = PathBuf::from(format!("./{}/generated", lib.name()));
     fs::create_dir_all(&output_root)?;
@@ -73,7 +73,7 @@ where
 {
     let mut previous: HashMap<String, Crate> = HashMap::new();
 
-    let shared_lib = load(&crate_name)?;
+    let shared_lib = load(crate_name)?;
 
     let mut filter = Filter::default();
     filter.process(crate_name, &shared_lib)?;
@@ -148,11 +148,10 @@ fn rustdoc_json_path() -> Result<PathBuf> {
     Ok(json_path)
 }
 
-pub fn collect<'a, N: 'a, T: Iterator<Item = (&'a N,)>>(
-    input: T,
-) -> impl Iterator<Item = Vec<(&'a N,)>>
+pub fn collect<'a, N, T>(input: T) -> impl Iterator<Item = Vec<(&'a N,)>>
 where
-    N: Clone,
+    N: 'a + Clone,
+    T: Iterator<Item = (&'a N,)>,
 {
     std::iter::once(input.collect::<Vec<_>>())
 }

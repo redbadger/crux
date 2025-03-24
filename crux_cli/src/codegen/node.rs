@@ -163,13 +163,10 @@ impl ItemNode {
         field_ids(&self.item)
             .iter()
             .filter_map(|id| {
-                match fields
+                fields
                     .iter()
                     .find(|(f,)| !f.should_skip() && id == &f.item.id)
-                {
-                    Some(found) => Some(found.0.clone()),
-                    None => None,
-                }
+                    .map(|found| found.0.clone())
             })
             .collect()
     }
@@ -189,13 +186,10 @@ impl ItemNode {
         variant_ids(&self.item)
             .iter()
             .filter_map(|id| {
-                match variants
+                variants
                     .iter()
                     .find(|(v,)| !v.should_skip() && id == &v.item.id)
-                {
-                    Some(found) => Some(found.0.clone()),
-                    None => None,
-                }
+                    .map(|found| found.0.clone())
             })
             .collect()
     }
@@ -225,7 +219,7 @@ impl ItemNode {
             Item {
                 inner: ItemEnum::StructField(t),
                 ..
-            } => check_type(&id, t, is_remote),
+            } => check_type(id, t, is_remote),
             Item {
                 inner:
                     ItemEnum::AssocType {
@@ -284,8 +278,8 @@ fn check_path(
     }
 }
 
-fn check_args(parent: &GlobalId, args: &Box<GenericArgs>, is_remote: bool) -> bool {
-    match args.as_ref() {
+fn check_args(parent: &GlobalId, args: &GenericArgs, is_remote: bool) -> bool {
+    match args {
         GenericArgs::AngleBracketed { args, .. } => args.iter().any(|arg| match arg {
             GenericArg::Type(t) => check_type(parent, t, is_remote),
             _ => false,
