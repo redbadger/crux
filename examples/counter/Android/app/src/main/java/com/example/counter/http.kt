@@ -1,8 +1,8 @@
 package com.example.counter
 
-import com.example.counter.shared_types.HttpHeader
-import com.example.counter.shared_types.HttpRequest
-import com.example.counter.shared_types.HttpResponse
+import com.crux.shared.types.HttpHeader
+import com.crux.shared.types.HttpRequest
+import com.crux.shared.types.HttpResponse
 import com.novi.serde.Bytes
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

@@ -30,8 +30,8 @@ importers:
         specifier: link:../shared/pkg
         version: link:../shared/pkg
       shared_types:
-        specifier: link:../shared_types/generated/typescript
-        version: link:../shared_types/generated/typescript
+        specifier: link:../shared/generated/typescript
+        version: link:../shared/generated/typescript
       typescript:
         specifier: 5.8.2
         version: 5.8.2
