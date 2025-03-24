@@ -17,7 +17,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "shared": "link:../shared/pkg",
-    "shared_types": "link:../shared_types/generated/typescript",
+    "shared_types": "link:../shared/generated/typescript",
     "typescript": "5.8.2"
   },
   "devDependencies": {
