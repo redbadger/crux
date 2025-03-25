@@ -62,6 +62,41 @@ pub fn effect(input: TokenStream) -> TokenStream {
     effect_impl(&parse_macro_input!(input)).into()
 }
 
+/// Generates an effect type matching the enum definition provided,
+/// whilst supplying all the necessary decorations and additional trait implementations.
+///
+/// e.g.
+/// ```rust
+/// # use crux_core::{Capability, render::RenderOperation, compose::Compose};
+/// # use crux_core::macros::effect2;
+/// # use crux_http::protocol::HttpRequest;
+/// # #[derive(Default)]
+/// # struct MyApp;
+/// # pub enum MyEvent {None}
+/// # impl crux_core::App for MyApp {
+/// #     type Event = MyEvent;
+/// #     type Model = ();
+/// #     type ViewModel = ();
+/// #     type Capabilities = ();
+/// #     type Effect = MyEffect;
+/// #     fn update(
+/// #         &self,
+/// #         _event: Self::Event,
+/// #         _model: &mut Self::Model,
+/// #         _caps: &Self::Capabilities,
+/// #     ) -> crux_core::Command<MyEffect, MyEvent> {
+/// #         unimplemented!()
+/// #     }
+/// #     fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+/// #         unimplemented!()
+/// #     }
+/// # }
+/// effect2! {
+///     pub enum MyEffect {
+///         Render(RenderOperation),
+///         Http(HttpRequest),
+///     }
+/// }
 #[proc_macro]
 pub fn effect2(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemEnum);
