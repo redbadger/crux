@@ -137,10 +137,15 @@ pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> 
 /// # use crux_cli::codegen::generate;
 /// # let registry = serde_reflection::Registry::new();
 /// # let output_root = std::env::temp_dir().join("crux_cli_codegen_doctest");
-/// generate::typescript(&registry, "shared_types", output_root.join("typescript"))?;
+/// generate::typescript(&registry, "shared_types", "0.1.0", output_root.join("typescript"))?;
 /// # Ok::<(), generate::TypeGenError>(())
 /// ```
-pub fn typescript(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> Result {
+pub fn typescript(
+    registry: &Registry,
+    module_name: &str,
+    version: &str,
+    path: impl AsRef<Path>,
+) -> Result {
     fs::create_dir_all(&path)?;
     let output_dir = path.as_ref().to_path_buf();
 
@@ -153,7 +158,7 @@ pub fn typescript(registry: &Registry, module_name: &str, path: impl AsRef<Path>
         .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
     let extensions_dir = extensions_path("typescript");
-    copy(extensions_dir, path)?;
+    copy(extensions_dir.as_ref(), path)?;
 
     let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
         .with_encodings(vec![Encoding::Bincode]);
@@ -173,12 +178,30 @@ pub fn typescript(registry: &Registry, module_name: &str, path: impl AsRef<Path>
     let types_dir = output_dir.join("types");
     fs::create_dir_all(&types_dir)?;
 
+    // write package.json
+    let mut package_json = File::create(output_dir.join("package.json"))?;
+    write!(
+        package_json,
+        "{{\"name\": \"{module_name}\", \"version\": \"{version}\"}}"
+    )?;
+
+    // add Typescript package using pnpm
+    std::process::Command::new("pnpm")
+        .current_dir(&output_dir)
+        .arg("add")
+        .arg("typescript")
+        .status()
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => TypeGenError::PnpmNotFound(e),
+            _ => TypeGenError::Io(e),
+        })?;
+
     let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
     write!(output, "{out}")?;
 
     // Install dependencies
     std::process::Command::new("pnpm")
-        .current_dir(output_dir.clone())
+        .current_dir(&output_dir)
         .arg("install")
         .status()
         .map_err(|e| match e.kind() {
@@ -188,7 +211,7 @@ pub fn typescript(registry: &Registry, module_name: &str, path: impl AsRef<Path>
 
     // Build TS code and emit declarations
     std::process::Command::new("pnpm")
-        .current_dir(output_dir)
+        .current_dir(&output_dir)
         .arg("exec")
         .arg("tsc")
         .arg("--build")
@@ -216,7 +239,7 @@ fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
     Ok(())
 }
 
-fn extensions_path(path: &str) -> PathBuf {
+fn extensions_path(path: &str) -> impl AsRef<Path> {
     let custom = PathBuf::from("./typegen_extensions").join(path);
     let default = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("typegen_extensions")
