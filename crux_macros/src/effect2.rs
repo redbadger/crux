@@ -118,7 +118,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn simple() {
+    fn single() {
         let input = parse_quote! {
             pub enum Effect {
                 Render(RenderOperation),
@@ -163,6 +163,83 @@ mod test {
                     request
                 } else {
                     panic!("not a {} effect", "Render")
+                }
+            }
+        }
+        "##);
+    }
+
+    #[test]
+    fn multiple() {
+        let input = parse_quote! {
+            pub enum Effect {
+                Render(RenderOperation),
+                Http(HttpRequest),
+            }
+        };
+
+        let actual = effect2_macro_impl(input);
+
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        #[derive(Debug)]
+        pub enum Effect {
+            Render(::crux_core::Request<RenderOperation>),
+            Http(::crux_core::Request<HttpRequest>),
+        }
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "Effect")]
+        pub enum EffectFfi {
+            Render(RenderOperation),
+            Http(HttpRequest),
+        }
+        impl crux_core::Effect for Effect {
+            type Ffi = EffectFfi;
+            fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+                match self {
+                    Effect::Render(request) => request.serialize(EffectFfi::Render),
+                    Effect::Http(request) => request.serialize(EffectFfi::Http),
+                }
+            }
+        }
+        impl From<::crux_core::Request<RenderOperation>> for Effect {
+            fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
+                Self::Render(value)
+            }
+        }
+        impl From<::crux_core::Request<HttpRequest>> for Effect {
+            fn from(value: ::crux_core::Request<HttpRequest>) -> Self {
+                Self::Http(value)
+            }
+        }
+        impl Effect {
+            pub fn is_render(&self) -> bool {
+                if let Effect::Render(_) = self { true } else { false }
+            }
+            pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
+                if let Effect::Render(request) = self { Some(request) } else { None }
+            }
+            #[track_caller]
+            pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
+                if let Effect::Render(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "Render")
+                }
+            }
+        }
+        impl Effect {
+            pub fn is_http(&self) -> bool {
+                if let Effect::Http(_) = self { true } else { false }
+            }
+            pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
+                if let Effect::Http(request) = self { Some(request) } else { None }
+            }
+            #[track_caller]
+            pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
+                if let Effect::Http(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "Http")
                 }
             }
         }
