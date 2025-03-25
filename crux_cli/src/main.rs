@@ -1,16 +1,7 @@
 use anyhow::Result;
-use args::{Commands, DoctorArgs};
 use clap::Parser;
 
-use args::Cli;
-
-mod args;
-mod codegen;
-mod config;
-mod diff;
-mod doctor;
-mod template;
-mod workspace;
+use crux_cli::{codegen, doctor, Cli, Commands, DoctorArgs};
 
 #[tokio::main]
 async fn main() -> Result<()> {
