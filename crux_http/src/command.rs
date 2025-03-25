@@ -380,7 +380,8 @@ where
         self
     }
 
-    /// Sets the body of the request from any type with implements `Into<Body>`, for example, any type with is `AsyncRead`.
+    /// Sets the body of the request from any type that implements `Into<Body>`
+    ///
     /// # Mime
     ///
     /// The encoding is set to `application/octet-stream`.
@@ -609,8 +610,6 @@ where
 
     /// Decode a String from the response body prior to dispatching it to the apps `update`
     /// function.
-    ///
-    /// This has no effect when used with the [async API](RequestBuilder::send_async).
     ///
     /// # Examples
     ///
