@@ -1,6 +1,6 @@
 mod filter;
 mod formatter;
-mod generate;
+pub mod generate;
 mod indexed;
 mod item;
 mod node;

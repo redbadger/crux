@@ -20,7 +20,6 @@ ascent! {
     relation has_summary(ItemNode, SummaryNode);
     has_summary(i, s) <-- item(i), summary(s), if i.has_summary(s);
 
-
     relation is_struct(ItemNode);
     is_struct(s) <-- item(s) if is_struct(&s.item);
 

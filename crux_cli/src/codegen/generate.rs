@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
+use serde_reflection::Registry;
 use std::{
     fs::{self, File},
     io::Write,
@@ -21,19 +22,14 @@ pub enum TypeGenError {
 
 /// Generates types for Swift
 /// e.g.
-/// ```rust
-/// # use crux_core::typegen::TypeGen;
-/// # use std::env::temp_dir;
-/// # let mut gen = TypeGen::new();
-/// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-/// gen.swift("SharedTypes", output_root.join("swift"))?;
-/// # Ok::<(), crux_core::typegen::TypeGenError>(())
 /// ```
-pub fn swift(
-    registry: &serde_reflection::Registry,
-    module_name: &str,
-    path: impl AsRef<Path>,
-) -> Result {
+/// # use crux_cli::codegen::generate;
+/// # let registry = serde_reflection::Registry::new();
+/// # let output_root = std::env::temp_dir().join("crux_cli_codegen_doctest");
+/// generate::swift(&registry, "SharedTypes", output_root.join("swift"))?;
+/// # Ok::<(), generate::TypeGenError>(())
+/// ```
+pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> Result {
     let path = path.as_ref().join(module_name);
 
     fs::create_dir_all(&path)?;
@@ -84,22 +80,18 @@ pub fn swift(
 
 /// Generates types for Java (for use with Kotlin)
 /// e.g.
-/// ```rust
-/// # use crux_core::typegen::TypeGen;
-/// # use std::env::temp_dir;
-/// # let mut gen = TypeGen::new();
-/// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-/// gen.java(
+/// ```
+/// # use crux_cli::codegen::generate;
+/// # let registry = serde_reflection::Registry::new();
+/// # let output_root = std::env::temp_dir().join("crux_cli_codegen_doctest");
+/// generate::java(
+///     &registry,
 ///     "com.redbadger.crux_core.shared_types",
 ///     output_root.join("java"),
 /// )?;
-/// # Ok::<(), crux_core::typegen::TypeGenError>(())
+/// # Ok::<(), generate::TypeGenError>(())
 /// ```
-pub fn java(
-    registry: &serde_reflection::Registry,
-    package_name: &str,
-    path: impl AsRef<Path>,
-) -> Result {
+pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> Result {
     fs::create_dir_all(&path)?;
 
     let package_path = package_name.replace('.', "/");
@@ -141,19 +133,14 @@ pub fn java(
 
 /// Generates types for TypeScript
 /// e.g.
-/// ```rust
-/// # use crux_core::typegen::TypeGen;
-/// # use std::env::temp_dir;
-/// # let mut gen = TypeGen::new();
-/// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-/// gen.typescript("shared_types", output_root.join("typescript"))?;
-/// # Ok::<(), crux_core::typegen::TypeGenError>(())
 /// ```
-pub fn typescript(
-    registry: &serde_reflection::Registry,
-    module_name: &str,
-    path: impl AsRef<Path>,
-) -> Result {
+/// # use crux_cli::codegen::generate;
+/// # let registry = serde_reflection::Registry::new();
+/// # let output_root = std::env::temp_dir().join("crux_cli_codegen_doctest");
+/// generate::typescript(&registry, "shared_types", output_root.join("typescript"))?;
+/// # Ok::<(), generate::TypeGenError>(())
+/// ```
+pub fn typescript(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> Result {
     fs::create_dir_all(&path)?;
     let output_dir = path.as_ref().to_path_buf();
 
