@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+async-std = "1.13.0"
 shared = { path = "../shared" }
 yew = { version = "0.21.0", features = ["csr"] }

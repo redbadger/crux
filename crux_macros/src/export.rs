@@ -2,7 +2,7 @@ use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
 use proc_macro2::TokenStream;
 use proc_macro_error::OptionExt;
 use quote::{format_ident, quote};
-use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
+use syn::{DeriveInput, GenericArgument, Ident, Path, PathArguments, Type};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(effect), supports(struct_named))]
@@ -18,6 +18,15 @@ pub struct ExportFieldReceiver {
     ty: Type,
     #[darling(default)]
     skip: bool,
+    notify_handler: Option<Path>,
+    request_handler: Option<Path>,
+    stream_handler: Option<Path>,
+}
+
+impl ExportFieldReceiver {
+    fn is_shell_capability(&self) -> bool {
+        self.notify_handler.is_none() && self.request_handler.is_none() && self.stream_handler.is_none()
+    }
 }
 
 impl ToTokens for ExportStructReceiver {
@@ -45,7 +54,10 @@ impl ToTokens for ExportStructReceiver {
 
         let mut output_type_exports = Vec::new();
 
-        for (capability, event) in fields.iter().map(|f| split_on_generic(&f.ty)) {
+        for (capability, event) in fields
+            .iter()
+            .filter_map(|f| f.is_shell_capability().then_some(split_on_generic(&f.ty)))
+        {
             output_type_exports.push(quote! {
                 #capability::<#event>::register_types(generator)?;
             });

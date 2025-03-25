@@ -1,4 +1,6 @@
 // ANCHOR: app
+use super::capabilities::delay::Delay;
+use super::capabilities::interval::Interval;
 use crux_core::{
     render::{render, Render},
     App, Command,
@@ -7,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Event {
+    StartInterval,
+    DelayReset,
     Increment,
     Decrement,
     Reset,
@@ -27,6 +31,10 @@ pub struct ViewModel {
 #[allow(unused)]
 pub struct Capabilities {
     render: Render<Event>,
+    #[effect(stream_handler = crate::capabilities::interval::interval)]
+    interval: Interval<Event>,
+    #[effect(request_handler = crate::capabilities::delay::delay)]
+    delay: Delay<Event>,
 }
 
 #[derive(Default)]
@@ -44,14 +52,24 @@ impl App for Counter {
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        _caps: &Self::Capabilities,
+        caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
-        // we no longer use the capabilities directly, but they are passed in
-        // until the migration to managed effects with `Command` is complete
-        // (at which point the capabilities will be removed from the `update`
-        // signature). Until then we delegate to our own `update` method so that
-        // we can test the app without needing to use AppTester.
-        self.update(event, model)
+        match event {
+            Event::Increment => model.count += 1,
+            Event::Decrement => model.count -= 1,
+            Event::DelayReset => {
+                caps.delay.start(5000, Event::Reset);
+                return Command::done();
+            }
+            Event::Reset => model.count = 0,
+            // Increment every one second, 10 times
+            Event::StartInterval => {
+                caps.interval.start(1000, 10, |_| Event::Increment);
+                return Command::done();
+            }
+        };
+
+        render()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -61,22 +79,6 @@ impl App for Counter {
     }
 }
 // ANCHOR_END: impl_app
-
-impl Counter {
-    // note: this function can be moved into the `App` trait implementation, above,
-    // once the `App` trait has been updated (as the final part of the migration
-    // to managed effects with `Command`).
-    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
-        match event {
-            Event::Increment => model.count += 1,
-            Event::Decrement => model.count -= 1,
-            Event::Reset => model.count = 0,
-        };
-
-        render()
-    }
-}
-// ANCHOR_END: app
 
 // ANCHOR: test
 #[cfg(test)]
