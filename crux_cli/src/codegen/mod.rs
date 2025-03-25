@@ -17,6 +17,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
+use heck::{AsPascalCase, AsSnakeCase};
 use log::debug;
 use rustdoc_types::Crate;
 
@@ -41,27 +42,35 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
         bail!("Could not find workspace package with path {}", args.lib)
     };
 
-    let registry = run(lib.name(), |name| load_crate(name, &manifest_paths))?;
+    let lib_name = lib.name();
 
-    let output_root = PathBuf::from(format!("./{}/generated", lib.name()));
+    let registry = run(lib_name, |name| load_crate(name, &manifest_paths))?;
+
+    // switch from vendored types to `serde-reflection` types
+    let registry: serde_reflection::Registry =
+        serde_json::from_slice(&serde_json::to_vec(&registry)?)?;
+
+    let output_root = PathBuf::from(format!("./{}/generated", lib_name));
     fs::create_dir_all(&output_root)?;
-    let s = serde_json::to_vec(&registry)?;
-    let registry: serde_reflection::Registry = serde_json::from_slice(&s)?;
+    fs::remove_dir_all(&output_root)?;
+    fs::create_dir(&output_root)?;
+
     generate::swift(
         &registry,
-        "SharedTypes", // TODO: parameterise this
+        &format!("{}Types", AsPascalCase(lib_name)),
         output_root.join("swift"),
     )?;
 
     generate::java(
         &registry,
-        &format!("com.crux.{}.types", lib.name()), // TODO: parameterise this
+        &format!("com.crux.{}.types", lib_name.to_lowercase()),
         output_root.join("java"),
     )?;
 
     generate::typescript(
         &registry,
-        "shared_types", // TODO: parameterise this
+        &format!("{}_types", AsSnakeCase(lib_name)),
+        &lib.version().to_string(),
         output_root.join("typescript"),
     )?;
     Ok(())

@@ -7417,7 +7417,9 @@ snapshots:
 
   shared@file:../shared/pkg: {}
 
-  shared_types@file:../shared/generated/typescript: {}
+  shared_types@file:../shared/generated/typescript:
+    dependencies:
+      typescript: 5.8.2
 
   shebang-command@2.0.0:
     dependencies:

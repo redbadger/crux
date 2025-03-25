@@ -519,6 +519,7 @@ dependencies = [
  "console",
  "env_logger",
  "guppy",
+ "heck 0.5.0",
  "ignore",
  "insta",
  "iter_tools",
