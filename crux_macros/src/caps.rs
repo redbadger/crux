@@ -15,16 +15,16 @@ pub fn caps_macro_impl(input: TypeTuple) -> TokenStream {
     });
 
     quote! {
-        pub struct Caps {}
+        pub struct Capabilities {}
 
-        impl ::crux_core::WithContext<#event, #effect> for Caps {
+        impl ::crux_core::WithContext<#event, #effect> for Capabilities {
             fn new_with_context(_context: ::crux_core::capability::ProtoContext<#effect, #event>) -> Self {
-                Caps {}
+                Capabilities {}
             }
         }
 
         #[cfg(feature = "typegen")]
-        impl crux_core::typegen::Export for Caps {
+        impl crux_core::typegen::Export for Capabilities {
             fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
                 use crux_core::Capability;
                 #(#registrations ;)*
@@ -47,16 +47,16 @@ mod test {
         let actual = caps_macro_impl(input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r#"
-        pub struct Caps {}
-        impl ::crux_core::WithContext<Event, Effect> for Caps {
+        pub struct Capabilities {}
+        impl ::crux_core::WithContext<Event, Effect> for Capabilities {
             fn new_with_context(
                 _context: ::crux_core::capability::ProtoContext<Effect, Event>,
             ) -> Self {
-                Caps {}
+                Capabilities {}
             }
         }
         #[cfg(feature = "typegen")]
-        impl crux_core::typegen::Export for Caps {
+        impl crux_core::typegen::Export for Capabilities {
             fn register_types(
                 generator: &mut crux_core::typegen::TypeGen,
             ) -> crux_core::typegen::Result {

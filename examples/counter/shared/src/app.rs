@@ -70,7 +70,7 @@ impl crux_core::App for App {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
-    type Capabilities = Caps;
+    type Capabilities = Capabilities;
     type Effect = Effect;
 
     // During the migration to the new Command API, the `update` method

@@ -41,7 +41,7 @@ impl App for Counter {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = Caps;
+    type Capabilities = Capabilities;
     type Effect = Effect;
 
     fn update(
