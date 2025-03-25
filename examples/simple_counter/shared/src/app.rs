@@ -1,7 +1,7 @@
 // ANCHOR: app
 use crux_core::{
-    macros::{caps, effect2},
-    render::{render, Render, RenderOperation},
+    macros::effect2,
+    render::{render, RenderOperation},
     App, Command,
 };
 use serde::{Deserialize, Serialize};
@@ -17,10 +17,6 @@ effect2! {
     pub enum Effect {
         Render(RenderOperation),
     }
-}
-
-caps! {
-    (Event, Effect, Render)
 }
 
 #[derive(Default)]
@@ -41,7 +37,7 @@ impl App for Counter {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
     fn update(

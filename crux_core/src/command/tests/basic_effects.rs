@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::super::Command;
 use crate::{capability::Operation, Request};
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct AnOperation;
 #[derive(Debug, PartialEq, Deserialize)]
 struct AnOperationOutput;

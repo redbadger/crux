@@ -48,15 +48,6 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
     {
         Time::new(self.context.map_event(f))
     }
-
-    #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
-        generator.register_type::<Instant>()?;
-        generator.register_type::<Duration>()?;
-        generator.register_type::<TimeRequest>()?;
-        generator.register_type::<TimeResponse>()?;
-        Ok(())
-    }
 }
 
 impl<Ev> Clone for Time<Ev> {

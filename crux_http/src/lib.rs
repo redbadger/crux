@@ -55,15 +55,6 @@ impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
     {
         Http::new(self.context.map_event(f))
     }
-
-    #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
-        generator.register_type::<HttpError>()?;
-        generator.register_type::<Self::Operation>()?;
-        generator
-            .register_type::<<Self::Operation as crux_core::capability::Operation>::Output>()?;
-        Ok(())
-    }
 }
 
 impl<Ev> Clone for Http<Ev> {

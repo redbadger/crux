@@ -1,6 +1,6 @@
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::{
-    macros::{caps, effect2},
+    macros::effect2,
     render::{render, RenderOperation},
     Command,
 };
@@ -55,14 +55,6 @@ effect2! {
     }
 }
 
-caps!((
-    Event,
-    Effect,
-    crux_core::render::Render,
-    crux_http::Http,
-    ServerSentEvents
-));
-
 #[derive(Default)]
 pub struct App;
 
@@ -70,7 +62,7 @@ impl crux_core::App for App {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
     // During the migration to the new Command API, the `update` method

@@ -217,9 +217,18 @@ use channel::Sender;
 ///     type Output = HttpResponse;
 /// }
 /// ```
-pub trait Operation: serde::Serialize + Clone + PartialEq + Send + 'static {
+pub trait Operation:
+    serde::Serialize + serde::de::DeserializeOwned + Clone + PartialEq + Send + 'static
+{
     /// `Output` assigns the type this request results in.
     type Output: serde::de::DeserializeOwned + Send + Unpin + 'static;
+
+    #[cfg(feature = "typegen")]
+    fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
+        generator.register_type::<Self>()?;
+        generator.register_type::<Self::Output>()?;
+        Ok(())
+    }
 }
 
 /// A type that can be used as a capability operation, but which will never be sent to the shell.
@@ -295,13 +304,6 @@ pub trait Capability<Ev> {
         F: Fn(NewEv) -> Ev + Send + Sync + 'static,
         Ev: 'static,
         NewEv: 'static + Send;
-
-    #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
-        generator.register_type::<Self::Operation>()?;
-        generator.register_type::<<Self::Operation as Operation>::Output>()?;
-        Ok(())
-    }
 }
 
 /// Allows Crux to construct app's set of required capabilities, providing context
@@ -369,6 +371,12 @@ pub trait WithContext<Ev, Ef> {
     fn new_with_context(context: ProtoContext<Ef, Ev>) -> Self;
 }
 
+impl<Event, Effect> WithContext<Event, Effect> for () {
+    fn new_with_context(_context: ProtoContext<Effect, Event>) -> Self {
+        ()
+    }
+}
+
 /// An interface for capabilities to interact with the app and the shell.
 ///
 /// To use [`update_app`](CapabilityContext::update_app), [`notify_shell`](CapabilityContext::notify_shell)
@@ -377,7 +385,7 @@ pub trait WithContext<Ev, Ef> {
 /// For example (from `crux_time`)
 ///
 /// ```rust
-/// # #[derive(Clone, PartialEq, serde::Serialize)] pub struct TimeRequest;
+/// # #[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)] pub struct TimeRequest;
 /// # #[derive(Clone, serde::Deserialize)] pub struct TimeResponse(pub String);
 /// # impl crux_core::capability::Operation for TimeRequest {
 /// #     type Output = TimeResponse;
@@ -664,7 +672,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use static_assertions::assert_impl_all;
 
     use super::*;
@@ -675,7 +683,7 @@ mod tests {
     #[allow(dead_code)]
     enum Event {}
 
-    #[derive(PartialEq, Clone, Serialize)]
+    #[derive(PartialEq, Clone, Serialize, Deserialize)]
     struct Op {}
 
     impl Operation for Op {

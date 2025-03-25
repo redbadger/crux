@@ -1,15 +1,15 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{capability::Operation, Command, Request};
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct ToString(usize);
 
 impl Operation for ToString {
     type Output = String;
 }
 
-#[derive(PartialEq, Clone, Serialize)]
+#[derive(PartialEq, Clone, Serialize, Deserialize)]
 struct HowMany;
 
 impl Operation for HowMany {

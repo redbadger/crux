@@ -61,7 +61,7 @@ where
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};
-    /// # #[derive(Debug, PartialEq, Clone, Serialize)]
+    /// # #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
     /// # enum AnOperation {
     /// #     One,
     /// #     Two,
@@ -150,7 +150,7 @@ where
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};
-    /// # #[derive(Debug, PartialEq, Clone, Serialize)]
+    /// # #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
     /// # enum AnOperation {
     /// #     One,
     /// #     Two,
@@ -288,7 +288,7 @@ where
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};
-    /// # #[derive(Debug, PartialEq, Clone, Serialize)]
+    /// # #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
     /// # enum AnOperation {
     /// #     One,
     /// #     Two,
@@ -377,7 +377,7 @@ where
     /// # use crux_core::{Command, Request};
     /// # use crux_core::capability::Operation;
     /// # use serde::{Deserialize, Serialize};
-    /// # #[derive(Debug, PartialEq, Clone, Serialize)]
+    /// # #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
     /// # enum AnOperation {
     /// #     One,
     /// #     Two,

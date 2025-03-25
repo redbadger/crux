@@ -10,7 +10,7 @@ use crate::{
     Request,
 };
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 enum AnOperation {
     Request(usize),
     Stream(String),
