@@ -19,7 +19,7 @@ const SOURCE_CODE_EXTENSIONS: [&str; 9] =
 
 type FileMap = BTreeMap<PathBuf, String>;
 
-pub(crate) fn doctor(
+pub fn doctor(
     template_dir: &Path,
     path: Option<&Path>,
     verbosity: u8,

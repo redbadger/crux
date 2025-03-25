@@ -13,7 +13,7 @@ use clap::{ArgAction, Args, Parser, Subcommand};
     arg_required_else_help(true),
     propagate_version = true
 )]
-pub(crate) struct Cli {
+pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 
@@ -22,7 +22,7 @@ pub(crate) struct Cli {
 }
 
 #[derive(Subcommand)]
-pub(crate) enum Commands {
+pub enum Commands {
     #[command(visible_alias = "doc")]
     Doctor(DoctorArgs),
 
@@ -31,9 +31,9 @@ pub(crate) enum Commands {
 }
 
 #[derive(Args)]
-pub(crate) struct DoctorArgs {
+pub struct DoctorArgs {
     #[arg(long, short)]
-    pub(crate) fix: Option<PathBuf>,
+    pub fix: Option<PathBuf>,
 
     #[arg(long, short, default_value = "false")]
     pub include_source_code: bool,
@@ -47,7 +47,7 @@ pub(crate) struct DoctorArgs {
 }
 
 #[derive(Args)]
-pub(crate) struct CodegenArgs {
+pub struct CodegenArgs {
     /// name of the library containing your Crux App
     #[arg(long, short)]
     pub lib: String,
