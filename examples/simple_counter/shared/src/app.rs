@@ -1,6 +1,6 @@
 // ANCHOR: app
 use crux_core::{
-    macros::effect2,
+    macros::effect,
     render::{render, RenderOperation},
     App, Command,
 };
@@ -13,7 +13,7 @@ pub enum Event {
     Reset,
 }
 
-effect2! {
+effect! {
     pub enum Effect {
         Render(RenderOperation),
     }

@@ -1,6 +1,6 @@
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::{
-    macros::effect2,
+    macros::effect,
     render::{render, RenderOperation},
     Command,
 };
@@ -47,7 +47,7 @@ pub enum Event {
     Update(Count),
 }
 
-effect2! {
+effect! {
     pub enum Effect {
         Render(RenderOperation),
         Http(HttpRequest),

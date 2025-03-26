@@ -1,11 +1,9 @@
 mod capability;
 mod effect;
-mod effect2;
+mod effect_derive;
 mod export;
 
 use capability::capability_impl;
-use effect::effect_impl;
-use effect2::effect2_macro_impl;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
@@ -58,8 +56,8 @@ use syn::{parse_macro_input, ItemEnum};
 /// }
 #[proc_macro_derive(Effect, attributes(effect))]
 #[proc_macro_error]
-pub fn effect(input: TokenStream) -> TokenStream {
-    effect_impl(&parse_macro_input!(input)).into()
+pub fn effect_derive(input: TokenStream) -> TokenStream {
+    effect_derive::effect_impl(&parse_macro_input!(input)).into()
 }
 
 /// Generates an effect type matching the enum definition provided,
@@ -68,7 +66,7 @@ pub fn effect(input: TokenStream) -> TokenStream {
 /// e.g.
 /// ```rust
 /// # use crux_core::{Capability, render::RenderOperation, compose::Compose};
-/// # use crux_core::macros::effect2;
+/// # use crux_core::macros::effect;
 /// # use crux_http::protocol::HttpRequest;
 /// # #[derive(Default)]
 /// # struct MyApp;
@@ -91,16 +89,16 @@ pub fn effect(input: TokenStream) -> TokenStream {
 /// #         unimplemented!()
 /// #     }
 /// # }
-/// effect2! {
+/// effect! {
 ///     pub enum MyEffect {
 ///         Render(RenderOperation),
 ///         Http(HttpRequest),
 ///     }
 /// }
 #[proc_macro]
-pub fn effect2(input: TokenStream) -> TokenStream {
+pub fn effect(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemEnum);
-    effect2_macro_impl(input).into()
+    effect::effect_impl(input).into()
 }
 
 #[proc_macro_derive(Export)]

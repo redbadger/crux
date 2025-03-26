@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crux_core::{macros::effect2, App, Command};
+use crux_core::{macros::effect, App, Command};
 use crux_time::{
     command::{Time, TimerHandle, TimerOutcome},
     TimeRequest, TimeResponse, TimerId,
@@ -16,7 +16,7 @@ pub enum Event {
     Completed(TimerOutcome),
 }
 
-effect2! {
+effect! {
     pub enum Effect {
         Time(TimeRequest),
     }
