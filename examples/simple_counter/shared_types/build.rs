@@ -1,14 +1,11 @@
-use crux_core::{bridge::Request, typegen::TypeGen};
-use shared::{Counter, EffectFfi};
+use crux_core::typegen::TypeGen;
+use shared::Counter;
 use std::path::PathBuf;
 
 fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../shared");
 
     let mut gen = TypeGen::new();
-
-    gen.register_type::<EffectFfi>()?;
-    gen.register_type::<Request<EffectFfi>>()?;
 
     gen.register_app::<Counter>()?;
 

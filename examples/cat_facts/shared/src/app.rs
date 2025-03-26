@@ -3,17 +3,18 @@ pub mod platform;
 use std::time::SystemTime;
 
 use chrono::{DateTime, Utc};
-use crux_http::command::Http;
+use crux_http::{command::Http, protocol::HttpRequest};
 use serde::{Deserialize, Serialize};
 
 pub use crux_core::App;
 use crux_core::{
-    render::{self, Render},
+    macros::effect,
+    render::{self, RenderOperation},
     Command,
 };
-use crux_kv::{command::KeyValue, error::KeyValueError};
-use crux_platform::Platform;
-use crux_time::command::Time;
+use crux_kv::{command::KeyValue, error::KeyValueError, KeyValueOperation};
+use crux_platform::PlatformRequest;
+use crux_time::{command::Time, TimeRequest};
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
@@ -88,30 +89,24 @@ pub struct CatFacts {
     platform: platform::App,
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(crux_core::macros::Effect)]
-#[allow(unused)]
-pub struct CatFactCapabilities {
-    http: crux_http::Http<Event>,
-    key_value: crux_kv::KeyValue<Event>,
-    platform: Platform<Event>,
-    render: Render<Event>,
-    time: crux_time::Time<Event>,
+effect! {
+    pub enum Effect {
+        Http(HttpRequest),
+        KeyValue(KeyValueOperation),
+        Platform(PlatformRequest),
+        Render(RenderOperation),
+        Time(TimeRequest),
+    }
 }
 
 impl App for CatFacts {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
-    type Capabilities = CatFactCapabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
-    fn update(
-        &self,
-        msg: Event,
-        model: &mut Model,
-        _caps: &CatFactCapabilities,
-    ) -> Command<Effect, Event> {
+    fn update(&self, msg: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
         self.update(msg, model)
     }
 

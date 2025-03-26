@@ -7,7 +7,6 @@ use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(effect), supports(struct_named))]
 struct ExportStructReceiver {
-    ident: Ident,
     name: Option<Ident>, // also used by the effect derive macro to name the effect
     data: ast::Data<util::Ignored, ExportFieldReceiver>,
 }
@@ -22,8 +21,7 @@ pub struct ExportFieldReceiver {
 
 impl ToTokens for ExportStructReceiver {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let ident = &self.ident;
-
+        let effect_name = self.name.clone().unwrap_or_else(|| format_ident!("Effect"));
         let ffi_export_name = match self.name {
             Some(ref name) => {
                 let ffi_ef_name = format_ident!("{}Ffi", name);
@@ -52,9 +50,7 @@ impl ToTokens for ExportStructReceiver {
         }
 
         tokens.extend(quote! {
-
-            impl ::crux_core::typegen::Export for #ident {
-                #[cfg(feature = "typegen")]
+            impl ::crux_core::typegen::Export for #effect_name {
                 fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
                     use ::crux_core::capability::{Capability, Operation};
                     #(#output_type_exports)*
@@ -128,9 +124,8 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r#"
-        impl ::crux_core::typegen::Export for Capabilities {
-            #[cfg(feature = "typegen")]
+        insta::assert_snapshot!(pretty_print(&actual), @r"
+        impl ::crux_core::typegen::Export for Effect {
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
@@ -141,7 +136,7 @@ mod tests {
                 Ok(())
             }
         }
-        "#);
+        ");
     }
 
     #[test]
@@ -176,9 +171,8 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r#"
-        impl ::crux_core::typegen::Export for MyCapabilities {
-            #[cfg(feature = "typegen")]
+        insta::assert_snapshot!(pretty_print(&actual), @r"
+        impl ::crux_core::typegen::Export for Effect {
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
@@ -198,7 +192,7 @@ mod tests {
                 Ok(())
             }
         }
-        "#);
+        ");
     }
 
     #[test]
@@ -218,9 +212,8 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r#"
-        impl ::crux_core::typegen::Export for MyCapabilities {
-            #[cfg(feature = "typegen")]
+        insta::assert_snapshot!(pretty_print(&actual), @r"
+        impl ::crux_core::typegen::Export for Effect {
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
@@ -241,7 +234,7 @@ mod tests {
                 Ok(())
             }
         }
-        "#);
+        ");
     }
 
     #[test]
@@ -259,9 +252,8 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r#"
-        impl ::crux_core::typegen::Export for Capabilities {
-            #[cfg(feature = "typegen")]
+        insta::assert_snapshot!(pretty_print(&actual), @r"
+        impl ::crux_core::typegen::Export for MyEffect {
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
@@ -272,7 +264,7 @@ mod tests {
                 Ok(())
             }
         }
-        "#);
+        ");
     }
 
     fn pretty_print(ts: &proc_macro2::TokenStream) -> String {

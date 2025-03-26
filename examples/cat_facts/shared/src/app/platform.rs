@@ -1,8 +1,9 @@
 use crux_core::{
-    render::{self, Render},
+    macros::effect,
+    render::{self, RenderOperation},
     Command,
 };
-use crux_platform::{command::Platform, PlatformResponse};
+use crux_platform::{command::Platform, PlatformRequest, PlatformResponse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
@@ -19,25 +20,21 @@ pub enum Event {
     Set(PlatformResponse),
 }
 
-#[derive(crux_core::macros::Effect)]
-pub struct Capabilities {
-    pub platform: crux_platform::Platform<Event>,
-    pub render: Render<Event>,
+effect! {
+    pub enum Effect {
+        Platform(PlatformRequest),
+        Render(RenderOperation),
+    }
 }
 
 impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = Model;
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
-    fn update(
-        &self,
-        msg: Event,
-        model: &mut Model,
-        _caps: &Capabilities,
-    ) -> Command<Effect, Event> {
+    fn update(&self, msg: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
         self.update(msg, model)
     }
 

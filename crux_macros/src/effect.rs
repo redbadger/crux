@@ -86,6 +86,14 @@ pub fn effect_impl(input: ItemEnum) -> TokenStream {
         }
     });
 
+    let type_gen = effects.clone().map(|effect| {
+        let operation = &effect.operation;
+
+        quote! {
+            #operation::register_types(generator)?;
+        }
+    });
+
     quote! {
         #[derive(Debug)]
         pub enum #enum_ident {
@@ -108,6 +116,18 @@ pub fn effect_impl(input: ItemEnum) -> TokenStream {
         #(#from_impls)*
 
         #(#filters)*
+
+        #[cfg(feature = "typegen")]
+        impl crux_core::typegen::Export for Effect {
+            fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                #(#type_gen)*
+                generator.register_type::<#ffi_enum_ident>()?;
+                generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
+
+                Ok(())
+            }
+        }
     }
 }
 
@@ -164,6 +184,18 @@ mod test {
                 } else {
                     panic!("not a {} effect", "Render")
                 }
+            }
+        }
+        #[cfg(feature = "typegen")]
+        impl crux_core::typegen::Export for Effect {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                RenderOperation::register_types(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
             }
         }
         "##);
@@ -241,6 +273,19 @@ mod test {
                 } else {
                     panic!("not a {} effect", "Http")
                 }
+            }
+        }
+        #[cfg(feature = "typegen")]
+        impl crux_core::typegen::Export for Effect {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                RenderOperation::register_types(generator)?;
+                HttpRequest::register_types(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
             }
         }
         "##);
