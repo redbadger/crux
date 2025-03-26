@@ -2,7 +2,9 @@
 name = "shared_types"
 version = "0.1.0"
 authors.workspace = true
+repository.workspace = true
 edition.workspace = true
+license.workspace = true
 keywords.workspace = true
 rust-version.workspace = true
 
@@ -11,4 +13,5 @@ rust-version.workspace = true
 [build-dependencies]
 anyhow.workspace = true
 crux_core = { workspace = true, features = ["typegen"] }
+crux_http = { workspace = true, features = ["typegen"] }
 shared = { path = "../shared", features = ["typegen"] }

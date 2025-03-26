@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,6 +15,8 @@
 		5425067E3C89678E1AEF3F79 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 9CC45FB589F9964637A15D5C /* shared.udl */; };
 		9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 987661FD124A360FFF36A4F4 /* SharedTypes */; };
 		C4CD26945C055EF9827876AE /* BridgePerfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E902CC2F9431673D47029C6C /* BridgePerfApp.swift */; };
+		CC51538E2D946F2900BA5660 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC51538D2D946F2900BA5660 /* SharedTypes */; };
+		CCA0E5592D9479EC00CB06E0 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CCA0E5582D9479EC00CB06E0 /* SharedTypes */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -81,7 +83,6 @@
 		5714ACFE617CB6EE596AD894 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		973DE79248816287A24759FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9CC45FB589F9964637A15D5C /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
-		CB21FEAAC10EE53663214F3D /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		CC862345F0CDB156048B1417 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E902CC2F9431673D47029C6C /* BridgePerfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgePerfApp.swift; sourceTree = "<group>"; };
 		EC64E599F518F2E743EA1C66 /* BridgePerf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BridgePerf.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -94,7 +95,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				3BC6ECA0F473F02732E308CF /* libshared_static.a in Frameworks */,
+				CC51538E2D946F2900BA5660 /* SharedTypes in Frameworks */,
 				9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */,
+				CCA0E5592D9479EC00CB06E0 /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,20 +108,11 @@
 			isa = PBXGroup;
 			children = (
 				A745C5C6AA1501560EB5DA3C /* BridgePerf */,
-				690F97A271CC1AAFF155F799 /* Packages */,
 				7DD811CAEDAD7DF7CA41F833 /* src */,
 				CB13C3F3A78020B70FBF188F /* Products */,
 				FCE50907855ED2F9637A72B2 /* Projects */,
 			);
 			sourceTree = "<group>";
-		};
-		690F97A271CC1AAFF155F799 /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				CB21FEAAC10EE53663214F3D /* SharedTypes */,
-			);
-			name = Packages;
-			sourceTree = SOURCE_ROOT;
 		};
 		7DD811CAEDAD7DF7CA41F833 /* src */ = {
 			isa = PBXGroup;
@@ -188,6 +182,8 @@
 			name = BridgePerf;
 			packageProductDependencies = (
 				987661FD124A360FFF36A4F4 /* SharedTypes */,
+				CC51538D2D946F2900BA5660 /* SharedTypes */,
+				CCA0E5582D9479EC00CB06E0 /* SharedTypes */,
 			);
 			productName = BridgePerf;
 			productReference = EC64E599F518F2E743EA1C66 /* BridgePerf.app */;
@@ -211,6 +207,9 @@
 				en,
 			);
 			mainGroup = 5F3D13089EDA162C9AD13180;
+			packageReferences = (
+				CCA0E5572D9479EC00CB06E0 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+			);
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -473,8 +472,23 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		CCA0E5572D9479EC00CB06E0 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared_types/generated/swift/SharedTypes;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		987661FD124A360FFF36A4F4 /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC51538D2D946F2900BA5660 /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CCA0E5582D9479EC00CB06E0 /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
 		};

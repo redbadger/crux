@@ -1,7 +1,8 @@
 // ANCHOR: app
 
 use crux_core::{
-    render::{render, Render},
+    macros::effect,
+    render::{render, RenderOperation},
     App, Command,
 };
 use serde::{Deserialize, Serialize};
@@ -19,10 +20,10 @@ pub struct ViewModel {
     pub data: String,
 }
 
-#[derive(crux_core::macros::Effect)]
-#[allow(unused)]
-pub struct Capabilities {
-    render: Render<Event>,
+effect! {
+    pub enum Effect {
+        Render(RenderOperation),
+    }
 }
 
 #[derive(Default)]
@@ -32,7 +33,7 @@ impl App for Hello {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
     fn update(

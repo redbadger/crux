@@ -51,6 +51,12 @@ pub struct CodegenArgs {
     /// name of the library containing your Crux App
     #[arg(long, short)]
     pub lib: String,
+    /// Optional output directory for generated code
+    #[arg(long, short)]
+    pub output: Option<PathBuf>,
+    /// Optional Java package name
+    #[arg(long, short)]
+    pub java_package: Option<String>,
 }
 
 #[cfg(test)]

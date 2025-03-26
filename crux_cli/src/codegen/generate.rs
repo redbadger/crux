@@ -31,7 +31,7 @@ pub enum TypeGenError {
 /// ```
 pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> Result {
     let path = path.as_ref().join(module_name);
-
+    let _ = fs::remove_dir_all(&path);
     fs::create_dir_all(&path)?;
 
     let installer = swift::Installer::new(path.clone());
@@ -92,6 +92,9 @@ pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> 
 /// # Ok::<(), generate::TypeGenError>(())
 /// ```
 pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> Result {
+    let _ = fs::remove_dir_all(&path.as_ref().join("com/crux"));
+    let _ = fs::remove_dir_all(&path.as_ref().join("com/novi/bincode"));
+    let _ = fs::remove_dir_all(&path.as_ref().join("com/novi/serde"));
     fs::create_dir_all(&path)?;
 
     let package_path = package_name.replace('.', "/");
@@ -146,6 +149,7 @@ pub fn typescript(
     version: &str,
     path: impl AsRef<Path>,
 ) -> Result {
+    let _ = fs::remove_dir_all(&path);
     fs::create_dir_all(&path)?;
     let output_dir = path.as_ref().to_path_buf();
 
