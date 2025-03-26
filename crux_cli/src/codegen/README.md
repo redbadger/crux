@@ -8,6 +8,7 @@ Kotlin and TypeScript.
 > This is a work in progress and is not yet ready for general use.
 
 ```sh
+# currently requires Rust nightly to be installed (`rustup install nightly`)
 crux codegen --lib shared
 ```
 
@@ -25,20 +26,7 @@ version so we currently require Rust nightly to be installed
 in the library and is deserialized using the
 [`rustdoc-types`][rustdocTypesReference] crate.
 
-We currently only look into the specified library and not its dependencies, but
-this will change.
-
 ### Build a graph
-
-Parse the JSON and build a graph of the relationships that we are interested in.
-
-Start by adding edges for any `impl` blocks that implement the `App` or `Effect`
-traits.
-
-Then add edges for the `Event`, `ViewModel`, and `Capabilities` associated types
-in the `App` impl.
-
-Then add edges for struct fields and enum variants.
 
 ```mermaid
 graph TD
@@ -59,79 +47,20 @@ graph TD
     AI --> |AssociatedType| Ty
     I -.-> |TraitApp| TA
     I -.-> |TraitEffect| TE
-
-
 ```
-
-### Process the graph
 
 Process the data using the [`ascent`][ascentCrateReference] crate to run a logic
-program (similar to Datalog) on the graph.
+program (similar to Datalog) on the items, summaries and crates that are listed in the JSON.
 
-```rust
-ascent! {
-    // input data
-    relation edge(Node, Node, Edge);
+We find any structs that implement the `App` trait, and build a hierarchy of those, so that we can determine which one is the root app.
 
-    // result data
-    relation app(Node);
-    relation effect(Node);
-    relation is_effect_of_app(Node, Node);
-    relation root(Node);
-    relation parent(Node, Node);
-    relation output(Node, Node);
+We then dig into its associated items to find the ViewModel, Event, and Effect (with each effect's Operation and Output).
 
-    // app structs have an implementation of the App trait
-    app(app) <--
-        edge(app_impl, app_trait, Edge::TraitApp),
-        edge(app_impl, app, Edge::Type);
-
-    // effect enums have an implementation of the Effect trait
-    effect(effect) <--
-        edge(effect_impl, effect_trait, Edge::TraitEffect),
-        edge(effect_impl, effect, Edge::Type);
-
-    // an effect belongs to an app if they are in the same module
-    is_effect_of_app(app, effect) <--
-        app(app),
-        effect(effect),
-        if are_in_same_module(app, effect);
-
-    // Event and ViewModel types are associated
-    // with the root apps (that have no parent)
-    root(assoc_type) <--
-        edge(app_impl, app_trait, Edge::TraitApp),
-        edge(app_impl, app, Edge::Type),
-        !parent(_, app),
-        edge(app_impl, assoc_item, Edge::AssociatedItem),
-        edge(assoc_item, assoc_type, Edge::AssociatedType);
-    // Effects belong to the root apps (that have no parent)
-    root(effect_enum) <--
-        is_effect_of_app(app, effect_enum),
-        !parent(_, app);
-
-    // app hierarchy
-    parent(parent, child) <--
-        app(parent),
-        app(child),
-        edge(parent, field, Edge::Field),
-        edge(field, child, Edge::Type);
-
-    output(root, child) <--
-        root(root),
-        edge(root, child, ?Edge::Variant|Edge::Field);
-    output(parent, child) <--
-        output(grandparent, parent),
-        edge(parent, child, ?Edge::Variant|Edge::Field|Edge::Type);
-}
-```
+We also find any foreign crates that are needed and queue them for processing.
 
 ### Create an intermediate representation
 
-For now we are using the same IR as the
-[`serde_generate`][serdeGenerateReference] crate that we currently use for
-typegen. This gives us a backend for free and should allow us to maintain
-backwards compatibility.
+Finally we take the set of edges we are interested in and use them to build an intermediate representation that is compatible with the [`serde_generate`][serdeGenerateReference] crate. This allows us to use the same backend that we are currently using in order to maintain backwards compatibility.
 
 ### Generate foreign types
 

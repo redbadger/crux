@@ -24,8 +24,8 @@ importers:
         specifier: ^5.1.23
         version: 5.1.23
       pkg:
-        specifier: link:../shared/pkg
-        version: link:../shared/pkg
+        specifier: file:../shared/pkg
+        version: shared@file:../shared/pkg
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -33,11 +33,11 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       shared:
-        specifier: link:../shared/pkg
-        version: link:../shared/pkg
+        specifier: file:../shared/pkg
+        version: file:../shared/pkg
       shared_types:
-        specifier: link:../shared/generated/typescript
-        version: link:../shared/generated/typescript
+        specifier: file:../shared_types/generated/typescript
+        version: file:../shared_types/generated/typescript
     devDependencies:
       '@remix-run/dev':
         specifier: ^2.16.0
@@ -3204,6 +3204,12 @@ packages:
 
   setprototypeof@1.2.0:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
+
+  shared@file:../shared/pkg:
+    resolution: {directory: ../shared/pkg, type: directory}
+
+  shared_types@file:../shared_types/generated/typescript:
+    resolution: {directory: ../shared_types/generated/typescript, type: directory}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -7411,6 +7417,10 @@ snapshots:
       es-object-atoms: 1.1.1
 
   setprototypeof@1.2.0: {}
+
+  shared@file:../shared/pkg: {}
+
+  shared_types@file:../shared_types/generated/typescript: {}
 
   shebang-command@2.0.0:
     dependencies:

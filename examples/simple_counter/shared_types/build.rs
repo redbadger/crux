@@ -1,15 +1,13 @@
-use std::path::PathBuf;
-
 use crux_core::typegen::TypeGen;
-
-use shared::CatFacts;
+use shared::Counter;
+use std::path::PathBuf;
 
 fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../shared");
 
     let mut gen = TypeGen::new();
 
-    gen.register_app::<CatFacts>()?;
+    gen.register_app::<Counter>()?;
 
     let output_root = PathBuf::from("./generated");
 

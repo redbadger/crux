@@ -1,8 +1,6 @@
-use std::{fs, path::PathBuf};
-
-use crux_core::typegen::{State, TypeGen};
-
+use crux_core::typegen::TypeGen;
 use shared::{App, PaymentStatus, ReceiptStatus};
+use std::path::PathBuf;
 
 fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../shared");
@@ -17,14 +15,6 @@ fn main() -> anyhow::Result<()> {
     let output_root = PathBuf::from("./generated");
 
     gen.swift("SharedTypes", output_root.join("swift"))?;
-
-    // temporary write of registry.json for debugging codegen
-    let registry = match &gen.state {
-        State::Generating(registry) => registry,
-        _ => panic!("registry creation failed"),
-    };
-    let s = serde_json::to_string_pretty(registry)?;
-    fs::write(output_root.join("registry.json"), s)?;
 
     Ok(())
 }

@@ -30,8 +30,8 @@ importers:
         specifier: file:../shared/pkg
         version: file:../shared/pkg
       shared_types:
-        specifier: file:../shared/generated/typescript
-        version: file:../shared/generated/typescript
+        specifier: file:../shared_types/generated/typescript
+        version: file:../shared_types/generated/typescript
       typescript:
         specifier: 5.8.2
         version: 5.8.2
@@ -1362,8 +1362,8 @@ packages:
   shared@file:../shared/pkg:
     resolution: {directory: ../shared/pkg, type: directory}
 
-  shared_types@file:../shared/generated/typescript:
-    resolution: {directory: ../shared/generated/typescript, type: directory}
+  shared_types@file:../shared_types/generated/typescript:
+    resolution: {directory: ../shared_types/generated/typescript, type: directory}
 
   sharp@0.33.5:
     resolution: {integrity: sha512-haPVm1EkS9pgvHrQ/F3Xy+hgcuMV0Wm9vfIBSiwZ05k+xgb0PkBQpGsAA/oWdDobNaZTH5ppvHtzCFbnSEwHVw==}
@@ -3027,9 +3027,7 @@ snapshots:
 
   shared@file:../shared/pkg: {}
 
-  shared_types@file:../shared/generated/typescript:
-    dependencies:
-      typescript: 5.8.2
+  shared_types@file:../shared_types/generated/typescript: {}
 
   sharp@0.33.5:
     dependencies:

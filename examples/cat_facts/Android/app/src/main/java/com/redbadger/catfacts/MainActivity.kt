@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.redbadger.catfacts.shared_types.Event
+import com.crux.shared.types.Event
 import com.redbadger.catfacts.ui.theme.CatfactsTheme
 import kotlinx.coroutines.launch
 import kotlin.jvm.optionals.getOrNull

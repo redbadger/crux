@@ -31,7 +31,7 @@ android {
         jvmTarget = '20'
     }
     sourceSets {
-        main.java.srcDirs += "${projectDir}/../../shared/generated/java"
+        main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
     }
 }
 
@@ -76,7 +76,7 @@ afterEvaluate {
         def buildType = "${variant.buildType.name.capitalize()}"
 
         tasks.named("preBuild") {
-             it.dependsOn(tasks.named("bindGen"))
+            it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
         }
 
         tasks.named("generate${productFlavor}${buildType}Assets") {
@@ -100,7 +100,7 @@ tasks.matching { it.name.matches(/merge.*JniLibFolders/) }.configureEach {
 
 
 tasks.register('bindGen', Exec) {
-    def outDir = "${projectDir}/../../shared/generated/java"
+    def outDir = "${projectDir}/../../shared_types/generated/java"
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine("cmd", "/c",
@@ -113,5 +113,14 @@ tasks.register('bindGen', Exec) {
                 --language kotlin \
                 --out-dir $outDir
                 """)
+    }
+}
+
+tasks.register('typesGen', Exec) {
+    workingDir "../../"
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine("cmd", "/c", "cargo build -p shared_types")
+    } else {
+        commandLine("sh", "-c", "cargo build -p shared_types")
     }
 }

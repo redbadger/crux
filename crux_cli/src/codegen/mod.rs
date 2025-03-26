@@ -50,10 +50,12 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let registry: serde_reflection::Registry =
         serde_json::from_slice(&serde_json::to_vec(&registry)?)?;
 
-    let output_root = PathBuf::from(format!("./{}/generated", lib_name));
+    let output_root = args
+        .output
+        .clone()
+        .take()
+        .unwrap_or_else(|| PathBuf::from(format!("./{}/generated", lib_name)));
     fs::create_dir_all(&output_root)?;
-    fs::remove_dir_all(&output_root)?;
-    fs::create_dir(&output_root)?;
 
     generate::swift(
         &registry,
@@ -61,11 +63,12 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
         output_root.join("swift"),
     )?;
 
-    generate::java(
-        &registry,
-        &format!("com.crux.{}.types", lib_name.to_lowercase()),
-        output_root.join("java"),
-    )?;
+    let java_package = args
+        .java_package
+        .clone()
+        .take()
+        .unwrap_or_else(|| format!("com.crux.{}.types", lib_name.to_lowercase()));
+    generate::java(&registry, &java_package, output_root.join("java"))?;
 
     generate::typescript(
         &registry,

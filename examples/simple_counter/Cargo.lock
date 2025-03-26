@@ -3063,6 +3063,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "shared_types"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crux_core",
+ "shared",
+]
+
+[[package]]
 name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
