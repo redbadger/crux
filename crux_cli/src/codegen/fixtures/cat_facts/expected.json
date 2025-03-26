@@ -406,9 +406,13 @@
     "ENUM": {
       "0": {
         "now": {
-          "NEWTYPE": {
-            "TYPENAME": "Instant"
-          }
+          "STRUCT": [
+            {
+              "instant": {
+                "TYPENAME": "Instant"
+              }
+            }
+          ]
         }
       },
       "1": {

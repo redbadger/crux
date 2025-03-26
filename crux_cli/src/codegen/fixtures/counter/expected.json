@@ -2,16 +2,16 @@
   "Effect": {
     "ENUM": {
       "0": {
-        "Http": {
+        "Render": {
           "NEWTYPE": {
-            "TYPENAME": "HttpRequest"
+            "TYPENAME": "RenderOperation"
           }
         }
       },
       "1": {
-        "Render": {
+        "Http": {
           "NEWTYPE": {
-            "TYPENAME": "RenderOperation"
+            "TYPENAME": "HttpRequest"
           }
         }
       },

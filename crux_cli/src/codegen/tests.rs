@@ -62,10 +62,9 @@ fn load_expected(name: &str) -> Result<Registry> {
 #[case::cat_facts("cat_facts")]
 #[case::counter("counter")]
 #[case::hello_world("hello_world")]
-#[case::notes("notes")]
+// #[case::notes("notes")]
 #[case::simple_counter("simple_counter")]
-#[case::tap_to_pay("tap_to_pay")]
-#[ignore = "not yet fully implemented"]
+// #[case::tap_to_pay("tap_to_pay")]
 fn full(#[case] example: &str) {
     let actual = super::run(example, load_rustdoc).unwrap();
     let expected: Registry = load_expected(example).expect("should deserialize");

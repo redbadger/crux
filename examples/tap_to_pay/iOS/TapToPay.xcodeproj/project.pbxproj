@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -17,6 +17,8 @@
 		A2D4E5ECBD534FC785A11F63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A84BC6357C415168E4F7BE9C /* Assets.xcassets */; };
 		A623D866B7B6120D6E9838CC /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = C155745D03B8A6032E0E060D /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B69B660D15D81B0434CA097E /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 1DE99E17B7848389BDC3782A /* shared.udl */; };
+		CC089AB92D9488D60098D2FE /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC089AB82D9488D60098D2FE /* SharedTypes */; };
+		CC51537B2D9468F400BA5660 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC51537A2D9468F400BA5660 /* SharedTypes */; };
 		DA29B07D2DD0551A3DF541D2 /* PaymentFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5414CE2A3E300058C15A3D80 /* PaymentFlow.swift */; };
 /* End PBXBuildFile section */
 
@@ -90,7 +92,6 @@
 		BA50000798F11691CF817031 /* TapToPay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TapToPay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D980B763F26C2F2246B45291 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		DDCF48ECC7FB2224974B4076 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		E9F1437A45FFD736CF54A408 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		F3EF1471D7064B16848A1901 /* ReceiptScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -100,21 +101,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				25D3F307C64EAF16CE20B494 /* libshared_static.a in Frameworks */,
+				CC51537B2D9468F400BA5660 /* SharedTypes in Frameworks */,
 				896D9ABC89003912991676DC /* SharedTypes in Frameworks */,
+				CC089AB92D9488D60098D2FE /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		2E942EF58FF07A6B501003A5 /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				E9F1437A45FFD736CF54A408 /* SharedTypes */,
-			);
-			name = Packages;
-			sourceTree = SOURCE_ROOT;
-		};
 		645776118A8B2DD18680D289 /* src */ = {
 			isa = PBXGroup;
 			children = (
@@ -176,7 +171,6 @@
 		DD15AB1A817305DB47319F04 = {
 			isa = PBXGroup;
 			children = (
-				2E942EF58FF07A6B501003A5 /* Packages */,
 				645776118A8B2DD18680D289 /* src */,
 				A6141830280F100AC54B6208 /* TapToPay */,
 				ADE32FA7145BAE7D70FDB181 /* Products */,
@@ -205,6 +199,8 @@
 			name = TapToPay;
 			packageProductDependencies = (
 				FDB49091D37E1D522ED8F28E /* SharedTypes */,
+				CC51537A2D9468F400BA5660 /* SharedTypes */,
+				CC089AB82D9488D60098D2FE /* SharedTypes */,
 			);
 			productName = TapToPay;
 			productReference = BA50000798F11691CF817031 /* TapToPay.app */;
@@ -228,6 +224,9 @@
 				en,
 			);
 			mainGroup = DD15AB1A817305DB47319F04;
+			packageReferences = (
+				CC089AB72D9488D60098D2FE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+			);
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -493,7 +492,22 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		CC089AB72D9488D60098D2FE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared_types/generated/swift/SharedTypes;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		CC089AB82D9488D60098D2FE /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC51537A2D9468F400BA5660 /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
 		FDB49091D37E1D522ED8F28E /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;

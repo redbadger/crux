@@ -13,5 +13,7 @@ or return
 cargo build
 
 pushd $argv[1]
-RUST_LOG=info ../../target/debug/crux codegen --lib shared
+RUST_LOG=info ../../target/debug/crux codegen \
+    --lib shared \
+    --output ./shared_types/generated
 popd

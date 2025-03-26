@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,6 +13,8 @@
 		94DCD6C97BBC86B89673CA0E /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 258EC994D7C693E3141C4563 /* core.swift */; };
 		A022BC4B1B16254762ED55B3 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */; };
 		C26A1E5DDAB1ED32518E8F2A /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2EA4D4AAE1A6C4D3400A9A06 /* libshared_static.a */; };
+		CC089AB42D9487F00098D2FE /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC089AB32D9487F00098D2FE /* SharedTypes */; };
+		CC5153802D9469B500BA5660 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC51537F2D9469B500BA5660 /* SharedTypes */; };
 		D39A72610E7E3BD191DBDC06 /* SimpleCounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF52C000453302D743B48803 /* SimpleCounterApp.swift */; };
 /* End PBXBuildFile section */
 
@@ -78,7 +80,6 @@
 /* Begin PBXFileReference section */
 		1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpleCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		258EC994D7C693E3141C4563 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
-		642CF26F4B57B0FF7348C6BF /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		842F8D01CC76E9BFCDBD2862 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		8B8EC4C63F3ECC2B26BBAEC2 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
 		8EA6E09EE87596B896068D0E /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
@@ -92,7 +93,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				C26A1E5DDAB1ED32518E8F2A /* libshared_static.a in Frameworks */,
+				CC5153802D9469B500BA5660 /* SharedTypes in Frameworks */,
 				1989BD3C863A9FB37C889B6D /* SharedTypes in Frameworks */,
+				CC089AB42D9487F00098D2FE /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,7 +105,6 @@
 		1B8911D02E90EF25A711F2BE = {
 			isa = PBXGroup;
 			children = (
-				E551F092584A1E0A747C2BEB /* Packages */,
 				E6F6A75B1B8366C3D868D1E4 /* SimpleCounter */,
 				A58FEB50EA86B3FEA463FCF0 /* src */,
 				D4D259F256E0F508B61E0EA9 /* Products */,
@@ -145,14 +147,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		E551F092584A1E0A747C2BEB /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				642CF26F4B57B0FF7348C6BF /* SharedTypes */,
-			);
-			name = Packages;
-			sourceTree = SOURCE_ROOT;
-		};
 		E6F6A75B1B8366C3D868D1E4 /* SimpleCounter */ = {
 			isa = PBXGroup;
 			children = (
@@ -185,6 +179,8 @@
 			name = SimpleCounter;
 			packageProductDependencies = (
 				ADFA4530638891CDAA6FCC5D /* SharedTypes */,
+				CC51537F2D9469B500BA5660 /* SharedTypes */,
+				CC089AB32D9487F00098D2FE /* SharedTypes */,
 			);
 			productName = SimpleCounter;
 			productReference = 1974E5BC3D6D22A1D5676B40 /* SimpleCounter.app */;
@@ -208,6 +204,9 @@
 				en,
 			);
 			mainGroup = 1B8911D02E90EF25A711F2BE;
+			packageReferences = (
+				CC089AB22D9487F00098D2FE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+			);
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -469,8 +468,23 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		CC089AB22D9487F00098D2FE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared_types/generated/swift/SharedTypes;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		ADFA4530638891CDAA6FCC5D /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC089AB32D9487F00098D2FE /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC51537F2D9469B500BA5660 /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
 		};

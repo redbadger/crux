@@ -2,30 +2,30 @@
   "Effect": {
     "ENUM": {
       "0": {
-        "KeyValue": {
+        "Time": {
           "NEWTYPE": {
-            "TYPENAME": "KeyValueOperation"
+            "TYPENAME": "TimeRequest"
           }
         }
       },
       "1": {
-        "PubSub": {
-          "NEWTYPE": {
-            "TYPENAME": "PubSubOperation"
-          }
-        }
-      },
-      "2": {
         "Render": {
           "NEWTYPE": {
             "TYPENAME": "RenderOperation"
           }
         }
       },
-      "3": {
-        "Timer": {
+      "2": {
+        "PubSub": {
           "NEWTYPE": {
-            "TYPENAME": "TimerOperation"
+            "TYPENAME": "PubSubOperation"
+          }
+        }
+      },
+      "3": {
+        "KeyValue": {
+          "NEWTYPE": {
+            "TYPENAME": "KeyValueOperation"
           }
         }
       }

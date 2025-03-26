@@ -1,9 +1,9 @@
 package com.redbadger.catfacts
 
 import com.novi.serde.Bytes
-import com.redbadger.catfacts.shared_types.HttpHeader
-import com.redbadger.catfacts.shared_types.HttpRequest
-import com.redbadger.catfacts.shared_types.HttpResponse
+import com.crux.shared.types.HttpHeader
+import com.crux.shared.types.HttpRequest
+import com.crux.shared.types.HttpResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.headers

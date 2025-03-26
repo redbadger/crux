@@ -87,26 +87,21 @@ ascent! {
         local_type_of(effect_ffi_item, effect_ffi),
         if effect_impl.has_associated_item(effect_ffi_item, "Ffi");
 
-    // Capability is a struct/enum with an implementation of the Capability trait
-    relation capability(ItemNode, ItemNode);
-    capability(cap, cap_impl) <--
-        item(cap),
-        item(cap_impl),
-        if cap_impl.is_impl_for(cap, "Capability");
-
-    // Operation is an associated type of an impl of the Capability trait
-    relation operation(ItemNode);
-    operation(op) <--
-        capability(cap, cap_impl),
-        local_type_of(item, op),
-        if cap_impl.has_associated_item(item, "Operation");
+    // operation is a struct or enum that implements the Operation trait
+    relation operation(ItemNode, ItemNode);
+    operation(op_impl, op) <--
+        is_struct(op),
+        item(op_impl),
+        if op_impl.is_impl_for(op, "Operation");
+    operation(op_impl, op) <--
+        is_enum(op),
+        item(op_impl),
+        if op_impl.is_impl_for(op, "Operation");
 
     // Output is an associated type of an impl of the Operation trait
     relation output(ItemNode);
     output(out) <--
-        operation(op),
-        item(op_impl),
-        if op_impl.is_impl_for(op, "Operation"),
+        operation(op_impl, op),
         local_type_of(item, out),
         if op_impl.has_associated_item(item, "Output");
 
@@ -114,7 +109,7 @@ ascent! {
     root(x) <-- view_model(app, x);
     root(x) <-- event(app, x);
     root(x) <-- effect(app, x);
-    root(x) <-- operation(x);
+    root(x) <-- operation(op_impl, x);
     root(x) <-- output(x);
 
     // set of all the edges we are interested in
@@ -135,8 +130,7 @@ ascent! {
 
     edge(type_, field) <--
         edge(_, type_),
-        field(type_, field),
-        !capability(type_, _);
+        field(type_, field);
     edge(type_, variant) <--
         edge(_, type_),
         variant(type_, variant);

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,6 +15,7 @@
 		5B3B5266A24F1FA1E1827FB4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D70971C7274DF4D3B964CC5 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B6930825270C051C48F86524 /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408B50841C0469CE0D78A7C2 /* core.swift */; };
 		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
+		CC089AAF2D94860F0098D2FE /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC089AAE2D94860F0098D2FE /* SharedTypes */; };
 		E49A93362F08CF053C69A7F5 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCEAEA08AFCD101ED86B664C /* http.swift */; };
 /* End PBXBuildFile section */
 
@@ -81,7 +82,6 @@
 		1465E5EDE4F684AD5291C0A3 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
 		408B50841C0469CE0D78A7C2 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		67D62EB120D164DFC93E7EC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		72B940D339BFB9B4DC05041C /* sse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sse.swift; sourceTree = "<group>"; };
 		984E511AE1F9FB764F58CB7A /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -96,6 +96,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4467D267096A960C23F9FF3B /* libshared_static.a in Frameworks */,
+				CC089AAF2D94860F0098D2FE /* SharedTypes in Frameworks */,
 				08A5891079278B0627EECC52 /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -125,14 +126,6 @@
 			path = CounterApp;
 			sourceTree = "<group>";
 		};
-		79077CB87B15CD5B056551FE /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				6D984934DC207C1C28EDF6F1 /* SharedTypes */,
-			);
-			name = Packages;
-			sourceTree = SOURCE_ROOT;
-		};
 		91C0E33BEDE2E530350B68C8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -145,7 +138,6 @@
 			isa = PBXGroup;
 			children = (
 				20BEF56E8A58908817A7D5C2 /* CounterApp */,
-				79077CB87B15CD5B056551FE /* Packages */,
 				1B75A283E60878770D306B2A /* src */,
 				91C0E33BEDE2E530350B68C8 /* Products */,
 				B95BE3C5CA8A234A4D1E9F0E /* Projects */,
@@ -191,6 +183,7 @@
 			name = CounterApp;
 			packageProductDependencies = (
 				32258924E0AD419BAA621949 /* SharedTypes */,
+				CC089AAE2D94860F0098D2FE /* SharedTypes */,
 			);
 			productName = CounterApp;
 			productReference = 9D06BFB95E0269CB9E1CD716 /* CounterApp.app */;
@@ -214,6 +207,9 @@
 				en,
 			);
 			mainGroup = B86E33DC287DA7AC92DD5972;
+			packageReferences = (
+				CC089AAD2D94860F0098D2FE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+			);
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -477,8 +473,19 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		CC089AAD2D94860F0098D2FE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared_types/generated/swift/SharedTypes;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		32258924E0AD419BAA621949 /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC089AAE2D94860F0098D2FE /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
 		};

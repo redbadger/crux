@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.bridge_echo.shared_types.Event
+import com.crux.shared.types.Event
 import com.example.bridge_echo.ui.theme.BridgeEchoTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
