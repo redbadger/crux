@@ -9,6 +9,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut gen = TypeGen::new();
 
+    shared::register_effects(&mut gen)?;
     gen.register_app::<CatFacts>()?;
 
     let output_root = PathBuf::from("./generated");
