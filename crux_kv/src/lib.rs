@@ -118,6 +118,16 @@ pub enum KeyValueResponse {
 
 impl Operation for KeyValueOperation {
     type Output = KeyValueResult;
+
+    #[cfg(feature = "typegen")]
+    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+        generator.register_type::<KeyValueResponse>()?;
+        generator.register_type::<KeyValueError>()?;
+        generator.register_type::<Value>()?;
+        generator.register_type::<Self>()?;
+        generator.register_type::<Self::Output>()?;
+        Ok(())
+    }
 }
 
 pub struct KeyValue<Ev> {
@@ -136,16 +146,6 @@ impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
         NewEv: 'static + Send,
     {
         KeyValue::new(self.context.map_event(f))
-    }
-
-    #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
-        generator.register_type::<KeyValueResponse>()?;
-        generator.register_type::<KeyValueError>()?;
-        generator.register_type::<Value>()?;
-        generator.register_type::<Self::Operation>()?;
-        generator.register_type::<<Self::Operation as Operation>::Output>()?;
-        Ok(())
     }
 }
 

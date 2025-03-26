@@ -1,6 +1,7 @@
 // ANCHOR: app
 use crux_core::{
-    render::{render, Render},
+    macros::effect,
+    render::{render, RenderOperation},
     App, Command,
 };
 use serde::{Deserialize, Serialize};
@@ -10,6 +11,12 @@ pub enum Event {
     Increment,
     Decrement,
     Reset,
+}
+
+effect! {
+    pub enum Effect {
+        Render(RenderOperation),
+    }
 }
 
 #[derive(Default)]
@@ -22,13 +29,6 @@ pub struct ViewModel {
     pub count: String,
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(crux_core::macros::Effect)]
-#[allow(unused)]
-pub struct Capabilities {
-    render: Render<Event>,
-}
-
 #[derive(Default)]
 pub struct Counter;
 
@@ -37,7 +37,7 @@ impl App for Counter {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
     fn update(
@@ -46,12 +46,13 @@ impl App for Counter {
         model: &mut Self::Model,
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
-        // we no longer use the capabilities directly, but they are passed in
-        // until the migration to managed effects with `Command` is complete
-        // (at which point the capabilities will be removed from the `update`
-        // signature). Until then we delegate to our own `update` method so that
-        // we can test the app without needing to use AppTester.
-        self.update(event, model)
+        match event {
+            Event::Increment => model.count += 1,
+            Event::Decrement => model.count -= 1,
+            Event::Reset => model.count = 0,
+        };
+
+        render()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -61,22 +62,6 @@ impl App for Counter {
     }
 }
 // ANCHOR_END: impl_app
-
-impl Counter {
-    // note: this function can be moved into the `App` trait implementation, above,
-    // once the `App` trait has been updated (as the final part of the migration
-    // to managed effects with `Command`).
-    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
-        match event {
-            Event::Increment => model.count += 1,
-            Event::Decrement => model.count -= 1,
-            Event::Reset => model.count = 0,
-        };
-
-        render()
-    }
-}
-// ANCHOR_END: app
 
 // ANCHOR: test
 #[cfg(test)]
@@ -89,7 +74,7 @@ mod test {
         let app = Counter::default();
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Reset, &mut model);
+        let mut cmd = app.update(Event::Reset, &mut model, &());
 
         // Check update asked us to `Render`
         assert_effect!(cmd, Effect::Render(_));
@@ -110,7 +95,7 @@ mod test {
         let app = Counter::default();
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Increment, &mut model);
+        let mut cmd = app.update(Event::Increment, &mut model, &());
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
@@ -125,7 +110,7 @@ mod test {
         let app = Counter::default();
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Decrement, &mut model);
+        let mut cmd = app.update(Event::Decrement, &mut model, &());
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: -1";
@@ -140,8 +125,8 @@ mod test {
         let app = Counter::default();
         let mut model = Model::default();
 
-        let _ = app.update(Event::Increment, &mut model);
-        let _ = app.update(Event::Reset, &mut model);
+        let _ = app.update(Event::Increment, &mut model, &());
+        let _ = app.update(Event::Reset, &mut model, &());
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 0";
@@ -153,11 +138,11 @@ mod test {
         let app = Counter::default();
         let mut model = Model::default();
 
-        let _ = app.update(Event::Increment, &mut model);
-        let _ = app.update(Event::Reset, &mut model);
-        let _ = app.update(Event::Decrement, &mut model);
-        let _ = app.update(Event::Increment, &mut model);
-        let _ = app.update(Event::Increment, &mut model);
+        let _ = app.update(Event::Increment, &mut model, &());
+        let _ = app.update(Event::Reset, &mut model, &());
+        let _ = app.update(Event::Decrement, &mut model, &());
+        let _ = app.update(Event::Increment, &mut model, &());
+        let _ = app.update(Event::Increment, &mut model, &());
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";

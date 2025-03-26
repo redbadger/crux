@@ -1,11 +1,10 @@
 use std::time::Duration;
 
-use crux_core::{App, Command, Request};
+use crux_core::{macros::effect, App, Command};
 use crux_time::{
     command::{Time, TimerHandle, TimerOutcome},
     TimeRequest, TimeResponse, TimerId,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Event {
@@ -17,27 +16,9 @@ pub enum Event {
     Completed(TimerOutcome),
 }
 
-pub enum Effect {
-    Time(Request<TimeRequest>),
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum EffectFfi {
-    Time(TimeRequest),
-}
-
-impl crux_core::Effect for Effect {
-    type Ffi = EffectFfi;
-    fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
-        match self {
-            Effect::Time(request) => request.serialize(EffectFfi::Time),
-        }
-    }
-}
-
-impl From<Request<TimeRequest>> for Effect {
-    fn from(value: Request<TimeRequest>) -> Self {
-        Self::Time(value)
+effect! {
+    pub enum Effect {
+        Time(TimeRequest),
     }
 }
 

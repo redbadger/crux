@@ -29,7 +29,7 @@ mod http {
 
     pub struct Http;
 
-    #[derive(Debug, PartialEq, Clone, Serialize)]
+    #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
     pub struct Request {
         pub method: String,
         pub url: String,

@@ -4,7 +4,7 @@ pub mod command {
     use crux_core::{capability::Operation, Request};
     use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, PartialEq, Clone, Serialize)]
+    #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
     pub enum AnOperation {
         One(u8),
         Two(u8),

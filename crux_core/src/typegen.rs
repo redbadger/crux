@@ -169,6 +169,12 @@ pub trait Export {
     fn register_types(generator: &mut TypeGen) -> Result;
 }
 
+impl Export for () {
+    fn register_types(_generator: &mut TypeGen) -> Result {
+        Ok(())
+    }
+}
+
 /// The `TypeGen` struct stores the registered types so that they can be generated for foreign languages
 /// use `TypeGen::new()` to create an instance
 pub struct TypeGen {

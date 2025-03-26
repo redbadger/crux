@@ -1,11 +1,11 @@
 use futures::StreamExt;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{capability::Operation, Request};
 
 use super::super::Command;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 enum Op {
     Basic,
     Abort,

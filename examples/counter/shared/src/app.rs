@@ -1,13 +1,14 @@
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::{
-    render::{render, Render},
+    macros::effect,
+    render::{render, RenderOperation},
     Command,
 };
-use crux_http::command::Http;
+use crux_http::{command::Http, protocol::HttpRequest};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::sse::ServerSentEvents;
+use crate::sse::{ServerSentEvents, SseRequest};
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
@@ -46,12 +47,12 @@ pub enum Event {
     Update(Count),
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(crux_core::macros::Effect)]
-pub struct Capabilities {
-    pub render: Render<Event>,
-    pub http: crux_http::Http<Event>,
-    pub sse: ServerSentEvents<Event>,
+effect! {
+    pub enum Effect {
+        Render(RenderOperation),
+        Http(HttpRequest),
+        ServerSentEvents(SseRequest)
+    }
 }
 
 #[derive(Default)]
@@ -61,38 +62,15 @@ impl crux_core::App for App {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
-    // During the migration to the new Command API, the `update` method
-    // still requires the old `Capabilities` type. This will be removed in
-    // an upcoming release.
-    // In the meantime, we can delegate to our own `update` function,
-    // so that we can test the logic without the need for AppTester.
     fn update(
         &self,
         msg: Self::Event,
         model: &mut Self::Model,
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
-        self.update(msg, model)
-    }
-
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        let suffix = match model.count.updated_at {
-            None => " (pending)".to_string(),
-            Some(d) => format!(" ({d})"),
-        };
-
-        Self::ViewModel {
-            text: model.count.value.to_string() + &suffix,
-            confirmed: model.count.updated_at.is_some(),
-        }
-    }
-}
-
-impl App {
-    fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
         match msg {
             Event::Get => Http::get(API_URL)
                 .expect_json()
@@ -146,6 +124,18 @@ impl App {
             }
         }
     }
+
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        let suffix = match model.count.updated_at {
+            None => " (pending)".to_string(),
+            Some(d) => format!(" ({d})"),
+        };
+
+        Self::ViewModel {
+            text: model.count.value.to_string() + &suffix,
+            confirmed: model.count.updated_at.is_some(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -170,7 +160,7 @@ mod tests {
         let mut model = Model::default();
 
         // send a `Get` event to the app
-        let mut cmd = app.update(Event::Get, &mut model);
+        let mut cmd = app.update(Event::Get, &mut model, &());
 
         // the app should emit an HTTP request to fetch the counter
         let mut request = cmd.effects().next().unwrap().expect_http();
@@ -201,7 +191,7 @@ mod tests {
         assert_eq!(actual, expected);
 
         // send the `Set` event back to the app
-        let mut cmd = app.update(actual, &mut model);
+        let mut cmd = app.update(actual, &mut model, &());
 
         // this should generate an `Update` event
         let event = cmd.events().next().unwrap();
@@ -214,7 +204,7 @@ mod tests {
         );
 
         // send the `Update` event back to the app
-        let mut cmd = app.update(event, &mut model);
+        let mut cmd = app.update(event, &mut model, &());
 
         // the model should be updated
         assert_eq!(
@@ -249,7 +239,7 @@ mod tests {
         };
 
         // send an `Increment` event to the app
-        let mut cmd = app.update(Event::Increment, &mut model);
+        let mut cmd = app.update(Event::Increment, &mut model, &());
 
         // the app should ask the shell to render the optimistic update
         assert_effect!(cmd, Effect::Render(_));
@@ -286,7 +276,7 @@ mod tests {
         assert!(matches!(event, Event::Set(_)));
 
         // send the `Set` event back to the app
-        let mut cmd = app.update(event, &mut model);
+        let mut cmd = app.update(event, &mut model, &());
 
         // this should generate an `Update` event
         let event = cmd.events().next().unwrap();
@@ -299,7 +289,7 @@ mod tests {
         );
 
         // send the `Update` event back to the app
-        let mut cmd = app.update(event, &mut model);
+        let mut cmd = app.update(event, &mut model, &());
 
         // the app should ask the shell to render
         assert_effect!(cmd, Effect::Render(_));
@@ -327,7 +317,7 @@ mod tests {
         };
 
         // send a `Decrement` event to the app
-        let mut update = app.update(Event::Decrement, &mut model);
+        let mut update = app.update(Event::Decrement, &mut model, &());
 
         // the app should ask the shell to render the optimistic update
         assert_effect!(update, Effect::Render(_));
@@ -364,7 +354,7 @@ mod tests {
         assert!(matches!(event, Event::Set(_)));
 
         // send the `Set` event back to the app
-        let mut update = app.update(event, &mut model);
+        let mut update = app.update(event, &mut model, &());
 
         // this should generate an `Update` event
         let event = update.events().next().unwrap();
@@ -377,7 +367,7 @@ mod tests {
         );
 
         // send the `Update` event back to the app
-        let mut update = app.update(event, &mut model);
+        let mut update = app.update(event, &mut model, &());
 
         // the app should ask the shell to render
         assert_effect!(update, Effect::Render(_));
@@ -397,10 +387,10 @@ mod tests {
         let mut model = Model::default();
 
         // start a SSE subscription to watch for updates from the server
-        let mut cmd = app.update(Event::StartWatch, &mut model);
+        let mut cmd = app.update(Event::StartWatch, &mut model, &());
 
         // the app should request a Server-Sent Events stream
-        let mut request = cmd.effects().next().unwrap().expect_sse();
+        let mut request = cmd.effects().next().unwrap().expect_server_sent_events();
         assert_eq!(
             request.operation,
             SseRequest {

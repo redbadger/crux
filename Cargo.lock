@@ -426,6 +426,7 @@ dependencies = [
  "crux_core",
  "crux_http",
  "darling",
+ "heck 0.5.0",
  "insta",
  "prettyplease",
  "proc-macro-error",
