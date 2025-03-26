@@ -205,14 +205,13 @@ impl TypeGen {
     /// in the Crux book for more information.
     pub fn register_app<A: App>(&mut self) -> Result
     where
-        A::Capabilities: Export,
+        A::Effect: Export,
         A::Event: Deserialize<'static>,
         A::ViewModel: Deserialize<'static> + 'static,
     {
+        A::Effect::register_types(self)?;
         self.register_type::<A::Event>()?;
         self.register_type::<A::ViewModel>()?;
-
-        A::Capabilities::register_types(self)?;
 
         Ok(())
     }
