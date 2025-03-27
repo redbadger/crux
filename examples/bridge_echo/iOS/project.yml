@@ -54,7 +54,7 @@ targets:
           fi
 
           cd "${INPUT_FILE_DIR}/.."
-          "${BUILD_DIR}/${Configuration}/uniffi-bindgen" generate "src/${INPUT_FILE_NAME}" --language swift --out-dir "${PROJECT_DIR}/generated"
+          "${BUILD_DIR}/${CONFIGURATION}/uniffi-bindgen" generate "src/${INPUT_FILE_NAME}" --language swift --out-dir "${PROJECT_DIR}/generated"
         outputFiles:
           - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift
           - $(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h
