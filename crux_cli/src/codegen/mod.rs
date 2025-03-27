@@ -15,9 +15,8 @@ use std::{
     process::Command,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
-use heck::{AsPascalCase, AsSnakeCase};
 use log::debug;
 use rustdoc_types::Crate;
 
@@ -50,32 +49,21 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let registry: serde_reflection::Registry =
         serde_json::from_slice(&serde_json::to_vec(&registry)?)?;
 
-    let output_root = args
-        .output
-        .clone()
-        .take()
-        .unwrap_or_else(|| PathBuf::from(format!("./{}/generated", lib_name)));
-    fs::create_dir_all(&output_root)?;
+    fs::create_dir_all(&args.output)?;
 
-    generate::swift(
-        &registry,
-        &format!("{}Types", AsPascalCase(lib_name)),
-        output_root.join("swift"),
-    )?;
+    generate::java(&registry, &args.java_package, args.output.join("java"))
+        .context("Generating types for Java")?;
 
-    let java_package = args
-        .java_package
-        .clone()
-        .take()
-        .unwrap_or_else(|| format!("com.crux.{}.types", lib_name.to_lowercase()));
-    generate::java(&registry, &java_package, output_root.join("java"))?;
+    generate::swift(&registry, &args.swift_package, args.output.join("swift"))
+        .context("Generating tyeps for Swift")?;
 
     generate::typescript(
         &registry,
-        &format!("{}_types", AsSnakeCase(lib_name)),
+        &args.typescript_package,
         &lib.version().to_string(),
-        output_root.join("typescript"),
-    )?;
+        args.output.join("typescript"),
+    )
+    .context("Generating types for TypeScript")?;
     Ok(())
 }
 
