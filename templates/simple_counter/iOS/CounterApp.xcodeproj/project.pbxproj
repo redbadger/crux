@@ -30,7 +30,7 @@
 			outputFilesCompilerFlags = (
 			);
 			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/${Configuration}/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
+			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/${CONFIGURATION}/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
 		};
 /* End PBXBuildRule section */
 
