@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use log::{debug, info};
 use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
 use serde_reflection::Registry;
 use std::{
@@ -31,8 +32,13 @@ pub enum TypeGenError {
 /// ```
 pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> Result {
     let path = path.as_ref().join(module_name);
-    let _ = fs::remove_dir_all(&path);
+
+    // remove any existing generated shared types, this ensures that we remove no longer used types
+    remove_dir(&path);
+
     fs::create_dir_all(&path)?;
+
+    info!("Generating Swift types at {}", path.display());
 
     let installer = swift::Installer::new(path.clone());
     installer
@@ -92,20 +98,22 @@ pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> 
 /// # Ok::<(), generate::TypeGenError>(())
 /// ```
 pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> Result {
-    let _ = fs::remove_dir_all(&path.as_ref().join("com/crux"));
-    let _ = fs::remove_dir_all(&path.as_ref().join("com/novi/bincode"));
-    let _ = fs::remove_dir_all(&path.as_ref().join("com/novi/serde"));
+    let path = path.as_ref();
     fs::create_dir_all(&path)?;
 
     let package_path = package_name.replace('.', "/");
 
     // remove any existing generated shared types, this ensures that we remove no longer used types
-    fs::remove_dir_all(path.as_ref().join(&package_path)).unwrap_or(());
+    remove_dir(path.join(&package_path));
+    remove_dir(path.join("com/novi/bincode"));
+    remove_dir(path.join("com/novi/serde"));
+
+    info!("Generating Java types at {}", path.display());
 
     let config = serde_generate::CodeGeneratorConfig::new(package_name.to_string())
         .with_encodings(vec![Encoding::Bincode]);
 
-    let installer = java::Installer::new(path.as_ref().to_path_buf());
+    let installer = java::Installer::new(path.to_path_buf());
     installer
         .install_serde_runtime()
         .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -123,13 +131,7 @@ pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> 
 
     let requests = format!("package {package_name};\n\n{}", requests_data);
 
-    fs::write(
-        path.as_ref()
-            .to_path_buf()
-            .join(package_path)
-            .join("Requests.java"),
-        requests,
-    )?;
+    fs::write(path.join(package_path).join("Requests.java"), requests)?;
 
     Ok(())
 }
@@ -149,11 +151,16 @@ pub fn typescript(
     version: &str,
     path: impl AsRef<Path>,
 ) -> Result {
-    let _ = fs::remove_dir_all(&path);
-    fs::create_dir_all(&path)?;
-    let output_dir = path.as_ref().to_path_buf();
+    let path = path.as_ref();
 
-    let installer = typescript::Installer::new(output_dir.clone());
+    // remove any existing generated shared types, this ensures that we remove no longer used types
+    remove_dir(path);
+
+    fs::create_dir_all(path)?;
+
+    info!("Generating TypeScript types at {}", path.display());
+
+    let installer = typescript::Installer::new(path.to_path_buf());
     installer
         .install_serde_runtime()
         .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -179,11 +186,11 @@ pub fn typescript(
         )
         .replace(".ts'", "'");
 
-    let types_dir = output_dir.join("types");
+    let types_dir = path.join("types");
     fs::create_dir_all(&types_dir)?;
 
     // write package.json
-    let mut package_json = File::create(output_dir.join("package.json"))?;
+    let mut package_json = File::create(path.join("package.json"))?;
     write!(
         package_json,
         "{{\"name\": \"{module_name}\", \"version\": \"{version}\"}}"
@@ -191,7 +198,7 @@ pub fn typescript(
 
     // add Typescript package using pnpm
     std::process::Command::new("pnpm")
-        .current_dir(&output_dir)
+        .current_dir(path)
         .arg("add")
         .arg("typescript")
         .status()
@@ -205,7 +212,7 @@ pub fn typescript(
 
     // Install dependencies
     std::process::Command::new("pnpm")
-        .current_dir(&output_dir)
+        .current_dir(path)
         .arg("install")
         .status()
         .map_err(|e| match e.kind() {
@@ -215,7 +222,7 @@ pub fn typescript(
 
     // Build TS code and emit declarations
     std::process::Command::new("pnpm")
-        .current_dir(&output_dir)
+        .current_dir(path)
         .arg("exec")
         .arg("tsc")
         .arg("--build")
@@ -226,7 +233,7 @@ pub fn typescript(
 }
 
 fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
-    fs::create_dir_all(to.as_ref())?;
+    fs::create_dir_all(&to)?;
 
     let entries = fs::read_dir(from)?;
     for entry in entries {
@@ -243,7 +250,8 @@ fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
     Ok(())
 }
 
-fn extensions_path(path: &str) -> impl AsRef<Path> {
+fn extensions_path(path: impl AsRef<Path>) -> impl AsRef<Path> {
+    let path = path.as_ref();
     let custom = PathBuf::from("./typegen_extensions").join(path);
     let default = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("typegen_extensions")
@@ -256,5 +264,13 @@ fn extensions_path(path: &str) -> impl AsRef<Path> {
             println!("cant check typegen extensions override: {}", e);
             default
         }
+    }
+}
+
+fn remove_dir(path: impl AsRef<Path>) {
+    let path = path.as_ref();
+    if path.exists() {
+        debug!("Removing directory: {}", path.display());
+        fs::remove_dir_all(path).unwrap_or_default();
     }
 }
