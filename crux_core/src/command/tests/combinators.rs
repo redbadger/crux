@@ -299,7 +299,7 @@ fn all() {
 }
 
 #[test]
-fn iterator_of_commnands_collects_as_all() {
+fn iterator_of_commands_collects_as_all() {
     let cmd_one = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
     let cmd_two = Command::request_from_shell(AnOperation::Two).then_send(Event::Completed);
     let cmd_three = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);

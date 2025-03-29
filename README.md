@@ -22,7 +22,7 @@
   Kotlin and TypeScript. Rust shells can import the core directly.
 - **Managed effects** - Side effects such as calling an API are captured as values
   and executed by the Shell. The core stays side-effect free, making it portable
-  across platforms and allowing high-level user journey tests to run in miliseconds
+  across platforms and allowing high-level user journey tests to run in milliseconds
   (rather than minutes or even hours)
 
 ## Getting Started

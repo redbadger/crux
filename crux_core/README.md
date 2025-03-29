@@ -22,8 +22,8 @@
   Kotlin and TypeScript. Rust shells can import the core directly.
 - **Managed effects** - Side effects such as calling an API are captured as values
   and executed by the Shell. The core stays side-effect free, making it portable
-  across platforms and allowing high-level user journey tests to run in miliseconds
-  (rather than minutes or even hours)
+  across platforms and allowing high-level user journey tests to run in
+  milliseconds (rather than minutes or even hours)
 
 ## Getting Started
 
@@ -40,7 +40,7 @@ You can also join the friendly conversation on our
 
 > [!NOTE]
 > Crux is pre 1.0 and under active development. It is production-ready, but
-> occasional breaking changes to the API can be epxected. We do our best to
+> occasional breaking changes to the API can be expected. We do our best to
 > limit the extent of these and provide a smooth, gradual migration path
 
 ## Architectural Overview

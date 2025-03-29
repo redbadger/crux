@@ -126,7 +126,7 @@ It is actually our own `update()` method that we delegate to in the `NoteEditor`
 {{#include ../../../examples/notes/shared/src/app.rs:update}}
 ```
 Once the migration to the new `Command` API is complete, the signature of this method
-wil be changed in the `App` trait and this delegation will no longer be required.
+will be changed in the `App` trait and this delegation will no longer be required.
 ````
 
 We can check that the shell was asked to render by using the
