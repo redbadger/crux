@@ -1,0 +1,51 @@
+{
+  "Effect": {
+    "ENUM": {
+      "0": {
+        "Render": {
+          "NEWTYPE": {
+            "TYPENAME": "RenderOperation"
+          }
+        }
+      }
+    }
+  },
+  "Event": {
+    "ENUM": {
+      "0": {
+        "Tick": "UNIT"
+      },
+      "1": {
+        "NewPeriod": "UNIT"
+      },
+      "2": {
+        "Reset": "UNIT"
+      }
+    }
+  },
+  "RenderOperation": "UNITSTRUCT",
+  "Request": {
+    "STRUCT": [
+      {
+        "id": "U32"
+      },
+      {
+        "effect": {
+          "TYPENAME": "Effect"
+        }
+      }
+    ]
+  },
+  "ViewModel": {
+    "STRUCT": [
+      {
+        "count": "U64"
+      },
+      {
+        "log": {
+          "SEQ": "U64"
+        }
+      }
+    ]
+  }
+}

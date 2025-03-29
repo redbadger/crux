@@ -16,8 +16,8 @@
     "next": "15.2.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "shared": "link:../shared/pkg",
-    "shared_types": "link:../shared_types/generated/typescript",
+    "shared": "file:../shared/pkg",
+    "shared_types": "file:../shared_types/generated/typescript",
     "typescript": "5.8.2",
     "ua-parser-js": "^2.0.2"
   },

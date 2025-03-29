@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "cli",
-    "shared_types",
     "shared",
+    "shared_types",
     "tauri/src-tauri",
     "web-dioxus",
     "web-leptos",
