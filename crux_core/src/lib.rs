@@ -152,7 +152,7 @@
 //! ```
 //!
 //! Finally, you will need to set up the type generation for the `Model`, `Message` and `ViewModel` types.
-//! See [typegen] for details.
+//! See [typegen](https://docs.rs/crux_core/latest/crux_core/typegen/index.html) for details.
 //!
 
 pub mod bridge;
