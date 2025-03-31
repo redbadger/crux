@@ -55,6 +55,7 @@ apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 cargo {
     module = "../.."
     libname = "shared"
+    profile = "debug"
     // these are the four recommended targets for Android that will ensure your library works on all mainline android devices
     // make sure you have included the rust toolchain for each of these targets: \
     // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
