@@ -73,7 +73,7 @@ afterEvaluate {
         }
         def buildType = "${variant.buildType.name.capitalize()}"
 
-        tasks.named("compileDebugKotlin") {
+        tasks.named("preBuild") {
             it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
         }
 
