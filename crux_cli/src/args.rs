@@ -16,7 +16,7 @@ use heck::{ToPascalCase, ToSnakeCase};
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    pub command: Commands,
 
     #[arg(long, short, action = ArgAction::Count)]
     pub verbose: u8,
