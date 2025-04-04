@@ -169,10 +169,8 @@ from the
 {{#include ../../../examples/simple_counter/shared/src/app.rs:app}}
 ```
 
-```admonish
-The example uses the new [`effect!`](https://docs.rs/crux_macros/latest/crux_macros/macro.effect.html) macro, which is a bit more ergonomic than the
-`Effect` and `Export` derive macros you may have used on a `Capabilities` type in the past.
-Inside the body of the `effect!` macro invocation we simply declare an enum to represent our effects. The enum has a variant for each effect, which carries the [`Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) type.
+```admonish note title="Note the effect! macro"
+Inside the body of the [`effect!`](https://docs.rs/crux_macros/latest/crux_macros/macro.effect.html) macro invocation we declare an enum to represent our effects. The enum has a variant for each effect, which carries the [`Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) type.
 
 The macro generates code for:
 - an _actual_ effect enum (where the inner `Operation` type is wrapped with [`crux_core::Request`](https://docs.rs/crux_core/latest/crux_core/struct.Request.html))
@@ -182,6 +180,11 @@ The macro generates code for:
 - code to support the current foreign type generation (that uses `serde-reflection`)
 
 You can also use the `effect!` macro with the [new typegen](https://github.com/redbadger/crux/pull/217).
+```
+
+```admonish warning title="Deprecation of Capabilities associated type"
+Also note that as we near the tail end of the migration to the new [Command API](https://docs.rs/crux_core/latest/crux_core/command/index.html), the `Capabilities` associated type on the `App` trait will be deprecated.
+You'll notice that in the example, above, we can just use the unit type instead of a `Capabilities` struct and ignore the last argument to the update function.
 ```
 
 Make sure everything builds OK
