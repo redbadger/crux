@@ -152,7 +152,7 @@
 //! ```
 //!
 //! Finally, you will need to set up the type generation for the `Model`, `Message` and `ViewModel` types.
-//! See [typegen] for details.
+//! See [typegen](https://docs.rs/crux_core/latest/crux_core/typegen/index.html) for details.
 //!
 
 pub mod bridge;
@@ -185,8 +185,12 @@ pub trait App: Default {
     /// ViewModel, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
-    /// Capabilities, typically a `struct`, lists the capabilities used by this application
+    /// Capabilities, usually a `struct`, lists the capabilities used by this application.
+    ///
     /// Typically, Capabilities should contain at least an instance of the built-in [`Render`](crate::render::Render) capability.
+    ///
+    /// Note: this `Capabilities` associated type will be deprecated soon as part of the completion of
+    /// the migration to the new [`Command`](command) API.
     type Capabilities;
     /// Effect, the enum carrying effect requests created by capabilities.
     /// Normally this type is derived from `Capabilities` using the `crux_macros::Effect` derive macro

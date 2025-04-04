@@ -1,4 +1,4 @@
-use heck::AsSnakeCase;
+use heck::ToSnakeCase;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Ident, ItemEnum, Type};
@@ -9,17 +9,21 @@ struct Effect {
 }
 
 pub fn effect_impl(input: ItemEnum) -> TokenStream {
-    let enum_ident = input.ident.clone();
+    let enum_ident = &input.ident;
     let enum_ident_str = enum_ident.to_string();
 
     let mut ffi_enum = input.clone();
     ffi_enum.ident = format_ident!("{}Ffi", enum_ident);
     let ffi_enum_ident = &ffi_enum.ident;
 
-    let effects = input.variants.iter().map(|v| {
-        let ident = v.ident.clone();
-        let first_field = v.fields.iter().next().unwrap();
-        let operation = first_field.ty.clone();
+    let effects = input.variants.into_iter().map(|variant| {
+        let ident = variant.ident;
+        let operation = variant
+            .fields
+            .into_iter()
+            .next()
+            .expect("each variant is expected to be a tuple with one field")
+            .ty;
         Effect { ident, operation }
     });
 
@@ -53,7 +57,7 @@ pub fn effect_impl(input: ItemEnum) -> TokenStream {
     let filters = effects.clone().map(|effect| {
         let effect_ident = &effect.ident;
         let effect_ident_str = effect.ident.to_string();
-        let effect_ident_snake = AsSnakeCase(&effect_ident_str);
+        let effect_ident_snake = effect_ident_str.to_snake_case();
         let operation = &effect.operation;
         let filter_fn = Ident::new(&format!("is_{}", effect_ident_snake), Span::call_site());
         let map_fn = Ident::new(&format!("into_{}", effect_ident_snake), Span::call_site());
@@ -86,7 +90,7 @@ pub fn effect_impl(input: ItemEnum) -> TokenStream {
         }
     });
 
-    let type_gen = effects.clone().map(|effect| {
+    let type_gen = effects.map(|effect| {
         let operation = &effect.operation;
 
         quote! {

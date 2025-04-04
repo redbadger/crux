@@ -5,7 +5,7 @@ itself, and the shared types crate which does type generation for the foreign
 languages.
 
 ```admonish warning title="Sharp edge"
-Most of these steps are going to be automated in future tooling, and published as crates. For now the set up is effectively a copy & paste from one of the [example projects](https://github.com/redbadger/crux/tree/master/examples).
+We're hoping to automate some of these steps in future tooling. For now the set up includes some copy & paste from one of the [example projects](https://github.com/redbadger/crux/tree/master/examples).
 ```
 
 ## Install the tools
@@ -43,6 +43,7 @@ root, to add the new library to our workspace. It should look something like
 this:
 
 ```toml
+# /Cargo.toml
 [workspace]
 members = ["shared"]
 resolver = "1"
@@ -79,6 +80,7 @@ following, but there are a few things to note:
   you read the next section
 
 ```toml
+# /shared/Cargo.toml
 {{#include ../../../examples/simple_counter/shared/Cargo.toml}}
 ```
 
@@ -131,6 +133,7 @@ for Kotlin and Swift. They live in the file `/shared/uniffi.toml`, like this
 (feel free to adjust accordingly):
 
 ```toml
+# /shared/uniffi.toml
 {{#include ../../../examples/simple_counter/shared/uniffi.toml}}
 ```
 
@@ -138,6 +141,7 @@ Finally, we need a `build.rs` file in the root of the crate
 (`/shared/build.rs`), to generate the bindings:
 
 ```rust,no_run,noplayground
+// /shared/build.rs
 {{#include ../../../examples/simple_counter/shared/build.rs}}
 ```
 
@@ -149,6 +153,7 @@ the `Request` type and the capabilities we want to use in our native Shells, as
 well as our public types from the shared library.
 
 ```rust,no_run,noplayground
+// /shared/src/lib.rs
 {{#include ../../../examples/simple_counter/shared/src/lib.rs}}
 ```
 
@@ -157,10 +162,29 @@ well as our public types from the shared library.
 Now we are in a position to create a basic app in `/shared/src/app.rs`. This is
 from the
 [simple Counter example](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/counter.rs)
-(which also has tests, although we're not showing them here):
+(which also has tests, although we're not showing them here).
 
 ```rust,no_run,noplayground
+// /shared/src/app.rs
 {{#include ../../../examples/simple_counter/shared/src/app.rs:app}}
+```
+
+```admonish note title="Note the effect! macro"
+Inside the body of the [`effect!`](https://docs.rs/crux_macros/latest/crux_macros/macro.effect.html) macro invocation we declare an enum to represent our effects. The enum has a variant for each effect, which carries the [`Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) type.
+
+The macro generates code for:
+- an _actual_ effect enum (where the inner `Operation` type is wrapped with [`crux_core::Request`](https://docs.rs/crux_core/latest/crux_core/struct.Request.html))
+- an enum, similar to the one we specify, for use across the FFI boundary,
+- an implementation of the `Effect` trait
+- some useful test helpers
+- code to support the current foreign type generation (that uses `serde-reflection`)
+
+You can also use the `effect!` macro with the [new typegen](https://github.com/redbadger/crux/pull/217).
+```
+
+```admonish warning title="Deprecation of Capabilities associated type"
+Also note that as we near the tail end of the migration to the new [Command API](https://docs.rs/crux_core/latest/crux_core/command/index.html), the `Capabilities` associated type on the `App` trait will be deprecated.
+You'll notice that in the example, above, we can just use the unit type instead of a `Capabilities` struct and ignore the last argument to the update function.
 ```
 
 Make sure everything builds OK
@@ -243,7 +267,7 @@ cargo build
 ```
 
 ````admonish tip
-If you have problems building, make sure your `Capabilities` struct implements the `Export` trait.
+If you have a `Capabilities` struct (i.e. you are not using the new [`effect!`](https://docs.rs/crux_macros/latest/crux_macros/macro.effect.html) macro), and are having problems building, make sure your `Capabilities` struct also implements the `Export` trait.
 There is a derive macro that can do this for you, e.g.:
 
 ```rust,ignore

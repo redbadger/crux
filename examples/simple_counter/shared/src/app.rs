@@ -37,14 +37,14 @@ impl App for Counter {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = ();
+    type Capabilities = (); // will be deprecated, so use unit type for now
     type Effect = Effect;
 
     fn update(
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        _caps: &Self::Capabilities,
+        _caps: &(), // will be deprecated, so prefix with underscore for now
     ) -> Command<Effect, Event> {
         match event {
             Event::Increment => model.count += 1,
@@ -61,7 +61,7 @@ impl App for Counter {
         }
     }
 }
-// ANCHOR_END: impl_app
+// ANCHOR_END: app
 
 // ANCHOR: test
 #[cfg(test)]
