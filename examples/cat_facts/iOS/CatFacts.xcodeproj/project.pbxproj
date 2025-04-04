@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -16,6 +16,9 @@
 		8CEEE500CE6BE0647260B67F /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 585C187420F6F4F4142F646D /* SharedTypes */; };
 		91A375A39D8A4F827B873AF3 /* CatFactsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F008C3C1A819A3D7658E59 /* CatFactsApp.swift */; };
 		C6A871270F87D449FB7FE5C4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D27A7B150B96621935C1300 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CC41DEC62D9485290028D276 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC41DEC52D9485290028D276 /* SharedTypes */; };
+		CC5153862D946B4C00BA5660 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC5153852D946B4C00BA5660 /* SharedTypes */; };
+		CC5153892D946E6800BA5660 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC5153882D946E6800BA5660 /* SharedTypes */; };
 		F68573BF507ACC074620C5D8 /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A500489520C085A22DE7285 /* libshared_static.a */; };
 /* End PBXBuildFile section */
 
@@ -86,7 +89,6 @@
 		6F004D450518226D7B50A267 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8538B3F4FC8472F5C93ACD80 /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
 		85AA482E612CD48B918497C9 /* CatFacts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CatFacts.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B159CE6ED67571255C05D2C3 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		BA04D6CC7F18E9A653D26BDD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BEED0A11FB2044F35FBCD25B /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F7A91C46D50C923426AE058D /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
@@ -98,7 +100,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				F68573BF507ACC074620C5D8 /* libshared_static.a in Frameworks */,
+				CC5153862D946B4C00BA5660 /* SharedTypes in Frameworks */,
+				CC41DEC62D9485290028D276 /* SharedTypes in Frameworks */,
 				8CEEE500CE6BE0647260B67F /* SharedTypes in Frameworks */,
+				CC5153892D946E6800BA5660 /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,20 +153,11 @@
 			isa = PBXGroup;
 			children = (
 				0ECDC98F0209A1C6F2CAA14D /* CatFacts */,
-				CFF2128F5908E2CBC07A8E3E /* Packages */,
 				2C7829583F1579E7AC74C08C /* src */,
 				D3FCB02205D19ED1EDA7794F /* Products */,
 				632E821FBB8ECA7154D2ED0E /* Projects */,
 			);
 			sourceTree = "<group>";
-		};
-		CFF2128F5908E2CBC07A8E3E /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				B159CE6ED67571255C05D2C3 /* SharedTypes */,
-			);
-			name = Packages;
-			sourceTree = SOURCE_ROOT;
 		};
 		D3FCB02205D19ED1EDA7794F /* Products */ = {
 			isa = PBXGroup;
@@ -202,6 +198,9 @@
 			name = CatFacts;
 			packageProductDependencies = (
 				585C187420F6F4F4142F646D /* SharedTypes */,
+				CC5153852D946B4C00BA5660 /* SharedTypes */,
+				CC5153882D946E6800BA5660 /* SharedTypes */,
+				CC41DEC52D9485290028D276 /* SharedTypes */,
 			);
 			productName = CatFacts;
 			productReference = 85AA482E612CD48B918497C9 /* CatFacts.app */;
@@ -225,6 +224,9 @@
 				en,
 			);
 			mainGroup = C4A5B9BF461AAFDF4CBFCCBD;
+			packageReferences = (
+				CC41DEC42D9485290028D276 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+			);
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -489,8 +491,27 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		CC41DEC42D9485290028D276 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared_types/generated/swift/SharedTypes;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		585C187420F6F4F4142F646D /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC41DEC52D9485290028D276 /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC5153852D946B4C00BA5660 /* SharedTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedTypes;
+		};
+		CC5153882D946E6800BA5660 /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
 		};
