@@ -30,6 +30,7 @@
 1. [Testing](./guide/testing.md)
 1. [Interface between core and shell](./guide/message_interface.md)
 1. [Composable Applications](./guide/composing.md)
+1. [Android minify](./guide/android-apk-shrink.md)
 
 # Internals
 
