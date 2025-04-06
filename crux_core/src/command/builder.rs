@@ -12,6 +12,45 @@ use futures::{FutureExt, Stream, StreamExt};
 
 use super::{context::CommandContext, Command};
 
+/// A builder of one-off notify command
+// Task is a future which does the shell talking and returns an output
+pub struct NotificationBuilder<Effect, Event, Task> {
+    make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
+}
+
+impl<Effect, Event, Task> NotificationBuilder<Effect, Event, Task>
+where
+    Effect: Send + 'static,
+    Event: Send + 'static,
+    Task: Future<Output = ()> + Send + 'static,
+{
+    pub fn new<F>(make_task: F) -> Self
+    where
+        F: FnOnce(CommandContext<Effect, Event>) -> Task + Send + 'static,
+    {
+        let make_task = Box::new(make_task);
+
+        NotificationBuilder { make_task }
+    }
+
+    /// Convert the [`NotificationBuilder`] into a future to use in an async context
+    pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Task {
+        let make_task = self.make_task;
+        make_task(ctx)
+    }
+}
+
+impl<Effect, Event, Task> From<NotificationBuilder<Effect, Event, Task>> for Command<Effect, Event>
+where
+    Effect: Send + 'static,
+    Event: Send + 'static,
+    Task: Future<Output = ()> + Send + 'static,
+{
+    fn from(value: NotificationBuilder<Effect, Event, Task>) -> Self {
+        Command::new(|ctx| value.into_future(ctx))
+    }
+}
+
 /// A builder of one-off request command
 // Task is a future which does the shell talking and returns an output
 pub struct RequestBuilder<Effect, Event, Task> {

@@ -41,7 +41,7 @@ fn done_can_be_created() {
 
 #[test]
 fn notify_can_be_created_with_an_operation() {
-    let mut cmd: Command<Effect, Event> = Command::notify_shell(AnOperation);
+    let mut cmd: Command<Effect, Event> = Command::notify_shell(AnOperation).into();
 
     assert!(!cmd.is_done());
 
@@ -52,7 +52,7 @@ fn notify_can_be_created_with_an_operation() {
 
 #[test]
 fn notify_effect_can_be_inspected() {
-    let mut cmd: Command<_, Event> = Command::notify_shell(AnOperation);
+    let mut cmd: Command<Effect, Event> = Command::notify_shell(AnOperation).into();
 
     let effects = cmd.effects().next();
 

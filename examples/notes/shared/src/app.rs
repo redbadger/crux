@@ -127,7 +127,7 @@ impl NoteEditor {
                     }
                 };
 
-                let publish = PubSub::publish(change.bytes().to_vec());
+                let publish = PubSub::publish(change.bytes().to_vec()).into();
 
                 let len = text.chars().count();
                 let idx = match &model.cursor {
@@ -147,7 +147,7 @@ impl NoteEditor {
                 model.cursor = TextCursor::Position(idx);
 
                 let mut change = model.note.splice_text(from, to - from, &text);
-                let publish = PubSub::publish(change.bytes().to_vec());
+                let publish = PubSub::publish(change.bytes().to_vec()).into();
 
                 Command::all(vec![
                     publish,
@@ -193,7 +193,7 @@ impl NoteEditor {
                 };
 
                 model.cursor = TextCursor::Position(new_index);
-                let publish = PubSub::publish(change.bytes().to_vec());
+                let publish = PubSub::publish(change.bytes().to_vec()).into();
 
                 Command::all(vec![
                     publish,

@@ -1,9 +1,11 @@
+use std::future::Future;
+
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 
 use crux_core::{
     capability::{CapabilityContext, Operation},
-    command::StreamBuilder,
+    command::{NotificationBuilder, StreamBuilder},
     Command, Request,
 };
 
@@ -42,7 +44,9 @@ where
         Command::stream_from_shell(PubSubOperation::Subscribe).map(|Message(data)| data)
     }
 
-    pub fn publish<Effect>(data: Vec<u8>) -> Command<Effect, Event>
+    pub fn publish<Effect>(
+        data: Vec<u8>,
+    ) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
     where
         Effect: From<Request<PubSubOperation>> + Send + 'static,
     {

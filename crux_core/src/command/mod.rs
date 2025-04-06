@@ -252,7 +252,7 @@ use futures::{FutureExt as _, Stream, StreamExt as _};
 use slab::Slab;
 use stream::CommandStreamExt as _;
 
-pub use builder::{RequestBuilder, StreamBuilder};
+pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
 pub use context::CommandContext;
 pub use stream::CommandOutput;
 
@@ -378,15 +378,21 @@ where
         Command::new(|ctx| async move { ctx.send_event(event) })
     }
 
-    /// Create a Command which sends a notification to the shell with a provided `operation`.
+    /// Start a creation of a Command which sends a notification to the shell with a provided
+    /// `operation`.
     ///
-    /// This ia synchronous equivalent of [`CommandContext::notify_shell`].
-    pub fn notify_shell<Op>(operation: Op) -> Command<Effect, Event>
+    /// Returns a [`NotificationBuilder`] which can be converted into a Command directly.
+    ///
+    /// In an async context, `NotificationBuilder` can be turned into a future that resolves to the
+    /// operation output type.
+    pub fn notify_shell<Op>(
+        operation: Op,
+    ) -> builder::NotificationBuilder<Effect, Event, impl Future<Output = ()>>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
     {
-        Command::new(|ctx| async move { ctx.notify_shell(operation) })
+        builder::NotificationBuilder::new(|ctx| async move { ctx.notify_shell(operation) })
     }
 
     /// Start a creation of a Command which sends a one-time request to the shell with a provided

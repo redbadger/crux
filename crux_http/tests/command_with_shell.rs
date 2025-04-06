@@ -1,7 +1,7 @@
 mod shared {
     use crux_core::{
         macros::Effect,
-        render::{self, Render},
+        render::{render, Render},
         Command,
     };
     use crux_http::command::Http;
@@ -61,12 +61,12 @@ mod shared {
                     model.status = response.status().into();
                     model.body = response.take_body().unwrap();
 
-                    render::render()
+                    render()
                 }
                 Event::SetJson(response) => {
                     model.json_body = response.unwrap().take_body().unwrap();
 
-                    render::render()
+                    render()
                 }
             }
         }

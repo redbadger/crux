@@ -1,9 +1,12 @@
 //! Built-in capability used to notify the Shell that a UI update is necessary.
 
+use std::future::Future;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
     capability::{CapabilityContext, Operation},
+    command::NotificationBuilder,
     Capability, Command, Request,
 };
 
@@ -67,11 +70,33 @@ impl<Ev> Capability<Ev> for Render<Ev> {
     }
 }
 
-/// Signal the shell that UI should be redrawn. Returns a `Command`.
-pub fn render<Effect, Event>() -> Command<Effect, Event>
+/// Signal to the shell that the UI should be redrawn.
+/// Returns a [`NotificationBuilder`].
+///
+/// ### Examples:
+/// To use in a sync context:
+/// ```no_run
+/// render_builder().into() // or use `render_command()`
+/// ```
+/// To use in an async context:
+/// ```no_run
+/// render_builder().into_future(ctx).await
+/// ```
+pub fn render_builder<Effect, Event>(
+) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where
     Effect: From<Request<RenderOperation>> + Send + 'static,
     Event: Send + 'static,
 {
     Command::notify_shell(RenderOperation)
+}
+
+/// Signal to the shell that the UI should be redrawn.
+/// Returns a [`Command`].
+pub fn render<Effect, Event>() -> Command<Effect, Event>
+where
+    Effect: From<Request<RenderOperation>> + Send + 'static,
+    Event: Send + 'static,
+{
+    render_builder().into()
 }
