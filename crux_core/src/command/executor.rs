@@ -15,7 +15,7 @@ use futures::task::AtomicWaker;
 
 use std::sync::Arc;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct TaskId(pub(crate) usize);
 
 pub(crate) struct Task {
@@ -56,6 +56,7 @@ pub(crate) struct CommandWaker {
     // When the command is executed directly (e.g. in tests) this waker
     // will not be registered.
     pub(crate) parent_waker: Arc<AtomicWaker>,
+    woken: AtomicBool,
 }
 
 impl Wake for CommandWaker {
@@ -69,6 +70,7 @@ impl Wake for CommandWaker {
         // TODO: Does that mean we should bail, since waking ourselves is
         // now pointless?
         let _ = self.ready_queue.send(self.task_id);
+        self.woken.store(true, Ordering::Release);
 
         // Note: calling `wake` before `register` is a no-op
         self.parent_waker.wake();
@@ -138,7 +140,7 @@ pub(crate) enum TaskState {
     Missing,
     Suspended,
     Completed,
-    Canceled,
+    Cancelled,
 }
 
 // Command is actually an async executor of sorts, similar to futures::FuturesUnordered
@@ -168,7 +170,7 @@ impl<Effect, Event> Command<Effect, Event> {
                     TaskState::Suspended => {
                         // Task suspended, we pick it up again when it's woken up
                     }
-                    TaskState::Completed | TaskState::Canceled => {
+                    TaskState::Completed | TaskState::Cancelled => {
                         // Remove and drop the task, it's finished
                         let task = self.tasks.remove(task_id.0);
 
@@ -177,7 +179,7 @@ impl<Effect, Event> Command<Effect, Event> {
 
                         drop(task);
                     }
-                }
+                };
             }
         }
     }
@@ -198,6 +200,7 @@ impl<Effect, Event> Command<Effect, Event> {
             task_id,
             ready_queue,
             parent_waker,
+            woken: AtomicBool::new(false),
         });
 
         let waker = arc_waker.clone().into();
@@ -211,10 +214,14 @@ impl<Effect, Event> Command<Effect, Event> {
         drop(waker);
 
         // If the task is pending, but there's only one copy of the waker - our one -
-        // it can never wake up again so we need to evict it
+        // it can never be woken up again so we most likely need to evict it.
         // This happens for shell communication futures when their requests are dropped
-        if result == TaskState::Suspended && Arc::strong_count(&arc_waker) < 2 {
-            return TaskState::Canceled;
+        //
+        // Note that there is an exception: the task may have used the waker and dropped it,
+        // making it ready, rather than abandoned.
+        let task_is_ready = arc_waker.woken.load(Ordering::Acquire);
+        if result == TaskState::Suspended && !task_is_ready && Arc::strong_count(&arc_waker) < 2 {
+            return TaskState::Cancelled;
         }
 
         result
