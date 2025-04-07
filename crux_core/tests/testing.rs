@@ -3,8 +3,7 @@
 use crux_core::testing::AppTester;
 
 mod app {
-    use crux_core::{macros::Effect, Command};
-    use crux_core::{render, App};
+    use crux_core::{macros::Effect, render::render, App, Command};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -34,7 +33,7 @@ mod app {
             _model: &mut Self::Model,
             _caps: &Self::Capabilities,
         ) -> Command<Effect, Event> {
-            render::render()
+            render()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {

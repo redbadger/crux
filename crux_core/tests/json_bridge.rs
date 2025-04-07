@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::render::{self, Render};
+    use crux_core::render::{render, Render};
     use crux_core::{macros::Effect, Command};
     use crux_http::command::Http;
     use serde::{Deserialize, Serialize};
@@ -29,7 +29,7 @@ mod app {
             _caps: &Capabilities,
         ) -> Command<Effect, Event> {
             match event {
-                Event::Trigger => render::render(),
+                Event::Trigger => render(),
                 Event::Get => Http::get("http://example.com/")
                     .build()
                     .then_send(|_| Event::Trigger),
