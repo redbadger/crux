@@ -89,6 +89,7 @@ pub struct CatFacts {
     platform: platform::App,
 }
 
+// ANCHOR: effect
 effect! {
     pub enum Effect {
         Http(HttpRequest),
@@ -98,6 +99,7 @@ effect! {
         Time(TimeRequest),
     }
 }
+// ANCHOR_END: effect
 
 impl App for CatFacts {
     type Model = Model;
@@ -161,6 +163,7 @@ impl CatFacts {
             Event::Fetch => {
                 model.cat_image = Some(CatImage::default());
 
+                // ANCHOR: command_all
                 Command::all([
                     render::render(),
                     Http::get(FACT_API_URL)
@@ -172,6 +175,7 @@ impl CatFacts {
                         .build()
                         .then_send(Event::SetImage),
                 ])
+                // ANCHOR_END: command_all
             }
             Event::SetFact(Ok(mut response)) => {
                 model.cat_fact = Some(response.take_body().unwrap());

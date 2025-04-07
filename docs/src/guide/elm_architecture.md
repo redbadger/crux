@@ -20,7 +20,9 @@ This more complete model is a function which takes an event and a model, and pro
 
 User interface and effects are normally where testing gets very difficult. If the application logic can directly cause changes in the outside world (or input/output — I/O, in computer parlance), the only way to verify the logic completely is to look at the result of those changes. The results, however, are pixels on screen, elements in the DOM, packets going over the network and other complex, difficult to inspect and often short-lived things. The only viable strategy (in this direct scenario) to test them is to take the role of the particular device the app is working with, and pretending to be that device – a practice known as mocking (or stubbing, or faking, depending who you talk to). The APIs used to interact with these things are really complicated though, and even if you emulate them well, tests based on this approach won't be stable against changes in that API. When the API changes, your code _and_ your tests will both have to change, taking any confidence they gave you in the first place with them. What's more, they also differ across platforms. Now we have that problem twice or more times.
 
-The problem is in how apps are normally written (when written in a direct, imperative style). When it comes time to perform an effect, the most straightforward code just performs it straight away. The solution, as usual, is to add indirection. What Crux does (inspired by Elm, Haskell and others) is **separate the intent from the execution**. Crux's effect approach focuses on capturing the intent of the effect, not the specific implementation of executing it. The intent is captured as data to benefit from type checking and from all the tools the language already provides for working with data. The business logic can stay pure, but express all the behaviour: state changes and effects. The intent is also the thing that needs to be tested. We can reasonably afford to trust that the authors of a HTTP client library, for example, have tested it and it does what it promises to do — all we need to check is that we're sending the right requests[^testing].
+The problem is in how apps are normally written (when written in a direct, imperative style). When it comes time to perform an effect, the most straightforward code just performs it straight away. The solution, as usual, is to add indirection. What Crux does (inspired by Elm, Haskell and others) is **separate the intent from the execution**, with a managed effects system.
+
+Crux's effect approach focuses on capturing the intent of the effect, not the specific implementation of executing it. The intent is captured as data to benefit from type checking and from all the tools the language already provides for working with data. The business logic can stay pure, but express all the behaviour: state changes and effects. The intent is also the thing that needs to be tested. We can reasonably afford to trust that the authors of a HTTP client library, for example, have tested it and it does what it promises to do — all we need to check is that we're sending the right requests[^testing].
 
 ## Executing the effects: the ~~runtime~~ Shell
 
@@ -32,11 +34,19 @@ The execution of effects, including drawing the user interface, is done in a nat
 
 ![The two sides of the Shell](../crux.png)
 
-The Shell thus has two sides: the _driving_ side – the interactions causing events which push the Core to action, and the _driven_ side, which services the Core's requests for side effects. Without being prompted by the Shell, the Core does nothing, it can't – with no other I/O, there are no other triggers which could cause the Core code to run. To the Shell, the Core is a simple library, providing some computation. From the perspective of the Core, the Shell is a platform the Core runs on.
+The Shell thus has two sides: the _driving_ side – the interactions causing events which push the Core to action, and the _driven_ side, which services the Core's requests for side effects. The Core itself is also _driven_ -– Without being prompted by the Shell, the Core does nothing, it can't – with no other I/O, there are no other triggers which could cause the Core code to run. To the Shell, the Core is a simple library, providing some computation. From the perspective of the Core, the Shell is a platform the Core runs on.
 
-## Capabilities: the syntax sugar for effects
+```admonish note title="The effect runtime is also driven"
+Note that this driven nature impacts how effects execute in Crux. In the next few chapters, you'll see that you can write effect orchestration with `async` Rust, but because the entirety of the core is driven, this async code only executes when the core APIs are called by the shell.
 
-Effects encode potentially quite complex, but common interactions, so they are the perfect candidate for some improved ergonomics in the APIs. This is where Crux capabilities come in. They provide a nicer API for creating effects, and in the future, they will likely provide implementations of the effect execution for the various supported platforms. Capabilities can also implement more complex interactions with the outside world, such as chained network API calls or processing results of effects, like parsing JSON API responses.
+Don't worry if this means nothing to you for now, it'll make sense later.
+```
+
+## Managed effects: the complex interactions between the core and the shell
+
+While the basic effects are quite simple (e.g. "fetch a response over HTTP"), real world apps tend to compose them in quite complicated paterns with data dependencies between them, and we need to support this use well. In the next chapter, we'll introduce the `Command` API used to compose the basic effects into more complex interactions, and later we'll build on this with Capabilities, which provide an abstraction on top of these basic building blocks with a more ergonomic API.
+
+Capabilities not only provide a nicer API for creating effects and effect orchestrations; in the future, they will likely also provide implementations of the effect execution for the various supported platforms.
 
 We will look at how effects are created and passed to the shell in the next chapter. In the one following that we'll explore how capabilities work, and will build our own.
 
