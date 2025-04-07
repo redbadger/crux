@@ -75,12 +75,21 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 ///
 /// ### Examples:
 /// To use in a sync context:
-/// ```no_run
-/// render_builder().into() // or use `render_command()`
+/// ```
+///# use crux_core::{Command, render::{render_builder, Render, RenderOperation}};
+///# crux_core::macros::effect! {pub enum Effect {Render(RenderOperation)}}
+///# enum Event {None}
+/// let command: Command<Effect, Event> =
+///     render_builder().into(); // or use `render_command()`
 /// ```
 /// To use in an async context:
-/// ```no_run
-/// render_builder().into_future(ctx).await
+/// ```
+///# use crux_core::{Command, render::{render_builder, Render, RenderOperation}};
+///# crux_core::macros::effect! {pub enum Effect {Render(RenderOperation)}}
+///# enum Event {None}
+///# let command: Command<Effect, Event> = Command::new(|ctx| async move {
+/// render_builder().into_future(ctx).await;
+///# });
 /// ```
 pub fn render_builder<Effect, Event>(
 ) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
