@@ -41,7 +41,7 @@ jobs:
           components: rustfmt
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - uses: pnpm/action-setup@v4
         with:
@@ -110,7 +110,7 @@ jobs:
         run: rustup component add rustfmt
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Install nextest
         shell: bash
