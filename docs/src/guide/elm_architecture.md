@@ -44,7 +44,7 @@ Don't worry if this means nothing to you for now, it'll make sense later.
 
 ## Managed effects: the complex interactions between the core and the shell
 
-While the basic effects are quite simple (e.g. "fetch a response over HTTP"), real world apps tend to compose them in quite complicated paterns with data dependencies between them, and we need to support this use well. In the next chapter, we'll introduce the `Command` API used to compose the basic effects into more complex interactions, and later we'll build on this with Capabilities, which provide an abstraction on top of these basic building blocks with a more ergonomic API.
+While the basic effects are quite simple (e.g. "fetch a response over HTTP"), real world apps tend to compose them in quite complicated patterns with data dependencies between them, and we need to support this use well. In the next chapter, we'll introduce the `Command` API used to compose the basic effects into more complex interactions, and later we'll build on this with Capabilities, which provide an abstraction on top of these basic building blocks with a more ergonomic API.
 
 Capabilities not only provide a nicer API for creating effects and effect orchestrations; in the future, they will likely also provide implementations of the effect execution for the various supported platforms.
 

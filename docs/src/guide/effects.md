@@ -61,7 +61,7 @@ effects which your app needs in order to work, and every time it responds to an 
 it is expected to return a `Command`.
 
 ```admonish question title="Why not return an Effect?"
-Good question - it seems logical at first to return a single Effect, but in practice, we often want to do a lot more than a single effect, it can easily be a complicated orchestrtion of several effects in parallel, some of which race each other or follow each other in a chain.
+Good question - it seems logical at first to return a single Effect, but in practice, we often want to do a lot more than a single effect, it can easily be a complicated orchestration of several effects in parallel, some of which race each other or follow each other in a chain.
 
 This is the reason we introduce one more layer in between: commands
 ```
@@ -73,9 +73,9 @@ effects and also send events back to the app.
 
 ![Core, updated and command](../command_overview.png)
 
-Crux expects Command to be returned by the `update` function. A basic Command will result in an effect request to the Shell, and when the request is _resolved_ by the Shell, the Command will pass the output to the app in an Event. The interaction can be more complicated than this, however. You can imagine a command running a set of Effects concurrently (say a few http requests and a timer), then follow some of them with additional effects based on their outputs, and finally send an event with the result of some of the outputs combined. So in principle, Command is a state machine which emits effects (for the Shell) and Events (for the app) according to the internal logic of what needs to be accomplished.
+Crux expects a Command to be returned by the `update` function. A basic Command will result in an effect request to the Shell, and when the request is _resolved_ by the Shell, the Command will pass the output to the app in an Event. The interaction can be more complicated than this, however. You can imagine a command running a set of Effects concurrently (say a few http requests and a timer), then follow some of them with additional effects based on their outputs, and finally send an event with the result of some of the outputs combined. So in principle, Command is a state machine which emits effects (for the Shell) and Events (for the app) according to the internal logic of what needs to be accomplished.
 
-`Command` provides APIs to iterate over the effects and events emitted so far. This API can be used both in tests and in Rust based shells, and for some advanced use-cases when composing applications.
+`Command` provides APIs to iterate over the effects and events emitted so far. This API can be used both in tests and in Rust-based shells, and for some advanced use cases when composing applications.
 
 A basic test using the Command API may look like this:
 
@@ -87,7 +87,7 @@ A basic test using the Command API may look like this:
 
 Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
 
-Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation are wrapped first in a `Request`, which can be `resolve`d, and then again with an `Effect`. `Effect` is typically an enum defined by your app, which has a variant for each type of effect your app emits. This llows multiple Operation types to coexist, and also enables the Shells to "dispatch" to the right implementation to handdle them.
+Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`. `Effect` is typically an enum defined by your app, which has a variant for each type of effect your app emits. This allows multiple Operation types to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
 The `Effect` type is typically defined with the help of the `effect!` macro, like this:
 
@@ -95,7 +95,7 @@ The `Effect` type is typically defined with the help of the `effect!` macro, lik
 {{#include ../../../examples/cat_facts/shared/src/app.rs:effect}}
 ```
 
-The above effect type supports five different kind of side effects. The five operations involved are actually defined by five different Capabilities, so lets talk about those.
+The above effect type supports five different kinds of side effects. The five operations involved are actually defined by five different Capabilities, so lets talk about those.
 
 This type can now be assigned to the `Effect` associated type in your `App` implementation.
 
@@ -104,14 +104,14 @@ This type can now be assigned to the `Effect` associated type in your `App` impl
 Capabilities are developer-friendly, ergonomic APIs to construct commands, from
 very basic ones all the way to complex stateful orchestrations. Capabilities are an abstraction layer that bundles related operations together with code to create them, and cover one kind of a side-effect (e.g. HTTP, or timers).
 
-We will look at writing capabilities in the next chapter, but for now, it's useful to know that their API often don't return `Commands` straight away, but instead return command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
+We will look at writing capabilities in the next chapter, but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
 
-To make that make more sense, lets look at how Commands are typically used.
+To help that make more sense, lets look at how Commands are typically used.
 
 
 ## Working with Commands
 
-The intent behind the command API is to cover 80% of effect orchestration witout asking developers to use `async` Rust. We will look at the `async` use in a minute, but first lets look at what can be done without it.
+The intent behind the command API is to cover 80% of effect orchestration without asking developers to use `async` Rust. We will look at the `async` use in a minute, but first lets look at what can be done without it.
 
 A typical use of a `Command` in an update function will look something like this:
 
@@ -132,14 +132,14 @@ Time::now().then_send(Event::CurrentTime)
 
 the `now()` call again returns a command builder, which is used to create a command with `.then_send()`.
 
-One special, but common case of creating a command is creating a Command which does nothing, because there re no more side-effects:
+One special, but common case of creating a command is creating a Command which does nothing, because there are no more side-effects:
 
 ```rust.ignore
 Command::done()
 ```
 
 Soon enough, your app will get a little more complicated, you will need to run multiple commands concurrently, but your `update` function
-only returns a single value. You can combine existing commnads into one using either the `all` function, or the `.and` method.
+only returns a single value. You can combine existing commands into one using either the `all` function, or the `.and` method.
 
 For example (from the Cat facts example):
 
@@ -174,7 +174,7 @@ Combining all these tools provides a fair bit of flexibility to create fairly co
 For more details of this, we recommend the [Command API docs](https://docs.rs/crux_core/latest/crux_core/command/index.html).
 
 ```admonish warning
-Notice that nowhere in the above examples have we mentioned working with the model during the execution of the command. This is very much by design: Once started, commands do not have model acces, because they execute asynchronously, possibly in parallel, and access to model would introduce data races, which are very difficult to debug.
+Notice that nowhere in the above examples have we mentioned working with the model during the execution of the command. This is very much by design: Once started, commands do not have model access, because they execute asynchronously, possibly in parallel, and access to model would introduce data races, which are very difficult to debug.
 
 In order to update state, you should pass the result of the effect orchestration back to your app using an Event (as a kind of callback). It's relatively typical for apps to have a number of "internal" events, which handle results of effects. Sometimes these are also useful in tests, if you want to start a particular journey "from the middle".
 ```
@@ -205,7 +205,7 @@ Builders can be converted into a future/stream for use in the `async` blocks wit
 ```admonish warning title="Crux async vs Tokio, async-std et al."
 While commands do execute on an async runtime, the runtime does not run on its own - it's part of the core and needs to be _driven_ by the Shell calling the Core APIs. We use `async` rust as a convenient way to build the cooperative multi-tasking state machines involved in managing side effects.
 
-This is also why combining the Crux async runtime with something like Tokio will appear to somewhat work (because the futures involved are mostly compatible), but it will have odd stop-start behaviours, because the Crux runtime doesn't run all the time, and some futures won't work, because the require Tokio support.
+This is also why combining the Crux async runtime with something like Tokio will appear to somewhat work (because the futures involved are mostly compatible), but it will have odd stop-start behaviours, because the Crux runtime doesn't run all the time, and some futures won't work, because they require Tokio support.
 
 That said, a lot of universal async code (like async channels for example), work just fine.
 ```

@@ -14,13 +14,16 @@ to SDKs. And a lot of them will provide an interface to the actual platform
 specific SDKs.
 
 There is not a lot more to be said about using capabilities, your best source is probably
-the [documentation of the provided Time capability](https://docs.rs/crux_time/latest/crux_time/struct.Time.html), you'll find
+the [documentation of the provided Time capability](https://docs.rs/crux_time/latest/crux_time/command/struct.Time.html), you'll find
 that the basic capabilities just define some types and a few functions.
 
 If you're interested in building your own capability, read the [next chapter](./capability_apis.md).
 
+----
 
-```admonish warning title="Below approach is deprecated"
+```admonish warning title="The rest of this page is deprecated!"
+You can safely continue with the [next chapter](./capability_apis.md).
+
 Capabilities required a lot more explanation, most of which has moved to
 the [Managed Effects](./effects.md) chapter, which you should follow,
 unless you're working on an older app, which still defines a `Capabilities` type.

@@ -55,7 +55,8 @@ struct Delay;
 
 impl Delay
 {
-    pub fn milliseconds<Effect, Event>(&self, millis: usize) -> RequestBuilder<Effect, Event, impl Future<Output = ()>>
+    pub fn milliseconds<Effect, Event>(&self, millis: usize)
+        -> RequestBuilder<Effect, Event, impl Future<Output = ()>>
     where
         Effect: Send + From<Request<DelayOperation>> + 'static,
         Event: Send + 'static,
@@ -126,20 +127,23 @@ where
     Effect: Send + From<Request<DelayOperation>> + 'static,
     Event: Send + 'static,
 {
-    pub fn milliseconds(&self, millis: usize) -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
+    pub fn milliseconds(&self, millis: usize)
+        -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
     {
         Command::request_from_shell(DelayOperation { millis })
     }
 
-    pub fn random(&self, min: usize, max: usize) -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
+    pub fn random(&self, min: usize, max: usize)
+        -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
     {
-        Command::request_from_shell(DelayOperation::GetRandom(min, max)).then_request(|response| {
-            let DelayOutput::Random(millis) = response else {
-                panic!("Expected a random number")
-            };
+        Command::request_from_shell(DelayOperation::GetRandom(min, max))
+            .then_request(|response| {
+                let DelayOutput::Random(millis) = response else {
+                    panic!("Expected a random number")
+                };
 
-            Command::request_from_shell(DelayOperation::Delay(millis))
-        })
+                Command::request_from_shell(DelayOperation::Delay(millis))
+            })
     }
 }
 ```
@@ -152,7 +156,7 @@ Here is what our app looks like with delay added in:
 
 
 ```rust,noplayground
-fn update(&self, event: Self::Event, model: &mut Self::Model, caps: ()) {
+fn update(&self, event: Self::Event, model: &mut Self::Model, _caps: ()) {
     match event {
         //
         // ... Some events omitted
@@ -170,6 +174,7 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: ()) {
             // real update
             let base = Url::parse(API_URL).unwrap();
             let url = base.join("/inc").unwrap();
+
             Http::post(url.as_str()).expect_json().build().then_send(Event::Set);
         }
         Event::Decrement => {
@@ -197,11 +202,14 @@ fn update(&self, event: Self::Event, model: &mut Self::Model, caps: ()) {
 Capabilities can get quite complicated, but the basic principles stay the same - their APIs return command builders, and the difference is in what those builders do. More advanced capabilities might need to construct command builders directly and use the `async` API to do their work, even `spawning` tasks which run in a loop and communicate with other tasks, etc.
 
 But for the basics, that is essentially it for the capabilities. You can check out the complete
-command context API to see what can be don from inside command builders
+command context API to see what can be done from inside command builders
 [in the docs](https://docs.rs/crux_core/latest/crux_core/command/struct.CommandContext.html).
 
+----
 
-```admonish warning title="Below approach is deprecated"
+```admonish warning title="The rest of this page is deprecated!"
+You can safely continue with the [next chapter](./testing.md).
+
 The Capability APIs have gone through a big step change recently. Everything below this
 point covers how you would previously build them.
 
