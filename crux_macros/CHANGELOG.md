@@ -8,7 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.4.6](https://github.com/redbadger/crux/compare/crux_macros-v0.4.5...crux_macros-v0.4.6) - 2025-04-08
+## [0.5.0](https://github.com/redbadger/crux/compare/crux_macros-v0.4.5...crux_macros-v0.5.0) - 2025-04-08
+
+### Breaking Change
+
+Note that this release replaces v0.4.5 (which has been yanked for a breaking change in typegen for existing code).
 
 There is a new [`effect!`](https://docs.rs/crux_macros/latest/crux_macros/macro.effect.html) macro that improves the ergonomics of writing Crux apps significantly. Instead of creating a `Capabilities` struct and applying the `Effect` and `Export` derive macros, you can just wrap an Effect enum with the `effect!` macro and specify the unit type `()` as the `Capabilities` associated type (which will be deprecated soon) on your `App` trait implementation.
 

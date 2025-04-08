@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.13.1](https://github.com/redbadger/crux/compare/crux_core-v0.13.0...crux_core-v0.13.1) - 2025-04-08
+
+Patch release to update dependency on `crux_macros` to 0.5.0
+
 ## [0.13.0](https://github.com/redbadger/crux/compare/crux_core-v0.12.2...crux_core-v0.13.0) - 2025-04-08
 
 ### Breaking Changes
