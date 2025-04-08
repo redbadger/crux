@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.1](https://github.com/redbadger/crux/compare/crux_time-v0.10.0...crux_time-v0.10.1) - 2025-04-08
+
+Updated to use version 0.13 of [`crux_core`](https://crates.io/crates/crux_core).
+
 ## [0.10.0](https://github.com/redbadger/crux/compare/crux_time-v0.9.0...crux_time-v0.10.0) - 2025-03-21
 
 Breaking changes:

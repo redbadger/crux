@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.10](https://github.com/redbadger/crux/compare/crux_http-v0.11.9...crux_http-v0.11.10) - 2025-04-08
+
+Updated to use version 0.13 of [`crux_core`](https://crates.io/crates/crux_core).
+
+### Other
+
+- rust deps
+- NotificationBuilder
+- move register_types from Capability to Operation, remove caps! macro
+- doc comments
+
 ## [0.11.9](https://github.com/redbadger/crux/compare/crux_http-v0.11.8...crux_http-v0.11.9) - 2025-03-21
 
 Patch release, no API changes.

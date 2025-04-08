@@ -8,6 +8,30 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.13.0](https://github.com/redbadger/crux/compare/crux_core-v0.12.2...crux_core-v0.13.0) - 2025-04-08
+
+### Breaking Changes
+
+`Command::notify_shell()` now returns a `NotificationBuilder` rather than a `Command` so that it can be used in sync _and_ async contexts. See [#338](https://github.com/redbadger/crux/pull/338).
+
+### Other Changes
+
+There is a new [`effect!`](https://docs.rs/crux_macros/latest/crux_macros/macro.effect.html) macro that improves the ergonomics of writing Crux apps significantly. Instead of creating a `Capabilities` struct and applying the `Effect` and `Export` derive macros, you can just wrap an Effect enum with the `effect!` macro and specify the unit type `()` as the `Capabilities` associated type (which will be deprecated soon) on your `App` trait implementation.
+
+A bug was fixed in the Command executor which caused some tasks to stall under rare circumstances. See [#339](https://github.com/redbadger/crux/pull/339) for more details.
+
+### Changes
+
+- fix doc tests
+- Adapt docs to Command API being default
+- NotificationBuilder
+- Fix an executor bug
+- add note about capabilities deprecation in guide
+- improve effect macros and docs
+- typos
+- register effects through register_app
+- move register_types from Capability to Operation, remove caps! macro
+
 ## [0.12.2](https://github.com/redbadger/crux/compare/crux_core-v0.12.1...crux_core-v0.12.2) - 2025-03-21
 
 Patch release, no API changes.
