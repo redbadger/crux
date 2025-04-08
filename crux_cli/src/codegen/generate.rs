@@ -200,6 +200,7 @@ pub fn typescript(
     std::process::Command::new("pnpm")
         .current_dir(path)
         .arg("add")
+        .arg("--save-dev")
         .arg("typescript")
         .status()
         .map_err(|e| match e.kind() {

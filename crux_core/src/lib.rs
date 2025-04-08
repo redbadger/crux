@@ -221,3 +221,8 @@ pub trait App: Default {
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
 }
+
+#[cfg(feature = "cli")]
+pub fn run_cli() -> anyhow::Result<()> {
+    crux_cli::run()
+}
