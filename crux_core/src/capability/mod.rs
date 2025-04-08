@@ -372,9 +372,7 @@ pub trait WithContext<Ev, Ef> {
 }
 
 impl<Event, Effect> WithContext<Event, Effect> for () {
-    fn new_with_context(_context: ProtoContext<Effect, Event>) -> Self {
-        ()
-    }
+    fn new_with_context(_context: ProtoContext<Effect, Event>) -> Self {}
 }
 
 /// An interface for capabilities to interact with the app and the shell.

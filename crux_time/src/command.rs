@@ -44,7 +44,7 @@ where
     }
 
     /// Ask to receive a notification when the specified
-    /// [`SystemTime`](std::time::SystemTime) has arrived.
+    /// [`SystemTime`] has arrived.
     pub fn notify_at(
         system_time: SystemTime,
     ) -> (
@@ -117,7 +117,7 @@ where
     }
 
     /// Ask to receive a notification after the specified
-    /// [`Duration`](std::time::Duration) has elapsed.
+    /// [`Duration`] has elapsed.
     pub fn notify_after(
         duration: Duration,
     ) -> (

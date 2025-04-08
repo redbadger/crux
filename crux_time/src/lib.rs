@@ -89,7 +89,7 @@ where
     }
 
     /// Ask to receive a notification when the specified
-    /// [`SystemTime`](std::time::SystemTime) has arrived.
+    /// [`SystemTime`] has arrived.
     pub fn notify_at<F>(&self, system_time: SystemTime, callback: F) -> TimerId
     where
         F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
@@ -105,7 +105,7 @@ where
     }
 
     /// Ask to receive a notification when the specified
-    /// [`SystemTime`](std::time::SystemTime) has arrived.
+    /// [`SystemTime`] has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
     pub fn notify_at_async(
         &self,
