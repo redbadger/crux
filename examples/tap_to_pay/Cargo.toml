@@ -11,7 +11,7 @@ rust-version = "1.68"
 [workspace.dependencies]
 anyhow = "1.0.97"
 crux_core = { path = "../../crux_core" }
-serde = "1.0.218"
+serde = "1.0.219"
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }

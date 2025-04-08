@@ -14,8 +14,8 @@ anyhow.workspace = true
 chrono = "0.4.40"
 clap = { version = "4.3.24", features = ["derive"] }
 crossbeam-channel = "0.5.14"
-reqwest = { version = "0.12.12", features = ["stream"] }
+reqwest = { version = "0.12.15", features = ["stream"] }
 shared = { path = "../shared" }
-tokio = { version = "1.38.1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.38.2", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

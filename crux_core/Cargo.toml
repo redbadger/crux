@@ -18,7 +18,7 @@ all-features = true
 
 [dependencies]
 anyhow.workspace = true
-bincode = "1.3.3"
+bincode = "=1.3.3"
 crossbeam-channel = "0.5.14"
 crux_macros = { version = "0.4.5", path = "../crux_macros" }
 erased-serde = "0.4"
@@ -41,8 +41,8 @@ async-channel = "2.3"
 crux_http = { path = "../crux_http" }
 crux_time = { path = "../crux_time" }
 doctest_support = { path = "../doctest_support" }
-serde = { version = "1.0.218", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
 static_assertions = "1.1"
 rand = "0.9"
 url = "2.5.4"
-uuid = { version = "1.15.1", features = ["v4", "serde"] }
+uuid = { version = "1.16.0", features = ["v4", "serde"] }

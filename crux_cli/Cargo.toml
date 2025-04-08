@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-clap = { version = "4.5.31", features = ["derive"] }
+clap = { version = "4.5.35", features = ["derive"] }
 console = "0.15.11"
 ignore = "0.4.23"
 ramhorns = "1.0.1"

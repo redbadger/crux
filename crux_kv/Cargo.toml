@@ -17,5 +17,5 @@ typegen = ["crux_core/typegen"]
 anyhow.workspace = true
 crux_core = { version = "0.12", path = "../crux_core" }
 serde = { workspace = true, features = ["derive"] }
-serde_bytes = "0.11.16"
+serde_bytes = "0.11.17"
 thiserror = "2.0.12"
