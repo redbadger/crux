@@ -75,6 +75,7 @@ fn request_effect_can_be_inspected() {
     assert_eq!(request.operation, AnOperation)
 }
 
+// ANCHOR: basic_test
 #[test]
 fn request_effect_can_be_resolved() {
     let mut cmd = Command::request_from_shell(AnOperation).then_send(Event::Completed);
@@ -96,6 +97,7 @@ fn request_effect_can_be_resolved() {
 
     assert!(cmd.is_done())
 }
+// ANCHOR_END: basic_test
 
 #[test]
 fn stream_effect_can_be_resolved_multiple_times() {
