@@ -501,6 +501,7 @@ dependencies = [
  "async-channel 2.3.1",
  "bincode",
  "crossbeam-channel",
+ "crux_cli",
  "crux_http",
  "crux_macros",
  "crux_time",
