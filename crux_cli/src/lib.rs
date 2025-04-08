@@ -2,6 +2,7 @@ mod args;
 pub mod codegen;
 
 use anyhow::Result;
+pub use args::CodegenArgs;
 use args::{Cli, Commands};
 use clap::Parser;
 
