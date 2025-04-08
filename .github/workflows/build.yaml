@@ -79,7 +79,7 @@ jobs:
 
   examples:
     runs-on: ubuntu-latest
-    container: ivangabriele/tauri:debian-bookworm-18
+    container: ivangabriele/tauri:debian-bookworm-22
 
     if: |
       ${{ github.event_name != 'pull_request' ||
