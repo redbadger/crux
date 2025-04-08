@@ -27,7 +27,8 @@ buildTypes {
     }
 }
 ```
-just enabling this feature will break your app aa it will remove a lot of the
+
+Just enabling this feature will break your app as it will remove a lot of the
 shared lib we depend on, to prevent this amend the `proguard-rules.pro` file to contain
 the following
 
@@ -56,10 +57,11 @@ the following
   public protected *;
 }
 ```
-If the above results in a crash at runtime you will need to expand the rules to
-include more functions/classes, bellow is a set of links that can help with
-understanding these rules.
-https://developer.android.com/build/shrink-code#keep-code
-https://www.guardsquare.com/manual/configuration/examples
-https://gendignoux.com/blog/2022/10/24/rust-library-android.html#shrinking-and-testing-the-release-apk
 
+If the above results in a crash at runtime you will need to expand the rules to
+include more functions/classes, below is a set of links that can help with
+understanding these rules.
+
+<https://developer.android.com/build/shrink-code#keep-code>
+<https://www.guardsquare.com/manual/configuration/examples>
+<https://gendignoux.com/blog/2022/10/24/rust-library-android.html#shrinking-and-testing-the-release-apk>
