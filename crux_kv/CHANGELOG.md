@@ -8,6 +8,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.0](https://github.com/redbadger/crux/compare/crux_kv-v0.6.6...crux_kv-v0.7.0) - 2025-04-09
+Replaces yanked 0.6.6 as that broke typegen on older versions of crux_core.
+
 ## [0.6.6](https://github.com/redbadger/crux/compare/crux_kv-v0.6.5...crux_kv-v0.6.6) - 2025-04-08
 
 Updated to use version 0.13 of [`crux_core`](https://crates.io/crates/crux_core).

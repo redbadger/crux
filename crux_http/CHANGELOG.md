@@ -8,6 +8,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.12.0](https://github.com/redbadger/crux/compare/crux_http-v0.11.10...crux_http-v0.12.0) - 2025-04-09
+Replaces yanked 0.11.10 as that broke typegen on older versions of crux_core.
+
 ## [0.11.10](https://github.com/redbadger/crux/compare/crux_http-v0.11.9...crux_http-v0.11.10) - 2025-04-08
 
 Updated to use version 0.13 of [`crux_core`](https://crates.io/crates/crux_core).

@@ -399,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.11.10"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -419,7 +419,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.6.6"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -442,7 +442,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.3.6"
+version = "0.4.0"
 dependencies = [
  "crux_core",
  "serde",
@@ -450,7 +450,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "chrono",
  "crux_core",

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/redbadger/crux/compare/crux_platform-v0.3.6...crux_platform-v0.4.0) - 2025-04-09
+Replaces yanked 0.3.6 as that broke typegen on older versions of crux_core.
+
 ## [0.3.6](https://github.com/redbadger/crux/compare/crux_platform-v0.3.5...crux_platform-v0.3.6) - 2025-04-08
 
 Updated to use version 0.13 of [`crux_core`](https://crates.io/crates/crux_core).

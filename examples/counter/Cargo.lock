@@ -1008,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.11.10"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "async-trait",
