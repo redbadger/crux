@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.1](https://github.com/redbadger/crux/compare/crux_time-v0.11.0...crux_time-v0.11.1) - 2025-04-09
+
+### Other
+
+- updated the following local packages: crux_core
+
 ## [0.11.0](https://github.com/redbadger/crux/compare/crux_time-v0.10.1...crux_time-v0.11.0) - 2025-04-09
 Replaces yanked 0.10.1 as that broke typegen on older versions of crux_core.
 

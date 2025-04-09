@@ -8,6 +8,42 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/redbadger/crux/compare/crux_macros-v0.5.0...crux_macros-v0.6.0) - 2025-04-09
+
+### Breaking Change
+
+The `effect!` function macro has been replaced with an `#[effect]` attribute proc macro.
+
+It also expects you to opt into foreign type generation using `#[effect(typegen)]` attribute on your Effect enum.
+
+This is to allow the macro to be used in applications that either have a Rust shell, don't use the builtin typegen _or_  use the new typegen (from #217) by using `#[effect]` (without any arguments).
+
+e.g. with typegen:
+
+```rust
+#[effect(typegen)]
+pub enum Effect {
+    Render(RenderOperation),
+    Http(HttpRequest),
+    ServerSentEvents(SseRequest)
+}
+```
+
+or, without typegen:
+
+```rust
+#[effect]
+pub enum Effect {
+    Render(RenderOperation),
+    Http(HttpRequest),
+    ServerSentEvents(SseRequest)
+}
+```
+
+### Added
+
+- *(macros)* [**breaking**] effect! macro is now #[effect] attribute macro
+
 ## [0.5.0](https://github.com/redbadger/crux/compare/crux_macros-v0.4.5...crux_macros-v0.5.0) - 2025-04-08
 
 ### Breaking Change
