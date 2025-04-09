@@ -13,10 +13,9 @@ pub enum Event {
     Reset,
 }
 
-effect! {
-    pub enum Effect {
-        Render(RenderOperation),
-    }
+#[effect(typegen)]
+pub enum Effect {
+    Render(RenderOperation),
 }
 
 #[derive(Default)]

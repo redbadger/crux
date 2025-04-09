@@ -89,7 +89,7 @@ Each effect carries a request for an Operation (e.g. a HTTP request), which can 
 
 Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`. `Effect` is typically an enum defined by your app, which has a variant for each type of effect your app emits. This allows multiple Operation types to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
-The `Effect` type is typically defined with the help of the `effect!` macro, like this:
+The `Effect` type is typically defined with the help of the `#[effect]` macro, like this:
 
 ```rust,ignore
 {{#include ../../../examples/cat_facts/shared/src/app.rs:effect}}

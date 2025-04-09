@@ -7,7 +7,7 @@ use capability::capability_impl;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use syn::{parse_macro_input, ItemEnum};
+use syn::{parse_macro_input, Ident, ItemEnum};
 
 /// Procedural macro to derive an Effect enum, with a variant for
 /// each non-skipped capability.
@@ -63,6 +63,8 @@ pub fn effect_derive(input: TokenStream) -> TokenStream {
 /// Generates an effect type matching the enum definition provided,
 /// whilst supplying all the necessary decorations and additional trait implementations.
 ///
+/// Use `typegen` as an argument if you want to opt in to the built-in foreign type generation.
+///
 /// e.g.
 /// ```rust
 /// # use crux_core::{Capability, render::RenderOperation, compose::Compose};
@@ -89,16 +91,16 @@ pub fn effect_derive(input: TokenStream) -> TokenStream {
 /// #         unimplemented!()
 /// #     }
 /// # }
-/// effect! {
-///     pub enum MyEffect {
-///         Render(RenderOperation),
-///         Http(HttpRequest),
-///     }
+/// #[effect(typegen)]
+/// pub enum MyEffect {
+///     Render(RenderOperation),
+///     Http(HttpRequest),
 /// }
-#[proc_macro]
-pub fn effect(input: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(args as Option<Ident>);
     let input = parse_macro_input!(input as ItemEnum);
-    effect::effect_impl(input).into()
+    effect::effect_impl(args, input).into()
 }
 
 #[proc_macro_derive(Export)]

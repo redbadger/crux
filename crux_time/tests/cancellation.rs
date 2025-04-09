@@ -16,10 +16,9 @@ pub enum Event {
     Completed(TimerOutcome),
 }
 
-effect! {
-    pub enum Effect {
-        Time(TimeRequest),
-    }
+#[effect]
+pub enum Effect {
+    Time(TimeRequest),
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
