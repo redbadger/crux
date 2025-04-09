@@ -91,6 +91,7 @@ pub struct CatFacts {
 
 // ANCHOR: effect
 effect! {
+    #[typegen]
     pub enum Effect {
         Http(HttpRequest),
         KeyValue(KeyValueOperation),

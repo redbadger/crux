@@ -14,6 +14,7 @@ pub enum Event {
 }
 
 effect! {
+    #[typegen]
     pub enum Effect {
         Render(RenderOperation),
     }
