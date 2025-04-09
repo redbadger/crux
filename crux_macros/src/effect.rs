@@ -8,12 +8,13 @@ struct Effect {
     operation: Type,
 }
 
-pub fn effect_impl(input: ItemEnum) -> TokenStream {
+pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     let enum_ident = &input.ident;
-    let has_typegen_attr = input
-        .attrs
-        .iter()
-        .any(|attr| attr.meta.path().is_ident("typegen"));
+    let has_typegen_attr = match args {
+        Some(x) if x == format_ident!("typegen") => true,
+        None => false,
+        _ => panic!("did you mean typegen?"),
+    };
     let enum_ident_str = enum_ident.to_string();
 
     let mut ffi_enum = input.clone();
@@ -155,15 +156,28 @@ mod test {
     use super::*;
 
     #[test]
-    fn single_with_typegen() {
+    #[should_panic(expected = "did you mean typegen?")]
+    fn bad_args() {
+        let args = Some(format_ident!("typo"));
         let input = parse_quote! {
-            #[typegen]
             pub enum Effect {
                 Render(RenderOperation),
             }
         };
 
-        let actual = effect_impl(input);
+        effect_impl(args, input);
+    }
+
+    #[test]
+    fn single_with_typegen() {
+        let args = Some(format_ident!("typegen"));
+        let input = parse_quote! {
+            pub enum Effect {
+                Render(RenderOperation),
+            }
+        };
+
+        let actual = effect_impl(args, input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
@@ -227,7 +241,7 @@ mod test {
             }
         };
 
-        let actual = effect_impl(input);
+        let actual = effect_impl(None, input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
@@ -273,15 +287,15 @@ mod test {
 
     #[test]
     fn multiple_with_typegen() {
+        let args = Some(format_ident!("typegen"));
         let input = parse_quote! {
-            #[typegen]
             pub enum Effect {
                 Render(RenderOperation),
                 Http(HttpRequest),
             }
         };
 
-        let actual = effect_impl(input);
+        let actual = effect_impl(args, input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
@@ -371,7 +385,7 @@ mod test {
             }
         };
 
-        let actual = effect_impl(input);
+        let actual = effect_impl(None, input);
 
         insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]

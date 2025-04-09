@@ -20,11 +20,10 @@ pub enum Event {
     Set(PlatformResponse),
 }
 
-effect! {
-    pub enum Effect {
-        Platform(PlatformRequest),
-        Render(RenderOperation),
-    }
+#[effect]
+pub enum Effect {
+    Platform(PlatformRequest),
+    Render(RenderOperation),
 }
 
 impl crux_core::App for App {

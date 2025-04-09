@@ -77,7 +77,7 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 /// To use in a sync context:
 /// ```
 ///# use crux_core::{Command, render::{render_builder, Render, RenderOperation}};
-///# crux_core::macros::effect! {pub enum Effect {Render(RenderOperation)}}
+///# #[crux_core::macros::effect]pub enum Effect {Render(RenderOperation)}
 ///# enum Event {None}
 /// let command: Command<Effect, Event> =
 ///     render_builder().into(); // or use `render_command()`
@@ -85,7 +85,7 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 /// To use in an async context:
 /// ```
 ///# use crux_core::{Command, render::{render_builder, Render, RenderOperation}};
-///# crux_core::macros::effect! {pub enum Effect {Render(RenderOperation)}}
+///# #[crux_core::macros::effect]pub enum Effect {Render(RenderOperation)}
 ///# enum Event {None}
 ///# let command: Command<Effect, Event> = Command::new(|ctx| async move {
 /// render_builder().into_future(ctx).await;

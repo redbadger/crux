@@ -90,16 +90,15 @@ pub struct CatFacts {
 }
 
 // ANCHOR: effect
-effect! {
-    #[typegen]
-    pub enum Effect {
-        Http(HttpRequest),
-        KeyValue(KeyValueOperation),
-        Platform(PlatformRequest),
-        Render(RenderOperation),
-        Time(TimeRequest),
-    }
+#[effect(typegen)]
+pub enum Effect {
+    Http(HttpRequest),
+    KeyValue(KeyValueOperation),
+    Platform(PlatformRequest),
+    Render(RenderOperation),
+    Time(TimeRequest),
 }
+
 // ANCHOR_END: effect
 
 impl App for CatFacts {

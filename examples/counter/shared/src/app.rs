@@ -47,13 +47,11 @@ pub enum Event {
     Update(Count),
 }
 
-effect! {
-    #[typegen]
-    pub enum Effect {
-        Render(RenderOperation),
-        Http(HttpRequest),
-        ServerSentEvents(SseRequest)
-    }
+#[effect(typegen)]
+pub enum Effect {
+    Render(RenderOperation),
+    Http(HttpRequest),
+    ServerSentEvents(SseRequest),
 }
 
 #[derive(Default)]
