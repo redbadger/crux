@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.12.1](https://github.com/redbadger/crux/compare/crux_http-v0.12.0...crux_http-v0.12.1) - 2025-04-09
+
+### Other
+
+- updated the following local packages: crux_core
+
 ## [0.12.0](https://github.com/redbadger/crux/compare/crux_http-v0.11.10...crux_http-v0.12.0) - 2025-04-09
 Replaces yanked 0.11.10 as that broke typegen on older versions of crux_core.
 

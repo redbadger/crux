@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.1](https://github.com/redbadger/crux/compare/crux_kv-v0.7.0...crux_kv-v0.7.1) - 2025-04-09
+
+### Other
+
+- updated the following local packages: crux_core
+
 ## [0.7.0](https://github.com/redbadger/crux/compare/crux_kv-v0.6.6...crux_kv-v0.7.0) - 2025-04-09
 Replaces yanked 0.6.6 as that broke typegen on older versions of crux_core.
 
