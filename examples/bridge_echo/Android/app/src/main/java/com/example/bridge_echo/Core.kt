@@ -5,11 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.bridge_echo.shared.processEvent
 import com.example.bridge_echo.shared.view
-import com.crux.shared.types.Effect
-import com.crux.shared.types.Event
-import com.crux.shared.types.Request
-import com.crux.shared.types.Requests
-import com.crux.shared.types.ViewModel
+import com.crux.example.bridge_echo.Effect
+import com.crux.example.bridge_echo.Event
+import com.crux.example.bridge_echo.Request
+import com.crux.example.bridge_echo.Requests
+import com.crux.example.bridge_echo.ViewModel
 
 
 open class Core : androidx.lifecycle.ViewModel() {

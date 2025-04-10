@@ -6,18 +6,18 @@ import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.crux.example.cat_facts.Effect
+import com.crux.example.cat_facts.Event
+import com.crux.example.cat_facts.HttpResult
+import com.crux.example.cat_facts.Instant
+import com.crux.example.cat_facts.PlatformResponse
+import com.crux.example.cat_facts.Request
+import com.crux.example.cat_facts.Requests
+import com.crux.example.cat_facts.TimeResponse
+import com.crux.example.cat_facts.ViewModel
 import com.redbadger.catfacts.shared.handleResponse
 import com.redbadger.catfacts.shared.processEvent
 import com.redbadger.catfacts.shared.view
-import com.crux.shared.types.Effect
-import com.crux.shared.types.Event
-import com.crux.shared.types.HttpResult
-import com.crux.shared.types.Instant
-import com.crux.shared.types.PlatformResponse
-import com.crux.shared.types.Request
-import com.crux.shared.types.Requests
-import com.crux.shared.types.TimeResponse
-import com.crux.shared.types.ViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import java.time.ZoneOffset
@@ -61,8 +61,7 @@ open class Core : androidx.lifecycle.ViewModel() {
                 val now = ZonedDateTime.now(ZoneOffset.UTC)
                 val response = TimeResponse.now(Instant(now.toEpochSecond(), now.nano))
 
-                val effects =
-                        handleResponse(request.id.toUInt(), response.bincodeSerialize())
+                val effects = handleResponse(request.id.toUInt(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
@@ -72,8 +71,7 @@ open class Core : androidx.lifecycle.ViewModel() {
             is Effect.Platform -> {
                 val response = PlatformResponse(Build.BRAND + " " + Build.VERSION.RELEASE)
 
-                val effects =
-                        handleResponse(request.id.toUInt(), response.bincodeSerialize())
+                val effects = handleResponse(request.id.toUInt(), response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {

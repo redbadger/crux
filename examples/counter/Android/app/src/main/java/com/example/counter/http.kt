@@ -1,8 +1,8 @@
 package com.example.counter
 
-import com.crux.shared.types.HttpHeader
-import com.crux.shared.types.HttpRequest
-import com.crux.shared.types.HttpResponse
+import com.crux.example.counter.HttpHeader
+import com.crux.example.counter.HttpRequest
+import com.crux.example.counter.HttpResponse
 import com.novi.serde.Bytes
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -27,4 +27,3 @@ suspend fun requestHttp(
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
     return HttpResponse(response.status.value.toShort(), headers, bytes)
 }
-

@@ -3,13 +3,13 @@ package com.example.simple_counter
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.crux.example.simple_counter.Effect
+import com.crux.example.simple_counter.Event
+import com.crux.example.simple_counter.Request
+import com.crux.example.simple_counter.Requests
+import com.crux.example.simple_counter.ViewModel
 import com.example.simple_counter.shared.processEvent
 import com.example.simple_counter.shared.view
-import com.crux.shared.types.Effect
-import com.crux.shared.types.Event
-import com.crux.shared.types.Request
-import com.crux.shared.types.Requests
-import com.crux.shared.types.ViewModel
 
 class Core : androidx.lifecycle.ViewModel() {
     var view: ViewModel? by mutableStateOf(null)

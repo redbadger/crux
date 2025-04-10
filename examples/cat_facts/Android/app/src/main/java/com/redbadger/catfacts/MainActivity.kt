@@ -30,10 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.crux.shared.types.Event
+import com.crux.example.cat_facts.Event
 import com.redbadger.catfacts.ui.theme.CatfactsTheme
-import kotlinx.coroutines.launch
 import kotlin.jvm.optionals.getOrNull
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,8 +42,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             CatfactsTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
                 ) { CatFacts() }
             }
         }
@@ -63,53 +63,47 @@ class MyCore : Core() {
 fun CatFacts(core: MyCore = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(10.dp),
     ) {
         Icon(Icons.Filled.Public, "Platform")
         Text(text = core.view?.platform ?: "", modifier = Modifier.padding(10.dp))
         Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .height(250.dp)
-                .padding(10.dp)
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.height(250.dp).padding(10.dp)
         ) {
             core.view?.image?.getOrNull()?.let {
                 Image(
-                    painter = rememberAsyncImagePainter(it.href),
-                    contentDescription = "cat image",
-                    modifier = Modifier
-                        .height(250.dp)
-                        .fillMaxWidth()
+                        painter = rememberAsyncImagePainter(it.href),
+                        contentDescription = "cat image",
+                        modifier = Modifier.height(250.dp).fillMaxWidth()
                 )
             }
         }
         Text(text = core.view?.fact ?: "", modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { coroutineScope.launch { core.update(Event.Clear()) } },
-                colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
+                    onClick = { coroutineScope.launch { core.update(Event.Clear()) } },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                            )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                onClick = { coroutineScope.launch { core.update(Event.Get()) } },
-                colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                    onClick = { coroutineScope.launch { core.update(Event.Get()) } },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                            )
             ) { Text(text = "Get", color = Color.White) }
             Button(
-                onClick = { coroutineScope.launch { core.update(Event.Fetch()) } },
-                colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
-                )
+                    onClick = { coroutineScope.launch { core.update(Event.Fetch()) } },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                            )
             ) { Text(text = "Fetch", color = Color.White) }
         }
     }

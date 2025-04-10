@@ -67,7 +67,7 @@ pub struct CodegenArgs {
         short,
         value_name = "dotted.case",
         value_parser = dotted_case,
-        default_value = "com.crux.shared.types"
+        default_value = "com.crux.example.shared.types"
     )]
     pub java_package: String,
     /// Swift package name

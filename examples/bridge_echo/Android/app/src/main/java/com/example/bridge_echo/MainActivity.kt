@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.crux.shared.types.Event
+import com.crux.example.bridge_echo.Event
 import com.example.bridge_echo.ui.theme.BridgeEchoTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -33,10 +33,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             BridgeEchoTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) {
-                    View()
-                }
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                ) { View() }
             }
         }
     }
@@ -45,14 +44,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun View(model: MyCore = viewModel()) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(10.dp),
     ) {
         Text(
-            text = model.view?.count.toString(), fontSize = 30.sp, modifier = Modifier.padding(10.dp)
+                text = model.view?.count.toString(),
+                fontSize = 30.sp,
+                modifier = Modifier.padding(10.dp)
         )
     }
 }
@@ -60,19 +59,13 @@ fun View(model: MyCore = viewModel()) {
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
-    BridgeEchoTheme {
-        View()
-    }
+    BridgeEchoTheme { View() }
 }
 
 class MyCore : Core() {
     init {
-        viewModelScope.launch {
-            clock()
-        }
-        viewModelScope.launch {
-            ticker()
-        }
+        viewModelScope.launch { clock() }
+        viewModelScope.launch { ticker() }
     }
 
     private suspend fun ticker() {
