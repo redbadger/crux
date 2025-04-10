@@ -1,8 +1,0 @@
-[package]
-name = "{{shell_name_dashes}}"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-shared = { path = "../{{core_dir}}" }
-yew = { version = "0.21.0", features = ["csr"] }

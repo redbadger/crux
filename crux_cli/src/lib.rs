@@ -1,13 +1,8 @@
 mod args;
 pub mod codegen;
-mod config;
-mod diff;
-pub mod doctor;
-mod template;
-mod workspace;
 
 use anyhow::Result;
-use args::{Cli, Commands, DoctorArgs};
+use args::{Cli, Commands};
 use clap::Parser;
 
 pub fn run() -> Result<()> {
@@ -15,17 +10,6 @@ pub fn run() -> Result<()> {
 
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Doctor(DoctorArgs {
-            fix: _,
-            include_source_code,
-            template_dir,
-            path,
-        }) => doctor::doctor(
-            template_dir,
-            path.as_deref(),
-            cli.verbose,
-            *include_source_code,
-        ),
         Commands::Codegen(args) => codegen::codegen(args),
     }
 }

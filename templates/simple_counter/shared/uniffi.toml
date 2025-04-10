@@ -1,7 +1,0 @@
-[bindings.kotlin]
-package_name = "com.example.{{workspace}}.{{core_name}}"
-cdylib_name = "{{core_name}}"
-
-[bindings.swift]
-cdylib_name = "{{core_name}}_ffi"
-omit_argument_labels = true
