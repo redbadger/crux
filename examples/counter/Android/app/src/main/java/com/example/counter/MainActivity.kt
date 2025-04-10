@@ -23,7 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.counter.shared_types.Event
+import com.crux.example.counter.Event
 import com.example.counter.ui.theme.CounterTheme
 import kotlinx.coroutines.launch
 

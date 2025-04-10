@@ -1,0 +1,169 @@
+{
+  "Effect": {
+    "ENUM": {
+      "0": {
+        "Render": {
+          "NEWTYPE": {
+            "TYPENAME": "RenderOperation"
+          }
+        }
+      },
+      "1": {
+        "Http": {
+          "NEWTYPE": {
+            "TYPENAME": "HttpRequest"
+          }
+        }
+      },
+      "2": {
+        "ServerSentEvents": {
+          "NEWTYPE": {
+            "TYPENAME": "SseRequest"
+          }
+        }
+      }
+    }
+  },
+  "Event": {
+    "ENUM": {
+      "0": {
+        "Get": "UNIT"
+      },
+      "1": {
+        "Increment": "UNIT"
+      },
+      "2": {
+        "Decrement": "UNIT"
+      },
+      "3": {
+        "StartWatch": "UNIT"
+      }
+    }
+  },
+  "HttpError": {
+    "ENUM": {
+      "0": {
+        "Url": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "1": {
+        "Io": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "2": {
+        "Timeout": "UNIT"
+      }
+    }
+  },
+  "HttpHeader": {
+    "STRUCT": [
+      {
+        "name": "STR"
+      },
+      {
+        "value": "STR"
+      }
+    ]
+  },
+  "HttpRequest": {
+    "STRUCT": [
+      {
+        "method": "STR"
+      },
+      {
+        "url": "STR"
+      },
+      {
+        "headers": {
+          "SEQ": {
+            "TYPENAME": "HttpHeader"
+          }
+        }
+      },
+      {
+        "body": "BYTES"
+      }
+    ]
+  },
+  "HttpResponse": {
+    "STRUCT": [
+      {
+        "status": "U16"
+      },
+      {
+        "headers": {
+          "SEQ": {
+            "TYPENAME": "HttpHeader"
+          }
+        }
+      },
+      {
+        "body": "BYTES"
+      }
+    ]
+  },
+  "HttpResult": {
+    "ENUM": {
+      "0": {
+        "Ok": {
+          "NEWTYPE": {
+            "TYPENAME": "HttpResponse"
+          }
+        }
+      },
+      "1": {
+        "Err": {
+          "NEWTYPE": {
+            "TYPENAME": "HttpError"
+          }
+        }
+      }
+    }
+  },
+  "RenderOperation": "UNITSTRUCT",
+  "Request": {
+    "STRUCT": [
+      {
+        "id": "U32"
+      },
+      {
+        "effect": {
+          "TYPENAME": "Effect"
+        }
+      }
+    ]
+  },
+  "SseRequest": {
+    "STRUCT": [
+      {
+        "url": "STR"
+      }
+    ]
+  },
+  "SseResponse": {
+    "ENUM": {
+      "0": {
+        "Chunk": {
+          "NEWTYPE": {
+            "SEQ": "U8"
+          }
+        }
+      },
+      "1": {
+        "Done": "UNIT"
+      }
+    }
+  },
+  "ViewModel": {
+    "STRUCT": [
+      {
+        "text": "STR"
+      },
+      {
+        "confirmed": "BOOL"
+      }
+    ]
+  }
+}

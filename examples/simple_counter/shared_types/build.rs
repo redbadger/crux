@@ -13,10 +13,7 @@ fn main() -> anyhow::Result<()> {
 
     gen.swift("SharedTypes", output_root.join("swift"))?;
 
-    gen.java(
-        "com.example.simple_counter.shared_types",
-        output_root.join("java"),
-    )?;
+    gen.java("com.crux.example.simple_counter", output_root.join("java"))?;
 
     gen.typescript("shared_types", output_root.join("typescript"))?;
 

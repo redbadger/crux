@@ -78,7 +78,7 @@ afterEvaluate {
         def buildType = "${variant.buildType.name.capitalize()}"
 
         tasks.named("preBuild") {
-            it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
+             it.dependsOn(tasks.named("typesGen"), tasks.named("bindGen"))
         }
 
         tasks.named("generate${productFlavor}${buildType}Assets") {

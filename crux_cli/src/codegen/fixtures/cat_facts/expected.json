@@ -1,0 +1,485 @@
+{
+  "CatImage": {
+    "STRUCT": [
+      {
+        "href": "STR"
+      }
+    ]
+  },
+  "Duration": {
+    "STRUCT": [
+      {
+        "nanos": "U64"
+      }
+    ]
+  },
+  "Effect": {
+    "ENUM": {
+      "0": {
+        "Http": {
+          "NEWTYPE": {
+            "TYPENAME": "HttpRequest"
+          }
+        }
+      },
+      "1": {
+        "KeyValue": {
+          "NEWTYPE": {
+            "TYPENAME": "KeyValueOperation"
+          }
+        }
+      },
+      "2": {
+        "Platform": {
+          "NEWTYPE": {
+            "TYPENAME": "PlatformRequest"
+          }
+        }
+      },
+      "3": {
+        "Render": {
+          "NEWTYPE": {
+            "TYPENAME": "RenderOperation"
+          }
+        }
+      },
+      "4": {
+        "Time": {
+          "NEWTYPE": {
+            "TYPENAME": "TimeRequest"
+          }
+        }
+      }
+    }
+  },
+  "Event": {
+    "ENUM": {
+      "0": {
+        "None": "UNIT"
+      },
+      "1": {
+        "Clear": "UNIT"
+      },
+      "2": {
+        "Get": "UNIT"
+      },
+      "3": {
+        "Fetch": "UNIT"
+      },
+      "4": {
+        "GetPlatform": "UNIT"
+      },
+      "5": {
+        "Restore": "UNIT"
+      }
+    }
+  },
+  "HttpError": {
+    "ENUM": {
+      "0": {
+        "Url": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "1": {
+        "Io": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "2": {
+        "Timeout": "UNIT"
+      }
+    }
+  },
+  "HttpHeader": {
+    "STRUCT": [
+      {
+        "name": "STR"
+      },
+      {
+        "value": "STR"
+      }
+    ]
+  },
+  "HttpRequest": {
+    "STRUCT": [
+      {
+        "method": "STR"
+      },
+      {
+        "url": "STR"
+      },
+      {
+        "headers": {
+          "SEQ": {
+            "TYPENAME": "HttpHeader"
+          }
+        }
+      },
+      {
+        "body": "BYTES"
+      }
+    ]
+  },
+  "HttpResponse": {
+    "STRUCT": [
+      {
+        "status": "U16"
+      },
+      {
+        "headers": {
+          "SEQ": {
+            "TYPENAME": "HttpHeader"
+          }
+        }
+      },
+      {
+        "body": "BYTES"
+      }
+    ]
+  },
+  "HttpResult": {
+    "ENUM": {
+      "0": {
+        "Ok": {
+          "NEWTYPE": {
+            "TYPENAME": "HttpResponse"
+          }
+        }
+      },
+      "1": {
+        "Err": {
+          "NEWTYPE": {
+            "TYPENAME": "HttpError"
+          }
+        }
+      }
+    }
+  },
+  "Instant": {
+    "STRUCT": [
+      {
+        "seconds": "U64"
+      },
+      {
+        "nanos": "U32"
+      }
+    ]
+  },
+  "KeyValueError": {
+    "ENUM": {
+      "0": {
+        "io": {
+          "STRUCT": [
+            {
+              "message": "STR"
+            }
+          ]
+        }
+      },
+      "1": {
+        "timeout": "UNIT"
+      },
+      "2": {
+        "cursorNotFound": "UNIT"
+      },
+      "3": {
+        "other": {
+          "STRUCT": [
+            {
+              "message": "STR"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "KeyValueOperation": {
+    "ENUM": {
+      "0": {
+        "Get": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            }
+          ]
+        }
+      },
+      "1": {
+        "Set": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            },
+            {
+              "value": "BYTES"
+            }
+          ]
+        }
+      },
+      "2": {
+        "Delete": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            }
+          ]
+        }
+      },
+      "3": {
+        "Exists": {
+          "STRUCT": [
+            {
+              "key": "STR"
+            }
+          ]
+        }
+      },
+      "4": {
+        "ListKeys": {
+          "STRUCT": [
+            {
+              "prefix": "STR"
+            },
+            {
+              "cursor": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "KeyValueResponse": {
+    "ENUM": {
+      "0": {
+        "Get": {
+          "STRUCT": [
+            {
+              "value": {
+                "TYPENAME": "Value"
+              }
+            }
+          ]
+        }
+      },
+      "1": {
+        "Set": {
+          "STRUCT": [
+            {
+              "previous": {
+                "TYPENAME": "Value"
+              }
+            }
+          ]
+        }
+      },
+      "2": {
+        "Delete": {
+          "STRUCT": [
+            {
+              "previous": {
+                "TYPENAME": "Value"
+              }
+            }
+          ]
+        }
+      },
+      "3": {
+        "Exists": {
+          "STRUCT": [
+            {
+              "is_present": "BOOL"
+            }
+          ]
+        }
+      },
+      "4": {
+        "ListKeys": {
+          "STRUCT": [
+            {
+              "keys": {
+                "SEQ": "STR"
+              }
+            },
+            {
+              "next_cursor": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "KeyValueResult": {
+    "ENUM": {
+      "0": {
+        "Ok": {
+          "STRUCT": [
+            {
+              "response": {
+                "TYPENAME": "KeyValueResponse"
+              }
+            }
+          ]
+        }
+      },
+      "1": {
+        "Err": {
+          "STRUCT": [
+            {
+              "error": {
+                "TYPENAME": "KeyValueError"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "PlatformRequest": "UNITSTRUCT",
+  "PlatformResponse": {
+    "NEWTYPESTRUCT": "STR"
+  },
+  "RenderOperation": "UNITSTRUCT",
+  "Request": {
+    "STRUCT": [
+      {
+        "id": "U32"
+      },
+      {
+        "effect": {
+          "TYPENAME": "Effect"
+        }
+      }
+    ]
+  },
+  "TimeRequest": {
+    "ENUM": {
+      "0": {
+        "now": "UNIT"
+      },
+      "1": {
+        "notifyAt": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            },
+            {
+              "instant": {
+                "TYPENAME": "Instant"
+              }
+            }
+          ]
+        }
+      },
+      "2": {
+        "notifyAfter": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            },
+            {
+              "duration": {
+                "TYPENAME": "Duration"
+              }
+            }
+          ]
+        }
+      },
+      "3": {
+        "clear": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "TimeResponse": {
+    "ENUM": {
+      "0": {
+        "now": {
+          "STRUCT": [
+            {
+              "instant": {
+                "TYPENAME": "Instant"
+              }
+            }
+          ]
+        }
+      },
+      "1": {
+        "instantArrived": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            }
+          ]
+        }
+      },
+      "2": {
+        "durationElapsed": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            }
+          ]
+        }
+      },
+      "3": {
+        "cleared": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "TimerId": {
+    "NEWTYPESTRUCT": "U64"
+  },
+  "Value": {
+    "ENUM": {
+      "0": {
+        "None": "UNIT"
+      },
+      "1": {
+        "Bytes": {
+          "NEWTYPE": "BYTES"
+        }
+      }
+    }
+  },
+  "ViewModel": {
+    "STRUCT": [
+      {
+        "fact": "STR"
+      },
+      {
+        "image": {
+          "OPTION": {
+            "TYPENAME": "CatImage"
+          }
+        }
+      },
+      {
+        "platform": "STR"
+      }
+    ]
+  }
+}

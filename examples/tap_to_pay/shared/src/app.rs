@@ -1,12 +1,13 @@
 mod payment;
 
 use crux_core::{
-    render::{render, Render},
+    macros::effect,
+    render::{render, RenderOperation},
     Command,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::capabilities::delay::Delay;
+use crate::{capabilities::delay::Delay, DelayOperation};
 pub use payment::{Payment, PaymentStatus, Receipt, ReceiptStatus};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,12 +39,10 @@ pub enum Screen {
     // TODO Settings
 }
 
-#[derive(crux_core::macros::Effect)]
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[allow(unused)]
-pub struct Capabilities {
-    render: Render<Event>,
-    delay: Delay<Event>,
+#[effect(typegen)]
+pub enum Effect {
+    Render(RenderOperation),
+    Delay(DelayOperation),
 }
 
 #[derive(Default)]
@@ -53,7 +52,7 @@ impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
     fn update(
@@ -62,23 +61,6 @@ impl crux_core::App for App {
         model: &mut Self::Model,
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
-        self.update(event, model)
-    }
-
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        let payment = match &model.payment {
-            Some(payment) => payment.clone(),
-            None => Payment::default(),
-        };
-
-        ViewModel {
-            screen: Screen::Payment(payment),
-        }
-    }
-}
-
-impl App {
-    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
             Event::SetAmount(amount) => match &model.payment {
                 Some(payment) if payment.status == PaymentStatus::New => {
@@ -171,6 +153,17 @@ impl App {
             }
         }
     }
+
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        let payment = match &model.payment {
+            Some(payment) => payment.clone(),
+            None => Payment::default(),
+        };
+
+        ViewModel {
+            screen: Screen::Payment(payment),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -202,7 +195,7 @@ mod tests {
         let app = App::default();
         let mut model = Model::default();
 
-        let _ = app.update(Event::SetAmount(1000), &mut model);
+        let _ = app.update(Event::SetAmount(1000), &mut model, &());
         let view = app.view(&model);
 
         assert_eq!(
@@ -210,7 +203,7 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::New))
         );
 
-        let _ = app.update(Event::StartPayment, &mut model);
+        let _ = app.update(Event::StartPayment, &mut model, &());
         let view = app.view(&model);
 
         assert_eq!(
@@ -218,7 +211,7 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::PendingTap))
         );
 
-        let mut cmd = app.update(Event::SendPayment, &mut model);
+        let mut cmd = app.update(Event::SendPayment, &mut model, &());
         assert_let!(Effect::Delay(request), &mut cmd.effects().next().unwrap());
 
         let view = app.view(&model);
@@ -231,7 +224,7 @@ mod tests {
         // Time passed
         request.resolve(()).expect("should resolve");
         for event in cmd.events() {
-            let _ = app.update(event, &mut model);
+            let _ = app.update(event, &mut model, &());
         }
 
         let view = app.view(&model);
@@ -243,6 +236,7 @@ mod tests {
         let _ = app.update(
             Event::SetReceiptEmail("bob@fake.com".to_string()),
             &mut model,
+            &(),
         );
 
         let view = app.view(&model);
@@ -256,7 +250,7 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::Completed(expected_receipt)))
         );
 
-        let mut cmd = app.update(Event::SendReceipt, &mut model);
+        let mut cmd = app.update(Event::SendReceipt, &mut model, &());
         assert_let!(Effect::Delay(request), &mut cmd.effects().next().unwrap());
 
         let view = app.view(&model);
@@ -273,7 +267,7 @@ mod tests {
         // Time passed
         request.resolve(()).unwrap();
         for event in cmd.events() {
-            let _ = app.update(event, &mut model);
+            let _ = app.update(event, &mut model, &());
         }
 
         let view = app.view(&model);
@@ -287,7 +281,7 @@ mod tests {
             Screen::Payment(payment(1000, PaymentStatus::Completed(expected_receipt)))
         );
 
-        let _ = app.update(Event::CompletePayment, &mut model);
+        let _ = app.update(Event::CompletePayment, &mut model, &());
         let view = app.view(&model);
 
         assert_eq!(view.screen, Screen::Payment(Payment::default()));
@@ -298,8 +292,8 @@ mod tests {
         let app = App::default();
         let mut model = Model::default();
 
-        let _ = app.update(Event::SetAmount(0), &mut model);
-        let _ = app.update(Event::StartPayment, &mut model);
+        let _ = app.update(Event::SetAmount(0), &mut model, &());
+        let _ = app.update(Event::StartPayment, &mut model, &());
 
         let actual = app.view(&model);
         let expected = ViewModel {

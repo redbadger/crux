@@ -1,7 +1,7 @@
 package com.example.counter
 
-import com.example.counter.shared_types.SseRequest
-import com.example.counter.shared_types.SseResponse
+import com.crux.example.counter.SseRequest
+import com.crux.example.counter.SseResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel

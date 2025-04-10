@@ -1,0 +1,174 @@
+{
+  "root": 597,
+  "crate_version": "0.1.0",
+  "includes_private": true,
+  "index": {
+    "345": {
+      "id": 345,
+      "crate_id": 0,
+      "name": "ViewModel",
+      "span": {
+        "filename": "shared/src/app.rs",
+        "begin": [
+          54,
+          0
+        ],
+        "end": [
+          58,
+          1
+        ]
+      },
+      "visibility": "public",
+      "docs": null,
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "struct": {
+          "kind": {
+            "plain": {
+              "fields": [
+                343
+              ],
+              "has_stripped_fields": false
+            }
+          },
+          "generics": {
+            "params": [],
+            "where_predicates": []
+          },
+          "impls": []
+        }
+      }
+    },
+    "343": {
+      "id": 343,
+      "crate_id": 0,
+      "name": "image",
+      "span": {
+        "filename": "shared/src/app.rs",
+        "begin": [
+          56,
+          4
+        ],
+        "end": [
+          56,
+          31
+        ]
+      },
+      "visibility": "public",
+      "docs": null,
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "struct_field": {
+          "resolved_path": {
+            "path": "Option",
+            "id": 173,
+            "args": {
+              "angle_bracketed": {
+                "args": [
+                  {
+                    "type": {
+                      "resolved_path": {
+                        "path": "CatImage",
+                        "id": 281,
+                        "args": {
+                          "angle_bracketed": {
+                            "args": [],
+                            "constraints": []
+                          }
+                        }
+                      }
+                    }
+                  }
+                ],
+                "constraints": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "281": {
+      "id": 281,
+      "crate_id": 0,
+      "name": "CatImage",
+      "span": {
+        "filename": "shared/src/app.rs",
+        "begin": [
+          41,
+          0
+        ],
+        "end": [
+          43,
+          1
+        ]
+      },
+      "visibility": "public",
+      "docs": null,
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "inner": {
+        "struct": {
+          "kind": {
+            "plain": {
+              "fields": [
+                308
+              ],
+              "has_stripped_fields": false
+            }
+          },
+          "generics": {
+            "params": [],
+            "where_predicates": []
+          },
+          "impls": [
+            309,
+            310,
+            311,
+            312,
+            313,
+            314,
+            315,
+            316,
+            317,
+            318,
+            319,
+            320,
+            321,
+            322,
+            323,
+            324,
+            325,
+            326,
+            327,
+            329,
+            331,
+            332,
+            334,
+            335,
+            337,
+            339,
+            341
+          ]
+        }
+      }
+    }
+  },
+  "paths": {
+    "173": {
+      "crate_id": 2,
+      "path": [
+        "core",
+        "option",
+        "Option"
+      ],
+      "kind": "enum"
+    }
+  },
+  "external_crates": {},
+  "format_version": 36
+}

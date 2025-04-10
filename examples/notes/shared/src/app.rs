@@ -4,14 +4,18 @@ use std::{ops::Range, time::Duration};
 
 use automerge::Change;
 use crux_core::{
-    render::{self, Render},
+    macros::effect,
+    render::{self, RenderOperation},
     App, Command,
 };
-use crux_kv::{command::KeyValue, error::KeyValueError};
-use crux_time::command::{Time, TimerHandle, TimerOutcome};
+use crux_kv::{command::KeyValue, error::KeyValueError, KeyValueOperation};
+use crux_time::{
+    command::{Time, TimerHandle, TimerOutcome},
+    TimeRequest,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::capabilities::pub_sub::PubSub;
+use crate::capabilities::pub_sub::{PubSub, PubSubOperation};
 
 pub use note::Note;
 
@@ -60,11 +64,10 @@ pub struct Model {
     timer: Option<TimerHandle>,
 }
 
-// Same as Model for now, but may change
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ViewModel {
-    text: String,
-    cursor: TextCursor,
+    pub text: String,
+    pub cursor: TextCursor,
 }
 
 impl From<&Model> for ViewModel {
@@ -76,14 +79,12 @@ impl From<&Model> for ViewModel {
     }
 }
 
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(crux_core::macros::Effect)]
-#[allow(unused)]
-pub struct Capabilities {
-    timer: crux_time::Time<Event>,
-    render: Render<Event>,
-    pub_sub: PubSub<Event>,
-    key_value: crux_kv::KeyValue<Event>,
+#[effect(typegen)]
+pub enum Effect {
+    Time(TimeRequest),
+    Render(RenderOperation),
+    PubSub(PubSubOperation),
+    KeyValue(KeyValueOperation),
 }
 
 const EDIT_TIMER: u64 = 1000;
@@ -94,7 +95,7 @@ impl App for NoteEditor {
     type ViewModel = ViewModel;
     type Effect = Effect;
 
-    type Capabilities = Capabilities;
+    type Capabilities = ();
 
     // ANCHOR: update
     fn update(
@@ -659,7 +660,7 @@ mod save_load_tests {
         // An edit should trigger a timer
         let event = Event::Insert("something".to_string());
         let mut cmd1 = app.update(event, &mut model);
-        let mut requests = cmd1.effects().filter_map(Effect::into_timer);
+        let mut requests = cmd1.effects().filter_map(Effect::into_time);
 
         let request = requests.next().unwrap();
         let (first_id, duration) = match &request.operation {
@@ -674,14 +675,10 @@ mod save_load_tests {
         // Before the timer fires, insert another character, which should
         // cancel the timer and start a new one
         let mut cmd2 = app.update(Event::Replace(1, 2, "a".to_string()), &mut model);
-        let mut requests = cmd2.effects().filter_map(Effect::into_timer);
+        let mut requests = cmd2.effects().filter_map(Effect::into_time);
 
         // but first, the original request (cmd1) should resolve with a clear
-        let cancel_request = cmd1
-            .effects()
-            .filter_map(Effect::into_timer)
-            .next()
-            .unwrap();
+        let cancel_request = cmd1.effects().filter_map(Effect::into_time).next().unwrap();
         let cancel_id = match &cancel_request.operation {
             TimeRequest::Clear { id } => id.clone(),
             _ => panic!("expected a Clear"),
@@ -725,7 +722,7 @@ mod save_load_tests {
         let mut effects = cmd4.effects();
 
         let _publish = effects.next().unwrap().expect_pub_sub();
-        let timer = effects.next().unwrap().expect_timer();
+        let timer = effects.next().unwrap().expect_time();
         assert_eq!(
             timer.operation,
             TimeRequest::NotifyAfter {

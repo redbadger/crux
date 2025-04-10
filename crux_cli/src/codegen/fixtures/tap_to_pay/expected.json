@@ -1,0 +1,163 @@
+{
+  "DelayOperation": {
+    "ENUM": {
+      "0": {
+        "Start": {
+          "STRUCT": [
+            {
+              "millis": "U64"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Effect": {
+    "ENUM": {
+      "0": {
+        "Delay": {
+          "NEWTYPE": {
+            "TYPENAME": "DelayOperation"
+          }
+        }
+      },
+      "1": {
+        "Render": {
+          "NEWTYPE": {
+            "TYPENAME": "RenderOperation"
+          }
+        }
+      }
+    }
+  },
+  "Event": {
+    "ENUM": {
+      "0": {
+        "SetAmount": {
+          "NEWTYPE": "U32"
+        }
+      },
+      "1": {
+        "StartPayment": "UNIT"
+      },
+      "2": {
+        "AbortPayment": "UNIT"
+      },
+      "3": {
+        "SendPayment": "UNIT"
+      },
+      "4": {
+        "ConfirmSend": "UNIT"
+      },
+      "5": {
+        "SetReceiptEmail": {
+          "NEWTYPE": "STR"
+        }
+      },
+      "6": {
+        "SendReceipt": "UNIT"
+      },
+      "7": {
+        "ConfirmSendReceipt": "UNIT"
+      },
+      "8": {
+        "CompletePayment": "UNIT"
+      }
+    }
+  },
+  "Payment": {
+    "STRUCT": [
+      {
+        "amount": "U32"
+      },
+      {
+        "status": {
+          "TYPENAME": "PaymentStatus"
+        }
+      }
+    ]
+  },
+  "PaymentStatus": {
+    "ENUM": {
+      "0": {
+        "New": "UNIT"
+      },
+      "1": {
+        "PendingTap": "UNIT"
+      },
+      "2": {
+        "Sent": "UNIT"
+      },
+      "3": {
+        "Completed": {
+          "NEWTYPE": {
+            "TYPENAME": "Receipt"
+          }
+        }
+      },
+      "4": {
+        "Failed": {
+          "NEWTYPE": "STR"
+        }
+      }
+    }
+  },
+  "Receipt": {
+    "STRUCT": [
+      {
+        "email": "STR"
+      },
+      {
+        "status": {
+          "TYPENAME": "ReceiptStatus"
+        }
+      }
+    ]
+  },
+  "ReceiptStatus": {
+    "ENUM": {
+      "0": {
+        "New": "UNIT"
+      },
+      "1": {
+        "Pending": "UNIT"
+      },
+      "2": {
+        "Sent": "UNIT"
+      }
+    }
+  },
+  "RenderOperation": "UNITSTRUCT",
+  "Request": {
+    "STRUCT": [
+      {
+        "id": "U32"
+      },
+      {
+        "effect": {
+          "TYPENAME": "Effect"
+        }
+      }
+    ]
+  },
+  "Screen": {
+    "ENUM": {
+      "0": {
+        "Payment": {
+          "NEWTYPE": {
+            "TYPENAME": "Payment"
+          }
+        }
+      }
+    }
+  },
+  "ViewModel": {
+    "STRUCT": [
+      {
+        "screen": {
+          "TYPENAME": "Screen"
+        }
+      }
+    ]
+  }
+}

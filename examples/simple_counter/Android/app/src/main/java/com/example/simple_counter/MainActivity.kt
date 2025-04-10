@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.simple_counter.shared_types.Event
+import com.crux.example.simple_counter.Event
 import com.example.simple_counter.ui.theme.SimpleCounterTheme
 
 class MainActivity : ComponentActivity() {
@@ -29,10 +29,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             SimpleCounterTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) {
-                    View()
-                }
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                ) { View() }
             }
         }
     }
@@ -41,28 +40,32 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun View(core: Core = viewModel()) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(10.dp),
     ) {
         Text(text = (core.view?.count ?: "0").toString(), modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { core.update(Event.Reset()) }, colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
+                    onClick = { core.update(Event.Reset()) },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                            )
             ) { Text(text = "Reset", color = Color.White) }
             Button(
-                onClick = { core.update(Event.Increment()) }, colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                    onClick = { core.update(Event.Increment()) },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                            )
             ) { Text(text = "Increment", color = Color.White) }
             Button(
-                onClick = { core.update(Event.Decrement()) }, colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
-                )
+                    onClick = { core.update(Event.Decrement()) },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                            )
             ) { Text(text = "Decrement", color = Color.White) }
         }
     }
@@ -71,7 +74,5 @@ fun View(core: Core = viewModel()) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    SimpleCounterTheme {
-        View()
-    }
+    SimpleCounterTheme { View() }
 }

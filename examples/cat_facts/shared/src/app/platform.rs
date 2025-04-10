@@ -11,7 +11,7 @@ pub struct App {}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Model {
-    pub platform: String,
+    pub(crate) platform: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
