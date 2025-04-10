@@ -1,8 +1,0 @@
-[package]
-name = "{{shell_name_dashes}}"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-leptos = { version = "0.5.4", features = ["csr"] }
-shared = { path = "../{{core_dir}}" }
