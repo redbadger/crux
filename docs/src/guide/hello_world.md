@@ -30,18 +30,14 @@ To turn it into an app, we need to implement the `App` trait from the
 ```rust,noplayground
 use crux_core::App;
 
-#[derive(Default)]
-pub struct Model;
-
 impl App for Hello {}
 ```
 
 If you're following along, the compiler is now screaming at you that you're
-missing four associated types for the trait: `Event`, `Model`, `ViewModel` and
-`Capabilities`.
+missing five associated types for the trait — `Event`, `Model`, `ViewModel`,
+`Capabilities`, (which will be deprecated soon, and can be set to `()`) and `Effect`.
 
-Capabilities is the more complicated of them, and to understand what it does, we
-need to talk about what makes Crux different from most UI frameworks.
+The `Effect` associated type is worth understanding further, but in order to do that we need to talk about what makes Crux different from most UI frameworks.
 
 ## Side-effects and capabilities
 
@@ -60,7 +56,7 @@ but it doesn't need to know or care whether that database is local or remote.
 That decision can even change as the application evolves, and be different on
 each platform. If you want to understand this better before we carry on, you can
 read a lot more about how side-effects work in Crux in the chapter on
-[capabilities](./capabilities.md).
+[Managed Effects](./effects.md).
 
 To _ask_ the Shell for side effects, it will need to know what side effects it
 needs to handle, so we will need to declare them (as an enum). _Effects_ are
@@ -72,53 +68,32 @@ for requesting side-effects. We'll look at them in a lot more detail later.
 Let's start with the basics:
 
 ```rust,noplayground
-use crux_core::render::Render;
+use crux_core::{
+    macros::effect,
+    render::RenderOperation,
+};
 
-pub struct Capabilities {
-    render: Render<Event>,
+#[effect]
+pub enum Effect {
+    Render(RenderOperation),
 }
 ```
 
-As you can see, for now, we will use a single capability, `Render`, which is
-built into Crux and available from the `crux_core` crate. It simply tells the
-shell to update the screen using the latest information.
+As you can see, for now, we will use a single capability, `crux_core::render`, which declares an `Operation` named `RenderOperation`, is built into Crux and is available from the `crux_core` crate. It simply tells the shell to update the screen using the latest information.
 
-That means the core can produce a single `Effect`. It will soon be more than
-one, so we'll wrap it in an enum to give ourselves space. The `Effect` enum
-corresponds one to one to the `Capabilities` we're using, and rather than typing
-it (and its associated trait implementations) by hand and open ourselves to
-unnecessary mistakes, we can use the `crux_core::macros::Effect` derive macro.
+That means the core can produce a single `Effect`. It will soon be more than one, so we'll wrap it in an enum to give ourselves space. We'll also annotate our `Effect` enum with the `crux_core::macros::effect` attribute, which produces a _real_ `Effect` enum (which is very similar), one for FFI across the boundary to the shell, and various trait implementations and test helpers.
+
+We also need to link the effect to our app. We'll go into the detail of why that is in the [Managed Effects](effects.md) section, but the basic reason is that capabilities need to be able to send the outcomes of their work back into the app.
+
+You probably also noticed the `Event` type, which defines messages that can be sent back to the app. The same type is also used by the Shell to forward any user interactions to the Core, and in order to pass across the FFI boundary, it needs to be serializable. The resulting code will end up looking like this:
 
 ```rust,noplayground
-use crux_core::render::Render;
-use crux_core::macros::Effect;
-
-#[derive(Effect)]
-pub struct Capabilities {
-    render: Render<Event>,
-}
-```
-
-Other than the `derive` itself, we also need to link the effect to our app.
-We'll go into the detail of why that is in the [Capabilities](capabilities.md)
-section, but the basic reason is that capabilities need to be able to send the
-app the outcomes of their work.
-
-You probably also noticed the `Event` type which capabilities are generic over,
-because they need to know the type which defines messages they can send back to
-the app. The same type is also used by the Shell to forward any user
-interactions to the Core, and in order to pass across the FFI boundary, it needs
-to be serializable. The resulting code will end up looking like this:
-
-```rust,noplayground
-use crux_core::{render::Render, App};
-use crux_core::macros::Effect;
+use crux_core::{App, macros::effect, render::RenderOperation};
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(Effect)]
-pub struct Capabilities {
-    render: Render<Event>,
+#[effect]
+pub enum Effect {
+    Render(RenderOperation),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -129,14 +104,8 @@ pub enum Event {
 #[derive(Default)]
 pub struct Hello;
 
-impl App for Hello { ... }
+impl App for Hello {}
 ```
-
-In this example, we also invoke the `Export` derive macro, but only when the
-`typegen` feature is enabled — this is true in your `shared_types` library to
-generate the foreign types for the shell. For more detail see the
-[Shared core and types](../getting_started/core.md#create-the-shared-types-crate)
-guide.
 
 Okay, that took a little bit of effort, but with this short detour out of the
 way and foundations in place, we can finally create an app and start
@@ -197,7 +166,7 @@ it's a fair amount of boiler plate code.
 
 ```admonish example
 You can find the full code for this part of the guide
-[here](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/counter.rs)
+[here](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/app.rs)
 ```
 
 Let's make things more interesting and add some behaviour. We'll teach the app
@@ -290,7 +259,7 @@ You can find the full code for this part of the guide [here](https://github.com/
 ```
 
 We'll add a simple integration with a counter API we've prepared at
-<https://crux-counter.fly.dev>. All it does is count up an down like our local
+<https://crux-counter.fly.dev>. All it does is count up and down like our local
 counter. It supports three requests
 
 - `GET /` returns the current count
@@ -374,7 +343,7 @@ fn update(
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        _caps: &Self::Capabilities,
+        _caps: &(), // will be deprecated, so prefix with underscore for now
     ) -> Command<Effect, Event> {
     match event {
         Event::Get => {
@@ -436,30 +405,17 @@ there's currently a technical limitation stopping us easily serializing
 sent by the Shell across the FFI boundary, which is the reason for the need to
 serialize in the first place — in a way, it is private to the Core.
 
-Finally, let's get rid of those TODOs. We'll need to add crux_http in the
-`Capabilities` type, so that the `update` function has access to it.
-
-```admonish note
-In the latest versions of `crux_http` (>= `v0.11.0`), this `Capabilities` type
-id being deprecated in favour of the new `Command` API (see the description of
-[Managed Effects](./effects.md) for more details).
-```
+Finally, let's get rid of those TODOs. We'll need to add a variant to the
+`Effect` enum, which holds the data for Http requests and responses.
+In the snippet, below, `HttpRequest` is an implementation (in `crux_http`) of the `Operation` trait, which links the request and response types together.
 
 ```rust,noplayground
-use crux_http::Http;
-
-#[derive(Effect)]
-pub struct Capabilities {
-    pub http: Http<Event>,
-    pub render: Render<Event>,
+#[effect(typegen)]
+pub enum Effect {
+    Render(RenderOperation),
+    Http(HttpRequest),
 }
 ```
-
-This may seem like needless boilerplate, but it allows us to only use the
-capabilities we need and, more importantly, allow capabilities to be built by
-anyone. Later on, we'll also see that Crux apps [compose](composing.md), relying
-on each app's `Capabilities` type to declare its needs, and making sure the
-necessary capabilities exist in the parent app.
 
 We can now implement those TODOs, so lets do it. We're using the latest `Command` API
 and so the `update` function will return a `Command` that has been created by
@@ -475,8 +431,9 @@ fn update(
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        _caps: &Self::Capabilities,
-    ) -> Command<Effect, Event> {        match event {
+        _caps: &(), // will be deprecated, so prefix with underscore for now
+    ) -> Command<Effect, Event> {
+        match event {
             Event::Get => Http::get(API_URL)
                 .expect_json()
                 .build()
@@ -526,7 +483,7 @@ fn update(
 
 There's a few things of note. The first one is that the `.then_send` API at the end
 of each chain of calls to `crux_http` expects a function that wraps its argument
-(a `Result` of a http response) in a variant of `Event`. Fortunately, enum tuple
+(a `Result` of a HTTP response) in a variant of `Event`. Fortunately, enum tuple
 variants create just such a function, and we can use it. The way to read the
 call is "Send a get request, parse the response as JSON, which should be
 deserialized as a `Count`, and then call me again with `Event::Set` carrying the
@@ -543,12 +500,9 @@ You can find the the complete example, including the tests and shell implementat
 [in the Crux repo](https://github.com/redbadger/crux/blob/master/examples/counter/).
 It's interesting to take a closer look at the unit tests:
 
-```admonish note
+```admonish example
 These tests are taken from the Counter example
-[implementation](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)
-where we delegate to our own update function that does not take the `Capabilities`
-parameter, allowing us to test the app directly, without having to rely on
-the `AppTester`.
+[implementation](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs).
 ```
 
 ```rust,noplayground
