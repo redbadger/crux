@@ -60,6 +60,7 @@ impl App for Counter {
         }
     }
 }
+// ANCHOR_END: impl_app
 // ANCHOR_END: app
 
 // ANCHOR: test
