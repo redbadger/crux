@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
 use heck::{ToPascalCase, ToSnakeCase};
 
@@ -23,13 +24,16 @@ pub struct Cli {
 pub enum Commands {
     #[command(visible_alias = "gen")]
     Codegen(CodegenArgs),
+    #[command(visible_alias = "ffi")]
+    Bindgen(BindgenArgs),
 }
 
 #[derive(Args)]
 pub struct CodegenArgs {
     /// name of the library containing your Crux App
     #[arg(long, short, value_name = "STRING")]
-    pub lib: String,
+    pub crate_name: String,
+
     /// Output directory for generated code
     #[arg(
         long,
@@ -38,7 +42,8 @@ pub struct CodegenArgs {
         value_hint = DirPath,
         default_value = "./shared/generated",
     )]
-    pub output: PathBuf,
+    pub out_dir: PathBuf,
+
     /// Java package name
     #[arg(
         long,
@@ -48,6 +53,7 @@ pub struct CodegenArgs {
         default_value = "com.crux.example.shared.types"
     )]
     pub java_package: String,
+
     /// Swift package name
     #[arg(
         long,
@@ -56,6 +62,7 @@ pub struct CodegenArgs {
         value_parser = pascal_case,
         default_value = "SharedTypes")]
     pub swift_package: String,
+
     /// TypeScript package name
     #[arg(
         long,
@@ -64,6 +71,24 @@ pub struct CodegenArgs {
         value_parser = snake_case,
         default_value = "shared_types")]
     pub typescript_package: String,
+}
+
+#[derive(Args)]
+pub struct BindgenArgs {
+    /// name of the crate containing your Crux App
+    #[arg(long, short, value_name = "STRING")]
+    pub crate_name: String,
+
+    // library path (target/debug/libshared.so)
+    /// Output directory for generated code
+    #[arg(
+        long,
+        short,
+        value_name = "DIR",
+        value_hint = DirPath,
+        default_value = "./shared/generated",
+    )]
+    pub out_dir: Utf8PathBuf,
 }
 
 fn dotted_case(s: &str) -> Result<String, String> {
