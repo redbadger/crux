@@ -1,0 +1,25 @@
+[package]
+name = "web-leptos"
+version = "0.1.0"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+console_error_panic_hook = "0.1.7"
+console_log = "1.0.0"
+futures-util = "0.3.31"
+gloo-net = { version = "0.6.0", features = ["http"] }
+js-sys = "0.3.77"
+leptos = { version = "0.7.8", features = ["csr"] }
+log = "0.4.27"
+shared = { path = "../shared" }
+wasm-bindgen = "0.2.100"
+wasm-streams = "0.4.2"
+
+[lints.clippy]
+empty_docs = "allow"

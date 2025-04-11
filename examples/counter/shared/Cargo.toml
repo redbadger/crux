@@ -31,9 +31,6 @@ wasm-bindgen = "0.2.100"
 [dev-dependencies]
 insta = { version = "1.43.1", features = ["yaml"] }
 
-[target.cli.dependencies]
-crux_core = { workspace = true, features = ["cli"] }
-
 [target.uniffi-bindgen.dependencies]
 uniffi = { version = "0.29.2", features = ["cli"] }
 
