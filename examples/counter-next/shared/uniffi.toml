@@ -1,5 +1,5 @@
 [bindings.kotlin]
-package_name = "com.crux.example.counter"
+package_name = "com.crux.example.counter.shared"
 cdylib_name = "shared"
 
 [bindings.swift]
