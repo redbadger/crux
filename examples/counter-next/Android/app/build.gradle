@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.counter'
+    namespace 'com.crux.example.counter'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.example.counter"
+        applicationId "com.crux.example.counter"
         minSdk 34
         targetSdk 34
         versionCode 1
