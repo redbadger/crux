@@ -3,5 +3,4 @@
 *.xcuserstate
 **/xcuserdata/*
 .bin
-
 .build
