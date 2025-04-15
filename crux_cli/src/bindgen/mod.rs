@@ -1,14 +1,15 @@
-mod cargo_metadata;
-
 use std::process::Command;
 
-use ::cargo_metadata::MetadataCommand;
 use anyhow::{Context as _, Result};
-use camino::Utf8PathBuf;
-use uniffi::{KotlinBindingGenerator, SwiftBindingGenerator};
+use camino::Utf8Path;
+use cargo_metadata::MetadataCommand;
+use uniffi_bindgen::{
+    bindings::{KotlinBindingGenerator, SwiftBindingGenerator},
+    cargo_metadata::CrateConfigSupplier,
+    library_mode, BindgenCrateConfigSupplier,
+};
 
 use crate::args::BindgenArgs;
-use cargo_metadata::CrateConfigSupplier;
 
 pub fn bindgen(args: &BindgenArgs) -> Result<()> {
     let status = Command::new("cargo")
@@ -16,11 +17,11 @@ pub fn bindgen(args: &BindgenArgs) -> Result<()> {
         .status()?;
     assert!(status.success());
 
-    let library_path = Utf8PathBuf::from("target/debug/libshared.dylib");
+    let library_path = Utf8Path::new("target/debug/libshared.dylib");
     let config_supplier = config_supplier()?;
 
-    uniffi::generate_bindings_library_mode(
-        &library_path,
+    library_mode::generate_bindings(
+        library_path,
         Some(args.crate_name.clone()),
         &KotlinBindingGenerator,
         &config_supplier,
@@ -28,8 +29,8 @@ pub fn bindgen(args: &BindgenArgs) -> Result<()> {
         &args.out_dir.join("java"),
         true,
     )?;
-    uniffi::generate_bindings_library_mode(
-        &library_path,
+    library_mode::generate_bindings(
+        library_path,
         Some(args.crate_name.clone()),
         &SwiftBindingGenerator,
         &config_supplier,
@@ -40,7 +41,7 @@ pub fn bindgen(args: &BindgenArgs) -> Result<()> {
     Ok(())
 }
 
-fn config_supplier() -> Result<impl uniffi_bindgen::BindgenCrateConfigSupplier> {
+fn config_supplier() -> Result<impl BindgenCrateConfigSupplier> {
     let mut cmd = MetadataCommand::new();
     cmd.no_deps();
     let metadata = cmd.exec().context("error running cargo metadata")?;
