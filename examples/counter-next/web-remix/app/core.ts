@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { process_event, handle_response, view } from "shared/shared";
+import { process_event, handle_response, view } from "shared";
 import type {
   Effect,
   Event,
@@ -26,7 +26,7 @@ type Response = HttpResponse | SseResponse;
 
 export function update(
   event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>,
+  callback: Dispatch<SetStateAction<ViewModel>>
 ) {
   console.log("event", event);
 
@@ -44,7 +44,7 @@ export function update(
 async function processEffect(
   id: number,
   effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>,
+  callback: Dispatch<SetStateAction<ViewModel>>
 ) {
   console.log("effect", effect);
 
@@ -72,7 +72,7 @@ async function processEffect(
 function respond(
   id: number,
   response: Response,
-  callback: Dispatch<SetStateAction<ViewModel>>,
+  callback: Dispatch<SetStateAction<ViewModel>>
 ) {
   const serializer = new BincodeSerializer();
   response.serialize(serializer);
