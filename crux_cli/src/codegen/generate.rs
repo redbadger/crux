@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use log::{debug, info};
+use log::info;
 use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
 use serde_reflection::Registry;
 use std::{
@@ -34,9 +34,7 @@ pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> 
     let path = path.as_ref().join(module_name);
 
     // remove any existing generated shared types, this ensures that we remove no longer used types
-    remove_dir(&path);
-
-    fs::create_dir_all(&path)?;
+    recreate_dir(&path)?;
 
     info!("Generating Swift types at {}", path.display());
 
@@ -104,9 +102,9 @@ pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> 
     let package_path = package_name.replace('.', "/");
 
     // remove any existing generated shared types, this ensures that we remove no longer used types
-    remove_dir(path.join(&package_path));
-    remove_dir(path.join("com/novi/bincode"));
-    remove_dir(path.join("com/novi/serde"));
+    recreate_dir(path.join(&package_path))?;
+    recreate_dir(path.join("com/novi/bincode"))?;
+    recreate_dir(path.join("com/novi/serde"))?;
 
     info!("Generating Java types at {}", path.display());
 
@@ -154,9 +152,7 @@ pub fn typescript(
     let path = path.as_ref();
 
     // remove any existing generated shared types, this ensures that we remove no longer used types
-    remove_dir(path);
-
-    fs::create_dir_all(path)?;
+    recreate_dir(path)?;
 
     info!("Generating TypeScript types at {}", path.display());
 
@@ -268,10 +264,12 @@ fn extensions_path(path: impl AsRef<Path>) -> impl AsRef<Path> {
     }
 }
 
-fn remove_dir(path: impl AsRef<Path>) {
-    let path = path.as_ref();
-    if path.exists() {
-        debug!("Removing directory: {}", path.display());
-        fs::remove_dir_all(path).unwrap_or_default();
+fn recreate_dir<P>(dir: P) -> std::io::Result<()>
+where
+    P: AsRef<Path>,
+{
+    match fs::remove_dir_all(&dir) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+        _ => fs::create_dir_all(&dir),
     }
 }
