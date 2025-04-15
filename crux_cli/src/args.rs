@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
-use heck::{ToPascalCase, ToSnakeCase};
+use convert_case::{pattern, Boundary, Case, Casing};
 
 #[derive(Parser)]
 #[command(
@@ -50,7 +50,7 @@ pub struct CodegenArgs {
         short,
         value_name = "dotted.case",
         value_parser = dotted_case,
-        default_value = "com.crux.example.shared.types"
+        default_value = "com.crux.example.shared"
     )]
     pub java_package: String,
 
@@ -92,7 +92,12 @@ pub struct BindgenArgs {
 }
 
 fn dotted_case(s: &str) -> Result<String, String> {
-    if s == s.to_snake_case().replace('_', ".") {
+    const DOT_CASE: Case = Case::Custom {
+        boundaries: &[Boundary::from_delim(".")],
+        pattern: pattern::lowercase,
+        delim: ".",
+    };
+    if s.is_case(DOT_CASE) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid dotted case: {s}"))
@@ -100,7 +105,7 @@ fn dotted_case(s: &str) -> Result<String, String> {
 }
 
 fn pascal_case(s: &str) -> Result<String, String> {
-    if s == s.to_pascal_case() {
+    if s.is_case(Case::Pascal) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid pascal case: {s}"))
@@ -108,7 +113,7 @@ fn pascal_case(s: &str) -> Result<String, String> {
 }
 
 fn snake_case(s: &str) -> Result<String, String> {
-    if s == s.to_snake_case() {
+    if s.is_case(Case::Snake) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid snake case: {s}"))
@@ -123,5 +128,35 @@ mod cli_tests {
     fn test_cli() {
         use clap::CommandFactory;
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn dotted() {
+        assert_eq!(
+            dotted_case("com.example.crux.shared.types").unwrap(),
+            "com.example.crux.shared.types"
+        );
+        assert_eq!(
+            dotted_case("comExampleCruxSharedTypes").unwrap_err(),
+            "Invalid dotted case: comExampleCruxSharedTypes"
+        );
+    }
+
+    #[test]
+    fn pascal() {
+        assert_eq!(pascal_case("SharedTypes").unwrap(), "SharedTypes");
+        assert_eq!(
+            pascal_case("shared_types").unwrap_err(),
+            "Invalid pascal case: shared_types"
+        );
+    }
+
+    #[test]
+    fn snake() {
+        assert_eq!(snake_case("shared_types").unwrap(), "shared_types");
+        assert_eq!(
+            snake_case("SharedTypes").unwrap_err(),
+            "Invalid snake case: SharedTypes"
+        );
     }
 }
