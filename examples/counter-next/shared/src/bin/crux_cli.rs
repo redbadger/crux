@@ -1,5 +1,9 @@
 use uniffi::deps::anyhow;
 
 fn main() -> anyhow::Result<()> {
-    crux_core::run_cli()
+    if cfg!(feature = "cli") {
+        crux_core::run_cli()
+    } else {
+        Ok(())
+    }
 }

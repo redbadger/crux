@@ -539,9 +539,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.35"
+version = "4.5.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8aa86934b44c19c50f87cc2790e19f54f7a67aedb64101c2e1a2e5ecfb73944"
+checksum = "2df961d8c8a0d08aa9945718ccf584145eee3f3aa06cddbeac12933781102e04"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -549,9 +549,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.35"
+version = "4.5.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2414dbb2dd0695280da6ea9261e327479e9d37b0630f6b53ba2a11c60c679fd9"
+checksum = "132dbda40fb6753878316a489d5a1242a8ef2f0d9e47ba01c951ea8aa7d013a5"
 dependencies = [
  "anstream",
  "anstyle",
@@ -776,8 +776,8 @@ dependencies = [
  "rustdoc-json",
  "rustdoc-types",
  "serde",
- "serde-generate 0.29.0",
- "serde-reflection 0.5.0",
+ "serde-generate",
+ "serde-reflection",
  "serde_json",
  "similar",
  "thiserror 2.0.12",
@@ -796,8 +796,6 @@ dependencies = [
  "erased-serde",
  "futures",
  "serde",
- "serde-generate 0.26.0",
- "serde-reflection 0.4.0",
  "serde_json",
  "slab",
  "thiserror 2.0.12",
@@ -2935,20 +2933,6 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8309fc8d475cf5884e92a463b3a003d433684335be19c3f739af0451b027254b"
-dependencies = [
- "heck 0.3.3",
- "include_dir",
- "phf",
- "serde",
- "serde-reflection 0.4.0",
- "textwrap 0.13.4",
-]
-
-[[package]]
-name = "serde-generate"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eec51f7c5180dff94df5ee82f9bcbac59e8d6690c8bcbebd98a73977592bd5f2"
@@ -2958,19 +2942,8 @@ dependencies = [
  "include_dir",
  "phf",
  "serde",
- "serde-reflection 0.5.0",
+ "serde-reflection",
  "textwrap 0.13.4",
-]
-
-[[package]]
-name = "serde-reflection"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b6798a64289ff550d8d79847467789a5fd30b42c9c406a4d6dc0bc9b567e55c"
-dependencies = [
- "once_cell",
- "serde",
- "thiserror 1.0.69",
 ]
 
 [[package]]
