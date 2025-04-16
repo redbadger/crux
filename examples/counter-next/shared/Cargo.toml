@@ -8,8 +8,12 @@ rust-version = "1.66"
 crate-type = ["lib", "staticlib", "cdylib"]
 name = "shared"
 
+[[bin]]
+name = "crux_cli"
+required-features = ["cli"]
+
 [features]
-typegen = ["crux_core/typegen"]
+cli = ["crux_core/cli"]
 
 [dependencies]
 async-sse = "5.1.0"
@@ -28,6 +32,3 @@ wasm-bindgen = "0.2.100"
 
 [dev-dependencies]
 insta = { version = "1.42.2", features = ["yaml"] }
-
-[target.crux_cli.dependencies]
-crux_core = { workspace = true, features = ["cli"] }
