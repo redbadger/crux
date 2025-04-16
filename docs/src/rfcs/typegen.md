@@ -111,4 +111,54 @@ In order to cover discrepancies in feature set, we will also do our best to supp
 
 ## Migration roadmap
 
-TODO: order the above features in milestones and write the criteria of proceeding
+The migration needs somewhat careful orchestration, so that big step changes are not required for Crux users to adopt. It should go something like this:
+
+### Phase 1 - develop the frontend and IR
+
+In this phase we still use serde-generate as a backend, and focus on getting the frontend - the type discovery and the developer interface.
+
+**1 - serde-generate feature parity and start validating**
+
+Gets us to a working, reliable type generation front end, able to discover all the relevant types and capture the metadata. This is likely to require a period of testing with real-world codebases.
+
+
+**2 - enable annotation controlled feature selection**
+
+Support annotations to skip types, ignore fields and similar basic things which previously relied on serde annotations. Both ways should work for the time being, but with `future` mode enabled, the serde annotations should start being ignored. This is the start of the two modes diverging.
+
+If possible, the annotations should be allowed on both definition sites and reference sites. We need to think about how conflict resolution works in this case, if multiple sites are annotated but with different directions.
+
+### Phase 2 - replace the backend, stabilise the IR
+
+In this phase, we replace the serde-generate backend and gradually change what the output looks like. At the same time we gain features.
+
+**1 – take over generation of the code to parity**
+
+Replace or vendor in serde-generate in order to support ouputting all the original code in supported languages
+At this point, we can retire the serde implementation fully, so long as we're confident with.
+
+We should also introduce the `legacy` switch which forces backwards compatibility.
+
+**2 – change `future` output to be more idiomatic**
+
+Make changes to the generated code to better represent the types idiomatically to the language.
+
+**3 - stabilise the IR**
+
+To enable extension points on the backend side, we'll need to stabilise the intermediate representation of the discovered types and their relationaships.
+
+**4 - enable custom extensions**
+
+Allow users to add extensions to the generated code, given the IR. This is almost like a derive macro but for the foreign language(s). The exact mechanism is to be decided, but it should be possible to make them language specific (e.g. Swift-only).
+
+**5 - support optionality, especially in serialisation**
+
+The goal of the output is to be idiomatic to the target codebase, which will likely require some optionality (e.g. which serialisation library to use in Kotlin). We should do our best to pick sensible defaults, and delegate as much as possible to custom extensions, otherwise we risk an explosion in the features we need to support.
+
+One specific optionality we should enable support for is the serialisation format over the FFI boundary.
+
+### Phase 3 - enable as default
+
+At some point when the base `future` output stops evolving too much, we can make it default (when neither `future` nor `legacy` is specified).
+
+Further down the line, we retire the `legacy` support as the final step.
