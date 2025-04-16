@@ -47,7 +47,7 @@ pub enum Event {
     Update(Count),
 }
 
-#[effect(typegen)]
+#[effect]
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
