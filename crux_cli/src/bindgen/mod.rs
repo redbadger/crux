@@ -22,7 +22,7 @@ pub fn bindgen(args: &BindgenArgs) -> Result<()> {
 
     library_mode::generate_bindings(
         library_path,
-        Some(args.crate_name.clone()),
+        None,
         &KotlinBindingGenerator,
         &config_supplier,
         None,
@@ -31,7 +31,7 @@ pub fn bindgen(args: &BindgenArgs) -> Result<()> {
     )?;
     library_mode::generate_bindings(
         library_path,
-        Some(args.crate_name.clone()),
+        None,
         &SwiftBindingGenerator,
         &config_supplier,
         None,

@@ -746,6 +746,8 @@ dependencies = [
  "serde_json",
  "slab",
  "thiserror 2.0.12",
+ "uniffi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2951,7 +2953,6 @@ dependencies = [
  "crux_http",
  "futures",
  "insta",
- "lazy_static",
  "serde",
  "serde_json",
  "uniffi",
