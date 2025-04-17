@@ -1,6 +1,6 @@
 use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
 use crux_core::{
-    macros::effect,
+    macros::{bridge, effect},
     render::{render, RenderOperation},
     Command,
 };
@@ -54,7 +54,7 @@ pub enum Effect {
     ServerSentEvents(SseRequest),
 }
 
-#[derive(Default)]
+#[bridge]
 pub struct App;
 
 impl crux_core::App for App {
