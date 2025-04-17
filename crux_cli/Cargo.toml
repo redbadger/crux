@@ -32,7 +32,7 @@ serde-generate = "0.31.0"
 serde-reflection = "0.5.0"
 serde_json = "1.0.140"
 thiserror = "2.0.12"
-uniffi_bindgen = "0.29.1"
+uniffi_bindgen.workspace = true
 
 [dev-dependencies]
 insta = { version = "1.43.1" }

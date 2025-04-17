@@ -123,10 +123,12 @@
 				en,
 			);
 			mainGroup = B86E33DC287DA7AC92DD5972;
+			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D3BF0BCB5F0BABF3D7D00966 /* XCLocalSwiftPackageReference "../shared/Shared" */,
 				066464F6ED3284D9A331A3C6 /* XCLocalSwiftPackageReference "../shared/generated/swift/SharedTypes" */,
 			);
+			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (

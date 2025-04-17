@@ -1,14 +1,17 @@
 #![deny(clippy::pedantic)]
+
+mod bridge;
 mod capability;
 mod effect;
 mod effect_derive;
 mod export;
 
+use bridge::bridge_impl;
 use capability::capability_impl;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use syn::{parse_macro_input, Ident, ItemEnum};
+use syn::{parse_macro_input, Ident, ItemEnum, ItemStruct};
 
 /// Procedural macro to derive an Effect enum, with a variant for
 /// each non-skipped capability.
@@ -102,6 +105,12 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Option<Ident>);
     let input = parse_macro_input!(input as ItemEnum);
     effect::effect_impl(args, input).into()
+}
+
+#[proc_macro_attribute]
+pub fn bridge(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemStruct);
+    bridge_impl(&input).into()
 }
 
 #[proc_macro_derive(Export)]

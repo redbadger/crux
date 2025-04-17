@@ -2,6 +2,13 @@
 
 set -eux
 
+pushd shared
+cargo swift package --name Shared --platforms ios
+pushd generated
+rm -rf headers sources *.swift *.h *.modulemap
+popd
+popd
+
 cargo run --package shared --bin crux_cli --features cli -- \
     codegen --crate-name shared \
         --out-dir ./shared/generated \

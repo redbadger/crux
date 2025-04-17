@@ -11,7 +11,7 @@ use uniffi_bindgen::{
 
 use crate::args::BindgenArgs;
 
-pub fn bindgen(args: &BindgenArgs) -> Result<()> {
+pub(crate) fn bindgen(args: &BindgenArgs) -> Result<()> {
     let status = Command::new("cargo")
         .args(["build", "--package", &args.crate_name])
         .status()?;
@@ -22,7 +22,7 @@ pub fn bindgen(args: &BindgenArgs) -> Result<()> {
 
     library_mode::generate_bindings(
         library_path,
-        Some(args.crate_name.clone()),
+        None,
         &KotlinBindingGenerator,
         &config_supplier,
         None,
@@ -31,7 +31,7 @@ pub fn bindgen(args: &BindgenArgs) -> Result<()> {
     )?;
     library_mode::generate_bindings(
         library_path,
-        Some(args.crate_name.clone()),
+        None,
         &SwiftBindingGenerator,
         &config_supplier,
         None,

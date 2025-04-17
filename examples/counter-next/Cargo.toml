@@ -15,16 +15,3 @@ anyhow = "1.0.97"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 serde = "1.0.219"
-
-[workspace.metadata.bin]
-cargo-xcode = { version = "1" }
-
-[profile.wasm-dev]
-inherits = "dev"
-opt-level = 1
-
-[profile.server-dev]
-inherits = "dev"
-
-[profile.android-dev]
-inherits = "dev"

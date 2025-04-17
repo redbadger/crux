@@ -437,6 +437,8 @@ dependencies = [
  "serde_json",
  "slab",
  "thiserror 2.0.12",
+ "uniffi",
+ "wasm-bindgen",
 ]
 
 [[package]]
