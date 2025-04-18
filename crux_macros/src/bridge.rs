@@ -14,6 +14,12 @@ pub fn bridge_impl(input: &ItemStruct) -> TokenStream {
             });
 
         #[cfg(not(target_family = "wasm"))]
+        const _: () = assert!(
+            uniffi::check_compatible_version("0.29.1"),
+            "please use uniffi v0.29.1"
+        );
+
+        #[cfg(not(target_family = "wasm"))]
         ::uniffi::setup_scaffolding!();
 
         #[cfg_attr(not(target_family = "wasm"), ::uniffi::export)]
