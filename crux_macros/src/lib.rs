@@ -100,6 +100,7 @@ pub fn effect_derive(input: TokenStream) -> TokenStream {
 ///     Render(RenderOperation),
 ///     Http(HttpRequest),
 /// }
+/// ```
 #[proc_macro_attribute]
 pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Option<Ident>);
@@ -107,6 +108,42 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     effect::effect_impl(args, input).into()
 }
 
+/// Generates an FFI bridge for use with shells that are written in languages other than Rust.
+///
+/// e.g.
+/// ```rust,ignore
+/// # // cannot write a full test here as uniffi expects UniFfiTag in the crate root
+/// #[bridge]
+/// pub struct MyApp;
+/// ```
+///
+/// ## Swift and Kotlin
+/// For iOS and Android shells, this macro generates
+/// [`uniffi`](https://crates.io/crates/uniffi)
+/// scaffolding — you will need to add `uniffi` (v0.29.1) to your `Cargo.toml`.
+///
+/// You can also generate bindings for these languages with the
+/// [Crux cli](https://github.com/redbadger/crux/tree/master/crux_cli) (see the
+/// [book](https://redbadger.github.io/crux/) for more details).
+///
+/// Note that in order to ensure that the scaffolding and the bindings interoperate,
+/// this macro will generate a compile error if you use a different version.
+///
+/// ## TypeScript
+/// For Web shells (e.g. React or Svelte frameworks), this macro
+/// generates [`wasm-bindgen`](https://crates.io/crates/wasm-bindgen)
+/// scaffolding — you will need to add `wasm-bindgen` to your `Cargo.toml`.
+///
+/// You can also generate bindings for these languages with the
+/// [Crux cli](https://github.com/redbadger/crux/tree/master/crux_cli) (see the
+/// [book](https://redbadger.github.io/crux/) for more details).
+///
+/// ## Rust
+/// If you only have a Rust shell (e.g. Leptos, Dioxus, or Yew) then you do
+/// not need FFI and so will not need scaffolding or bindings.
+///
+/// Instead just `#[derive(Default)]` on your `App`.
+///
 #[proc_macro_attribute]
 pub fn bridge(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemStruct);
