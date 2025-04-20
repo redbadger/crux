@@ -153,6 +153,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
 mod test {
     use syn::parse_quote;
 
+    use crate::pretty_print;
+
     use super::*;
 
     #[test]
@@ -451,10 +453,5 @@ mod test {
             }
         }
         "##);
-    }
-
-    fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
-        let file = syn::parse_file(&ts.to_string()).unwrap();
-        prettyplease::unparse(&file)
     }
 }
