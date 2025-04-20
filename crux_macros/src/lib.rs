@@ -161,3 +161,9 @@ pub fn export(input: TokenStream) -> TokenStream {
 pub fn capability(input: TokenStream) -> TokenStream {
     capability_impl(&parse_macro_input!(input)).into()
 }
+
+#[cfg(test)]
+fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
+    let file = syn::parse_file(&ts.to_string()).unwrap();
+    prettyplease::unparse(&file)
+}

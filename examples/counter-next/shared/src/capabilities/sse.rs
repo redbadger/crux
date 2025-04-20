@@ -23,6 +23,7 @@ pub enum SseResponse {
 }
 
 impl SseResponse {
+    #[must_use]
     pub fn is_done(&self) -> bool {
         matches!(self, SseResponse::Done)
     }
@@ -41,6 +42,7 @@ impl<Event> ServerSentEvents<Event>
 where
     Event: Send + 'static,
 {
+    #[must_use]
     pub fn new(context: CapabilityContext<SseRequest, Event>) -> Self {
         Self { context }
     }
