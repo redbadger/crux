@@ -13,6 +13,8 @@ use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use syn::{parse_macro_input, Ident, ItemEnum, ItemStruct};
 
+/// Deprecated: use the `effect` attribute macro instead.
+///
 /// Procedural macro to derive an Effect enum, with a variant for
 /// each non-skipped capability.
 ///
@@ -127,7 +129,8 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
 /// [book](https://redbadger.github.io/crux/) for more details).
 ///
 /// Note that in order to ensure that the scaffolding and the bindings interoperate,
-/// this macro will generate a compile error if you use a different version.
+/// this macro will generate a compile error if you use a version of `uniffi` other
+/// than v0.29.1.
 ///
 /// ## TypeScript
 /// For Web shells (e.g. React or Svelte frameworks), this macro
@@ -139,10 +142,9 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
 /// [book](https://redbadger.github.io/crux/) for more details).
 ///
 /// ## Rust
-/// If you only have a Rust shell (e.g. Leptos, Dioxus, or Yew) then you do
-/// not need FFI and so will not need scaffolding or bindings.
-///
-/// Instead just `#[derive(Default)]` on your `App`.
+/// If you only have a Rust shell (e.g. Leptos, Dioxus, or Yew) and do
+/// not need FFI scaffolding then, instead, just `#[derive(Default)]`
+/// on your `App`.
 ///
 #[proc_macro_attribute]
 pub fn bridge(_args: TokenStream, input: TokenStream) -> TokenStream {
@@ -150,12 +152,14 @@ pub fn bridge(_args: TokenStream, input: TokenStream) -> TokenStream {
     bridge_impl(&input).into()
 }
 
+/// Deprecated: use the `effect` attribute macro instead.
 #[proc_macro_derive(Export)]
 #[proc_macro_error]
 pub fn export(input: TokenStream) -> TokenStream {
     export_impl(&parse_macro_input!(input)).into()
 }
 
+/// Deprecated: use the `effect` attribute macro instead.
 #[proc_macro_derive(Capability)]
 #[proc_macro_error]
 pub fn capability(input: TokenStream) -> TokenStream {
