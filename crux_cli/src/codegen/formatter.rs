@@ -361,7 +361,6 @@ impl From<&Type> for Format {
                             inputs: _,
                             output: _,
                         } => todo!(),
-                        GenericArgs::ReturnTypeNotation => todo!(),
                     }
                 } else {
                     Format::TypeName(name)

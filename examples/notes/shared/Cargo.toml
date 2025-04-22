@@ -18,7 +18,7 @@ name = "shared"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-automerge = { version = "0.4.1", features = ["wasm"] }
+automerge = { version = "=0.4.1", features = ["wasm"] }
 crux_core.workspace = true
 crux_kv.workspace = true
 crux_time.workspace = true

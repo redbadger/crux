@@ -287,7 +287,6 @@ fn check_args(parent: &GlobalId, args: &GenericArgs, is_remote: bool) -> bool {
         GenericArgs::Parenthesized { inputs, .. } => {
             inputs.iter().any(|t| check_type(parent, t, is_remote))
         }
-        GenericArgs::ReturnTypeNotation => todo!(),
     }
 }
 

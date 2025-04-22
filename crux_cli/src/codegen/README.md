@@ -8,7 +8,6 @@ Kotlin and TypeScript.
 > This is a work in progress and is not yet ready for general use.
 
 ```sh
-# currently requires Rust nightly to be installed (`rustup install nightly`)
 crux codegen --lib shared
 ```
 
@@ -19,12 +18,19 @@ library is used in this example.
 
 ### Source data
 
-Generate `rustdoc` JSON for the library, using the
-[`rustdoc_json`][rustdocJsonReference] crate. We want to use the latest format
-version so we currently require Rust nightly to be installed
-(`rustup install nightly`). This JSON describes all the public and private items
-in the library and is deserialized using the
-[`rustdoc-types`][rustdocTypesReference] crate.
+Generate `rustdoc` JSON for the library, using a command like this:
+```sh
+RUSTC_BOOTSTRAP="1" RUSTDOCFLAGS="-Z unstable-options --output-format=json --cap-lints=allow" \
+cargo doc \
+    --no-deps \
+    --lib \
+    --manifest-path shared/Cargo.toml \
+    --all-features \
+    --document-private-items
+```
+
+The JSON output describes all the public and private items in the library and is deserialized
+using the [`rustdoc-types`][rustdocTypesReference] crate.
 
 ### Build a graph
 

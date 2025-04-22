@@ -5,8 +5,6 @@ use rustdoc_types::Crate;
 
 use crate::codegen::Registry;
 
-use super::rustdoc_json_path;
-
 fn load_rustdoc(name: &str) -> Result<Crate> {
     Ok(match name {
         "bridge_echo" => {
@@ -27,11 +25,6 @@ fn load_rustdoc(name: &str) -> Result<Crate> {
         "crux_kv" => serde_json::from_slice(include_bytes!("fixtures/crux_kv.json"))?,
         "crux_platform" => serde_json::from_slice(include_bytes!("fixtures/crux_platform.json"))?,
         "crux_time" => serde_json::from_slice(include_bytes!("fixtures/crux_time.json"))?,
-        "core" | "alloc" | "std" => {
-            let path = rustdoc_json_path()?.join(format!("{name}.json"));
-            let bytes = std::fs::read(&path)?;
-            serde_json::from_slice(&bytes)?
-        }
         _ => panic!("unknown crate {}", name),
     })
 }
@@ -62,9 +55,9 @@ fn load_expected(name: &str) -> Result<Registry> {
 #[case::cat_facts("cat_facts")]
 #[case::counter("counter")]
 #[case::hello_world("hello_world")]
-// #[case::notes("notes")]
+#[case::notes("notes")]
 #[case::simple_counter("simple_counter")]
-// #[case::tap_to_pay("tap_to_pay")]
+#[case::tap_to_pay("tap_to_pay")]
 fn full(#[case] example: &str) {
     let actual = super::run(example, load_rustdoc).unwrap();
     let expected: Registry = load_expected(example).expect("should deserialize");

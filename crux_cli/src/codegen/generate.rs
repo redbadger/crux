@@ -99,7 +99,7 @@ pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> 
 /// ```
 pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> Result {
     let path = path.as_ref();
-    fs::create_dir_all(&path)?;
+    fs::create_dir_all(path)?;
 
     let package_path = package_name.replace('.', "/");
 

@@ -15,27 +15,23 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-clap = { version = "4.5.35", features = ["derive"] }
 ascent = "0.8.0"
-console = "0.15.11"
-env_logger = "0.10.2"
-guppy = "0.17.4"
+camino = "1.1.9"
+cargo_metadata = "=0.15"
+clap = { version = "4.5.37", features = ["derive"] }
+convert_case = "0.8.0"
+env_logger = "0.11.8"
+guppy = "0.17.17"
 heck = "0.5.0"
-ignore = "0.4.23"
-iter_tools = "0.24.0"
+iter_tools = "0.28.0"
 lazy-regex = "3.4.1"
-libc = "0.2.171"
-log = "0.4.26"
-ramhorns = "1.0.1"
-rustdoc-json = "0.9.5"
-rustdoc-types = "0.38.0"
+log = "0.4.27"
+rustdoc-types = "=0.35.0"
 serde = { workspace = true, features = ["derive"] }
-serde-generate = "0.29.0"
+serde-generate = "0.30.0"
 serde-reflection = "0.5.0"
 serde_json = "1.0.140"
-similar = { version = "2.7.0", features = ["inline"] }
 thiserror = "2.0.12"
-toml = "0.8.20"
 
 [dev-dependencies]
 insta = { version = "1.42.2" }
