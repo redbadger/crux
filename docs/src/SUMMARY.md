@@ -42,3 +42,4 @@
 # RFCs
 
 1. [Command API](./rfcs/command.md)
+1. [Typegen](./rfcs/typegen.md)

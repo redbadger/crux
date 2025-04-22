@@ -53,11 +53,11 @@ We can support a wider feature set:
     * Data based interior mutability support (to support fine-grained updates of the view model in the future)
     * Custom code extensions
 
-The goal of this work is to make the typegeneration completely transparent to the developers most of the time. It should Just Work ™️.
+The goal of this work is to make the type generation completely transparent to the developers most of the time. It should Just Work ™️.
 
 ### Reducing boilerplate
 
-The other change we'll want to make is how the typegen is executed. Instead of having a separate create with a `build.rs` file (which was necessary in order to see the code of the core crate while running `build.rs`), the new type generation will come as a separate CLI tool, produced as an additional target on the core crate, similar to the `uniffi-bindgen` tool today. In fact as part of this, we will try to subsume the `uniffi-bindgen` tool into the same CLI tool, and move from writing a `.udl` file for the FFI interface to using annotations, likely Crux ones, so that we can take control of how we generate FFI for different platforms (UniFFI, WebAssembly and others).
+The other change we'll want to make is how the typegen is executed. Instead of having a separate crate with a `build.rs` file (which was necessary in order to see the code of the core crate while running `build.rs`), the new type generation will come as a separate CLI tool, produced as an additional target on the core crate, similar to the `uniffi-bindgen` tool today. In fact as part of this, we will try to subsume the `uniffi-bindgen` tool into the same CLI tool, and move from writing a `.udl` file for the FFI interface to using annotations, likely Crux ones, so that we can take control of how we generate FFI for different platforms (UniFFI, WebAssembly and others).
 
 Ultimately, creating the full FFI interface for the Crux core should become a single build command.
 
@@ -134,7 +134,7 @@ In this phase, we replace the serde-generate backend and gradually change what t
 
 **1 – take over generation of the code to parity**
 
-Replace or vendor in serde-generate in order to support ouputting all the original code in supported languages
+Replace or vendor in serde-generate in order to support outputting all the original code in supported languages
 At this point, we can retire the serde implementation fully, so long as we're confident with.
 
 We should also introduce the `legacy` switch which forces backwards compatibility.
@@ -145,7 +145,7 @@ Make changes to the generated code to better represent the types idiomatically t
 
 **3 - stabilise the IR**
 
-To enable extension points on the backend side, we'll need to stabilise the intermediate representation of the discovered types and their relationaships.
+To enable extension points on the backend side, we'll need to stabilise the intermediate representation of the discovered types and their relationships.
 
 **4 - enable custom extensions**
 
