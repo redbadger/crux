@@ -139,7 +139,14 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
 
     let buf = &mut Vec::new();
     File::open(json_path)?.read_to_end(buf)?;
-    let crate_ = serde_json::from_slice(buf)?;
+    let crate_ = serde_json::from_slice(buf).context(
+        r#"
+There was a problem reading RustDoc JSON output — maybe there is
+a format version incompatibility.
+We currently require format version >=39, which means Rust >=1.86.
+Please raise an issue at https://github.com/redbadger/crux/issue and
+include the version of Rust that you are using. Thank you!"#,
+    )?;
 
     Ok(crate_)
 }

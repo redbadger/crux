@@ -7,7 +7,7 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
-rust-version = "1.70"
+rust-version = "1.86"       # this helps us get the correct rustdoc JSON format version (>=39)
 
 [[bin]]
 name = "crux"
