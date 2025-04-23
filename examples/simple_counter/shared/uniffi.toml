@@ -5,3 +5,6 @@ cdylib_name = "shared"
 [bindings.swift]
 cdylib_name = "shared_ffi"
 omit_argument_labels = true
+
+[bindings.csharp]
+cdylib_name = "shared"
