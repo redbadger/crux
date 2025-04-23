@@ -23,6 +23,7 @@ typegen = ["crux_core/typegen"]
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 uniffi = "0.29.2"
+uniffi-bindgen-cs = { git = "https://github.com/NordSecurity/uniffi-bindgen-cs", tag = "v0.9.1+v0.28.3", version = "0.9.0" }
 wasm-bindgen = "0.2.100"
 
 [build-dependencies]
