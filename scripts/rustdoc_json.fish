@@ -16,4 +16,4 @@ set -x RUSTDOCFLAGS "-Z unstable-options --output-format=json --cap-lints=allow"
 rm -rf target/doc # workspace
 rm -rf "$_flag_path"/target/doc # not workspace
 
-cargo doc --lib --manifest-path "$_flag_path"/Cargo.toml
+cargo doc --no-deps --lib --manifest-path "$_flag_path"/Cargo.toml

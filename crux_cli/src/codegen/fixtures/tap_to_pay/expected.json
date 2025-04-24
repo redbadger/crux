@@ -15,16 +15,16 @@
   "Effect": {
     "ENUM": {
       "0": {
-        "Delay": {
+        "Render": {
           "NEWTYPE": {
-            "TYPENAME": "DelayOperation"
+            "TYPENAME": "RenderOperation"
           }
         }
       },
       "1": {
-        "Render": {
+        "Delay": {
           "NEWTYPE": {
-            "TYPENAME": "RenderOperation"
+            "TYPENAME": "DelayOperation"
           }
         }
       }

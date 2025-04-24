@@ -1,4 +1,11 @@
 {
+  "Duration": {
+    "STRUCT": [
+      {
+        "nanos": "U64"
+      }
+    ]
+  },
   "Effect": {
     "ENUM": {
       "0": {
@@ -75,15 +82,18 @@
             "SEQ": "U8"
           }
         }
-      },
-      "8": {
-        "EditTimer": {
-          "NEWTYPE": {
-            "TYPENAME": "TimerOutput"
-          }
-        }
       }
     }
+  },
+  "Instant": {
+    "STRUCT": [
+      {
+        "seconds": "U64"
+      },
+      {
+        "nanos": "U32"
+      }
+    ]
   },
   "KeyValueError": {
     "ENUM": {
@@ -312,52 +322,106 @@
       }
     }
   },
-  "TimerOperation": {
+  "TimeRequest": {
     "ENUM": {
       "0": {
-        "Start": {
+        "now": "UNIT"
+      },
+      "1": {
+        "notifyAt": {
           "STRUCT": [
             {
-              "id": "U64"
+              "id": {
+                "TYPENAME": "TimerId"
+              }
             },
             {
-              "millis": "U64"
+              "instant": {
+                "TYPENAME": "Instant"
+              }
             }
           ]
         }
       },
-      "1": {
-        "Cancel": {
+      "2": {
+        "notifyAfter": {
           "STRUCT": [
             {
-              "id": "U64"
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            },
+            {
+              "duration": {
+                "TYPENAME": "Duration"
+              }
+            }
+          ]
+        }
+      },
+      "3": {
+        "clear": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
             }
           ]
         }
       }
     }
   },
-  "TimerOutput": {
+  "TimeResponse": {
     "ENUM": {
       "0": {
-        "Created": {
+        "now": {
           "STRUCT": [
             {
-              "id": "U64"
+              "instant": {
+                "TYPENAME": "Instant"
+              }
             }
           ]
         }
       },
       "1": {
-        "Finished": {
+        "instantArrived": {
           "STRUCT": [
             {
-              "id": "U64"
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            }
+          ]
+        }
+      },
+      "2": {
+        "durationElapsed": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
+            }
+          ]
+        }
+      },
+      "3": {
+        "cleared": {
+          "STRUCT": [
+            {
+              "id": {
+                "TYPENAME": "TimerId"
+              }
             }
           ]
         }
       }
     }
+  },
+  "TimerId": {
+    "NEWTYPESTRUCT": "U64"
   },
   "Value": {
     "ENUM": {

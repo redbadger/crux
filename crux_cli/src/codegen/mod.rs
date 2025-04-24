@@ -11,7 +11,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     fs::{self, File},
     io::Read,
-    path::PathBuf,
     process::Command,
 };
 
@@ -107,45 +106,49 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
 }
 
 fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate> {
-    // TODO: ensure that the user has installed the core rustdoc JSON files
-    // e.g. `rustup component add --toolchain nightly rust-docs-json`
+    let manifest_path = manifest_paths
+        .get(name)
+        .ok_or_else(|| anyhow!("unknown crate {}", name))?;
 
-    let json_path = if let "core" | "alloc" | "std" = name {
-        rustdoc_json_path()?.join(format!("{name}.json"))
-    } else {
-        let manifest_path = manifest_paths
-            .get(name)
-            .ok_or_else(|| anyhow!("unknown crate {}", name))?;
-        rustdoc_json::Builder::default()
-            .toolchain("nightly")
-            .document_private_items(true)
-            .manifest_path(manifest_path)
-            .build()?
-    };
-    debug!("from {}", json_path.to_string_lossy());
+    let status = Command::new("cargo")
+        .env("RUSTC_BOOTSTRAP", "1")
+        .env(
+            "RUSTDOCFLAGS",
+            "-Z unstable-options --output-format=json --cap-lints=allow",
+        )
+        .arg("doc")
+        .arg("--no-deps")
+        .arg("--lib")
+        .args(["--manifest-path", manifest_path])
+        .arg("--all-features")
+        .arg("--document-private-items")
+        .status()?;
+
+    if !status.success() {
+        bail!("failed to generate rustdoc json for {manifest_path} with error code {status}");
+    }
+
+    let mut metadata = cargo_metadata::MetadataCommand::new();
+    metadata.manifest_path(manifest_path);
+    let mut json_path = metadata.exec()?.target_directory;
+    json_path.push("doc");
+    json_path.push(name);
+    json_path.set_extension("json");
+
+    debug!("from {}", json_path.to_string());
 
     let buf = &mut Vec::new();
     File::open(json_path)?.read_to_end(buf)?;
-    let crate_ = serde_json::from_slice(buf)?;
+    let crate_ = serde_json::from_slice(buf).context(
+        r#"
+There was a problem reading RustDoc JSON output — maybe there is
+a format version incompatibility.
+We currently require format version >=39, which means Rust >=1.86.
+Please raise an issue at https://github.com/redbadger/crux/issue and
+include the version of Rust that you are using. Thank you!"#,
+    )?;
 
     Ok(crate_)
-}
-
-fn rustdoc_json_path() -> Result<PathBuf> {
-    let output = Command::new("rustup")
-        .arg("which")
-        .args(["--toolchain", "nightly"])
-        .arg("rustc")
-        .output()?;
-    let rustc_path = std::str::from_utf8(&output.stdout)?.trim();
-    let json_path = PathBuf::from(rustc_path)
-        .parent()
-        .ok_or_else(|| anyhow!("could not get parent of {}", rustc_path))?
-        .parent()
-        .ok_or_else(|| anyhow!("could not get grandparent of {}", rustc_path))?
-        .join("share/doc/rust/json");
-
-    Ok(json_path)
 }
 
 pub fn collect<'a, N, T>(input: T) -> impl Iterator<Item = Vec<(&'a N,)>>
