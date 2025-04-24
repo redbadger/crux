@@ -567,7 +567,10 @@ The 2 common cases are:
 
         let requests = format!("namespace {module_name}\r\n{}", requests_data);
 
-        fs::write(path.as_ref().join(module_name).join("Requests.cs"), requests)?;
+        fs::write(
+            path.as_ref().join(module_name).join("Requests.cs"),
+            requests,
+        )?;
 
         Ok(())
     }
