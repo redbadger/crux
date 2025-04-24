@@ -7,6 +7,7 @@
 # Getting Started
 
 1. [Shared core and types](./getting_started/core.md)
+1. [Shared core and types (next)](./getting_started/core_next.md)
 1. [iOS](./getting_started/iOS/index.md)
    1. [Swift and SwiftUI (XcodeGen)](./getting_started/iOS/with_xcodegen.md)
    1. [Swift and SwiftUI (manual)](./getting_started/iOS/manual.md)
