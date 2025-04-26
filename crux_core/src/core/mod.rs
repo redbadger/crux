@@ -14,7 +14,7 @@ use crate::capability::CommandSpawner;
 use crate::capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor};
 use crate::{App, WithContext};
 
-/// The Crux core. Create an instance of this type with your effect type, and your app type as type parameters
+/// The Crux core. Create an instance of this type with your App type as the type parameter
 ///
 /// The core interface allows passing in events of type `A::Event` using [`Core::process_event`].
 /// It will return back an effect of type `Ef`, containing an effect request, with the input needed for processing
