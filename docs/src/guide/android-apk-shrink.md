@@ -52,7 +52,7 @@ the following
 
 # we want to keep all the shared library for conveiance.
 # if you have some ios/other non android shared lib functions you may find it
-# benifitial to exclude them here
+# beneficial to exclude them here
 -keep class <shared app package name>.** {
   public protected *;
 }
