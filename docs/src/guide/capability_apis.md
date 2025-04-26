@@ -130,7 +130,7 @@ where
     pub fn milliseconds(&self, millis: usize)
         -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
     {
-        Command::request_from_shell(DelayOperation { millis })
+        Command::request_from_shell(DelayOperation::Delay(millis))
     }
 
     pub fn random(&self, min: usize, max: usize)
