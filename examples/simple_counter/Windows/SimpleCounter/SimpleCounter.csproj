@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -69,6 +69,6 @@
   </PropertyGroup>
 
   <Target Name="CruxGenerate" BeforeTargets="CollectPackageReferences;ResolveProjectReferences">
-    <Exec Command="cd ..\..\ &amp;&amp; cargo build --workspace &amp;&amp; copy .\target\release\shared.dll Windows\SimpleCounter\ &amp;&amp; cargo run --release --bin uniffi-bindgen-cs -- --no-format shared\src\shared.udl --out-dir Windows\SimpleCounter\Generated\" />
+    <Exec Command="cd ..\..\ &amp;&amp; cargo build --workspace &amp;&amp; copy .\target\debug\shared.dll Windows\SimpleCounter\ &amp;&amp; cargo run --release --bin uniffi-bindgen-cs -- --no-format shared\src\shared.udl --out-dir Windows\SimpleCounter\Generated\ &amp;&amp; cd shared_types\generated\csharp\SharedTypes &amp;&amp; dotnet build -c Release" />
   </Target>
 </Project>

@@ -565,7 +565,7 @@ The 2 common cases are:
 
         let requests_data = fs::read_to_string(requests_path)?;
 
-        let requests = format!("namespace {module_name}\r\n{}", requests_data);
+        let requests = format!("namespace {module_name}{}", requests_data);
 
         fs::write(
             path.as_ref().join(module_name).join("Requests.cs"),

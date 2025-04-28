@@ -10,7 +10,7 @@
     Title="SimpleCounter">
 
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-        <TextBlock x:Name="CounterText" FontSize="24" Text="0" HorizontalAlignment="Center" />
+        <TextBlock x:Name="CounterText" Text="{x:Bind Core.View.count, Mode=OneWay}" FontSize="24" HorizontalAlignment="Center" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
             <Button Content="Reset" Click="ResetButton_Click" />
             <Button Content="Increment" Click="IncrementButton_Click" />
