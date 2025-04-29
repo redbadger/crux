@@ -8,3 +8,4 @@ omit_argument_labels = true
 
 [bindings.csharp]
 cdylib_name = "shared"
+access_modifier = "public"
