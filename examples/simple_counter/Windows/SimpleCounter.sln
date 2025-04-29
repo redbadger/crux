@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "uniffi.shared", "uniffi.shared\uniffi.shared.csproj", "{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -37,6 +39,18 @@ Global
 		{051BCCDB-7966-457E-81D9-774E512C5D81}.Release|x86.ActiveCfg = Release|x86
 		{051BCCDB-7966-457E-81D9-774E512C5D81}.Release|x86.Build.0 = Release|x86
 		{051BCCDB-7966-457E-81D9-774E512C5D81}.Release|x86.Deploy.0 = Release|x86
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Debug|x64.Build.0 = Debug|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Debug|x86.Build.0 = Debug|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Release|ARM64.Build.0 = Release|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Release|x64.ActiveCfg = Release|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Release|x64.Build.0 = Release|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Release|x86.ActiveCfg = Release|Any CPU
+		{75E94DC5-C3D4-4F87-921A-25FE9FDF766E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

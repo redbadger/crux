@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <Target Name="CruxGenerate" BeforeTargets="CollectPackageReferences;ResolveProjectReferences">
+    <Exec Command="cd ..\..\ &amp;&amp; cargo build --workspace &amp;&amp; copy .\target\debug\shared.dll Windows\uniffi.shared\ &amp;&amp; cargo run --release --bin uniffi-bindgen-cs -- --no-format shared\src\shared.udl --out-dir Windows\uniffi.shared\ &amp;&amp; cd shared_types\generated\csharp\SharedTypes &amp;&amp; dotnet build -c Release" />
+  </Target>
+
+  <ItemGroup>
+    <None Update="shared.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

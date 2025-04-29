@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>SimpleCounter</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -40,14 +40,12 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250401001" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\uniffi.shared\uniffi.shared.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="SharedTypes">
       <HintPath>..\..\shared_types\generated\csharp\SharedTypes\bin\Release\netstandard2.0\SharedTypes.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="shared.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
   <!--
@@ -65,10 +63,7 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <Target Name="CruxGenerate" BeforeTargets="CollectPackageReferences;ResolveProjectReferences">
-    <Exec Command="cd ..\..\ &amp;&amp; cargo build --workspace &amp;&amp; copy .\target\debug\shared.dll Windows\SimpleCounter\ &amp;&amp; cargo run --release --bin uniffi-bindgen-cs -- --no-format shared\src\shared.udl --out-dir Windows\SimpleCounter\Generated\ &amp;&amp; cd shared_types\generated\csharp\SharedTypes &amp;&amp; dotnet build -c Release" />
-  </Target>
 </Project>
