@@ -96,6 +96,7 @@ where
     ///
     /// This helper is useful for the common case where  one expects the effect to resolve
     /// to exactly one event, which should then be run by the app.
+    #[track_caller]
     pub fn resolve_to_event_then_update<Op: Operation>(
         &self,
         request: &mut Request<Op>,
