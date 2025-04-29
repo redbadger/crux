@@ -363,5 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # Shared generated Rust types
-/SimpleCounter/Generated/
-/SimpleCounter/shared.dll
+/uniffi.shared/shared.cs
+/uniffi.shared/shared.dll
