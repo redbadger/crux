@@ -57,6 +57,18 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                     Self::#effect_ident(value)
                 }
             }
+
+            impl TryFrom<#enum_ident> for ::crux_core::Request<#operation> {
+                type Error = #enum_ident;
+
+                fn try_from(value: #enum_ident) -> Result<Self, Self::Error> {
+                    if let #enum_ident::#effect_ident(value) = value {
+                        Ok(value)
+                    } else {
+                        Err(value)
+                    }
+                }
+            }
         }
     });
 
@@ -179,7 +191,7 @@ mod test {
 
         let actual = effect_impl(args, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -200,6 +212,12 @@ mod test {
         impl From<::crux_core::Request<RenderOperation>> for Effect {
             fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
                 Self::Render(value)
+            }
+        }
+        impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
+            type Error = Effect;
+            fn try_from(value: Effect) -> Result<Self, Self::Error> {
+                if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
             }
         }
         impl Effect {
@@ -230,7 +248,7 @@ mod test {
                 Ok(())
             }
         }
-        "##);
+        "###);
     }
 
     #[test]
@@ -243,7 +261,7 @@ mod test {
 
         let actual = effect_impl(None, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -266,6 +284,12 @@ mod test {
                 Self::Render(value)
             }
         }
+        impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
+            type Error = Effect;
+            fn try_from(value: Effect) -> Result<Self, Self::Error> {
+                if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
+            }
+        }
         impl Effect {
             pub fn is_render(&self) -> bool {
                 if let Effect::Render(_) = self { true } else { false }
@@ -282,7 +306,7 @@ mod test {
                 }
             }
         }
-        "##);
+        "###);
     }
 
     #[test]
@@ -297,7 +321,7 @@ mod test {
 
         let actual = effect_impl(args, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -323,9 +347,21 @@ mod test {
                 Self::Render(value)
             }
         }
+        impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
+            type Error = Effect;
+            fn try_from(value: Effect) -> Result<Self, Self::Error> {
+                if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
+            }
+        }
         impl From<::crux_core::Request<HttpRequest>> for Effect {
             fn from(value: ::crux_core::Request<HttpRequest>) -> Self {
                 Self::Http(value)
+            }
+        }
+        impl TryFrom<Effect> for ::crux_core::Request<HttpRequest> {
+            type Error = Effect;
+            fn try_from(value: Effect) -> Result<Self, Self::Error> {
+                if let Effect::Http(value) = value { Ok(value) } else { Err(value) }
             }
         }
         impl Effect {
@@ -373,7 +409,7 @@ mod test {
                 Ok(())
             }
         }
-        "##);
+        "###);
     }
 
     #[test]
@@ -387,7 +423,7 @@ mod test {
 
         let actual = effect_impl(None, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r###"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -413,9 +449,21 @@ mod test {
                 Self::Render(value)
             }
         }
+        impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
+            type Error = Effect;
+            fn try_from(value: Effect) -> Result<Self, Self::Error> {
+                if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
+            }
+        }
         impl From<::crux_core::Request<HttpRequest>> for Effect {
             fn from(value: ::crux_core::Request<HttpRequest>) -> Self {
                 Self::Http(value)
+            }
+        }
+        impl TryFrom<Effect> for ::crux_core::Request<HttpRequest> {
+            type Error = Effect;
+            fn try_from(value: Effect) -> Result<Self, Self::Error> {
+                if let Effect::Http(value) = value { Ok(value) } else { Err(value) }
             }
         }
         impl Effect {
@@ -450,7 +498,7 @@ mod test {
                 }
             }
         }
-        "##);
+        "###);
     }
 
     fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
