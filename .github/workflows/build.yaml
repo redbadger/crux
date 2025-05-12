@@ -105,9 +105,9 @@ jobs:
           # so we don't add tooling for all targets
           rm ../../rust-toolchain.toml
 
-      - name: Install rustfmt
-        shell: bash
-        run: rustup component add rustfmt
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
