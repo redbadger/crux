@@ -5,6 +5,6 @@ for dir in . examples/*
     pushd "$dir"
     cargo fmt --all --check
     cargo build --all-features
-    cargo nextest run --all-features
+    cargo nextest run --all-features; or return 1
     popd
 end

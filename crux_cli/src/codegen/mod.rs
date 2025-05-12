@@ -138,7 +138,7 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
     json_path.push(name);
     json_path.set_extension("json");
 
-    debug!("from {}", json_path.to_string());
+    debug!("from {}", json_path);
 
     let buf = &mut Vec::new();
     File::open(json_path)?.read_to_end(buf)?;
