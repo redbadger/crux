@@ -122,7 +122,7 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
 /// ## Swift and Kotlin
 /// For iOS and Android shells, this macro generates
 /// [`uniffi`](https://crates.io/crates/uniffi)
-/// scaffolding — you will need to add `uniffi` (v0.29.1) to your `Cargo.toml`.
+/// scaffolding — you will need to add `uniffi` (v0.29.2) to your `Cargo.toml`.
 ///
 /// You can also generate bindings for these languages with the
 /// [Crux cli](https://github.com/redbadger/crux/tree/master/crux_cli) (see the
@@ -130,7 +130,7 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// Note that in order to ensure that the scaffolding and the bindings interoperate,
 /// this macro will generate a compile error if you use a version of `uniffi` other
-/// than v0.29.1.
+/// than v0.29.2.
 ///
 /// ## TypeScript
 /// For Web shells (e.g. React or Svelte frameworks), this macro
