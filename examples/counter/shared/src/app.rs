@@ -64,12 +64,7 @@ impl crux_core::App for App {
     type Capabilities = ();
     type Effect = Effect;
 
-    fn update(
-        &self,
-        msg: Self::Event,
-        model: &mut Self::Model,
-        _caps: &Self::Capabilities,
-    ) -> Command<Effect, Event> {
+    fn update(&self, msg: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
         match msg {
             Event::Get => Http::get(API_URL)
                 .expect_json()
@@ -192,6 +187,10 @@ mod tests {
         // send the `Set` event back to the app
         let mut cmd = app.update(actual, &mut model, &());
 
+        // check in flight that the app has not been updated with the server data
+        let view = app.view(&model);
+        assert_eq!(view.text, "0 (pending)");
+
         // this should generate an `Update` event
         let event = cmd.events().next().unwrap();
         assert_eq!(
@@ -294,12 +293,11 @@ mod tests {
         assert_effect!(cmd, Effect::Render(_));
 
         // the model should be updated
-        insta::assert_yaml_snapshot!(model, @r###"
-        ---
+        insta::assert_yaml_snapshot!(model, @r#"
         count:
           value: 2
           updated_at: "2023-01-01T00:00:00Z"
-        "###);
+        "#);
     }
 
     /// Test that a `Decrement` event causes the app to decrement the counter
@@ -372,12 +370,11 @@ mod tests {
         assert_effect!(update, Effect::Render(_));
 
         // the model should be updated
-        insta::assert_yaml_snapshot!(model, @r###"
-        ---
+        insta::assert_yaml_snapshot!(model, @r#"
         count:
           value: -1
           updated_at: "2023-01-01T00:00:00Z"
-        "###);
+        "#);
     }
 
     #[test]
