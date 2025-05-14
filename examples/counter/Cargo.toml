@@ -22,8 +22,8 @@ rust-version = "1.66"
 anyhow = "1.0.98"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
-# crux_core = "0.13.1"
-# crux_http = "0.12.0"
+# crux_core = "0.14"
+# crux_http = "0.13"
 serde = "1.0.219"
 
 [workspace.metadata.bin]
