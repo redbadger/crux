@@ -89,63 +89,25 @@ because... well because this is an example.
 Since we have multiple operations now, let's make our operation an enum
 
 ```rust,noplayground
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub enum DelayOperation {
-    GetRandom(usize, usize),
-    Delay(usize),
-}
+{{#include ../../../doctest_support/src/delay.rs:operation}}
 ```
 
 We now also need an output type:
 
 ```rust,noplayground
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub enum DelayOutput {
-    Random(usize),
-    TimeUp
-}
+{{#include ../../../doctest_support/src/delay.rs:output}}
 ```
 
 And that changes the `Operation` trait implementation:
 
 ```rust,noplayground
-impl Operation for DelayOperation {
-    type Output = DelayOutput;
-}
+{{#include ../../../doctest_support/src/delay.rs:operation_impl}}
 ```
 
 The updated implementation looks like the following:
 
 ```rust,noplayground
-struct Delay<Effect, Event> {
-    effect: PhantomData<Effect>,
-    event: PhantomData<Event>,
-}
-
-impl<Effect, Event> Delay<Effect, Event>
-where
-    Effect: Send + From<Request<DelayOperation>> + 'static,
-    Event: Send + 'static,
-{
-    pub fn milliseconds(&self, millis: usize)
-        -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
-    {
-        Command::request_from_shell(DelayOperation::Delay(millis))
-    }
-
-    pub fn random(&self, min: usize, max: usize)
-        -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
-    {
-        Command::request_from_shell(DelayOperation::GetRandom(min, max))
-            .then_request(|response| {
-                let DelayOutput::Random(millis) = response else {
-                    panic!("Expected a random number")
-                };
-
-                Command::request_from_shell(DelayOperation::Delay(millis))
-            })
-    }
-}
+{{#include ../../../doctest_support/src/delay.rs:functions}}
 ```
 
 Now hold on - that's suspiciously different! Yes, in order to avoid having the `Effect` and `Event` generics on every method, we moved them to the `impl` block, but that unfortunately requires us to make the `Delay` type generic over them, and that's what the `PhantomData` is for, otherwise Rust will complain.
@@ -153,7 +115,6 @@ Now hold on - that's suspiciously different! Yes, in order to avoid having the `
 Besides that, the code is not hugely more complicated - we use the `.then_request` chaining to chain the two builders, and we panic if the first request is resolved with an output different than the `::Random` variant, because it signals a developer error on the shell side.
 
 Here is what our app looks like with delay added in:
-
 
 ```rust,noplayground
 fn update(&self, event: Self::Event, model: &mut Self::Model, _caps: ()) {

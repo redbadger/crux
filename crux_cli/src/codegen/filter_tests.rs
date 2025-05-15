@@ -1,18 +1,20 @@
 use rustdoc_types::Crate;
 
-use crate::codegen::node::ItemNode;
+use crate::codegen::{filter::Filter, node::ItemNode};
 
 #[test]
 fn field_is_option_of_t() {
-    static RUSTDOC: &'static [u8] = include_bytes!("fixtures/field_is_option_of_t.json");
+    static RUSTDOC: &[u8] = include_bytes!("fixtures/field_is_option_of_t.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();
 
-    let mut prog = super::Filter::default();
-    prog.item = crate_
-        .index
-        .values()
-        .map(|item| (ItemNode::new("test".to_string(), item.clone()),))
-        .collect::<Vec<_>>();
+    let mut prog = Filter {
+        item: crate_
+            .index
+            .values()
+            .map(|item| (ItemNode::new("test".to_string(), item.clone()),))
+            .collect::<Vec<_>>(),
+        ..Default::default()
+    };
     prog.run();
 
     // 345 (struct: ViewModel) to 343 (field: image)

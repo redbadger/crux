@@ -485,7 +485,7 @@ dependencies = [
  "rstest",
  "rustdoc-types",
  "serde",
- "serde-generate 0.30.0",
+ "serde-generate 0.31.0",
  "serde-reflection 0.5.0",
  "serde_json",
  "thiserror 2.0.12",
@@ -2156,9 +2156,9 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.30.0"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84b2fccb0cee40e6b8c954d465fb9e43d4540e4872585babcb8611c9563eaeb0"
+checksum = "91a78dc895533d99054e0666aa929c29e9866693ee2dc42c2383c2c4c82310fe"
 dependencies = [
  "anyhow",
  "heck 0.3.3",
