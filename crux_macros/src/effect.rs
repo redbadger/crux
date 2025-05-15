@@ -118,7 +118,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         });
         quote! {
             #[cfg(feature = "typegen")]
-            impl crux_core::typegen::Export for Effect {
+            impl crux_core::typegen::Export for #enum_ident {
                 fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
                     use ::crux_core::capability::{Capability, Operation};
                     #(#effect_gen)*
@@ -249,6 +249,77 @@ mod test {
             }
         }
         "###);
+    }
+
+    #[test]
+    fn single_with_new_name() {
+        let args = Some(format_ident!("typegen"));
+        let input = parse_quote! {
+            pub enum MyEffect {
+                Render(RenderOperation),
+            }
+        };
+
+        let actual = effect_impl(args, input);
+
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
+        #[derive(Debug)]
+        pub enum MyEffect {
+            Render(::crux_core::Request<RenderOperation>),
+        }
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = "MyEffect")]
+        pub enum MyEffectFfi {
+            Render(RenderOperation),
+        }
+        impl crux_core::Effect for MyEffect {
+            type Ffi = MyEffectFfi;
+            fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+                match self {
+                    MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
+                }
+            }
+        }
+        impl From<::crux_core::Request<RenderOperation>> for MyEffect {
+            fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
+                Self::Render(value)
+            }
+        }
+        impl TryFrom<MyEffect> for ::crux_core::Request<RenderOperation> {
+            type Error = MyEffect;
+            fn try_from(value: MyEffect) -> Result<Self, Self::Error> {
+                if let MyEffect::Render(value) = value { Ok(value) } else { Err(value) }
+            }
+        }
+        impl MyEffect {
+            pub fn is_render(&self) -> bool {
+                if let MyEffect::Render(_) = self { true } else { false }
+            }
+            pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
+                if let MyEffect::Render(request) = self { Some(request) } else { None }
+            }
+            #[track_caller]
+            pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
+                if let MyEffect::Render(request) = self {
+                    request
+                } else {
+                    panic!("not a {} effect", "Render")
+                }
+            }
+        }
+        #[cfg(feature = "typegen")]
+        impl crux_core::typegen::Export for MyEffect {
+            fn register_types(
+                generator: &mut ::crux_core::typegen::TypeGen,
+            ) -> ::crux_core::typegen::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                RenderOperation::register_types(generator)?;
+                generator.register_type::<MyEffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "#);
     }
 
     #[test]
