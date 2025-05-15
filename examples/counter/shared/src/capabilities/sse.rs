@@ -28,7 +28,7 @@ impl Operation for SseRequest {
     type Output = SseResponse;
 }
 
-pub struct ServerSentEvents {}
+pub struct ServerSentEvents;
 
 impl ServerSentEvents {
     pub fn get<Effect, Event, T>(
