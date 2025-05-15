@@ -1,5 +1,6 @@
 //! This is support code for doc tests
 
+pub mod basic_delay;
 pub mod delay;
 
 pub mod command {

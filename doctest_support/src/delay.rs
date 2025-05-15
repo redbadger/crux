@@ -65,6 +65,7 @@ where
 }
 // ANCHOR_END: functions
 
+// ANCHOR: tests
 #[cfg(test)]
 mod tests {
     use crux_core::macros::effect;
@@ -127,3 +128,4 @@ mod tests {
         assert!(cmd.is_done());
     }
 }
+// ANCHOR_END: tests
