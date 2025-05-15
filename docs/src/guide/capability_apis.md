@@ -145,6 +145,16 @@ But for the basics, that is essentially it for the capabilities. You can check o
 command context API to see what can be done from inside command builders
 [in the docs](https://docs.rs/crux_core/latest/crux_core/command/struct.CommandContext.html).
 
+## Writing tests for capabilities
+
+The easiest way to test capabilities is to create simple `Effect` and `Event` enums that represent the possible operations and outcomes of the capability's behavior. You can then use these enums to assert the expected behavior of the capability in your tests.
+
+This is not dissimilar to how you would test an app, but you don't need the full apparatus that is provided by an implementation of the `App` trait. We can convert the builder that the capability function returns into a `Command` by following up with an `Event` send.
+
+```rust, noplayground
+{{#include ../../../doctest_support/src/delay.rs:tests}}
+```
+
 ----
 
 ```admonish warning title="The rest of this page is deprecated!"

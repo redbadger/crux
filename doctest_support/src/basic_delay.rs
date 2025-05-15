@@ -59,7 +59,8 @@ mod tests {
 
         request.resolve(()).unwrap();
 
-        assert!(matches!(cmd.events().next().unwrap(), Event::TimeUp(())));
+        let event = cmd.events().next().unwrap();
+        assert!(matches!(event, Event::TimeUp(())));
 
         assert!(cmd.is_done());
     }
