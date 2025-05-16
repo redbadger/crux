@@ -5,11 +5,7 @@ use async_std::io::Cursor;
 use futures::{Stream, StreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crux_core::{
-    capability::{CapabilityContext, Operation},
-    command::StreamBuilder,
-    Request,
-};
+use crux_core::{capability::Operation, command::StreamBuilder, Request};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SseRequest {
@@ -32,24 +28,15 @@ impl Operation for SseRequest {
     type Output = SseResponse;
 }
 
-#[derive(crux_core::macros::Capability)]
-pub struct ServerSentEvents<Event> {
-    context: CapabilityContext<SseRequest, Event>,
-}
+pub struct ServerSentEvents;
 
-impl<Event> ServerSentEvents<Event>
-where
-    Event: Send + 'static,
-{
-    pub fn new(context: CapabilityContext<SseRequest, Event>) -> Self {
-        Self { context }
-    }
-
-    pub fn get<Effect, T>(
+impl ServerSentEvents {
+    pub fn get<Effect, Event, T>(
         url: impl Into<String>,
     ) -> StreamBuilder<Effect, Event, impl Stream<Item = T>>
     where
         Effect: From<Request<SseRequest>> + Send + 'static,
+        Event: Send + 'static,
         T: Send + DeserializeOwned,
     {
         let url = url.into();
