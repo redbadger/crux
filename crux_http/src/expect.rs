@@ -39,7 +39,7 @@ pub struct ExpectJson<T> {
 impl<T> Default for ExpectJson<T> {
     fn default() -> Self {
         Self {
-            phantom: Default::default(),
+            phantom: PhantomData,
         }
     }
 }

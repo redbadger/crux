@@ -8,6 +8,7 @@ struct Effect {
     operation: Type,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     let enum_ident = &input.ident;
     let has_typegen_attr = match args {
@@ -77,9 +78,9 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         let effect_ident_str = effect.ident.to_string();
         let effect_ident_snake = effect_ident_str.to_snake_case();
         let operation = &effect.operation;
-        let filter_fn = Ident::new(&format!("is_{}", effect_ident_snake), Span::call_site());
-        let map_fn = Ident::new(&format!("into_{}", effect_ident_snake), Span::call_site());
-        let expect_fn = Ident::new(&format!("expect_{}", effect_ident_snake), Span::call_site());
+        let filter_fn = Ident::new(&format!("is_{effect_ident_snake}"), Span::call_site());
+        let map_fn = Ident::new(&format!("into_{effect_ident_snake}"), Span::call_site());
+        let expect_fn = Ident::new(&format!("expect_{effect_ident_snake}"), Span::call_site());
         quote! {
             impl #enum_ident {
                 pub fn #filter_fn(&self) -> bool {

@@ -3,5 +3,5 @@
 for dir in . examples/*
     echo $dir
     cd "$dir"
-    cargo clippy
+    cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings; or return 1
 end

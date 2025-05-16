@@ -1,4 +1,4 @@
-//! The Command based API for crux_http
+//! The Command based API for `crux_http`
 
 use std::{fmt, future::Future, marker::PhantomData};
 
@@ -352,6 +352,9 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
         self.req.as_mut().unwrap().insert_header(key, value);
         self
@@ -372,6 +375,8 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn content_type(mut self, content_type: impl Into<Mime>) -> Self {
         self.req
             .as_mut()
@@ -400,6 +405,8 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn body(mut self, body: impl Into<Body>) -> Self {
         self.req.as_mut().unwrap().set_body(body);
         self
@@ -544,6 +551,11 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
+    ///
+    /// # Errors
+    /// Returns an error if the query string could not be serialized.
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn query(mut self, query: &impl Serialize) -> std::result::Result<Self, HttpError> {
         self.req.as_mut().unwrap().set_query(query)?;
 
@@ -574,12 +586,19 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn middleware(mut self, middleware: impl Middleware) -> Self {
         self.req.as_mut().unwrap().middleware(middleware);
         self
     }
 
     /// Return the constructed `Request` in a [`crux_core::command::RequestBuilder`].
+    ///
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
+    #[must_use]
     pub fn build(
         self,
     ) -> command::RequestBuilder<

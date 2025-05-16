@@ -84,7 +84,7 @@ where
     T: 'static,
 {
     pub fn send(&self, t: T) {
-        self.inner.send(t)
+        self.inner.send(t);
     }
 
     pub fn map_input<NewT, F>(&self, func: F) -> Sender<NewT>
@@ -106,7 +106,7 @@ trait SenderInner<T> {
 
 impl<T> SenderInner<T> for crossbeam_channel::Sender<T> {
     fn send(&self, t: T) {
-        crossbeam_channel::Sender::send(self, t).unwrap()
+        crossbeam_channel::Sender::send(self, t).unwrap();
     }
 }
 
@@ -120,7 +120,7 @@ where
     F: Fn(U) -> T,
 {
     fn send(&self, value: U) {
-        self.sender.send((self.func)(value))
+        self.sender.send((self.func)(value));
     }
 }
 

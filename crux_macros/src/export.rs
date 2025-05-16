@@ -22,13 +22,12 @@ pub struct ExportFieldReceiver {
 impl ToTokens for ExportStructReceiver {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let effect_name = self.name.clone().unwrap_or_else(|| format_ident!("Effect"));
-        let ffi_export_name = match self.name {
-            Some(ref name) => {
-                let ffi_ef_name = format_ident!("{}Ffi", name);
+        let ffi_export_name = if let Some(ref name) = self.name {
+            let ffi_ef_name = format_ident!("{}Ffi", name);
 
-                quote!(#ffi_ef_name)
-            }
-            None => quote!(EffectFfi),
+            quote!(#ffi_ef_name)
+        } else {
+            quote!(EffectFfi)
         };
 
         let fields: Vec<&ExportFieldReceiver> = self
@@ -60,7 +59,7 @@ impl ToTokens for ExportStructReceiver {
                     Ok(())
                 }
             }
-        })
+        });
     }
 }
 
@@ -113,12 +112,12 @@ mod tests {
 
     #[test]
     fn defaults() {
-        let input = r#"
+        let input = r"
             #[derive(Export)]
             pub struct Capabilities {
                 pub render: Render<Event>,
             }
-        "#;
+        ";
         let input = parse_str(input).unwrap();
         let input = ExportStructReceiver::from_derive_input(&input).unwrap();
 
@@ -155,7 +154,7 @@ mod tests {
 
     #[test]
     fn export_macro_respects_an_skip_attr() {
-        let input = r#"
+        let input = r"
             #[derive(Export)]
             pub struct MyCapabilities {
                 pub http: crux_http::Http<MyEvent>,
@@ -165,7 +164,7 @@ mod tests {
                 #[effect(skip)]
                 pub time: Time<MyEvent>,
             }
-        "#;
+        ";
         let input = parse_str(input).unwrap();
         let input = ExportStructReceiver::from_derive_input(&input).unwrap();
 
@@ -197,7 +196,7 @@ mod tests {
 
     #[test]
     fn full() {
-        let input = r#"
+        let input = r"
             #[derive(Export)]
             pub struct MyCapabilities {
                 pub http: crux_http::Http<MyEvent>,
@@ -206,7 +205,7 @@ mod tests {
                 pub render: Render<MyEvent>,
                 pub time: Time<MyEvent>,
             }
-        "#;
+        ";
         let input = parse_str(input).unwrap();
         let input = ExportStructReceiver::from_derive_input(&input).unwrap();
 

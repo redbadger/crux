@@ -33,6 +33,9 @@ where
     Event: Send + 'static,
 {
     /// Ask for the current wall-clock time.
+    /// # Panics
+    /// Panics if the response is not `TimeResponse::Now`.
+    #[must_use]
     pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = SystemTime>> {
         Command::request_from_shell(TimeRequest::Now).map(|r| {
             let TimeResponse::Now { instant } = r else {
@@ -45,6 +48,10 @@ where
 
     /// Ask to receive a notification when the specified
     /// [`SystemTime`] has arrived.
+    /// # Panics
+    /// Panics if the response is not `TimeResponse::InstantArrived`
+    /// or if the timer ID is not the same as the one used to create the handle.
+    #[must_use]
     pub fn notify_at(
         system_time: SystemTime,
     ) -> (
@@ -84,9 +91,7 @@ where
                             panic!("Unexpected response to TimeRequest::NotifyAt");
                         };
 
-                        if id != timer_id {
-                            panic!("InstantArrived with unexpected timer ID");
-                        }
+                        assert!(id == timer_id, "InstantArrived with unexpected timer ID");
 
                         TimerOutcome::Completed(completed_handle)
                     },
@@ -103,9 +108,7 @@ where
                             panic!("Unexpected response to TimeRequest::Clear");
                         };
 
-                        if id != cleared_id {
-                            panic!("Cleared with unexpected timer ID");
-                        }
+                        assert!(id == cleared_id, "Cleared with unexpected timer ID");
 
                         TimerOutcome::Cleared
                     }
@@ -118,6 +121,10 @@ where
 
     /// Ask to receive a notification after the specified
     /// [`Duration`] has elapsed.
+    /// # Panics
+    /// Panics if the response is not `TimeResponse::DurationElapsed`
+    /// or if the timer ID is not the same as the one used to create the handle.
+    #[must_use]
     pub fn notify_after(
         duration: Duration,
     ) -> (
@@ -152,9 +159,7 @@ where
                         panic!("Unexpected response to TimeRequest::NotifyAt");
                     };
 
-                    if id != timer_id {
-                        panic!("InstantArrived with unexpected timer ID");
-                    }
+                    assert!(id == timer_id, "InstantArrived with unexpected timer ID");
 
                     TimerOutcome::Completed(completed_handle)
                 }
@@ -174,9 +179,7 @@ where
                         panic!("Unexpected response to TimeRequest::Clear");
                     };
 
-                    if id != cleared_id {
-                        panic!("Cleared resolved with unexpected timer ID");
-                    }
+                    assert!(id == cleared_id, "Cleared resolved with unexpected timer ID");
 
                     TimerOutcome::Cleared
                 }

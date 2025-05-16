@@ -62,6 +62,7 @@ impl<Ev> Time<Ev>
 where
     Ev: 'static,
 {
+    #[must_use]
     pub fn new(context: CapabilityContext<TimeRequest, Ev>) -> Self {
         Self { context }
     }
@@ -107,6 +108,7 @@ where
     /// Ask to receive a notification when the specified
     /// [`SystemTime`] has arrived.
     /// This is an async call to use with [`crux_core::compose::Compose`].
+    #[must_use]
     pub fn notify_at_async(
         &self,
         system_time: SystemTime,
@@ -136,6 +138,7 @@ where
 
     /// Ask to receive a notification when the specified [`Duration`](std::time::Duration) has elapsed.
     /// This is an async call to use with [`crux_core::compose::Compose`].
+    #[must_use]
     pub fn notify_after_async(
         &self,
         duration: std::time::Duration,
@@ -148,6 +151,9 @@ where
         (TimerFuture::new(id, future), id)
     }
 
+    /// # Panics
+    ///
+    /// Panics if we can't acquire the lock on the cleared timer IDs.
     pub fn clear(&self, id: TimerId) {
         self.context.spawn({
             {
@@ -185,7 +191,7 @@ where
         if self.is_cleared {
             // short-circuit return
             return Poll::Ready(TimeResponse::Cleared { id: self.timer_id });
-        };
+        }
         // see if the timer has been cleared
         let timer_is_cleared = {
             let mut lock = CLEARED_TIMER_IDS.lock().unwrap();

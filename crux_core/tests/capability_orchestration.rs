@@ -47,7 +47,7 @@ mod app {
                         let (result_one, result_two) =
                             join(one.one_async(10), two.two_async(20)).await;
 
-                        context.update_app(Event::Finished(result_one, result_two))
+                        context.update_app(Event::Finished(result_one, result_two));
                     }
                 }),
                 Event::Finished(one, two) => {
@@ -95,6 +95,7 @@ pub mod capabilities {
         }
 
         impl<E> CapabilityOne<E> {
+            #[must_use]
             pub fn new(context: CapabilityContext<OpOne, E>) -> Self {
                 Self { context }
             }
@@ -112,7 +113,7 @@ pub mod capabilities {
                     async move {
                         let result = this.one_async(number).await;
 
-                        this.context.update_app(event(result))
+                        this.context.update_app(event(result));
                     }
                 });
             }
@@ -156,6 +157,7 @@ pub mod capabilities {
         }
 
         impl<E> CapabilityTwo<E> {
+            #[must_use]
             pub fn new(context: CapabilityContext<OpTwo, E>) -> Self {
                 Self { context }
             }
@@ -173,7 +175,7 @@ pub mod capabilities {
                     async move {
                         let result = this.two_async(number).await;
 
-                        this.context.update_app(event(result))
+                        this.context.update_app(event(result));
                     }
                 });
             }

@@ -14,28 +14,31 @@ pub struct Duration {
 
 impl Duration {
     /// Create a new `Duration` from the given number of nanoseconds.
+    #[must_use]
     pub fn new(nanos: u64) -> Self {
         Self { nanos }
     }
 
     /// Create a new `Duration` from the given number of milliseconds.
     ///
-    /// Panics if the number of milliseconds
-    /// would overflow when converted to nanoseconds.
+    /// # Panics
+    /// if the number of milliseconds would overflow when converted to nanoseconds.
+    #[must_use]
     pub fn from_millis(millis: u64) -> Self {
         let nanos = millis
-            .checked_mul(NANOS_PER_MILLI as u64)
+            .checked_mul(u64::from(NANOS_PER_MILLI))
             .expect("millis overflow");
         Self { nanos }
     }
 
     /// Create a new `Duration` from the given number of seconds.
     ///
-    /// Panics if the number of seconds
-    /// would overflow when converted to nanoseconds.
+    /// # Panics
+    /// if the number of seconds would overflow when converted to nanoseconds.
+    #[must_use]
     pub fn from_secs(seconds: u64) -> Self {
         let nanos = seconds
-            .checked_mul(NANOS_PER_SEC as u64)
+            .checked_mul(u64::from(NANOS_PER_SEC))
             .expect("seconds overflow");
         Self { nanos }
     }
@@ -44,6 +47,8 @@ impl Duration {
 impl From<std::time::Duration> for Duration {
     fn from(duration: std::time::Duration) -> Self {
         Duration {
+            // Safe because we don't expect durations to exceed u64::MAX nanoseconds in practice
+            #[allow(clippy::cast_possible_truncation)]
             nanos: duration.as_nanos() as u64,
         }
     }

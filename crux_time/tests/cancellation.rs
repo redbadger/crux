@@ -80,10 +80,10 @@ impl App for Timer {
 
 #[test]
 fn cancellation_of_a_started_timer() {
+    const TIMER_ID: TimerId = TimerId(1);
+
     let app = Timer;
     let mut model = Model::default();
-
-    const TIMER_ID: TimerId = TimerId(1);
 
     // start the timer...
     let mut cmd1 = app.update(Event::Start, &mut model, &());

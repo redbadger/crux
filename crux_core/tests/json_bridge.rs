@@ -125,7 +125,7 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "could not deserialize event: unknown variant `Nopes`, expected `Trigger` or `Get`"
-        )
+        );
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "could not deserialize event: expected value at line 1 column 1"
-        )
+        );
     }
 
     #[test]

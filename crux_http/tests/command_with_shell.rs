@@ -93,7 +93,6 @@ mod shared {
 
 mod shell {
     use super::shared::{App, Effect, Event};
-    use anyhow::Result;
     use crux_core::Core;
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use std::collections::VecDeque;
@@ -103,7 +102,7 @@ mod shell {
         Effect(Effect),
     }
 
-    pub(crate) fn run(core: &Core<App>, event: Event) -> Result<Vec<HttpRequest>> {
+    pub(crate) fn run(core: &Core<App>, event: Event) -> Vec<HttpRequest> {
         let mut queue: VecDeque<Task> = VecDeque::new();
 
         queue.push_back(Task::Event(event));
@@ -132,14 +131,14 @@ mod shell {
                         );
                     }
                 },
-            };
+            }
         }
 
-        Ok(received)
+        received
     }
 
     fn enqueue_effects(queue: &mut VecDeque<Task>, effects: Vec<Effect>) {
-        queue.append(&mut effects.into_iter().map(Task::Effect).collect())
+        queue.append(&mut effects.into_iter().map(Task::Effect).collect());
     }
 }
 
@@ -148,15 +147,14 @@ mod tests {
         shared::{App, Event},
         shell::run,
     };
-    use anyhow::Result;
     use crux_core::Core;
     use crux_http::protocol::HttpRequest;
 
     #[test]
-    pub fn test_http() -> Result<()> {
+    pub fn test_http() {
         let core: Core<App> = Core::default();
 
-        let received = run(&core, Event::Get)?;
+        let received = run(&core, Event::Get);
 
         assert_eq!(
             received,
@@ -167,20 +165,18 @@ mod tests {
             core.view().result,
             "Status: 200, Body: \"Hello\", Json Body: "
         );
-        Ok(())
     }
 
     #[test]
-    pub fn test_http_json() -> Result<()> {
+    pub fn test_http_json() {
         let core: Core<App> = Core::default();
 
-        let received = run(&core, Event::GetJson)?;
+        let received = run(&core, Event::GetJson);
 
         assert_eq!(
             received,
             vec![HttpRequest::get("http://example.com/").build()]
         );
         assert_eq!(core.view().result, "Status: 0, Body: , Json Body: Hello");
-        Ok(())
     }
 }

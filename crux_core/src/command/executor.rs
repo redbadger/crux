@@ -127,7 +127,7 @@ impl Future for JoinHandle {
             Poll::Ready(())
         } else {
             match self.register_waker.send(cx.waker().clone()) {
-                Ok(_) => Poll::Pending,
+                Ok(()) => Poll::Pending,
                 // The task no longer exists, we report ready immediately
                 Err(_) => Poll::Ready(()),
             }
@@ -162,13 +162,13 @@ impl<Effect, Event> Command<Effect, Event> {
 
             while let Ok(task_id) = self.ready_queue.try_recv() {
                 match self.run_task(task_id) {
-                    TaskState::Missing => {
-                        // The task has been evicted because it completed.  This can happen when
-                        // a _running_ task schedules itself to wake, but then completes and gets
-                        // removed
-                    }
-                    TaskState::Suspended => {
-                        // Task suspended, we pick it up again when it's woken up
+                    TaskState::Missing | TaskState::Suspended => {
+                        // Missing:
+                        //   The task has been evicted because it completed.  This can happen when
+                        //   a _running_ task schedules itself to wake, but then completes and gets
+                        //   removed
+                        // Suspended:
+                        //   we pick it up again when it's woken up
                     }
                     TaskState::Completed | TaskState::Cancelled => {
                         // Remove and drop the task, it's finished
@@ -179,7 +179,7 @@ impl<Effect, Event> Command<Effect, Event> {
 
                         drop(task);
                     }
-                };
+                }
             }
         }
     }
@@ -208,7 +208,7 @@ impl<Effect, Event> Command<Effect, Event> {
 
         let result = match task.future.as_mut().poll(context) {
             Poll::Pending => TaskState::Suspended,
-            Poll::Ready(_) => TaskState::Completed,
+            Poll::Ready(()) => TaskState::Completed,
         };
 
         drop(waker);
@@ -237,6 +237,7 @@ impl<Effect, Event> Command<Effect, Event> {
         }
     }
 
+    #[must_use]
     pub fn was_aborted(&self) -> bool {
         self.aborted.load(Ordering::Acquire)
     }

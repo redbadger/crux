@@ -12,7 +12,7 @@ use crate::{
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
 /// interface. This assumes a declarative UI framework is used in the Shell, which will
-/// take the ViewModel provided by [`Core::view`](crate::Core::view) and reconcile the new UI state based
+/// take the `ViewModel` provided by [`Core::view`](crate::Core::view) and reconcile the new UI state based
 /// on the view model with the previous one.
 ///
 /// For imperative UIs, the Shell will need to understand the difference between the two
@@ -37,11 +37,12 @@ impl Operation for RenderOperation {
     type Output = ();
 }
 
-/// Public API of the capability, called by App::update.
+/// Public API of the capability, called by `App::update`.
 impl<Ev> Render<Ev>
 where
     Ev: 'static,
 {
+    #[must_use]
     pub fn new(context: CapabilityContext<RenderOperation, Ev>) -> Self {
         Self { context }
     }
@@ -91,6 +92,7 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 /// render_builder().into_future(ctx).await;
 ///# });
 /// ```
+#[must_use]
 pub fn render_builder<Effect, Event>(
 ) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where

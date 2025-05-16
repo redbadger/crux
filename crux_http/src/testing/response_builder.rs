@@ -10,12 +10,14 @@ pub struct ResponseBuilder<Body> {
 }
 
 impl ResponseBuilder<Vec<u8>> {
-    /// Constructs a new ResponseBuilder with the 200 OK status code.
+    /// Constructs a new `ResponseBuilder` with the 200 OK status code.
+    #[must_use]
     pub fn ok() -> ResponseBuilder<Vec<u8>> {
         ResponseBuilder::with_status(http_types::StatusCode::Ok)
     }
 
-    /// Constructs a new ResponseBuilder with the specified status code.
+    /// Constructs a new `ResponseBuilder` with the specified status code.
+    #[must_use]
     pub fn with_status(status: http_types::StatusCode) -> ResponseBuilder<Vec<u8>> {
         let response = Response::new_with_status(status);
 
@@ -31,6 +33,7 @@ impl<Body> ResponseBuilder<Body> {
     }
 
     /// Sets a header on the response.
+    #[must_use]
     pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
         self.response.insert_header(key, value);
         self

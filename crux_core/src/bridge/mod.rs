@@ -65,6 +65,10 @@ where
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the event could not be deserialized.
     pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError>
     where
         A::Event: for<'a> Deserialize<'a>,
@@ -84,6 +88,13 @@ where
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the response could not be deserialized.
+    ///
+    /// # Panics
+    ///
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
     // used in docs/internals/bridge.md
     // ANCHOR: handle_response_sig
@@ -105,6 +116,10 @@ where
     }
 
     /// Get the current state of the app's view model (serialized).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the view model could not be serialized.
     pub fn view(&self) -> Result<Vec<u8>, BridgeError> {
         let options = Self::bincode_options();
 
@@ -150,7 +165,7 @@ where
     pub fn new(core: Core<A>) -> Self {
         Self {
             core,
-            registry: Default::default(),
+            registry: ResolveRegistry::default(),
         }
     }
 
@@ -158,6 +173,10 @@ where
     ///
     /// The `event` is serialized and will be deserialized by the core before it's passed
     /// to your app.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the event could not be deserialized.
     pub fn process_event<'de, D, S>(&self, event: D, requests_out: S) -> Result<(), BridgeError>
     where
         for<'a> A::Event: Deserialize<'a>,
@@ -175,6 +194,13 @@ where
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the response could not be deserialized.
+    ///
+    /// # Panics
+    ///
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
     pub fn handle_response<'de, D, S>(
         &self,
@@ -231,6 +257,10 @@ where
     }
 
     /// Get the current state of the app's view model (serialized).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the view model could not be serialized.
     pub fn view<S>(&self, ser: S) -> Result<(), BridgeError>
     where
         S: ::serde::ser::Serializer,

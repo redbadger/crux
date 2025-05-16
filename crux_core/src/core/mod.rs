@@ -58,6 +58,7 @@ where
     /// let core: Core<MyApp> = Core::new();
     /// ```
     ///
+    #[must_use]
     pub fn new() -> Self
     where
         A::Capabilities: WithContext<A::Event, A::Effect>,
@@ -69,9 +70,9 @@ where
         let command_spawner = CommandSpawner::new(proto_context.clone());
 
         Self {
-            model: Default::default(),
+            model: RwLock::default(),
             executor,
-            app: Default::default(),
+            app: A::default(),
             capabilities: <<A as App>::Capabilities>::new_with_context(proto_context),
             requests: request_receiver,
             capability_events: event_receiver,
@@ -81,6 +82,10 @@ where
 
     /// Run the app's `update` function with a given `event`, returning a vector of
     /// effect requests.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the model `RwLock` was poisoned.
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
@@ -101,6 +106,10 @@ where
     /// Note that the `request` is borrowed mutably. When a request that is expected to
     /// only be resolved once is passed in, it will be consumed and changed to a request
     /// which can no longer be resolved.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the request cannot (or should not) be resolved.
     // used in docs/internals/runtime.md and docs/internals/bridge.md
     // ANCHOR: resolve
     // ANCHOR: resolve_sig
@@ -144,6 +153,10 @@ where
     // ANCHOR_END: process
 
     /// Get the current state of the app's view model.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the model lock was poisoned.
     pub fn view(&self) -> A::ViewModel {
         let model = self.model.read().expect("Model RwLock was poisoned.");
 

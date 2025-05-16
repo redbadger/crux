@@ -18,7 +18,17 @@ impl TryFrom<TimeDelta> for crate::Duration {
     type Error = TimeError;
 
     fn try_from(value: TimeDelta) -> Result<Self, Self::Error> {
-        let nanos = value.num_nanoseconds().ok_or(TimeError::InvalidDuration)? as u64;
+        // Get the nanosecond count, which returns an Option<i64>
+        let nanos = value.num_nanoseconds().ok_or(TimeError::InvalidDuration)?;
+
+        // Verify that the value is non-negative before converting to u64
+        if nanos < 0 {
+            return Err(TimeError::InvalidDuration);
+        }
+
+        // Safe to convert to u64 now that we've verified it's non-negative
+        #[allow(clippy::cast_sign_loss)]
+        let nanos = nanos as u64;
         Ok(Self { nanos })
     }
 }

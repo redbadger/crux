@@ -1,7 +1,10 @@
 //! Code to convert the Rust-styled field/variant (e.g. `my_field`, `MyType`) to the
 //! case of the source (e.g. `my-field`, `MY_FIELD`).
 
-use self::RenameRule::*;
+use self::RenameRule::{
+    CamelCase, KebabCase, LowerCase, None, PascalCase, ScreamingKebabCase, ScreamingSnakeCase,
+    SnakeCase, UpperCase,
+};
 use std::fmt::{self, Debug, Display};
 
 /// The different possible ways to change case of fields in a struct, or variants in an enum.
@@ -13,15 +16,15 @@ pub enum RenameRule {
     LowerCase,
     /// Rename direct children to "UPPERCASE" style.
     UpperCase,
-    /// Rename direct children to "PascalCase" style, as typically used for
+    /// Rename direct children to "`PascalCase`" style, as typically used for
     /// enum variants.
     PascalCase,
     /// Rename direct children to "camelCase" style.
     CamelCase,
-    /// Rename direct children to "snake_case" style, as commonly used for
+    /// Rename direct children to "`snake_case`" style, as commonly used for
     /// fields.
     SnakeCase,
-    /// Rename direct children to "SCREAMING_SNAKE_CASE" style, as commonly
+    /// Rename direct children to "`SCREAMING_SNAKE_CASE`" style, as commonly
     /// used for constants.
     ScreamingSnakeCase,
     /// Rename direct children to "kebab-case" style.
@@ -82,7 +85,6 @@ impl RenameRule {
     pub fn apply_to_field(self, field: &str) -> String {
         match self {
             None | LowerCase | SnakeCase => field.to_owned(),
-            UpperCase => field.to_ascii_uppercase(),
             PascalCase => {
                 let mut pascal = String::new();
                 let mut capitalize = true;
@@ -102,7 +104,7 @@ impl RenameRule {
                 let pascal = PascalCase.apply_to_field(field);
                 pascal[..1].to_ascii_lowercase() + &pascal[1..]
             }
-            ScreamingSnakeCase => field.to_ascii_uppercase(),
+            UpperCase | ScreamingSnakeCase => field.to_ascii_uppercase(),
             KebabCase => field.replace('_', "-"),
             ScreamingKebabCase => ScreamingSnakeCase.apply_to_field(field).replace('_', "-"),
         }

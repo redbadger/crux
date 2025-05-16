@@ -34,6 +34,7 @@ where
     }
 
     /// Convert the [`NotificationBuilder`] into a future to use in an async context
+    #[must_use]
     pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Task {
         let make_task = self.make_task;
         make_task(ctx)
@@ -259,6 +260,7 @@ where
     }
 
     /// Convert the request builder into a future to use in an async context
+    #[must_use]
     pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Task {
         let make_task = self.make_task;
         make_task(ctx)
@@ -502,6 +504,7 @@ where
     }
 
     /// Convert the stream builder into a stream to use in an async context
+    #[must_use]
     pub fn into_stream(self, ctx: CommandContext<Effect, Event>) -> Task {
         let make_stream = self.make_stream;
 

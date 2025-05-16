@@ -60,7 +60,7 @@ impl std::fmt::Debug for KeyValueOperation {
                 };
                 f.debug_struct("Set")
                     .field("key", key)
-                    .field("value", &format_args!("{}", body_repr))
+                    .field("value", &format_args!("{body_repr}"))
                     .finish()
             }
             KeyValueOperation::Delete { key } => {
@@ -161,6 +161,7 @@ impl<Ev> KeyValue<Ev>
 where
     Ev: 'static,
 {
+    #[must_use]
     pub fn new(context: CapabilityContext<KeyValueOperation, Ev>) -> Self {
         Self { context }
     }
@@ -184,6 +185,8 @@ where
     /// [`crux_core::compose::Compose`].
     ///
     /// Returns the value stored under the key, or `None` if the key is not present.
+    /// # Errors
+    /// Returns a `KeyValueError` if there is a problem getting the value.
     pub async fn get_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
         get(&self.context, key).await
     }
@@ -200,7 +203,7 @@ where
             let context = self.context.clone();
             async move {
                 let response = set(&context, key, value).await;
-                context.update_app(make_event(response))
+                context.update_app(make_event(response));
             }
         });
     }
@@ -209,6 +212,8 @@ where
     /// [`crux_core::compose::Compose`].
     ///
     /// Returns the previous value stored under the key, if any.
+    /// # Errors
+    /// Returns a `KeyValueError` if there is a problem setting the value.
     pub async fn set_async(
         &self,
         key: String,
@@ -227,7 +232,7 @@ where
             let context = self.context.clone();
             async move {
                 let response = delete(&context, key).await;
-                context.update_app(make_event(response))
+                context.update_app(make_event(response));
             }
         });
     }
@@ -236,6 +241,8 @@ where
     /// [`crux_core::compose::Compose`].
     ///
     /// Returns the previous value stored under the key, if any.
+    /// # Errors
+    /// Returns a `KeyValueError` if there is a problem deleting the value.
     pub async fn delete_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
         delete(&self.context, key).await
     }
@@ -250,7 +257,7 @@ where
             let context = self.context.clone();
             async move {
                 let response = exists(&context, key).await;
-                context.update_app(make_event(response))
+                context.update_app(make_event(response));
             }
         });
     }
@@ -259,6 +266,9 @@ where
     /// [`crux_core::compose::Compose`].
     ///
     /// Returns `true` if the key exists, `false` otherwise.
+    ///
+    /// # Errors
+    /// Returns a `KeyValueError` if there is a problem checking the existence of the key.
     pub async fn exists_async(&self, key: String) -> Result<bool, KeyValueError> {
         exists(&self.context, key).await
     }
@@ -282,7 +292,7 @@ where
             let context = self.context.clone();
             async move {
                 let response = list_keys(&context, prefix, cursor).await;
-                context.update_app(make_event(response))
+                context.update_app(make_event(response));
             }
         });
     }
@@ -297,6 +307,9 @@ where
     ///
     /// If the cursor is found the result will be a tuple of the keys and the next cursor
     /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
+    ///
+    /// # Errors
+    /// Returns a `KeyValueError` if there is a problem listing the keys.
     pub async fn list_keys_async(
         &self,
         prefix: String,

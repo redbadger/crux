@@ -77,13 +77,13 @@ mod shared {
                         .unwrap();
                     let text = response.body_string().expect("response should have body");
 
-                    let response = Http::post(format!("http://example.com/{}", text))
+                    let response = Http::post(format!("http://example.com/{text}"))
                         .build()
                         .into_future(ctx.clone())
                         .await
                         .unwrap();
 
-                    ctx.send_event(Event::ComposeComplete(response.status()))
+                    ctx.send_event(Event::ComposeComplete(response.status()));
                 }),
                 Event::ConcurrentGets => Command::new(|ctx| async move {
                     let one = Http::get("http://example.com/one")
@@ -102,7 +102,7 @@ mod shared {
                         StatusCode::try_from(max::<u16>(one.status().into(), two.status().into()))
                             .unwrap();
 
-                    ctx.send_event(Event::ComposeComplete(status))
+                    ctx.send_event(Event::ComposeComplete(status));
                 }),
                 Event::ComposeComplete(status) => {
                     model.values.push(status.to_string());
@@ -114,7 +114,7 @@ mod shared {
                         .header("my_header")
                         .unwrap()
                         .iter()
-                        .map(|v| v.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect();
                     Command::done()
                 }
@@ -177,7 +177,7 @@ mod tests {
         assert_matches!(actual.clone(), Event::Set(Ok(response)) => {
             assert_eq!(response.body().unwrap(), "\"hello\"");
             assert_eq!(response.header("my_header").unwrap().iter()
-            .map(|v| v.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<_>>(), vec!["my_value1", "my_value2"]);
         });
 
@@ -366,6 +366,6 @@ mod tests {
             panic!("Expected original error back")
         };
 
-        assert_eq!(error, "Socket shenanigans prevented the request")
+        assert_eq!(error, "Socket shenanigans prevented the request");
     }
 }

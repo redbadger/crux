@@ -92,11 +92,11 @@ pub fn field_ids(item: &Item) -> Vec<Id> {
             inner: ItemEnum::Struct(Struct { kind, .. }),
             ..
         } => match kind {
-            StructKind::Plain { fields, .. } => fields.to_vec(),
+            StructKind::Plain { fields, .. } => fields.clone(),
             StructKind::Tuple(fields) => fields
                 .iter()
                 .filter_map(|f| f.as_ref())
-                .cloned()
+                .copied()
                 .collect_vec(),
             StructKind::Unit => vec![],
         },
@@ -108,9 +108,9 @@ pub fn field_ids(item: &Item) -> Vec<Id> {
             VariantKind::Tuple(fields) => fields
                 .iter()
                 .filter_map(|f| f.as_ref())
-                .cloned()
+                .copied()
                 .collect_vec(),
-            VariantKind::Struct { fields, .. } => fields.to_vec(),
+            VariantKind::Struct { fields, .. } => fields.clone(),
         },
         _ => vec![],
     }
@@ -161,7 +161,7 @@ pub fn variant_ids(item: &Item) -> Vec<Id> {
         Item {
             inner: ItemEnum::Enum(Enum { variants, .. }),
             ..
-        } => variants.to_vec(),
+        } => variants.clone(),
         _ => vec![],
     }
 }

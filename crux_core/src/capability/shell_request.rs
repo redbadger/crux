@@ -57,13 +57,12 @@ impl<T> Future for ShellRequest<T> {
 
         // If a result has been delivered, we're ready to continue
         // Else we're pending with the waker from context
-        match shared_state.result.take() {
-            Some(result) => Poll::Ready(result),
-            None => {
-                let cloned_waker = cx.waker().clone();
-                shared_state.waker = Some(cloned_waker);
-                Poll::Pending
-            }
+        if let Some(result) = shared_state.result.take() {
+            Poll::Ready(result)
+        } else {
+            let cloned_waker = cx.waker().clone();
+            shared_state.waker = Some(cloned_waker);
+            Poll::Pending
         }
     }
 }
@@ -81,6 +80,10 @@ where
     /// `request_from_shell` returns a future of the output, which can be
     /// `await`ed. You should only call this method inside an async task
     /// created with [`CapabilityContext::spawn`](crate::capability::CapabilityContext::spawn).
+    ///
+    /// # Panics
+    ///
+    /// Panics if we can't acquire the lock on the shared state.
     pub fn request_from_shell(&self, operation: Op) -> ShellRequest<Op::Output> {
         let shared_state = Arc::new(Mutex::new(SharedState {
             result: None,
@@ -107,7 +110,7 @@ where
             shared_state.result = Some(result);
             // Signal the executor to wake the task holding this future
             if let Some(waker) = shared_state.waker.take() {
-                waker.wake()
+                waker.wake();
             }
         });
         // ANCHOR_END: resolve

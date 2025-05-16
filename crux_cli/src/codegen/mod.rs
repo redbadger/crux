@@ -75,7 +75,7 @@ where
     let shared_lib = load(crate_name)?;
 
     let mut filter = Filter::default();
-    filter.process(crate_name, &shared_lib)?;
+    filter.process(crate_name, &shared_lib);
 
     previous.insert(crate_name.to_string(), shared_lib);
 
@@ -87,7 +87,7 @@ where
         }
         let crate_ = load(&crate_name)?;
 
-        filter.process(&crate_name, &crate_)?;
+        filter.process(&crate_name, &crate_);
 
         next = filter.get_crates();
         previous.insert(crate_name, crate_);
@@ -135,17 +135,17 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
     json_path.push(name);
     json_path.set_extension("json");
 
-    debug!("from {}", json_path.to_string());
+    debug!("from {json_path}");
 
     let buf = &mut Vec::new();
     File::open(json_path)?.read_to_end(buf)?;
     let crate_ = serde_json::from_slice(buf).context(
-        r#"
+        r"
 There was a problem reading RustDoc JSON output — maybe there is
 a format version incompatibility.
 We currently require format version >=39, which means Rust >=1.86.
 Please raise an issue at https://github.com/redbadger/crux/issue and
-include the version of Rust that you are using. Thank you!"#,
+include the version of Rust that you are using. Thank you!",
     )?;
 
     Ok(crate_)

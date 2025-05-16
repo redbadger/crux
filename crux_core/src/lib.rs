@@ -182,7 +182,7 @@ pub trait App: Default {
     type Event: Unpin + Send + 'static;
     /// Model, typically a `struct` defines the internal state of the application
     type Model: Default;
-    /// ViewModel, typically a `struct` describes the user interface that should be
+    /// `ViewModel`, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
     /// Capabilities, usually a `struct`, lists the capabilities used by this application.

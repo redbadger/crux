@@ -78,7 +78,7 @@ mod shared {
                     if let TimeResponse::Now { instant } = time {
                         let time: DateTime<Utc> = instant.try_into().unwrap();
                         model.time = time.to_rfc3339();
-                        caps.render.render()
+                        caps.render.render();
                     }
                 }
                 Event::StartDebounce => {

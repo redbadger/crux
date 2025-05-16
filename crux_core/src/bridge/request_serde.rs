@@ -15,8 +15,8 @@ type ResolveManySerialized =
 
 /// A deserializing version of Resolve
 ///
-/// ResolveSerialized is a separate type because lifetime elision doesn't work
-/// through generic type arguments. We can't create a ResolveRegistry of
+/// `ResolveSerialized` is a separate type because lifetime elision doesn't work
+/// through generic type arguments. We can't create a `ResolveRegistry` of
 /// Resolve<&[u8]> without specifying an explicit lifetime.
 /// If you see a better way around this, please open a PR.
 pub enum ResolveSerialized {
@@ -92,7 +92,7 @@ impl<Out> Resolve<Out> {
             })),
             Resolve::Many(resolve) => ResolveSerialized::Many(Box::new(move |deser| {
                 let out = func(deser)?;
-                resolve(out).map_err(|_| BridgeError::ProcessResponse(ResolveError::FinishedMany))
+                resolve(out).map_err(|()| BridgeError::ProcessResponse(ResolveError::FinishedMany))
             })),
         }
     }

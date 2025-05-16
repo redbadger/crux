@@ -45,7 +45,7 @@ impl ToTokens for CapabilityStructReceiver {
               #name::new(self.context.map_event(f))
             }
           }
-        })
+        });
     }
 }
 
@@ -98,12 +98,12 @@ mod tests {
 
     #[test]
     fn test_derive() {
-        let input = r#"
+        let input = r"
             #[derive(Capability)]
             pub struct Render<Ev> {
               context: CapabilityContext<RenderOperation, Ev>,
             }
-        "#;
+        ";
         let input = parse_str(input).unwrap();
         let input = CapabilityStructReceiver::from_derive_input(&input).unwrap();
 

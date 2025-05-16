@@ -1,3 +1,5 @@
+#![allow(clippy::missing_errors_doc)]
+
 mod args;
 pub mod codegen;
 

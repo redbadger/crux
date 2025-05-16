@@ -80,7 +80,7 @@ fn effects_execute_in_sequence() {
 
     let event = cmd.events().next().unwrap();
 
-    assert_eq!(event, Event::Completed(AnOperationOutput::Two))
+    assert_eq!(event, Event::Completed(AnOperationOutput::Two));
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn effects_race() {
         .expect("request should resolve");
 
     // The select! has finished
-    assert!(cmd.events().next().is_none())
+    assert!(cmd.events().next().is_none());
 }
 
 #[test]

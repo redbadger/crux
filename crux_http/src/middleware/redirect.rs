@@ -70,6 +70,7 @@ impl Redirect {
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
+    #[must_use]
     pub fn new(attempts: u8) -> Self {
         Redirect { attempts }
     }
@@ -79,7 +80,7 @@ impl Redirect {
 impl Middleware for Redirect {
     async fn handle(
         &self,
-        mut req: Request,
+        mut request: Request,
         client: Client,
         next: Next<'_>,
     ) -> Result<ResponseAsync> {
@@ -99,15 +100,15 @@ impl Middleware for Redirect {
         // and try sending it until we get some status back that is not a
         // redirect.
 
-        let mut base_url = req.url().clone();
+        let mut base_url = request.url().clone();
 
         while redirect_count < self.attempts {
             redirect_count += 1;
-            let r: Request = req.clone();
+            let r: Request = request.clone();
             let res: ResponseAsync = client.send(r).await?;
             if REDIRECT_CODES.contains(&res.status()) {
                 if let Some(location) = res.header(headers::LOCATION) {
-                    let http_req: &mut http_types::Request = req.as_mut();
+                    let http_req: &mut http_types::Request = request.as_mut();
                     *http_req.url_mut() = match Url::parse(location.last().as_str()) {
                         Ok(valid_url) => {
                             base_url = valid_url;
@@ -126,7 +127,7 @@ impl Middleware for Redirect {
             }
         }
 
-        Ok(next.run(req, client).await?)
+        Ok(next.run(request, client).await?)
     }
 }
 

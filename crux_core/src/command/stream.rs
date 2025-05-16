@@ -42,7 +42,7 @@ where
 
         if let Ok(effect) = self.effects.try_recv() {
             return Poll::Ready(Some(CommandOutput::Effect(effect)));
-        };
+        }
 
         if self.is_done() {
             Poll::Ready(None)

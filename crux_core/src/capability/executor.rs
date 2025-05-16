@@ -60,7 +60,7 @@ impl Spawner {
         let future = future.boxed();
         self.future_sender
             .send(future)
-            .expect("unable to spawn an async task, task sender channel is disconnected.")
+            .expect("unable to spawn an async task, task sender channel is disconnected.");
     }
 }
 // ANCHOR_END: spawning
@@ -278,7 +278,7 @@ mod tests {
             let future = Chaotic::new_with_children(6);
             spawner.spawn(future);
         }
-        assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 195700);
+        assert_eq!(CHAOS_COUNT.load(Ordering::SeqCst), 195_700);
         let executor = Arc::new(executor);
         assert_eq!(executor.spawn_queue.len(), 100);
 

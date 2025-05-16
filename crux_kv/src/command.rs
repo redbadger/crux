@@ -1,4 +1,4 @@
-//! The Command based API for crux_kv
+//! The Command based API for `crux_kv`
 
 use std::{future::Future, marker::PhantomData};
 
@@ -25,7 +25,7 @@ where
         key: impl Into<String>,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>> {
         Command::request_from_shell(KeyValueOperation::Get { key: key.into() })
-            .map(|kv_result| kv_result.unwrap_get())
+            .map(super::KeyValueResult::unwrap_get)
     }
 
     pub fn set(
@@ -36,21 +36,21 @@ where
             key: key.into(),
             value,
         })
-        .map(|kv_result| kv_result.unwrap_set())
+        .map(super::KeyValueResult::unwrap_set)
     }
 
     pub fn delete(
         key: impl Into<String>,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>> {
         Command::request_from_shell(KeyValueOperation::Delete { key: key.into() })
-            .map(|kv_result| kv_result.unwrap_delete())
+            .map(super::KeyValueResult::unwrap_delete)
     }
 
     pub fn exists(
         key: impl Into<String>,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = StatusResult>> {
         Command::request_from_shell(KeyValueOperation::Exists { key: key.into() })
-            .map(|kv_result| kv_result.unwrap_exists())
+            .map(super::KeyValueResult::unwrap_exists)
     }
 
     pub fn list_keys(
@@ -61,6 +61,6 @@ where
             prefix: prefix.into(),
             cursor,
         })
-        .map(|kv_result| kv_result.unwrap_list_keys())
+        .map(super::KeyValueResult::unwrap_list_keys)
     }
 }

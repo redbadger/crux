@@ -37,7 +37,7 @@ impl<T> Stream for ShellStream<T> {
                 shared_state.waker = Some(cx.waker().clone());
                 Poll::Pending
             }
-            Err(_) => Poll::Ready(None),
+            Err(()) => Poll::Ready(None),
         }
     }
 }
@@ -48,6 +48,10 @@ where
     Ev: 'static,
 {
     /// Send an effect request to the shell, expecting a stream of responses
+    ///
+    /// # Panics
+    ///
+    /// Panics if we can't acquire the shared state lock.
     pub fn stream_from_shell(&self, operation: Op) -> ShellStream<Op::Output> {
         let (sender, receiver) = channel();
         let shared_state = Arc::new(Mutex::new(SharedState {

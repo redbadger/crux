@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Error type for KeyValue operations
+/// Error type for `KeyValue` operations
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Error)]
 #[serde(rename_all = "camelCase")]
 pub enum KeyValueError {

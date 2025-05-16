@@ -70,6 +70,7 @@ impl<Ev> Http<Ev>
 where
     Ev: 'static,
 {
+    #[must_use]
     pub fn new(context: CapabilityContext<protocol::HttpRequest, Ev>) -> Self {
         Self {
             client: Client::new(context.clone()),
@@ -83,7 +84,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -108,7 +109,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -133,7 +134,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -158,7 +159,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -183,7 +184,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -208,7 +209,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -233,7 +234,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -258,7 +259,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -283,7 +284,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     ///
     /// # Panics
     ///
@@ -298,7 +299,7 @@ where
     /// and then sent with `RequestBuilder::send`
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update function.
+    /// the app's `update` function.
     pub fn request(&self, method: http_types::Method, url: Url) -> RequestBuilder<Ev> {
         RequestBuilder::new(method, url, self.clone())
     }

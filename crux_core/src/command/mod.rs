@@ -292,6 +292,10 @@ where
     /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
     /// events back to the app, and to spawn additional tasks. The closure is expected to return a future
     /// which becomes the command's main asynchronous task.
+    ///
+    /// # Panics
+    ///
+    /// If we could not make the task ready because the ready channel was disconnected.
     pub fn new<F, Fut>(create_task: F) -> Self
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
@@ -313,9 +317,9 @@ where
             tasks: spawn_sender,
         };
 
-        let aborted: Arc<AtomicBool> = Default::default();
+        let aborted: Arc<AtomicBool> = Arc::default();
         let task = Task {
-            finished: Default::default(),
+            finished: Arc::default(),
             aborted: aborted.clone(),
             future: create_task(context.clone()).boxed(),
             join_handle_wakers: waker_receiver,
@@ -336,7 +340,7 @@ where
             spawn_queue: spawn_receiver,
             ready_sender,
             tasks,
-            waker: Default::default(),
+            waker: Arc::default(),
             aborted,
         }
     }
@@ -355,7 +359,7 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        subcmd.map_effect(|ef| ef.into()).map_event(|ev| ev.into())
+        subcmd.map_effect(Into::into).map_event(Into::into)
     }
 
     /// Turn the command into another command with compatible `Effect` and `Event` types
@@ -366,7 +370,7 @@ where
         Effect: Unpin + Into<Ef>,
         Event: Unpin + Into<Ev>,
     {
-        self.map_effect(|ef| ef.into()).map_event(|ev| ev.into())
+        self.map_effect(Into::into).map_event(Into::into)
     }
 
     /// Create a Command which dispatches an event and terminates. This is an alternative
@@ -494,7 +498,7 @@ where
         let mut command = Command::done();
 
         for c in commands {
-            command.spawn(|ctx| c.host(ctx.effects, ctx.events).map(|_| ()))
+            command.spawn(|ctx| c.host(ctx.effects, ctx.events).map(|_| ()));
         }
 
         command
@@ -562,6 +566,7 @@ where
     ///
     /// This is specifically useful for cancelling subscriptions and long running effects
     /// which may get superseded, like timers
+    #[must_use]
     pub fn abort_handle(&self) -> AbortHandle {
         AbortHandle {
             aborted: self.aborted.clone(),
