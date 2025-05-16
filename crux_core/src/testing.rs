@@ -260,12 +260,13 @@ where
     #[track_caller]
     pub fn expect_one_effect(&mut self) -> Effect {
         if self.events().next().is_some() {
-            panic!("Expected only one effect, but found an event");
+            panic!("expected only one effect, but found an event");
         }
-        if let Some(effect) = self.effects().next() {
-            effect
-        } else {
-            panic!("Expected one effect but found none");
+        let mut effects = self.effects();
+        match (effects.next(), effects.next()) {
+            (None, _) => panic!("expected one effect but got none"),
+            (Some(effect), None) => effect,
+            _ => panic!("expected one effect but got more than one"),
         }
     }
 }

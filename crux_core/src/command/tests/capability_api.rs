@@ -42,7 +42,7 @@ enum Event {
     Completed(AnOperationOutput),
 }
 
-// This Capability exampls is really contrived
+// This Capability example is really contrived
 
 struct Capability;
 
@@ -139,7 +139,7 @@ fn stream_event() {
                 })
             );
 
-            assert!(!cmd.is_done())
+            assert!(!cmd.is_done());
         }
     }
 }

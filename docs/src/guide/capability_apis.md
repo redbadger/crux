@@ -27,10 +27,7 @@ The main job we have is to define the protocol to express this:
 
 
 ```rust,noplayground
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct DelayOperation {
-    millis: usize
-}
+{{#include ../../../doctest_support/src/basic_delay.rs:operation}}
 ```
 
 The operation is just a named type holding onto a number. It will need to cross
@@ -41,29 +38,13 @@ the type of the response we expect back. In our case we expect a response, but
 there is no data, so we'll use the unit type.
 
 ```rust,noplayground
-use crux_core::capability::Operation;
-
-impl Operation for DelayOperation {
-    type Output = ();
-}
+{{#include ../../../doctest_support/src/basic_delay.rs:operation_impl}}
 ```
 
 Now we can implement the capability:
 
 ```rust,noplayground
-struct Delay;
-
-impl Delay
-{
-    pub fn milliseconds<Effect, Event>(&self, millis: usize)
-        -> RequestBuilder<Effect, Event, impl Future<Output = ()>>
-    where
-        Effect: Send + From<Request<DelayOperation>> + 'static,
-        Event: Send + 'static,
-    {
-        Command::request_from_shell(DelayOperation { millis })
-    }
-}
+{{#include ../../../doctest_support/src/basic_delay.rs:functions}}
 ```
 
 That's it - it's just a function. But it has an interesting type signature. First lets look at the body and then we can come back to it. In the body, we call `Command::request_from_shell` which is one of the shorthand constructors provided by `Command`. They pretty much mirror the `CommandContext` API we saw in the previous chapter, and return a builder.
@@ -89,71 +70,30 @@ because... well because this is an example.
 Since we have multiple operations now, let's make our operation an enum
 
 ```rust,noplayground
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub enum DelayOperation {
-    GetRandom(usize, usize),
-    Delay(usize),
-}
+{{#include ../../../doctest_support/src/delay.rs:operation}}
 ```
 
 We now also need an output type:
 
 ```rust,noplayground
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub enum DelayOutput {
-    Random(usize),
-    TimeUp
-}
+{{#include ../../../doctest_support/src/delay.rs:output}}
 ```
 
 And that changes the `Operation` trait implementation:
 
 ```rust,noplayground
-impl Operation for DelayOperation {
-    type Output = DelayOutput;
-}
+{{#include ../../../doctest_support/src/delay.rs:operation_impl}}
 ```
 
 The updated implementation looks like the following:
 
 ```rust,noplayground
-struct Delay<Effect, Event> {
-    effect: PhantomData<Effect>,
-    event: PhantomData<Event>,
-}
-
-impl<Effect, Event> Delay<Effect, Event>
-where
-    Effect: Send + From<Request<DelayOperation>> + 'static,
-    Event: Send + 'static,
-{
-    pub fn milliseconds(&self, millis: usize)
-        -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
-    {
-        Command::request_from_shell(DelayOperation::Delay(millis))
-    }
-
-    pub fn random(&self, min: usize, max: usize)
-        -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
-    {
-        Command::request_from_shell(DelayOperation::GetRandom(min, max))
-            .then_request(|response| {
-                let DelayOutput::Random(millis) = response else {
-                    panic!("Expected a random number")
-                };
-
-                Command::request_from_shell(DelayOperation::Delay(millis))
-            })
-    }
-}
+{{#include ../../../doctest_support/src/delay.rs:functions}}
 ```
 
-Now hold on - that's suspiciously different! Yes, in order to avoid having the `Effect` and `Event` generics on every method, we moved them to the `impl` block, but that unfortunately requires us to make the `Delay` type generic over them, and that's what the `PhantomData` is for, otherwise Rust will complain.
-
-Besides that, the code is not hugely more complicated - we use the `.then_request` chaining to chain the two builders, and we panic if the first request is resolved with an output different than the `::Random` variant, because it signals a developer error on the shell side.
+The code is not hugely more complicated - we use the `.then_request` chaining to chain the two builders, and we panic if the first request is resolved with an output different than the `::Random` variant, because it signals a developer error on the shell side.
 
 Here is what our app looks like with delay added in:
-
 
 ```rust,noplayground
 fn update(&self, event: Self::Event, model: &mut Self::Model, _caps: ()) {
@@ -204,6 +144,16 @@ Capabilities can get quite complicated, but the basic principles stay the same -
 But for the basics, that is essentially it for the capabilities. You can check out the complete
 command context API to see what can be done from inside command builders
 [in the docs](https://docs.rs/crux_core/latest/crux_core/command/struct.CommandContext.html).
+
+## Writing tests for capabilities
+
+The easiest way to test capabilities is to create simple `Effect` and `Event` enums that represent the possible operations and outcomes of the capability's behavior. You can then use these enums to assert the expected behavior of the capability in your tests.
+
+This is not dissimilar to how you would test an app, but you don't need the full apparatus that is provided by an implementation of the `App` trait. We can convert the builder that the capability function returns into a `Command` by following up with an `Event` send.
+
+```rust, noplayground
+{{#include ../../../doctest_support/src/delay.rs:tests}}
+```
 
 ----
 

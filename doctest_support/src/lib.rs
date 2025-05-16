@@ -1,5 +1,8 @@
 //! This is support code for doc tests
 
+pub mod basic_delay;
+pub mod delay;
+
 pub mod command {
     use crux_core::{capability::Operation, Request};
     use serde::{Deserialize, Serialize};
