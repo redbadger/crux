@@ -47,7 +47,7 @@ const Home: NextPage = () => {
           <p>{view.platform}</p>
         </section>
         <section className="section container has-text-centered">
-          {view.image && (
+          {view.image?.href && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt="A funny cat. Or at least a cute one."
