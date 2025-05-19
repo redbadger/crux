@@ -38,10 +38,14 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: clippy, rustfmt
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Clippy (pedantic)
+        shell: bash
+        run: cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings
 
       - uses: pnpm/action-setup@v4
         with:
@@ -105,12 +109,16 @@ jobs:
           # so we don't add tooling for all targets
           rm ../../rust-toolchain.toml
 
-      - name: Install rustfmt
-        shell: bash
-        run: rustup component add rustfmt
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Clippy (pedantic)
+        shell: bash
+        run: cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings
 
       - name: Install nextest
         shell: bash
