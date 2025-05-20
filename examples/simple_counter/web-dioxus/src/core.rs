@@ -35,18 +35,18 @@ impl CoreService {
     fn update(&self, event: Event, view: &mut Signal<ViewModel>) {
         debug!("event: {:?}", event);
 
-        for effect in self.core.process_event(event) {
+        for effect in &self.core.process_event(event) {
             process_effect(&self.core, effect, view);
         }
     }
 }
 
-fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
+fn process_effect(core: &Core, effect: &Effect, view: &mut Signal<ViewModel>) {
     debug!("effect: {:?}", effect);
 
     match effect {
         Effect::Render(_) => {
             view.set(core.view());
         }
-    };
+    }
 }

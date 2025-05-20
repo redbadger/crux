@@ -32,8 +32,7 @@ pub async fn request(
                     Ok(Some((chunk, body)))
                 }
                 Err(e) => Err(HttpError::Json(format!(
-                    "failed to read from http response; err = {:?}",
-                    e
+                    "failed to read from http response; err = {e:?}"
                 ))),
             },
             None => Ok(None),

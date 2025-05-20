@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
 use crossbeam_channel::Sender;
 use std::{sync::Arc, time::SystemTime};
 use tokio::{
@@ -14,7 +13,7 @@ use shared::{
         error::KeyValueError, value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult,
     },
     platform::PlatformResponse,
-    time::{Instant, TimeResponse},
+    time::TimeResponse,
     CatFacts, Effect, Event,
 };
 
@@ -133,10 +132,8 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
         }
 
         Effect::Time(mut request) => {
-            let now: DateTime<Utc> = SystemTime::now().into();
-            let response = TimeResponse::Now {
-                instant: Instant::new(now.timestamp() as u64, now.timestamp_subsec_nanos()),
-            };
+            let instant = SystemTime::now().into();
+            let response = TimeResponse::Now { instant };
 
             for effect in core.resolve(&mut request, response)? {
                 process_effect(core, effect, tx)?;

@@ -15,11 +15,15 @@ console_log = "1.0.0"
 futures-util = "0.3.31"
 gloo-net = { version = "0.6.0", features = ["http"] }
 js-sys = "0.3.77"
-leptos = { version = "0.7.8", features = ["csr"] }
 log = "0.4.27"
 shared = { path = "../shared" }
 wasm-bindgen = "0.2.100"
 wasm-streams = "0.4.2"
+
+# 0.8 needs resolver=2 which is not good for shared/uniffi-bindgen
+# so iOS build struggles. This will all change soon anyway
+# (see https://github.com/redbadger/crux/pull/347)
+leptos = { version = "=0.7.8", features = ["csr"] }
 
 [lints.clippy]
 empty_docs = "allow"

@@ -47,20 +47,6 @@ impl crux_core::App for App {
         model: &mut Self::Model,
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
-        self.update(event, model)
-    }
-
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        ViewModel {
-            count: model.count,
-            log: model.log.clone(),
-        }
-    }
-}
-// ANCHOR_END: impl_app
-
-impl App {
-    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
             Event::Tick => model.count += 1,
             Event::NewPeriod => {
@@ -71,11 +57,19 @@ impl App {
                 model.count = 0;
                 model.log.clear();
             }
-        };
+        }
 
         render()
     }
+
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        ViewModel {
+            count: model.count,
+            log: model.log.clone(),
+        }
+    }
 }
+// ANCHOR_END: impl_app
 // ANCHOR_END: app
 
 // ANCHOR: test
@@ -87,7 +81,7 @@ mod test {
 
     #[test]
     fn shows_initial_count() {
-        let app = App::default();
+        let app = App;
         let model = Model::default();
 
         let actual_view = app.view(&model);
@@ -101,12 +95,12 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = App::default();
+        let app = App;
         let mut model = Model::default();
 
-        let _ = app.update(Event::Tick, &mut model);
-        let _ = app.update(Event::Tick, &mut model);
-        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick, &mut model, &());
 
         let actual_view = app.view(&model);
         let expected_view = ViewModel {
@@ -119,17 +113,17 @@ mod test {
 
     #[test]
     fn logs_previous_counts() {
-        let app = App::default();
+        let app = App;
         let mut model = Model::default();
 
-        let _ = app.update(Event::Tick, &mut model);
-        let _ = app.update(Event::Tick, &mut model);
-        let _ = app.update(Event::Tick, &mut model);
-        let _ = app.update(Event::NewPeriod, &mut model);
-        let _ = app.update(Event::Tick, &mut model);
-        let _ = app.update(Event::Tick, &mut model);
-        let _ = app.update(Event::NewPeriod, &mut model);
-        let _ = app.update(Event::Tick, &mut model);
+        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::NewPeriod, &mut model, &());
+        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::NewPeriod, &mut model, &());
+        let _ = app.update(Event::Tick, &mut model, &());
 
         let expected = Model {
             log: vec![3, 2],
@@ -140,20 +134,20 @@ mod test {
 
     #[test]
     fn renders_on_tick() {
-        let app = App::default();
+        let app = App;
         let mut model = Model::default();
 
-        app.update(Event::Tick, &mut model)
+        app.update(Event::Tick, &mut model, &())
             .expect_one_effect()
             .expect_render();
     }
 
     #[test]
     fn renders_on_new_period() {
-        let app = App::default();
+        let app = App;
         let mut model = Model::default();
 
-        app.update(Event::NewPeriod, &mut model)
+        app.update(Event::NewPeriod, &mut model, &())
             .expect_one_effect()
             .expect_render();
     }

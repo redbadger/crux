@@ -31,7 +31,7 @@ fn RootComponent() -> impl IntoView {
                 set_clock.update(|c| *c += 1);
             },
             Duration::from_millis(1000),
-        )
+        );
     });
 
     view! {

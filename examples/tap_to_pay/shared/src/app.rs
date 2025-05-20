@@ -76,7 +76,7 @@ impl crux_core::App for App {
             Event::StartPayment => {
                 if let Some(payment) = &mut model.payment {
                     payment.start();
-                };
+                }
                 render()
             }
             Event::AbortPayment => {
@@ -127,7 +127,7 @@ impl crux_core::App for App {
                     if let Some(receipt) = payment.receipt() {
                         receipt.email = email;
                     }
-                };
+                }
                 render()
             }
             Event::SendReceipt => {
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn starts_with_new_payment() {
-        let app = App::default();
+        let app = App;
         let model = Model::default();
 
         let expected = ViewModel {
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn basic_happy_path_payment_journey() {
-        let app = App::default();
+        let app = App;
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(1000), &mut model, &());
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn does_not_start_payment_of_zero() {
-        let app = App::default();
+        let app = App;
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(0), &mut model, &());
@@ -300,6 +300,6 @@ mod tests {
             screen: Screen::Payment(payment(0, PaymentStatus::New)),
         };
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 }

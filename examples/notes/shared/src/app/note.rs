@@ -13,6 +13,7 @@ impl Default for Note {
 }
 
 impl Note {
+    #[must_use]
     pub fn new() -> Self {
         let mut document = Automerge::new();
 
@@ -25,6 +26,7 @@ impl Note {
         }
     }
 
+    #[must_use]
     pub fn with_text(text: &str) -> Self {
         let mut note = Self::new();
         let body = note.body();
@@ -42,18 +44,21 @@ impl Note {
         self.document.save()
     }
 
+    #[must_use]
     pub fn load(bytes: &[u8]) -> Self {
         let document = Automerge::load(bytes).expect("to load document");
 
         Self { document }
     }
 
+    #[must_use]
     pub fn text(&self) -> String {
         self.document
             .text(self.body())
             .expect("document to have body")
     }
 
+    #[must_use]
     pub fn length(&self) -> usize {
         self.document.length(self.body())
     }
@@ -76,7 +81,7 @@ impl Note {
     pub fn apply_changes(&mut self, changes: impl IntoIterator<Item = Change>) {
         self.document
             .apply_changes(changes)
-            .expect("to apply changes")
+            .expect("to apply changes");
     }
 
     pub fn apply_changes_with(
@@ -88,7 +93,7 @@ impl Note {
 
         self.document
             .apply_changes_with(changes, Some(&mut observer))
-            .expect("to apply changes")
+            .expect("to apply changes");
     }
 
     fn body(&self) -> ObjId {

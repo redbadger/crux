@@ -49,7 +49,7 @@ impl App for Counter {
             Event::Increment => model.count += 1,
             Event::Decrement => model.count -= 1,
             Event::Reset => model.count = 0,
-        };
+        }
 
         render()
     }
@@ -71,7 +71,7 @@ mod test {
 
     #[test]
     fn renders() {
-        let app = Counter::default();
+        let app = Counter;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Reset, &mut model, &());
@@ -82,7 +82,7 @@ mod test {
 
     #[test]
     fn shows_initial_count() {
-        let app = Counter::default();
+        let app = Counter;
         let model = Model::default();
 
         let actual_view = app.view(&model).count;
@@ -92,7 +92,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = Counter::default();
+        let app = Counter;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Increment, &mut model, &());
@@ -107,7 +107,7 @@ mod test {
 
     #[test]
     fn decrements_count() {
-        let app = Counter::default();
+        let app = Counter;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Decrement, &mut model, &());
@@ -122,7 +122,7 @@ mod test {
 
     #[test]
     fn resets_count() {
-        let app = Counter::default();
+        let app = Counter;
         let mut model = Model::default();
 
         let _ = app.update(Event::Increment, &mut model, &());
@@ -135,7 +135,7 @@ mod test {
 
     #[test]
     fn counts_up_and_down() {
-        let app = Counter::default();
+        let app = Counter;
         let mut model = Model::default();
 
         let _ = app.update(Event::Increment, &mut model, &());

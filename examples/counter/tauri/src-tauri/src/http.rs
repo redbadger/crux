@@ -27,8 +27,8 @@ pub async fn request(
 
     let request = client
         .request(method, url)
-        .headers(reqwest::header::HeaderMap::from_iter(headers))
-        .body(body.to_vec())
+        .headers(headers.collect::<reqwest::header::HeaderMap<_>>())
+        .body(body.clone())
         .build()
         .map_err(|e| HttpError::Url(e.to_string()))?;
 
