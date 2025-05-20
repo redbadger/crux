@@ -7,7 +7,7 @@ use std::fmt;
 
 #[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone)]
 pub struct Sys {
-    #[serde(alias = "type")]
+    #[serde(rename = "type")]
     pub sys_type: usize,
     pub id: usize,
     pub country: String,
@@ -53,32 +53,19 @@ impl fmt::Display for Main {
 
 #[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone)]
 pub struct CurrentResponse {
-    #[serde(default)]
-    pub coord: Option<Coord>,
-    #[serde(default)]
-    pub weather: Option<Vec<Weather>>,
-    #[serde(default)]
-    pub base: Option<String>,
-    #[serde(default)]
-    pub main: Option<Main>,
-    #[serde(default)]
-    pub visibility: Option<usize>,
-    #[serde(default)]
-    pub wind: Option<Wind>,
-    #[serde(default)]
-    pub clouds: Option<Clouds>,
-    #[serde(default)]
-    pub dt: Option<usize>,
-    #[serde(default)]
-    pub sys: Option<Sys>,
-    #[serde(default)]
-    pub timezone: Option<i64>,
-    #[serde(default)]
-    pub id: Option<usize>,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub cod: Option<usize>,
+    pub coord: Coord,
+    pub weather: Vec<Weather>,
+    pub base: String,
+    pub main: Main,
+    pub visibility: usize,
+    pub wind: Wind,
+    pub clouds: Clouds,
+    pub dt: usize,
+    pub sys: Sys,
+    pub timezone: i64,
+    pub id: usize,
+    pub name: String,
+    pub cod: usize,
 }
 
 impl fmt::Display for CurrentResponse {

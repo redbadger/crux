@@ -230,8 +230,6 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 [[package]]
 name = "crux_core"
 version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11947b1345c8326218f20713ea1610087e885196efa3098361b8eb729fb89e8f"
 dependencies = [
  "anyhow",
  "bincode",
@@ -250,8 +248,6 @@ dependencies = [
 [[package]]
 name = "crux_http"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8c81eb7e87f8ff3686d43b9755ecefe86f66331bfb7c5b17800286a0e262364"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -264,6 +260,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
+ "serde_qs 0.10.1",
  "thiserror 2.0.12",
  "url",
  "web-sys",
@@ -272,8 +269,6 @@ dependencies = [
 [[package]]
 name = "crux_macros"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db73187832796313ada15f7534f7d9cbaa85aab8ac460022c55264ce4b7dd1cd"
 dependencies = [
  "darling",
  "heck 0.5.0",
@@ -631,7 +626,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
- "serde_qs",
+ "serde_qs 0.8.5",
  "serde_urlencoded",
  "url",
 ]
@@ -1227,6 +1222,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_qs"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cac3f1e2ca2fe333923a1ae72caca910b98ed0630bb35ef6f8c8517d6e81afa"
+dependencies = [
+ "percent-encoding",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1246,8 +1252,19 @@ dependencies = [
  "crux_http",
  "lazy_static",
  "serde",
+ "serde_json",
  "uniffi",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "shared_types"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crux_core",
+ "crux_http",
+ "shared",
 ]
 
 [[package]]
