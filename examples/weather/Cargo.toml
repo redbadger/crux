@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared"]
+members = ["shared", "shared_types"]
 resolver = "1"
 
 [workspace.package]
@@ -12,6 +12,6 @@ rust-version = "1.66"
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-crux_core = "0.14.0"
-crux_http = "0.13.0"
+crux_core = { path = "../../crux_core" }
+crux_http = { path = "../../crux_http" }
 serde = "1.0.219"
