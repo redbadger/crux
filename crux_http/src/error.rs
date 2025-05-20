@@ -43,6 +43,12 @@ impl From<url::ParseError> for HttpError {
     }
 }
 
+impl From<serde_qs::Error> for HttpError {
+    fn from(e: serde_qs::Error) -> Self {
+        HttpError::Json(e.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
