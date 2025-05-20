@@ -5,7 +5,6 @@ use syn::ItemStruct;
 pub fn bridge_impl(input: &ItemStruct) -> TokenStream {
     let ident = &input.ident;
     quote! {
-        #[derive(Default)]
         #input
 
         static CORE: ::std::sync::LazyLock<::crux_core::bridge::Bridge<#ident>> =
@@ -15,7 +14,7 @@ pub fn bridge_impl(input: &ItemStruct) -> TokenStream {
 
         #[cfg(not(target_family = "wasm"))]
         const _: () = assert!(
-            uniffi::check_compatible_version("0.29.2"),
+            ::uniffi::check_compatible_version("0.29.2"),
             "please use uniffi v0.29.2"
         );
 
@@ -67,14 +66,13 @@ mod tests {
 
         let actual = bridge_impl(input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
-        #[derive(Default)]
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         pub struct App;
         static CORE: ::std::sync::LazyLock<::crux_core::bridge::Bridge<App>> = ::std::sync::LazyLock::new(||
         { ::crux_core::bridge::Bridge::new(::crux_core::Core::new()) });
         #[cfg(not(target_family = "wasm"))]
         const _: () = assert!(
-            uniffi::check_compatible_version("0.29.2"), "please use uniffi v0.29.2"
+            ::uniffi::check_compatible_version("0.29.2"), "please use uniffi v0.29.2"
         );
         #[cfg(not(target_family = "wasm"))]
         ::uniffi::setup_scaffolding!();
@@ -102,6 +100,6 @@ mod tests {
                 Err(e) => panic!("{e}"),
             }
         }
-        "##);
+        "#);
     }
 }

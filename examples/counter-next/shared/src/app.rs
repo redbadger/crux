@@ -55,6 +55,7 @@ pub enum Effect {
 }
 
 #[bridge]
+#[derive(Default)]
 pub struct App;
 
 impl crux_core::App for App {

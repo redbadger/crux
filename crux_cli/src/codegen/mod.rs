@@ -36,9 +36,9 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
         .map(|package| (package.name(), package.manifest_path().as_str()))
         .collect();
 
-    let Ok(lib) = package_graph.workspace().member_by_path(&args.crate_name) else {
+    let Ok(lib) = package_graph.workspace().member_by_name(&args.crate_name) else {
         bail!(
-            "Could not find workspace package with path {}",
+            "Could not find workspace package with name {}",
             args.crate_name
         )
     };
