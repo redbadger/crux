@@ -5,7 +5,7 @@ use crate::{Effect, Event, GeocodingResponse, Workflow};
 
 use super::favorites::FavoritesState;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum AddFavoriteEvent {
     Submit(GeocodingResponse),
     Cancel,
