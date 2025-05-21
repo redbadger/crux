@@ -1,5 +1,6 @@
 pub mod app;
 pub mod responses;
+pub mod workflows;
 
 use lazy_static::lazy_static;
 
