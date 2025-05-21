@@ -269,12 +269,12 @@ impl TypeGen {
         match &mut self.state {
             State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
-                Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
-                    TypeGenError::Deserialization(
+                Err(e @ serde_reflection::Error::DeserializationError(_)) => {
+                    Err(TypeGenError::Deserialization(
                         format!("{e}: {exp}", exp = e.explanation()),
                         std::any::type_name::<T>().to_string(),
-                    ),
-                ),
+                    ))
+                }
                 Err(e) => Err(TypeGenError::TypeTracing(
                     format!(
                         r#"{e}:
@@ -347,12 +347,12 @@ The 2 common cases are:
 
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
-                    Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
-                        TypeGenError::Deserialization(
+                    Err(e @ serde_reflection::Error::DeserializationError(_)) => {
+                        Err(TypeGenError::Deserialization(
                             format!("{e}: {exp}", exp = e.explanation()),
                             std::any::type_name::<T>().to_string(),
-                        ),
-                    ),
+                        ))
+                    }
                     Err(e) => Err(TypeGenError::TypeTracing(
                         format!("{e}: {exp}", exp = e.explanation()),
                         std::any::type_name::<T>().to_string(),
