@@ -7,6 +7,7 @@ use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    events::{self, CurrentWeatherEvent},
     workflows::{
         self,
         favorites::{Favorite, FavoritesState},
@@ -26,10 +27,7 @@ pub enum Event {
     Home(HomeEvent),
     Favorites(FavoritesEvent),
     AddFavorite(AddFavoriteEvent),
-
-    // Internal events
-    #[serde(skip)]
-    SetWeather(crux_http::Result<crux_http::Response<CurrentResponse>>),
+    CurrentWeather(CurrentWeatherEvent),
 }
 
 #[effect(typegen)]
@@ -104,15 +102,8 @@ impl crux_core::App for App {
             Event::Home(home_event) => workflows::update_home(home_event, model),
             Event::Favorites(fav_event) => workflows::update_favorites(fav_event, model),
             Event::AddFavorite(add_event) => workflows::update_add_favorite(add_event, model),
-
-            Event::SetWeather(Ok(mut response)) => {
-                let data = response.take_body().unwrap();
-                model.weather_data = data;
-                render()
-            }
-            Event::SetWeather(Err(e)) => {
-                println!("{:?}", e);
-                render()
+            Event::CurrentWeather(current_weather_event) => {
+                events::update_current_weather(current_weather_event, model)
             }
         }
     }
