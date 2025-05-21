@@ -145,10 +145,10 @@ This might be because you attempted to pass types with custom serialization acro
 pub enum TypeGenError {
     #[error("while tracing: {1}. Type tracing failed: {0}")]
     TypeTracing(String, String),
-    #[error("value tracing failed: {0}")]
-    ValueTracing(String),
-    #[error("type tracing failed: {0} {DESERIALIZATION_ERROR_HINT}")]
-    Deserialization(String),
+    #[error("while tracing: {1}. Value tracing failed: {0}")]
+    ValueTracing(String, String),
+    #[error("while tracing: {1}. Type tracing failed: {0} {DESERIALIZATION_ERROR_HINT}")]
+    Deserialization(String, String),
     #[error("code has been generated, too late to register types")]
     LateRegistration,
     #[error("type generation failed: {0}")]
@@ -233,10 +233,10 @@ impl TypeGen {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
                         Err(e) => {
-                            return Err(TypeGenError::ValueTracing(format!(
-                                "{e}: {exp}",
-                                exp = e.explanation()
-                            )));
+                            return Err(TypeGenError::ValueTracing(
+                                format!("{e}: {exp}", exp = e.explanation()),
+                                std::any::type_name::<T>().to_string(),
+                            ));
                         }
                     }
                 }
@@ -270,7 +270,10 @@ impl TypeGen {
             State::Registering(tracer, _) => match tracer.trace_simple_type::<T>() {
                 Ok(_) => Ok(()),
                 Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
-                    TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
+                    TypeGenError::Deserialization(
+                        format!("{e}: {exp}", exp = e.explanation()),
+                        std::any::type_name::<T>().to_string(),
+                    ),
                 ),
                 Err(e) => Err(TypeGenError::TypeTracing(
                     format!(
@@ -328,16 +331,16 @@ The 2 common cases are:
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
                         Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                            return Err(TypeGenError::ValueTracing(format!(
-                                "{e}: {exp}",
-                                exp = e.explanation()
-                            )));
+                            return Err(TypeGenError::ValueTracing(
+                                format!("{e}: {exp}", exp = e.explanation()),
+                                std::any::type_name::<T>().to_string(),
+                            ));
                         }
                         Err(e) => {
-                            return Err(TypeGenError::ValueTracing(format!(
-                                "{e}: {exp}",
-                                exp = e.explanation()
-                            )));
+                            return Err(TypeGenError::ValueTracing(
+                                format!("{e}: {exp}", exp = e.explanation()),
+                                std::any::type_name::<T>().to_string(),
+                            ));
                         }
                     }
                 }
@@ -345,7 +348,10 @@ The 2 common cases are:
                 match tracer.trace_type::<T>(samples) {
                     Ok(_) => Ok(()),
                     Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
-                        TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
+                        TypeGenError::Deserialization(
+                            format!("{e}: {exp}", exp = e.explanation()),
+                            std::any::type_name::<T>().to_string(),
+                        ),
                     ),
                     Err(e) => Err(TypeGenError::TypeTracing(
                         format!("{e}: {exp}", exp = e.explanation()),
