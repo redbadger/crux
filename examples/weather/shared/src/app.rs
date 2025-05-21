@@ -3,22 +3,33 @@ use crux_core::{
     render::{render, RenderOperation},
     Command,
 };
-use crux_http::{command::Http, protocol::HttpRequest};
+use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
-use crate::{CurrentResponse, GeocodingResponse};
+use crate::{
+    workflows::{
+        self,
+        favorites::{Favorite, FavoritesState},
+        AddFavoriteEvent, FavoritesEvent, HomeEvent,
+    },
+    CurrentResponse,
+};
 
 // https://openweathermap.org/current
 const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 // ?lat={lat}&lon={lon}&appid={API key}
 const API_KEY: &str = "42005d273a8a49c88a8173878232508";
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Event {
-    Show(f64, f64),
+    Navigate(Workflow),
+    Home(HomeEvent),
+    Favorites(FavoritesEvent),
+    AddFavorite(AddFavoriteEvent),
 
+    // Internal events
     #[serde(skip)]
-    Set(crux_http::Result<crux_http::Response<CurrentResponse>>),
+    SetWeather(crux_http::Result<crux_http::Response<CurrentResponse>>),
 }
 
 #[effect(typegen)]
@@ -27,20 +38,11 @@ pub enum Effect {
     Http(HttpRequest),
 }
 
-// Query string example from https://openweathermap.org/current
-#[derive(Serialize)]
-struct CurrentQueryString {
-    lat: String,
-    lon: String,
-    appid: &'static str,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-enum Workflow {
+pub enum Workflow {
     Home,
-    Favorites,
+    Favorites(FavoritesState),
     AddFavorite,
-    ConfirmDeleteFavorite(u32),
 }
 
 impl Default for Workflow {
@@ -49,23 +51,12 @@ impl Default for Workflow {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
-struct Favorite {
-    geo: GeocodingResponse,
-    current: Option<CurrentResponse>,
-}
-
-impl From<GeocodingResponse> for Favorite {
-    fn from(geo: GeocodingResponse) -> Self {
-        Favorite { geo, current: None }
-    }
-}
-
 #[derive(Default)]
 pub struct Model {
-    weather_data: CurrentResponse,
-    page: Workflow,
-    favorites: Vec<Favorite>,
+    pub weather_data: CurrentResponse,
+    pub page: Workflow,
+    pub favorites: Vec<Favorite>,
+    pub show_add_modal: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -78,7 +69,7 @@ pub enum WorkflowViewModel {
     Home { weather_data: CurrentResponse },
     Favorites { favorites: Vec<FavoriteView> },
     AddFavorite,
-    ConfirmDeleteFavorite { index: u32, name: String },
+    ConfirmDeleteFavorite { lat: f64, lng: f64 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -103,25 +94,23 @@ impl crux_core::App for App {
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        _caps: &(), // will be deprecated, so prefix with underscore for now
+        _caps: &(),
     ) -> Command<Effect, Event> {
         match event {
-            Event::Show(lat, long) => Http::get(WEATHER_URL)
-                .expect_json()
-                .query(&CurrentQueryString {
-                    lat: lat.to_string(),
-                    lon: long.to_string(),
-                    appid: API_KEY,
-                })
-                .expect("could not serialize query string")
-                .build()
-                .then_send(Event::Set),
-            Event::Set(Ok(mut response)) => {
+            Event::Navigate(page) => {
+                model.page = page;
+                render()
+            }
+            Event::Home(home_event) => workflows::update_home(home_event, model),
+            Event::Favorites(fav_event) => workflows::update_favorites(fav_event, model),
+            Event::AddFavorite(add_event) => workflows::update_add_favorite(add_event, model),
+
+            Event::SetWeather(Ok(mut response)) => {
                 let data = response.take_body().unwrap();
                 model.weather_data = data;
                 render()
             }
-            Event::Set(Err(e)) => {
+            Event::SetWeather(Err(e)) => {
                 println!("{:?}", e);
                 render()
             }
@@ -133,7 +122,7 @@ impl crux_core::App for App {
             Workflow::Home => WorkflowViewModel::Home {
                 weather_data: model.weather_data.clone(),
             },
-            Workflow::Favorites => WorkflowViewModel::Favorites {
+            Workflow::Favorites(FavoritesState::Idle) => WorkflowViewModel::Favorites {
                 favorites: model
                     .favorites
                     .iter()
@@ -154,15 +143,13 @@ impl crux_core::App for App {
                     })
                     .collect(),
             },
+            Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lng)) => {
+                WorkflowViewModel::ConfirmDeleteFavorite {
+                    lat: *lat,
+                    lng: *lng,
+                }
+            }
             Workflow::AddFavorite => WorkflowViewModel::AddFavorite,
-            Workflow::ConfirmDeleteFavorite(index) => WorkflowViewModel::ConfirmDeleteFavorite {
-                index: *index,
-                name: model
-                    .favorites
-                    .get(*index as usize)
-                    .map(|f| f.geo.name.clone())
-                    .unwrap_or_else(|| "Unknown".to_string()),
-            },
         };
 
         ViewModel { workflow }
@@ -177,7 +164,7 @@ mod tests {
         testing::ResponseBuilder,
     };
 
-    use crate::{Clouds, Coord, Main, Sys, Weather, Wind};
+    use crate::{Clouds, Coord, GeocodingResponse, Main, Sys, Weather, Wind};
 
     use super::*;
 
@@ -185,7 +172,17 @@ mod tests {
     fn test_app() {
         let app = App;
         let lat_lng = (33.456789, -112.037222);
-        let event = Event::Show(lat_lng.0, lat_lng.1);
+        let event = Event::Favorites(FavoritesEvent::DeletePressed(Favorite {
+            geo: GeocodingResponse {
+                lat: lat_lng.0,
+                lon: lat_lng.1,
+                name: "Phoenix".to_string(),
+                local_names: None,
+                country: "US".to_string(),
+                state: None,
+            },
+            current: None,
+        }));
 
         let mut cmd = app.update(event, &mut Model::default(), &());
 
@@ -258,7 +255,7 @@ mod tests {
 
         // the app should emit a `Set` event with the HTTP response
         let actual = cmd.events().next().unwrap();
-        let expected = Event::Set(Ok(ResponseBuilder::ok()
+        let expected = Event::SetWeather(Ok(ResponseBuilder::ok()
             .body(CurrentResponse {
                 main: Main {
                     temp: 20.0,
