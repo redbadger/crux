@@ -473,4 +473,41 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_http_request_query_with_url_with_existing_query_params() {
+        #[derive(Serialize, Deserialize)]
+        struct QueryParams {
+            name: String,
+            email: String,
+        }
+
+        let query = QueryParams {
+            name: "John Doe".to_string(),
+            email: "john@example.com".to_string(),
+        };
+
+        let mut builder = HttpRequestBuilder {
+            method: Some("GET".to_string()),
+            url: Some("https://example.com?foo=bar".to_string()),
+            headers: Some(vec![]),
+            body: Some(vec![]),
+        };
+
+        builder
+            .query(&query)
+            .expect("should serialize query params");
+        let req = builder.build();
+
+        assert_eq!(
+            req,
+            HttpRequest {
+                method: "GET".to_string(),
+                url: "https://example.com?foo=bar&name=John+Doe&email=john%40example.com"
+                    .to_string(),
+                headers: vec![],
+                body: vec![],
+            }
+        );
+    }
 }
