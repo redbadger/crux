@@ -87,6 +87,20 @@ impl HttpRequestBuilder {
         self
     }
 
+    pub fn query(&mut self, query: &impl Serialize) -> crate::Result<&mut Self> {
+        let query_string = serde_qs::to_string(query)?;
+        println!("query_string: {}", query_string);
+        if let Some(url) = &mut self.url {
+            if url.contains('?') {
+                url.push('&');
+            } else {
+                url.push('?');
+            }
+            url.push_str(&query_string);
+        }
+        Ok(self)
+    }
+
     pub fn json(&mut self, body: impl serde::Serialize) -> &mut Self {
         self.body = Some(serde_json::to_vec(&body).unwrap());
         self
@@ -233,6 +247,7 @@ impl From<HttpResponse> for crate::ResponseAsync {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::{Deserialize, Serialize};
 
     #[test]
     fn test_http_request_get() {
@@ -341,5 +356,158 @@ mod tests {
                 r#"HttpRequest { method: "POST", url: "http://example.com", body: <binary data - 4 bytes> }"#
             );
         }
+    }
+
+    #[test]
+    fn test_http_request_query() {
+        #[derive(Serialize, Deserialize)]
+        struct QueryParams {
+            page: u32,
+            limit: u32,
+            search: String,
+        }
+
+        let query = QueryParams {
+            page: 2,
+            limit: 10,
+            search: "test".to_string(),
+        };
+
+        let mut builder = HttpRequestBuilder {
+            method: Some("GET".to_string()),
+            url: Some("https://example.com".to_string()),
+            headers: Some(vec![HttpHeader {
+                name: "foo".to_string(),
+                value: "bar".to_string(),
+            }]),
+            body: Some(vec![]),
+        };
+
+        builder
+            .query(&query)
+            .expect("should serialize query params");
+        let req = builder.build();
+
+        assert_eq!(
+            req,
+            HttpRequest {
+                method: "GET".to_string(),
+                url: "https://example.com?page=2&limit=10&search=test".to_string(),
+                headers: vec![HttpHeader {
+                    name: "foo".to_string(),
+                    value: "bar".to_string(),
+                }],
+                body: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn test_http_request_query_with_special_chars() {
+        #[derive(Serialize, Deserialize)]
+        struct QueryParams {
+            name: String,
+            email: String,
+        }
+
+        let query = QueryParams {
+            name: "John Doe".to_string(),
+            email: "john@example.com".to_string(),
+        };
+
+        let mut builder = HttpRequestBuilder {
+            method: Some("GET".to_string()),
+            url: Some("https://example.com".to_string()),
+            headers: Some(vec![]),
+            body: Some(vec![]),
+        };
+
+        builder
+            .query(&query)
+            .expect("should serialize query params with special chars");
+        let req = builder.build();
+
+        assert_eq!(
+            req,
+            HttpRequest {
+                method: "GET".to_string(),
+                url: "https://example.com?name=John+Doe&email=john%40example.com".to_string(),
+                headers: vec![],
+                body: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn test_http_request_query_with_empty_values() {
+        #[derive(Serialize, Deserialize)]
+        struct QueryParams {
+            empty: String,
+            none: Option<String>,
+        }
+
+        let query = QueryParams {
+            empty: "".to_string(),
+            none: None,
+        };
+
+        let mut builder = HttpRequestBuilder {
+            method: Some("GET".to_string()),
+            url: Some("https://example.com".to_string()),
+            headers: Some(vec![]),
+            body: Some(vec![]),
+        };
+
+        builder
+            .query(&query)
+            .expect("should serialize query params with empty values");
+        let req = builder.build();
+
+        assert_eq!(
+            req,
+            HttpRequest {
+                method: "GET".to_string(),
+                url: "https://example.com?empty=".to_string(),
+                headers: vec![],
+                body: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn test_http_request_query_with_url_with_existing_query_params() {
+        #[derive(Serialize, Deserialize)]
+        struct QueryParams {
+            name: String,
+            email: String,
+        }
+
+        let query = QueryParams {
+            name: "John Doe".to_string(),
+            email: "john@example.com".to_string(),
+        };
+
+        let mut builder = HttpRequestBuilder {
+            method: Some("GET".to_string()),
+            url: Some("https://example.com?foo=bar".to_string()),
+            headers: Some(vec![]),
+            body: Some(vec![]),
+        };
+
+        builder
+            .query(&query)
+            .expect("should serialize query params");
+        let req = builder.build();
+
+        assert_eq!(
+            req,
+            HttpRequest {
+                method: "GET".to_string(),
+                url: "https://example.com?foo=bar&name=John+Doe&email=john%40example.com"
+                    .to_string(),
+                headers: vec![],
+                body: vec![],
+            }
+        );
     }
 }
