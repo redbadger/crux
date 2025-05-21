@@ -27,6 +27,8 @@ pub enum Event {
     Home(HomeEvent),
     Favorites(FavoritesEvent),
     AddFavorite(AddFavoriteEvent),
+
+    #[serde(skip)]
     CurrentWeather(CurrentWeatherEvent),
 }
 
@@ -36,17 +38,12 @@ pub enum Effect {
     Http(HttpRequest),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Workflow {
+    #[default]
     Home,
     Favorites(FavoritesState),
     AddFavorite,
-}
-
-impl Default for Workflow {
-    fn default() -> Self {
-        Workflow::Home
-    }
 }
 
 #[derive(Default)]
