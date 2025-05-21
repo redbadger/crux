@@ -13,7 +13,7 @@ or return
 cargo build
 
 pushd $argv[1]
-RUST_LOG=info ../../target/debug/crux codegen \
+RUST_LOG=info ../../target/debug/crux bindgen \
     --crate-name shared \
     --out-dir ./shared/generated
 popd
