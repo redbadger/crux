@@ -17,9 +17,7 @@ pub struct CurrentQueryString {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum CurrentWeatherEvent {
-    #[serde(skip)]
     Fetch(f64, f64),
-    #[serde(skip)]
     SetWeather(crux_http::Result<crux_http::Response<CurrentResponse>>),
 }
 
