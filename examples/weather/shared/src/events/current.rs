@@ -1,25 +1,44 @@
 use crux_core::{render::render, Command};
+use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
 
-use crate::events::current::{update as update_current_weather, CurrentWeatherEvent};
-use crate::{Effect, Event, Model};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum HomeEvent {
-    Show(f64, f64),
-    WeatherFetched(Result<crate::CurrentResponse, String>),
-}
+use crate::workflows::home::HomeEvent;
+use crate::{CurrentResponse, Effect, Event, Model};
 
 const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 const API_KEY: &str = "42005d273a8a49c88a8173878232508";
 
-pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
+#[derive(Serialize)]
+pub struct CurrentQueryString {
+    pub lat: String,
+    pub lon: String,
+    pub appid: &'static str,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum CurrentWeatherEvent {
+    #[serde(skip)]
+    Fetch(f64, f64),
+    #[serde(skip)]
+    SetWeather(crux_http::Result<crux_http::Response<CurrentResponse>>),
+}
+
+pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        HomeEvent::Show(lat, long) => {
-            // Use the shared weather event's update function
-            update_current_weather(CurrentWeatherEvent::Fetch(lat, long), model)
+        CurrentWeatherEvent::Fetch(lat, long) => Http::get(WEATHER_URL)
+            .expect_json()
+            .query(&CurrentQueryString {
+                lat: lat.to_string(),
+                lon: long.to_string(),
+                appid: API_KEY,
+            })
+            .expect("could not serialize query string")
+            .build()
+            .then_send(|result| Event::CurrentWeather(CurrentWeatherEvent::SetWeather(result))),
+        CurrentWeatherEvent::SetWeather(result) => {
+            model.weather_data = result.unwrap().take_body().unwrap();
+            render()
         }
-        HomeEvent::WeatherFetched(_) => render(),
     }
 }
 
@@ -27,37 +46,33 @@ pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
 mod tests {
     use super::*;
     use crux_core::App as _;
-    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
-
-    use crate::{
-        events::current::CurrentQueryString, App, Clouds, Coord, CurrentResponse, Main, Sys,
-        Weather, Wind,
+    use crux_http::{
+        protocol::{HttpRequest, HttpResponse, HttpResult},
+        testing::ResponseBuilder,
     };
 
     #[test]
-    fn test_app() {
-        let app = App;
+    fn test_current_weather_fetch() {
         let lat_lng = (33.456789, -112.037222);
-        let mut model = Model::default();
-        let event = Event::Home(HomeEvent::Show(lat_lng.0, lat_lng.1));
+        let event = CurrentWeatherEvent::Fetch(lat_lng.0, lat_lng.1);
 
-        let mut cmd = app.update(event, &mut model, &());
+        let mut cmd = update(event, &mut Model::default());
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
         assert_eq!(
             &request.operation,
-            &HttpRequest::get("https://api.openweathermap.org/data/2.5/weather")
+            &HttpRequest::get(WEATHER_URL)
                 .query(&CurrentQueryString {
                     lat: lat_lng.0.to_string(),
                     lon: lat_lng.1.to_string(),
-                    appid: "42005d273a8a49c88a8173878232508",
+                    appid: API_KEY,
                 })
                 .expect("could not serialize query string")
                 .build()
         );
 
-        // resolve the request with a simulated response from the web API
+        // Test response handling
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
