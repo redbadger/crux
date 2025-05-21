@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Eq)]
 pub struct Weather {
     pub id: u64,
     pub main: String,
