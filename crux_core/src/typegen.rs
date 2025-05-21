@@ -143,8 +143,8 @@ This might be because you attempted to pass types with custom serialization acro
 
 #[derive(Error, Debug)]
 pub enum TypeGenError {
-    #[error("type tracing failed: {0}")]
-    TypeTracing(String),
+    #[error("while tracing: {1}. Type tracing failed: {0}")]
+    TypeTracing(String, String),
     #[error("value tracing failed: {0}")]
     ValueTracing(String),
     #[error("type tracing failed: {0} {DESERIALIZATION_ERROR_HINT}")]
@@ -272,8 +272,9 @@ impl TypeGen {
                 Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
                     TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
                 ),
-                Err(e) => Err(TypeGenError::TypeTracing(format!(
-                    r#"{e}:
+                Err(e) => Err(TypeGenError::TypeTracing(
+                    format!(
+                        r#"{e}:
 {exp}
 HINT: This may be because you are trying to trace a generic type,
 which is currently not supported.
@@ -281,8 +282,10 @@ The 2 common cases are:
     * Capability output types. It's generally recommended to wrap them in your own type.
     * Event variants which could have a `#[serde(skip)]` because they don't leave the core
 "#,
-                    exp = e.explanation()
-                ))),
+                        exp = e.explanation()
+                    ),
+                    std::any::type_name::<T>().to_string(),
+                )),
             },
             _ => Err(TypeGenError::LateRegistration),
         }
@@ -344,10 +347,10 @@ The 2 common cases are:
                     Err(e @ serde_reflection::Error::DeserializationError(_)) => Err(
                         TypeGenError::Deserialization(format!("{e}: {exp}", exp = e.explanation())),
                     ),
-                    Err(e) => Err(TypeGenError::TypeTracing(format!(
-                        "{e}: {exp}",
-                        exp = e.explanation()
-                    ))),
+                    Err(e) => Err(TypeGenError::TypeTracing(
+                        format!("{e}: {exp}", exp = e.explanation()),
+                        std::any::type_name::<T>().to_string(),
+                    )),
                 }
             }
             _ => Err(TypeGenError::LateRegistration),
