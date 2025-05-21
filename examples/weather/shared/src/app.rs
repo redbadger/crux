@@ -6,12 +6,13 @@ use crux_core::{
 use crux_http::{command::Http, protocol::HttpRequest};
 use serde::{Deserialize, Serialize};
 
-use crate::CurrentResponse;
+use crate::{CurrentResponse, GeocodingResponse};
 
 // https://openweathermap.org/current
 const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 // ?lat={lat}&lon={lon}&appid={API key}
 const API_KEY: &str = "42005d273a8a49c88a8173878232508";
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Event {
     Show(f64, f64),
@@ -26,12 +27,6 @@ pub enum Effect {
     Http(HttpRequest),
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
-pub struct UserData {
-    lat: f64,
-    lon: f64,
-}
-
 // Query string example from https://openweathermap.org/current
 #[derive(Serialize)]
 struct CurrentQueryString {
@@ -40,16 +35,58 @@ struct CurrentQueryString {
     appid: &'static str,
 }
 
-#[derive(Default)]
-pub struct Model {
-    weather_data: CurrentResponse,
-    user_data: UserData,
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+enum Workflow {
+    Home,
+    Favorites,
+    AddFavorite,
+    ConfirmDeleteFavorite(u32),
+}
+
+impl Default for Workflow {
+    fn default() -> Self {
+        Workflow::Home
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
-pub struct ViewModel {
+struct Favorite {
+    geo: GeocodingResponse,
+    current: Option<CurrentResponse>,
+}
+
+impl From<GeocodingResponse> for Favorite {
+    fn from(geo: GeocodingResponse) -> Self {
+        Favorite { geo, current: None }
+    }
+}
+
+#[derive(Default)]
+pub struct Model {
     weather_data: CurrentResponse,
-    user_data: UserData,
+    page: Workflow,
+    favorites: Vec<Favorite>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ViewModel {
+    pub workflow: WorkflowViewModel,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum WorkflowViewModel {
+    Home { weather_data: CurrentResponse },
+    Favorites { favorites: Vec<FavoriteView> },
+    AddFavorite,
+    ConfirmDeleteFavorite { index: u32, name: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct FavoriteView {
+    name: String,
+    lat: f64,
+    lon: f64,
+    summary: Option<String>,
 }
 
 #[derive(Default)]
@@ -91,11 +128,44 @@ impl crux_core::App for App {
         }
     }
 
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        ViewModel {
-            weather_data: model.weather_data.clone(),
-            user_data: model.user_data.clone(),
-        }
+    fn view(&self, model: &Model) -> ViewModel {
+        let workflow = match &model.page {
+            Workflow::Home => WorkflowViewModel::Home {
+                weather_data: model.weather_data.clone(),
+            },
+            Workflow::Favorites => WorkflowViewModel::Favorites {
+                favorites: model
+                    .favorites
+                    .iter()
+                    .map(|f| FavoriteView {
+                        name: f.geo.name.clone(),
+                        lat: f.geo.lat,
+                        lon: f.geo.lon,
+                        summary: f.current.as_ref().map(|c| {
+                            format!(
+                                "{}°C, {}",
+                                c.main.temp,
+                                c.weather
+                                    .get(0)
+                                    .map(|w| w.description.clone())
+                                    .unwrap_or_default()
+                            )
+                        }),
+                    })
+                    .collect(),
+            },
+            Workflow::AddFavorite => WorkflowViewModel::AddFavorite,
+            Workflow::ConfirmDeleteFavorite(index) => WorkflowViewModel::ConfirmDeleteFavorite {
+                index: *index,
+                name: model
+                    .favorites
+                    .get(*index as usize)
+                    .map(|f| f.geo.name.clone())
+                    .unwrap_or_else(|| "Unknown".to_string()),
+            },
+        };
+
+        ViewModel { workflow }
     }
 }
 
@@ -120,6 +190,8 @@ mod tests {
         let mut cmd = app.update(event, &mut Model::default(), &());
 
         let mut request = cmd.effects().next().unwrap().expect_http();
+
+        // Foobar
 
         assert_eq!(
             &request.operation,
