@@ -28,9 +28,7 @@ pub fn update(event: AddFavoriteEvent, model: &mut crate::Model) -> Command<Effe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        Clouds, Coord, CurrentResponse, Effect, Event, GeocodingResponse, Main, Sys, Weather, Wind,
-    };
+    use crate::{Effect, Event, GeocodingResponse};
 
     // Helper to create a test geocoding response
     fn test_geocoding() -> GeocodingResponse {
