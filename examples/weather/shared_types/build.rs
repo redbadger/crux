@@ -1,4 +1,5 @@
 use crux_core::typegen::TypeGen;
+use crux_kv::error::KeyValueError;
 use shared::{
     workflows::{favorites::FavoritesState, AddFavoriteEvent, FavoritesEvent, HomeEvent},
     App, CurrentResponse, Event, Workflow, WorkflowViewModel,
@@ -21,6 +22,7 @@ fn main() -> anyhow::Result<()> {
     gen.register_type::<FavoritesEvent>()?;
     gen.register_type::<HomeEvent>()?;
     gen.register_type::<FavoritesState>()?;
+    gen.register_type::<KeyValueError>()?;
 
     // Register sample data
     let _ = gen.register_samples(vec![CurrentResponse::default()]);

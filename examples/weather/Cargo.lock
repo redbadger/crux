@@ -1309,6 +1309,7 @@ dependencies = [
  "anyhow",
  "crux_core",
  "crux_http",
+ "crux_kv",
  "shared",
 ]
 
