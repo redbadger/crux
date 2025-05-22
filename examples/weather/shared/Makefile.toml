@@ -1,0 +1,26 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+
+[tasks.insta-test]
+command = "cargo"
+args = [
+    "insta",
+    "test",
+    "--review",
+    "--test-runner",
+    "nextest",
+    "--all-features",
+]
+
+[tasks.wasm-build]
+description = "Build WASM package for web"
+command = "wasm-pack"
+args = ["build", "--target", "web"]
+
+# Replace the default test task with the insta-test task
+[tasks.test]
+alias = "insta-test"
+
+# Overrides the default build task to run wasm-build 
+[tasks.build]
+dependencies = ["wasm-build"]
