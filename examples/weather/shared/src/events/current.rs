@@ -94,5 +94,6 @@ mod tests {
         assert_effect!(cmd, Effect::Render(_));
         // Now check the model in detail
         assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
+        insta::assert_yaml_snapshot!(model.weather_data);
     }
 }
