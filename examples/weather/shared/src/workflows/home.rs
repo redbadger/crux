@@ -12,7 +12,6 @@ pub enum HomeEvent {
 pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         HomeEvent::Show(lat, long) => {
-            // Use the shared weather event's update function
             update_current_weather(CurrentWeatherEvent::Fetch(lat, long), model)
         }
     }
@@ -57,7 +56,7 @@ mod tests {
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(SAMPLE_CURRENT_RESPONSE_JSON)
+                    .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
                     .build(),
             ))
             .unwrap();

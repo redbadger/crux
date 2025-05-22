@@ -78,7 +78,7 @@ mod tests {
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(SAMPLE_CURRENT_RESPONSE_JSON)
+                    .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
                     .build(),
             ))
             .unwrap();
