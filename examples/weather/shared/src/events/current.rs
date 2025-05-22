@@ -2,11 +2,10 @@ use crux_core::{render::render, Command};
 use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
 
-use crate::workflows::home::HomeEvent;
 use crate::{CurrentResponse, Effect, Event, Model};
 
-const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
-const API_KEY: &str = "42005d273a8a49c88a8173878232508";
+pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
+pub const API_KEY: &str = "42005d273a8a49c88a8173878232508";
 
 #[derive(Serialize)]
 pub struct CurrentQueryString {
@@ -33,28 +32,33 @@ pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, 
             .expect("could not serialize query string")
             .build()
             .then_send(|result| Event::CurrentWeather(CurrentWeatherEvent::SetWeather(result))),
-        CurrentWeatherEvent::SetWeather(result) => {
-            model.weather_data = result.unwrap().take_body().unwrap();
-            render()
-        }
+        CurrentWeatherEvent::SetWeather(result) => match result {
+            Ok(mut response) => {
+                model.weather_data = response.take_body().unwrap();
+                render()
+            }
+            Err(_) => render(),
+        },
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::{App, SAMPLE_CURRENT_RESPONSE, SAMPLE_CURRENT_RESPONSE_JSON};
+
     use super::*;
-    use crux_core::App as _;
-    use crux_http::{
-        protocol::{HttpRequest, HttpResponse, HttpResult},
-        testing::ResponseBuilder,
-    };
+    use crux_core::{assert_effect, App as _};
+    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     #[test]
     fn test_current_weather_fetch() {
-        let lat_lng = (33.456789, -112.037222);
-        let event = CurrentWeatherEvent::Fetch(lat_lng.0, lat_lng.1);
+        let app = App::default();
+        let mut model = Model::default();
 
-        let mut cmd = update(event, &mut Model::default());
+        let lat_lng = (33.456789, -112.037222);
+        let event = Event::CurrentWeather(CurrentWeatherEvent::Fetch(lat_lng.0, lat_lng.1));
+
+        let mut cmd = app.update(event, &mut model, &mut ());
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
@@ -74,50 +78,7 @@ mod tests {
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(
-                        r#"{
-                            "main": {
-                                "temp": 20.0,
-                                "feels_like": 18.0,
-                                "temp_min": 18.0,
-                                "temp_max": 22.0,
-                                "pressure": 1013,
-                                "humidity": 50
-                            },
-                            "coord": {
-                                "lat": 33.456789,
-                                "lon": -112.037222
-                            },
-                            "weather": [{
-                                "id": 800,
-                                "main": "Clear",
-                                "description": "clear sky",
-                                "icon": "01d"
-                            }],
-                            "base": "",
-                            "visibility": 10000,
-                            "wind": {
-                                "speed": 4.1,
-                                "deg": 280,
-                                "gust": 5.2
-                            },
-                            "clouds": {
-                                "all": 0
-                            },
-                            "dt": 1716216000,
-                            "sys": {
-                                "id": 1,
-                                "country": "US",
-                                "type": 1,
-                                "sunrise": 1716216000,
-                                "sunset": 1716216000
-                            },
-                            "timezone": 1,
-                            "id": 1,
-                            "name": "Phoenix",
-                            "cod": 200
-                        }"#,
-                    )
+                    .body(SAMPLE_CURRENT_RESPONSE_JSON)
                     .build(),
             ))
             .unwrap();
@@ -127,5 +88,11 @@ mod tests {
             actual,
             Event::CurrentWeather(CurrentWeatherEvent::SetWeather(_))
         ));
+
+        // send the `SetWeather` event back to the app
+        let mut cmd = app.update(actual, &mut model, &mut ());
+        assert_effect!(cmd, Effect::Render(_));
+        // Now check the model in detail
+        assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
     }
 }

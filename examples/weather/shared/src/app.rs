@@ -16,11 +16,6 @@ use crate::{
     CurrentResponse,
 };
 
-// https://openweathermap.org/current
-const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
-// ?lat={lat}&lon={lon}&appid={API key}
-const API_KEY: &str = "42005d273a8a49c88a8173878232508";
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Event {
     Navigate(Workflow),

@@ -5,7 +5,6 @@ use crate::{CurrentResponse, Effect, Event, GeocodingResponse, Workflow};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
 pub struct Favorite {
-    #[serde(flatten)]
     pub geo: GeocodingResponse,
     pub current: Option<CurrentResponse>,
 }
