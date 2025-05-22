@@ -2,6 +2,7 @@ use crate::responses::response_elements::Clouds;
 use crate::responses::response_elements::Coord;
 use crate::responses::response_elements::Weather;
 use crate::responses::response_elements::Wind;
+use derive_builder::Builder;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -52,7 +53,8 @@ impl fmt::Display for Main {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Builder)]
+#[builder(setter(into))]
 pub struct CurrentResponse {
     pub coord: Coord,
     pub weather: Vec<Weather>,
@@ -91,50 +93,49 @@ impl fmt::Display for CurrentResponse {
     }
 }
 
-// Test helpers
+pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> = Lazy::new(|| {
+    CurrentResponseBuilder::default()
+        .main(Main {
+            temp: 20.0,
+            feels_like: 18.0,
+            temp_min: 18.0,
+            temp_max: 22.0,
+            pressure: 1013,
+            humidity: 50,
+        })
+        .coord(Coord {
+            lat: 33.456789,
+            lon: -112.037222,
+        })
+        .weather(vec![Weather {
+            id: 800,
+            main: "Clear".to_string(),
+            description: "clear sky".to_string(),
+            icon: "01d".to_string(),
+        }])
+        .base("".to_string())
+        .visibility(10000_usize)
+        .wind(Wind {
+            speed: 4.1,
+            deg: 280,
+            gust: Some(5.2),
+        })
+        .clouds(Clouds { all: 0 })
+        .dt(1716216000_usize)
+        .sys(Sys {
+            id: 1,
+            country: "US".to_string(),
+            sys_type: 1,
+            sunrise: 1716216000,
+            sunset: 1716216000,
+        })
+        .timezone(1)
+        .id(1_usize)
+        .name("Phoenix".to_string())
+        .cod(200_usize)
+        .build()
+        .expect("Failed to build sample response")
+});
 
-pub const SAMPLE_CURRENT_RESPONSE_JSON: &str = r#"{
-    "main": {
-        "temp": 20.0,
-        "feels_like": 18.0,
-        "temp_min": 18.0,
-        "temp_max": 22.0,
-        "pressure": 1013,
-        "humidity": 50
-    },
-    "coord": {
-        "lat": 33.456789,
-        "lon": -112.037222
-    },
-    "weather": [{
-        "id": 800,
-        "main": "Clear",
-        "description": "clear sky",
-        "icon": "01d"
-    }],
-    "base": "",
-    "visibility": 10000,
-    "wind": {
-        "speed": 4.1,
-        "deg": 280,
-        "gust": 5.2
-    },
-    "clouds": {
-        "all": 0
-    },
-    "dt": 1716216000,
-    "sys": {
-        "id": 1,
-        "country": "US",
-        "type": 1,
-        "sunrise": 1716216000,
-        "sunset": 1716216000
-    },
-    "timezone": 1,
-    "id": 1,
-    "name": "Phoenix",
-    "cod": 200
-}"#;
-
-pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> =
-    Lazy::new(|| serde_json::from_str(SAMPLE_CURRENT_RESPONSE_JSON).unwrap());
+pub static SAMPLE_CURRENT_RESPONSE_JSON: Lazy<String> =
+    Lazy::new(|| serde_json::to_string(&*SAMPLE_CURRENT_RESPONSE).unwrap());
