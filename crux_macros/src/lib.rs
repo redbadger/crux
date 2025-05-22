@@ -1,17 +1,15 @@
 #![deny(clippy::pedantic)]
 
-mod bridge;
 mod capability;
 mod effect;
 mod effect_derive;
 mod export;
 
-use bridge::bridge_impl;
 use capability::capability_impl;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use syn::{parse_macro_input, Ident, ItemEnum, ItemStruct};
+use syn::{parse_macro_input, Ident, ItemEnum};
 
 /// Deprecated: use the `effect` attribute macro instead.
 ///
@@ -110,49 +108,6 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     effect::effect_impl(args, input).into()
 }
 
-/// Generates an FFI bridge for use with shells that are written in languages other than Rust.
-///
-/// e.g.
-/// ```rust,ignore
-/// # // cannot write a full test here as uniffi expects UniFfiTag in the crate root
-/// #[bridge]
-/// pub struct MyApp;
-/// ```
-///
-/// ## Swift and Kotlin
-/// For iOS and Android shells, this macro generates
-/// [`uniffi`](https://crates.io/crates/uniffi)
-/// scaffolding — you will need to add `uniffi` (v0.29.2) to your `Cargo.toml`.
-///
-/// You can also generate bindings for these languages with the
-/// [Crux cli](https://github.com/redbadger/crux/tree/master/crux_cli) (see the
-/// [book](https://redbadger.github.io/crux/) for more details).
-///
-/// Note that in order to ensure that the scaffolding and the bindings interoperate,
-/// this macro will generate a compile error if you use a version of `uniffi` other
-/// than v0.29.2.
-///
-/// ## TypeScript
-/// For Web shells (e.g. React or Svelte frameworks), this macro
-/// generates [`wasm-bindgen`](https://crates.io/crates/wasm-bindgen)
-/// scaffolding — you will need to add `wasm-bindgen` to your `Cargo.toml`.
-///
-/// You can also generate bindings for these languages with the
-/// [Crux cli](https://github.com/redbadger/crux/tree/master/crux_cli) (see the
-/// [book](https://redbadger.github.io/crux/) for more details).
-///
-/// ## Rust
-/// If you only have a Rust shell (e.g. Leptos, Dioxus, or Yew) and do
-/// not need FFI scaffolding then, instead, just `#[derive(Default)]`
-/// on your `App`.
-///
-#[proc_macro_attribute]
-pub fn bridge(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as ItemStruct);
-    bridge_impl(&input).into()
-}
-
-/// Deprecated: use the `effect` attribute macro instead.
 #[proc_macro_derive(Export)]
 #[proc_macro_error]
 pub fn export(input: TokenStream) -> TokenStream {
