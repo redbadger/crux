@@ -1,4 +1,4 @@
-use crux_core::{render::render, App as _, Command};
+use crux_core::{render::render, Command};
 use crux_kv::{command::KeyValue, error::KeyValueError};
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -32,8 +32,10 @@ pub enum FavoritesEvent {
     DeleteConfirmed,
     DeleteCancelled,
     // KV Related
+    Restore,
+    #[serde(skip)]
     Set,
-    Restore, // Restore from KV
+    #[serde(skip)]
     Load(Result<Option<Vec<u8>>, KeyValueError>),
 }
 
@@ -101,6 +103,8 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
 
 #[cfg(test)]
 mod tests {
+    use crux_core::App as _;
+
     use super::*;
     use crate::{
         Clouds, Coord, CurrentResponse, Effect, GeocodingResponse, Main, Sys, Weather, Wind,
