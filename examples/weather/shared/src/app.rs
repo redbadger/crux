@@ -4,6 +4,7 @@ use crux_core::{
     Command,
 };
 use crux_http::protocol::HttpRequest;
+use crux_kv::KeyValueOperation;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -25,11 +26,13 @@ pub enum Event {
 
     #[serde(skip)]
     CurrentWeather(CurrentWeatherEvent),
+    Render,
 }
 
 #[effect(typegen)]
 pub enum Effect {
     Render(RenderOperation),
+    KeyValue(KeyValueOperation),
     Http(HttpRequest),
 }
 
@@ -41,7 +44,7 @@ pub enum Workflow {
     AddFavorite,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Model {
     pub weather_data: CurrentResponse,
     pub page: Workflow,
@@ -97,6 +100,7 @@ impl crux_core::App for App {
             Event::CurrentWeather(current_weather_event) => {
                 events::update_current_weather(current_weather_event, model)
             }
+            Event::Render => render(),
         }
     }
 

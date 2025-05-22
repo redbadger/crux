@@ -1,7 +1,11 @@
-use crux_core::{render::render, Command};
+use crux_core::{render::render, App as _, Command};
+use crux_kv::{command::KeyValue, error::KeyValueError};
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 use crate::{CurrentResponse, Effect, Event, GeocodingResponse, Workflow};
+
+const FAVORITES_KEY: &str = "favorites";
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
 pub struct Favorite {
@@ -27,6 +31,10 @@ pub enum FavoritesEvent {
     DeletePressed(Favorite),
     DeleteConfirmed,
     DeleteCancelled,
+    // KV Related
+    Set,
+    Restore, // Restore from KV
+    Load(Result<Option<Vec<u8>>, KeyValueError>),
 }
 
 pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, Event> {
@@ -55,13 +63,39 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
                 }
             }
             model.page = Workflow::Favorites(FavoritesState::Idle);
-            render()
+            Command::event(Event::Favorites(FavoritesEvent::Set))
         }
 
         FavoritesEvent::DeleteCancelled => {
             model.page = Workflow::Favorites(FavoritesState::Idle);
             render()
         }
+
+        // ======================
+        // KV Storage Operations
+        // ======================
+        FavoritesEvent::Restore => {
+            KeyValue::get(FAVORITES_KEY).then_send(|r| Event::Favorites(FavoritesEvent::Load(r)))
+        }
+
+        FavoritesEvent::Set => {
+            KeyValue::set(FAVORITES_KEY, serde_json::to_vec(&model.favorites).unwrap())
+                .then_send(|_| Event::Render)
+        }
+
+        FavoritesEvent::Load(result) => match result {
+            Ok(Some(favorites_bytes)) => {
+                match serde_json::from_slice::<Vec<Favorite>>(&favorites_bytes) {
+                    Ok(favorites) => {
+                        println!("Favorites are: {:#?}", favorites);
+                        model.favorites = favorites;
+                        Command::done()
+                    }
+                    Err(_) => Command::done(),
+                }
+            }
+            _ => Command::done(),
+        },
     }
 }
 
@@ -71,6 +105,85 @@ mod tests {
     use crate::{
         Clouds, Coord, CurrentResponse, Effect, GeocodingResponse, Main, Sys, Weather, Wind,
     };
+
+    // Helper to create a test favorite
+    fn test_favorite() -> Favorite {
+        Favorite {
+            geo: GeocodingResponse {
+                name: "Phoenix".to_string(),
+                local_names: None,
+                lat: 33.456789,
+                lon: -112.037222,
+                country: "US".to_string(),
+                state: None,
+            },
+            current: None,
+        }
+    }
+
+    #[test]
+    fn test_kv_set_and_load() {
+        // Model will have no favorites set
+        let mut model = crate::Model::default();
+
+        let favorites = vec![test_favorite()];
+
+        let mut cmd = update(
+            FavoritesEvent::Load(Ok(Some(serde_json::to_vec(&favorites).unwrap()))),
+            &mut model,
+        );
+        assert!(cmd.effects().next().is_none());
+        assert_eq!(model.favorites, favorites);
+    }
+
+    #[test]
+    fn test_kv_load_empty() {
+        let mut model = crate::Model::default();
+        let mut cmd = update(FavoritesEvent::Load(Ok(None)), &mut model);
+        assert!(cmd.effects().next().is_none());
+        assert!(model.favorites.is_empty());
+    }
+
+    #[test]
+    fn test_kv_load_error() {
+        let mut model = crate::Model::default();
+        let mut cmd = update(
+            FavoritesEvent::Load(Err(KeyValueError::CursorNotFound)),
+            &mut model,
+        );
+        assert!(cmd.effects().next().is_none());
+        assert!(model.favorites.is_empty());
+    }
+
+    #[test]
+    fn test_delete_with_persistence() {
+        let mut model = crate::Model::default();
+        let favorite = test_favorite();
+        model.favorites.push(favorite.clone());
+
+        // Set the state to ConfirmDelete with the favorite's coordinates
+        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(
+            favorite.geo.lat,
+            favorite.geo.lon,
+        ));
+
+        // Delete and verify KV is updated
+        let mut cmd = update(FavoritesEvent::DeleteConfirmed, &mut model);
+
+        // Verify we get the Set event first
+        let event = cmd.events().next().unwrap();
+        assert!(matches!(event, Event::Favorites(FavoritesEvent::Set)));
+        assert!(model.favorites.is_empty());
+
+        // Verify the empty state persists
+        let mut cmd = update(
+            FavoritesEvent::Load(Ok(Some(serde_json::to_vec(&model.favorites).unwrap()))),
+            &mut model,
+        );
+
+        assert!(cmd.effects().next().is_none());
+        assert!(model.favorites.is_empty());
+    }
 
     #[test]
     fn test_delete_pressed() {
@@ -99,6 +212,7 @@ mod tests {
 
     #[test]
     fn test_delete_confirmed() {
+        let app = crate::App;
         let mut model = crate::Model::default();
         let favorite = Favorite {
             geo: GeocodingResponse {
@@ -151,11 +265,34 @@ mod tests {
             }),
         };
 
-        model.favorites.push(favorite);
-        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(33.456789, -112.037222));
+        let latlng = (favorite.geo.lat, favorite.geo.lon);
 
-        let mut cmd = update(FavoritesEvent::DeleteConfirmed, &mut model);
-        assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
+        model.favorites.push(favorite);
+        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(latlng.0, latlng.1));
+
+        // First command from DeleteConfirmed
+        let mut cmd = app.update(
+            Event::Favorites(FavoritesEvent::DeleteConfirmed),
+            &mut model,
+            &(),
+        );
+
+        // Verify we get the Set event first
+        let event = cmd.events().next().unwrap();
+        assert!(matches!(event, Event::Favorites(FavoritesEvent::Set)));
+
+        // Process the Set event to get the KeyValue effect
+        let mut cmd = app.update(event, &mut model, &());
+        let effect = cmd.effects().next().unwrap();
+        assert!(matches!(effect, Effect::KeyValue(_)));
+
+        // // Now we should get the Render event
+        // let render_event = cmd.events().next().unwrap();
+        // assert!(matches!(render_event, Event::Render));
+
+        // // Process the Render event to get the final Render effect
+        // let mut cmd = app.update(render_event, &mut model, &());
+        // assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
 
         // Verify the favorite was removed and state was reset
         assert!(model.favorites.is_empty());
