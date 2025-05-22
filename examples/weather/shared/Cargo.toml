@@ -23,6 +23,7 @@ typegen = ["crux_core/typegen"]
 [dependencies]
 crux_core.workspace = true
 crux_http.workspace = true
+crux_kv.workspace = true
 serde = { workspace = true, features = ["derive"] }
 lazy_static = "1.5.0"
 uniffi = "0.29.2"

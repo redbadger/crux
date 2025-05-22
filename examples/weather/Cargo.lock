@@ -281,6 +281,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_kv"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "crux_core",
+ "serde",
+ "serde_bytes",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "crux_macros"
 version = "0.6.1"
 dependencies = [
@@ -1282,6 +1293,7 @@ version = "0.1.0"
 dependencies = [
  "crux_core",
  "crux_http",
+ "crux_kv",
  "derive_builder",
  "insta",
  "lazy_static",
