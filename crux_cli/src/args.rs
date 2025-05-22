@@ -31,7 +31,7 @@ pub enum Commands {
 #[derive(Args)]
 pub struct CodegenArgs {
     /// name of the library containing your Crux App
-    #[arg(long, short, value_name = "STRING")]
+    #[arg(long, short, value_name = "STRING", env)]
     pub crate_name: String,
 
     /// Output directory for generated code
@@ -76,7 +76,7 @@ pub struct CodegenArgs {
 #[derive(Args)]
 pub struct BindgenArgs {
     /// name of the crate containing your Crux App
-    #[arg(long, short, value_name = "STRING")]
+    #[arg(long, short, value_name = "STRING", env)]
     pub crate_name: String,
 
     // library path (target/debug/libshared.so)
