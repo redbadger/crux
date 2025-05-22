@@ -1253,6 +1253,7 @@ dependencies = [
  "crux_core",
  "crux_http",
  "lazy_static",
+ "once_cell",
  "serde",
  "serde_json",
  "uniffi",

@@ -1,4 +1,4 @@
-use crux_core::{render::render, Command};
+use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
 use crate::events::current::{update as update_current_weather, CurrentWeatherEvent};
@@ -7,11 +7,7 @@ use crate::{Effect, Event, Model};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum HomeEvent {
     Show(f64, f64),
-    WeatherFetched(Result<crate::CurrentResponse, String>),
 }
-
-const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
-const API_KEY: &str = "42005d273a8a49c88a8173878232508";
 
 pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
@@ -19,26 +15,26 @@ pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
             // Use the shared weather event's update function
             update_current_weather(CurrentWeatherEvent::Fetch(lat, long), model)
         }
-        HomeEvent::WeatherFetched(_) => render(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crux_core::App as _;
+    use crux_core::{assert_effect, App as _};
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::{
-        events::current::CurrentQueryString, App, Clouds, Coord, CurrentResponse, Main, Sys,
-        Weather, Wind,
+        events::current::{CurrentQueryString, API_KEY, WEATHER_URL},
+        App, SAMPLE_CURRENT_RESPONSE, SAMPLE_CURRENT_RESPONSE_JSON,
     };
 
     #[test]
-    fn test_app() {
+    fn test_show_triggers_set_weather() {
         let app = App;
-        let lat_lng = (33.456789, -112.037222);
         let mut model = Model::default();
+
+        let lat_lng = (33.456789, -112.037222);
         let event = Event::Home(HomeEvent::Show(lat_lng.0, lat_lng.1));
 
         let mut cmd = app.update(event, &mut model, &());
@@ -47,11 +43,11 @@ mod tests {
 
         assert_eq!(
             &request.operation,
-            &HttpRequest::get("https://api.openweathermap.org/data/2.5/weather")
+            &HttpRequest::get(WEATHER_URL)
                 .query(&CurrentQueryString {
                     lat: lat_lng.0.to_string(),
                     lon: lat_lng.1.to_string(),
-                    appid: "42005d273a8a49c88a8173878232508",
+                    appid: API_KEY,
                 })
                 .expect("could not serialize query string")
                 .build()
@@ -61,50 +57,7 @@ mod tests {
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(
-                        r#"{
-                            "main": {
-                                "temp": 20.0,
-                                "feels_like": 18.0,
-                                "temp_min": 18.0,
-                                "temp_max": 22.0,
-                                "pressure": 1013,
-                                "humidity": 50
-                            },
-                            "coord": {
-                                "lat": 33.456789,
-                                "lon": -112.037222
-                            },
-                            "weather": [{
-                                "id": 800,
-                                "main": "Clear",
-                                "description": "clear sky",
-                                "icon": "01d"
-                            }],
-                            "base": "",
-                            "visibility": 10000,
-                            "wind": {
-                                "speed": 4.1,
-                                "deg": 280,
-                                "gust": 5.2
-                            },
-                            "clouds": {
-                                "all": 0
-                            },
-                            "dt": 1716216000,
-                            "sys": {
-                                "id": 1,
-                                "country": "US",
-                                "type": 1,
-                                "sunrise": 1716216000,
-                                "sunset": 1716216000
-                            },
-                            "timezone": 1,
-                            "id": 1,
-                            "name": "Phoenix",
-                            "cod": 200
-                        }"#,
-                    )
+                    .body(SAMPLE_CURRENT_RESPONSE_JSON)
                     .build(),
             ))
             .unwrap();
@@ -114,5 +67,11 @@ mod tests {
             actual,
             Event::CurrentWeather(CurrentWeatherEvent::SetWeather(_))
         ));
+
+        // send the `SetWeather` event back to the app
+        let mut cmd = app.update(actual, &mut model, &mut ());
+        assert_effect!(cmd, Effect::Render(_));
+        // Now check the model in detail
+        assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
     }
 }

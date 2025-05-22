@@ -2,6 +2,7 @@ use crate::responses::response_elements::Clouds;
 use crate::responses::response_elements::Coord;
 use crate::responses::response_elements::Weather;
 use crate::responses::response_elements::Wind;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -89,3 +90,51 @@ impl fmt::Display for CurrentResponse {
         )
     }
 }
+
+// Test helpers
+
+pub const SAMPLE_CURRENT_RESPONSE_JSON: &str = r#"{
+    "main": {
+        "temp": 20.0,
+        "feels_like": 18.0,
+        "temp_min": 18.0,
+        "temp_max": 22.0,
+        "pressure": 1013,
+        "humidity": 50
+    },
+    "coord": {
+        "lat": 33.456789,
+        "lon": -112.037222
+    },
+    "weather": [{
+        "id": 800,
+        "main": "Clear",
+        "description": "clear sky",
+        "icon": "01d"
+    }],
+    "base": "",
+    "visibility": 10000,
+    "wind": {
+        "speed": 4.1,
+        "deg": 280,
+        "gust": 5.2
+    },
+    "clouds": {
+        "all": 0
+    },
+    "dt": 1716216000,
+    "sys": {
+        "id": 1,
+        "country": "US",
+        "type": 1,
+        "sunrise": 1716216000,
+        "sunset": 1716216000
+    },
+    "timezone": 1,
+    "id": 1,
+    "name": "Phoenix",
+    "cod": 200
+}"#;
+
+pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> =
+    Lazy::new(|| serde_json::from_str(SAMPLE_CURRENT_RESPONSE_JSON).unwrap());
