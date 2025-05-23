@@ -1,17 +1,32 @@
 use anyhow::Result;
+use clap::Args;
 use xshell::cmd;
 
 use crate::Context;
 
 const CARGO: &str = crate::CARGO;
 
-pub(crate) fn run(ctx: &Context) -> Result<()> {
-    println!("Check...");
-    for dir in &ctx.workspaces {
-        let _dir = ctx.sh.push_dir(dir);
-        println!("~ {}", dir.display());
-        cmd!(ctx.sh, "{CARGO} check --all-features").run()?;
-        println!();
+#[derive(Args)]
+pub(crate) struct Check {
+    #[arg(short, long)]
+    pub(crate) clippy: bool,
+}
+impl Check {
+    pub(crate) fn run(&self, ctx: &Context) -> Result<()> {
+        println!("Check...");
+        for dir in &ctx.workspaces {
+            let _dir = ctx.sh.push_dir(dir);
+            println!("~ {}", dir.display());
+            cmd!(ctx.sh, "{CARGO} check --all-features").run()?;
+            if self.clippy {
+                cmd!(
+                    ctx.sh,
+                    "{CARGO} clippy -- --no-deps -Dclippy::pedantic -Dwarnings"
+                )
+                .run()?;
+            }
+            println!();
+        }
+        Ok(())
     }
-    Ok(())
 }

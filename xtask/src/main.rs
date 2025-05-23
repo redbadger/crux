@@ -4,11 +4,18 @@ mod clean;
 mod format;
 mod test;
 
-use std::{env, path::PathBuf, time::Instant};
+use std::{collections::HashSet, env, path::PathBuf, time::Instant};
 
 use anyhow::{anyhow, Result};
+use build::Build;
+use cargo_metadata::MetadataCommand;
+use check::Check;
 use clap::{Parser, Subcommand};
+use clean::Clean;
+use format::Format;
 use human_repr::HumanDuration;
+use ignore::WalkBuilder;
+use test::Test;
 use xshell::Shell;
 
 const CARGO: &str = env!("CARGO");
@@ -25,11 +32,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Build(build::Build),
-    Check,
-    Clean(clean::Clean),
-    Format(format::Format),
-    Test(test::Test),
+    Build(Build),
+    Check(Check),
+    Clean(Clean),
+    Format(Format),
+    Test(Test),
     CI,
 }
 
@@ -55,15 +62,16 @@ fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Build(build) => build.run(&ctx)?,
-        Commands::Check => check::run(&ctx)?,
+        Commands::Check(check) => check.run(&ctx)?,
         Commands::Clean(clean) => clean.run(&ctx)?,
         Commands::Format(format) => format.run(&ctx)?,
         Commands::Test(test) => test.run(&ctx)?,
         Commands::CI => {
-            clean::Clean { generated: true }.run(&ctx)?;
-            format::Format { fix: false }.run(&ctx)?;
-            build::Build { clean: false }.run(&ctx)?;
-            test::Test { doc: true }.run(&ctx)?;
+            Clean { generated: true }.run(&ctx)?;
+            Format { fix: false }.run(&ctx)?;
+            Check { clippy: true }.run(&ctx)?;
+            Build { clean: false }.run(&ctx)?;
+            Test { doc: true }.run(&ctx)?;
         }
     }
 
@@ -80,14 +88,32 @@ fn project_root() -> Result<PathBuf> {
 }
 
 fn workspaces() -> Result<Vec<PathBuf>> {
-    let root = project_root()?;
-    let mut workspaces = vec![root.clone()];
+    println!("Finding workspaces...");
+    let mut workspaces = vec![];
+    let mut checked: HashSet<PathBuf> = HashSet::new();
 
-    let examples = root.join("examples");
-    for example in examples.read_dir()? {
-        let example = example?.path();
-        if example.is_dir() {
-            workspaces.push(example);
+    for entry in WalkBuilder::new(&project_root()?)
+        .max_depth(Some(2))
+        .build()
+        .filter_map(Result::ok)
+    {
+        let dir = entry.into_path();
+        if dir.is_dir() && !checked.contains(&dir) {
+            let manifest = dir.join("Cargo.toml");
+            if manifest.exists() {
+                let metadata = MetadataCommand::new().manifest_path(&manifest).exec()?;
+                if metadata.workspace_root == dir {
+                    println!("found workspace: {}", dir.display());
+                    workspaces.push(dir.clone());
+                    for member in metadata
+                        .workspace_members
+                        .iter()
+                        .filter_map(|id| metadata[id].manifest_path.parent())
+                    {
+                        checked.insert(member.into());
+                    }
+                }
+            }
         }
     }
     workspaces.sort();

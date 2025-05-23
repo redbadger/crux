@@ -20,7 +20,7 @@ impl Clean {
             println!("~ {}", dir.display());
             cmd!(ctx.sh, "{CARGO} clean").run()?;
             if self.generated {
-                cmd!(ctx.sh, "rm -rf */generated").run()?;
+                cmd!(ctx.sh, "echo rm -rf */generated").run()?;
             }
             println!();
         }

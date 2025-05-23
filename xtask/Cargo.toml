@@ -10,8 +10,10 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+cargo_metadata = "0.19.2"
 clap = { version = "4.5.38", features = ["derive"] }
 human-repr = "1.1.0"
+ignore = "0.4.23"
 xshell = "0.2.7"
 
 [lints]
