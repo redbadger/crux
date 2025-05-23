@@ -44,6 +44,7 @@ pub struct CodegenArgs {
     )]
     pub out_dir: PathBuf,
 
+    /// Specify a package name for each language you want to generate code for.
     #[command(flatten)]
     pub generate: Generate,
 }
@@ -51,37 +52,40 @@ pub struct CodegenArgs {
 #[derive(Args)]
 #[group(required = true, multiple = true)]
 pub struct Generate {
-    /// Java package name
+    /// Java package name.
+    /// If not specified, no code will be generated for Java/Kotlin.
     #[arg(
         long,
         short,
         value_name = "dotted.case",
         value_parser = dotted_case
     )]
-    pub java_package: Option<String>,
+    pub java: Option<String>,
 
-    /// Swift package name
+    /// Swift package name.
+    /// If not specified, no code will be generated for Swift.
     #[arg(
         long,
         short,
         value_name = "PascalCase",
         value_parser = pascal_case
     )]
-    pub swift_package: Option<String>,
+    pub swift: Option<String>,
 
-    /// TypeScript package name
+    /// TypeScript package name.
+    /// If not specified, no code will be generated for TypeScript.
     #[arg(
         long,
         short,
         value_name = "snake_case",
         value_parser = snake_case
     )]
-    pub typescript_package: Option<String>,
+    pub typescript: Option<String>,
 }
 
 #[derive(Args)]
 pub struct BindgenArgs {
-    /// name of the crate containing your Crux App
+    /// Package name of the crate containing your Crux App, e.g. "shared"
     #[arg(long, short, value_name = "STRING", env)]
     pub crate_name: String,
 
