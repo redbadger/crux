@@ -34,7 +34,7 @@ mod tests {
         let mut model = Model::default();
 
         let lat_lng = (33.456789, -112.037222);
-        let event = Event::Home(HomeEvent::Show(lat_lng.0, lat_lng.1));
+        let event = Event::Home(Box::new(HomeEvent::Show(lat_lng.0, lat_lng.1)));
 
         let mut cmd = app.update(event, &mut model, &());
 
@@ -62,10 +62,12 @@ mod tests {
             .unwrap();
 
         let actual = cmd.events().next().unwrap();
-        assert!(matches!(
-            actual,
-            Event::CurrentWeather(CurrentWeatherEvent::SetWeather(_))
-        ));
+        match &actual {
+            Event::CurrentWeather(event) => {
+                assert!(matches!(**event, CurrentWeatherEvent::SetWeather(_)))
+            }
+            _ => panic!("Expected CurrentWeather event"),
+        }
 
         // send the `SetWeather` event back to the app
         let mut cmd = app.update(actual, &mut model, &mut ());
