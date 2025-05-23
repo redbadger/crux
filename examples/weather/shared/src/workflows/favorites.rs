@@ -28,7 +28,7 @@ pub enum FavoritesState {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum FavoritesEvent {
     AddPressed,
-    DeletePressed(Favorite),
+    DeletePressed(Box<Favorite>),
     DeleteConfirmed,
     DeleteCancelled,
     // KV Related
@@ -62,10 +62,15 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
                     .position(|f| f.geo.lat == lat && f.geo.lon == lng)
                 {
                     model.favorites.remove(index);
+                    model.page = Workflow::Favorites(FavoritesState::Idle);
+                    Command::event(Event::Favorites(Box::new(FavoritesEvent::Set)))
+                } else {
+                    model.page = Workflow::Favorites(FavoritesState::Idle);
+                    render()
                 }
+            } else {
+                render()
             }
-            model.page = Workflow::Favorites(FavoritesState::Idle);
-            Command::event(Event::Favorites(FavoritesEvent::Set))
         }
 
         FavoritesEvent::DeleteCancelled => {
@@ -76,9 +81,8 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         // ======================
         // KV Storage Operations
         // ======================
-        FavoritesEvent::Restore => {
-            KeyValue::get(FAVORITES_KEY).then_send(|r| Event::Favorites(FavoritesEvent::Load(r)))
-        }
+        FavoritesEvent::Restore => KeyValue::get(FAVORITES_KEY)
+            .then_send(|r| Event::Favorites(Box::new(FavoritesEvent::Load(r)))),
 
         FavoritesEvent::Set => {
             KeyValue::set(FAVORITES_KEY, serde_json::to_vec(&model.favorites).unwrap())
@@ -163,6 +167,7 @@ mod tests {
     fn test_delete_with_persistence() {
         let mut model = crate::Model::default();
         let favorite = test_favorite();
+        let favorite = favorite.clone(); // Clone once at the start
         model.favorites.push(favorite.clone());
 
         // Set the state to ConfirmDelete with the favorite's coordinates
@@ -176,8 +181,18 @@ mod tests {
 
         // Verify we get the Set event first
         let event = cmd.events().next().unwrap();
-        assert!(matches!(event, Event::Favorites(FavoritesEvent::Set)));
+        match &event {
+            Event::Favorites(event) => {
+                assert!(matches!(**event, FavoritesEvent::Set))
+            }
+            _ => panic!("Expected Favorites event"),
+        }
         assert!(model.favorites.is_empty());
+
+        // Process the Set event to get the KeyValue effect
+        let mut cmd = update(FavoritesEvent::Set, &mut model);
+        let effect = cmd.effects().next().unwrap();
+        assert!(matches!(effect, Effect::KeyValue(_)));
 
         // Verify the empty state persists
         let mut cmd = update(
@@ -204,7 +219,10 @@ mod tests {
             current: None,
         };
 
-        let mut cmd = update(FavoritesEvent::DeletePressed(favorite.clone()), &mut model);
+        let mut cmd = update(
+            FavoritesEvent::DeletePressed(Box::new(favorite.clone())),
+            &mut model,
+        );
         assert!(matches!(cmd.effects().next(), Some(Effect::Render(_)))); // Should have a render effect
 
         // Verify the state was updated correctly
@@ -271,32 +289,29 @@ mod tests {
 
         let latlng = (favorite.geo.lat, favorite.geo.lon);
 
-        model.favorites.push(favorite);
+        model.favorites.push(favorite.clone());
         model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(latlng.0, latlng.1));
 
         // First command from DeleteConfirmed
         let mut cmd = app.update(
-            Event::Favorites(FavoritesEvent::DeleteConfirmed),
+            Event::Favorites(Box::new(FavoritesEvent::DeleteConfirmed)),
             &mut model,
             &(),
         );
 
         // Verify we get the Set event first
         let event = cmd.events().next().unwrap();
-        assert!(matches!(event, Event::Favorites(FavoritesEvent::Set)));
+        match &event {
+            Event::Favorites(event) => {
+                assert!(matches!(**event, FavoritesEvent::Set))
+            }
+            _ => panic!("Expected Favorites event"),
+        }
+        assert!(model.favorites.is_empty());
 
-        // Process the Set event to get the KeyValue effect
-        let mut cmd = app.update(event, &mut model, &());
+        let mut cmd = update(FavoritesEvent::Set, &mut model);
         let effect = cmd.effects().next().unwrap();
         assert!(matches!(effect, Effect::KeyValue(_)));
-
-        // // Now we should get the Render event
-        // let render_event = cmd.events().next().unwrap();
-        // assert!(matches!(render_event, Event::Render));
-
-        // // Process the Render event to get the final Render effect
-        // let mut cmd = app.update(render_event, &mut model, &());
-        // assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
 
         // Verify the favorite was removed and state was reset
         assert!(model.favorites.is_empty());

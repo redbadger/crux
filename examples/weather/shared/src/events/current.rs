@@ -17,7 +17,7 @@ pub struct CurrentQueryString {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum CurrentWeatherEvent {
     Fetch(f64, f64),
-    SetWeather(crux_http::Result<crux_http::Response<CurrentResponse>>),
+    SetWeather(Box<crux_http::Result<crux_http::Response<CurrentResponse>>>),
 }
 
 pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, Event> {
@@ -31,8 +31,10 @@ pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, 
             })
             .expect("could not serialize query string")
             .build()
-            .then_send(|result| Event::CurrentWeather(CurrentWeatherEvent::SetWeather(result))),
-        CurrentWeatherEvent::SetWeather(result) => match result {
+            .then_send(|result| {
+                Event::CurrentWeather(Box::new(CurrentWeatherEvent::SetWeather(Box::new(result))))
+            }),
+        CurrentWeatherEvent::SetWeather(result) => match *result {
             Ok(mut response) => {
                 model.weather_data = response.take_body().unwrap();
                 render()
@@ -56,7 +58,8 @@ mod tests {
         let mut model = Model::default();
 
         let lat_lng = (33.456789, -112.037222);
-        let event = Event::CurrentWeather(CurrentWeatherEvent::Fetch(lat_lng.0, lat_lng.1));
+        let event =
+            Event::CurrentWeather(Box::new(CurrentWeatherEvent::Fetch(lat_lng.0, lat_lng.1)));
 
         let mut cmd = app.update(event, &mut model, &mut ());
 
@@ -84,10 +87,12 @@ mod tests {
             .unwrap();
 
         let actual = cmd.events().next().unwrap();
-        assert!(matches!(
-            actual,
-            Event::CurrentWeather(CurrentWeatherEvent::SetWeather(_))
-        ));
+        match &actual {
+            Event::CurrentWeather(event) => {
+                assert!(matches!(**event, CurrentWeatherEvent::SetWeather(_)))
+            }
+            _ => panic!("Expected CurrentWeather event"),
+        }
 
         // send the `SetWeather` event back to the app
         let mut cmd = app.update(actual, &mut model, &mut ());
