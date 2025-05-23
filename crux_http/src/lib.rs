@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 //! A HTTP client for use with Crux
 //!
 //! `crux_http` allows Crux apps to make HTTP requests by asking the Shell to perform them.

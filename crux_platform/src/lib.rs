@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 //! TODO mod docs
 
 pub mod command;

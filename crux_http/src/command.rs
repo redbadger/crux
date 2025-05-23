@@ -353,8 +353,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     ///
-    /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
+    #[allow(clippy::missing_panics_doc)]
     pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
         self.req.as_mut().unwrap().insert_header(key, value);
         self
@@ -375,8 +374,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
+    #[allow(clippy::missing_panics_doc)]
     pub fn content_type(mut self, content_type: impl Into<Mime>) -> Self {
         self.req
             .as_mut()
@@ -405,8 +403,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
+    #[allow(clippy::missing_panics_doc)]
     pub fn body(mut self, body: impl Into<Body>) -> Self {
         self.req.as_mut().unwrap().set_body(body);
         self
@@ -554,8 +551,7 @@ where
     ///
     /// # Errors
     /// Returns an error if the query string could not be serialized.
-    /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
+    #[allow(clippy::missing_panics_doc)]
     pub fn query(mut self, query: &impl Serialize) -> std::result::Result<Self, HttpError> {
         self.req.as_mut().unwrap().set_query(query)?;
 
@@ -587,8 +583,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     ///
-    /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
+    #[allow(clippy::missing_panics_doc)]
     pub fn middleware(mut self, middleware: impl Middleware) -> Self {
         self.req.as_mut().unwrap().middleware(middleware);
         self
@@ -596,8 +591,7 @@ where
 
     /// Return the constructed `Request` in a [`crux_core::command::RequestBuilder`].
     ///
-    /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn build(
         self,

@@ -172,7 +172,7 @@ pub trait Export {
     /// This method should be called before any types are registered.
     ///
     /// # Errors
-    /// Returns an error if the type tracing fails.
+    /// Returns a [`TypeGenError`] if the type tracing fails.
     fn register_types(generator: &mut TypeGen) -> Result;
 }
 

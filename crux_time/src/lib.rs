@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 //! Current time access for Crux apps
 //!
 //! Current time (on a wall clock) is considered a side-effect (although if we were to get pedantic, it's

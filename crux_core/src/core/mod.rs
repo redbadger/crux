@@ -73,7 +73,7 @@ where
             model: RwLock::default(),
             executor,
             app: A::default(),
-            capabilities: <<A as App>::Capabilities>::new_with_context(proto_context),
+            capabilities: A::Capabilities::new_with_context(proto_context),
             requests: request_receiver,
             capability_events: event_receiver,
             command_spawner,

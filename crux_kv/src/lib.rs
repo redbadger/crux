@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 //! A basic Key-Value store for use with Crux
 //!
 //! `crux_kv` allows Crux apps to store and retrieve arbitrary data by asking the Shell to

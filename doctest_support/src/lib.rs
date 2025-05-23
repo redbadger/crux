@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 //! This is support code for doc tests
 
 pub mod basic_delay;
