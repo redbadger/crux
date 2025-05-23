@@ -53,19 +53,26 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
 
     fs::create_dir_all(&args.out_dir)?;
 
-    generate::java(&registry, &args.java_package, args.out_dir.join("java"))
-        .context("Generating types for Java")?;
+    if let Some(java_package) = &args.generate.java_package {
+        generate::java(&registry, java_package, args.out_dir.join("java"))
+            .context("Generating types for Java")?;
+    }
 
-    generate::swift(&registry, &args.swift_package, args.out_dir.join("swift"))
-        .context("Generating tyeps for Swift")?;
+    if let Some(swift_package) = &args.generate.swift_package {
+        generate::swift(&registry, swift_package, args.out_dir.join("swift"))
+            .context("Generating types for Swift")?;
+    }
 
-    generate::typescript(
-        &registry,
-        &args.typescript_package,
-        &lib.version().to_string(),
-        args.out_dir.join("typescript"),
-    )
-    .context("Generating types for TypeScript")?;
+    if let Some(typescript_package) = &args.generate.typescript_package {
+        generate::typescript(
+            &registry,
+            typescript_package,
+            &lib.version().to_string(),
+            args.out_dir.join("typescript"),
+        )
+        .context("Generating types for TypeScript")?;
+    }
+
     Ok(())
 }
 

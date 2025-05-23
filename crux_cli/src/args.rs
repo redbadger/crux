@@ -44,33 +44,39 @@ pub struct CodegenArgs {
     )]
     pub out_dir: PathBuf,
 
+    #[command(flatten)]
+    pub generate: Generate,
+}
+
+#[derive(Args)]
+#[group(required = true, multiple = true)]
+pub struct Generate {
     /// Java package name
     #[arg(
         long,
         short,
         value_name = "dotted.case",
-        value_parser = dotted_case,
-        default_value = "com.crux.example.shared"
+        value_parser = dotted_case
     )]
-    pub java_package: String,
+    pub java_package: Option<String>,
 
     /// Swift package name
     #[arg(
         long,
         short,
         value_name = "PascalCase",
-        value_parser = pascal_case,
-        default_value = "SharedTypes")]
-    pub swift_package: String,
+        value_parser = pascal_case
+    )]
+    pub swift_package: Option<String>,
 
     /// TypeScript package name
     #[arg(
         long,
         short,
         value_name = "snake_case",
-        value_parser = snake_case,
-        default_value = "shared_types")]
-    pub typescript_package: String,
+        value_parser = snake_case
+    )]
+    pub typescript_package: Option<String>,
 }
 
 #[derive(Args)]
@@ -79,7 +85,6 @@ pub struct BindgenArgs {
     #[arg(long, short, value_name = "STRING", env)]
     pub crate_name: String,
 
-    // library path (target/debug/libshared.so)
     /// Output directory for generated code
     #[arg(
         long,
