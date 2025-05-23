@@ -45,4 +45,4 @@ serde = { version = "1.0.219", features = ["derive"] }
 static_assertions = "1.1"
 rand = "0.9"
 url = "2.5.4"
-uuid = { version = "1.16.0", features = ["v4", "serde"] }
+uuid = { version = "1.17.0", features = ["v4", "serde"] }

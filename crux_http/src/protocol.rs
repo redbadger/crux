@@ -85,17 +85,20 @@ impl HttpRequestBuilder {
         self
     }
 
+    /// Sets the query parameters of the request to the given value.
+    ///
+    /// # Errors
+    /// Returns an [`HttpError`] if the serialization fails.
     pub fn query(&mut self, query: &impl Serialize) -> crate::Result<&mut Self> {
-        let query_string = serde_qs::to_string(query)?;
-        println!("query_string: {}", query_string);
         if let Some(url) = &mut self.url {
             if url.contains('?') {
                 url.push('&');
             } else {
                 url.push('?');
             }
-            url.push_str(&query_string);
+            url.push_str(&serde_qs::to_string(query)?);
         }
+
         Ok(self)
     }
 
@@ -465,7 +468,7 @@ mod tests {
         }
 
         let query = QueryParams {
-            empty: "".to_string(),
+            empty: String::new(),
             none: None,
         };
 

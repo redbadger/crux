@@ -355,12 +355,6 @@ The 2 common cases are:
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                            return Err(TypeGenError::ValueTracing(
-                                format!("{e}: {exp}", exp = e.explanation()),
-                                std::any::type_name::<T>().to_string(),
-                            ));
-                        }
                         Err(e) => {
                             return Err(TypeGenError::ValueTracing(
                                 format!("{e}: {exp}", exp = e.explanation()),
