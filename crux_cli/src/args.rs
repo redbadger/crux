@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
+use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
-use heck::{ToPascalCase, ToSnakeCase};
+use convert_case::{pattern, Boundary, Case, Casing};
 
 #[derive(Parser)]
 #[command(
@@ -23,13 +24,16 @@ pub struct Cli {
 pub enum Commands {
     #[command(visible_alias = "gen")]
     Codegen(CodegenArgs),
+    #[command(visible_alias = "ffi")]
+    Bindgen(BindgenArgs),
 }
 
 #[derive(Args)]
 pub struct CodegenArgs {
     /// name of the library containing your Crux App
-    #[arg(long, short, value_name = "STRING")]
-    pub lib: String,
+    #[arg(long, short, value_name = "STRING", env)]
+    pub crate_name: String,
+
     /// Output directory for generated code
     #[arg(
         long,
@@ -38,36 +42,71 @@ pub struct CodegenArgs {
         value_hint = DirPath,
         default_value = "./shared/generated",
     )]
-    pub output: PathBuf,
-    /// Java package name
+    pub out_dir: PathBuf,
+
+    /// Specify a package name for each language you want to generate code for.
+    #[command(flatten)]
+    pub generate: Generate,
+}
+
+#[derive(Args)]
+#[group(required = true, multiple = true)]
+pub struct Generate {
+    /// Java package name.
+    /// If not specified, no code will be generated for Java/Kotlin.
     #[arg(
         long,
         short,
         value_name = "dotted.case",
-        value_parser = dotted_case,
-        default_value = "com.crux.example.shared.types"
+        value_parser = dotted_case
     )]
-    pub java_package: String,
-    /// Swift package name
+    pub java: Option<String>,
+
+    /// Swift package name.
+    /// If not specified, no code will be generated for Swift.
     #[arg(
         long,
         short,
         value_name = "PascalCase",
-        value_parser = pascal_case,
-        default_value = "SharedTypes")]
-    pub swift_package: String,
-    /// TypeScript package name
+        value_parser = pascal_case
+    )]
+    pub swift: Option<String>,
+
+    /// TypeScript package name.
+    /// If not specified, no code will be generated for TypeScript.
     #[arg(
         long,
         short,
         value_name = "snake_case",
-        value_parser = snake_case,
-        default_value = "shared_types")]
-    pub typescript_package: String,
+        value_parser = snake_case
+    )]
+    pub typescript: Option<String>,
+}
+
+#[derive(Args)]
+pub struct BindgenArgs {
+    /// Package name of the crate containing your Crux App, e.g. "shared"
+    #[arg(long, short, value_name = "STRING", env)]
+    pub crate_name: String,
+
+    /// Output directory for generated code
+    #[arg(
+        long,
+        short,
+        value_name = "DIR",
+        value_hint = DirPath,
+        default_value = "./shared/generated",
+    )]
+    pub out_dir: Utf8PathBuf,
 }
 
 fn dotted_case(s: &str) -> Result<String, String> {
-    if s == s.to_snake_case().replace('_', ".") {
+    const DOT_CASE: Case = Case::Custom {
+        boundaries: &[Boundary::from_delim(".")],
+        pattern: pattern::lowercase,
+        delim: ".",
+    };
+    if s.is_case(DOT_CASE) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid dotted case: {s}"))
@@ -75,7 +114,7 @@ fn dotted_case(s: &str) -> Result<String, String> {
 }
 
 fn pascal_case(s: &str) -> Result<String, String> {
-    if s == s.to_pascal_case() {
+    if s.is_case(Case::Pascal) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid pascal case: {s}"))
@@ -83,7 +122,7 @@ fn pascal_case(s: &str) -> Result<String, String> {
 }
 
 fn snake_case(s: &str) -> Result<String, String> {
-    if s == s.to_snake_case() {
+    if s.is_case(Case::Snake) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid snake case: {s}"))
@@ -98,5 +137,35 @@ mod cli_tests {
     fn test_cli() {
         use clap::CommandFactory;
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn dotted() {
+        assert_eq!(
+            dotted_case("com.example.crux.shared.types").unwrap(),
+            "com.example.crux.shared.types"
+        );
+        assert_eq!(
+            dotted_case("comExampleCruxSharedTypes").unwrap_err(),
+            "Invalid dotted case: comExampleCruxSharedTypes"
+        );
+    }
+
+    #[test]
+    fn pascal() {
+        assert_eq!(pascal_case("SharedTypes").unwrap(), "SharedTypes");
+        assert_eq!(
+            pascal_case("shared_types").unwrap_err(),
+            "Invalid pascal case: shared_types"
+        );
+    }
+
+    #[test]
+    fn snake() {
+        assert_eq!(snake_case("shared_types").unwrap(), "shared_types");
+        assert_eq!(
+            snake_case("SharedTypes").unwrap_err(),
+            "Invalid snake case: SharedTypes"
+        );
     }
 }

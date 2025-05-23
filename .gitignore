@@ -3,5 +3,5 @@
 *.xcuserstate
 **/xcuserdata/*
 .bin
-
 .build
+.swiftpm

@@ -168,16 +168,14 @@ mod core;
 
 use serde::Serialize;
 
-pub use self::{
-    capabilities::*,
-    capability::{Capability, WithContext},
-    command::Command,
-    core::{Core, Effect, Request, ResolveError},
-};
+pub use capabilities::*;
+pub use capability::{Capability, WithContext};
+pub use command::Command;
+pub use core::{Core, Effect, Request, ResolveError};
 pub use crux_macros as macros;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
-/// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
+/// as the type argument to [`Core`] or [`Bridge`](crate::bridge::Bridge).
 pub trait App: Default {
     /// `Event`, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event: Unpin + Send + 'static;
@@ -220,4 +218,12 @@ pub trait App: Default {
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
+}
+
+#[cfg(feature = "cli")]
+/// Run the CLI application for codegen and bindgen from your shared library
+/// # Errors
+/// This function may fail if the CLI application encounters an error.
+pub fn run_cli() -> anyhow::Result<()> {
+    crux_cli::run()
 }

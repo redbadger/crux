@@ -1,4 +1,5 @@
 #![deny(clippy::pedantic)]
+
 mod capability;
 mod effect;
 mod effect_derive;
@@ -10,6 +11,8 @@ use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use syn::{parse_macro_input, Ident, ItemEnum};
 
+/// Deprecated: use the `effect` attribute macro instead.
+///
 /// Procedural macro to derive an Effect enum, with a variant for
 /// each non-skipped capability.
 ///
@@ -97,6 +100,7 @@ pub fn effect_derive(input: TokenStream) -> TokenStream {
 ///     Render(RenderOperation),
 ///     Http(HttpRequest),
 /// }
+/// ```
 #[proc_macro_attribute]
 pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Option<Ident>);
@@ -110,8 +114,15 @@ pub fn export(input: TokenStream) -> TokenStream {
     export_impl(&parse_macro_input!(input)).into()
 }
 
+/// Deprecated: use the `effect` attribute macro instead.
 #[proc_macro_derive(Capability)]
 #[proc_macro_error]
 pub fn capability(input: TokenStream) -> TokenStream {
     capability_impl(&parse_macro_input!(input)).into()
+}
+
+#[cfg(test)]
+fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
+    let file = syn::parse_file(&ts.to_string()).unwrap();
+    prettyplease::unparse(&file)
 }

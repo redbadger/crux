@@ -2,11 +2,14 @@
 #![allow(clippy::missing_errors_doc)]
 
 mod args;
+pub mod bindgen;
 pub mod codegen;
 
 use anyhow::Result;
-use args::{Cli, Commands};
 use clap::Parser;
+
+pub use args::CodegenArgs;
+use args::{Cli, Commands};
 
 pub fn run() -> Result<()> {
     env_logger::init();
@@ -14,5 +17,6 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
         Commands::Codegen(args) => codegen::codegen(args),
+        Commands::Bindgen(args) => bindgen::bindgen(args),
     }
 }

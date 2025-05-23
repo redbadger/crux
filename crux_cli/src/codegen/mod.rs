@@ -36,8 +36,11 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
         .map(|package| (package.name(), package.manifest_path().as_str()))
         .collect();
 
-    let Ok(lib) = package_graph.workspace().member_by_path(&args.lib) else {
-        bail!("Could not find workspace package with path {}", args.lib)
+    let Ok(lib) = package_graph.workspace().member_by_name(&args.crate_name) else {
+        bail!(
+            "Could not find workspace package with name {}",
+            args.crate_name
+        )
     };
 
     let lib_name = lib.name();
@@ -48,21 +51,28 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let registry: serde_reflection::Registry =
         serde_json::from_slice(&serde_json::to_vec(&registry)?)?;
 
-    fs::create_dir_all(&args.output)?;
+    fs::create_dir_all(&args.out_dir)?;
 
-    generate::java(&registry, &args.java_package, args.output.join("java"))
-        .context("Generating types for Java")?;
+    if let Some(java_package) = &args.generate.java {
+        generate::java(&registry, java_package, args.out_dir.join("java"))
+            .context("Generating types for Java")?;
+    }
 
-    generate::swift(&registry, &args.swift_package, args.output.join("swift"))
-        .context("Generating tyeps for Swift")?;
+    if let Some(swift_package) = &args.generate.swift {
+        generate::swift(&registry, swift_package, args.out_dir.join("swift"))
+            .context("Generating types for Swift")?;
+    }
 
-    generate::typescript(
-        &registry,
-        &args.typescript_package,
-        &lib.version().to_string(),
-        args.output.join("typescript"),
-    )
-    .context("Generating types for TypeScript")?;
+    if let Some(typescript_package) = &args.generate.typescript {
+        generate::typescript(
+            &registry,
+            typescript_package,
+            &lib.version().to_string(),
+            args.out_dir.join("typescript"),
+        )
+        .context("Generating types for TypeScript")?;
+    }
+
     Ok(())
 }
 

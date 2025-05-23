@@ -437,6 +437,8 @@ dependencies = [
  "serde_json",
  "slab",
  "thiserror 2.0.12",
+ "uniffi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -454,6 +456,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
+ "serde_qs 0.15.0",
  "thiserror 2.0.12",
  "url",
  "web-sys",
@@ -1310,7 +1313,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
- "serde_qs",
+ "serde_qs 0.8.5",
  "serde_urlencoded",
  "url",
 ]
@@ -2478,6 +2481,17 @@ dependencies = [
  "percent-encoding",
  "serde",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "serde_qs"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3faaf9e727533a19351a43cc5a8de957372163c7d35cc48c90b75cdda13c352"
+dependencies = [
+ "percent-encoding",
+ "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
