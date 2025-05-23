@@ -10,15 +10,15 @@ use crate::{
     Command, Request, WithContext,
 };
 
-/// AppTester is a simplified execution environment for Crux apps for use in
+/// `AppTester` is a simplified execution environment for Crux apps for use in
 /// tests.
 ///
-/// Please note that the AppTester is strictly no longer required now that Crux
-/// has a new [`Command`] API. To test apps without the AppTester, you can call
+/// Please note that the `AppTester` is strictly no longer required now that Crux
+/// has a new [`Command`] API. To test apps without the `AppTester`, you can call
 /// the `update` method on your app directly, and then inspect the effects
 /// returned by the command. For examples of how to do this, consult any of the
 /// [examples in the Crux repository](https://github.com/redbadger/crux/tree/master/examples).
-/// The AppTester is still provided for backwards compatibility, and to allow you to
+/// The `AppTester` is still provided for backwards compatibility, and to allow you to
 /// migrate to the new API without changing the tests,
 /// giving you increased confidence in your refactor.
 ///
@@ -82,6 +82,10 @@ where
     ///
     /// This potentially runs the app's `update` function if the effect is completed, and
     /// produce another `Update`.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the request cannot (or should not) be resolved.
     pub fn resolve<Op: Operation>(
         &self,
         request: &mut Request<Op>,
@@ -96,6 +100,10 @@ where
     ///
     /// This helper is useful for the common case where  one expects the effect to resolve
     /// to exactly one event, which should then be run by the app.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request cannot be resolved.
     #[track_caller]
     pub fn resolve_to_event_then_update<Op: Operation>(
         &self,
@@ -184,7 +192,11 @@ impl<Ef, Ev> Update<Ef, Ev> {
 
     /// Assert that the update contains exactly one effect and zero events,
     /// and return the effect
+    ///
+    /// # Panics
+    /// Panics if the update contains more than one effect or any events.
     #[track_caller]
+    #[must_use]
     pub fn expect_one_effect(mut self) -> Ef {
         if self.events.is_empty() && self.effects.len() == 1 {
             self.effects.pop().unwrap()
@@ -199,7 +211,11 @@ impl<Ef, Ev> Update<Ef, Ev> {
 
     /// Assert that the update contains exactly one event and zero effects,
     /// and return the event
+    ///
+    /// # Panics
+    /// Panics if the update contains more than one event or any effects.
     #[track_caller]
+    #[must_use]
     pub fn expect_one_event(mut self) -> Ev {
         if self.effects.is_empty() && self.events.len() == 1 {
             self.events.pop().unwrap()
@@ -213,6 +229,9 @@ impl<Ef, Ev> Update<Ef, Ev> {
     }
 
     /// Assert that the update contains no effects or events
+    ///
+    /// # Panics
+    /// Panics if the update contains any effects or events.
     #[track_caller]
     pub fn assert_empty(self) {
         if self.effects.is_empty() && self.events.is_empty() {
@@ -257,11 +276,15 @@ where
 {
     /// Assert that the Command contains _exactly_ one effect and zero events,
     /// and return the effect
+    ///
+    /// # Panics
+    /// Panics if the command does not contain exactly one effect, or contains any events.
     #[track_caller]
     pub fn expect_one_effect(&mut self) -> Effect {
-        if self.events().next().is_some() {
-            panic!("expected only one effect, but found an event");
-        }
+        assert!(
+            self.events().next().is_none(),
+            "expected only one effect, but found an event"
+        );
         let mut effects = self.effects();
         match (effects.next(), effects.next()) {
             (None, _) => panic!("expected one effect but got none"),

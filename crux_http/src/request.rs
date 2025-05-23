@@ -36,6 +36,7 @@ impl Request {
     /// let req = crux_http::Request::new(Method::Get, url);
     /// # Ok(()) }
     /// ```
+    #[must_use]
     pub fn new(method: Method, url: Url) -> Self {
         let req = http_types::Request::new(method, url);
         Self {
@@ -63,6 +64,9 @@ impl Request {
     /// assert_eq!(page, 2);
     /// # Ok(()) }
     /// ```
+    ///
+    /// # Errors
+    /// Returns an error if the query string could not be deserialized.
     pub fn query<T: serde::de::DeserializeOwned>(&self) -> crate::Result<T> {
         Ok(self.req.query()?)
     }
@@ -88,6 +92,9 @@ impl Request {
     /// assert_eq!(req.url().as_str(), "https://httpbin.org/get?page=2");
     /// # Ok(()) }
     /// ```
+    ///
+    /// # Errors
+    /// Returns an error if the query string could not be serialized.
     pub fn set_query(&mut self, query: &impl Serialize) -> crate::Result<()> {
         Ok(self.req.set_query(query)?)
     }
@@ -128,7 +135,7 @@ impl Request {
     /// Unlike `insert` this function will not override the contents of a header, but insert a
     /// header if there aren't any. Or else append to the existing list of headers.
     pub fn append_header(&mut self, name: impl Into<HeaderName>, values: impl ToHeaderValues) {
-        self.req.append_header(name, values)
+        self.req.append_header(name, values);
     }
 
     /// Remove a header.
@@ -201,6 +208,7 @@ impl Request {
     /// assert_eq!(req.method(), crux_http::http::Method::Get);
     /// # Ok(()) }
     /// ```
+    #[must_use]
     pub fn method(&self) -> Method {
         self.req.method()
     }
@@ -218,6 +226,7 @@ impl Request {
     /// assert_eq!(req.url(), &Url::parse("https://httpbin.org/get")?);
     /// # Ok(()) }
     /// ```
+    #[must_use]
     pub fn url(&self) -> &Url {
         self.req.url()
     }
@@ -234,6 +243,7 @@ impl Request {
     /// method to bypass any checks.
     ///
     /// [`set_header`]: #method.set_header
+    #[must_use]
     pub fn content_type(&self) -> Option<Mime> {
         self.req.content_type()
     }
@@ -252,12 +262,14 @@ impl Request {
     /// value to decide whether to use `Chunked` encoding, or set the
     /// response length.
     #[allow(clippy::len_without_is_empty)]
+    #[must_use]
     pub fn len(&self) -> Option<usize> {
         self.req.len()
     }
 
     /// Returns `true` if the set length of the body stream is zero, `false`
     /// otherwise.
+    #[must_use]
     pub fn is_empty(&self) -> Option<bool> {
         self.req.is_empty()
     }
@@ -268,7 +280,7 @@ impl Request {
     ///
     /// The encoding is set to `application/octet-stream`.
     pub fn set_body(&mut self, body: impl Into<Body>) {
-        self.req.set_body(body)
+        self.req.set_body(body);
     }
 
     /// Take the request body as a `Body`.
@@ -276,7 +288,7 @@ impl Request {
     /// This method can be called after the body has already been taken or read,
     /// but will return an empty `Body`.
     ///
-    /// This is useful for consuming the body via an AsyncReader or AsyncBufReader.
+    /// This is useful for consuming the body via an `AsyncReader` or `AsyncBufReader`.
     pub fn take_body(&mut self) -> Body {
         self.req.take_body()
     }
@@ -301,7 +313,7 @@ impl Request {
     ///
     /// The `content-type` is set to `text/plain; charset=utf-8`.
     pub fn body_string(&mut self, string: String) {
-        self.set_body(Body::from_string(string))
+        self.set_body(Body::from_string(string));
     }
 
     /// Pass bytes as the request body.
@@ -310,7 +322,7 @@ impl Request {
     ///
     /// The `content-type` is set to `application/octet-stream`.
     pub fn body_bytes(&mut self, bytes: impl AsRef<[u8]>) {
-        self.set_body(Body::from(bytes.as_ref()))
+        self.set_body(Body::from(bytes.as_ref()));
     }
 
     /// Pass a form as the request body.
@@ -348,6 +360,7 @@ impl Request {
     /// req.middleware(crux_http::middleware::Redirect::default());
     /// # Ok(()) }
     /// ```
+    #[allow(clippy::missing_panics_doc)]
     pub fn middleware(&mut self, middleware: impl Middleware) {
         if self.middleware.is_none() {
             self.middleware = Some(vec![]);
@@ -406,7 +419,7 @@ impl<B: Into<Body>> TryFrom<http::Request<B>> for Request {
             req.uri().to_string().parse()?,
         );
 
-        for (k, v) in req.headers().iter() {
+        for (k, v) in req.headers() {
             o.append_header(k.as_str(), v.to_str()?);
         }
 

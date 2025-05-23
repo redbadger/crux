@@ -23,7 +23,6 @@ use serde::{
 use std::{
     cell::{Ref, RefCell, RefMut},
     collections::{btree_map::Entry, BTreeMap},
-    ops::DerefMut,
     rc::Rc,
 };
 
@@ -94,7 +93,7 @@ pub enum ContainerFormat {
     Struct(Vec<Named<Format>>),
     /// An enum, that is, an enumeration of variants.
     /// Each variant has a unique name and index within the enum.
-    Enum(BTreeMap<u32, Named<VariantFormat>>),
+    Enum(BTreeMap<usize, Named<VariantFormat>>),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
@@ -187,7 +186,7 @@ pub trait FormatHolder {
     /// Attempt to remove known variables within `self`. Silently abort
     /// if some variables have unknown values.
     fn reduce(&mut self) {
-        self.visit_mut(&mut |_| Ok(())).unwrap_or(())
+        self.visit_mut(&mut |_| Ok(())).unwrap_or(());
     }
 
     /// Whether this format is a variable with no known value yet.
@@ -199,7 +198,7 @@ where
     T1: std::fmt::Debug,
     T2: std::fmt::Debug,
 {
-    Error::Incompatible(format!("{:?}", v1), format!("{:?}", v2))
+    Error::Incompatible(format!("{v1:?}"), format!("{v2:?}"))
 }
 
 impl FormatHolder for VariantFormat {
@@ -253,13 +252,13 @@ impl FormatHolder for VariantFormat {
     fn unify(&mut self, format: VariantFormat) -> Result<()> {
         match (self, format) {
             (format1, Self::Variable(variable2)) => {
-                if let Some(format2) = variable2.borrow_mut().deref_mut() {
+                if let Some(format2) = &mut *variable2.borrow_mut() {
                     format1.unify(std::mem::take(format2))?;
                 }
                 *variable2.borrow_mut() = Some(format1.clone());
             }
             (Self::Variable(variable1), format2) => {
-                let inner_variable = match variable1.borrow_mut().deref_mut() {
+                let inner_variable = match &mut *variable1.borrow_mut() {
                     value1 @ None => {
                         *value1 = Some(format2);
                         None
@@ -393,7 +392,7 @@ where
     }
 
     fn visit_mut(&mut self, f: &mut dyn FnMut(&mut Format) -> Result<()>) -> Result<()> {
-        match self.borrow_mut().deref_mut() {
+        match &mut *self.borrow_mut() {
             None => Err(Error::UnknownFormat),
             Some(value) => value.visit_mut(f),
         }
@@ -486,7 +485,7 @@ impl FormatHolder for ContainerFormat {
             }
 
             (Self::Enum(variants1), Self::Enum(variants2)) => {
-                for (index2, variant2) in variants2.into_iter() {
+                for (index2, variant2) in variants2 {
                     match variants1.entry(index2) {
                         Entry::Vacant(e) => {
                             // Note that we do not check for name collisions.
@@ -612,13 +611,13 @@ impl FormatHolder for Format {
     fn unify(&mut self, format: Format) -> Result<()> {
         match (self, format) {
             (format1, Self::Variable(variable2)) => {
-                if let Some(format2) = variable2.borrow_mut().deref_mut() {
+                if let Some(format2) = &mut *variable2.borrow_mut() {
                     format1.unify(std::mem::take(format2))?;
                 }
                 *variable2.borrow_mut() = Some(format1.clone());
             }
             (Self::Variable(variable1), format2) => {
-                let inner_variable = match variable1.borrow_mut().deref_mut() {
+                let inner_variable = match &mut *variable1.borrow_mut() {
                     value1 @ None => {
                         *value1 = Some(format2);
                         None

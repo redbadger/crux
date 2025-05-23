@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 /// Used for preserving member position in parent type
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Indexed<T> {
-    pub index: u32,
+    pub index: usize,
     pub value: T,
 }
 

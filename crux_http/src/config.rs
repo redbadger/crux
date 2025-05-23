@@ -25,6 +25,7 @@ pub struct Config {
 
 impl Config {
     /// Construct new empty config.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -34,6 +35,10 @@ impl Config {
     /// Adds a header to be added to every request by this config.
     ///
     /// Default: No extra headers.
+    ///
+    /// # Errors
+    /// Returns an error if the header values are invalid.
+    #[allow(clippy::needless_pass_by_value)] // TODO: revisit this when we are ready to make a breaking API change
     pub fn add_header(
         mut self,
         name: impl Into<HeaderName>,
@@ -51,6 +56,7 @@ impl Config {
     /// to be removed to get at the “directory” that is used as the base.
     ///
     /// Default: `None` (internally).
+    #[must_use]
     pub fn set_base_url(mut self, base: Url) -> Self {
         self.base_url = Some(base);
         self

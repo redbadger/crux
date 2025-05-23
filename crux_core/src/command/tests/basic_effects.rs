@@ -36,7 +36,7 @@ enum Event {
 fn done_can_be_created() {
     let mut cmd: Command<Effect, Event> = Command::done();
 
-    assert!(cmd.is_done())
+    assert!(cmd.is_done());
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn notify_effect_can_be_inspected() {
 
     let Effect::AnEffect(request) = effects.unwrap();
 
-    assert_eq!(request.operation, AnOperation)
+    assert_eq!(request.operation, AnOperation);
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn request_effect_can_be_inspected() {
 
     let Effect::AnEffect(request) = effect.unwrap();
 
-    assert_eq!(request.operation, AnOperation)
+    assert_eq!(request.operation, AnOperation);
 }
 
 // ANCHOR: basic_test
@@ -95,7 +95,7 @@ fn request_effect_can_be_resolved() {
 
     assert_eq!(event, Event::Completed(AnOperationOutput));
 
-    assert!(cmd.is_done())
+    assert!(cmd.is_done());
 }
 // ANCHOR_END: basic_test
 

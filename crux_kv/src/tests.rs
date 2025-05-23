@@ -63,7 +63,7 @@ impl crux_core::App for App {
             Event::Exists => caps.key_value.exists(key, Event::ExistsResponse),
             Event::ListKeys => {
                 caps.key_value
-                    .list_keys("test:".to_string(), 0, Event::ListKeysResponse)
+                    .list_keys("test:".to_string(), 0, Event::ListKeysResponse);
             }
 
             Event::GetThenSet => caps.compose.spawn(|ctx| {
@@ -79,7 +79,7 @@ impl crux_core::App for App {
                         .set_async("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
                         .await;
 
-                    ctx.update_app(Event::SetResponse(result))
+                    ctx.update_app(Event::SetResponse(result));
                 }
             }),
 
@@ -94,31 +94,25 @@ impl crux_core::App for App {
 
             Event::SetResponse(Ok(_response)) => {
                 model.successful = true;
-                caps.render.render()
+                caps.render.render();
             }
 
             Event::ExistsResponse(Ok(_response)) => {
                 model.successful = true;
-                caps.render.render()
+                caps.render.render();
             }
 
             Event::ListKeysResponse(Ok((keys, cursor))) => {
                 model.keys = keys;
                 model.cursor = cursor;
-                caps.render.render()
+                caps.render.render();
             }
 
-            Event::GetResponse(Err(error)) => {
-                panic!("error: {:?}", error);
-            }
-            Event::SetResponse(Err(error)) => {
-                panic!("error: {:?}", error);
-            }
-            Event::ExistsResponse(Err(error)) => {
-                panic!("Error: {:?}", error);
-            }
-            Event::ListKeysResponse(Err(error)) => {
-                panic!("Error: {:?}", error);
+            Event::GetResponse(Err(error))
+            | Event::SetResponse(Err(error))
+            | Event::ExistsResponse(Err(error))
+            | Event::ListKeysResponse(Err(error)) => {
+                panic!("Error: {error:?}");
             }
         }
 
@@ -293,7 +287,7 @@ fn test_list_keys() {
 }
 
 #[test]
-pub fn test_kv_async() -> Result<()> {
+pub fn test_kv_async() {
     let app = AppTester::<App>::default();
     let mut model = Model::default();
 
@@ -341,8 +335,6 @@ pub fn test_kv_async() -> Result<()> {
     );
 
     assert!(model.successful);
-
-    Ok(())
 }
 
 #[test]

@@ -98,5 +98,5 @@ fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
                 }
             });
         }
-    };
+    }
 }

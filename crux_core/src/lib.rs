@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 //! Cross-platform app development in Rust
 //!
 //! Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web,
@@ -178,21 +179,21 @@ pub use crux_macros as macros;
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](bridge::Bridge).
 pub trait App: Default {
-    /// Event, typically an `enum`, defines the actions that can be taken to update the application state.
+    /// `Event`, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event: Unpin + Send + 'static;
-    /// Model, typically a `struct` defines the internal state of the application
+    /// `Model`, typically a `struct` defines the internal state of the application
     type Model: Default;
-    /// ViewModel, typically a `struct` describes the user interface that should be
+    /// `ViewModel`, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel: Serialize;
-    /// Capabilities, usually a `struct`, lists the capabilities used by this application.
+    /// `Capabilities`, usually a `struct`, lists the capabilities used by this application.
     ///
     /// Typically, Capabilities should contain at least an instance of the built-in [`Render`](crate::render::Render) capability.
     ///
     /// Note: this `Capabilities` associated type will be deprecated soon as part of the completion of
     /// the migration to the new [`Command`](command) API.
     type Capabilities;
-    /// Effect, the enum carrying effect requests created by capabilities.
+    /// `Effect`, the enum carrying effect requests created by capabilities.
     /// Normally this type is derived from `Capabilities` using the `crux_macros::Effect` derive macro
     type Effect: Effect + Unpin;
 

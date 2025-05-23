@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 mod capability;
 mod effect;
 mod effect_derive;

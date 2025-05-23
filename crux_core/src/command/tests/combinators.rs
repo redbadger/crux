@@ -10,7 +10,7 @@ enum AnOperation {
     More([u8; 2]),
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Deserialize)]
 enum AnOperationOutput {
     One,
     Two,
@@ -607,11 +607,11 @@ fn stream_followed_by_a_stream() {
             assert_eq!(
                 Event::Completed(AnOperationOutput::Other(resolved_with)),
                 cmd.events().next().unwrap()
-            )
+            );
         }
     }
 
-    assert!(cmd.events().next().is_none())
+    assert!(cmd.events().next().is_none());
 }
 
 #[test]

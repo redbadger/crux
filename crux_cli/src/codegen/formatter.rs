@@ -1,4 +1,6 @@
-use std::collections::BTreeMap;
+#![allow(clippy::no_effect_underscore_binding)]
+
+use std::{collections::BTreeMap, convert::Into};
 
 use ascent::ascent;
 use rustdoc_types::{GenericArg, GenericArgs, Item, ItemEnum, Type};
@@ -7,7 +9,10 @@ use crate::codegen::collect;
 
 use super::{
     indexed::Indexed,
-    item::*,
+    item::{
+        is_plain_variant, is_struct_plain, is_struct_tuple, is_struct_unit, is_struct_variant,
+        is_tuple_variant,
+    },
     node::ItemNode,
     serde::case::RenameRule,
     serde_generate::format::{ContainerFormat, Format, Named, VariantFormat},
@@ -38,7 +43,7 @@ ascent! {
     fields(x, fields) <--
         field(x, f),
         agg fs = collect(f) in field(x, f),
-        let fields = x.fields(fs);
+        let fields = x.fields(&fs);
 
     relation variant(ItemNode, ItemNode);
     variant(e, v) <-- edge(e, v), if e.has_variant(v);
@@ -47,7 +52,7 @@ ascent! {
     variants(e, variants) <--
         variant(e, v),
         agg vs = collect(v) in variant(e, v),
-        let variants = e.variants(vs);
+        let variants = e.variants(&vs);
 
     relation variant_plain(ItemNode, ItemNode);
     variant_plain(e, v) <-- variant(e, v), if is_plain_variant(&v.item);
@@ -126,7 +131,7 @@ fn make_format(field: &ItemNode, all_fields: &[ItemNode]) -> Option<Indexed<Form
     let index = all_fields.iter().position(|f| f == field)?;
     match &field.item.inner {
         ItemEnum::StructField(type_) => Some(Indexed {
-            index: index as u32,
+            index,
             value: {
                 if let Some((_whole, serde_with)) = field.item.attrs.iter().find_map(|attr| {
                     lazy_regex::regex_captures!(r#"\[serde\(with\s*=\s*"(\w+)"\)\]"#, attr)
@@ -176,7 +181,7 @@ fn make_plain_variant_format(
             inner: ItemEnum::Variant(_),
             ..
         } => Some(Indexed {
-            index: index as u32,
+            index,
             value: Named {
                 name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
                 value: VariantFormat::Unit,
@@ -203,7 +208,7 @@ fn make_struct_variant_format(
             fields.sort();
             let fields = fields.iter().map(|(f,)| f.inner()).collect::<Vec<_>>();
             Some(Indexed {
-                index: index as u32,
+                index,
                 value: Named {
                     name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
                     value: VariantFormat::Struct(fields),
@@ -236,7 +241,7 @@ fn make_tuple_variant_format(
                 _ => VariantFormat::Tuple(fields),
             };
             Some(Indexed {
-                index: index as u32,
+                index,
                 value: Named {
                     name: variant_name(name, &variant.item.attrs, &enum_.item.attrs),
                     value,
@@ -293,7 +298,7 @@ fn make_range(field: &ItemNode) -> Option<ContainerFormat> {
                                 _ => None,
                             }
                         }
-                        _ => None,
+                        GenericArgs::Parenthesized { .. } => None,
                     },
                     _ => None,
                 },
@@ -341,16 +346,16 @@ impl From<&Type> for Format {
                             constraints: _,
                         } => match name.as_str() {
                             "Option" => {
-                                let format = match args[0] {
-                                    GenericArg::Type(ref type_) => type_.into(),
+                                let format = match args.first() {
+                                    Some(GenericArg::Type(ref type_)) => type_.into(),
                                     _ => todo!(),
                                 };
                                 Format::Option(Box::new(format))
                             }
                             "String" => Format::Str,
                             "Vec" => {
-                                let format = match args[0] {
-                                    GenericArg::Type(ref type_) => type_.into(),
+                                let format = match args.first() {
+                                    Some(GenericArg::Type(ref type_)) => type_.into(),
                                     _ => todo!(),
                                 };
                                 Format::Seq(Box::new(format))
@@ -394,7 +399,7 @@ impl From<&Type> for Format {
                 s => panic!("need to implement primitive {s}"),
             },
             Type::FunctionPointer(_function_pointer) => todo!(),
-            Type::Tuple(vec) => Format::Tuple(vec.iter().map(|t| t.into()).collect()),
+            Type::Tuple(vec) => Format::Tuple(vec.iter().map(Into::into).collect()),
             Type::Slice(_) => todo!(),
             Type::Array { type_: _, len: _ } => todo!(),
             Type::Pat {

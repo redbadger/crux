@@ -171,6 +171,22 @@ impl<Body> Response<Body> {
     }
 }
 
+impl<'a, Body> IntoIterator for &'a Response<Body> {
+    type Item = (&'a headers::HeaderName, &'a headers::HeaderValues);
+    type IntoIter = headers::Iter<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, Body> IntoIterator for &'a mut Response<Body> {
+    type Item = (&'a headers::HeaderName, &'a mut headers::HeaderValues);
+    type IntoIter = headers::IterMut<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
 impl Response<Vec<u8>> {
     pub(crate) fn new_with_status(status: http_types::StatusCode) -> Self {
         let headers = new_headers();
@@ -252,7 +268,7 @@ impl Response<Vec<u8>> {
         let claimed_encoding = mime
             .as_ref()
             .and_then(|mime| mime.param("charset"))
-            .map(|name| name.to_string());
+            .map(std::string::ToString::to_string);
         Ok(decode_body(bytes, claimed_encoding.as_deref())?)
     }
 
@@ -394,11 +410,11 @@ impl<Body> TryInto<http::Response<Body>> for Response<Body> {
 #[cfg(feature = "http-compat")]
 fn headers_to_hyperium_headers(headers: &mut Headers, hyperium_headers: &mut http::HeaderMap) {
     for (name, values) in headers {
-        let name = format!("{}", name).into_bytes();
+        let name = format!("{name}").into_bytes();
         let name = http::header::HeaderName::from_bytes(&name).unwrap();
 
         for value in values.iter() {
-            let value = format!("{}", value).into_bytes();
+            let value = format!("{value}").into_bytes();
             let value = http::header::HeaderValue::from_bytes(&value).unwrap();
             hyperium_headers.append(&name, value);
         }
@@ -407,7 +423,7 @@ fn headers_to_hyperium_headers(headers: &mut Headers, hyperium_headers: &mut htt
 
 mod header_serde {
     use crate::{http::Headers, response::new_headers};
-    use http_types::headers::HeaderName;
+    use http_types::headers::{HeaderName, HeaderValue};
     use serde::{de::Error, Deserializer, Serializer};
 
     pub fn serialize<S>(headers: &Headers, serializer: S) -> Result<S::Ok, S::Error>
@@ -417,7 +433,7 @@ mod header_serde {
         serializer.collect_map(headers.iter().map(|(name, values)| {
             (
                 name.as_str(),
-                values.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
+                values.iter().map(HeaderValue::as_str).collect::<Vec<_>>(),
             )
         }))
     }

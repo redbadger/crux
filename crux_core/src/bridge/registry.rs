@@ -46,7 +46,7 @@ impl ResolveRegistry {
     }
     // ANCHOR_END: register
 
-    /// Resume a previously registered effect. This may fail, either because EffectId wasn't
+    /// Resume a previously registered effect. This may fail, either because `EffectId` wasn't
     /// found or because this effect was not expected to be resumed again.
     pub fn resume(
         &self,

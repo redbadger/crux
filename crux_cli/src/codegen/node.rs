@@ -5,7 +5,9 @@ use rustdoc_types::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::item::*;
+use super::item::{
+    field_ids, has_associated_item, has_field, has_variant, is_impl_for, variant_ids,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GlobalId {
@@ -75,7 +77,7 @@ impl SummaryNode {
 
         if this.len() != other.len() {
             return false;
-        };
+        }
 
         this[..(this.len() - 1)] == other[..(other.len() - 1)]
     }
@@ -159,7 +161,7 @@ impl ItemNode {
             .any(|attr| lazy_regex::regex_is_match!(r#"\[serde\s*\(\s*skip\s*\)\s*\]"#, attr))
     }
 
-    pub fn fields(&self, fields: Vec<(&ItemNode,)>) -> Vec<ItemNode> {
+    pub fn fields(&self, fields: &[(&ItemNode,)]) -> Vec<ItemNode> {
         field_ids(&self.item)
             .iter()
             .filter_map(|id| {
@@ -182,7 +184,7 @@ impl ItemNode {
         has_field(&self.item, &field.item)
     }
 
-    pub fn variants(&self, variants: Vec<(&ItemNode,)>) -> Vec<ItemNode> {
+    pub fn variants(&self, variants: &[(&ItemNode,)]) -> Vec<ItemNode> {
         variant_ids(&self.item)
             .iter()
             .filter_map(|id| {
@@ -247,10 +249,8 @@ fn check_type(parent: &GlobalId, type_: &Type, is_remote: bool) -> bool {
         Type::QualifiedPath {
             self_type, args, ..
         } => check_type(parent, self_type, is_remote) || check_args(parent, args, is_remote),
-        Type::Primitive(_) => false,
         Type::Tuple(vec) => vec.iter().any(|t| check_type(parent, t, is_remote)),
-        Type::Slice(t) => check_type(parent, t, is_remote),
-        Type::Array { type_: t, .. } => check_type(parent, t, is_remote),
+        Type::Slice(t) | Type::Array { type_: t, .. } => check_type(parent, t, is_remote),
         _ => false,
     }
 }
@@ -292,6 +292,8 @@ fn check_args(parent: &GlobalId, args: &GenericArgs, is_remote: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use pretty_assertions::assert_eq;
     use rustdoc_types::{Generics, Id, Item, ItemEnum, ItemKind, Struct, StructKind, Visibility};
 
@@ -331,7 +333,7 @@ mod tests {
                 span: None,
                 visibility: Visibility::Public,
                 docs: None,
-                links: Default::default(),
+                links: HashMap::default(),
                 deprecation: None,
             },
         )

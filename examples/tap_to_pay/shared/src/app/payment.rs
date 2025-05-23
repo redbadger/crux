@@ -7,6 +7,7 @@ pub struct Payment {
 }
 
 impl Payment {
+    #[must_use]
     pub fn new(amount: u32) -> Self {
         Payment {
             amount,
@@ -16,19 +17,19 @@ impl Payment {
 
     pub fn start(&mut self) {
         if self.status == PaymentStatus::New && self.amount > 0 {
-            self.status = PaymentStatus::PendingTap
+            self.status = PaymentStatus::PendingTap;
         }
     }
 
     pub fn send(&mut self) {
         if self.status == PaymentStatus::PendingTap {
-            self.status = PaymentStatus::Sent
+            self.status = PaymentStatus::Sent;
         }
     }
 
     pub fn confirm_send(&mut self) {
         if self.status == PaymentStatus::Sent {
-            self.status = PaymentStatus::Completed(Receipt::default())
+            self.status = PaymentStatus::Completed(Receipt::default());
         }
     }
 
@@ -60,13 +61,13 @@ pub struct Receipt {
 impl Receipt {
     pub fn send(&mut self) {
         if self.status == ReceiptStatus::New {
-            self.status = ReceiptStatus::Pending
+            self.status = ReceiptStatus::Pending;
         }
     }
 
     pub fn confirm_send(&mut self) {
         if self.status == ReceiptStatus::Pending {
-            self.status = ReceiptStatus::Sent
+            self.status = ReceiptStatus::Sent;
         }
     }
 }

@@ -66,7 +66,7 @@ pub fn swift(registry: &Registry, module_name: &str, path: impl AsRef<Path>) -> 
 
     let requests_data = fs::read_to_string(requests_path)?;
 
-    write!(output, "{}", requests_data)?;
+    write!(output, "{requests_data}")?;
 
     // wrap it all up in a swift package
     let mut output = File::create(path.join("Package.swift"))?;
@@ -129,7 +129,7 @@ pub fn java(registry: &Registry, package_name: &str, path: impl AsRef<Path>) -> 
 
     let requests_data = fs::read_to_string(requests_path)?;
 
-    let requests = format!("package {package_name};\n\n{}", requests_data);
+    let requests = format!("package {package_name};\n\n{requests_data}");
 
     fs::write(path.join(package_path).join("Requests.java"), requests)?;
 
@@ -244,7 +244,7 @@ fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
             copy(entry.path(), to)?;
         } else {
             fs::copy(entry.path(), to)?;
-        };
+        }
     }
 
     Ok(())
@@ -261,7 +261,7 @@ fn extensions_path(path: impl AsRef<Path>) -> impl AsRef<Path> {
         Ok(true) => custom,
         Ok(false) => default,
         Err(e) => {
-            println!("cant check typegen extensions override: {}", e);
+            println!("cant check typegen extensions override: {e}");
             default
         }
     }

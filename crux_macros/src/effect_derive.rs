@@ -42,6 +42,7 @@ impl From<&EffectFieldReceiver> for Field {
 }
 
 impl ToTokens for EffectStructReceiver {
+    #[allow(clippy::too_many_lines)]
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = &self.ident;
 
@@ -92,7 +93,7 @@ impl ToTokens for EffectStructReceiver {
                 event,
                 skip,
             },
-        ) in fields.iter()
+        ) in &fields
         {
             if *skip {
                 let msg = format!("Requesting effects from capability \"{variant}\" is impossible because it was skipped",);
@@ -181,7 +182,7 @@ impl ToTokens for EffectStructReceiver {
             }
 
             #(#filters)*
-        })
+        });
     }
 }
 
@@ -235,12 +236,12 @@ mod tests {
 
     #[test]
     fn defaults() {
-        let input = r#"
+        let input = r"
             #[derive(Effect)]
             pub struct Capabilities {
                 pub render: Render<Event>,
             }
-        "#;
+        ";
         let input = parse_str(input).unwrap();
         let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 
@@ -321,14 +322,14 @@ mod tests {
 
     #[test]
     fn effect_skip() {
-        let input = r#"
+        let input = r"
             #[derive(Effect)]
             pub struct Capabilities {
                 pub render: Render<Event>,
                 #[effect(skip)]
                 pub compose: Compose<Event>,
             }
-        "#;
+        ";
         let input = parse_str(input).unwrap();
         let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 
@@ -416,6 +417,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn full() {
         let input = r#"
             #[derive(Effect)]
@@ -433,7 +435,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum MyEffect {
             Http(
@@ -721,19 +723,20 @@ mod tests {
                 Self::Time(value)
             }
         }
-        "##);
+        "#);
     }
 
     #[test]
+    #[allow(clippy::should_panic_without_expect)]
     #[should_panic]
     fn should_panic_when_multiple_event_types() {
-        let input = r#"
+        let input = r"
             #[derive(Effect)]
             pub struct Capabilities {
                 pub render: Render<MyEvent>,
                 pub time: Time<YourEvent>,
             }
-        "#;
+        ";
         let input = parse_str(input).unwrap();
         let input = EffectStructReceiver::from_derive_input(&input).unwrap();
 

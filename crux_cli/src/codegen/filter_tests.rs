@@ -3,6 +3,7 @@ use rustdoc_types::Crate;
 use crate::codegen::{filter::Filter, node::ItemNode};
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn field_is_option_of_t() {
     static RUSTDOC: &[u8] = include_bytes!("fixtures/field_is_option_of_t.json");
     let crate_: Crate = serde_json::from_slice(RUSTDOC).unwrap();

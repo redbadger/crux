@@ -1,9 +1,10 @@
-use anyhow::Result;
+#![allow(clippy::no_effect_underscore_binding)]
+
 use ascent::ascent;
 use log::{debug, info};
 use rustdoc_types::Crate;
 
-use super::item::*;
+use super::item::{is_enum, is_relevant, is_struct, is_struct_unit};
 use super::node::{CrateNode, ItemNode, SummaryNode};
 
 ascent! {
@@ -149,8 +150,8 @@ ascent! {
 }
 
 impl Filter {
-    pub fn process(&mut self, crate_name: &str, crate_: &Crate) -> Result<()> {
-        info!("Updating filter for {}", crate_name);
+    pub fn process(&mut self, crate_name: &str, crate_: &Crate) {
+        info!("Updating filter for {crate_name}");
         self.summary = crate_
             .paths
             .iter()
@@ -181,8 +182,6 @@ impl Filter {
 
         self.run();
         debug!("{}", self.scc_times_summary());
-
-        Ok(())
     }
 
     pub fn get_crates(&self) -> Vec<String> {

@@ -109,29 +109,6 @@ impl App for CatFacts {
     type Effect = Effect;
 
     fn update(&self, msg: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
-        self.update(msg, model)
-    }
-
-    fn view(&self, model: &Model) -> ViewModel {
-        let fact = match (&model.cat_fact, &model.time) {
-            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
-            (Some(fact), _) => fact.format(),
-            _ => "No fact".to_string(),
-        };
-
-        let platform =
-            <platform::App as crux_core::App>::view(&self.platform, &model.platform).platform;
-
-        ViewModel {
-            platform,
-            fact,
-            image: model.cat_image.clone(),
-        }
-    }
-}
-
-impl CatFacts {
-    fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
         match msg {
             Event::GetPlatform => self
                 .platform
@@ -192,7 +169,7 @@ impl CatFacts {
                     KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                 ])
             }
-            Event::SetFact(Err(_)) | Event::SetImage(Err(_)) => {
+            Event::SetFact(Err(_)) | Event::SetImage(Err(_)) | Event::SetState(Err(_)) => {
                 // handle error
                 Command::done()
             }
@@ -222,11 +199,24 @@ impl CatFacts {
                 // no state to restore
                 Command::done()
             }
-            Event::SetState(Err(_)) => {
-                // handle error
-                Command::done()
-            }
             Event::None => Command::done(),
+        }
+    }
+
+    fn view(&self, model: &Model) -> ViewModel {
+        let fact = match (&model.cat_fact, &model.time) {
+            (Some(fact), Some(time)) => format!("Fact from {}: {}", time, fact.format()),
+            (Some(fact), _) => fact.format(),
+            _ => "No fact".to_string(),
+        };
+
+        let platform =
+            <platform::App as crux_core::App>::view(&self.platform, &model.platform).platform;
+
+        ViewModel {
+            platform,
+            fact,
+            image: model.cat_image.clone(),
         }
     }
 }
@@ -257,7 +247,7 @@ mod tests {
         let mut model = Model::default();
 
         // send fetch event to app
-        let mut fetch_command = app.update(Event::Fetch, &mut model);
+        let mut fetch_command = app.update(Event::Fetch, &mut model, &());
 
         // receive render effect
         fetch_command.effects().next().unwrap().expect_render();
@@ -289,7 +279,7 @@ mod tests {
         );
 
         // Setting the fact should trigger a time effect
-        let mut cmd = app.update(event, &mut model);
+        let mut cmd = app.update(event, &mut model, &());
 
         let request = &mut cmd.effects().next().unwrap().expect_time();
 
@@ -301,7 +291,7 @@ mod tests {
 
         // update the app with the current time event
         // and check that we get a render event ...
-        let mut cmd = app.update(event, &mut model);
+        let mut cmd = app.update(event, &mut model, &());
         cmd.effects().next().unwrap().expect_render();
 
         // ... and a key value set event
@@ -339,7 +329,7 @@ mod tests {
             Event::SetImage(Ok(ResponseBuilder::ok().body(an_image.clone()).build()))
         );
 
-        let mut cmd = app.update(event, &mut model);
+        let mut cmd = app.update(event, &mut model, &());
         cmd.effects().next().unwrap().expect_render();
 
         assert_eq!(model.cat_fact, Some(a_fact));

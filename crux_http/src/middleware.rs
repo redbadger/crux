@@ -107,6 +107,7 @@ impl<'a> Next<'a> {
     }
 
     /// Asynchronously execute the remaining middleware chain.
+    #[must_use]
     pub fn run(mut self, req: Request, client: Client) -> BoxFuture<'a, Result<ResponseAsync>> {
         if let Some((current, next)) = self.next_middleware.split_first() {
             self.next_middleware = next;

@@ -16,18 +16,20 @@ pub struct Instant {
     pub(crate) nanos: u32,
 }
 
-/// Create a new `Instant` from the given number of seconds and nanoseconds.
-///
-/// - seconds: number of seconds since the Unix epoch (1970-01-01T00:00:00Z)
-/// - nanos: number of nanoseconds since the last second
-///
-/// Panics if the number of seconds
-/// would overflow when converted to nanoseconds.
 impl Instant {
+    /// Create a new `Instant` from the given number of seconds and nanoseconds.
+    ///
+    /// - seconds: number of seconds since the Unix epoch (1970-01-01T00:00:00Z)
+    /// - nanos: number of nanoseconds since the last second
+    ///
+    /// # Panics
+    /// if the number of seconds would overflow when converted to nanoseconds.
+    #[must_use]
     pub fn new(seconds: u64, nanos: u32) -> Self {
-        if nanos >= NANOS_PER_SEC {
-            panic!("nanos must be less than {}", NANOS_PER_SEC);
-        }
+        assert!(
+            nanos < NANOS_PER_SEC,
+            "nanos must be less than {NANOS_PER_SEC}"
+        );
         Self { seconds, nanos }
     }
 }
@@ -59,9 +61,9 @@ mod test {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic = "nanos must be less than 1000000000"]
     fn new_instant_invalid_nanos() {
-        Instant::new(1_000_000_000, 1_000_000_000);
+        let _ = Instant::new(1_000_000_000, 1_000_000_000);
     }
 
     #[test]

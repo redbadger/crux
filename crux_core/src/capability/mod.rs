@@ -224,6 +224,7 @@ pub trait Operation:
     type Output: serde::de::DeserializeOwned + Send + Unpin + 'static;
 
     #[cfg(feature = "typegen")]
+    #[allow(clippy::missing_errors_doc)]
     fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
         generator.register_type::<Self>()?;
         generator.register_type::<Self::Output>()?;
@@ -507,7 +508,7 @@ where
         }
     }
 
-    /// Specialize the CapabilityContext to a specific capability, wrapping its operations into
+    /// Specialize the `CapabilityContext` to a specific capability, wrapping its operations into
     /// an Effect `Ef`. The `func` argument will typically be an Effect variant constructor, but
     /// can be any function taking the capability's operation type and returning
     /// the effect type.
@@ -554,6 +555,7 @@ where
 
     /// Send an effect request to the shell in a fire and forget fashion. The
     /// provided `operation` does not expect anything to be returned back.
+    #[allow(clippy::unused_async)]
     pub async fn notify_shell(&self, operation: Op) {
         // This function might look like it doesn't need to be async but
         // it's important that it is.  It forces all capabilities to
@@ -572,7 +574,7 @@ where
         self.inner.app_channel.send(event);
     }
 
-    /// Transform the CapabilityContext into one which uses the provided function to
+    /// Transform the `CapabilityContext` into one which uses the provided function to
     /// map each event dispatched with `update_app` to a different event type.
     ///
     /// This is useful when composing apps from modules to wrap a submodule's

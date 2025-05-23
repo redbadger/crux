@@ -3,22 +3,19 @@ mod sse;
 
 use anyhow::anyhow;
 use futures::TryStreamExt;
-use lazy_static::lazy_static;
 use shared::{App, Core, Effect, Event};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tauri::Emitter;
 
-lazy_static! {
-    static ref CORE: Arc<Core<App>> = Arc::new(Core::new());
-}
+static CORE: LazyLock<Arc<Core<App>>> = LazyLock::new(|| Arc::new(Core::new()));
 
 fn handle_event(
     event: Event,
     core: &Arc<Core<App>>,
-    tauri_app: tauri::AppHandle,
+    tauri_app: &tauri::AppHandle,
 ) -> anyhow::Result<()> {
     for effect in core.process_event(event) {
-        process_effect(effect, core, tauri_app.clone())?
+        process_effect(effect, core, tauri_app.clone())?;
     }
 
     Ok(())
@@ -80,20 +77,22 @@ fn process_effect(
 
 #[tauri::command]
 async fn increment(app_handle: tauri::AppHandle) {
-    let _ = handle_event(Event::Increment, &CORE, app_handle);
+    let _ = handle_event(Event::Increment, &CORE, &app_handle);
 }
 
 #[tauri::command]
 async fn decrement(app_handle: tauri::AppHandle) {
-    let _ = handle_event(Event::Decrement, &CORE, app_handle);
+    let _ = handle_event(Event::Decrement, &CORE, &app_handle);
 }
 
 #[tauri::command]
 async fn watch(app_handle: tauri::AppHandle) {
-    let _ = handle_event(Event::StartWatch, &CORE, app_handle);
+    let _ = handle_event(Event::StartWatch, &CORE, &app_handle);
 }
 
 /// The main entry point for Tauri
+/// # Panics
+/// If the Tauri application fails to run.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

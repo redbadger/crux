@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 use crate::protocol::{EffectSender, HttpRequest, HttpResponse, HttpResult};
 
-/// FakeShell implements EffectSender for use in our internal tests.
+/// `FakeShell` implements `EffectSender` for use in our internal tests.
 #[derive(Clone, Default)]
 pub(crate) struct FakeShell {
     inner: Arc<Mutex<Inner>>,

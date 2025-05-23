@@ -57,6 +57,10 @@ where
     /// [`Command`](crate::command::Command).
     /// If you are using [`AppTester`](crate::testing::AppTester) to test your app,
     /// you should use [`AppTester::resolve`](crate::testing::AppTester::resolve) instead.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the request cannot (or should not) be resolved.
     pub fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
         self.resolve.resolve(output)
     }

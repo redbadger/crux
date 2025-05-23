@@ -135,11 +135,11 @@ use crate::App;
 
 pub type Result = std::result::Result<(), TypeGenError>;
 
-static DESERIALIZATION_ERROR_HINT: &str = r#"
+static DESERIALIZATION_ERROR_HINT: &str = r"
 This might be because you attempted to pass types with custom serialization across the FFI boundary. Make sure that:
 1. Types you use in Event, ViewModel and Capabilities serialize as a container, otherwise wrap them in a new type struct,
     e.g. MyUuid(uuid::Uuid)
-2. Sample values of such types have been provided to the type generator using TypeGen::register_samples, before any type registration."#;
+2. Sample values of such types have been provided to the type generator using TypeGen::register_samples, before any type registration.";
 
 #[derive(Error, Debug)]
 pub enum TypeGenError {
@@ -159,6 +159,7 @@ pub enum TypeGenError {
     PnpmNotFound(#[source] std::io::Error),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum State {
     Registering(Tracer, Samples),
@@ -166,6 +167,12 @@ pub enum State {
 }
 
 pub trait Export {
+    /// Register types with the type generator.
+    ///
+    /// This method should be called before any types are registered.
+    ///
+    /// # Errors
+    /// Returns a [`TypeGenError`] if the type tracing fails.
     fn register_types(generator: &mut TypeGen) -> Result;
 }
 
@@ -191,18 +198,23 @@ impl Default for TypeGen {
 
 impl TypeGen {
     /// Creates an instance of the `TypeGen` struct
+    #[must_use]
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
     /// Register all the types used in app `A` to be shared with the Shell.
     ///
-    /// Do this before calling TypeGen::swift, TypeGen::java or TypeGen::typescript.
+    /// Do this before calling `TypeGen::swift`, `TypeGen::java` or `TypeGen::typescript`.
     /// This method would normally be called in a build.rs file of a sister crate responsible for
     /// creating "foreign language" type definitions for the FFI boundary.
     /// See the section on
     /// [creating the shared types crate](https://redbadger.github.io/crux/getting_started/core.html#create-the-shared-types-crate)
     /// in the Crux book for more information.
+    ///
+    /// # Errors
+    ///
+    /// If any of the types used in the app cannot be registered, an error will be returned.
     pub fn register_app<A: App>(&mut self) -> Result
     where
         A::Effect: Export,
@@ -223,6 +235,11 @@ impl TypeGen {
     /// will fail.
     /// You can prevent this problem by registering a valid sample value (or values),
     /// which the deserialization will use instead.
+    ///
+    /// # Errors
+    ///
+    /// If any of the sample values cannot be registered, an error will be returned.
+    #[allow(clippy::needless_pass_by_value)] // will be deprecated so no need to break existing code
     pub fn register_samples<'de, T>(&mut self, sample_data: Vec<T>) -> Result
     where
         T: serde::Deserialize<'de> + serde::Serialize,
@@ -242,7 +259,7 @@ impl TypeGen {
                 }
                 Ok(())
             }
-            _ => Err(TypeGenError::LateRegistration),
+            State::Generating(_) => Err(TypeGenError::LateRegistration),
         }
     }
     /// For each of the types that you want to share with the Shell, call this method:
@@ -262,6 +279,10 @@ impl TypeGen {
     ///   Ok(())
     /// }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Errors that can occur during type registration.
     pub fn register_type<'de, T>(&mut self) -> Result
     where
         T: serde::Deserialize<'de>,
@@ -277,20 +298,20 @@ impl TypeGen {
                 }
                 Err(e) => Err(TypeGenError::TypeTracing(
                     format!(
-                        r#"{e}:
+                        r"{e}:
 {exp}
 HINT: This may be because you are trying to trace a generic type,
 which is currently not supported.
 The 2 common cases are:
     * Capability output types. It's generally recommended to wrap them in your own type.
     * Event variants which could have a `#[serde(skip)]` because they don't leave the core
-"#,
+",
                         exp = e.explanation()
                     ),
                     std::any::type_name::<T>().to_string(),
                 )),
             },
-            _ => Err(TypeGenError::LateRegistration),
+            State::Generating(_) => Err(TypeGenError::LateRegistration),
         }
     }
 
@@ -321,6 +342,10 @@ The 2 common cases are:
     /// Note: Because of the way that enums are handled by `serde_reflection`,
     /// you may need to ensure that enums provided as samples have a first variant
     /// that does not use custom deserialization.
+    ///
+    /// # Errors
+    /// Errors that can occur during type registration.
+    #[allow(clippy::needless_pass_by_value)] // will be deprecated in the future so no need to break code
     pub fn register_type_with_samples<'de, T>(&'de mut self, sample_data: Vec<T>) -> Result
     where
         T: serde::Deserialize<'de> + serde::Serialize,
@@ -330,12 +355,6 @@ The 2 common cases are:
                 for sample in &sample_data {
                     match tracer.trace_value::<T>(samples, sample) {
                         Ok(_) => {}
-                        Err(e @ serde_reflection::Error::DeserializationError(_)) => {
-                            return Err(TypeGenError::ValueTracing(
-                                format!("{e}: {exp}", exp = e.explanation()),
-                                std::any::type_name::<T>().to_string(),
-                            ));
-                        }
                         Err(e) => {
                             return Err(TypeGenError::ValueTracing(
                                 format!("{e}: {exp}", exp = e.explanation()),
@@ -359,7 +378,7 @@ The 2 common cases are:
                     )),
                 }
             }
-            _ => Err(TypeGenError::LateRegistration),
+            State::Generating(_) => Err(TypeGenError::LateRegistration),
         }
     }
 
@@ -373,6 +392,12 @@ The 2 common cases are:
     /// gen.swift("SharedTypes", output_root.join("swift"))?;
     /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
+    ///
+    /// # Errors
+    /// Errors that can occur during type generation.
+    ///
+    /// # Panics
+    /// Panics if the registry creation fails.
     pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
@@ -388,9 +413,8 @@ The 2 common cases are:
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let registry = match &self.state {
-            State::Generating(registry) => registry,
-            _ => panic!("registry creation failed"),
+        let State::Generating(registry) = &self.state else {
+            panic!("registry creation failed");
         };
 
         let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
@@ -407,16 +431,16 @@ The 2 common cases are:
                 .join("Requests.swift"),
         )?;
 
-        let requests_path = self.extensions_path("swift/requests.swift");
+        let requests_path = Self::extensions_path("swift/requests.swift");
 
         let requests_data = fs::read_to_string(requests_path)?;
 
-        write!(output, "{}", requests_data)?;
+        write!(output, "{requests_data}")?;
 
         // wrap it all up in a swift package
         let mut output = File::create(path.join("Package.swift"))?;
 
-        let package_path = self.extensions_path("swift/Package.swift");
+        let package_path = Self::extensions_path("swift/Package.swift");
 
         let package_data = fs::read_to_string(package_path)?;
 
@@ -442,6 +466,12 @@ The 2 common cases are:
     /// )?;
     /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
+    ///
+    /// # Errors
+    /// Errors that can occur during type generation.
+    ///
+    /// # Panics
+    /// Panics if the registry creation fails.
     pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
@@ -463,20 +493,19 @@ The 2 common cases are:
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let registry = match &self.state {
-            State::Generating(registry) => registry,
-            _ => panic!("registry creation failed"),
+        let State::Generating(registry) = &self.state else {
+            panic!("registry creation failed");
         };
 
         installer
             .install_module(&config, registry)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let requests_path = self.extensions_path("java/Requests.java");
+        let requests_path = Self::extensions_path("java/Requests.java");
 
         let requests_data = fs::read_to_string(requests_path)?;
 
-        let requests = format!("package {package_name};\n\n{}", requests_data);
+        let requests = format!("package {package_name};\n\n{requests_data}");
 
         fs::write(
             path.as_ref()
@@ -499,6 +528,11 @@ The 2 common cases are:
     /// gen.typescript("shared_types", output_root.join("typescript"))?;
     /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
+    /// # Errors
+    /// Errors that can occur during type generation.
+    ///
+    /// # Panics
+    /// Panics if the registry creation fails.
     pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
@@ -513,12 +547,11 @@ The 2 common cases are:
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let extensions_dir = self.extensions_path("typescript");
+        let extensions_dir = Self::extensions_path("typescript");
         copy(extensions_dir, path)?;
 
-        let registry = match &self.state {
-            State::Generating(registry) => registry,
-            _ => panic!("registry creation failed"),
+        let State::Generating(registry) = &self.state else {
+            panic!("registry creation failed");
         };
 
         let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
@@ -585,7 +618,7 @@ The 2 common cases are:
         Ok(())
     }
 
-    fn extensions_path(&self, path: &str) -> PathBuf {
+    fn extensions_path(path: &str) -> PathBuf {
         let custom = PathBuf::from("./typegen_extensions").join(path);
         let default = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("typegen_extensions")
@@ -595,7 +628,7 @@ The 2 common cases are:
             Ok(true) => custom,
             Ok(false) => default,
             Err(e) => {
-                println!("cant check typegen extensions override: {}", e);
+                println!("cant check typegen extensions override: {e}");
                 default
             }
         }
@@ -614,7 +647,7 @@ fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
             copy(entry.path(), to)?;
         } else {
             fs::copy(entry.path(), to)?;
-        };
+        }
     }
 
     Ok(())
@@ -638,7 +671,7 @@ mod tests {
         assert!(
             result.is_err(),
             "typegen unexpectedly succeeded for Uuid, without samples"
-        )
+        );
     }
 
     #[test]

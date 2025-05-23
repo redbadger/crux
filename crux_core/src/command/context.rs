@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::pin::{pin, Pin};
 
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use crossbeam_channel::Sender;
@@ -35,6 +36,7 @@ impl<Effect, Event> Clone for CommandContext<Effect, Event> {
 
 impl<Effect, Event> CommandContext<Effect, Event> {
     /// Create a one-off notification to the shell. This method returns immediately.
+    #[allow(clippy::missing_panics_doc)]
     pub fn notify_shell<Op>(&self, operation: Op)
     where
         Op: Operation,
@@ -49,6 +51,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
     /// Create a one-off request for an operation. Returns a future which eventually resolves
     /// with the output of the operation provided by the shell.
+    #[allow(clippy::missing_panics_doc)]
     pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
     where
         Op: Operation,
@@ -67,7 +70,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             move || {
                 effects
                     .send(effect)
-                    .expect("Command could not send request effect, effect channel disconnected")
+                    .expect("Command could not send request effect, effect channel disconnected");
             }
         };
 
@@ -76,6 +79,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
     /// Create a stream request for an operation. Returns a stream producing the
     /// with the output of the operation every time it is provided by the shell.
+    #[allow(clippy::missing_panics_doc)]
     pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
     where
         Op: Operation,
@@ -96,7 +100,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             move || {
                 effects
                     .send(effect)
-                    .expect("Command could not send stream effect, effect channel disconnected")
+                    .expect("Command could not send stream effect, effect channel disconnected");
             }
         };
 
@@ -105,17 +109,19 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
     /// Send an event which should be handed to the update function. This is used to communicate the result
     /// (or a sequence of results) of a command back to the app so that state can be updated accordingly
+    #[allow(clippy::missing_panics_doc)]
     pub fn send_event(&self, event: Event) {
         self.events
             .send(event)
-            .expect("Command could not send event, event channel disconnected")
+            .expect("Command could not send event, event channel disconnected");
     }
 
     /// Spawn a new task within the same command. The task will execute concurrently with other tasks within the
     /// command until it either concludes, is aborted, or until the parent command is aborted.
     ///
-    /// Returns a JoinHandle which can be used as a future to await the completion of the task. It can also
+    /// Returns a `JoinHandle` which can be used as a future to await the completion of the task. It can also
     /// be used to abort the task.
+    #[allow(clippy::missing_panics_doc)]
     pub fn spawn<F, Fut>(&self, make_future: F) -> JoinHandle
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
@@ -127,8 +133,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let future = make_future(ctx);
 
         let task = Task {
-            finished: Default::default(),
-            aborted: Default::default(),
+            finished: Arc::default(),
+            aborted: Arc::default(),
             future: future.boxed(),
             join_handle_wakers: receiver,
         };
@@ -174,7 +180,7 @@ impl<T: Unpin + Send> ShellStream<T> {
         // 2. replace self with with a Sent using the original receiver
         *self = ShellStream::Sent(output_receiver);
 
-        send_request()
+        send_request();
     }
 }
 

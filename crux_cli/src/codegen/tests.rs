@@ -25,7 +25,7 @@ fn load_rustdoc(name: &str) -> Result<Crate> {
         "crux_kv" => serde_json::from_slice(include_bytes!("fixtures/crux_kv.json"))?,
         "crux_platform" => serde_json::from_slice(include_bytes!("fixtures/crux_platform.json"))?,
         "crux_time" => serde_json::from_slice(include_bytes!("fixtures/crux_time.json"))?,
-        _ => panic!("unknown crate {}", name),
+        _ => panic!("unknown crate {name}"),
     })
 }
 
@@ -46,7 +46,7 @@ fn load_expected(name: &str) -> Result<Registry> {
         "tap_to_pay" => {
             serde_json::from_slice(include_bytes!("fixtures/tap_to_pay/expected.json"))?
         }
-        _ => panic!("unknown example {}", name),
+        _ => panic!("unknown example {name}"),
     })
 }
 

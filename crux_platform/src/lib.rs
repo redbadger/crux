@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 //! TODO mod docs
 
 pub mod command;
@@ -26,6 +27,7 @@ impl<Ev> Platform<Ev>
 where
     Ev: 'static,
 {
+    #[must_use]
     pub fn new(context: CapabilityContext<PlatformRequest, Ev>) -> Self {
         Self { context }
     }

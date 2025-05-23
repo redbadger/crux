@@ -2,7 +2,7 @@
 //!
 //! Crux capabilities don't interface with the outside world themselves, they carry
 //! out all their operations by exchanging messages with the platform specific shell.
-//! This module defines the protocol for crux_http to communicate with the shell.
+//! This module defines the protocol for `crux_http` to communicate with the shell.
 
 use async_trait::async_trait;
 use derive_builder::Builder;
@@ -48,10 +48,8 @@ impl std::fmt::Debug for HttpRequest {
             .field("url", &self.url);
         if !self.headers.is_empty() {
             builder.field("headers", &self.headers);
-        };
-        builder
-            .field("body", &format_args!("{}", body_repr))
-            .finish()
+        }
+        builder.field("body", &format_args!("{body_repr}")).finish()
     }
 }
 
@@ -87,25 +85,37 @@ impl HttpRequestBuilder {
         self
     }
 
+    /// Sets the query parameters of the request to the given value.
+    ///
+    /// # Errors
+    /// Returns an [`HttpError`] if the serialization fails.
     pub fn query(&mut self, query: &impl Serialize) -> crate::Result<&mut Self> {
-        let query_string = serde_qs::to_string(query)?;
-        println!("query_string: {}", query_string);
         if let Some(url) = &mut self.url {
             if url.contains('?') {
                 url.push('&');
             } else {
                 url.push('?');
             }
-            url.push_str(&query_string);
+            url.push_str(&serde_qs::to_string(query)?);
         }
+
         Ok(self)
     }
 
+    /// Sets the body of the request to the JSON representation of the given value.
+    ///
+    /// # Panics
+    /// Panics if the serialization fails.
     pub fn json(&mut self, body: impl serde::Serialize) -> &mut Self {
         self.body = Some(serde_json::to_vec(&body).unwrap());
         self
     }
 
+    /// Builds the request.
+    ///
+    /// # Panics
+    /// Panics if any required fields are missing.
+    #[must_use]
     pub fn build(&self) -> HttpRequest {
         self.fallible_build()
             .expect("All required fields were initialized")
@@ -127,6 +137,7 @@ pub struct HttpResponse {
 }
 
 impl HttpResponse {
+    #[must_use]
     pub fn status(status: u16) -> HttpResponseBuilder {
         HttpResponseBuilder {
             status: Some(status),
@@ -134,6 +145,7 @@ impl HttpResponse {
             body: Some(vec![]),
         }
     }
+    #[must_use]
     pub fn ok() -> HttpResponseBuilder {
         Self::status(200)
     }
@@ -148,11 +160,20 @@ impl HttpResponseBuilder {
         self
     }
 
+    /// Sets the body of the response to the given JSON.
+    ///
+    /// # Panics
+    /// If the JSON serialization fails.
     pub fn json(&mut self, body: impl serde::Serialize) -> &mut Self {
         self.body = Some(serde_json::to_vec(&body).unwrap());
         self
     }
 
+    /// Builds the response.
+    ///
+    /// # Panics
+    /// If a required field has not been initialized.
+    #[must_use]
     pub fn build(&self) -> HttpResponse {
         self.fallible_build()
             .expect("All required fields were initialized")
@@ -447,7 +468,7 @@ mod tests {
         }
 
         let query = QueryParams {
-            empty: "".to_string(),
+            empty: String::new(),
             none: None,
         };
 

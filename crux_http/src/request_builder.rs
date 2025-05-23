@@ -95,6 +95,8 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
         self.req.as_mut().unwrap().insert_header(key, value);
         self
@@ -115,6 +117,9 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn content_type(mut self, content_type: impl Into<Mime>) -> Self {
         self.req
             .as_mut()
@@ -143,6 +148,8 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn body(mut self, body: impl Into<Body>) -> Self {
         self.req.as_mut().unwrap().set_body(body);
         self
@@ -282,6 +289,10 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
+    /// # Errors
+    /// Returns an error if the query string cannot be serialized.
     pub fn query(mut self, query: &impl Serialize) -> std::result::Result<Self, HttpError> {
         self.req.as_mut().unwrap().set_query(query)?;
 
@@ -312,12 +323,17 @@ where
     ///     .send(Event::ReceiveResponse)
     /// # }
     /// ```
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn middleware(mut self, middleware: impl Middleware) -> Self {
         self.req.as_mut().unwrap().middleware(middleware);
         self
     }
 
     /// Return the constructed `Request`.
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
+    #[must_use]
     pub fn build(self) -> Request {
         self.req.unwrap()
     }
@@ -395,7 +411,9 @@ where
     /// Sends the constructed `Request` and returns its result as an update `Event`
     ///
     /// When finished, the response will wrapped in an event using `make_event` and
-    /// dispatched to the app's `update function.
+    /// dispatched to the app's `update` function.
+    /// # Panics
+    /// Panics if the `RequestBuilder` has not been initialized.
     pub fn send<F>(self, make_event: F)
     where
         F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
@@ -434,6 +452,7 @@ where
     ///
     /// Not all code working with futures (such as the `join` macro) works with `IntoFuture` (yet?), so this
     /// method is provided as a more discoverable `.into_future` alias, and may be deprecated later.
+    #[must_use]
     pub fn send_async(self) -> BoxFuture<'static, Result<ResponseAsync>> {
         <Self as std::future::IntoFuture>::into_future(self)
     }
@@ -462,10 +481,3 @@ impl<Ev> fmt::Debug for RequestBuilder<Ev> {
         fmt::Debug::fmt(&self.req, f)
     }
 }
-
-// impl From<RequestBuilder<Ev>> for Request {
-//     /// Converts a `crux_http::RequestBuilder` to a `crux_http::Request`.
-//     fn from(builder: RequestBuilder) -> Request {
-//         builder.build()
-//     }
-// }

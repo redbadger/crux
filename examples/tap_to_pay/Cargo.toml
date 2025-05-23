@@ -6,7 +6,7 @@ resolver = "1"
 authors = ["Red Badger Consulting Limited"]
 edition = "2021"
 keywords = ["tap-to-pay"]
-rust-version = "1.68"
+rust-version = "1.80"
 
 [workspace.dependencies]
 anyhow = "1.0.98"

@@ -88,11 +88,11 @@ mod shared {
                             .expect("response should have body");
 
                         let response = http
-                            .post(format!("http://example.com/{}", text))
+                            .post(format!("http://example.com/{text}"))
                             .await
                             .expect("Send async should succeed");
 
-                        context.update_app(Event::ComposeComplete(response.status()))
+                        context.update_app(Event::ComposeComplete(response.status()));
                     }
                 }),
                 Event::ConcurrentGets => caps.compose.spawn(|ctx| {
@@ -113,7 +113,7 @@ mod shared {
                         ))
                         .unwrap();
 
-                        ctx.update_app(Event::ComposeComplete(status))
+                        ctx.update_app(Event::ComposeComplete(status));
                     }
                 }),
                 Event::ComposeComplete(status) => {
@@ -125,7 +125,7 @@ mod shared {
                         .header("my_header")
                         .unwrap()
                         .iter()
-                        .map(|v| v.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect();
                 }
                 Event::Set(Err(_)) => {}
@@ -190,7 +190,7 @@ mod tests {
         assert_matches!(actual.clone(), Event::Set(Ok(response)) => {
             assert_eq!(response.body().unwrap(), "\"hello\"");
             assert_eq!(response.header("my_header").unwrap().iter()
-            .map(|v| v.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<_>>(), vec!["my_value1", "my_value2"]);
         });
 
@@ -379,6 +379,6 @@ mod tests {
             panic!("Expected original error back")
         };
 
-        assert_eq!(error, "Socket shenanigans prevented the request")
+        assert_eq!(error, "Socket shenanigans prevented the request");
     }
 }

@@ -41,6 +41,7 @@ impl ResponseAsync {
     /// assert_eq!(res.status(), 200);
     /// # Ok(()) }
     /// ```
+    #[must_use]
     pub fn status(&self) -> StatusCode {
         self.res.status()
     }
@@ -58,6 +59,7 @@ impl ResponseAsync {
     /// assert_eq!(res.version(), Some(Version::Http1_1));
     /// # Ok(()) }
     /// ```
+    #[must_use]
     pub fn version(&self) -> Option<Version> {
         self.res.version()
     }
@@ -153,6 +155,7 @@ impl ResponseAsync {
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// # Ok(()) }
     /// ```
+    #[must_use]
     pub fn content_type(&self) -> Option<Mime> {
         self.res.content_type()
     }
@@ -164,12 +167,14 @@ impl ResponseAsync {
     /// value to decide whether to use `Chunked` encoding, or set the
     /// response length.
     #[allow(clippy::len_without_is_empty)]
+    #[must_use]
     pub fn len(&self) -> Option<usize> {
         self.res.len()
     }
 
     /// Returns `true` if the set length of the body stream is zero, `false`
     /// otherwise.
+    #[must_use]
     pub fn is_empty(&self) -> Option<bool> {
         self.res.is_empty()
     }
@@ -192,7 +197,7 @@ impl ResponseAsync {
     /// Swaps the value of the body with another body, without deinitializing
     /// either one.
     pub fn swap_body(&mut self, body: &mut Body) {
-        self.res.swap_body(body)
+        self.res.swap_body(body);
     }
 
     /// Reads the entire request body into a byte buffer.
@@ -254,7 +259,7 @@ impl ResponseAsync {
         let claimed_encoding = mime
             .as_ref()
             .and_then(|mime| mime.param("charset"))
-            .map(|name| name.to_string());
+            .map(std::string::ToString::to_string);
         Ok(decode_body(bytes, claimed_encoding.as_deref())?)
     }
 
@@ -315,6 +320,22 @@ impl ResponseAsync {
     /// ```
     pub async fn body_form<T: serde::de::DeserializeOwned>(&mut self) -> crate::Result<T> {
         Ok(self.res.body_form().await?)
+    }
+}
+
+impl<'a> IntoIterator for &'a ResponseAsync {
+    type Item = (&'a HeaderName, &'a HeaderValues);
+    type IntoIter = headers::Iter<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a mut ResponseAsync {
+    type Item = (&'a HeaderName, &'a mut HeaderValues);
+    type IntoIter = headers::IterMut<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
     }
 }
 

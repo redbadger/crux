@@ -63,6 +63,7 @@ impl<Ev> ComposeContext<Ev> {
 }
 
 impl<Ev> Compose<Ev> {
+    #[must_use]
     pub fn new(context: CapabilityContext<Never, Ev>) -> Self {
         Self { context }
     }

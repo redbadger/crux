@@ -65,7 +65,7 @@ mod capability {
                                     command = commands_rx.recv().fuse() => {
                                         match command {
                                             Ok(Command::Pause) => {
-                                                accepting_tasks = false
+                                                accepting_tasks = false;
                                             },
                                             Ok(_) => {},
                                             Err(_) => break,
@@ -116,7 +116,7 @@ mod capability {
                 async move {
                     let _ = commands_tx.send(Command::Pause).await;
                 }
-            })
+            });
         }
 
         pub fn resume(&self) {
@@ -126,7 +126,7 @@ mod capability {
                 async move {
                     let _ = commands_tx.send(Command::Resume).await;
                 }
-            })
+            });
         }
 
         pub fn fetch_tree<F>(&self, id: usize, ev: F)
@@ -237,7 +237,7 @@ mod tests {
                     let effs: Vec<Effect> = core.resolve(&mut request, output).expect("to resolve");
 
                     for e in effs {
-                        effects.push_back(e)
+                        effects.push_back(e);
                     }
 
                     // Simulate network timing

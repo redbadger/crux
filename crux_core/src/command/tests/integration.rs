@@ -75,7 +75,7 @@ mod http {
             let request = Request {
                 method: "POST".to_string(),
                 url: url.into(),
-                body: if !body.is_empty() { Some(body) } else { None },
+                body: if body.is_empty() { None } else { Some(body) },
             };
 
             Command::request_from_shell(request)
@@ -192,7 +192,7 @@ fn get_increment_and_decrement() {
     request
         .resolve(http::Response {
             status: 204,
-            body: "".to_string(),
+            body: String::new(),
         })
         .expect("to resolve");
 
@@ -229,7 +229,7 @@ fn get_increment_and_decrement() {
     request
         .resolve(http::Response {
             status: 204,
-            body: "".to_string(),
+            body: String::new(),
         })
         .expect("to resolve");
 

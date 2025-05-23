@@ -38,7 +38,7 @@ pub struct Client {
     /// Holds the middleware stack.
     ///
     /// Note(Fishrock123): We do actually want this structure.
-    /// The outer Arc allows us to clone in .send() without cloning the array.
+    /// The outer Arc allows us to clone in `.send()` without cloning the array.
     /// The Vec allows us to add middleware at runtime.
     /// The inner Arc-s allow us to implement Clone without sharing the vector with the parent.
     /// We don't use a Mutex around the Vec here because adding a middleware during execution should be an error.
@@ -96,11 +96,17 @@ impl Client {
     }
 
     /// Send a `Request` using this client.
-    pub async fn send(&self, req: impl Into<Request>) -> Result<ResponseAsync> {
-        let mut req: Request = req.into();
+    ///
+    /// # Errors
+    /// Errors if there is an error sending the request.
+    ///
+    /// # Panics
+    /// Panics if we can't create an HTTP request.
+    pub async fn send(&self, request: impl Into<Request>) -> Result<ResponseAsync> {
+        let mut request: Request = request.into();
         let middleware = self.middleware.clone();
 
-        let mw_stack = match req.take_middleware() {
+        let mw_stack = match request.take_middleware() {
             Some(req_mw) => {
                 let mut mw = Vec::with_capacity(middleware.len() + req_mw.len());
                 mw.extend(middleware.iter().cloned());
@@ -110,14 +116,14 @@ impl Client {
             None => middleware,
         };
 
-        let next = Next::new(&mw_stack, &|req, client| {
+        let next = Next::new(&mw_stack, &|request, client| {
             Box::pin(async move {
-                let req = req
+                let request = request
                     .into_protocol_request()
                     .await
                     .expect("Failed to create request");
-                match client.effect_sender.send(req).await {
-                    HttpResult::Ok(res) => Ok(res.into()),
+                match client.effect_sender.send(request).await {
+                    HttpResult::Ok(response) => Ok(response.into()),
                     HttpResult::Err(e) => Err(e),
                 }
             })
@@ -131,29 +137,38 @@ impl Client {
             middleware: Arc::new(vec![]),
         };
 
-        let res = next.run(req, client).await?;
-        Ok(ResponseAsync::new(res.into()))
+        let response = next.run(request, client).await?;
+        Ok(ResponseAsync::new(response.into()))
     }
 
     /// Submit a `Request` and get the response body as bytes.
-    pub async fn recv_bytes(&self, req: impl Into<Request>) -> Result<Vec<u8>> {
-        let mut res = self.send(req.into()).await?;
-        res.body_bytes().await
+    ///
+    /// # Errors
+    /// Errors if there is an error sending the request
+    pub async fn recv_bytes(&self, request: impl Into<Request>) -> Result<Vec<u8>> {
+        let mut response = self.send(request.into()).await?;
+        response.body_bytes().await
     }
 
     /// Submit a `Request` and get the response body as a string.
-    pub async fn recv_string(&self, req: impl Into<Request>) -> Result<String> {
-        let mut res = self.send(req.into()).await?;
-        res.body_string().await
+    ///
+    /// # Errors
+    /// Errors if there is an error sending the request
+    pub async fn recv_string(&self, request: impl Into<Request>) -> Result<String> {
+        let mut response = self.send(request.into()).await?;
+        response.body_string().await
     }
 
     /// Submit a `Request` and decode the response body from json into a struct.
+    ///
+    /// # Errors
+    /// Errors if there is an error sending the request
     pub async fn recv_json<T: serde::de::DeserializeOwned>(
         &self,
-        req: impl Into<Request>,
+        request: impl Into<Request>,
     ) -> Result<T> {
-        let mut res = self.send(req.into()).await?;
-        res.body_json::<T>().await
+        let mut response = self.send(request.into()).await?;
+        response.body_json::<T>().await
     }
 
     /// Submit a `Request` and decode the response body from form encoding into a struct.
@@ -167,10 +182,10 @@ impl Client {
     /// an `Err` is returned.
     pub async fn recv_form<T: serde::de::DeserializeOwned>(
         &self,
-        req: impl Into<Request>,
+        request: impl Into<Request>,
     ) -> Result<T> {
-        let mut res = self.send(req.into()).await?;
-        res.body_form::<T>().await
+        let mut response = self.send(request.into()).await?;
+        response.body_form::<T>().await
     }
 
     /// Perform an HTTP `GET` request using the `Client` connection.
@@ -304,6 +319,7 @@ impl Client {
     }
 
     /// Get the current configuration.
+    #[must_use]
     pub fn config(&self) -> &Config {
         &self.config
     }
@@ -336,6 +352,6 @@ mod client_tests {
         assert_eq!(
             shell.take_requests_received(),
             vec![HttpRequest::get("https://example.com/").build()]
-        )
+        );
     }
 }

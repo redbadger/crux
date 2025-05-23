@@ -97,26 +97,13 @@ impl App for NoteEditor {
 
     type Capabilities = ();
 
-    // ANCHOR: update
+    #[allow(clippy::too_many_lines)] // ANCHOR: update
     fn update(
         &self,
         event: Self::Event,
         model: &mut Self::Model,
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
-        // delegate to our own update method for testing. This will not be necessary
-        // once the `App` trait has been modified to remove the `caps` parameter.
-        self.update(event, model)
-    }
-    // ANCHOR_END: update
-
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        model.into()
-    }
-}
-
-impl NoteEditor {
-    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
             Event::Insert(text) => {
                 let mut change = match &model.cursor {
@@ -172,7 +159,11 @@ impl NoteEditor {
                         let idx = *idx;
                         let (remove, new_idx) = match event {
                             Event::Backspace => ((idx - 1)..idx, idx - 1),
-                            Event::Delete => (idx..(idx + 1), idx),
+                            Event::Delete =>
+                            {
+                                #[allow(clippy::range_plus_one)]
+                                (idx..(idx + 1), idx)
+                            }
                             _ => unreachable!(),
                         };
 
@@ -245,11 +236,16 @@ impl NoteEditor {
             }
         }
     }
+    // ANCHOR_END: update
+
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        model.into()
+    }
 }
 
 fn restart_timer(current_handle: &mut Option<TimerHandle>) -> Command<Effect, Event> {
     if let Some(handle) = current_handle.take() {
-        handle.clear()
+        handle.clear();
     }
 
     let duration = Duration::from_millis(EDIT_TIMER);
@@ -264,10 +260,12 @@ struct CursorObserver {
 
 impl EditObserver for CursorObserver {
     fn body_insert(&mut self, loc: usize, len: usize, _text: &str) {
+        #[allow(clippy::cast_possible_wrap)]
         self.update_cursor(loc, len as isize);
     }
 
     fn body_remove(&mut self, loc: usize, len: usize) {
+        #[allow(clippy::cast_possible_wrap)]
         self.update_cursor(loc, -(len as isize));
     }
 }
@@ -276,24 +274,29 @@ impl CursorObserver {
     fn update_cursor(&mut self, loc: usize, delta: isize) {
         self.cursor = match &self.cursor {
             TextCursor::Position(position) => {
+                #[allow(clippy::cast_possible_wrap)]
                 let pos = *position as isize;
 
                 if loc < *position {
+                    #[allow(clippy::cast_sign_loss)]
                     TextCursor::Position((pos + delta) as usize)
                 } else {
                     self.cursor.clone()
                 }
             }
             TextCursor::Selection(range) => {
+                #[allow(clippy::cast_possible_wrap)]
                 let (start, end) = (range.start as isize, range.end as isize);
 
                 match range {
                     _ if loc < range.start => {
+                        #[allow(clippy::cast_sign_loss)]
                         let new_range = ((start + delta) as usize)..((end + delta) as usize);
 
                         TextCursor::Selection(new_range)
                     }
                     _ if loc >= range.start && loc < range.end => {
+                        #[allow(clippy::cast_sign_loss)]
                         let new_range = range.start..((end + delta) as usize);
 
                         TextCursor::Selection(new_range)
@@ -313,7 +316,7 @@ mod editing_tests {
 
     #[test]
     fn renders_text_and_cursor() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let model = Model {
             note: Note::with_text("hello"),
@@ -332,7 +335,7 @@ mod editing_tests {
 
     #[test]
     fn moves_cursor() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -340,7 +343,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::MoveCursor(5), &mut model);
+        let mut cmd = app.update(Event::MoveCursor(5), &mut model, &());
         cmd.expect_one_effect().expect_render();
 
         let view = app.view(&model);
@@ -351,7 +354,7 @@ mod editing_tests {
 
     #[test]
     fn changes_selection() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -359,7 +362,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Select(2, 5), &mut model);
+        let mut cmd = app.update(Event::Select(2, 5), &mut model, &());
         cmd.expect_one_effect().expect_render();
 
         let view = app.view(&model);
@@ -370,7 +373,7 @@ mod editing_tests {
 
     #[test]
     fn inserts_text_at_cursor_and_renders() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -378,7 +381,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Insert("l to the ".to_string()), &mut model);
+        let mut cmd = app.update(Event::Insert("l to the ".to_string()), &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -390,7 +393,7 @@ mod editing_tests {
     // ANCHOR: replaces_selection_and_renders
     #[test]
     fn replaces_selection_and_renders() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -399,7 +402,7 @@ mod editing_tests {
         };
 
         let event = Event::Insert("ter skelter".to_string());
-        let mut cmd = app.update(event, &mut model);
+        let mut cmd = app.update(event, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -411,7 +414,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_range_and_renders() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -419,7 +422,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model);
+        let mut cmd = app.update(Event::Replace(1, 4, "i, y".to_string()), &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -430,7 +433,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_empty_range_and_renders() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -441,6 +444,7 @@ mod editing_tests {
         let mut cmd = app.update(
             Event::Replace(1, 1, "ey, just saying h".to_string()),
             &mut model,
+            &(),
         );
         assert_effect!(cmd, Effect::Render(_));
 
@@ -452,7 +456,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_before_cursor() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -460,7 +464,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Backspace, &mut model);
+        let mut cmd = app.update(Event::Backspace, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -471,7 +475,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_after_cursor() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -479,7 +483,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Delete, &mut model);
+        let mut cmd = app.update(Event::Delete, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -490,7 +494,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_delete() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -498,7 +502,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Delete, &mut model);
+        let mut cmd = app.update(Event::Delete, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -509,7 +513,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_backspace() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -517,7 +521,7 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Backspace, &mut model);
+        let mut cmd = app.update(Event::Backspace, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -528,7 +532,7 @@ mod editing_tests {
 
     #[test]
     fn handles_emoji() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             // the emoji has a skintone modifier, which is a separate unicode character
@@ -538,7 +542,7 @@ mod editing_tests {
         };
 
         // Replace the ' w' after the emoji
-        let mut cmd = app.update(Event::Replace(8, 10, "🥳🙌🏻 w".to_string()), &mut model);
+        let mut cmd = app.update(Event::Replace(8, 10, "🥳🙌🏻 w".to_string()), &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         let view = app.view(&model);
@@ -558,7 +562,7 @@ mod save_load_tests {
 
     #[test]
     fn opens_a_document() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
         let mut note = Note::with_text("LOADED");
 
         let mut model = Model {
@@ -568,7 +572,7 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let mut cmd = app.update(Event::Open, &mut model);
+        let mut cmd = app.update(Event::Open, &mut model, &());
         let mut effects = cmd.effects();
 
         let request = &mut effects.next().unwrap().expect_key_value();
@@ -594,7 +598,7 @@ mod save_load_tests {
         let load_event = cmd.events().next().unwrap();
         assert!(matches!(load_event, Event::Load(Ok(_))));
 
-        let mut cmd = app.update(load_event, &mut model);
+        let mut cmd = app.update(load_event, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
 
         assert_eq!(app.view(&model).text, "LOADED");
@@ -602,7 +606,7 @@ mod save_load_tests {
 
     #[test]
     fn creates_a_document_if_it_cant_open_one() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -611,7 +615,7 @@ mod save_load_tests {
         };
 
         // this will eventually take a document ID
-        let mut cmd = app.update(Event::Open, &mut model);
+        let mut cmd = app.update(Event::Open, &mut model, &());
         let mut effects = cmd.effects().filter(Effect::is_key_value);
 
         let request = &mut effects.next().unwrap().expect_key_value();
@@ -634,14 +638,14 @@ mod save_load_tests {
         let load_event = cmd.events().next().unwrap();
         assert!(matches!(load_event, Event::Load(Ok(None))));
 
-        let mut cmd = app.update(load_event, &mut model);
+        let mut cmd = app.update(load_event, &mut model, &());
         let request = cmd.effects().find_map(Effect::into_key_value).unwrap();
 
         assert_eq!(
             request.operation,
             KeyValueOperation::Set {
                 key: "note".to_string(),
-                value: model.note.save().into(),
+                value: model.note.save(),
             }
         );
     }
@@ -649,7 +653,7 @@ mod save_load_tests {
     // ANCHOR: starts_a_timer_after_an_edit
     #[test]
     fn starts_a_timer_after_an_edit() {
-        let app = NoteEditor::default();
+        let app = NoteEditor;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -659,12 +663,12 @@ mod save_load_tests {
 
         // An edit should trigger a timer
         let event = Event::Insert("something".to_string());
-        let mut cmd1 = app.update(event, &mut model);
+        let mut cmd1 = app.update(event, &mut model, &());
         let mut requests = cmd1.effects().filter_map(Effect::into_time);
 
         let request = requests.next().unwrap();
         let (first_id, duration) = match &request.operation {
-            TimeRequest::NotifyAfter { id, duration } => (id.clone(), duration),
+            TimeRequest::NotifyAfter { id, duration } => (*id, duration),
             _ => panic!("expected a NotifyAfter"),
         };
         assert_eq!(duration, &Duration::from_secs(1).into());
@@ -674,13 +678,13 @@ mod save_load_tests {
 
         // Before the timer fires, insert another character, which should
         // cancel the timer and start a new one
-        let mut cmd2 = app.update(Event::Replace(1, 2, "a".to_string()), &mut model);
+        let mut cmd2 = app.update(Event::Replace(1, 2, "a".to_string()), &mut model, &());
         let mut requests = cmd2.effects().filter_map(Effect::into_time);
 
         // but first, the original request (cmd1) should resolve with a clear
-        let cancel_request = cmd1.effects().filter_map(Effect::into_time).next().unwrap();
+        let cancel_request = cmd1.effects().find_map(Effect::into_time).unwrap();
         let cancel_id = match &cancel_request.operation {
-            TimeRequest::Clear { id } => id.clone(),
+            TimeRequest::Clear { id } => *id,
             _ => panic!("expected a Clear"),
         };
         assert_eq!(cancel_id, first_id);
@@ -688,7 +692,7 @@ mod save_load_tests {
         // request to start the second timer
         let mut start_request = requests.next().unwrap();
         let second_id = match &start_request.operation {
-            TimeRequest::NotifyAfter { id, duration: _ } => id.clone(),
+            TimeRequest::NotifyAfter { id, duration: _ } => *id,
             _ => panic!("expected a NotifyAfter"),
         };
 
@@ -704,7 +708,7 @@ mod save_load_tests {
 
         // send the elapsed event back into the app
         let event = cmd2.events().next().unwrap();
-        let mut cmd3 = app.update(event, &mut model);
+        let mut cmd3 = app.update(event, &mut model, &());
 
         // we should see an effect to save the note
         let mut effects = cmd3.effects();
@@ -713,12 +717,12 @@ mod save_load_tests {
             save.operation,
             KeyValueOperation::Set {
                 key: "note".to_string(),
-                value: model.note.save().into(),
+                value: model.note.save(),
             }
         );
 
         // One more edit. Should result in a new timer
-        let mut cmd4 = app.update(Event::Backspace, &mut model);
+        let mut cmd4 = app.update(Event::Backspace, &mut model, &());
         let mut effects = cmd4.effects();
 
         let _publish = effects.next().unwrap().expect_pub_sub();
@@ -755,8 +759,8 @@ mod sync_tests {
     // A jig to make testing sync a bit easier
     impl Peer {
         fn new() -> Self {
-            let app = NoteEditor::default();
-            let model = Default::default();
+            let app = NoteEditor;
+            let model = Model::default();
 
             Self {
                 app,
@@ -769,12 +773,12 @@ mod sync_tests {
 
         // Update, picking out and keeping PubSub effects
         fn update(&mut self, event: Event) {
-            let mut cmd = self.app.update(event, &mut self.model);
+            let mut cmd = self.app.update(event, &mut self.model, &());
 
             let mut subscribe = false;
             for effect in cmd.effects() {
-                match effect {
-                    Effect::PubSub(request) => match request.operation {
+                if let Effect::PubSub(request) = effect {
+                    match request.operation {
                         PubSubOperation::Subscribe => {
                             self.subscription = Some(request);
                             subscribe = true;
@@ -782,8 +786,7 @@ mod sync_tests {
                         PubSubOperation::Publish(bytes) => {
                             self.edits.push_back(bytes.clone());
                         }
-                    },
-                    _ => (),
+                    }
                 }
             }
             if subscribe {
@@ -797,7 +800,7 @@ mod sync_tests {
 
         fn send_edits(&mut self, edits: &[Vec<u8>]) {
             for edit in edits {
-                print!("Sending edit: {:?}", edit);
+                print!("Sending edit: {edit:?}");
                 self.subscription
                     .as_mut()
                     .expect("to have a subscription")

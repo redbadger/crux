@@ -70,7 +70,7 @@ fn dotted_case(s: &str) -> Result<String, String> {
     if s == s.to_snake_case().replace('_', ".") {
         Ok(s.to_string())
     } else {
-        Err(format!("Invalid dotted case: {}", s))
+        Err(format!("Invalid dotted case: {s}"))
     }
 }
 
@@ -78,7 +78,7 @@ fn pascal_case(s: &str) -> Result<String, String> {
     if s == s.to_pascal_case() {
         Ok(s.to_string())
     } else {
-        Err(format!("Invalid pascal case: {}", s))
+        Err(format!("Invalid pascal case: {s}"))
     }
 }
 
@@ -86,7 +86,7 @@ fn snake_case(s: &str) -> Result<String, String> {
     if s == s.to_snake_case() {
         Ok(s.to_string())
     } else {
-        Err(format!("Invalid snake case: {}", s))
+        Err(format!("Invalid snake case: {s}"))
     }
 }
 
