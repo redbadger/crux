@@ -15,8 +15,7 @@ impl Check {
     pub(crate) fn run(&self, ctx: &Context) -> Result<()> {
         println!("Check...");
         for dir in &ctx.workspaces {
-            let _dir = ctx.sh.push_dir(dir);
-            println!("~ {}", dir.display());
+            let _dir = ctx.push_dir(dir);
             cmd!(ctx.sh, "{CARGO} check --all-features").run()?;
             if self.clippy {
                 cmd!(

@@ -16,8 +16,7 @@ impl Test {
     pub(crate) fn run(&self, ctx: &Context) -> Result<()> {
         println!("Test...");
         for dir in &ctx.workspaces {
-            let _dir = ctx.sh.push_dir(dir);
-            println!("~ {}", dir.display());
+            let _dir = ctx.push_dir(dir);
             cmd!(ctx.sh, "{CARGO} nextest run --all-features").run()?;
             if self.doc {
                 cmd!(ctx.sh, "{CARGO} test --doc --all-features").run()?;

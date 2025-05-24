@@ -16,8 +16,7 @@ impl Format {
     pub(crate) fn run(&self, ctx: &Context) -> Result<()> {
         println!("Format...");
         for dir in &ctx.workspaces {
-            let _dir = ctx.sh.push_dir(dir);
-            println!("~ {}", dir.display());
+            let _dir = ctx.push_dir(dir);
             let args = if self.fix { None } else { Some("--check") };
             cmd!(ctx.sh, "{CARGO} fmt --all {args...}").run()?;
             println!();

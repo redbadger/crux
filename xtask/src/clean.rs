@@ -16,8 +16,7 @@ impl Clean {
     pub(crate) fn run(&self, ctx: &Context) -> Result<()> {
         println!("Clean...");
         for dir in &ctx.workspaces {
-            let _dir = ctx.sh.push_dir(dir);
-            println!("~ {}", dir.display());
+            let _dir = ctx.push_dir(dir);
             cmd!(ctx.sh, "{CARGO} clean").run()?;
             if self.generated {
                 cmd!(ctx.sh, "echo rm -rf */generated").run()?;

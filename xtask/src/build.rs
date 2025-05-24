@@ -16,8 +16,7 @@ impl Build {
     pub(crate) fn run(&self, ctx: &Context) -> Result<()> {
         println!("Build...");
         for dir in &ctx.workspaces {
-            let _dir = ctx.sh.push_dir(dir);
-            println!("~ {}", dir.display());
+            let _dir = ctx.push_dir(dir);
             if self.clean {
                 cmd!(ctx.sh, "{CARGO} clean").run()?;
             }

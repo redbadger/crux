@@ -1,13 +1,13 @@
 [package]
-publish = false
 name = "crux_cli"
 version = "0.1.0"
+description = "Command line tool for crux_core"
 authors.workspace = true
 edition.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
-rust-version = "1.86"       # this helps us get the correct rustdoc JSON format version (>=39)
+rust-version = "1.86"                           # this helps us get the correct rustdoc JSON format version (>=39)
 
 [[bin]]
 name = "crux"
