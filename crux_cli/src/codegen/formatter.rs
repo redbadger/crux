@@ -348,7 +348,11 @@ impl From<&Type> for Format {
                             "Option" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    _ => todo!(),
+                                    Some(other) => panic!(
+                                        "Option<T> expects a type parameter, got: {:?}",
+                                        other
+                                    ),
+                                    None => panic!("Option<T> requires exactly one type parameter"),
                                 };
                                 Format::Option(Box::new(format))
                             }
@@ -356,7 +360,11 @@ impl From<&Type> for Format {
                             "Vec" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    _ => todo!(),
+                                    Some(other) => panic!(
+                                        "Vec<T> expects a type parameter, got: {:?}",
+                                        other
+                                    ),
+                                    None => panic!("Vec<T> requires exactly one type parameter"),
                                 };
                                 Format::Seq(Box::new(format))
                             }
@@ -365,7 +373,11 @@ impl From<&Type> for Format {
                                 // since Box is just a heap allocation wrapper
                                 match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    _ => todo!(),
+                                    Some(other) => panic!(
+                                        "Box<T> expects a type parameter, got: {:?}",
+                                        other
+                                    ),
+                                    None => panic!("Box<T> requires exactly one type parameter"),
                                 }
                             }
                             "HashMap" | "BTreeMap" => {
@@ -373,19 +385,30 @@ impl From<&Type> for Format {
                                 if args.len() >= 2 {
                                     let key_format = match args.get(0) {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        _ => todo!(),
+                                        Some(other) => panic!(
+                                            "{}<K, V> expects type parameter for K, got: {:?}",
+                                            name, other
+                                        ),
+                                        None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     let value_format = match args.get(1) {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        _ => todo!(),
+                                        Some(other) => panic!(
+                                            "{}<K, V> expects type parameter for V, got: {:?}",
+                                            name, other
+                                        ),
+                                        None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     Format::Map {
                                         key: Box::new(key_format),
                                         value: Box::new(value_format),
                                     }
                                 } else {
-                                    // Fallback to TypeName if not enough args
-                                    Format::TypeName(name)
+                                    panic!(
+                                        "{} requires exactly two type parameters <K, V>, got {} parameters",
+                                        name,
+                                        args.len()
+                                    )
                                 }
                             }
                             _ => Format::TypeName(name),
