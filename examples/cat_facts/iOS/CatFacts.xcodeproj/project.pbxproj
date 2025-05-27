@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,11 +15,8 @@
 		831E091105B555E7D0085CF4 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BEED0A11FB2044F35FBCD25B /* Preview Assets.xcassets */; };
 		8CEEE500CE6BE0647260B67F /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 585C187420F6F4F4142F646D /* SharedTypes */; };
 		91A375A39D8A4F827B873AF3 /* CatFactsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F008C3C1A819A3D7658E59 /* CatFactsApp.swift */; };
-		C6A871270F87D449FB7FE5C4 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 4D27A7B150B96621935C1300 /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		CC41DEC62D9485290028D276 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC41DEC52D9485290028D276 /* SharedTypes */; };
-		CC5153862D946B4C00BA5660 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC5153852D946B4C00BA5660 /* SharedTypes */; };
-		CC5153892D946E6800BA5660 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = CC5153882D946E6800BA5660 /* SharedTypes */; };
-		F68573BF507ACC074620C5D8 /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A500489520C085A22DE7285 /* libshared_static.a */; };
+		C6A871270F87D449FB7FE5C4 /* (null) in Resources */ = {isa = PBXBuildFile; fileRef = 4D27A7B150B96621935C1300; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F68573BF507ACC074620C5D8 /* libshared_static.a.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A500489520C085A22DE7285 /* libshared_static.a.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -28,8 +25,6 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
-			inputFiles = (
-			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -65,13 +60,6 @@
 			remoteGlobalIDString = CA605677FFD79A6F07B14E08;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CCE079142AA1F7F900CD4B57 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = F7A91C46D50C923426AE058D /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA6027CBEBE510F7F7FCAC5B;
-			remoteInfo = "shared-cdylib";
-		};
 		EC5B879D9A861F1E8FC33D84 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F7A91C46D50C923426AE058D /* Shared */;
@@ -85,10 +73,11 @@
 		17F008C3C1A819A3D7658E59 /* CatFactsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatFactsApp.swift; sourceTree = "<group>"; };
 		194A00C08EEF11C3CC1340EE /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		1E4056BAC32CC8AC7A9740CA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		5793BC3BA0A0576A14F5F050 /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
+		5793BC3BA0A0576A14F5F050 /* shared.udl */ = {isa = PBXFileReference; path = shared.udl; sourceTree = "<group>"; };
 		6F004D450518226D7B50A267 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8538B3F4FC8472F5C93ACD80 /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
-		85AA482E612CD48B918497C9 /* CatFacts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CatFacts.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		85AA482E612CD48B918497C9 /* CatFacts.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CatFacts.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B159CE6ED67571255C05D2C3 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		BA04D6CC7F18E9A653D26BDD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BEED0A11FB2044F35FBCD25B /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F7A91C46D50C923426AE058D /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
@@ -99,11 +88,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F68573BF507ACC074620C5D8 /* libshared_static.a in Frameworks */,
-				CC5153862D946B4C00BA5660 /* SharedTypes in Frameworks */,
-				CC41DEC62D9485290028D276 /* SharedTypes in Frameworks */,
+				F68573BF507ACC074620C5D8 /* libshared_static.a.a in Frameworks */,
 				8CEEE500CE6BE0647260B67F /* SharedTypes in Frameworks */,
-				CC5153892D946E6800BA5660 /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -153,10 +139,19 @@
 			isa = PBXGroup;
 			children = (
 				0ECDC98F0209A1C6F2CAA14D /* CatFacts */,
+				CFF2128F5908E2CBC07A8E3E /* Packages */,
 				2C7829583F1579E7AC74C08C /* src */,
 				D3FCB02205D19ED1EDA7794F /* Products */,
 				632E821FBB8ECA7154D2ED0E /* Projects */,
 			);
+			sourceTree = "<group>";
+		};
+		CFF2128F5908E2CBC07A8E3E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				B159CE6ED67571255C05D2C3 /* SharedTypes */,
+			);
+			name = Packages;
 			sourceTree = "<group>";
 		};
 		D3FCB02205D19ED1EDA7794F /* Products */ = {
@@ -170,9 +165,8 @@
 		E0B8F6C21E620EB7C7D817BC /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6A500489520C085A22DE7285 /* libshared_static.a */,
-				CCE079152AA1F7F900CD4B57 /* shared.dylib */,
-				4D27A7B150B96621935C1300 /* uniffi-bindgen */,
+				4D27A7B150B96621935C1300,
+				6A500489520C085A22DE7285 /* libshared_static.a.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -198,9 +192,6 @@
 			name = CatFacts;
 			packageProductDependencies = (
 				585C187420F6F4F4142F646D /* SharedTypes */,
-				CC5153852D946B4C00BA5660 /* SharedTypes */,
-				CC5153882D946E6800BA5660 /* SharedTypes */,
-				CC41DEC52D9485290028D276 /* SharedTypes */,
 			);
 			productName = CatFacts;
 			productReference = 85AA482E612CD48B918497C9 /* CatFacts.app */;
@@ -214,6 +205,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 10A7DA8EB465ED1610BFC66E /* Build configuration list for PBXProject "CatFacts" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -224,9 +217,11 @@
 				en,
 			);
 			mainGroup = C4A5B9BF461AAFDF4CBFCCBD;
+			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				CC41DEC42D9485290028D276 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+				163C844250AE6E08F6F305AE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
 			);
+			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -242,25 +237,16 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		4D27A7B150B96621935C1300 /* uniffi-bindgen */ = {
+		4D27A7B150B96621935C1300 = {
 			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.executable";
-			path = "uniffi-bindgen";
 			remoteRef = BB87FF9167F6D6BE263FBB58 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		6A500489520C085A22DE7285 /* libshared_static.a */ = {
+		6A500489520C085A22DE7285 /* libshared_static.a.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			path = libshared_static.a;
+			path = libshared_static.a.a;
 			remoteRef = 898B1C86AA976270992A4381 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		CCE079152AA1F7F900CD4B57 /* shared.dylib */ = {
-			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.dylib";
-			path = shared.dylib;
-			remoteRef = CCE079142AA1F7F900CD4B57 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
@@ -272,7 +258,7 @@
 			files = (
 				334B08822AC4D801207951A0 /* Assets.xcassets in Resources */,
 				831E091105B555E7D0085CF4 /* Preview Assets.xcassets in Resources */,
-				C6A871270F87D449FB7FE5C4 /* uniffi-bindgen in Resources */,
+				C6A871270F87D449FB7FE5C4 /* (null) in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -429,8 +415,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = CatFacts/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -451,8 +438,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = CatFacts/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -492,7 +480,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		CC41DEC42D9485290028D276 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+		163C844250AE6E08F6F305AE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../shared_types/generated/swift/SharedTypes;
 		};
@@ -500,18 +488,6 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		585C187420F6F4F4142F646D /* SharedTypes */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SharedTypes;
-		};
-		CC41DEC52D9485290028D276 /* SharedTypes */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SharedTypes;
-		};
-		CC5153852D946B4C00BA5660 /* SharedTypes */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SharedTypes;
-		};
-		CC5153882D946E6800BA5660 /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
 		};
