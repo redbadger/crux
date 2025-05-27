@@ -423,7 +423,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crux_core"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -443,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -464,7 +464,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -475,7 +475,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "darling",
  "heck 0.5.0",
@@ -487,7 +487,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "crux_core",
  "serde",
@@ -495,7 +495,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "chrono",
  "crux_core",

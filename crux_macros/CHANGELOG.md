@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.1](https://github.com/redbadger/crux/compare/crux_macros-v0.6.0...crux_macros-v0.6.1) - 2025-05-27
+
+Minor changes, not breaking.
+
+### Changes
+
+- Automatically implement `TryFrom` to fallibly downcast Effects into specific Requests
+- Fix bug in `#[effect(typegen)]` macro that didn't recognise enum name
+- remove need for nightly on new typegen
+- uniffi 0.29.2 and other deps
+- clippy pedantic
+
 ## [0.6.0](https://github.com/redbadger/crux/compare/crux_macros-v0.5.0...crux_macros-v0.6.0) - 2025-04-09
 
 ### Breaking Change
