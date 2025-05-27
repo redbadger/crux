@@ -1,0 +1,20 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+cargo_metadata = "0.19.2"
+clap = { version = "4.5.38", features = ["derive"] }
+human-repr = "1.1.0"
+ignore = "0.4.23"
+xshell = "0.2.7"
+
+[lints]
+workspace = true

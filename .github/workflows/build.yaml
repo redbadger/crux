@@ -63,8 +63,7 @@ jobs:
 
       - name: Run tests
         shell: bash
-        run: |
-          ./scripts/test.sh
+        run: ./scripts/test.sh
 
   find-examples:
     runs-on: ubuntu-latest
@@ -136,10 +135,8 @@ jobs:
 
       - name: Run tests
         shell: bash
-        run: |
-          cargo nextest run --all-features
+        run: cargo nextest run --all-features
 
       - name: Build & run doctests
         shell: bash
-        run: |
-          cargo test --doc --no-fail-fast
+        run: cargo test --doc --no-fail-fast

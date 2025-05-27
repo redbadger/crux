@@ -1,2 +1,2 @@
 [alias]
-xcode = ["bin", "cargo-xcode"]
+xtask = "run --package xtask --"
