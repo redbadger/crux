@@ -396,6 +396,8 @@ impl From<&Type> for Format {
                 "u32" => Format::U32,
                 "u64" => Format::U64,
                 "u128" => Format::U128,
+                "f32" => Format::F32,
+                "f64" => Format::F64,
                 s => panic!("need to implement primitive {s}"),
             },
             Type::FunctionPointer(_function_pointer) => todo!(),
