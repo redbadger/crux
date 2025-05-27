@@ -62,11 +62,10 @@ mod tests {
             .unwrap();
 
         let actual = cmd.events().next().unwrap();
-        match &actual {
-            Event::CurrentWeather(event) => {
-                assert!(matches!(**event, CurrentWeatherEvent::SetWeather(_)))
-            }
-            _ => panic!("Expected CurrentWeather event"),
+        if let Event::CurrentWeather(event) = &actual {
+            assert!(matches!(**event, CurrentWeatherEvent::SetWeather(_)))
+        } else {
+            panic!("Expected CurrentWeather event")
         }
 
         // send the `SetWeather` event back to the app

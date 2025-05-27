@@ -181,11 +181,10 @@ mod tests {
 
         // Verify we get the Set event first
         let event = cmd.events().next().unwrap();
-        match &event {
-            Event::Favorites(event) => {
-                assert!(matches!(**event, FavoritesEvent::Set))
-            }
-            _ => panic!("Expected Favorites event"),
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
         }
         assert!(model.favorites.is_empty());
 
@@ -301,11 +300,10 @@ mod tests {
 
         // Verify we get the Set event first
         let event = cmd.events().next().unwrap();
-        match &event {
-            Event::Favorites(event) => {
-                assert!(matches!(**event, FavoritesEvent::Set))
-            }
-            _ => panic!("Expected Favorites event"),
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
         }
         assert!(model.favorites.is_empty());
 

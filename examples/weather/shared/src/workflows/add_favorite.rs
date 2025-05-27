@@ -52,11 +52,10 @@ mod tests {
 
         // Verify we get the Set event
         let event = cmd.events().next().unwrap();
-        match &event {
-            Event::Favorites(event) => {
-                assert!(matches!(**event, FavoritesEvent::Set))
-            }
-            _ => panic!("Expected Favorites event"),
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
         }
 
         // Verify the favorite was added and state was updated
@@ -98,11 +97,10 @@ mod tests {
 
         // Verify we get the Set event which will trigger KV storage
         let event = cmd.events().next().unwrap();
-        match &event {
-            Event::Favorites(event) => {
-                assert!(matches!(**event, FavoritesEvent::Set))
-            }
-            _ => panic!("Expected Favorites event"),
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
         }
 
         // Verify the favorite was added
@@ -133,11 +131,10 @@ mod tests {
         // Add first favorite
         let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo1.clone())), &mut model);
         let event = cmd.events().next().unwrap();
-        match &event {
-            Event::Favorites(event) => {
-                assert!(matches!(**event, FavoritesEvent::Set))
-            }
-            _ => panic!("Expected Favorites event"),
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
         }
         assert_eq!(model.favorites.len(), 1);
         assert_eq!(model.favorites[0].geo, geo1);
@@ -145,11 +142,10 @@ mod tests {
         // Add second favorite
         let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo2.clone())), &mut model);
         let event = cmd.events().next().unwrap();
-        match &event {
-            Event::Favorites(event) => {
-                assert!(matches!(**event, FavoritesEvent::Set))
-            }
-            _ => panic!("Expected Favorites event"),
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
         }
         assert_eq!(model.favorites.len(), 2);
         assert_eq!(model.favorites[1].geo, geo2);
