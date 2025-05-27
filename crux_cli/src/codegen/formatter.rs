@@ -360,6 +360,14 @@ impl From<&Type> for Format {
                                 };
                                 Format::Seq(Box::new(format))
                             }
+                            "Box" => {
+                                // Box<T> is semantically equivalent to T for serialization
+                                // since Box is just a heap allocation wrapper
+                                match args.first() {
+                                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                                    _ => todo!(),
+                                }
+                            }
                             _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
