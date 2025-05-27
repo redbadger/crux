@@ -23,7 +23,7 @@ friendly to new contributors are tagged with "contributor friendly".
 
 **I have an idea for a feature!**
 
-1. Open a chat topic.
+1. Open a chat topic or discussion.
 
 **I've implemented a feature!**
 
@@ -66,9 +66,3 @@ saying it will never be accepted, but the odds are stacked against you.
 Issues tagged with "feature" represent accepted, well-scoped feature requests.
 If you implement an issue tagged with feature as described in the issue, your
 pull request will be accepted with a high degree of certainty.
-
-> [!NOTE]
->
-> **Pull requests are NOT a place to discuss feature design.** Please do
-> not open a WIP pull request to discuss a feature. Instead, use a discussion
-> and link to your branch.
