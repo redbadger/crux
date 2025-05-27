@@ -36,12 +36,20 @@ impl Publish {
         let manifest = project_root.join("Cargo.toml");
         let metadata = MetadataCommand::new().manifest_path(&manifest).exec()?;
         let versions = versions(&metadata);
-        for pkg in PACKAGES {
+        let packages = if ctx.packages.is_empty() {
+            PACKAGES.to_vec()
+        } else {
+            ctx.packages
+                .iter()
+                .map(std::string::String::as_str)
+                .collect()
+        };
+        for pkg in packages {
             let version = &versions[pkg];
             println!("Publishing {pkg} at version {version}...");
             let _dir = ctx.push_dir(pkg);
             let dry_run = if self.yes { None } else { Some("--dry-run") };
-            cmd!(ctx.sh, "{CARGO} publish {dry_run...}").run()?;
+            cmd!(ctx.sh, "{CARGO} publish --package {pkg} {dry_run...}").run()?;
             if self.yes {
                 let tag = format!("{pkg}-v{version}");
                 cmd!(ctx.sh, "git tag {tag}").run()?;

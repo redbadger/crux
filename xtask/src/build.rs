@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Args;
 use xshell::cmd;
 
-use crate::Context;
+use crate::{package_args, Context};
 
 const CARGO: &str = crate::CARGO;
 
@@ -17,10 +17,13 @@ impl Build {
         println!("Build...");
         for dir in &ctx.workspaces {
             let _dir = ctx.push_dir(dir);
+            let package_args = &package_args(ctx);
             if self.clean {
-                cmd!(ctx.sh, "{CARGO} clean").run()?;
+                cmd!(ctx.sh, "{CARGO} clean").args(package_args).run()?;
             }
-            cmd!(ctx.sh, "{CARGO} build --all-features").run()?;
+            cmd!(ctx.sh, "{CARGO} build --all-features")
+                .args(package_args)
+                .run()?;
             println!();
         }
         Ok(())

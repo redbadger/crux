@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Args;
 use xshell::cmd;
 
-use crate::Context;
+use crate::{package_args, Context};
 
 const CARGO: &str = crate::CARGO;
 
@@ -18,7 +18,10 @@ impl Format {
         for dir in &ctx.workspaces {
             let _dir = ctx.push_dir(dir);
             let args = if self.fix { None } else { Some("--check") };
-            cmd!(ctx.sh, "{CARGO} fmt --all {args...}").run()?;
+            let package_args = &package_args(ctx);
+            cmd!(ctx.sh, "{CARGO} fmt --all {args...}")
+                .args(package_args)
+                .run()?;
             println!();
         }
         Ok(())

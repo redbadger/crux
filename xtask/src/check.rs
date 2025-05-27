@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Args;
 use xshell::cmd;
 
-use crate::Context;
+use crate::{package_args, Context};
 
 const CARGO: &str = crate::CARGO;
 
@@ -16,13 +16,15 @@ impl Check {
         println!("Check...");
         for dir in &ctx.workspaces {
             let _dir = ctx.push_dir(dir);
-            cmd!(ctx.sh, "{CARGO} check --all-features").run()?;
-            if self.clippy {
-                cmd!(
-                    ctx.sh,
-                    "{CARGO} clippy -- --no-deps -Dclippy::pedantic -Dwarnings"
-                )
+            let package_args = &package_args(ctx);
+            cmd!(ctx.sh, "{CARGO} check --all-features")
+                .args(package_args)
                 .run()?;
+            if self.clippy {
+                cmd!(ctx.sh, "{CARGO} clippy")
+                    .args(package_args)
+                    .args(vec!["--", "--no-deps", "-Dclippy::pedantic", "-Dwarnings"])
+                    .run()?;
             }
             println!();
         }

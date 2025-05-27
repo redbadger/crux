@@ -16,7 +16,7 @@ use anyhow::{anyhow, Result};
 use build::Build;
 use cargo_metadata::MetadataCommand;
 use check::Check;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use clean::Clean;
 use format::Format;
 use human_repr::HumanDuration;
@@ -30,27 +30,48 @@ const CARGO: &str = env!("CARGO");
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    #[arg(short, long)]
-    all: bool,
+    #[command(flatten)]
+    scope: Scope,
 
     #[command(subcommand)]
     command: Commands,
 }
 
+#[derive(Args)]
+#[group(required = false, multiple = false)]
+struct Scope {
+    /// finds all the workspaces in the repository, and performs the given command on each
+    #[arg(short, long)]
+    all: bool,
+
+    /// performs the given command on the specified packages in the root workspace
+    #[arg(short, long)]
+    package: Option<Vec<String>>,
+}
+
 #[derive(Subcommand)]
 enum Commands {
+    None,
+    /// Build the root workspace (or all workspaces if --all), optionally cleaning before building
     Build(Build),
+    /// Check the root workspace (or all workspaces if --all), with optional clippy pedantic checks
     Check(Check),
+    /// Clean the root workspace (or all workspaces if --all), optionally removing generated code
     Clean(Clean),
+    /// Format the root workspace (or all workspaces if --all), optionally fixing code where possible
     Format(Format),
+    /// Publish the root workspace (or all workspaces if --all), defaults to `--dry-run`, specify `--yes` to publish
     Publish(Publish),
+    /// Test the root workspace (or all workspaces if --all), optionally running doc tests
     Test(Test),
+    /// Run the relevant commands (to match CI) on the root workspace (or all workspaces if --all)
     CI,
 }
 
 struct Context {
     sh: Shell,
     workspaces: Vec<PathBuf>,
+    packages: Vec<String>,
 }
 
 impl Context {
@@ -71,15 +92,24 @@ fn main() -> Result<()> {
     let project_root = project_root()?;
     sh.change_dir(&project_root);
 
-    let workspaces = if cli.all {
+    let workspaces = if cli.scope.all {
         workspaces()?
     } else {
         vec![project_root]
     };
 
-    let ctx = Context { sh, workspaces };
+    let packages = cli.scope.package.unwrap_or_default();
+
+    let ctx = Context {
+        sh,
+        workspaces,
+        packages,
+    };
+    println!("Workspace: {:?}", ctx.workspaces);
+    println!("Packages: {:?}", ctx.packages);
 
     match &cli.command {
+        Commands::None => anyhow::Ok(())?,
         Commands::Build(build) => build.run(&ctx)?,
         Commands::Check(check) => check.run(&ctx)?,
         Commands::Clean(clean) => clean.run(&ctx)?,
@@ -138,6 +168,13 @@ fn workspaces() -> Result<Vec<PathBuf>> {
     }
     workspaces.sort();
     Ok(workspaces)
+}
+
+fn package_args(ctx: &Context) -> Vec<&str> {
+    ctx.packages
+        .iter()
+        .flat_map(|p| vec!["--package", p])
+        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]

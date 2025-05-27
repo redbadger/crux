@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Args;
 use xshell::cmd;
 
-use crate::Context;
+use crate::{package_args, Context};
 
 const CARGO: &str = crate::CARGO;
 
@@ -17,7 +17,8 @@ impl Clean {
         println!("Clean...");
         for dir in &ctx.workspaces {
             let _dir = ctx.push_dir(dir);
-            cmd!(ctx.sh, "{CARGO} clean").run()?;
+            let package_args = &package_args(ctx);
+            cmd!(ctx.sh, "{CARGO} clean").args(package_args).run()?;
             if self.generated {
                 cmd!(ctx.sh, "echo rm -rf */generated").run()?;
             }
