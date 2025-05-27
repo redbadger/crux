@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.13.0](https://github.com/redbadger/crux/compare/crux_time-v0.12.0...crux_time-v0.13.0) - 2025-05-27
+
+This is a minor bump because of breaking changes in `crux_core`
+
+### Other
+
+- clippy pedantic
+
 ## [0.12.0](https://github.com/redbadger/crux/compare/crux_time-v0.11.0...crux_time-v0.12.0) - 2025-04-09
 
 ### Other

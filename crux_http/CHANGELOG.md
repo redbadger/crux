@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.14.0](https://github.com/redbadger/crux/compare/crux_http-v0.13.0...crux_http-v0.14.0) - 2025-05-27
+
+This is a minor bump because of breaking changes in `crux_core`
+
+### Other
+
+- add `.query()` method to `protocol::HttpRequest`
+- clippy pedantic
+
 ## [0.13.0](https://github.com/redbadger/crux/compare/crux_http-v0.12.0...crux_http-v0.13.0) - 2025-04-09
 
 ### Other

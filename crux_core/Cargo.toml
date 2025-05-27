@@ -1,7 +1,7 @@
 [package]
 name = "crux_core"
 description = "Cross-platform app development in Rust"
-version = "0.14.0"
+version = "0.15.0"
 readme = "README.md"
 authors.workspace = true
 repository.workspace = true
@@ -21,7 +21,7 @@ all-features = true
 anyhow.workspace = true
 bincode = "=1.3.3"
 crossbeam-channel = "0.5.15"
-crux_macros = { version = "0.6.0", path = "../crux_macros" }
+crux_macros = { version = "0.6.1", path = "../crux_macros" }
 crux_cli = { version = "0.1.0", path = "../crux_cli", optional = true }
 erased-serde = "0.4"
 futures = "0.3.31"

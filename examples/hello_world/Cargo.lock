@@ -192,7 +192,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crux_core"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "darling",
  "heck 0.5.0",

@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.15.0](https://github.com/redbadger/crux/compare/crux_core-v0.14.0...crux_core-v0.15.0) - 2025-05-27
+
+This is a breaking change, due to additional information being reported for `TypeGen` errors.
+
+### Other
+
+- Add `#[track_caller]` to `resolve_to_event_then_update`
+- remove need for nightly on new typegen
+- clippy pedantic
+
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_core-v0.13.1...crux_core-v0.14.0) - 2025-04-09
 
 ### Breaking Change
