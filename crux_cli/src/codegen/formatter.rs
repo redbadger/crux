@@ -368,6 +368,26 @@ impl From<&Type> for Format {
                                     _ => todo!(),
                                 }
                             }
+                            "HashMap" | "BTreeMap" => {
+                                // Handle HashMap<K, V> and BTreeMap<K, V>
+                                if args.len() >= 2 {
+                                    let key_format = match args.get(0) {
+                                        Some(GenericArg::Type(ref type_)) => type_.into(),
+                                        _ => todo!(),
+                                    };
+                                    let value_format = match args.get(1) {
+                                        Some(GenericArg::Type(ref type_)) => type_.into(),
+                                        _ => todo!(),
+                                    };
+                                    Format::Map {
+                                        key: Box::new(key_format),
+                                        value: Box::new(value_format),
+                                    }
+                                } else {
+                                    // Fallback to TypeName if not enough args
+                                    Format::TypeName(name)
+                                }
+                            }
                             _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
