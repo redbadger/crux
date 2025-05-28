@@ -335,6 +335,7 @@ fn make_request() -> ContainerFormat {
 }
 
 impl From<&Type> for Format {
+    #[allow(clippy::too_many_lines)]
     fn from(type_: &Type) -> Self {
         match type_ {
             Type::ResolvedPath(path) => {
@@ -348,10 +349,9 @@ impl From<&Type> for Format {
                             "Option" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!(
-                                        "Option<T> expects a type parameter, got: {:?}",
-                                        other
-                                    ),
+                                    Some(other) => {
+                                        panic!("Option<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Option<T> requires exactly one type parameter"),
                                 };
                                 Format::Option(Box::new(format))
@@ -360,10 +360,9 @@ impl From<&Type> for Format {
                             "Vec" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!(
-                                        "Vec<T> expects a type parameter, got: {:?}",
-                                        other
-                                    ),
+                                    Some(other) => {
+                                        panic!("Vec<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Vec<T> requires exactly one type parameter"),
                                 };
                                 Format::Seq(Box::new(format))
@@ -373,29 +372,26 @@ impl From<&Type> for Format {
                                 // since Box is just a heap allocation wrapper
                                 match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!(
-                                        "Box<T> expects a type parameter, got: {:?}",
-                                        other
-                                    ),
+                                    Some(other) => {
+                                        panic!("Box<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Box<T> requires exactly one type parameter"),
                                 }
                             }
                             "HashMap" | "BTreeMap" => {
                                 // Handle HashMap<K, V> and BTreeMap<K, V>
                                 if args.len() >= 2 {
-                                    let key_format = match args.get(0) {
+                                    let key_format = match args.first() {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
                                         Some(other) => panic!(
-                                            "{}<K, V> expects type parameter for K, got: {:?}",
-                                            name, other
+                                            "{name}<K, V> expects type parameter for K, got: {other:?}"
                                         ),
                                         None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     let value_format = match args.get(1) {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
                                         Some(other) => panic!(
-                                            "{}<K, V> expects type parameter for V, got: {:?}",
-                                            name, other
+                                            "{name}<K, V> expects type parameter for V, got: {other:?}"
                                         ),
                                         None => unreachable!("Already checked args.len() >= 2"),
                                     };
