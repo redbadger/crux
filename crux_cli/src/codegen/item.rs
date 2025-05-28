@@ -1,7 +1,17 @@
 use iter_tools::Itertools;
 use rustdoc_types::{
-    Enum, Id, Impl, Item, ItemEnum, Path, Struct, StructKind, Type, Variant, VariantKind,
+    Enum, Id, Impl, Item, ItemEnum, Path, Struct, StructKind, Type, TypeAlias, Variant, VariantKind,
 };
+
+pub fn is_type_alias(item: &Item) -> bool {
+    matches!(
+        item,
+        Item {
+            inner: ItemEnum::TypeAlias(_),
+            ..
+        }
+    )
+}
 
 pub fn is_relevant(item: &Item) -> bool {
     is_impl(item)
@@ -11,6 +21,7 @@ pub fn is_relevant(item: &Item) -> bool {
         || is_enum(item)
         || is_associated_type(item)
         || is_use(item)
+        || is_type_alias(item)
 }
 
 pub fn is_struct(item: &Item) -> bool {
@@ -249,6 +260,16 @@ fn is_associated_type(item: &Item) -> bool {
             ..
         }
     )
+}
+
+pub fn get_type_alias_target(item: &Item) -> Option<&Type> {
+    match item {
+        Item {
+            inner: ItemEnum::TypeAlias(TypeAlias { type_, .. }),
+            ..
+        } => Some(type_),
+        _ => None,
+    }
 }
 
 pub fn has_associated_item(item: &Item, associated_item: &Item, with_name: &str) -> bool {

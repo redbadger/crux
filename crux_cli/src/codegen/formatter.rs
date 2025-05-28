@@ -11,7 +11,7 @@ use super::{
     indexed::Indexed,
     item::{
         is_plain_variant, is_struct_plain, is_struct_tuple, is_struct_unit, is_struct_variant,
-        is_tuple_variant,
+        is_tuple_variant, is_type_alias,
     },
     node::ItemNode,
     serde::case::RenameRule,
@@ -35,6 +35,9 @@ ascent! {
 
     relation struct_tuple(ItemNode);
     struct_tuple(s) <-- edge(s, _), if is_struct_tuple(&s.item);
+
+    relation type_alias(ItemNode);
+    type_alias(a) <-- edge(a, _), if is_type_alias(&a.item);
 
     relation field(ItemNode, ItemNode);
     field(x, f) <-- edge(x, f), if x.has_field(f);
@@ -115,6 +118,10 @@ ascent! {
         if let Some(name) = s.name(),
         agg field_formats = collect(format) in format(s, format),
         let container = make_struct_tuple(&field_formats);
+    container(name, container) <--
+        type_alias(a),
+        if let Some(name) = a.name(),
+        if let Some(container) = make_type_alias(a);
     container(name, container) <--
         variant(e, _),
         if let Some(name) = e.name(),
@@ -332,6 +339,17 @@ fn make_request() -> ContainerFormat {
             value: Format::TypeName("Effect".to_string()),
         },
     ])
+}
+
+fn make_type_alias(alias_node: &ItemNode) -> Option<ContainerFormat> {
+    // For type aliases like `type TimerId = String`, we generate a wrapper struct
+    // that contains a single field with the target type
+    if let Some(target_type) = alias_node.get_type_alias_target() {
+        let target_format: Format = target_type.into();
+        Some(ContainerFormat::NewTypeStruct(Box::new(target_format)))
+    } else {
+        None
+    }
 }
 
 fn handle_generic_type(name: &str, args: &[GenericArg]) -> Format {

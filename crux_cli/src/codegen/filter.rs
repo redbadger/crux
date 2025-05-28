@@ -4,7 +4,7 @@ use ascent::ascent;
 use log::{debug, info};
 use rustdoc_types::Crate;
 
-use super::item::{is_enum, is_relevant, is_struct, is_struct_unit, is_use};
+use super::item::{is_enum, is_relevant, is_struct, is_struct_unit, is_type_alias, is_use};
 use super::node::{CrateNode, ItemNode, SummaryNode};
 
 ascent! {
@@ -27,6 +27,9 @@ ascent! {
     relation is_enum(ItemNode);
     is_enum(e) <-- item(e) if is_enum(&e.item);
 
+    relation is_type_alias(ItemNode);
+    is_type_alias(a) <-- item(a) if is_type_alias(&a.item);
+
     relation variant(ItemNode, ItemNode);
     variant(e, v) <-- is_enum(e), item(v) if e.has_variant(v);
 
@@ -39,6 +42,13 @@ ascent! {
 
     relation remote_type_of(ItemNode, SummaryNode);
     remote_type_of(f, t) <-- item(f), summary(t) if f.is_of_remote_type(t);
+
+    // Type alias as root type when used by other types
+    relation type_alias_root(ItemNode);
+    type_alias_root(alias) <--
+        is_type_alias(alias),
+        local_type_of(field, alias),
+        field(_, field);
 
     // app structs have an implementation of the App trait
     relation app(ItemNode, ItemNode);
@@ -186,6 +196,7 @@ ascent! {
     relation root(ItemNode);
     root(x) <-- primary_root(x);
     root(x) <-- public_field_type(x);
+    root(x) <-- type_alias_root(x);
 
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
@@ -202,6 +213,10 @@ ascent! {
     edge(root, variant) <--
         root(root),
         variant(root, variant);
+    // roots that are type aliases (self-edge so formatter can process them)
+    edge(root, root) <--
+        root(root),
+        is_type_alias(root);
 
     edge(type_, field) <--
         edge(_, type_),
