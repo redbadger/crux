@@ -1,6 +1,6 @@
 use crate::responses::response_elements::Clouds;
 use crate::responses::response_elements::Coord;
-use crate::responses::response_elements::Weather;
+use crate::responses::response_elements::WeatherData;
 use crate::responses::response_elements::Wind;
 use derive_builder::Builder;
 use once_cell::sync::Lazy;
@@ -57,7 +57,7 @@ impl fmt::Display for Main {
 #[builder(setter(into))]
 pub struct CurrentResponse {
     pub coord: Coord,
-    pub weather: Vec<Weather>,
+    pub weather: Vec<WeatherData>,
     pub base: String,
     pub main: Main,
     pub visibility: usize,
@@ -107,7 +107,7 @@ pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> = Lazy::new(|| {
             lat: 33.456789,
             lon: -112.037222,
         })
-        .weather(vec![Weather {
+        .weather(vec![WeatherData {
             id: 800,
             main: "Clear".to_string(),
             description: "clear sky".to_string(),

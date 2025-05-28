@@ -5,12 +5,13 @@ use serde::{Deserialize, Serialize};
 use crate::{CurrentResponse, Effect, Event, Model};
 
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
-pub const API_KEY: &str = "42005d273a8a49c88a8173878232508";
+pub const API_KEY: &str = "replace_me";
 
 #[derive(Serialize)]
 pub struct CurrentQueryString {
     pub lat: String,
     pub lon: String,
+    pub units: &'static str,
     pub appid: &'static str,
 }
 
@@ -27,6 +28,7 @@ pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, 
             .query(&CurrentQueryString {
                 lat: lat.to_string(),
                 lon: long.to_string(),
+                units: "metric",
                 appid: API_KEY,
             })
             .expect("could not serialize query string")
@@ -71,6 +73,7 @@ mod tests {
                 .query(&CurrentQueryString {
                     lat: lat_lng.0.to_string(),
                     lon: lat_lng.1.to_string(),
+                    units: "metric",
                     appid: API_KEY,
                 })
                 .expect("could not serialize query string")
