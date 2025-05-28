@@ -155,32 +155,39 @@ mod middleware {
 
     use crate::app::{RandomNumber, RandomNumberRequest};
 
-    pub struct MiddlwareSupport<A: App, D: Middleware<A> + Send + Sync, F: Fn(Vec<A::Effect>)> {
-        core: Arc<Core<A>>,
-        delegate: D,
-        effect_callback: Arc<F>,
+    pub struct MiddlewareLayer<A, M, F>
+    where
+        A: App + Sync + Send + 'static,
+        A::Effect: TryInto<Request<M::Op>, Error = A::Effect>,
+        M: EffectMiddleware<A::Effect> + Send + Sync,
+        F: Fn(Vec<A::Effect>),
+    {
+        core: Core<A>,
+        delegate: M,
+        effect_callback: F,
     }
 
-    // General middlware infrastructure
-    impl<A, D, EffectCallback> MiddlwareSupport<A, D, EffectCallback>
+    // Generic middlware layer infrastructure
+    impl<A, M, EffectCallback> MiddlewareLayer<A, M, EffectCallback>
     where
+        A: App + Sync + Send + 'static,
         A::Model: Send + Sync,
         A::Capabilities: Send + Sync,
-        A: App + Sync + Send + 'static,
-        D: Middleware<A> + Send + Sync + 'static,
+        A::Effect: TryInto<Request<M::Op>, Error = A::Effect>,
+        M: EffectMiddleware<A::Effect> + Send + Sync + 'static,
         EffectCallback: Fn(Vec<A::Effect>) + Send + Sync + 'static,
     {
-        pub fn new(core: Core<A>, delegate: D, effect_callback: EffectCallback) -> Arc<Self> {
+        pub fn new(core: Core<A>, delegate: M, effect_callback: EffectCallback) -> Arc<Self> {
             Arc::new(Self {
-                core: Arc::new(core),
+                core,
                 delegate,
-                effect_callback: Arc::new(effect_callback),
+                effect_callback,
             })
         }
 
         // Middleware can override
         pub fn process_event(self: &Arc<Self>, event: A::Event) -> Vec<A::Effect> {
-            Self::process_effects(self, self.delegate.process_event(&self.core, event))
+            Self::process_effects(self, self.core.process_event(event))
         }
 
         // Middleware can override
@@ -192,14 +199,14 @@ mod middleware {
         ) -> Result<Vec<A::Effect>, ResolveError> {
             Ok(Self::process_effects(
                 self,
-                self.delegate.resolve(&self.core, request, result)?,
+                self.core.resolve(request, result)?,
             ))
         }
 
         // Middleware can override
         #[allow(unused)]
         pub fn view(&self) -> A::ViewModel {
-            self.delegate.view(&self.core)
+            self.core.view()
         }
 
         fn process_effects(arc_self: &Arc<Self>, effects: Vec<A::Effect>) -> Vec<A::Effect> {
@@ -210,6 +217,7 @@ mod middleware {
 
                     arc_self.delegate.try_process_effect_with(
                         effect,
+                        // --- thread boundary ---
                         move |mut effect_request, effect_out_value| {
                             let Some(future_self) = future_self.upgrade() else {
                                 // do nothing, self is gone, we can't process further effects
@@ -239,38 +247,20 @@ mod middleware {
         }
     }
 
-    pub trait Middleware<A: App> {
+    // Crux owned Effect Middleware trait
+    pub trait EffectMiddleware<Effect>
+    where
+        Effect: TryInto<Request<Self::Op>, Error = Effect>,
+    {
         type Op: Operation;
 
-        fn process_event(&self, core: &Core<A>, event: A::Event) -> Vec<A::Effect> {
-            core.process_event(event)
-        }
-
-        // Middleware can override
-        fn resolve<Op: Operation>(
-            &self,
-            core: &Core<A>,
-            request: &mut Request<Op>,
-            result: Op::Output,
-        ) -> Result<Vec<A::Effect>, ResolveError> {
-            core.resolve(request, result)
-        }
-
-        // Middleware can override
-        fn view(&self, core: &Core<A>) -> A::ViewModel {
-            core.view()
-        }
-
-        // Middleware can override
         fn try_process_effect_with(
             &self,
-            effect: A::Effect,
+            effect: Effect,
             resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
                 + Send
                 + 'static,
-        ) -> Option<A::Effect> {
-            Some(effect)
-        }
+        ) -> Option<Effect>;
     }
 
     // Specific middlware implementation
@@ -304,17 +294,17 @@ mod middleware {
         }
     }
 
-    impl<A: App> Middleware<A> for RngMiddleware
+    impl<Effect> EffectMiddleware<Effect> for RngMiddleware
     where
-        A::Effect: TryInto<Request<RandomNumberRequest>, Error = A::Effect>,
+        Effect: TryInto<Request<RandomNumberRequest>, Error = Effect>,
     {
         type Op = RandomNumberRequest;
 
         fn try_process_effect_with(
             &self,
-            effect: A::Effect,
+            effect: Effect,
             resolve_callback: impl FnOnce(Request<RandomNumberRequest>, RandomNumber) + Send + 'static,
-        ) -> Option<A::Effect> {
+        ) -> Option<Effect> {
             match effect.try_into() {
                 Ok(
                     rand_request @ Request {
@@ -343,8 +333,8 @@ mod tests {
     use std::sync::Arc;
 
     use crate::{
-        app::{Dice, Event},
-        middleware::{MiddlwareSupport, RngMiddleware},
+        app::{Dice, Effect, Event},
+        middleware::{MiddlewareLayer, RngMiddleware},
     };
     use crux_core::Core;
 
@@ -352,8 +342,8 @@ mod tests {
     fn roll_one_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: Arc<MiddlwareSupport<Dice, RngMiddleware, _>> =
-            MiddlwareSupport::new(Core::new(), RngMiddleware::new(), {
+        let core: Arc<MiddlewareLayer<Dice, RngMiddleware, _>> =
+            MiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
                 let effects_tx = effects_tx.clone();
                 move |effects| effects_tx.send(effects).unwrap()
             });
@@ -375,8 +365,8 @@ mod tests {
     fn roll_three_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: Arc<MiddlwareSupport<Dice, RngMiddleware, _>> =
-            MiddlwareSupport::new(Core::new(), RngMiddleware::new(), {
+        let core: Arc<MiddlewareLayer<Dice, RngMiddleware, _>> =
+            MiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
                 let effects_tx = effects_tx.clone();
                 move |effects| effects_tx.send(effects).unwrap()
             });
