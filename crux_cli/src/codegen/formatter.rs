@@ -430,28 +430,6 @@ impl From<&Type> for Format {
                                 // Object type doesn't have serialize/deserialize methods
                                 Format::Str
                             }
-                            // _ => {
-                            //     let mut format = Format::TypeName(name.to_string());
-                            //     if !args.is_empty() {
-                            //         if let Format::TypeName(ref mut s) = format {
-                            //             s.push('<');
-                            //             for (i, arg) in args.iter().enumerate() {
-                            //                 if i > 0 {
-                            //                     s.push_str(", ");
-                            //                 }
-                            //                 if let GenericArg::Type(ref type_) = arg {
-                            //                     let f: Format = type_.into();
-                            //                     match &f {
-                            //                         Format::TypeName(ref name) => s.push_str(name),
-                            //                         _ => write!(s, "{f:?}").unwrap(),
-                            //                     }
-                            //                 }
-                            //             }
-                            //             s.push('>');
-                            //         }
-                            //     }
-                            //     format
-                            // }
                             _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
