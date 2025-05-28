@@ -1,24 +1,64 @@
 use crux_core::{render::render, Command};
+use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
 
 use super::favorites::{Favorite, FavoritesEvent, FavoritesState};
 use crate::{Effect, Event, GeocodingResponse, Workflow};
 
+pub const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
+pub const API_KEY: &str = "4e72eedd054f22249d785de2ac3ab627";
+
+#[derive(Serialize)]
+pub struct GeocodingQueryString {
+    pub q: String,
+    pub limit: &'static str,
+    pub appid: &'static str,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum AddFavoriteEvent {
+    Search(String),
+    #[serde(skip)]
+    SearchResult(Box<crux_http::Result<crux_http::Response<Vec<GeocodingResponse>>>>),
     Submit(Box<GeocodingResponse>),
     Cancel,
 }
 
 pub fn update(event: AddFavoriteEvent, model: &mut crate::Model) -> Command<Effect, Event> {
     match event {
+        AddFavoriteEvent::Search(query) => Http::get(GEOCODING_URL)
+            .expect_json()
+            .query(&GeocodingQueryString {
+                q: query,
+                limit: "5",
+                appid: API_KEY,
+            })
+            .expect("could not serialize query string")
+            .build()
+            .then_send(|result| {
+                Event::AddFavorite(Box::new(AddFavoriteEvent::SearchResult(Box::new(result))))
+            }),
+        AddFavoriteEvent::SearchResult(result) => {
+            match *result {
+                Ok(mut response) => {
+                    let results = response.take_body().unwrap();
+                    model.search_results = Some(results);
+                }
+                Err(_) => {
+                    model.search_results = Some(Vec::new());
+                }
+            }
+            render()
+        }
         AddFavoriteEvent::Submit(geo) => {
             let favorite = Favorite::from(*geo);
             model.favorites.push(favorite.clone());
+            model.search_results = None;
             model.page = Workflow::Favorites(FavoritesState::Idle);
             Command::event(Event::Favorites(Box::new(FavoritesEvent::Set)))
         }
         AddFavoriteEvent::Cancel => {
+            model.search_results = None;
             model.page = Workflow::Favorites(FavoritesState::Idle);
             render()
         }
@@ -28,7 +68,12 @@ pub fn update(event: AddFavoriteEvent, model: &mut crate::Model) -> Command<Effe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Effect, Event, GeocodingResponse};
+    use crate::{
+        App, Effect, Event, GeocodingResponse, Model, SAMPLE_GEOCODING_RESPONSE,
+        SAMPLE_GEOCODING_RESPONSE_JSON,
+    };
+    use crux_core::{assert_effect, App as _};
+    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     // Helper to create a test geocoding response
     fn test_geocoding() -> GeocodingResponse {
@@ -157,5 +202,55 @@ mod tests {
             model.page,
             Workflow::Favorites(FavoritesState::Idle)
         ));
+    }
+
+    #[test]
+    fn test_search_triggers_api_call() {
+        let app = App::default();
+        let mut model = Model::default();
+
+        let query = "Phoenix";
+        let event = Event::AddFavorite(Box::new(AddFavoriteEvent::Search(query.to_string())));
+
+        let mut cmd = app.update(event, &mut model, &mut ());
+
+        let mut request = cmd.effects().next().unwrap().expect_http();
+
+        assert_eq!(
+            &request.operation,
+            &HttpRequest::get(GEOCODING_URL)
+                .query(&GeocodingQueryString {
+                    q: query.to_string(),
+                    limit: "5",
+                    appid: API_KEY,
+                })
+                .expect("could not serialize query string")
+                .build()
+        );
+
+        // Test response handling
+        request
+            .resolve(HttpResult::Ok(
+                HttpResponse::ok()
+                    .body(SAMPLE_GEOCODING_RESPONSE_JSON.as_bytes())
+                    .build(),
+            ))
+            .unwrap();
+
+        let actual = cmd.events().next().unwrap();
+        if let Event::AddFavorite(event) = &actual {
+            assert!(matches!(**event, AddFavoriteEvent::SearchResult(_)))
+        } else {
+            panic!("Expected AddFavorite event")
+        }
+
+        // Send the SearchResult event back to the app
+        let mut cmd = app.update(actual, &mut model, &mut ());
+        assert_effect!(cmd, Effect::Render(_));
+        assert_eq!(
+            model.search_results,
+            Some(SAMPLE_GEOCODING_RESPONSE.clone())
+        );
+        insta::assert_yaml_snapshot!(model.search_results);
     }
 }

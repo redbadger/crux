@@ -14,7 +14,7 @@ use crate::{
         favorites::{Favorite, FavoritesState},
         AddFavoriteEvent, FavoritesEvent, HomeEvent,
     },
-    CurrentResponse,
+    CurrentResponse, GeocodingResponse,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -50,6 +50,7 @@ pub struct Model {
     pub page: Workflow,
     pub favorites: Vec<Favorite>,
     pub show_add_modal: bool,
+    pub search_results: Option<Vec<GeocodingResponse>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -59,10 +60,19 @@ pub struct ViewModel {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum WorkflowViewModel {
-    Home { weather_data: Box<CurrentResponse> },
-    Favorites { favorites: Vec<FavoriteView> },
-    AddFavorite,
-    ConfirmDeleteFavorite { lat: f64, lng: f64 },
+    Home {
+        weather_data: Box<CurrentResponse>,
+    },
+    Favorites {
+        favorites: Vec<FavoriteView>,
+    },
+    AddFavorite {
+        search_results: Option<Vec<GeocodingResponse>>,
+    },
+    ConfirmDeleteFavorite {
+        lat: f64,
+        lng: f64,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -136,7 +146,9 @@ impl crux_core::App for App {
                     lng: *lng,
                 }
             }
-            Workflow::AddFavorite => WorkflowViewModel::AddFavorite,
+            Workflow::AddFavorite => WorkflowViewModel::AddFavorite {
+                search_results: model.search_results.clone(),
+            },
         };
 
         ViewModel { workflow }

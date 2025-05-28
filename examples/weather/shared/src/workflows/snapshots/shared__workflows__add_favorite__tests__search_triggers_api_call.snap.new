@@ -1,0 +1,11 @@
+---
+source: shared/src/workflows/add_favorite.rs
+assertion_line: 254
+expression: model.search_results
+---
+- name: Phoenix
+  local_names: ~
+  lat: 33.456789
+  lon: -112.037222
+  country: US
+  state: Arizona
