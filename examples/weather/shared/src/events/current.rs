@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{CurrentResponse, Effect, Event, Model};
 
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
-pub const API_KEY: &str = "replace_me";
+pub const API_KEY: &str = "4e72eedd054f22249d785de2ac3ab627";
 
 #[derive(Serialize)]
 pub struct CurrentQueryString {
