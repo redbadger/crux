@@ -111,7 +111,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        Clouds, Coord, CurrentResponse, Effect, GeocodingResponse, Main, Sys, Weather, Wind,
+        Clouds, Coord, CurrentResponse, Effect, GeocodingResponse, Main, Sys, WeatherData, Wind,
     };
 
     // Helper to create a test favorite
@@ -249,7 +249,7 @@ mod tests {
                     lat: 33.456789,
                     lon: -112.037222,
                 },
-                weather: vec![Weather {
+                weather: vec![WeatherData {
                     id: 800,
                     main: "Clear".to_string(),
                     description: "clear sky".to_string(),
