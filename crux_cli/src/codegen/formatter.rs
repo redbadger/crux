@@ -11,7 +11,7 @@ use super::{
     indexed::Indexed,
     item::{
         is_plain_variant, is_struct_plain, is_struct_tuple, is_struct_unit, is_struct_variant,
-        is_tuple_variant,
+        is_tuple_variant, is_type_alias,
     },
     node::ItemNode,
     serde::case::RenameRule,
@@ -35,6 +35,9 @@ ascent! {
 
     relation struct_tuple(ItemNode);
     struct_tuple(s) <-- edge(s, _), if is_struct_tuple(&s.item);
+
+    relation type_alias(ItemNode);
+    type_alias(a) <-- edge(a, _), if is_type_alias(&a.item);
 
     relation field(ItemNode, ItemNode);
     field(x, f) <-- edge(x, f), if x.has_field(f);
@@ -115,6 +118,10 @@ ascent! {
         if let Some(name) = s.name(),
         agg field_formats = collect(format) in format(s, format),
         let container = make_struct_tuple(&field_formats);
+    container(name, container) <--
+        type_alias(a),
+        if let Some(name) = a.name(),
+        if let Some(container) = make_type_alias(a);
     container(name, container) <--
         variant(e, _),
         if let Some(name) = e.name(),
@@ -285,6 +292,17 @@ fn make_enum(formats: &[(&Indexed<Named<VariantFormat>>,)]) -> ContainerFormat {
     ContainerFormat::Enum(map)
 }
 
+fn make_type_alias(alias_node: &ItemNode) -> Option<ContainerFormat> {
+    // For type aliases like `type TimerId = String`, we generate a wrapper struct
+    // that contains a single field with the target type
+    if let Some(target_type) = alias_node.get_type_alias_target() {
+        let target_format: Format = target_type.into();
+        Some(ContainerFormat::NewTypeStruct(Box::new(target_format)))
+    } else {
+        None
+    }
+}
+
 fn make_range(field: &ItemNode) -> Option<ContainerFormat> {
     match &field.item.inner {
         ItemEnum::StructField(range_type) => {
@@ -349,9 +367,7 @@ impl From<&Type> for Format {
                             "Option" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => {
-                                        panic!("Option<T> expects a type parameter, got: {other:?}")
-                                    }
+                                    Some(other) => panic!("Option<T> expects a type parameter, got: {other:?}"),
                                     None => panic!("Option<T> requires exactly one type parameter"),
                                 };
                                 Format::Option(Box::new(format))
@@ -360,9 +376,7 @@ impl From<&Type> for Format {
                             "Vec" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => {
-                                        panic!("Vec<T> expects a type parameter, got: {other:?}")
-                                    }
+                                    Some(other) => panic!("Vec<T> expects a type parameter, got: {other:?}"),
                                     None => panic!("Vec<T> requires exactly one type parameter"),
                                 };
                                 Format::Seq(Box::new(format))
@@ -372,9 +386,7 @@ impl From<&Type> for Format {
                                 // since Box is just a heap allocation wrapper
                                 match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => {
-                                        panic!("Box<T> expects a type parameter, got: {other:?}")
-                                    }
+                                    Some(other) => panic!("Box<T> expects a type parameter, got: {other:?}"),
                                     None => panic!("Box<T> requires exactly one type parameter"),
                                 }
                             }
@@ -383,16 +395,12 @@ impl From<&Type> for Format {
                                 if args.len() >= 2 {
                                     let key_format = match args.first() {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        Some(other) => panic!(
-                                            "{name}<K, V> expects type parameter for K, got: {other:?}"
-                                        ),
+                                        Some(other) => panic!("{name}<K, V> expects type parameter for K, got: {other:?}"),
                                         None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     let value_format = match args.get(1) {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        Some(other) => panic!(
-                                            "{name}<K, V> expects type parameter for V, got: {other:?}"
-                                        ),
+                                        Some(other) => panic!("{name}<K, V> expects type parameter for V, got: {other:?}"),
                                         None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     Format::Map {
@@ -407,6 +415,43 @@ impl From<&Type> for Format {
                                     )
                                 }
                             }
+                            "DateTime" => {
+                                // DateTime<Tz> is treated as a timestamp/string for serialization
+                                // The timezone parameter doesn't affect the serialized format
+                                Format::Str
+                            }
+                            "Decimal" => {
+                                // Decimal types are commonly used for precise numbers
+                                // For rates and percentages, double precision is usually sufficient
+                                Format::F64
+                            }
+                            "Value" => {
+                                // JSON Value type - treat as string for cross-platform compatibility
+                                // Object type doesn't have serialize/deserialize methods
+                                Format::Str
+                            }
+                            // _ => {
+                            //     let mut format = Format::TypeName(name.to_string());
+                            //     if !args.is_empty() {
+                            //         if let Format::TypeName(ref mut s) = format {
+                            //             s.push('<');
+                            //             for (i, arg) in args.iter().enumerate() {
+                            //                 if i > 0 {
+                            //                     s.push_str(", ");
+                            //                 }
+                            //                 if let GenericArg::Type(ref type_) = arg {
+                            //                     let f: Format = type_.into();
+                            //                     match &f {
+                            //                         Format::TypeName(ref name) => s.push_str(name),
+                            //                         _ => write!(s, "{f:?}").unwrap(),
+                            //                     }
+                            //                 }
+                            //             }
+                            //             s.push('>');
+                            //         }
+                            //     }
+                            //     format
+                            // }
                             _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
