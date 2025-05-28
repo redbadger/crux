@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -118,6 +119,20 @@ impl fmt::Display for GeocodingResponse {
         )
     }
 }
+
+pub static SAMPLE_GEOCODING_RESPONSE: Lazy<Vec<GeocodingResponse>> = Lazy::new(|| {
+    vec![GeocodingResponse {
+        name: "Phoenix".to_string(),
+        local_names: None,
+        lat: 33.456789,
+        lon: -112.037222,
+        country: "US".to_string(),
+        state: Some("Arizona".to_string()),
+    }]
+});
+
+pub static SAMPLE_GEOCODING_RESPONSE_JSON: Lazy<String> =
+    Lazy::new(|| serde_json::to_string(&*SAMPLE_GEOCODING_RESPONSE).unwrap());
 
 #[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone)]
 pub struct ZipCodeResponse {

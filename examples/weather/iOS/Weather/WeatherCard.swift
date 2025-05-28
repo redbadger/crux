@@ -1,5 +1,7 @@
 import SwiftUI
 import SharedTypes
+import os.log
+
 
 /// A card view that displays the current weather information in a visually appealing way.
 struct WeatherCard: View {
@@ -29,17 +31,10 @@ struct WeatherCard: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            // Location and Time
+            // Location
             VStack(spacing: 4) {
                 Text(weatherData.name)
                     .font(.system(size: 28, weight: .bold))
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.caption)
-                    Text("Updated just now")
-                        .font(.subheadline)
-                }
-                .foregroundColor(.secondary)
             }
             
             // Temperature and Weather Icon
