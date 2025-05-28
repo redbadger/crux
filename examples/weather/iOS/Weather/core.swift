@@ -2,6 +2,7 @@ import Foundation
 import SharedTypes
 import UIKit
 
+
 @MainActor
 class Core: ObservableObject {
     @Published var view: ViewModel
@@ -22,7 +23,7 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            view = try! .bincodeDeserialize(input: [UInt8](Weather.view()))
+            self.view = try! .bincodeDeserialize(input: [UInt8](Weather.view()))
         case let .http(req):
             Task {
                 let response = try! await requestHttp(req).get()
