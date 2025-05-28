@@ -164,7 +164,8 @@ mod middleware {
     // General middlware infrastructure
     impl<A, D, EffectCallback> MiddlwareSupport<A, D, EffectCallback>
     where
-        A::Capabilities: Send,
+        A::Model: Send + Sync,
+        A::Capabilities: Send + Sync,
         A: App + Sync + Send + 'static,
         D: Middleware<A> + Send + Sync + 'static,
         EffectCallback: Fn(Vec<A::Effect>) + Send + Sync + 'static,
