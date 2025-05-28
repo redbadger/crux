@@ -23,6 +23,12 @@ pub trait Resolvable<Output> {
 
 impl<Output> Resolvable<Output> for RequestHandle<Output> {
     fn resolve(&mut self, output: Output) -> Result<(), ResolveError> {
+        self.resolve(output)
+    }
+}
+
+impl<Output> RequestHandle<Output> {
+    pub fn resolve(&mut self, output: Output) -> Result<(), ResolveError> {
         match self {
             RequestHandle::Never => Err(ResolveError::Never),
             RequestHandle::Many(f) => f(output).map_err(|()| ResolveError::FinishedMany),

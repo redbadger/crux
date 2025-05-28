@@ -2,10 +2,8 @@ use std::fmt::{self, Debug};
 
 use crate::{
     capability::Operation,
-    core::resolve::{RequestHandle, ResolveError},
+    core::resolve::{RequestHandle, Resolvable, ResolveError},
 };
-
-use super::resolve::Resolvable;
 
 /// Request represents an effect request from the core to the shell.
 ///
@@ -19,7 +17,7 @@ where
     Op: Operation,
 {
     pub operation: Op,
-    pub(crate) resolve: RequestHandle<Op::Output>,
+    pub handle: RequestHandle<Op::Output>,
 }
 
 impl<Op> Request<Op>
@@ -30,13 +28,17 @@ where
     /// # Errors
     /// Returns an error if the request cannot be resolved.
     pub fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
-        self.resolve.resolve(output)
+        self.handle.resolve(output)
+    }
+
+    pub fn split(self) -> (Op, RequestHandle<Op::Output>) {
+        (self.operation, self.handle)
     }
 
     pub(crate) fn resolves_never(operation: Op) -> Self {
         Self {
             operation,
-            resolve: RequestHandle::Never,
+            handle: RequestHandle::Never,
         }
     }
 
@@ -46,7 +48,7 @@ where
     {
         Self {
             operation,
-            resolve: RequestHandle::Once(Box::new(resolve)),
+            handle: RequestHandle::Once(Box::new(resolve)),
         }
     }
 
@@ -56,7 +58,7 @@ where
     {
         Self {
             operation,
-            resolve: RequestHandle::Many(Box::new(resolve)),
+            handle: RequestHandle::Many(Box::new(resolve)),
         }
     }
 }

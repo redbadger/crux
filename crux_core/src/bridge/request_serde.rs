@@ -62,13 +62,11 @@ where
         F: FnOnce(Op) -> Eff,
     {
         // FIXME should Eff be bound as `Serializable`?
-        let (operation, resolve) = (self.operation, self.resolve);
-
-        let resolve = resolve.deserializing(move |deserializer| {
+        let handle = self.handle.deserializing(move |deserializer| {
             erased_serde::deserialize(deserializer).map_err(BridgeError::DeserializeOutput)
         });
 
-        (effect(operation), resolve)
+        (effect(self.operation), handle)
     }
 }
 
