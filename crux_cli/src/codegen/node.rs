@@ -241,6 +241,49 @@ impl ItemNode {
 
         has_associated_item(&self.item, &associated_item.item, with_name)
     }
+
+    pub fn is_public_reexport(&self) -> bool {
+        use rustdoc_types::{ItemEnum, Visibility};
+        
+        matches!(
+            &self.item,
+            Item {
+                inner: ItemEnum::Use(_),
+                visibility: Visibility::Public,
+                ..
+            }
+        )
+    }
+
+    pub fn reexports_type(&self, type_node: &ItemNode) -> bool {
+        use rustdoc_types::ItemEnum;
+        
+        if let Item { inner: ItemEnum::Use(use_item), .. } = &self.item {
+            // Parse the source path to get the type name
+            let source_parts: Vec<&str> = use_item.source.split("::").collect();
+            
+            // Check if this use item could be re-exporting the given type
+            // Match on the type name (last component of the path)
+            if let (Some(use_type_name), Some(type_name)) = (source_parts.last(), type_node.name()) {
+                if *use_type_name == type_name {
+                    // For re-exports, we need to be more flexible about source matching
+                    // since types can be re-exported via module paths (progress::Type) 
+                    // or direct crate paths (crate::Type)
+                    if let Some(source_crate) = source_parts.first() {
+                        // Direct crate match (e.g., models::UserStats)
+                        if *source_crate == type_node.id.crate_ {
+                            return true;
+                        }
+                        // Module path match - if the source doesn't match a known crate name,
+                        // assume it's a module within the dependency crate
+                        // This handles cases like progress::UserStats where progress is a module in models crate
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
 }
 
 fn check_type(parent: &GlobalId, type_: &Type, is_remote: bool) -> bool {

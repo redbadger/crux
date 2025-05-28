@@ -1,6 +1,6 @@
 #![allow(clippy::no_effect_underscore_binding)]
 
-use std::{collections::BTreeMap, convert::Into};
+use std::{collections::BTreeMap, convert::Into, fmt::Write};
 
 use ascent::ascent;
 use rustdoc_types::{GenericArg, GenericArgs, Item, ItemEnum, Type};
@@ -334,6 +334,103 @@ fn make_request() -> ContainerFormat {
     ])
 }
 
+fn handle_generic_type(name: &str, args: &[GenericArg]) -> Format {
+    match name {
+        "Option" => {
+            let format = match args.first() {
+                Some(GenericArg::Type(ref type_)) => type_.into(),
+                Some(other) => panic!("Option<T> expects a type parameter, got: {other:?}"),
+                None => panic!("Option<T> requires exactly one type parameter"),
+            };
+            Format::Option(Box::new(format))
+        }
+        "String" => Format::Str,
+        "Vec" => {
+            let format = match args.first() {
+                Some(GenericArg::Type(ref type_)) => type_.into(),
+                Some(other) => panic!("Vec<T> expects a type parameter, got: {other:?}"),
+                None => panic!("Vec<T> requires exactly one type parameter"),
+            };
+            Format::Seq(Box::new(format))
+        }
+        "Box" => {
+            // Box<T> is semantically equivalent to T for serialization
+            // since Box is just a heap allocation wrapper
+            match args.first() {
+                Some(GenericArg::Type(ref type_)) => type_.into(),
+                Some(other) => panic!("Box<T> expects a type parameter, got: {other:?}"),
+                None => panic!("Box<T> requires exactly one type parameter"),
+            }
+        }
+        "HashMap" | "BTreeMap" => {
+            // Handle HashMap<K, V> and BTreeMap<K, V>
+            if args.len() >= 2 {
+                let key_format = match args.first() {
+                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                    Some(other) => panic!("{name}<K, V> expects type parameter for K, got: {other:?}"),
+                    None => unreachable!("Already checked args.len() >= 2"),
+                };
+                let value_format = match args.get(1) {
+                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                    Some(other) => panic!("{name}<K, V> expects type parameter for V, got: {other:?}"),
+                    None => unreachable!("Already checked args.len() >= 2"),
+                };
+                Format::Map {
+                    key: Box::new(key_format),
+                    value: Box::new(value_format),
+                }
+            } else {
+                panic!(
+                    "{} requires exactly two type parameters <K, V>, got {} parameters",
+                    name,
+                    args.len()
+                )
+            }
+        }
+        "DateTime" => {
+            // DateTime<Tz> is treated as a timestamp/string for serialization
+            // The timezone parameter doesn't affect the serialized format
+            Format::Str
+        }
+        "Decimal" => {
+            // Decimal types are commonly used for precise numbers
+            // For rates and percentages, double precision is usually sufficient
+            Format::F64
+        }
+        "Value" => {
+            // JSON Value type - treat as string for cross-platform compatibility
+            // Object type doesn't have serialize/deserialize methods
+            Format::Str
+        }
+        "RenderOperation" | "KeyValueOperation" | "TimerId" => {
+            // Crux framework internal operation types - treat as opaque strings
+            Format::Str
+        }
+        _ => {
+            let mut format = Format::TypeName(name.to_string());
+            if !args.is_empty() {
+                if let Format::TypeName(ref mut s) = format {
+                    s.push('<');
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            s.push_str(", ");
+                        }
+                        if let GenericArg::Type(ref type_) = arg {
+                            let f: Format = type_.into();
+                            match &f {
+                                Format::TypeName(ref name) => s.push_str(name),
+                                _ => write!(s, "{f:?}").unwrap(),
+                            }
+                        }
+                    }
+                    s.push('>');
+                }
+            }
+            format
+        }
+    }
+}
+
 impl From<&Type> for Format {
     fn from(type_: &Type) -> Self {
         match type_ {
@@ -344,75 +441,7 @@ impl From<&Type> for Format {
                         GenericArgs::AngleBracketed {
                             args,
                             constraints: _,
-                        } => match name.as_str() {
-                            "Option" => {
-                                let format = match args.first() {
-                                    Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!(
-                                        "Option<T> expects a type parameter, got: {:?}",
-                                        other
-                                    ),
-                                    None => panic!("Option<T> requires exactly one type parameter"),
-                                };
-                                Format::Option(Box::new(format))
-                            }
-                            "String" => Format::Str,
-                            "Vec" => {
-                                let format = match args.first() {
-                                    Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!(
-                                        "Vec<T> expects a type parameter, got: {:?}",
-                                        other
-                                    ),
-                                    None => panic!("Vec<T> requires exactly one type parameter"),
-                                };
-                                Format::Seq(Box::new(format))
-                            }
-                            "Box" => {
-                                // Box<T> is semantically equivalent to T for serialization
-                                // since Box is just a heap allocation wrapper
-                                match args.first() {
-                                    Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!(
-                                        "Box<T> expects a type parameter, got: {:?}",
-                                        other
-                                    ),
-                                    None => panic!("Box<T> requires exactly one type parameter"),
-                                }
-                            }
-                            "HashMap" | "BTreeMap" => {
-                                // Handle HashMap<K, V> and BTreeMap<K, V>
-                                if args.len() >= 2 {
-                                    let key_format = match args.get(0) {
-                                        Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        Some(other) => panic!(
-                                            "{}<K, V> expects type parameter for K, got: {:?}",
-                                            name, other
-                                        ),
-                                        None => unreachable!("Already checked args.len() >= 2"),
-                                    };
-                                    let value_format = match args.get(1) {
-                                        Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        Some(other) => panic!(
-                                            "{}<K, V> expects type parameter for V, got: {:?}",
-                                            name, other
-                                        ),
-                                        None => unreachable!("Already checked args.len() >= 2"),
-                                    };
-                                    Format::Map {
-                                        key: Box::new(key_format),
-                                        value: Box::new(value_format),
-                                    }
-                                } else {
-                                    panic!(
-                                        "{} requires exactly two type parameters <K, V>, got {} parameters",
-                                        name,
-                                        args.len()
-                                    )
-                                }
-                            }
-                            _ => Format::TypeName(name),
-                        },
+                        } => handle_generic_type(&name, args),
                         GenericArgs::Parenthesized {
                             inputs: _,
                             output: _,

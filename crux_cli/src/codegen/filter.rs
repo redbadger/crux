@@ -4,7 +4,7 @@ use ascent::ascent;
 use log::{debug, info};
 use rustdoc_types::Crate;
 
-use super::item::{is_enum, is_relevant, is_struct, is_struct_unit};
+use super::item::{is_enum, is_relevant, is_struct, is_struct_unit, is_use};
 use super::node::{CrateNode, ItemNode, SummaryNode};
 
 ascent! {
@@ -106,12 +106,86 @@ ascent! {
         local_type_of(item, out),
         if op_impl.has_associated_item(item, "Output");
 
+    // Re-exported types from dependency crates should be treated as root types
+    // This finds types that are re-exported via "pub use" statements
+    relation reexported_type(ItemNode);
+    reexported_type(type_) <--
+        item(use_item),
+        if is_use(&use_item.item),
+        if use_item.is_public_reexport(),
+        if use_item.id.crate_ == "shared",  // Only process re-exports from the main crate
+        item(type_),
+        if use_item.reexports_type(&type_),
+        if type_.id.crate_ != "shared",  // Only include types from dependency crates
+        if {
+            log::debug!("Found re-exported type: {} from crate {} via use item in shared", 
+                type_.name().unwrap_or("unknown"), 
+                type_.id.crate_);
+            true
+        };
+
+    // Types from dependency crates that are used as fields in root types should also be root types
+    // This needs to be recursive to handle nested structures
+    relation public_field_type(ItemNode);
+    
+    // Direct field types from primary roots
+    public_field_type(type_) <--
+        primary_root(root_type),
+        field(root_type, field),
+        local_type_of(field, type_),
+        if type_.id.crate_ != "shared",
+        if {
+            log::debug!("Found public field type: {} from crate {} (used in {})", 
+                type_.name().unwrap_or("unknown"), 
+                type_.id.crate_,
+                root_type.name().unwrap_or("unknown"));
+            true
+        };
+    public_field_type(type_) <--
+        primary_root(root_type),
+        field(root_type, field),
+        remote_type_of(field, summary),
+        item(type_),
+        has_summary(type_, summary),
+        if type_.id.crate_ != "shared",
+        if {
+            log::debug!("Found public field type (remote): {} from crate {} (used in {})", 
+                type_.name().unwrap_or("unknown"), 
+                type_.id.crate_,
+                root_type.name().unwrap_or("unknown"));
+            true
+        };
+    
+    // Also check fields of structs that are used as field types (one level deep)
+    public_field_type(type_) <--
+        primary_root(root_type),
+        field(root_type, field),
+        local_type_of(field, intermediate_type),
+        if intermediate_type.id.crate_ == "shared",
+        field(intermediate_type, nested_field),
+        local_type_of(nested_field, type_),
+        if type_.id.crate_ != "shared",
+        if {
+            log::debug!("Found nested public field type: {} from crate {} (used in {} -> {})", 
+                type_.name().unwrap_or("unknown"), 
+                type_.id.crate_,
+                root_type.name().unwrap_or("unknown"),
+                intermediate_type.name().unwrap_or("unknown"));
+            true
+        };
+
+    // First define primary roots (without public_field_type to avoid circular dependency)
+    relation primary_root(ItemNode);
+    primary_root(x) <-- view_model(app, x);
+    primary_root(x) <-- event(app, x);
+    primary_root(x) <-- effect(app, x);
+    primary_root(x) <-- operation(op_impl, x);
+    primary_root(x) <-- output(x);
+    primary_root(x) <-- reexported_type(x);
+
     relation root(ItemNode);
-    root(x) <-- view_model(app, x);
-    root(x) <-- event(app, x);
-    root(x) <-- effect(app, x);
-    root(x) <-- operation(op_impl, x);
-    root(x) <-- output(x);
+    root(x) <-- primary_root(x);
+    root(x) <-- public_field_type(x);
 
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
@@ -139,6 +213,38 @@ ascent! {
     edge(field, type_) <--
         edge(_, field),
         local_type_of(field, type_);
+    
+    // Also follow remote type relationships to include types from dependency crates
+    edge(field, type_) <--
+        edge(_, field),
+        remote_type_of(field, summary),
+        item(type_),
+        has_summary(type_, summary);
+
+    // For remote types that are included, ensure they get processed like root types
+    // This means including their struct/enum relationships and field edges
+    edge(type_, field) <--
+        edge(_, type_),
+        is_struct(type_),
+        item(field),
+        if type_.has_field(field);
+
+    edge(type_, variant) <--
+        edge(_, type_),
+        is_enum(type_),
+        item(variant),
+        if type_.has_variant(variant);
+
+    // Follow field types from these newly included struct fields
+    edge(field, field_type) <--
+        edge(type_, field),
+        local_type_of(field, field_type);
+
+    edge(field, field_type) <--
+        edge(type_, field),
+        remote_type_of(field, summary),
+        item(field_type),
+        has_summary(field_type, summary);
 
     relation crates(String);
     crates(n) <--
@@ -163,6 +269,28 @@ impl Filter {
                 ),)
             })
             .collect::<Vec<_>>();
+        
+        // Count use items for debugging
+        let use_count = crate_.index.values().filter(|item| is_use(item)).count();
+        if use_count > 0 && crate_name == "shared" {
+            use rustdoc_types::{Item, ItemEnum};
+            
+            debug!("Found {use_count} use items in crate {crate_name}");
+            
+            // Log some examples of use items
+            for item in crate_.index.values() {
+                if let Item { inner: ItemEnum::Use(use_item), visibility, .. } = item {
+                    if matches!(visibility, rustdoc_types::Visibility::Public) {
+                        if use_item.source.starts_with("models::") {
+                            debug!("  Public re-export from models: {} -> {}", use_item.source, use_item.name);
+                        } else if use_item.source.starts_with("progress::") {
+                            debug!("  Public re-export from progress: {} -> {}", use_item.source, use_item.name);
+                        }
+                    }
+                }
+            }
+        }
+        
         self.item = crate_
             .index
             .values()

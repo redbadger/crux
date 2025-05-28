@@ -10,6 +10,7 @@ pub fn is_relevant(item: &Item) -> bool {
         || is_struct(item)
         || is_enum(item)
         || is_associated_type(item)
+        || is_use(item)
 }
 
 pub fn is_struct(item: &Item) -> bool {
@@ -131,6 +132,16 @@ pub fn is_enum(item: &Item) -> bool {
         item,
         Item {
             inner: ItemEnum::Enum(_),
+            ..
+        }
+    )
+}
+
+pub fn is_use(item: &Item) -> bool {
+    matches!(
+        item,
+        Item {
+            inner: ItemEnum::Use(_),
             ..
         }
     )

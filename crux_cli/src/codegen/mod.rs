@@ -14,7 +14,7 @@ use std::{
     process::Command,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
 use log::debug;
 use rustdoc_types::Crate;
@@ -44,8 +44,22 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     };
 
     let lib_name = lib.name();
-
-    let registry = run(lib_name, |name| load_crate(name, &manifest_paths))?;
+    let registry = run(lib_name, |name| {
+        log::debug!("Filter requesting crate: {name}");
+        let crate_data = load_crate(name, &manifest_paths)?;
+        
+        // Log general information about loaded crates for debugging
+        let type_count = crate_data.index.len();
+        let type_names: Vec<&str> = crate_data.index.values()
+            .filter_map(|item| item.name.as_deref())
+            .take(10) // Show first 10 types as sample
+            .collect();
+        log::debug!("Loaded crate '{name}' with {type_count} types (sample: {type_names:?})");
+        
+        Ok(crate_data)
+    })?;
+    
+    log::info!("Generated {} types: {:?}", registry.len(), registry.keys().collect::<Vec<_>>());
 
     // switch from vendored types to `serde-reflection` types
     let registry: serde_reflection::Registry =
@@ -64,10 +78,20 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     }
 
     if let Some(typescript_package) = &args.generate.typescript {
+        // Get version from workspace metadata
+        let version = {
+            let mut cmd = MetadataCommand::new();
+            let package_graph = PackageGraph::from_command(&mut cmd)?;
+            package_graph
+                .workspace()
+                .member_by_name(&args.crate_name)
+                .map_or_else(|_| "0.1.0".to_string(), |pkg| pkg.version().to_string())
+        };
+        
         generate::typescript(
             &registry,
             typescript_package,
-            &lib.version().to_string(),
+            &version,
             args.out_dir.join("typescript"),
         )
         .context("Generating types for TypeScript")?;
@@ -101,6 +125,13 @@ where
             continue;
         }
         
+        // Skip non-workspace crates
+        let workspace_members = get_workspace_members()?;
+        if !workspace_members.contains(&crate_name) {
+            debug!("Skipping non-workspace crate: {crate_name}");
+            continue;
+        }
+        
         let crate_ = load(&crate_name)?;
 
         filter.process(&crate_name, &crate_);
@@ -121,10 +152,18 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
     formatter.container.into_iter().collect()
 }
 
+fn get_workspace_members() -> Result<Vec<String>> {
+    let metadata = cargo_metadata::MetadataCommand::new().exec()?;
+    let members = metadata.workspace_members
+        .iter()
+        .map(|id| id.repr.split('#').next().unwrap_or(&id.repr).split('/').next_back().unwrap_or(&id.repr).to_string())
+        .collect();
+    Ok(members)
+}
+
 fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate> {
-    let manifest_path = manifest_paths
-        .get(name)
-        .ok_or_else(|| anyhow!("unknown crate {}", name))?;
+    // Check if we have a manifest path
+    if let Some(manifest_path) = manifest_paths.get(name) {
 
     let status = Command::new("cargo")
         .env("RUSTC_BOOTSTRAP", "1")
@@ -164,7 +203,50 @@ Please raise an issue at https://github.com/redbadger/crux/issue and
 include the version of Rust that you are using. Thank you!",
     )?;
 
-    Ok(crate_)
+        Ok(crate_)
+    } else {
+        // No manifest path found, try workspace member
+        debug!("No manifest path for {name}, trying as workspace member");
+        
+        // Use standard cargo doc command for workspace members
+        let status = Command::new("cargo")
+            .env("RUSTDOCFLAGS", "-Z unstable-options --output-format json")
+            .args([
+                "+nightly",
+                "doc",
+                "--no-deps",
+                "--document-private-items",
+                "--package",
+                name,
+            ])
+            .status()?;
+
+        if !status.success() {
+            bail!("failed to generate rustdoc json for workspace crate {}", name);
+        }
+
+        // Get target directory from cargo metadata
+        let metadata = cargo_metadata::MetadataCommand::new().exec()?;
+        let mut json_path = metadata.target_directory.as_std_path().to_path_buf();
+        json_path.push("doc");
+        json_path.push(name);
+        json_path.set_extension("json");
+
+        debug!("from {}", json_path.display());
+
+        let buf = &mut Vec::new();
+        File::open(json_path)?.read_to_end(buf)?;
+        let crate_ = serde_json::from_slice(buf).context(
+            r"
+There was a problem reading RustDoc JSON output — maybe there is
+a format version incompatibility.
+We currently require format version >=39, which means Rust >=1.86.
+Please raise an issue at https://github.com/redbadger/crux/issue and
+include the version of Rust that you are using. Thank you!",
+        )?;
+
+        Ok(crate_)
+    }
 }
 
 pub fn collect<'a, N, T>(input: T) -> impl Iterator<Item = Vec<(&'a N,)>>
@@ -174,6 +256,7 @@ where
 {
     std::iter::once(input.collect::<Vec<_>>())
 }
+
 
 #[cfg(test)]
 mod tests;
