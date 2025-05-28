@@ -402,10 +402,6 @@ fn handle_generic_type(name: &str, args: &[GenericArg]) -> Format {
             // Object type doesn't have serialize/deserialize methods
             Format::Str
         }
-        "RenderOperation" | "KeyValueOperation" | "TimerId" => {
-            // Crux framework internal operation types - treat as opaque strings
-            Format::Str
-        }
         _ => {
             let mut format = Format::TypeName(name.to_string());
             if !args.is_empty() {
