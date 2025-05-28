@@ -8,6 +8,9 @@ use lazy_static::lazy_static;
 pub use crux_core::{bridge::Bridge, Core, Request};
 
 pub use app::*;
+pub use responses::geocoding_response::{
+    SAMPLE_GEOCODING_RESPONSE, SAMPLE_GEOCODING_RESPONSE_JSON,
+};
 pub use responses::*;
 // TODO hide this plumbing
 

@@ -43,7 +43,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
     match event {
         FavoritesEvent::AddPressed => {
             model.page = Workflow::AddFavorite;
-            Command::done()
+            render()
         }
 
         FavoritesEvent::DeletePressed(favorite) => {
