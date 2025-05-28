@@ -6,12 +6,10 @@ use std::sync::RwLock;
 
 pub use effect::Effect;
 pub use request::Request;
-pub use resolve::ResolveError;
-
-pub(crate) use resolve::Resolve;
+pub use resolve::{RequestHandle, Resolvable, ResolveError};
 
 use crate::capability::CommandSpawner;
-use crate::capability::{self, channel::Receiver, Operation, ProtoContext, QueuingExecutor};
+use crate::capability::{self, channel::Receiver, ProtoContext, QueuingExecutor};
 use crate::{App, WithContext};
 
 /// The Crux core. Create an instance of this type with your App type as the type parameter
@@ -113,14 +111,12 @@ where
     // used in docs/internals/runtime.md and docs/internals/bridge.md
     // ANCHOR: resolve
     // ANCHOR: resolve_sig
-    pub fn resolve<Op>(
+    pub fn resolve<Output>(
         &self,
-        request: &mut Request<Op>,
-        result: Op::Output,
+        request: &mut impl Resolvable<Output>,
+        result: Output,
     ) -> Result<Vec<A::Effect>, ResolveError>
-    where
-        Op: Operation,
-        // ANCHOR_END: resolve_sig
+// ANCHOR_END: resolve_sig
     {
         let resolve_result = request.resolve(result);
         debug_assert!(resolve_result.is_ok());

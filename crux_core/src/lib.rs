@@ -171,7 +171,7 @@ use serde::Serialize;
 pub use capabilities::*;
 pub use capability::{Capability, WithContext};
 pub use command::Command;
-pub use core::{Core, Effect, Request, ResolveError};
+pub use core::{Core, Effect, Request, Resolvable, ResolveError};
 pub use crux_macros as macros;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]

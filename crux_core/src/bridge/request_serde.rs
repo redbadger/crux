@@ -1,6 +1,6 @@
 use crate::{
     capability::Operation,
-    core::{Resolve, ResolveError},
+    core::{RequestHandle, ResolveError},
     Request,
 };
 
@@ -72,7 +72,7 @@ where
     }
 }
 
-impl<Out> Resolve<Out> {
+impl<Out> RequestHandle<Out> {
     /// Convert this Resolve into a version which deserializes from bytes, consuming it.
     /// The `func` argument is a 'deserializer' converting from bytes into the `Out` type.
     fn deserializing<F>(self, mut func: F) -> ResolveSerialized
@@ -84,13 +84,13 @@ impl<Out> Resolve<Out> {
         Out: 'static,
     {
         match self {
-            Resolve::Never => ResolveSerialized::Never,
-            Resolve::Once(resolve) => ResolveSerialized::Once(Box::new(move |deser| {
+            RequestHandle::Never => ResolveSerialized::Never,
+            RequestHandle::Once(resolve) => ResolveSerialized::Once(Box::new(move |deser| {
                 let out = func(deser)?;
                 resolve(out);
                 Ok(())
             })),
-            Resolve::Many(resolve) => ResolveSerialized::Many(Box::new(move |deser| {
+            RequestHandle::Many(resolve) => ResolveSerialized::Many(Box::new(move |deser| {
                 let out = func(deser)?;
                 resolve(out).map_err(|()| BridgeError::ProcessResponse(ResolveError::FinishedMany))
             })),
