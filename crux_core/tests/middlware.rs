@@ -151,26 +151,139 @@ mod middleware {
 
     use std::{sync::Arc, thread::spawn};
 
-    use crossbeam_channel::Sender;
     use crux_core::{capability::Operation, App, Core, Request, ResolveError};
 
     use crate::app::{RandomNumber, RandomNumberRequest};
 
-    pub struct RngMiddlware<A: App, F: Fn(Vec<A::Effect>)> {
+    pub struct MiddlwareSupport<A: App, D: Middleware<A> + Send + Sync, F: Fn(Vec<A::Effect>)> {
         core: Arc<Core<A>>,
-        jobs_tx: crossbeam_channel::Sender<(usize, Box<dyn FnOnce(usize) + Send>)>,
+        delegate: D,
         effect_callback: Arc<F>,
     }
 
-    impl<A: App + Sync + Send + 'static, F: Fn(Vec<A::Effect>) + Send + Sync + 'static>
-        RngMiddlware<A, F>
+    // General middlware infrastructure
+    impl<A, D, EffectCallback> MiddlwareSupport<A, D, EffectCallback>
     where
-        A::Effect: TryInto<Request<RandomNumberRequest>, Error = A::Effect>, // this is macro derived on effects
         A::Capabilities: Send,
+        A: App + Sync + Send + 'static,
+        D: Middleware<A> + Send + Sync + 'static,
+        EffectCallback: Fn(Vec<A::Effect>) + Send + Sync + 'static,
     {
-        pub fn new(core: Core<A>, effect_callback: F) -> Self {
-            let (jobs_tx, jobs_rx) =
-                crossbeam_channel::unbounded::<(usize, Box<dyn FnOnce(usize) + Send>)>();
+        pub fn new(core: Core<A>, delegate: D, effect_callback: EffectCallback) -> Arc<Self> {
+            Arc::new(Self {
+                core: Arc::new(core),
+                delegate,
+                effect_callback: Arc::new(effect_callback),
+            })
+        }
+
+        // Middleware can override
+        pub fn process_event(self: &Arc<Self>, event: A::Event) -> Vec<A::Effect> {
+            Self::process_effects(self, self.delegate.process_event(&self.core, event))
+        }
+
+        // Middleware can override
+        #[allow(unused)]
+        pub fn resolve<Op: Operation>(
+            self: &Arc<Self>,
+            request: &mut Request<Op>,
+            result: Op::Output,
+        ) -> Result<Vec<A::Effect>, ResolveError> {
+            Ok(Self::process_effects(
+                self,
+                self.delegate.resolve(&self.core, request, result)?,
+            ))
+        }
+
+        // Middleware can override
+        #[allow(unused)]
+        pub fn view(&self) -> A::ViewModel {
+            self.delegate.view(&self.core)
+        }
+
+        fn process_effects(arc_self: &Arc<Self>, effects: Vec<A::Effect>) -> Vec<A::Effect> {
+            effects
+                .into_iter()
+                .filter_map(|effect| {
+                    let future_self = Arc::downgrade(arc_self);
+
+                    arc_self.delegate.try_process_effect_with(
+                        effect,
+                        move |mut effect_request, effect_out_value| {
+                            let Some(future_self) = future_self.upgrade() else {
+                                // do nothing, self is gone, we can't process further effects
+                                return;
+                            };
+
+                            if let Ok(follow_up_effects) = future_self
+                                .core
+                                .resolve(&mut effect_request, effect_out_value)
+                            {
+                                let more_effects =
+                                    Self::process_effects(&future_self, follow_up_effects);
+
+                                if !more_effects.is_empty() {
+                                    eprintln!(
+                                        "Passing {} follow up effects back",
+                                        more_effects.len()
+                                    );
+
+                                    (future_self.effect_callback)(more_effects);
+                                }
+                            }
+                        },
+                    )
+                })
+                .collect()
+        }
+    }
+
+    pub trait Middleware<A: App> {
+        type Op: Operation;
+
+        fn process_event(&self, core: &Core<A>, event: A::Event) -> Vec<A::Effect> {
+            core.process_event(event)
+        }
+
+        // Middleware can override
+        fn resolve<Op: Operation>(
+            &self,
+            core: &Core<A>,
+            request: &mut Request<Op>,
+            result: Op::Output,
+        ) -> Result<Vec<A::Effect>, ResolveError> {
+            core.resolve(request, result)
+        }
+
+        // Middleware can override
+        fn view(&self, core: &Core<A>) -> A::ViewModel {
+            core.view()
+        }
+
+        // Middleware can override
+        fn try_process_effect_with(
+            &self,
+            effect: A::Effect,
+            resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
+                + Send
+                + 'static,
+        ) -> Option<A::Effect> {
+            Some(effect)
+        }
+    }
+
+    // Specific middlware implementation
+    pub struct RngMiddleware {
+        jobs_tx:
+            crossbeam_channel::Sender<(RandomNumberRequest, Box<dyn FnOnce(RandomNumber) + Send>)>,
+    }
+
+    impl RngMiddleware {
+        pub fn new() -> Self {
+            let (jobs_tx, jobs_rx) = crossbeam_channel::unbounded::<(
+                RandomNumberRequest,
+                Box<dyn FnOnce(RandomNumber) + Send>,
+            )>();
 
             spawn(move || {
                 eprintln!("Worker thread starting...");
@@ -178,117 +291,47 @@ mod middleware {
                 while let Ok((input, callback)) = jobs_rx.recv() {
                     // This is terrible RNG which always returns the highest number the die
                     // can produce
-                    eprintln!("Processing job for a dice with  max: {input}");
+                    eprintln!("Processing job for a dice with  max: {}", input.0);
 
-                    callback(input);
+                    callback(RandomNumber(input.0));
                 }
 
                 eprintln!("Worker thread terminating");
             });
 
-            Self {
-                core: Arc::new(core),
-                jobs_tx,
-                effect_callback: Arc::new(effect_callback),
-            }
+            Self { jobs_tx }
         }
+    }
 
-        pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
-            let follow_up_effects = self.core.process_event(event);
+    impl<A: App> Middleware<A> for RngMiddleware
+    where
+        A::Effect: TryInto<Request<RandomNumberRequest>, Error = A::Effect>,
+    {
+        type Op = RandomNumberRequest;
 
-            Self::process_rand_effects(
-                follow_up_effects,
-                &self.core,
-                self.jobs_tx.clone(),
-                &self.effect_callback,
-            )
-        }
-
-        pub fn resolve<Op: Operation>(
+        fn try_process_effect_with(
             &self,
-            request: &mut Request<Op>,
-            result: Op::Output,
-        ) -> Result<Vec<A::Effect>, ResolveError> {
-            let follow_up_effects = self.core.resolve(request, result)?;
-            Ok(Self::process_rand_effects(
-                follow_up_effects,
-                &self.core,
-                self.jobs_tx.clone(),
-                &self.effect_callback,
-            ))
-        }
+            effect: A::Effect,
+            resolve_callback: impl FnOnce(Request<RandomNumberRequest>, RandomNumber) + Send + 'static,
+        ) -> Option<A::Effect> {
+            match effect.try_into() {
+                Ok(
+                    rand_request @ Request {
+                        operation: RandomNumberRequest(_),
+                        ..
+                    },
+                ) => {
+                    self.jobs_tx
+                        .send((
+                            rand_request.operation.clone(),
+                            Box::new(|number| resolve_callback(rand_request, number)),
+                        ))
+                        .expect("Job failed to send to worker thread");
 
-        pub fn view(&self) -> A::ViewModel {
-            self.core.view()
-        }
-
-        fn process_rand_effects(
-            effects: Vec<A::Effect>,
-            core: &Arc<Core<A>>,
-            jobs_tx: Sender<(usize, Box<dyn FnOnce(usize) + Send + 'static>)>,
-            effect_callback: &Arc<F>,
-        ) -> Vec<A::Effect> {
-            effects
-                .into_iter()
-                .filter_map(|effect| {
-                    match effect.try_into() {
-                        Ok(
-                            mut rand_request @ Request {
-                                operation: RandomNumberRequest(upper_bound),
-                                ..
-                            },
-                        ) => {
-                            eprintln!("Found effect the middleware can handle!");
-
-                            let core_weak_ref = Arc::downgrade(core);
-                            let effect_callback_weak_ref = Arc::downgrade(effect_callback);
-                            let callback_jobs_tx = jobs_tx.clone();
-
-                            let when_done = Box::new(move |rn| {
-                                let Some(core) = core_weak_ref.upgrade() else {
-                                    // do nothing the core is gone, nobody is listening
-                                    return;
-                                };
-                                let Some(effect_callback) = effect_callback_weak_ref.upgrade()
-                                else {
-                                    // do nothing the callback is gone
-                                    return;
-                                };
-
-                                eprintln!("Resolving effect with random number: {rn}");
-
-                                if let Ok(follow_up_effects) =
-                                    core.resolve(&mut rand_request, RandomNumber(rn))
-                                {
-                                    let more_effects = Self::process_rand_effects(
-                                        follow_up_effects,
-                                        &core,
-                                        callback_jobs_tx,
-                                        &effect_callback,
-                                    );
-
-                                    if !more_effects.is_empty() {
-                                        eprintln!(
-                                            "Passing {} follow up effects back",
-                                            more_effects.len()
-                                        );
-
-                                        effect_callback(more_effects);
-                                    }
-                                }
-                            });
-
-                            eprintln!("Submitting job for the background thread");
-
-                            jobs_tx
-                                .send((upper_bound, when_done))
-                                .expect("could not send random number job to worker thread");
-                            None
-                        }
-                        Err(effect) => Some(effect),
-                    }
-                })
-                .collect()
+                    None
+                }
+                Err(effect) => Some(effect),
+            }
         }
     }
 }
@@ -296,9 +339,11 @@ mod middleware {
 mod tests {
     #![allow(unused_imports)]
 
+    use std::sync::Arc;
+
     use crate::{
         app::{Dice, Event},
-        middleware::RngMiddlware,
+        middleware::{MiddlwareSupport, RngMiddleware},
     };
     use crux_core::Core;
 
@@ -306,10 +351,11 @@ mod tests {
     fn roll_one_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: RngMiddlware<Dice, _> = RngMiddlware::new(Core::new(), {
-            let effects_tx = effects_tx.clone();
-            move |effects| effects_tx.send(effects).unwrap()
-        });
+        let core: Arc<MiddlwareSupport<Dice, RngMiddleware, _>> =
+            MiddlwareSupport::new(Core::new(), RngMiddleware::new(), {
+                let effects_tx = effects_tx.clone();
+                move |effects| effects_tx.send(effects).unwrap()
+            });
 
         let effects = core.process_event(Event::Roll(vec![6]));
         assert!(effects.is_empty());
@@ -328,10 +374,11 @@ mod tests {
     fn roll_three_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: RngMiddlware<Dice, _> = RngMiddlware::new(Core::new(), {
-            let effects_tx = effects_tx.clone();
-            move |effects| effects_tx.send(effects).unwrap()
-        });
+        let core: Arc<MiddlwareSupport<Dice, RngMiddleware, _>> =
+            MiddlwareSupport::new(Core::new(), RngMiddleware::new(), {
+                let effects_tx = effects_tx.clone();
+                move |effects| effects_tx.send(effects).unwrap()
+            });
 
         let effects = core.process_event(Event::Roll(vec![6, 10, 20]));
         assert!(effects.is_empty());
