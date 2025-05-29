@@ -85,6 +85,34 @@ impl SummaryNode {
     pub fn points_to_crate(&self, crate_: &CrateNode) -> bool {
         self.id.crate_ == crate_.id.crate_ && self.summary.crate_id == crate_.id.id
     }
+
+    pub fn path_components(&self) -> Option<String> {
+        // Convert the path vector to a string like "crux_core::render::RenderOperation"
+        if self.summary.path.is_empty() {
+            return None;
+        }
+        Some(self.summary.path.join("::"))
+    }
+
+    /// Get the actual crate name from the type path (not rustdoc's crate field)
+    /// This is crucial because rustdoc marks all types as belonging to the generating crate
+    pub fn actual_crate_name(&self) -> Option<String> {
+        if let Some(path) = self.path_components() {
+            // Extract the first component as the actual crate name
+            path.split("::").next().map(str::to_string)
+        } else {
+            None
+        }
+    }
+
+    /// Check if this type is from a workspace crate using the `PackageGraph`
+    pub fn is_workspace_type(&self, workspace_crates: &std::collections::HashSet<String>) -> bool {
+        if let Some(actual_crate) = self.actual_crate_name() {
+            workspace_crates.contains(&actual_crate)
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, Serialize, Deserialize)]

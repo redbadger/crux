@@ -2,10 +2,19 @@
 
 use ascent::ascent;
 use log::{debug, info};
-use rustdoc_types::Crate;
+use rustdoc_types::{Crate, Generics, Id, Item, ItemEnum, Struct, StructKind, Visibility};
+use std::collections::HashMap;
 
 use super::item::{is_enum, is_relevant, is_struct, is_struct_unit, is_type_alias};
 use super::node::{CrateNode, ItemNode, SummaryNode};
+
+/// Standard library crate names that should be skipped during type generation
+pub const STD_CRATES: &[&str] = &["std", "core", "alloc", "proc_macro", "test"];
+
+/// Check if a type is from the standard library and shouldn't be generated
+fn is_std_type(item: &ItemNode) -> bool {
+    STD_CRATES.contains(&item.id.crate_.as_str())
+}
 
 ascent! {
     #![measure_rule_times]
@@ -49,6 +58,12 @@ ascent! {
         is_type_alias(alias),
         local_type_of(field, alias),
         field(_, field);
+
+    // Track external types that need to be resolved
+    relation external_type_needed(SummaryNode);
+    external_type_needed(t) <--
+        remote_type_of(_, t),
+        !has_summary(_, t);
 
     // app structs have an implementation of the App trait
     relation app(ItemNode, ItemNode);
@@ -124,6 +139,15 @@ ascent! {
     root(x) <-- output(x);
     root(x) <-- type_alias_root(x);
 
+    // Add external types that are resolved as roots
+    root(x) <--
+        external_type_needed(summary),
+        item(x),
+        has_summary(x, summary),
+        if !is_std_type(x);
+
+    // Note: workspace crate detection happens dynamically in the processing phase
+
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
 
@@ -154,6 +178,14 @@ ascent! {
     edge(field, type_) <--
         edge(_, field),
         local_type_of(field, type_);
+
+    // Create edges for remote types that resolve to actual items
+    // This connects workspace crates like 'models' to the main app hierarchy
+    edge(field, type_) <--
+        edge(_, field),
+        remote_type_of(field, summary),
+        item(type_),
+        has_summary(type_, summary);
 
     relation crates(String);
     crates(n) <--
@@ -201,6 +233,100 @@ impl Filter {
 
     pub fn get_crates(&self) -> Vec<String> {
         self.crates.iter().map(|(crate_,)| crate_.clone()).collect()
+    }
+
+    pub fn get_external_types(&self) -> Vec<SummaryNode> {
+        self.external_type_needed
+            .iter()
+            .map(|(summary,)| summary.clone())
+            .collect()
+    }
+
+    /// Add workspace external types as synthetic edges to ensure they become containers
+    pub fn add_workspace_external_types(&mut self, workspace_external_types: Vec<SummaryNode>) {
+        for workspace_type in workspace_external_types {
+            if let (Some(actual_crate), Some(type_name)) = (
+                workspace_type.actual_crate_name(),
+                extract_type_name(&workspace_type),
+            ) {
+                // Skip standard library types
+                if STD_CRATES.contains(&actual_crate.as_str()) {
+                    continue;
+                }
+
+                let synthetic_item = create_synthetic_item(&type_name, &workspace_type);
+                let synthetic_node = ItemNode::new(actual_crate, synthetic_item);
+
+                if is_std_type(&synthetic_node) {
+                    continue;
+                }
+
+                self.item.push((synthetic_node.clone(),));
+                self.root.push((synthetic_node.clone(),));
+            }
+        }
+
+        // Run the filter again to process the synthetic types
+        self.run();
+    }
+
+    /// Add all public types (structs/enums) from a crate as roots
+    /// This ensures comprehensive type generation for frontend bindings
+    pub fn add_all_public_types_as_roots(&mut self, crate_name: &str) {
+        // Find all structs and enums from this crate, excluding standard library types
+        let items_to_add: Vec<ItemNode> = self
+            .item
+            .iter()
+            .filter(|(item,)| item.id.crate_ == crate_name)
+            .filter(|(item,)| is_struct(&item.item) || is_enum(&item.item))
+            .filter(|(item,)| !is_std_type(item))
+            .map(|(item,)| item.clone())
+            .collect();
+
+        for item in items_to_add {
+            if item.name().is_some() {
+                self.root.push((item,));
+            }
+        }
+
+        self.run();
+    }
+}
+
+/// Extract the type name from a `SummaryNode` path
+fn extract_type_name(summary: &SummaryNode) -> Option<String> {
+    if let Some(path) = summary.path_components() {
+        // Get the last component as the type name
+        path.split("::").last().map(str::to_string)
+    } else {
+        None
+    }
+}
+
+/// Create a synthetic Item for a workspace external type
+/// All workspace types are created as unit structs to ensure they generate containers
+fn create_synthetic_item(type_name: &str, summary: &SummaryNode) -> Item {
+    let synthetic_id = Id(summary.id.id);
+    let inner = ItemEnum::Struct(Struct {
+        kind: StructKind::Unit, // Unit struct always generates a container
+        generics: Generics {
+            params: vec![],
+            where_predicates: vec![],
+        },
+        impls: vec![],
+    });
+
+    Item {
+        id: synthetic_id,
+        crate_id: summary.summary.crate_id,
+        name: Some(type_name.to_string()),
+        span: None,
+        visibility: Visibility::Public,
+        docs: None,
+        links: HashMap::new(),
+        attrs: vec![],
+        deprecation: None,
+        inner,
     }
 }
 
