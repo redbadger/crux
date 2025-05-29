@@ -432,6 +432,20 @@ impl From<&Type> for Format {
                                 // Object type doesn't have serialize/deserialize methods
                                 Format::Str
                             }
+                            "Mutex" => {
+                                // Mutex<T> is just a thread-safe wrapper, extract the inner type
+                                match args.first() {
+                                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                                    Some(other) => {
+                                        panic!("Mutex<T> expects a type parameter, got: {other:?}")
+                                    }
+                                    None => panic!("Mutex<T> requires exactly one type parameter"),
+                                }
+                            }
+                            "Instant" => {
+                                // Instant represents a point in time, serialize as u64 (milliseconds)
+                                Format::U64
+                            }
                             _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
