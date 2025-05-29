@@ -2,7 +2,7 @@
 
 use ascent::ascent;
 use log::{debug, info};
-use rustdoc_types::{Crate, Item, ItemEnum, Id, Struct, StructKind, Generics, Visibility};
+use rustdoc_types::{Crate, Generics, Id, Item, ItemEnum, Struct, StructKind, Visibility};
 use std::collections::HashMap;
 
 use super::item::{is_enum, is_relevant, is_struct, is_struct_unit};
@@ -127,7 +127,7 @@ ascent! {
     root(x) <-- effect(app, x), if !is_std_type(x);
     root(x) <-- operation(op_impl, x), if !is_std_type(x);
     root(x) <-- output(x), if !is_std_type(x);
-    
+
     // Add external types that are resolved as roots
     root(x) <--
         external_type_needed(summary),
@@ -163,7 +163,7 @@ ascent! {
     edge(field, type_) <--
         edge(_, field),
         local_type_of(field, type_);
-    
+
     // Create edges for remote types that resolve to actual items
     // This connects workspace crates like 'models' to the main app hierarchy
     edge(field, type_) <--
@@ -227,28 +227,30 @@ impl Filter {
             .collect()
     }
 
-
     /// Add workspace external types as synthetic edges to ensure they become containers
     pub fn add_workspace_external_types(&mut self, workspace_external_types: Vec<SummaryNode>) {
         for workspace_type in workspace_external_types {
-            if let (Some(actual_crate), Some(type_name)) = (workspace_type.actual_crate_name(), extract_type_name(&workspace_type)) {
+            if let (Some(actual_crate), Some(type_name)) = (
+                workspace_type.actual_crate_name(),
+                extract_type_name(&workspace_type),
+            ) {
                 // Skip standard library types
                 if STD_CRATES.contains(&actual_crate.as_str()) {
                     continue;
                 }
-                
+
                 let synthetic_item = create_synthetic_item(&type_name, &workspace_type);
                 let synthetic_node = ItemNode::new(actual_crate, synthetic_item);
-                
+
                 if is_std_type(&synthetic_node) {
                     continue;
                 }
-                
+
                 self.item.push((synthetic_node.clone(),));
                 self.root.push((synthetic_node.clone(),));
             }
         }
-        
+
         // Run the filter again to process the synthetic types
         self.run();
     }
@@ -257,19 +259,21 @@ impl Filter {
     /// This ensures comprehensive type generation for frontend bindings
     pub fn add_all_public_types_as_roots(&mut self, crate_name: &str) {
         // Find all structs and enums from this crate, excluding standard library types
-        let items_to_add: Vec<ItemNode> = self.item.iter()
+        let items_to_add: Vec<ItemNode> = self
+            .item
+            .iter()
             .filter(|(item,)| item.id.crate_ == crate_name)
             .filter(|(item,)| is_struct(&item.item) || is_enum(&item.item))
             .filter(|(item,)| !is_std_type(item))
             .map(|(item,)| item.clone())
             .collect();
-            
+
         for item in items_to_add {
             if item.name().is_some() {
                 self.root.push((item,));
             }
         }
-        
+
         self.run();
     }
 }
