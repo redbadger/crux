@@ -12,55 +12,65 @@ struct FavoritesView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Main content
-                ScrollView {
-                    VStack(spacing: 24) {
-                        if case .favorites(let favorites) = core.view.workflow {
-                            if favorites.isEmpty {
-                                Text("No favorites yet")
-                                    .foregroundColor(.secondary)
-                                    .padding()
-                            } else {
-                                ForEach(favorites, id: \.lat) { favorite in
-                                    FavoriteCard(favorite: favorite, core: core)
-                                }
-                            }
-                        } else if case .confirmDeleteFavorite(let lat, let lng) = core.view.workflow {
-
-                        } else {
-                            Text("Not in favorites view")
-                                .foregroundColor(.secondary)
-                        }
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                VStack {
+                    switch core.view.workflow {
+                    case .favorites(let favorites):
+                        favoritesList(favorites)
+                    case .confirmDeleteFavorite(let lat, let lng, let favorites):
+                        favoritesList(favorites)
+                            .overlay(deleteConfirmationOverlay(lat: lat, lng: lng))
+                    default:
+                        Spacer()
+                        Text("No favorites yet")
+                            .foregroundColor(.secondary)
+                        Spacer()
                     }
-                    .padding(.vertical)
-                }
-                .background(Color(.systemGroupedBackground))
-                .navigationTitle("Favorites")
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: {
-                            core.update(.navigate(Workflow.home))
-                        }) {
-                            Image(systemName: "chevron.left")
-                            Text("Home")
-                        }
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: {
-                            core.update(.navigate(.addFavorite))
-                        }) {
-                            Image(systemName: "plus")
-                        }
-                    }
-                }
-
-                // Overlay
-                if case .confirmDeleteFavorite(let lat, let lng) = core.view.workflow {
-                    Color.black.opacity(0.4)
-                        .ignoresSafeArea()
-                    DeleteConfirmationView(lat: lat, lng: lng, core: core)
                 }
             }
+            .navigationTitle("Favorites")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { core.update(.navigate(Workflow.home)) }) {
+                        Image(systemName: "chevron.left")
+                        Text("Home")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { core.update(.navigate(.addFavorite)) }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func favoritesList(_ favorites: [SharedTypes.FavoriteView]) -> some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                if favorites.isEmpty {
+                    Text("No favorites yet")
+                        .foregroundColor(.secondary)
+                        .padding()
+                } else {
+                    ForEach(favorites, id: \.lat) { favorite in
+                        FavoriteCard(favorite: favorite, core: core)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical)
+        }
+    }
+    
+    private func deleteConfirmationOverlay(lat: Double, lng: Double) -> some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+            DeleteConfirmationView(lat: lat, lng: lng, core: core)
         }
     }
 }
@@ -77,11 +87,6 @@ struct FavoriteCard: View {
                 VStack(alignment: .leading) {
                     Text(favorite.name)
                         .font(.headline)
-                    if let summary = favorite.summary {
-                        Text(summary)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
                 }
                 
                 Spacer()

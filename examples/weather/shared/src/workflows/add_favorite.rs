@@ -55,7 +55,9 @@ pub fn update(event: AddFavoriteEvent, model: &mut crate::Model) -> Command<Effe
             model.favorites.push(favorite.clone());
             model.search_results = None;
             model.page = Workflow::Favorites(FavoritesState::Idle);
-            Command::event(Event::Favorites(Box::new(FavoritesEvent::Set)))
+            render().and(Command::event(Event::Favorites(Box::new(
+                FavoritesEvent::Set,
+            ))))
         }
         AddFavoriteEvent::Cancel => {
             model.search_results = None;
