@@ -155,21 +155,14 @@ mod middleware {
 
     use crate::app::{RandomNumber, RandomNumberRequest};
 
-    pub struct MiddlewareLayer<Next, M, F>
-    where
-        Next: Layer + Sync + Send + 'static,
-        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
-        M: EffectMiddleware<Next::Effect> + Send + Sync,
-        F: Fn(Vec<Next::Effect>),
-    {
-        next: Next,
-        middleware: M,
-        effect_callback: F,
-    }
-
+    /// A layer in the middleware stack. Implemented by the Core and the different
+    /// kinds of middlewares, so that they are interchangeable
     pub trait Layer: Send + Sync {
+        /// Event type expected by this layer
         type Event;
+        /// Effect type emitted by this layer
         type Effect;
+        /// ViewModel of this layer
         type ViewModel;
 
         fn process_event(&self, event: Self::Event) -> Vec<Self::Effect>;
@@ -183,6 +176,9 @@ mod middleware {
         fn view(&self) -> Self::ViewModel;
     }
 
+    // Core is a valid Layer, but only for thread-safe Apps, because
+    // middlewares need to be able to run background tasks and therefore
+    // be thread-safe (they may get called from different threads)
     impl<A: App> Layer for Core<A>
     where
         A: Send + Sync + 'static,
@@ -210,12 +206,32 @@ mod middleware {
         }
     }
 
-    impl<Next, M, F> Layer for Arc<MiddlewareLayer<Next, M, F>>
+    /// Middleware layer able to process some of the effects. This implements the general
+    /// behaviour making sure all follow-up effects are processed and routed to the right place
+    /// and delegates to the generic parameter `M`, which implements the effect processing
+    /// for individual effects
+    pub struct EffectMiddlewareLayer<Next, M, F>
     where
-        Next: Layer,
+        Next: Layer + Sync + Send + 'static,
         Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
+        M: EffectMiddleware<Next::Effect> + Send + Sync,
+        F: Fn(Vec<Next::Effect>),
+    {
+        next: Next,
+        middleware: M,
+        effect_callback: F,
+    }
+
+    impl<Next, M, EffectCallback> Layer for Arc<EffectMiddlewareLayer<Next, M, EffectCallback>>
+    where
+        // Next layer down, core being at the bottom
+        Next: Layer,
+        // Effect has to try_into the operation which the middleware handles
+        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
+        // The actual middleware effect handling implementation
         M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
-        F: Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+        // Callback for follow up effects
+        EffectCallback: Fn(Vec<Next::Effect>) + Send + Sync + 'static,
     {
         type Event = Next::Event;
         type Effect = Next::Effect;
@@ -238,15 +254,15 @@ mod middleware {
         }
     }
 
-    // Generic middlware layer infrastructure
-    impl<Next, M, EffectCallback> MiddlewareLayer<Next, M, EffectCallback>
+    impl<Next, M, EffectCallback> EffectMiddlewareLayer<Next, M, EffectCallback>
     where
         Next: Layer,
-        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>, // THIS IS IMPORTANT
+        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
         M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
         EffectCallback: Fn(Vec<Next::Effect>) + Send + Sync + 'static,
     {
         pub fn new(next: Next, middleware: M, effect_callback: EffectCallback) -> Arc<Self> {
+            // TODO: can I avoid the outer Arc and move it into an `Inner` type instead?
             Arc::new(Self {
                 next,
                 middleware,
@@ -279,15 +295,26 @@ mod middleware {
         }
 
         fn process_effects(arc_self: &Arc<Self>, effects: Vec<Next::Effect>) -> Vec<Next::Effect> {
+            // from arc_self we use:
+            // - itself to recurse into `process_effects`
+            // - `next` to resolve the effects
+            // - the `middleware`
+            // - the `effect_callback` to forward unknown effects up
             effects
                 .into_iter()
                 .filter_map(|effect| {
                     let future_self = Arc::downgrade(arc_self);
 
-                    arc_self.middleware.try_process_effect_with(
+                    // Ask middleware impl to process the effect, calling back with the result
+                    let result = arc_self.middleware.try_process_effect_with(
                         effect,
-                        // --- thread boundary ---
                         move |mut effect_request, effect_out_value| {
+                            // --- thread boundary ---
+                            // this is likely to be called from another thread, which did the
+                            // actual effect processing work. That means this closure needs
+                            // to be Send, and so does everything captured in it
+
+                            // This allows us to do the recursion without requiering `self` to outlive 'static
                             let Some(future_self) = future_self.upgrade() else {
                                 // do nothing, self is gone, we can't process further effects
                                 return;
@@ -297,6 +324,7 @@ mod middleware {
                                 .next
                                 .resolve(&mut effect_request, effect_out_value)
                             {
+                                // recurse
                                 let more_effects =
                                     Self::process_effects(&future_self, follow_up_effects);
 
@@ -310,9 +338,19 @@ mod middleware {
                                 }
                             }
                         },
-                    )
+                    );
+
+                    Self::into_option(result)
                 })
                 .collect()
+        }
+
+        #[inline]
+        fn into_option(result: Result<(), Next::Effect>) -> Option<Next::Effect> {
+            match result {
+                Ok(()) => None,
+                Err(effect) => Some(effect),
+            }
         }
     }
 
@@ -329,10 +367,10 @@ mod middleware {
             resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
                 + Send
                 + 'static,
-        ) -> Option<Effect>;
+        ) -> Result<(), Effect>;
     }
 
-    // Specific middlware implementation
+    // Random number generating middleware
     pub struct RngMiddleware {
         jobs_tx:
             crossbeam_channel::Sender<(RandomNumberRequest, Box<dyn FnOnce(RandomNumber) + Send>)>,
@@ -373,25 +411,20 @@ mod middleware {
             &self,
             effect: Effect,
             resolve_callback: impl FnOnce(Request<RandomNumberRequest>, RandomNumber) + Send + 'static,
-        ) -> Option<Effect> {
-            match effect.try_into() {
-                Ok(
-                    rand_request @ Request {
-                        operation: RandomNumberRequest(_),
-                        ..
-                    },
-                ) => {
-                    self.jobs_tx
-                        .send((
-                            rand_request.operation.clone(),
-                            Box::new(|number| resolve_callback(rand_request, number)),
-                        ))
-                        .expect("Job failed to send to worker thread");
+        ) -> Result<(), Effect> {
+            let rand_request @ Request {
+                operation: RandomNumberRequest(_),
+                ..
+            } = effect.try_into()?;
 
-                    None
-                }
-                Err(effect) => Some(effect),
-            }
+            self.jobs_tx
+                .send((
+                    rand_request.operation.clone(),
+                    Box::new(|number| resolve_callback(rand_request, number)),
+                ))
+                .expect("Job failed to send to worker thread");
+
+            Ok(())
         }
     }
 }
@@ -403,7 +436,7 @@ mod tests {
 
     use crate::{
         app::{Dice, Effect, Event},
-        middleware::{MiddlewareLayer, RngMiddleware},
+        middleware::{EffectMiddlewareLayer, RngMiddleware},
     };
     use crux_core::Core;
 
@@ -411,8 +444,8 @@ mod tests {
     fn roll_one_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: Arc<MiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
-            MiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
+        let core: Arc<EffectMiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
+            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
                 let effects_tx = effects_tx.clone();
                 move |effects| effects_tx.send(effects).unwrap()
             });
@@ -434,8 +467,8 @@ mod tests {
     fn roll_three_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: Arc<MiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
-            MiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
+        let core: Arc<EffectMiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
+            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
                 let effects_tx = effects_tx.clone();
                 move |effects| effects_tx.send(effects).unwrap()
             });
