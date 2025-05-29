@@ -27,7 +27,6 @@ pub enum FavoritesState {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum FavoritesEvent {
-    AddPressed,
     DeletePressed(Box<Favorite>),
     DeleteConfirmed,
     DeleteCancelled,
@@ -41,11 +40,6 @@ pub enum FavoritesEvent {
 
 pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, Event> {
     match event {
-        FavoritesEvent::AddPressed => {
-            model.page = Workflow::AddFavorite;
-            render()
-        }
-
         FavoritesEvent::DeletePressed(favorite) => {
             model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(
                 favorite.geo.lat,
@@ -332,14 +326,5 @@ mod tests {
             model.page,
             Workflow::Favorites(FavoritesState::Idle)
         ));
-    }
-
-    #[test]
-    fn test_add_pressed() {
-        let mut model = crate::Model::default();
-        let mut cmd = update(FavoritesEvent::AddPressed, &mut model);
-        assert!(cmd.effects().next().is_none());
-
-        assert!(matches!(model.page, Workflow::AddFavorite));
     }
 }
