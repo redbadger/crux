@@ -13,17 +13,10 @@ struct ContentView: View {
             switch core.view.workflow {
             case .home:
                 HomeView(core: core)
-            case .favorites:
+            case .favorites, .confirmDeleteFavorite:
                 FavoritesView(core: core)
             case .addFavorite:
                 AddFavoriteView(core: core)
-            case .confirmDeleteFavorite(let lat, let lng):
-                FavoritesView(core: core)
-                    .overlay(
-                        DeleteConfirmationView(lat: lat, lng: lng, core: core)
-                            .background(Color.black.opacity(0.4))
-                            .edgesIgnoringSafeArea(.all)
-                    )
             }
         }
     }

@@ -1,6 +1,5 @@
 ---
 source: shared/src/workflows/add_favorite.rs
-assertion_line: 254
 expression: model.search_results
 ---
 - name: Phoenix
