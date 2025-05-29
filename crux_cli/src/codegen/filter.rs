@@ -122,11 +122,11 @@ ascent! {
         if op_impl.has_associated_item(item, "Output");
 
     relation root(ItemNode);
-    root(x) <-- view_model(app, x), if !is_std_type(x);
-    root(x) <-- event(app, x), if !is_std_type(x);
-    root(x) <-- effect(app, x), if !is_std_type(x);
-    root(x) <-- operation(op_impl, x), if !is_std_type(x);
-    root(x) <-- output(x), if !is_std_type(x);
+    root(x) <-- view_model(app, x);
+    root(x) <-- event(app, x);
+    root(x) <-- effect(app, x);
+    root(x) <-- operation(op_impl, x);
+    root(x) <-- output(x);
 
     // Add external types that are resolved as roots
     root(x) <--
