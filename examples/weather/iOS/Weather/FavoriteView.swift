@@ -11,45 +11,54 @@ struct FavoritesView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    if case .favorites(let favorites) = core.view.workflow {
-                        if favorites.isEmpty {
-                            Text("No favorites yet")
-                                .foregroundColor(.secondary)
-                                .padding()
-                        } else {
-                            ForEach(favorites, id: \.lat) { favorite in
-                                FavoriteCard(favorite: favorite, core: core)
+            ZStack {
+                // Main content
+                ScrollView {
+                    VStack(spacing: 24) {
+                        if case .favorites(let favorites) = core.view.workflow {
+                            if favorites.isEmpty {
+                                Text("No favorites yet")
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                            } else {
+                                ForEach(favorites, id: \.lat) { favorite in
+                                    FavoriteCard(favorite: favorite, core: core)
+                                }
                             }
+                        } else if case .confirmDeleteFavorite(let lat, let lng) = core.view.workflow {
+
+                        } else {
+                            Text("Not in favorites view")
+                                .foregroundColor(.secondary)
                         }
-                    } else if case .confirmDeleteFavorite(let lat, let lng) = core.view.workflow {
-                        DeleteConfirmationView(lat: lat, lng: lng, core: core)
-                    } else {
-                        Text("Not in favorites view")
-                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical)
+                }
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("Favorites")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: {
+                            core.update(.navigate(Workflow.home))
+                        }) {
+                            Image(systemName: "chevron.left")
+                            Text("Home")
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            core.update(.navigate(.addFavorite))
+                        }) {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
-                .padding(.vertical)
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Favorites")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        core.update(.navigate(Workflow.home))
-                    }) {
-                        Image(systemName: "chevron.left")
-                        Text("Home")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        core.update(.navigate(.addFavorite))
-//                        core.update(.favorites(.addPressed))
-                    }) {
-                        Image(systemName: "plus")
-                    }
+
+                // Overlay
+                if case .confirmDeleteFavorite(let lat, let lng) = core.view.workflow {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                    DeleteConfirmationView(lat: lat, lng: lng, core: core)
                 }
             }
         }
