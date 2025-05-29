@@ -57,7 +57,9 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
                 {
                     model.favorites.remove(index);
                     model.page = Workflow::Favorites(FavoritesState::Idle);
-                    Command::event(Event::Favorites(Box::new(FavoritesEvent::Set)))
+                    render().and(Command::event(Event::Favorites(Box::new(
+                        FavoritesEvent::Set,
+                    ))))
                 } else {
                     model.page = Workflow::Favorites(FavoritesState::Idle);
                     render()
@@ -79,8 +81,12 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
             .then_send(|r| Event::Favorites(Box::new(FavoritesEvent::Load(r)))),
 
         FavoritesEvent::Set => {
-            KeyValue::set(FAVORITES_KEY, serde_json::to_vec(&model.favorites).unwrap())
-                .then_send(|_| Event::Render)
+            KeyValue::set(FAVORITES_KEY, serde_json::to_vec(&model.favorites).unwrap()).then_send(
+                |_| {
+                    println!("Setting favorites");
+                    Event::Render
+                },
+            )
         }
 
         FavoritesEvent::Load(result) => match result {
