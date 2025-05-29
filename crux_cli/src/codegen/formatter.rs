@@ -367,7 +367,9 @@ impl From<&Type> for Format {
                             "Option" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!("Option<T> expects a type parameter, got: {other:?}"),
+                                    Some(other) => {
+                                        panic!("Option<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Option<T> requires exactly one type parameter"),
                                 };
                                 Format::Option(Box::new(format))
@@ -376,7 +378,9 @@ impl From<&Type> for Format {
                             "Vec" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!("Vec<T> expects a type parameter, got: {other:?}"),
+                                    Some(other) => {
+                                        panic!("Vec<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Vec<T> requires exactly one type parameter"),
                                 };
                                 Format::Seq(Box::new(format))
@@ -386,7 +390,9 @@ impl From<&Type> for Format {
                                 // since Box is just a heap allocation wrapper
                                 match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!("Box<T> expects a type parameter, got: {other:?}"),
+                                    Some(other) => {
+                                        panic!("Box<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Box<T> requires exactly one type parameter"),
                                 }
                             }
