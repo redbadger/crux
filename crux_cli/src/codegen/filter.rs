@@ -8,13 +8,12 @@ use std::collections::HashMap;
 use super::item::{is_enum, is_relevant, is_struct, is_struct_unit};
 use super::node::{CrateNode, ItemNode, SummaryNode};
 
+/// Standard library crate names that should be skipped during type generation
+pub const STD_CRATES: &[&str] = &["std", "core", "alloc", "proc_macro", "test"];
+
 /// Check if a type is from the standard library and shouldn't be generated
 fn is_std_type(item: &ItemNode) -> bool {
-    // Check if it's from a standard library crate
-    matches!(
-        item.id.crate_.as_str(),
-        "std" | "core" | "alloc" | "proc_macro" | "test"
-    )
+    STD_CRATES.contains(&item.id.crate_.as_str())
 }
 
 ascent! {
@@ -136,13 +135,7 @@ ascent! {
         has_summary(x, summary),
         if !is_std_type(x);
 
-    // PRODUCTION FIX: Make all structs/enums from workspace crates roots
-    // This ensures types like Post, Comment, UserData are generated
     // Note: workspace crate detection happens dynamically in the processing phase
-
-    // REMOVED: Reachability-based root generation was too broad
-    // It was making every type reachable from the API a root, including std types
-    // Now we only generate roots for explicitly needed types
 
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
@@ -171,14 +164,13 @@ ascent! {
         edge(_, field),
         local_type_of(field, type_);
     
-    // CRITICAL FIX: Create edges for remote types that resolve to actual items
+    // Create edges for remote types that resolve to actual items
     // This connects workspace crates like 'models' to the main app hierarchy
     edge(field, type_) <--
         edge(_, field),
         remote_type_of(field, summary),
         item(type_),
         has_summary(type_, summary);
-
 
     relation crates(String);
     crates(n) <--
@@ -238,84 +230,47 @@ impl Filter {
 
     /// Add workspace external types as synthetic edges to ensure they become containers
     pub fn add_workspace_external_types(&mut self, workspace_external_types: Vec<SummaryNode>) {
-        debug!("=== ADDING SYNTHETIC WORKSPACE TYPES ===");
-        let mut synthetic_count = 0;
         for workspace_type in workspace_external_types {
-            // Create a synthetic ItemNode for the workspace type
             if let (Some(actual_crate), Some(type_name)) = (workspace_type.actual_crate_name(), extract_type_name(&workspace_type)) {
-                // NEVER create synthetic types for standard library types
-                if matches!(actual_crate.as_str(), "std" | "core" | "alloc" | "proc_macro" | "test") {
-                    debug!("Skipping synthetic type creation for std crate type: {actual_crate}::{type_name}");
+                // Skip standard library types
+                if STD_CRATES.contains(&actual_crate.as_str()) {
                     continue;
                 }
                 
-                debug!("Creating synthetic type: {type_name} from crate {actual_crate}");
-                let synthetic_item = create_synthetic_item(&actual_crate, &type_name, &workspace_type);
+                let synthetic_item = create_synthetic_item(&type_name, &workspace_type);
                 let synthetic_node = ItemNode::new(actual_crate, synthetic_item);
                 
-                // Double-check the synthetic node isn't a std type
                 if is_std_type(&synthetic_node) {
-                    debug!("Skipping synthetic std type: {type_name}");
                     continue;
                 }
                 
-                // Add the synthetic node as both item and root
                 self.item.push((synthetic_node.clone(),));
                 self.root.push((synthetic_node.clone(),));
-                
-                // Don't add to edge here - it will be computed by run()
-                
-                debug!("  - Added synthetic unit struct: {} (id: {})", type_name, synthetic_node.id.id);
-                synthetic_count += 1;
-            } else if let Some(path) = workspace_type.path_components() {
-                debug!("WARNING: Could not extract type name from: {path}");
             }
         }
-        debug!("Total synthetic types added: {synthetic_count}");
         
         // Run the filter again to process the synthetic types
-        debug!("Running filter to process synthetic types...");
         self.run();
     }
 
     /// Add all public types (structs/enums) from a crate as roots
     /// This ensures comprehensive type generation for frontend bindings
     pub fn add_all_public_types_as_roots(&mut self, crate_name: &str) {
-        debug!("=== ADDING ALL PUBLIC TYPES AS ROOTS FROM: {crate_name} ===");
-        let mut count = 0;
-        
-        // Debug: Show all items from this crate
-        let all_items_from_crate: Vec<_> = self.item.iter()
-            .filter(|(item,)| item.id.crate_ == crate_name)
-            .collect();
-        debug!("Total items from crate {}: {}", crate_name, all_items_from_crate.len());
-        
-        // Find all structs and enums from this crate and make them roots
-        // BUT exclude standard library types that shouldn't be generated
+        // Find all structs and enums from this crate, excluding standard library types
         let items_to_add: Vec<ItemNode> = self.item.iter()
             .filter(|(item,)| item.id.crate_ == crate_name)
             .filter(|(item,)| is_struct(&item.item) || is_enum(&item.item))
             .filter(|(item,)| !is_std_type(item))
             .map(|(item,)| item.clone())
             .collect();
-        
-        debug!("Found {} structs/enums to add as roots", items_to_add.len());
             
         for item in items_to_add {
-            if let Some(name) = item.name() {
-                debug!("  - Adding {name} as root");
+            if item.name().is_some() {
                 self.root.push((item,));
-                count += 1;
             }
         }
         
-        debug!("Added {count} types from {crate_name} as roots");
-        
-        // Run the filter again to process the new roots
-        if count > 0 {
-            debug!("Running filter to process new roots...");
-            self.run();
-        }
+        self.run();
     }
 }
 
@@ -330,14 +285,9 @@ fn extract_type_name(summary: &SummaryNode) -> Option<String> {
 }
 
 /// Create a synthetic Item for a workspace external type
-/// ALL workspace types are created as unit structs to ensure they generate containers
-fn create_synthetic_item(_crate_name: &str, type_name: &str, summary: &SummaryNode) -> Item {
-    // Create a unique ID for the synthetic item  
+/// All workspace types are created as unit structs to ensure they generate containers
+fn create_synthetic_item(type_name: &str, summary: &SummaryNode) -> Item {
     let synthetic_id = Id(summary.id.id);
-    
-    // PRODUCTION SOLUTION: Create ALL workspace types as unit structs
-    // This ensures they will always generate containers in the formatter
-    // The actual type structure will be resolved at runtime by the frontend
     let inner = ItemEnum::Struct(Struct {
         kind: StructKind::Unit, // Unit struct always generates a container
         generics: Generics {

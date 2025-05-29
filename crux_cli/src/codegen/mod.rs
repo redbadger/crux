@@ -20,7 +20,7 @@ use log::debug;
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
-use filter::Filter;
+use filter::{Filter, STD_CRATES};
 use formatter::Formatter;
 use node::ItemNode;
 use serde_generate::format::ContainerFormat;
@@ -42,7 +42,6 @@ fn get_all_workspace_members() -> Result<HashSet<String>> {
         .map(|pkg| pkg.name.clone())
         .collect();
     
-    debug!("Found workspace members: {member_names:?}");
     Ok(member_names)
 }
 
@@ -64,12 +63,8 @@ fn find_referenced_workspace_crates(
     }
     
     // Only return crates that have library targets
-    let metadata = match cargo_metadata::MetadataCommand::new().exec() {
-        Ok(m) => m,
-        Err(e) => {
-            debug!("Failed to get cargo metadata: {e}");
-            return Vec::new();
-        }
+    let Ok(metadata) = cargo_metadata::MetadataCommand::new().exec() else {
+        return Vec::new();
     };
     
     referenced
@@ -90,16 +85,12 @@ fn should_skip_crate(
     }
     
     // Built-in Rust crates
-    if matches!(
-        crate_name,
-        "std" | "core" | "alloc" | "proc_macro" | "test"
-    ) {
+    if STD_CRATES.contains(&crate_name) {
         return true;
     }
     
     // Workspace members are handled separately
     if workspace_members.contains(crate_name) {
-        debug!("Skipping workspace member {crate_name} (handled in phase 2)");
         return true;
     }
     
@@ -110,8 +101,6 @@ fn should_skip_crate(
     // - Or have crux crates provide pre-generated type definitions
     // - Or selectively load only the needed types from crux crates
     if !workspace_members.contains(crate_name) {
-        debug!("WARNING: Skipping external dependency: {crate_name}");
-        debug!("TODO: Types from {crate_name} may need field information for proper serialization");
         return true;
     }
     
@@ -154,7 +143,7 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
 
     let lib_name = lib.name();
 
-    let registry = run(lib_name, &package_graph, |name| load_crate(name, &manifest_paths))?;
+    let registry = run(lib_name, |name| load_crate(name, &manifest_paths))?;
 
     // switch from vendored types to `serde-reflection` types
     let registry: serde_reflection::Registry =
@@ -185,14 +174,13 @@ pub fn codegen(args: &CodegenArgs) -> Result<()> {
     Ok(())
 }
 
-fn run<F>(crate_name: &str, _package_graph: &PackageGraph, load: F) -> Result<Registry>
+fn run<F>(crate_name: &str, load: F) -> Result<Registry>
 where
     F: Fn(&str) -> Result<Crate>,
 {
     let mut previous: HashMap<String, Crate> = HashMap::new();
     
     // Phase 1: Process the main crate
-    debug!("Phase 1: Processing main crate {crate_name}");
     let shared_lib = load(crate_name)?;
     let mut filter = Filter::default();
     filter.process(crate_name, &shared_lib);
@@ -200,12 +188,7 @@ where
     previous.insert(crate_name.to_string(), shared_lib);
     
     // Phase 2: Identify and load referenced workspace crates
-    debug!("Phase 2: Finding referenced workspace crates");
-    let workspace_members = get_all_workspace_members()
-        .unwrap_or_else(|e| {
-            debug!("Failed to get workspace members: {e}");
-            HashSet::new()
-        });
+    let workspace_members = get_all_workspace_members().unwrap_or_default();
     
     let referenced_workspace_crates = find_referenced_workspace_crates(
         &filter,
@@ -213,56 +196,37 @@ where
         crate_name,
     );
     
-    debug!("Found {} referenced workspace crates: {:?}", 
-        referenced_workspace_crates.len(), 
-        referenced_workspace_crates
-    );
-    
     for workspace_crate in referenced_workspace_crates {
-        debug!("Loading workspace library crate: {workspace_crate}");
-        match load(&workspace_crate) {
-            Ok(crate_data) => {
-                filter.process(&workspace_crate, &crate_data);
-                filter.add_all_public_types_as_roots(&workspace_crate);
-                previous.insert(workspace_crate, crate_data);
-                debug!("Successfully processed workspace crate");
-            }
-            Err(e) => {
-                debug!("Could not load workspace crate {workspace_crate}: {e}");
-            }
+        if let Ok(crate_data) = load(&workspace_crate) {
+            filter.process(&workspace_crate, &crate_data);
+            filter.add_all_public_types_as_roots(&workspace_crate);
+            previous.insert(workspace_crate, crate_data);
         }
     }
     
     // Phase 3: Process external dependencies (only crux_ crates)
-    debug!("Phase 3: Processing external dependencies");
     let mut next = filter.get_crates();
     while let Some(crate_name) = next.pop() {
         if should_skip_crate(&crate_name, &workspace_members, &previous) {
             continue;
         }
         
-        debug!("Processing external crate: {crate_name}");
         let crate_ = load(&crate_name)?;
         filter.process(&crate_name, &crate_);
         next = filter.get_crates();
         previous.insert(crate_name, crate_);
     }
 
-
     // Phase 4: Handle remaining external types (non-workspace)
     // Only create synthetic types for truly external types (e.g., chrono::DateTime)
-    debug!("Phase 4: Handling remaining external types");
     let external_types: Vec<_> = filter.get_external_types()
         .into_iter()
         .filter(|t| !t.is_workspace_type(&workspace_members))
         .collect();
     
     if !external_types.is_empty() {
-        debug!("Creating synthetic types for {} non-workspace external types", external_types.len());
         filter.add_workspace_external_types(external_types);
     }
-    
-    debug!("Type generation complete");
 
     Ok(format(filter.edge))
 }
@@ -272,10 +236,7 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
     formatter.edge = edges;
     formatter.run();
     
-    let containers = formatter.container.into_iter().collect::<Registry>();
-    debug!("Generated {} type containers", containers.len());
-    
-    containers
+    formatter.container.into_iter().collect()
 }
 
 fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate> {
