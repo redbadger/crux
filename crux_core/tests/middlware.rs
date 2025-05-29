@@ -155,39 +155,108 @@ mod middleware {
 
     use crate::app::{RandomNumber, RandomNumberRequest};
 
-    pub struct MiddlewareLayer<A, M, F>
+    pub struct MiddlewareLayer<Next, M, F>
     where
-        A: App + Sync + Send + 'static,
-        A::Effect: TryInto<Request<M::Op>, Error = A::Effect>,
-        M: EffectMiddleware<A::Effect> + Send + Sync,
-        F: Fn(Vec<A::Effect>),
+        Next: Layer + Sync + Send + 'static,
+        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
+        M: EffectMiddleware<Next::Effect> + Send + Sync,
+        F: Fn(Vec<Next::Effect>),
     {
-        core: Core<A>,
-        delegate: M,
+        next: Next,
+        middleware: M,
         effect_callback: F,
     }
 
-    // Generic middlware layer infrastructure
-    impl<A, M, EffectCallback> MiddlewareLayer<A, M, EffectCallback>
+    pub trait Layer: Send + Sync {
+        type Event;
+        type Effect;
+        type ViewModel;
+
+        fn process_event(&self, event: Self::Event) -> Vec<Self::Effect>;
+
+        fn resolve<Op: Operation>(
+            &self,
+            request: &mut Request<Op>,
+            output: Op::Output,
+        ) -> Result<Vec<Self::Effect>, ResolveError>;
+
+        fn view(&self) -> Self::ViewModel;
+    }
+
+    impl<A: App> Layer for Core<A>
     where
-        A: App + Sync + Send + 'static,
-        A::Model: Send + Sync,
-        A::Capabilities: Send + Sync,
-        A::Effect: TryInto<Request<M::Op>, Error = A::Effect>,
-        M: EffectMiddleware<A::Effect> + Send + Sync + 'static,
-        EffectCallback: Fn(Vec<A::Effect>) + Send + Sync + 'static,
+        A: Send + Sync + 'static,
+        A::Capabilities: Send + Sync + 'static,
+        A::Model: Send + Sync + 'static,
     {
-        pub fn new(core: Core<A>, delegate: M, effect_callback: EffectCallback) -> Arc<Self> {
+        type Event = A::Event;
+        type Effect = A::Effect;
+        type ViewModel = A::ViewModel;
+
+        fn process_event(&self, event: Self::Event) -> Vec<Self::Effect> {
+            self.process_event(event)
+        }
+
+        fn resolve<Op: Operation>(
+            &self,
+            request: &mut Request<Op>,
+            output: Op::Output,
+        ) -> Result<Vec<Self::Effect>, ResolveError> {
+            self.resolve(request, output)
+        }
+
+        fn view(&self) -> Self::ViewModel {
+            self.view()
+        }
+    }
+
+    impl<Next, M, F> Layer for Arc<MiddlewareLayer<Next, M, F>>
+    where
+        Next: Layer,
+        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
+        M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+        F: Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+    {
+        type Event = Next::Event;
+        type Effect = Next::Effect;
+        type ViewModel = Next::ViewModel;
+
+        fn process_event(&self, event: Self::Event) -> Vec<Self::Effect> {
+            self.process_event(event) // FIXME: takes &Arc<Self>
+        }
+
+        fn resolve<Op: Operation>(
+            &self,
+            request: &mut Request<Op>,
+            output: Op::Output,
+        ) -> Result<Vec<Self::Effect>, ResolveError> {
+            self.resolve(request, output) // FIXME: takes &Arc<Self>
+        }
+
+        fn view(&self) -> Self::ViewModel {
+            (**self).view() // FIXME: takes &Arc<Self>
+        }
+    }
+
+    // Generic middlware layer infrastructure
+    impl<Next, M, EffectCallback> MiddlewareLayer<Next, M, EffectCallback>
+    where
+        Next: Layer,
+        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>, // THIS IS IMPORTANT
+        M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+        EffectCallback: Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+    {
+        pub fn new(next: Next, middleware: M, effect_callback: EffectCallback) -> Arc<Self> {
             Arc::new(Self {
-                core,
-                delegate,
+                next,
+                middleware,
                 effect_callback,
             })
         }
 
         // Middleware can override
-        pub fn process_event(self: &Arc<Self>, event: A::Event) -> Vec<A::Effect> {
-            Self::process_effects(self, self.core.process_event(event))
+        pub fn process_event(self: &Arc<Self>, event: Next::Event) -> Vec<Next::Effect> {
+            Self::process_effects(self, self.next.process_event(event))
         }
 
         // Middleware can override
@@ -196,26 +265,26 @@ mod middleware {
             self: &Arc<Self>,
             request: &mut Request<Op>,
             result: Op::Output,
-        ) -> Result<Vec<A::Effect>, ResolveError> {
+        ) -> Result<Vec<Next::Effect>, ResolveError> {
             Ok(Self::process_effects(
                 self,
-                self.core.resolve(request, result)?,
+                self.next.resolve(request, result)?,
             ))
         }
 
         // Middleware can override
         #[allow(unused)]
-        pub fn view(&self) -> A::ViewModel {
-            self.core.view()
+        pub fn view(&self) -> Next::ViewModel {
+            self.next.view()
         }
 
-        fn process_effects(arc_self: &Arc<Self>, effects: Vec<A::Effect>) -> Vec<A::Effect> {
+        fn process_effects(arc_self: &Arc<Self>, effects: Vec<Next::Effect>) -> Vec<Next::Effect> {
             effects
                 .into_iter()
                 .filter_map(|effect| {
                     let future_self = Arc::downgrade(arc_self);
 
-                    arc_self.delegate.try_process_effect_with(
+                    arc_self.middleware.try_process_effect_with(
                         effect,
                         // --- thread boundary ---
                         move |mut effect_request, effect_out_value| {
@@ -225,7 +294,7 @@ mod middleware {
                             };
 
                             if let Ok(follow_up_effects) = future_self
-                                .core
+                                .next
                                 .resolve(&mut effect_request, effect_out_value)
                             {
                                 let more_effects =
@@ -342,7 +411,7 @@ mod tests {
     fn roll_one_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: Arc<MiddlewareLayer<Dice, RngMiddleware, _>> =
+        let core: Arc<MiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
             MiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
                 let effects_tx = effects_tx.clone();
                 move |effects| effects_tx.send(effects).unwrap()
@@ -365,7 +434,7 @@ mod tests {
     fn roll_three_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
 
-        let core: Arc<MiddlewareLayer<Dice, RngMiddleware, _>> =
+        let core: Arc<MiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
             MiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
                 let effects_tx = effects_tx.clone();
                 move |effects| effects_tx.send(effects).unwrap()
