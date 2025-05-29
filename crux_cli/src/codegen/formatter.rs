@@ -367,15 +367,15 @@ impl From<&Type> for Format {
                                 };
                                 Format::Seq(Box::new(format))
                             }
-                            "Box" => {
-                                // Box<T> is semantically equivalent to T for serialization
-                                // since Box is just a heap allocation wrapper
+                            "Box" | "Arc" | "Rc" => {
+                                // Box<T>, Arc<T>, Rc<T> are semantically equivalent to T for serialization
+                                // since they are just smart pointer wrappers
                                 match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
                                     Some(other) => {
-                                        panic!("Box<T> expects a type parameter, got: {other:?}")
+                                        panic!("{name}<T> expects a type parameter, got: {other:?}")
                                     }
-                                    None => panic!("Box<T> requires exactly one type parameter"),
+                                    None => panic!("{name}<T> requires exactly one type parameter"),
                                 }
                             }
                             "HashMap" | "BTreeMap" => {
