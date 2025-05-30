@@ -33,7 +33,12 @@ ascent! {
     // ------- rules ------------------
 
     relation has_summary(ItemNode, SummaryNode);
-    has_summary(i, s) <-- item(i), summary(s), if i.has_summary(s);
+    // PERFORMANCE OPTIMIZATION: Only match items to summaries within the same crate
+    // This eliminates the expensive O(N×M) cross-crate matching that was the main bottleneck
+    // Cross-crate type resolution is handled via synthetic type generation instead
+    has_summary(i, s) <-- item(i), summary(s),
+        if i.id.crate_ == s.id.crate_,
+        if i.id == s.id;
 
     relation is_struct(ItemNode);
     is_struct(s) <-- item(s) if is_struct(&s.item);
@@ -65,10 +70,12 @@ ascent! {
         field(_, field);
 
     // Track external types that need to be resolved
+    // Simplified to avoid expensive has_summary cross-crate matching
     relation external_type_needed(SummaryNode);
     external_type_needed(t) <--
         remote_type_of(_, t),
-        !has_summary(_, t);
+        summary(t),
+        if t.actual_crate_name().map_or(false, |c| !c.starts_with("crux_"));
 
     // app structs have an implementation of the App trait
     relation app(ItemNode, ItemNode);
@@ -112,9 +119,7 @@ ascent! {
         is_enum(effect),
         item(effect_impl),
         if effect_impl.is_impl_for(effect, "Effect"),
-        has_summary(app, app_summary),
-        has_summary(effect, effect_summary),
-        if app_summary.in_same_module_as(effect_summary),
+        if app.id.crate_ == effect.id.crate_, // Performance: same crate check instead of expensive has_summary
         local_type_of(effect_ffi_item, effect_ffi),
         if effect_impl.has_associated_item(effect_ffi_item, "Ffi");
 
@@ -144,13 +149,8 @@ ascent! {
     root(x) <-- output(x);
     root(x) <-- type_alias_root(x);
 
-    // Add external types that are resolved as roots
-    root(x) <--
-        external_type_needed(summary),
-        item(x),
-        has_summary(x, summary),
-        if !is_std_type(x),
-        if is_public(x);
+    // Performance optimization: Skip expensive cross-crate type resolution
+    // External types are handled via synthetic type generation in Phase 4
 
     // Note: workspace crate detection happens dynamically in the processing phase
 
@@ -185,13 +185,8 @@ ascent! {
         edge(_, field),
         local_type_of(field, type_);
 
-    // Create edges for remote types that resolve to actual items
-    // This connects workspace crates like 'models' to the main app hierarchy
-    edge(field, type_) <--
-        edge(_, field),
-        remote_type_of(field, summary),
-        item(type_),
-        has_summary(type_, summary);
+    // Performance optimization: Skip expensive cross-crate edge resolution
+    // Remote types are handled via synthetic type generation instead
 
     relation crates(String);
     crates(n) <--
@@ -298,7 +293,6 @@ impl Filter {
 
         self.run();
     }
-
 }
 
 /// Extract the type name from a `SummaryNode` path
