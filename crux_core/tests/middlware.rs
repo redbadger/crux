@@ -177,7 +177,7 @@ mod middleware {
 
         fn process_event<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
         where
-            F: Fn(Vec<Self::Effect>) + Clone + Send + 'static;
+            F: Fn(Vec<Self::Effect>) + Sync + Send + 'static;
 
         fn resolve<Op, F>(
             &self,
@@ -186,7 +186,7 @@ mod middleware {
             effect_callback: F,
         ) -> Result<Vec<Self::Effect>, ResolveError>
         where
-            F: Fn(Vec<Self::Effect>) + Clone + Send + 'static,
+            F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
             Op: Operation;
 
         fn view(&self) -> Self::ViewModel;
@@ -205,7 +205,7 @@ mod middleware {
         type Effect = A::Effect;
         type ViewModel = A::ViewModel;
 
-        fn process_event<F: Fn(Vec<Self::Effect>) + Send + Clone + 'static>(
+        fn process_event<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
             &self,
             event: Self::Event,
             _effect_callback: F,
@@ -213,7 +213,7 @@ mod middleware {
             self.process_event(event)
         }
 
-        fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Clone + 'static>(
+        fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
             &self,
             request: &mut Request<Op>,
             output: Op::Output,
@@ -263,7 +263,7 @@ mod middleware {
         type Effect = Next::Effect;
         type ViewModel = Next::ViewModel;
 
-        fn process_event<F: Fn(Vec<Self::Effect>) + Clone + Send + 'static>(
+        fn process_event<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
             &self,
             event: Self::Event,
             effect_callback: F,
@@ -271,7 +271,7 @@ mod middleware {
             self.process_event(event, effect_callback)
         }
 
-        fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Clone + Send + 'static>(
+        fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
             &self,
             request: &mut Request<Op>,
             output: Op::Output,
@@ -300,10 +300,11 @@ mod middleware {
         pub fn process_event(
             &self,
             event: Next::Event,
-            return_effects: impl Fn(Vec<Next::Effect>) + Send + Clone + 'static,
+            return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
         ) -> Vec<Next::Effect> {
             let inner = Arc::downgrade(&self.inner);
-            let return_effects_copy = return_effects.clone(); // FIXME: can we avoid cloning the closure?
+            let return_effects = Arc::new(return_effects);
+            let return_effects_copy = return_effects.clone();
 
             let effects = self
                 .inner
@@ -326,10 +327,11 @@ mod middleware {
             &self,
             request: &mut Request<Op>,
             result: Op::Output,
-            return_effects: impl Fn(Vec<Next::Effect>) + Clone + Send + 'static,
+            return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
         ) -> Result<Vec<Next::Effect>, ResolveError> {
             let inner = Arc::downgrade(&self.inner);
-            let return_effects_copy = return_effects.clone(); // FIXME: can we avoid cloning the closure?
+            let return_effects = Arc::new(return_effects);
+            let return_effects_copy = return_effects.clone();
 
             let effects =
                 self.inner
@@ -358,14 +360,14 @@ mod middleware {
         fn process_known_effects(
             inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
             effects: Vec<Next::Effect>,
-            return_effects: impl Fn(Vec<Next::Effect>) + Send + Clone + 'static,
+            return_effects: Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
         ) -> Vec<Next::Effect> {
             effects
                 .into_iter()
                 .filter_map(|effect| {
                     // This is where the middleware handler will send the result of its work
                     let resolve_callback = {
-                        let return_effects = return_effects.clone(); // FIXME: can we avoid cloning the closure?
+                        let return_effects = return_effects.clone();
                         let inner = inner.clone();
 
                         move |mut effect_request, effect_out_value| {
@@ -380,7 +382,7 @@ mod middleware {
                                 strong_inner
                                     .next
                                     .resolve(&mut effect_request, effect_out_value, {
-                                        let return_effects = return_effects.clone(); // FIXME: can we avoid cloning the closure?
+                                        let return_effects = return_effects.clone();
                                         let future_inner = inner.clone();
 
                                         // Eventual eventual route
@@ -422,9 +424,8 @@ mod middleware {
         fn process_known_effects_with(
             inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
             effects: Vec<<Next as Layer>::Effect>,
-            return_effects: impl Fn(Vec<<Next as Layer>::Effect>) + Send + Clone + 'static,
+            return_effects: Arc<impl Fn(Vec<<Next as Layer>::Effect>) + Send + Sync + 'static>,
         ) {
-            // FIXME: can we avoid cloning the closure?
             let unknown_effects =
                 Self::process_known_effects(inner, effects, return_effects.clone());
 
