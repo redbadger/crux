@@ -167,7 +167,7 @@ mod middleware {
 
     /// A layer in the middleware stack. Implemented by the Core and the different
     /// kinds of middlewares, so that they are interchangeable
-    pub trait Layer: Send + Sync {
+    pub trait Layer: Send + Sync + Sized {
         /// Event type expected by this layer
         type Event;
         /// Effect type emitted by this layer
@@ -190,6 +190,14 @@ mod middleware {
             Op: Operation;
 
         fn view(&self) -> Self::ViewModel;
+
+        fn handle_effects_using<EM>(self, middleware: EM) -> EffectMiddlewareLayer<Self, EM>
+        where
+            EM: EffectMiddleware<Self::Effect> + Send + Sync + 'static,
+            Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect>,
+        {
+            EffectMiddlewareLayer::new(self, middleware)
+        }
     }
 
     // Core is a valid Layer, but only for thread-safe Apps, because
@@ -603,7 +611,9 @@ mod tests {
 
     use crate::{
         app::{Dice, Effect, Event},
-        middleware::{EffectMiddlewareLayer, FakeHttpMiddleware, RemoteTriggerHttp, RngMiddleware},
+        middleware::{
+            EffectMiddlewareLayer, FakeHttpMiddleware, Layer, RemoteTriggerHttp, RngMiddleware,
+        },
     };
     use crossbeam_channel::RecvError;
     use crux_core::{render::RenderOperation, Core};
@@ -613,8 +623,7 @@ mod tests {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
         let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
 
-        let core: EffectMiddlewareLayer<Core<Dice>, RngMiddleware> =
-            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new());
+        let core = Core::<Dice>::new().handle_effects_using(RngMiddleware::new());
 
         let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
@@ -634,8 +643,7 @@ mod tests {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
         let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
 
-        let core: EffectMiddlewareLayer<Core<Dice>, RngMiddleware> =
-            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new());
+        let core = Core::<Dice>::new().handle_effects_using(RngMiddleware::new());
 
         let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
         assert!(effects.is_empty());
@@ -655,13 +663,10 @@ mod tests {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
         let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
 
-        let core: EffectMiddlewareLayer<
-            EffectMiddlewareLayer<Core<Dice>, RngMiddleware>,
-            FakeHttpMiddleware,
-        > = EffectMiddlewareLayer::new(
-            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new()),
-            FakeHttpMiddleware,
-        );
+        let inner_core: Core<Dice> = Core::new();
+        let core = inner_core
+            .handle_effects_using(RngMiddleware::new())
+            .handle_effects_using(FakeHttpMiddleware);
 
         let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
         assert!(effects.is_empty());
@@ -682,13 +687,9 @@ mod tests {
 
         let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
 
-        let core: EffectMiddlewareLayer<
-            EffectMiddlewareLayer<Core<Dice>, RemoteTriggerHttp>,
-            RngMiddleware,
-        > = EffectMiddlewareLayer::new(
-            EffectMiddlewareLayer::new(Core::new(), RemoteTriggerHttp::new(remote_rx)),
-            RngMiddleware::new(),
-        );
+        let core = Core::<Dice>::new()
+            .handle_effects_using(RemoteTriggerHttp::new(remote_rx))
+            .handle_effects_using(RngMiddleware::new());
 
         let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
@@ -713,13 +714,9 @@ mod tests {
 
         let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
 
-        let core: EffectMiddlewareLayer<
-            EffectMiddlewareLayer<Core<Dice>, RemoteTriggerHttp>,
-            RngMiddleware,
-        > = EffectMiddlewareLayer::new(
-            EffectMiddlewareLayer::new(Core::new(), RemoteTriggerHttp::new(remote_rx)),
-            RngMiddleware::new(),
-        );
+        let core = Core::<Dice>::new()
+            .handle_effects_using(RemoteTriggerHttp::new(remote_rx))
+            .handle_effects_using(RngMiddleware::new());
 
         let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
