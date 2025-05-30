@@ -21,9 +21,16 @@ use super::{
 
 /// Check if a type name is a framework internal type that shouldn't be generated
 fn is_framework_internal(name: &str) -> bool {
-    matches!(name, 
-        "CapabilityContext" | "Resolve" | "Core" | "Bridge" | 
-        "Capability" | "Context" | "ContextInner" | "KeyValue"
+    matches!(
+        name,
+        "CapabilityContext"
+            | "Resolve"
+            | "Core"
+            | "Bridge"
+            | "Capability"
+            | "Context"
+            | "ContextInner"
+            | "KeyValue"
     )
 }
 
@@ -386,7 +393,9 @@ impl From<&Type> for Format {
                             "Option" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!("Option<T> expects a type parameter, got: {other:?}"),
+                                    Some(other) => {
+                                        panic!("Option<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Option<T> requires exactly one type parameter"),
                                 };
                                 Format::Option(Box::new(format))
@@ -395,7 +404,9 @@ impl From<&Type> for Format {
                             "Vec" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    Some(other) => panic!("Vec<T> expects a type parameter, got: {other:?}"),
+                                    Some(other) => {
+                                        panic!("Vec<T> expects a type parameter, got: {other:?}")
+                                    }
                                     None => panic!("Vec<T> requires exactly one type parameter"),
                                 };
                                 Format::Seq(Box::new(format))
@@ -474,7 +485,9 @@ impl From<&Type> for Format {
             Type::DynTrait(_dyn_trait) => {
                 // Dynamic trait objects (dyn Trait) are not serializable
                 // Skip these types rather than crashing
-                log::warn!("Skipping dynamic trait object (dyn Trait) - not supported for serialization");
+                log::warn!(
+                    "Skipping dynamic trait object (dyn Trait) - not supported for serialization"
+                );
                 Format::TypeName("UnsupportedDynTrait".to_string())
             }
             Type::Generic(param_name) => {

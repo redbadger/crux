@@ -6,7 +6,8 @@ use rustdoc_types::{
 use serde::{Deserialize, Serialize};
 
 use super::item::{
-    field_ids, get_type_alias_target, has_associated_item, has_field, has_variant, is_impl_for, variant_ids,
+    field_ids, get_type_alias_target, has_associated_item, has_field, has_variant, is_impl_for,
+    variant_ids,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -165,7 +166,7 @@ impl ItemNode {
         if self.id.crate_ == summary.id.crate_ {
             return self.id == summary.id;
         }
-        
+
         // For external types, match by crate name and type name
         // This handles cases where external types have different IDs in different crates
         if let Some(item_name) = self.name() {
@@ -179,7 +180,7 @@ impl ItemNode {
                 }
             }
         }
-        
+
         false
     }
 
