@@ -161,7 +161,26 @@ impl ItemNode {
     }
 
     pub fn has_summary(&self, summary: &SummaryNode) -> bool {
-        self.id == summary.id
+        // For items in the same crate, match by ID
+        if self.id.crate_ == summary.id.crate_ {
+            return self.id == summary.id;
+        }
+        
+        // For external types, match by crate name and type name
+        // This handles cases where external types have different IDs in different crates
+        if let Some(item_name) = self.name() {
+            if let Some(summary_crate) = summary.actual_crate_name() {
+                // Check if this item is in the crate referenced by the summary
+                if self.id.crate_ == summary_crate {
+                    // Check if the type names match (last component of the path)
+                    if let Some(summary_type_name) = summary.summary.path.last() {
+                        return item_name == *summary_type_name;
+                    }
+                }
+            }
+        }
+        
+        false
     }
 
     pub fn is_impl_for(&self, for_: &ItemNode, trait_name: &str) -> bool {

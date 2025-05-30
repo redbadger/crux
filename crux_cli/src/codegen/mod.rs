@@ -94,13 +94,13 @@ fn should_skip_crate(
         return true;
     }
 
-    // Skip all external dependencies for now
+    // Skip all external dependencies except crux_ crates
     // TODO: The challenge is that we'd need the field information for these types to generate proper serialization code.
     // So we'd need a hybrid approach:
     // - Use synthetic types for the structure
     // - Or have crux crates provide pre-generated type definitions
     // - Or selectively load only the needed types from crux crates
-    if !workspace_members.contains(crate_name) {
+    if !workspace_members.contains(crate_name) && !crate_name.starts_with("crux_") {
         return true;
     }
 
@@ -183,7 +183,9 @@ where
     let shared_lib = load(crate_name)?;
     let mut filter = Filter::default();
     filter.process(crate_name, &shared_lib);
-    filter.add_all_public_types_as_roots(crate_name);
+    // Only add types that are actually needed (Event, ViewModel, Effect types)
+    // instead of ALL public types
+    filter.add_core_app_types_as_roots(crate_name);
     previous.insert(crate_name.to_string(), shared_lib);
 
     // Phase 2: Identify and load referenced workspace crates
@@ -213,12 +215,24 @@ where
         previous.insert(crate_name, crate_);
     }
 
-    // Phase 4: Handle remaining external types (non-workspace)
+    // Phase 4: Handle remaining external types (non-workspace, non-crux)
     // Only create synthetic types for truly external types (e.g., chrono::DateTime)
     let external_types: Vec<_> = filter
         .get_external_types()
         .into_iter()
-        .filter(|t| !t.is_workspace_type(&workspace_members))
+        .filter(|t| {
+            // Skip workspace types
+            if t.is_workspace_type(&workspace_members) {
+                return false;
+            }
+            // Skip crux_ types since we load those crates
+            if let Some(crate_name) = t.actual_crate_name() {
+                if crate_name.starts_with("crux_") {
+                    return false;
+                }
+            }
+            true
+        })
         .collect();
 
     if !external_types.is_empty() {
@@ -232,6 +246,7 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
     let mut formatter = Formatter::default();
     formatter.edge = edges;
     formatter.run();
+    debug!("{}", formatter.scc_times_summary());
 
     formatter.container.into_iter().collect()
 }
@@ -251,6 +266,7 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
         .arg("--no-deps")
         .arg("--lib")
         .args(["--manifest-path", manifest_path])
+        .arg("--all-features")
         .arg("--document-private-items")
         .status()?;
 

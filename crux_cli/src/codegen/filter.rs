@@ -16,6 +16,12 @@ fn is_std_type(item: &ItemNode) -> bool {
     STD_CRATES.contains(&item.id.crate_.as_str())
 }
 
+/// Check if an item is public (has public visibility)
+pub fn is_public(item: &ItemNode) -> bool {
+    matches!(item.item.visibility, rustdoc_types::Visibility::Public)
+}
+
+
 ascent! {
     #![measure_rule_times]
     pub struct Filter;
@@ -144,7 +150,8 @@ ascent! {
         external_type_needed(summary),
         item(x),
         has_summary(x, summary),
-        if !is_std_type(x);
+        if !is_std_type(x),
+        if is_public(x);
 
     // Note: workspace crate detection happens dynamically in the processing phase
 
@@ -273,13 +280,14 @@ impl Filter {
     /// Add all public types (structs/enums) from a crate as roots
     /// This ensures comprehensive type generation for frontend bindings
     pub fn add_all_public_types_as_roots(&mut self, crate_name: &str) {
-        // Find all structs and enums from this crate, excluding standard library types
+        // Find all structs and enums from this crate, excluding unwanted types
         let items_to_add: Vec<ItemNode> = self
             .item
             .iter()
             .filter(|(item,)| item.id.crate_ == crate_name)
             .filter(|(item,)| is_struct(&item.item) || is_enum(&item.item))
             .filter(|(item,)| !is_std_type(item))
+            .filter(|(item,)| is_public(item))  // Only include public types
             .map(|(item,)| item.clone())
             .collect();
 
@@ -289,6 +297,18 @@ impl Filter {
             }
         }
 
+        self.run();
+    }
+
+    /// Add only core app types (`Event`, `ViewModel`, `Effect`) as roots
+    /// This is more selective than adding all public types
+    pub fn add_core_app_types_as_roots(&mut self, _crate_name: &str) {
+        // Don't add any additional roots here - let the filter rules determine
+        // which types should be roots (Event, ViewModel, EffectFfi, etc.)
+        // The filter already identifies these through the App trait implementation
+        // and associated types.
+        
+        // Just run the filter to ensure all relationships are established
         self.run();
     }
 }
