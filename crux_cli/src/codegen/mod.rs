@@ -96,26 +96,8 @@ fn should_skip_crate(
         return true;
     }
 
-    // Always process crux_ crates as they contain essential types
-    if crate_name.starts_with("crux_") {
-        return false;
-    }
-
-    // Only process external dependencies that start with the same prefix as workspace crates
-    // This ensures we only load related framework/library crates, not random dependencies
-    let workspace_prefixes: HashSet<String> = workspace_members
-        .iter()
-        .filter_map(|name| {
-            // Extract prefix before first underscore (e.g., "crux" from "crux_core")
-            name.split('_').next().map(|s| s.to_string())
-        })
-        .collect();
-
-    let has_matching_prefix = workspace_prefixes
-        .iter()
-        .any(|prefix| crate_name.starts_with(prefix));
-
-    if !workspace_members.contains(crate_name) && !has_matching_prefix {
+    // Skip external dependencies except crux_ crates (which contain essential types)
+    if !workspace_members.contains(crate_name) && !crate_name.starts_with("crux_") {
         return true;
     }
 
