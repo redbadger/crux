@@ -95,7 +95,6 @@ fn should_skip_crate(
         return true;
     }
 
-    // Skip external dependencies except crux_ crates (which contain essential types)
     if !workspace_members.contains(crate_name) && !crate_name.starts_with("crux_") {
         return true;
     }
@@ -129,12 +128,10 @@ fn is_rustdoc_cache_valid(json_path: &Path, manifest_path: &str) -> Result<bool>
     let json_modified = json_path.metadata()?.modified()?;
     let manifest_modified = Path::new(manifest_path).metadata()?.modified()?;
 
-    // Check if manifest is newer than the cached JSON
     if manifest_modified > json_modified {
         return Ok(false);
     }
 
-    // Check if any source files are newer than the cached JSON
     let manifest_dir = Path::new(manifest_path).parent().unwrap_or(Path::new("."));
     let src_dir = manifest_dir.join("src");
 
@@ -208,13 +205,11 @@ where
 {
     let mut previous: HashMap<String, Crate> = HashMap::new();
 
-    // Phase 1: Process the main crate
     let shared_lib = load(crate_name)?;
     let mut filter = Filter::default();
     filter.process(crate_name, &shared_lib);
     previous.insert(crate_name.to_string(), shared_lib);
 
-    // Phase 2: Identify and load referenced workspace crates
     let workspace_members = get_all_workspace_members().unwrap_or_default();
 
     let referenced_workspace_crates =
@@ -228,7 +223,6 @@ where
         }
     }
 
-    // Phase 3: Process external dependencies (only crux_ crates)
     let mut next = filter.get_crates();
     let mut processed_in_iteration = HashSet::new();
 
@@ -237,7 +231,6 @@ where
             continue;
         }
 
-        // Avoid processing the same crate multiple times in one iteration
         if processed_in_iteration.contains(&crate_name) {
             continue;
         }
@@ -247,7 +240,6 @@ where
         let crate_ = load(&crate_name)?;
         filter.process(&crate_name, &crate_);
 
-        // Get new crates but filter out already processed ones
         let new_crates: Vec<_> = filter
             .get_crates()
             .into_iter()
@@ -258,17 +250,13 @@ where
         previous.insert(crate_name, crate_);
     }
 
-    // Phase 4: Handle remaining external types (non-workspace, non-crux)
-    // Only create synthetic types for truly external types (e.g., chrono::DateTime)
     let external_types: Vec<_> = filter
         .get_external_types()
         .into_iter()
         .filter(|t| {
-            // Skip workspace types
             if t.is_workspace_type(&workspace_members) {
                 return false;
             }
-            // Skip crux_ types since we load those crates
             if let Some(crate_name) = t.actual_crate_name() {
                 if crate_name.starts_with("crux_") {
                     return false;

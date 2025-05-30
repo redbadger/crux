@@ -72,7 +72,6 @@ impl SummaryNode {
         }
     }
 
-
     pub fn points_to_crate(&self, crate_: &CrateNode) -> bool {
         self.id.crate_ == crate_.id.crate_ && self.summary.crate_id == crate_.id.id
     }
@@ -150,7 +149,6 @@ impl ItemNode {
             Some(new_name)
         }
     }
-
 
     pub fn is_impl_for(&self, for_: &ItemNode, trait_name: &str) -> bool {
         if self.id.crate_ != for_.id.crate_ {
