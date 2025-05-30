@@ -94,12 +94,7 @@ fn should_skip_crate(
         return true;
     }
 
-    // Skip all external dependencies except crux_ crates
-    // TODO: The challenge is that we'd need the field information for these types to generate proper serialization code.
-    // So we'd need a hybrid approach:
-    // - Use synthetic types for the structure
-    // - Or have crux crates provide pre-generated type definitions
-    // - Or selectively load only the needed types from crux crates
+    // Skip external dependencies except crux_ crates (which we need for proper type generation)
     if !workspace_members.contains(crate_name) && !crate_name.starts_with("crux_") {
         return true;
     }

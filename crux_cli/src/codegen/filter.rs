@@ -21,7 +21,6 @@ pub fn is_public(item: &ItemNode) -> bool {
     matches!(item.item.visibility, rustdoc_types::Visibility::Public)
 }
 
-
 ascent! {
     #![measure_rule_times]
     pub struct Filter;
@@ -287,7 +286,7 @@ impl Filter {
             .filter(|(item,)| item.id.crate_ == crate_name)
             .filter(|(item,)| is_struct(&item.item) || is_enum(&item.item))
             .filter(|(item,)| !is_std_type(item))
-            .filter(|(item,)| is_public(item))  // Only include public types
+            .filter(|(item,)| is_public(item)) // Only include public types
             .map(|(item,)| item.clone())
             .collect();
 
@@ -307,7 +306,7 @@ impl Filter {
         // which types should be roots (Event, ViewModel, EffectFfi, etc.)
         // The filter already identifies these through the App trait implementation
         // and associated types.
-        
+
         // Just run the filter to ensure all relationships are established
         self.run();
     }
