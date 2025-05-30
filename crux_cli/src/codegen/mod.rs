@@ -11,12 +11,14 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs::{self, File},
     io::Read,
+    path::Path,
     process::Command,
+    time::SystemTime,
 };
 
 use anyhow::{bail, Context, Result};
 use guppy::{graph::PackageGraph, MetadataCommand};
-use log::debug;
+use log::{debug, info};
 use rustdoc_types::Crate;
 
 use crate::args::CodegenArgs;
@@ -94,8 +96,26 @@ fn should_skip_crate(
         return true;
     }
 
-    // Skip external dependencies except crux_ crates (which we need for proper type generation)
-    if !workspace_members.contains(crate_name) && !crate_name.starts_with("crux_") {
+    // Always process crux_ crates as they contain essential types
+    if crate_name.starts_with("crux_") {
+        return false;
+    }
+
+    // Only process external dependencies that start with the same prefix as workspace crates
+    // This ensures we only load related framework/library crates, not random dependencies
+    let workspace_prefixes: HashSet<String> = workspace_members
+        .iter()
+        .filter_map(|name| {
+            // Extract prefix before first underscore (e.g., "crux" from "crux_core")
+            name.split('_').next().map(|s| s.to_string())
+        })
+        .collect();
+
+    let has_matching_prefix = workspace_prefixes
+        .iter()
+        .any(|prefix| crate_name.starts_with(prefix));
+
+    if !workspace_members.contains(crate_name) && !has_matching_prefix {
         return true;
     }
 
@@ -117,6 +137,39 @@ fn has_library_target(crate_name: &str, metadata: &cargo_metadata::Metadata) -> 
                     || target.is_staticlib()
             })
         })
+}
+
+/// Check if a rustdoc JSON file is up-to-date compared to the source files
+fn is_rustdoc_cache_valid(json_path: &Path, manifest_path: &str) -> Result<bool> {
+    if !json_path.exists() {
+        return Ok(false);
+    }
+
+    let json_modified = json_path.metadata()?.modified()?;
+    let manifest_modified = Path::new(manifest_path).metadata()?.modified()?;
+
+    // Check if manifest is newer than the cached JSON
+    if manifest_modified > json_modified {
+        return Ok(false);
+    }
+
+    // Check if any source files are newer than the cached JSON
+    let manifest_dir = Path::new(manifest_path).parent().unwrap_or(Path::new("."));
+    let src_dir = manifest_dir.join("src");
+    
+    if src_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&src_dir) {
+            for entry in entries.flatten() {
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() && metadata.modified()? > json_modified {
+                        return Ok(false);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(true)
 }
 
 pub fn codegen(args: &CodegenArgs) -> Result<()> {
@@ -196,14 +249,30 @@ where
 
     // Phase 3: Process external dependencies (only crux_ crates)
     let mut next = filter.get_crates();
+    let mut processed_in_iteration = HashSet::new();
+    
     while let Some(crate_name) = next.pop() {
         if should_skip_crate(&crate_name, &workspace_members, &previous) {
             continue;
         }
 
+        // Avoid processing the same crate multiple times in one iteration
+        if processed_in_iteration.contains(&crate_name) {
+            continue;
+        }
+        processed_in_iteration.insert(crate_name.clone());
+
+        info!("Processing external crate: {crate_name}");
         let crate_ = load(&crate_name)?;
         filter.process(&crate_name, &crate_);
-        next = filter.get_crates();
+        
+        // Get new crates but filter out already processed ones
+        let new_crates: Vec<_> = filter.get_crates()
+            .into_iter()
+            .filter(|name| !previous.contains_key(name) && !processed_in_iteration.contains(name))
+            .collect();
+        
+        next = new_crates;
         previous.insert(crate_name, crate_);
     }
 
@@ -248,24 +317,6 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
         .get(name)
         .ok_or_else(|| anyhow::anyhow!("unknown crate {}", name))?;
 
-    let status = Command::new("cargo")
-        .env("RUSTC_BOOTSTRAP", "1")
-        .env(
-            "RUSTDOCFLAGS",
-            "-Z unstable-options --output-format=json --cap-lints=allow",
-        )
-        .arg("doc")
-        .arg("--no-deps")
-        .arg("--lib")
-        .args(["--manifest-path", manifest_path])
-        .arg("--all-features")
-        .arg("--document-private-items")
-        .status()?;
-
-    if !status.success() {
-        bail!("failed to generate rustdoc json for {manifest_path} with error code {status}");
-    }
-
     let mut metadata = cargo_metadata::MetadataCommand::new();
     metadata.manifest_path(manifest_path);
     let mut json_path = metadata.exec()?.target_directory;
@@ -273,10 +324,34 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
     json_path.push(name);
     json_path.set_extension("json");
 
-    debug!("from {json_path}");
+    // Check if we can use cached rustdoc JSON
+    if is_rustdoc_cache_valid(json_path.as_std_path(), manifest_path)? {
+        info!("Using cached rustdoc JSON for {name}");
+    } else {
+        info!("Generating rustdoc JSON for {name}");
+        let status = Command::new("cargo")
+            .env("RUSTC_BOOTSTRAP", "1")
+            .env(
+                "RUSTDOCFLAGS",
+                "-Z unstable-options --output-format=json --cap-lints=allow",
+            )
+            .arg("doc")
+            .arg("--no-deps")
+            .arg("--lib")
+            .args(["--manifest-path", manifest_path])
+            .arg("--all-features")
+            .arg("--document-private-items")
+            .status()?;
+
+        if !status.success() {
+            bail!("failed to generate rustdoc json for {manifest_path} with error code {status}");
+        }
+    }
+
+    debug!("Loading rustdoc JSON from {json_path}");
 
     let buf = &mut Vec::new();
-    File::open(json_path)?.read_to_end(buf)?;
+    File::open(&json_path)?.read_to_end(buf)?;
     let crate_ = serde_json::from_slice(buf).context(
         r"
 There was a problem reading RustDoc JSON output — maybe there is
