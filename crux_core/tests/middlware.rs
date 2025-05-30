@@ -226,6 +226,16 @@ mod middleware {
         }
     }
 
+    struct EffectMiddlewareLayerInner<Next, EM>
+    where
+        Next: Layer + Sync + Send + 'static,
+        Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+        EM: EffectMiddleware<Next::Effect> + Send + Sync,
+    {
+        next: Next,
+        middleware: EM,
+    }
+
     /// Middleware layer able to process some of the effects. This implements the general
     /// behaviour making sure all follow-up effects are processed and routed to the right place
     /// and delegates to the generic parameter `M`, which implements the effect processing
@@ -236,7 +246,7 @@ mod middleware {
         Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
         EM: EffectMiddleware<Next::Effect> + Send + Sync,
     {
-        inner: Arc<(Next, EM)>,
+        inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
     }
 
     impl<Next, M> Layer for EffectMiddlewareLayer<Next, M>
@@ -282,7 +292,7 @@ mod middleware {
     {
         pub fn new(next: Next, middleware: EM) -> Self {
             Self {
-                inner: Arc::new((next, middleware)), // TODO: make the tuple a struct
+                inner: Arc::new(EffectMiddlewareLayerInner { next, middleware }),
             }
         }
 
@@ -297,7 +307,7 @@ mod middleware {
 
             let effects = self
                 .inner
-                .0
+                .next
                 .process_event(event, move |later_effects_from_next| {
                     // Eventual route
                     let unknown_effects = Self::process_known_effects(
@@ -328,12 +338,12 @@ mod middleware {
             result: Op::Output,
             return_effects: impl Fn(Vec<Next::Effect>) + Clone + Send + 'static,
         ) -> Result<Vec<Next::Effect>, ResolveError> {
-            let inner = self.inner.clone();
+            let inner = self.inner.clone(); // FIXME: might be a leak?
             let return_effects_copy = return_effects.clone();
 
             let effects =
                 self.inner
-                    .0
+                    .next
                     .resolve(request, result, move |later_effects_from_next| {
                         // Eventual route
                         let unknown_effects = Self::process_known_effects(
@@ -363,11 +373,11 @@ mod middleware {
         // Middleware can override
         #[allow(unused)]
         pub fn view(&self) -> Next::ViewModel {
-            self.inner.0.view()
+            self.inner.next.view()
         }
 
         fn process_known_effects(
-            inner: Arc<(Next, EM)>,
+            inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
             effects: Vec<Next::Effect>,
             // callback to pass effects back to previous
             return_effects: impl Fn(Vec<Next::Effect>) + Send + Clone + 'static,
@@ -379,18 +389,12 @@ mod middleware {
 
                     // Ask middleware impl to process the effect
                     // calling back with the result, potentially on a different thread (!)
-                    let result = inner.1.try_process_effect_with(
+                    let result = inner.middleware.try_process_effect_with(
                         effect,
                         // "resolve_effect"
                         {
                             let return_effects = return_effects.clone();
                             move |mut effect_request, effect_out_value| {
-                                // --- thread boundary ---
-
-                                // this is likely to be called from another thread, which did the
-                                // actual effect processing work. That means this closure needs
-                                // to be Send, and so does everything captured in it
-
                                 // This allows us to do the recursion without requiring `inner` to outlive 'static
                                 let Some(inner) = future_inner.upgrade() else {
                                     // do nothing, self is gone, we can't process further effects
@@ -398,7 +402,7 @@ mod middleware {
                                 };
 
                                 if let Ok(immediate_effects) =
-                                    inner.0.resolve(&mut effect_request, effect_out_value, {
+                                    inner.next.resolve(&mut effect_request, effect_out_value, {
                                         let return_effects = return_effects.clone();
 
                                         // Eventual eventual route
