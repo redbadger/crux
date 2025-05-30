@@ -250,29 +250,29 @@ impl Filter {
 
     /// Add workspace external types as synthetic edges to ensure they become containers
     pub fn add_workspace_external_types(&mut self, workspace_external_types: Vec<SummaryNode>) {
-        for workspace_type in workspace_external_types {
-            if let (Some(actual_crate), Some(type_name)) = (
-                workspace_type.actual_crate_name(),
-                extract_type_name(&workspace_type),
-            ) {
-                // Skip standard library types
+        let synthetic_items: Vec<_> = workspace_external_types
+            .into_iter()
+            .filter_map(|workspace_type| {
+                let actual_crate = workspace_type.actual_crate_name()?;
+                let type_name = extract_type_name(&workspace_type)?;
+
+                // Single check for std types
                 if STD_CRATES.contains(&actual_crate.as_str()) {
-                    continue;
+                    return None;
                 }
 
                 let synthetic_item = create_synthetic_item(&type_name, &workspace_type);
-                let synthetic_node = ItemNode::new(actual_crate, synthetic_item);
+                Some(ItemNode::new(actual_crate, synthetic_item))
+            })
+            .collect();
 
-                if is_std_type(&synthetic_node) {
-                    continue;
-                }
-
-                self.item.push((synthetic_node.clone(),));
-                self.root.push((synthetic_node.clone(),));
-            }
+        // Batch add all synthetic items to improve efficiency
+        for node in synthetic_items {
+            self.item.push((node.clone(),));
+            self.root.push((node,));
         }
 
-        // Run the filter again to process the synthetic types
+        // Run the filter once after all items are added
         self.run();
     }
 
