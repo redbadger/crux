@@ -155,7 +155,7 @@ mod middleware {
     //! thread or the random generator thread, we don't mind which.
 
     use std::{
-        sync::Arc,
+        sync::{Arc, Weak},
         thread::{self, spawn},
     };
 
@@ -296,41 +296,30 @@ mod middleware {
             }
         }
 
-        // Middleware can override
         pub fn process_event(
             &self,
             event: Next::Event,
             return_effects: impl Fn(Vec<Next::Effect>) + Send + Clone + 'static,
         ) -> Vec<Next::Effect> {
-            let inner = self.inner.clone();
-            let return_effects_copy = return_effects.clone();
+            let inner = Arc::downgrade(&self.inner);
+            let return_effects_copy = return_effects.clone(); // FIXME: can we avoid cloning the closure?
 
             let effects = self
                 .inner
                 .next
                 .process_event(event, move |later_effects_from_next| {
                     // Eventual route
-                    let unknown_effects = Self::process_known_effects(
-                        inner.clone(),
+                    Self::process_known_effects_with(
+                        &inner,
                         later_effects_from_next,
                         return_effects.clone(),
                     );
-
-                    if !unknown_effects.is_empty() {
-                        eprintln!(
-                            "Passing {} eventual effects from process_event back up",
-                            unknown_effects.len()
-                        );
-
-                        return_effects(unknown_effects)
-                    }
                 });
 
             // Immediate route
-            Self::process_known_effects(self.inner.clone(), effects, return_effects_copy)
+            Self::process_known_effects(&Arc::downgrade(&self.inner), effects, return_effects_copy)
         }
 
-        // Middleware can override
         #[allow(unused)]
         pub fn resolve<Op: Operation>(
             &self,
@@ -338,124 +327,108 @@ mod middleware {
             result: Op::Output,
             return_effects: impl Fn(Vec<Next::Effect>) + Clone + Send + 'static,
         ) -> Result<Vec<Next::Effect>, ResolveError> {
-            let inner = self.inner.clone(); // FIXME: might be a leak?
-            let return_effects_copy = return_effects.clone();
+            let inner = Arc::downgrade(&self.inner);
+            let return_effects_copy = return_effects.clone(); // FIXME: can we avoid cloning the closure?
 
             let effects =
                 self.inner
                     .next
                     .resolve(request, result, move |later_effects_from_next| {
-                        // Eventual route
-                        let unknown_effects = Self::process_known_effects(
-                            inner.clone(),
+                        Self::process_known_effects_with(
+                            &inner,
                             later_effects_from_next,
                             return_effects.clone(),
-                        );
-
-                        if !unknown_effects.is_empty() {
-                            eprintln!(
-                                "Passing {} eventual effects from resolve back up",
-                                unknown_effects.len()
-                            );
-
-                            return_effects(unknown_effects)
-                        }
+                        )
                     })?;
 
             // Immediate route
             Ok(Self::process_known_effects(
-                self.inner.clone(),
+                &Arc::downgrade(&self.inner),
                 effects,
                 return_effects_copy,
             ))
         }
 
-        // Middleware can override
         #[allow(unused)]
         pub fn view(&self) -> Next::ViewModel {
             self.inner.next.view()
         }
 
         fn process_known_effects(
-            inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
+            inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
             effects: Vec<Next::Effect>,
-            // callback to pass effects back to previous
             return_effects: impl Fn(Vec<Next::Effect>) + Send + Clone + 'static,
         ) -> Vec<Next::Effect> {
             effects
                 .into_iter()
                 .filter_map(|effect| {
-                    let future_inner = Arc::downgrade(&inner);
+                    let Some(strong_inner) = inner.upgrade() else {
+                        // do nothing, inner is gone, we can't process further effects
+                        return Some(effect);
+                    };
 
-                    // Ask middleware impl to process the effect
-                    // calling back with the result, potentially on a different thread (!)
-                    let result = inner.middleware.try_process_effect_with(
-                        effect,
-                        // "resolve_effect"
-                        {
-                            let return_effects = return_effects.clone();
-                            move |mut effect_request, effect_out_value| {
-                                // This allows us to do the recursion without requiring `inner` to outlive 'static
-                                let Some(inner) = future_inner.upgrade() else {
-                                    // do nothing, self is gone, we can't process further effects
-                                    return;
-                                };
+                    // This is where the middleware handler will send the result of its work
+                    let resolve_callback = {
+                        let return_effects = return_effects.clone(); // FIXME: can we avoid cloning the closure?
+                        let inner = inner.clone();
 
-                                if let Ok(immediate_effects) =
-                                    inner.next.resolve(&mut effect_request, effect_out_value, {
-                                        let return_effects = return_effects.clone();
+                        move |mut effect_request, effect_out_value| {
+                            // This allows us to do the recursion without requiring `inner` to outlive 'static
+                            let Some(strong_inner) = inner.upgrade() else {
+                                // do nothing, inner is gone, we can't process further effects
+                                return;
+                            };
+
+                            if let Ok(immediate_effects) =
+                                strong_inner
+                                    .next
+                                    .resolve(&mut effect_request, effect_out_value, {
+                                        let return_effects = return_effects.clone(); // FIXME: can we avoid cloning the closure?
+                                        let future_inner = inner.clone();
 
                                         // Eventual eventual route
                                         move |eventual_effects| {
-                                            let Some(inner) = future_inner.upgrade() else {
-                                                // do nothing, self is gone, we can't process further effects
-                                                return;
-                                            };
-
                                             // Process known effects
-                                            let unknown_effects = Self::process_known_effects(
-                                                inner,
+                                            Self::process_known_effects_with(
+                                                &future_inner,
                                                 eventual_effects,
-                                                // copy of return_effects
-                                                // to be used for any follow-up effects after the known ones
                                                 return_effects.clone(),
                                             );
-
-                                            // and return unknown ones
-                                            if !unknown_effects.is_empty() {
-                                                eprintln!(
-                                                    "Passing {} eventual effects from middleware resolve back up",
-                                                    unknown_effects.len()
-                                                );
-
-                                                return_effects(unknown_effects)
-                                            }
                                         }
                                     })
-                                {
-                                    // Eventual immediate route
-                                    let more_effects = Self::process_known_effects(
-                                        inner,
-                                        immediate_effects,
-                                        return_effects.clone(),
-                                    );
-
-                                    if !more_effects.is_empty() {
-                                        eprintln!(
-                                            "Passing {} immediate effects from middleware resolve back up",
-                                            more_effects.len()
-                                        );
-
-                                        return_effects(more_effects);
-                                    }
-                                }
+                            {
+                                Self::process_known_effects_with(
+                                    &inner,
+                                    immediate_effects,
+                                    return_effects,
+                                )
                             }
-                        },
-                    );
+                        } // TODO: handle/propagate resolve error?
+                    };
+
+                    // Ask middleware impl to process the effect
+                    // calling back with the result, potentially on a different thread (!)
+                    let result = strong_inner
+                        .middleware
+                        .try_process_effect_with(effect, resolve_callback);
 
                     Self::into_option(result)
                 })
                 .collect()
+        }
+
+        fn process_known_effects_with(
+            inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
+            effects: Vec<<Next as Layer>::Effect>,
+            return_effects: impl Fn(Vec<<Next as Layer>::Effect>) + Send + Clone + 'static,
+        ) {
+            // FIXME: can we avoid cloning the closure?
+            let unknown_effects =
+                Self::process_known_effects(&inner, effects, return_effects.clone());
+
+            if !unknown_effects.is_empty() {
+                return_effects(unknown_effects)
+            }
         }
 
         #[inline]
