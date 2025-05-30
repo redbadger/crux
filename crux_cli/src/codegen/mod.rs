@@ -13,7 +13,6 @@ use std::{
     io::Read,
     path::Path,
     process::Command,
-    time::SystemTime,
 };
 
 use anyhow::{bail, Context, Result};
@@ -138,7 +137,7 @@ fn is_rustdoc_cache_valid(json_path: &Path, manifest_path: &str) -> Result<bool>
     // Check if any source files are newer than the cached JSON
     let manifest_dir = Path::new(manifest_path).parent().unwrap_or(Path::new("."));
     let src_dir = manifest_dir.join("src");
-    
+
     if src_dir.exists() {
         if let Ok(entries) = fs::read_dir(&src_dir) {
             for entry in entries.flatten() {
@@ -232,7 +231,7 @@ where
     // Phase 3: Process external dependencies (only crux_ crates)
     let mut next = filter.get_crates();
     let mut processed_in_iteration = HashSet::new();
-    
+
     while let Some(crate_name) = next.pop() {
         if should_skip_crate(&crate_name, &workspace_members, &previous) {
             continue;
@@ -247,13 +246,14 @@ where
         info!("Processing external crate: {crate_name}");
         let crate_ = load(&crate_name)?;
         filter.process(&crate_name, &crate_);
-        
+
         // Get new crates but filter out already processed ones
-        let new_crates: Vec<_> = filter.get_crates()
+        let new_crates: Vec<_> = filter
+            .get_crates()
             .into_iter()
             .filter(|name| !previous.contains_key(name) && !processed_in_iteration.contains(name))
             .collect();
-        
+
         next = new_crates;
         previous.insert(crate_name, crate_);
     }
