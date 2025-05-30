@@ -178,9 +178,6 @@ where
     let shared_lib = load(crate_name)?;
     let mut filter = Filter::default();
     filter.process(crate_name, &shared_lib);
-    // Only add types that are actually needed (Event, ViewModel, Effect types)
-    // instead of ALL public types
-    filter.add_core_app_types_as_roots(crate_name);
     previous.insert(crate_name.to_string(), shared_lib);
 
     // Phase 2: Identify and load referenced workspace crates

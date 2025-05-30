@@ -299,17 +299,6 @@ impl Filter {
         self.run();
     }
 
-    /// Add only core app types (`Event`, `ViewModel`, `Effect`) as roots
-    /// This is more selective than adding all public types
-    pub fn add_core_app_types_as_roots(&mut self, _crate_name: &str) {
-        // Don't add any additional roots here - let the filter rules determine
-        // which types should be roots (Event, ViewModel, EffectFfi, etc.)
-        // The filter already identifies these through the App trait implementation
-        // and associated types.
-
-        // Just run the filter to ensure all relationships are established
-        self.run();
-    }
 }
 
 /// Extract the type name from a `SummaryNode` path
