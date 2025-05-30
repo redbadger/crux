@@ -411,11 +411,10 @@ mod middleware {
 
                     // Ask middleware impl to process the effect
                     // calling back with the result, potentially on a different thread (!)
-                    let result = strong_inner
+                    strong_inner
                         .middleware
-                        .try_process_effect_with(effect, resolve_callback);
-
-                    Self::into_option(result)
+                        .try_process_effect_with(effect, resolve_callback)
+                        .err()
                 })
                 .collect()
         }
@@ -427,18 +426,10 @@ mod middleware {
         ) {
             // FIXME: can we avoid cloning the closure?
             let unknown_effects =
-                Self::process_known_effects(&inner, effects, return_effects.clone());
+                Self::process_known_effects(inner, effects, return_effects.clone());
 
             if !unknown_effects.is_empty() {
                 return_effects(unknown_effects)
-            }
-        }
-
-        #[inline]
-        fn into_option(result: Result<(), Next::Effect>) -> Option<Next::Effect> {
-            match result {
-                Ok(()) => None,
-                Err(effect) => Some(effect),
             }
         }
     }
@@ -460,6 +451,7 @@ mod middleware {
     }
 
     // Random number generating middleware
+    #[allow(clippy::type_complexity)]
     pub struct RngMiddleware {
         jobs_tx:
             crossbeam_channel::Sender<(RandomNumberRequest, Box<dyn FnOnce(RandomNumber) + Send>)>,
@@ -731,8 +723,8 @@ mod tests {
         let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
 
-        // Give threads a chance to proceed
-        sleep(Duration::from_millis(10));
+        // Give worker threads a chance to proceed
+        sleep(Duration::from_millis(1));
         drop(core);
 
         // Unblock HTTP
