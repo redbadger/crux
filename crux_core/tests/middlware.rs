@@ -156,9 +156,10 @@ mod middleware {
 
     use std::{
         sync::{Arc, Weak},
-        thread::{self, spawn},
+        thread::spawn,
     };
 
+    use crossbeam_channel::Receiver;
     use crux_core::{capability::Operation, App, Core, Request, ResolveError};
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
@@ -362,11 +363,6 @@ mod middleware {
             effects
                 .into_iter()
                 .filter_map(|effect| {
-                    let Some(strong_inner) = inner.upgrade() else {
-                        // do nothing, inner is gone, we can't process further effects
-                        return Some(effect);
-                    };
-
                     // This is where the middleware handler will send the result of its work
                     let resolve_callback = {
                         let return_effects = return_effects.clone(); // FIXME: can we avoid cloning the closure?
@@ -376,6 +372,7 @@ mod middleware {
                             // This allows us to do the recursion without requiring `inner` to outlive 'static
                             let Some(strong_inner) = inner.upgrade() else {
                                 // do nothing, inner is gone, we can't process further effects
+                                eprintln!("Inner cant't be upgraded after resolving effect");
                                 return;
                             };
 
@@ -404,6 +401,12 @@ mod middleware {
                                 )
                             }
                         } // TODO: handle/propagate resolve error?
+                    };
+
+                    let Some(strong_inner) = inner.upgrade() else {
+                        // do nothing, inner is gone, we can't process further effects
+                        eprintln!("Inner cant't be upgraded to resolve effect");
+                        return Some(effect);
                     };
 
                     // Ask middleware impl to process the effect
@@ -475,7 +478,7 @@ mod middleware {
                 while let Ok((input, callback)) = jobs_rx.recv() {
                     // This is terrible RNG which always returns the highest number the die
                     // can produce
-                    eprintln!("Processing job for a dice with  max: {}", input.0);
+                    eprintln!("Processing job for a die with max: {}", input.0);
 
                     callback(RandomNumber(input.0));
                 }
@@ -548,17 +551,68 @@ mod middleware {
             Ok(())
         }
     }
+
+    pub struct RemoteTriggerHttp {
+        remote: Receiver<()>,
+    }
+
+    impl RemoteTriggerHttp {
+        pub fn new(remote: Receiver<()>) -> Self {
+            Self { remote }
+        }
+    }
+
+    impl<Effect> EffectMiddleware<Effect> for RemoteTriggerHttp
+    where
+        Effect: TryInto<Request<HttpRequest>, Error = Effect>,
+    {
+        type Op = HttpRequest;
+
+        fn try_process_effect_with(
+            &self,
+            effect: Effect,
+            resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
+                + Send
+                + 'static,
+        ) -> Result<(), Effect> {
+            let http_request @ Request {
+                operation: HttpRequest { .. },
+                ..
+            } = effect.try_into()?;
+
+            let remote = self.remote.clone();
+
+            // One-off worker
+            eprintln!("Starting remote triggered HTTP thread...");
+            spawn(move || {
+                let response = HttpResult::Ok(HttpResponse::status(201).build());
+
+                eprintln!("HTTP thread awaiting remote trigger");
+
+                if let Ok(()) = remote.recv() {
+                    eprintln!("Trigger received, resolving HTTP request");
+
+                    resolve_callback(http_request, response);
+                }
+
+                eprintln!("HTTP thread terminating...");
+            });
+
+            Ok(())
+        }
+    }
 }
 
 mod tests {
     #![allow(unused_imports)]
 
-    use std::sync::Arc;
+    use std::{sync::Arc, thread::sleep, time::Duration};
 
     use crate::{
         app::{Dice, Effect, Event},
-        middleware::{EffectMiddlewareLayer, FakeHttpMiddleware, RngMiddleware},
+        middleware::{EffectMiddlewareLayer, FakeHttpMiddleware, RemoteTriggerHttp, RngMiddleware},
     };
+    use crossbeam_channel::RecvError;
     use crux_core::{render::RenderOperation, Core};
 
     #[test]
@@ -626,5 +680,69 @@ mod tests {
         let render_operation = effects.remove(0).into_render().unwrap().operation;
 
         assert_eq!(RenderOperation, render_operation);
+    }
+
+    #[test]
+    fn roll_with_remote_trigger_http() {
+        let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let (remote_tx, remote_rx) = crossbeam_channel::unbounded();
+
+        let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
+
+        let core: EffectMiddlewareLayer<
+            EffectMiddlewareLayer<Core<Dice>, RemoteTriggerHttp>,
+            RngMiddleware,
+        > = EffectMiddlewareLayer::new(
+            EffectMiddlewareLayer::new(Core::new(), RemoteTriggerHttp::new(remote_rx)),
+            RngMiddleware::new(),
+        );
+
+        let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
+        assert!(effects.is_empty());
+
+        // Unblock HTTP
+        eprintln!("Sending remote trigger");
+        let _ = remote_tx.send(());
+
+        let Ok(mut effects) = effects_rx.recv() else {
+            panic!()
+        };
+
+        let render_operation = effects.remove(0).into_render().unwrap().operation;
+
+        assert_eq!(RenderOperation, render_operation);
+    }
+
+    #[test]
+    fn roll_with_late_remote_trigger_http() {
+        let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let (remote_tx, remote_rx) = crossbeam_channel::unbounded();
+
+        let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
+
+        let core: EffectMiddlewareLayer<
+            EffectMiddlewareLayer<Core<Dice>, RemoteTriggerHttp>,
+            RngMiddleware,
+        > = EffectMiddlewareLayer::new(
+            EffectMiddlewareLayer::new(Core::new(), RemoteTriggerHttp::new(remote_rx)),
+            RngMiddleware::new(),
+        );
+
+        let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
+        assert!(effects.is_empty());
+
+        // Give threads a chance to proceed
+        sleep(Duration::from_millis(10));
+        drop(core);
+
+        // Unblock HTTP
+        eprintln!("Sending remote trigger");
+        let _ = remote_tx.send(());
+
+        let Err(RecvError) = effects_rx.recv() else {
+            panic!("Should not work!")
+        };
+
+        eprintln!("Test complete");
     }
 }
