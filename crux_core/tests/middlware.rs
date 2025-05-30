@@ -131,11 +131,16 @@ mod app {
                             .then_send(Event::Http),
                     }
                 }
-                Event::Http(_http_result) => render(), // we don't really care about the result, really...
+                Event::Http(_http_result) => {
+                    println!("Got http result!");
+
+                    // we don't really care about the result, really...
+                    render()
+                }
             }
         }
 
-        fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
             todo!()
         }
     }
@@ -149,9 +154,13 @@ mod middleware {
     //! the thread safety of the whole operation, where the Core is called on either the main
     //! thread or the random generator thread, we don't mind which.
 
-    use std::{sync::Arc, thread::spawn};
+    use std::{
+        sync::Arc,
+        thread::{self, spawn},
+    };
 
     use crux_core::{capability::Operation, App, Core, Request, ResolveError};
+    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::app::{RandomNumber, RandomNumberRequest};
 
@@ -165,13 +174,19 @@ mod middleware {
         /// ViewModel of this layer
         type ViewModel;
 
-        fn process_event(&self, event: Self::Event) -> Vec<Self::Effect>;
+        fn process_event<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
+        where
+            F: Fn(Vec<Self::Effect>) + Clone + Send + 'static;
 
-        fn resolve<Op: Operation>(
+        fn resolve<Op, F>(
             &self,
             request: &mut Request<Op>,
             output: Op::Output,
-        ) -> Result<Vec<Self::Effect>, ResolveError>;
+            effect_callback: F,
+        ) -> Result<Vec<Self::Effect>, ResolveError>
+        where
+            F: Fn(Vec<Self::Effect>) + Clone + Send + 'static,
+            Op: Operation;
 
         fn view(&self) -> Self::ViewModel;
     }
@@ -189,14 +204,19 @@ mod middleware {
         type Effect = A::Effect;
         type ViewModel = A::ViewModel;
 
-        fn process_event(&self, event: Self::Event) -> Vec<Self::Effect> {
+        fn process_event<F: Fn(Vec<Self::Effect>) + Send + Clone + 'static>(
+            &self,
+            event: Self::Event,
+            _effect_callback: F,
+        ) -> Vec<Self::Effect> {
             self.process_event(event)
         }
 
-        fn resolve<Op: Operation>(
+        fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Clone + 'static>(
             &self,
             request: &mut Request<Op>,
             output: Op::Output,
+            _effect_callback: F,
         ) -> Result<Vec<Self::Effect>, ResolveError> {
             self.resolve(request, output)
         }
@@ -210,19 +230,16 @@ mod middleware {
     /// behaviour making sure all follow-up effects are processed and routed to the right place
     /// and delegates to the generic parameter `M`, which implements the effect processing
     /// for individual effects
-    pub struct EffectMiddlewareLayer<Next, M, F>
+    pub struct EffectMiddlewareLayer<Next, EM>
     where
         Next: Layer + Sync + Send + 'static,
-        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
-        M: EffectMiddleware<Next::Effect> + Send + Sync,
-        F: Fn(Vec<Next::Effect>),
+        Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+        EM: EffectMiddleware<Next::Effect> + Send + Sync,
     {
-        next: Next,
-        middleware: M,
-        effect_callback: F,
+        inner: Arc<(Next, EM)>,
     }
 
-    impl<Next, M, EffectCallback> Layer for Arc<EffectMiddlewareLayer<Next, M, EffectCallback>>
+    impl<Next, M> Layer for EffectMiddlewareLayer<Next, M>
     where
         // Next layer down, core being at the bottom
         Next: Layer,
@@ -230,111 +247,203 @@ mod middleware {
         Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
         // The actual middleware effect handling implementation
         M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
-        // Callback for follow up effects
-        EffectCallback: Fn(Vec<Next::Effect>) + Send + Sync + 'static,
     {
         type Event = Next::Event;
         type Effect = Next::Effect;
         type ViewModel = Next::ViewModel;
 
-        fn process_event(&self, event: Self::Event) -> Vec<Self::Effect> {
-            self.process_event(event) // FIXME: takes &Arc<Self>
+        fn process_event<F: Fn(Vec<Self::Effect>) + Clone + Send + 'static>(
+            &self,
+            event: Self::Event,
+            effect_callback: F,
+        ) -> Vec<Self::Effect> {
+            self.process_event(event, effect_callback)
         }
 
-        fn resolve<Op: Operation>(
+        fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Clone + Send + 'static>(
             &self,
             request: &mut Request<Op>,
             output: Op::Output,
+            effect_callback: F,
         ) -> Result<Vec<Self::Effect>, ResolveError> {
-            self.resolve(request, output) // FIXME: takes &Arc<Self>
+            self.resolve(request, output, effect_callback)
         }
 
         fn view(&self) -> Self::ViewModel {
-            (**self).view() // FIXME: takes &Arc<Self>
+            self.view()
         }
     }
 
-    impl<Next, M, EffectCallback> EffectMiddlewareLayer<Next, M, EffectCallback>
+    impl<Next, EM> EffectMiddlewareLayer<Next, EM>
     where
         Next: Layer,
-        Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
-        M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
-        EffectCallback: Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+        Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+        EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
     {
-        pub fn new(next: Next, middleware: M, effect_callback: EffectCallback) -> Arc<Self> {
-            // TODO: can I avoid the outer Arc and move it into an `Inner` type instead?
-            Arc::new(Self {
-                next,
-                middleware,
-                effect_callback,
-            })
+        pub fn new(next: Next, middleware: EM) -> Self {
+            Self {
+                inner: Arc::new((next, middleware)), // TODO: make the tuple a struct
+            }
         }
 
         // Middleware can override
-        pub fn process_event(self: &Arc<Self>, event: Next::Event) -> Vec<Next::Effect> {
-            Self::process_effects(self, self.next.process_event(event))
+        pub fn process_event(
+            &self,
+            event: Next::Event,
+            return_effects: impl Fn(Vec<Next::Effect>) + Send + Clone + 'static,
+        ) -> Vec<Next::Effect> {
+            let inner = self.inner.clone();
+            let return_effects_copy = return_effects.clone();
+
+            let effects = self
+                .inner
+                .0
+                .process_event(event, move |later_effects_from_next| {
+                    // Eventual route
+                    let unknown_effects = Self::process_known_effects(
+                        inner.clone(),
+                        later_effects_from_next,
+                        return_effects.clone(),
+                    );
+
+                    if !unknown_effects.is_empty() {
+                        eprintln!(
+                            "Passing {} eventual effects from process_event back up",
+                            unknown_effects.len()
+                        );
+
+                        return_effects(unknown_effects)
+                    }
+                });
+
+            // Immediate route
+            Self::process_known_effects(self.inner.clone(), effects, return_effects_copy)
         }
 
         // Middleware can override
         #[allow(unused)]
         pub fn resolve<Op: Operation>(
-            self: &Arc<Self>,
+            &self,
             request: &mut Request<Op>,
             result: Op::Output,
+            return_effects: impl Fn(Vec<Next::Effect>) + Clone + Send + 'static,
         ) -> Result<Vec<Next::Effect>, ResolveError> {
-            Ok(Self::process_effects(
-                self,
-                self.next.resolve(request, result)?,
+            let inner = self.inner.clone();
+            let return_effects_copy = return_effects.clone();
+
+            let effects =
+                self.inner
+                    .0
+                    .resolve(request, result, move |later_effects_from_next| {
+                        // Eventual route
+                        let unknown_effects = Self::process_known_effects(
+                            inner.clone(),
+                            later_effects_from_next,
+                            return_effects.clone(),
+                        );
+
+                        if !unknown_effects.is_empty() {
+                            eprintln!(
+                                "Passing {} eventual effects from resolve back up",
+                                unknown_effects.len()
+                            );
+
+                            return_effects(unknown_effects)
+                        }
+                    })?;
+
+            // Immediate route
+            Ok(Self::process_known_effects(
+                self.inner.clone(),
+                effects,
+                return_effects_copy,
             ))
         }
 
         // Middleware can override
         #[allow(unused)]
         pub fn view(&self) -> Next::ViewModel {
-            self.next.view()
+            self.inner.0.view()
         }
 
-        fn process_effects(arc_self: &Arc<Self>, effects: Vec<Next::Effect>) -> Vec<Next::Effect> {
-            // from arc_self we use:
-            // - itself to recurse into `process_effects`
-            // - `next` to resolve the effects
-            // - the `middleware`
-            // - the `effect_callback` to forward unknown effects up
+        fn process_known_effects(
+            inner: Arc<(Next, EM)>,
+            effects: Vec<Next::Effect>,
+            // callback to pass effects back to previous
+            return_effects: impl Fn(Vec<Next::Effect>) + Send + Clone + 'static,
+        ) -> Vec<Next::Effect> {
             effects
                 .into_iter()
                 .filter_map(|effect| {
-                    let future_self = Arc::downgrade(arc_self);
+                    let future_inner = Arc::downgrade(&inner);
 
-                    // Ask middleware impl to process the effect, calling back with the result
-                    let result = arc_self.middleware.try_process_effect_with(
+                    // Ask middleware impl to process the effect
+                    // calling back with the result, potentially on a different thread (!)
+                    let result = inner.1.try_process_effect_with(
                         effect,
-                        move |mut effect_request, effect_out_value| {
-                            // --- thread boundary ---
-                            // this is likely to be called from another thread, which did the
-                            // actual effect processing work. That means this closure needs
-                            // to be Send, and so does everything captured in it
+                        // "resolve_effect"
+                        {
+                            let return_effects = return_effects.clone();
+                            move |mut effect_request, effect_out_value| {
+                                // --- thread boundary ---
 
-                            // This allows us to do the recursion without requiering `self` to outlive 'static
-                            let Some(future_self) = future_self.upgrade() else {
-                                // do nothing, self is gone, we can't process further effects
-                                return;
-                            };
+                                // this is likely to be called from another thread, which did the
+                                // actual effect processing work. That means this closure needs
+                                // to be Send, and so does everything captured in it
 
-                            if let Ok(follow_up_effects) = future_self
-                                .next
-                                .resolve(&mut effect_request, effect_out_value)
-                            {
-                                // recurse
-                                let more_effects =
-                                    Self::process_effects(&future_self, follow_up_effects);
+                                // This allows us to do the recursion without requiring `inner` to outlive 'static
+                                let Some(inner) = future_inner.upgrade() else {
+                                    // do nothing, self is gone, we can't process further effects
+                                    return;
+                                };
 
-                                if !more_effects.is_empty() {
-                                    eprintln!(
-                                        "Passing {} follow up effects back",
-                                        more_effects.len()
+                                if let Ok(immediate_effects) =
+                                    inner.0.resolve(&mut effect_request, effect_out_value, {
+                                        let return_effects = return_effects.clone();
+
+                                        // Eventual eventual route
+                                        move |eventual_effects| {
+                                            let Some(inner) = future_inner.upgrade() else {
+                                                // do nothing, self is gone, we can't process further effects
+                                                return;
+                                            };
+
+                                            // Process known effects
+                                            let unknown_effects = Self::process_known_effects(
+                                                inner,
+                                                eventual_effects,
+                                                // copy of return_effects
+                                                // to be used for any follow-up effects after the known ones
+                                                return_effects.clone(),
+                                            );
+
+                                            // and return unknown ones
+                                            if !unknown_effects.is_empty() {
+                                                eprintln!(
+                                                    "Passing {} eventual effects from middleware resolve back up",
+                                                    unknown_effects.len()
+                                                );
+
+                                                return_effects(unknown_effects)
+                                            }
+                                        }
+                                    })
+                                {
+                                    // Eventual immediate route
+                                    let more_effects = Self::process_known_effects(
+                                        inner,
+                                        immediate_effects,
+                                        return_effects.clone(),
                                     );
 
-                                    (future_self.effect_callback)(more_effects);
+                                    if !more_effects.is_empty() {
+                                        eprintln!(
+                                            "Passing {} immediate effects from middleware resolve back up",
+                                            more_effects.len()
+                                        );
+
+                                        return_effects(more_effects);
+                                    }
                                 }
                             }
                         },
@@ -420,9 +529,44 @@ mod middleware {
             self.jobs_tx
                 .send((
                     rand_request.operation.clone(),
-                    Box::new(|number| resolve_callback(rand_request, number)),
+                    Box::new(move |number| resolve_callback(rand_request, number)),
                 ))
                 .expect("Job failed to send to worker thread");
+
+            Ok(())
+        }
+    }
+
+    pub struct FakeHttpMiddleware;
+
+    impl<Effect> EffectMiddleware<Effect> for FakeHttpMiddleware
+    where
+        Effect: TryInto<Request<HttpRequest>, Error = Effect>,
+    {
+        type Op = HttpRequest;
+
+        fn try_process_effect_with(
+            &self,
+            effect: Effect,
+            resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
+                + Send
+                + 'static,
+        ) -> Result<(), Effect> {
+            let http_request @ Request {
+                operation: HttpRequest { .. },
+                ..
+            } = effect.try_into()?;
+
+            // One-off worker
+            eprintln!("Starting HTTP thread...");
+            spawn(move || {
+                let response = HttpResult::Ok(HttpResponse::status(201).build());
+
+                eprintln!("Resolving HTTP request");
+                resolve_callback(http_request, response);
+
+                eprintln!("HTTP thread terminating...");
+            });
 
             Ok(())
         }
@@ -436,21 +580,19 @@ mod tests {
 
     use crate::{
         app::{Dice, Effect, Event},
-        middleware::{EffectMiddlewareLayer, RngMiddleware},
+        middleware::{EffectMiddlewareLayer, FakeHttpMiddleware, RngMiddleware},
     };
-    use crux_core::Core;
+    use crux_core::{render::RenderOperation, Core};
 
     #[test]
     fn roll_one_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
 
-        let core: Arc<EffectMiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
-            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
-                let effects_tx = effects_tx.clone();
-                move |effects| effects_tx.send(effects).unwrap()
-            });
+        let core: EffectMiddlewareLayer<Core<Dice>, RngMiddleware> =
+            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new());
 
-        let effects = core.process_event(Event::Roll(vec![6]));
+        let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
 
         let Ok(mut effects) = effects_rx.recv() else {
@@ -466,14 +608,12 @@ mod tests {
     #[test]
     fn roll_three_dice() {
         let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
 
-        let core: Arc<EffectMiddlewareLayer<Core<Dice>, RngMiddleware, _>> =
-            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new(), {
-                let effects_tx = effects_tx.clone();
-                move |effects| effects_tx.send(effects).unwrap()
-            });
+        let core: EffectMiddlewareLayer<Core<Dice>, RngMiddleware> =
+            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new());
 
-        let effects = core.process_event(Event::Roll(vec![6, 10, 20]));
+        let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
         assert!(effects.is_empty());
 
         let Ok(mut effects) = effects_rx.recv() else {
@@ -484,5 +624,30 @@ mod tests {
 
         assert_eq!(http_request.url, "http://dice-api.example.com/publish");
         assert_eq!(String::from_utf8(http_request.body).unwrap(), "[6,10,20]")
+    }
+
+    #[test]
+    fn roll_three_dice_with_http() {
+        let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let effect_callback = move |effects: Vec<Effect>| effects_tx.send(effects).unwrap();
+
+        let core: EffectMiddlewareLayer<
+            EffectMiddlewareLayer<Core<Dice>, RngMiddleware>,
+            FakeHttpMiddleware,
+        > = EffectMiddlewareLayer::new(
+            EffectMiddlewareLayer::new(Core::new(), RngMiddleware::new()),
+            FakeHttpMiddleware,
+        );
+
+        let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
+        assert!(effects.is_empty());
+
+        let Ok(mut effects) = effects_rx.recv() else {
+            panic!()
+        };
+
+        let render_operation = effects.remove(0).into_render().unwrap().operation;
+
+        assert_eq!(RenderOperation, render_operation);
     }
 }
