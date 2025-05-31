@@ -95,6 +95,15 @@ where
         if previous.contains_key(&crate_name) {
             continue;
         }
+
+        // Skip built-in Rust crates that don't have manifests
+        if matches!(
+            crate_name.as_str(),
+            "std" | "core" | "alloc" | "proc_macro" | "test"
+        ) {
+            continue;
+        }
+
         let crate_ = load(&crate_name)?;
 
         filter.process(&crate_name, &crate_);

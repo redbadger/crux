@@ -335,6 +335,7 @@ fn make_request() -> ContainerFormat {
 }
 
 impl From<&Type> for Format {
+    #[allow(clippy::too_many_lines)]
     fn from(type_: &Type) -> Self {
         match type_ {
             Type::ResolvedPath(path) => {
@@ -348,7 +349,10 @@ impl From<&Type> for Format {
                             "Option" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    _ => todo!(),
+                                    Some(other) => {
+                                        panic!("Option<T> expects a type parameter, got: {other:?}")
+                                    }
+                                    None => panic!("Option<T> requires exactly one type parameter"),
                                 };
                                 Format::Option(Box::new(format))
                             }
@@ -356,9 +360,52 @@ impl From<&Type> for Format {
                             "Vec" => {
                                 let format = match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
-                                    _ => todo!(),
+                                    Some(other) => {
+                                        panic!("Vec<T> expects a type parameter, got: {other:?}")
+                                    }
+                                    None => panic!("Vec<T> requires exactly one type parameter"),
                                 };
                                 Format::Seq(Box::new(format))
+                            }
+                            "Box" => {
+                                // Box<T> is semantically equivalent to T for serialization
+                                // since Box is just a heap allocation wrapper
+                                match args.first() {
+                                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                                    Some(other) => {
+                                        panic!("Box<T> expects a type parameter, got: {other:?}")
+                                    }
+                                    None => panic!("Box<T> requires exactly one type parameter"),
+                                }
+                            }
+                            "HashMap" | "BTreeMap" => {
+                                // Handle HashMap<K, V> and BTreeMap<K, V>
+                                if args.len() >= 2 {
+                                    let key_format = match args.first() {
+                                        Some(GenericArg::Type(ref type_)) => type_.into(),
+                                        Some(other) => panic!(
+                                            "{name}<K, V> expects type parameter for K, got: {other:?}"
+                                        ),
+                                        None => unreachable!("Already checked args.len() >= 2"),
+                                    };
+                                    let value_format = match args.get(1) {
+                                        Some(GenericArg::Type(ref type_)) => type_.into(),
+                                        Some(other) => panic!(
+                                            "{name}<K, V> expects type parameter for V, got: {other:?}"
+                                        ),
+                                        None => unreachable!("Already checked args.len() >= 2"),
+                                    };
+                                    Format::Map {
+                                        key: Box::new(key_format),
+                                        value: Box::new(value_format),
+                                    }
+                                } else {
+                                    panic!(
+                                        "{} requires exactly two type parameters <K, V>, got {} parameters",
+                                        name,
+                                        args.len()
+                                    )
+                                }
                             }
                             _ => Format::TypeName(name),
                         },
@@ -396,6 +443,8 @@ impl From<&Type> for Format {
                 "u32" => Format::U32,
                 "u64" => Format::U64,
                 "u128" => Format::U128,
+                "f32" => Format::F32,
+                "f64" => Format::F64,
                 s => panic!("need to implement primitive {s}"),
             },
             Type::FunctionPointer(_function_pointer) => todo!(),

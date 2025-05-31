@@ -15,5 +15,8 @@ cargo build
 pushd $argv[1]
 RUST_LOG=info ../../target/debug/crux codegen \
     --crate-name shared \
-    --out-dir ./shared/generated
+    --out-dir ./shared/generated \
+    --java com.crux.example.counter.shared \
+    --swift SharedTypes \
+    --typescript shared_types
 popd
