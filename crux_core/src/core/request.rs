@@ -26,7 +26,7 @@ where
 {
     /// Resolve the request with the given output.
     /// # Errors
-    /// Returns an error if the request cannot be resolved.
+    /// Returns an error if the request does not expect to be resolved.
     pub fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
         self.handle.resolve(output)
     }
