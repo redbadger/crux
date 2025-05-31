@@ -2,7 +2,7 @@ use std::fmt::{self, Debug};
 
 use crate::{
     capability::Operation,
-    core::resolve::{Resolve, ResolveError},
+    core::resolve::{RequestHandle, Resolvable, ResolveError},
 };
 
 /// Request represents an effect request from the core to the shell.
@@ -17,17 +17,28 @@ where
     Op: Operation,
 {
     pub operation: Op,
-    pub(crate) resolve: Resolve<Op::Output>,
+    pub handle: RequestHandle<Op::Output>,
 }
 
 impl<Op> Request<Op>
 where
     Op: Operation,
 {
+    /// Resolve the request with the given output.
+    /// # Errors
+    /// Returns an error if the request does not expect to be resolved.
+    pub fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
+        self.handle.resolve(output)
+    }
+
+    pub fn split(self) -> (Op, RequestHandle<Op::Output>) {
+        (self.operation, self.handle)
+    }
+
     pub(crate) fn resolves_never(operation: Op) -> Self {
         Self {
             operation,
-            resolve: Resolve::Never,
+            handle: RequestHandle::Never,
         }
     }
 
@@ -37,7 +48,7 @@ where
     {
         Self {
             operation,
-            resolve: Resolve::Once(Box::new(resolve)),
+            handle: RequestHandle::Once(Box::new(resolve)),
         }
     }
 
@@ -47,10 +58,15 @@ where
     {
         Self {
             operation,
-            resolve: Resolve::Many(Box::new(resolve)),
+            handle: RequestHandle::Many(Box::new(resolve)),
         }
     }
+}
 
+impl<Op> Resolvable<Op::Output> for Request<Op>
+where
+    Op: Operation,
+{
     /// Resolve the request with the given output.
     ///
     /// Note: This method should only be used in tests that work directly with
@@ -61,8 +77,8 @@ where
     /// # Errors
     ///
     /// Errors if the request cannot (or should not) be resolved.
-    pub fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
-        self.resolve.resolve(output)
+    fn resolve(&mut self, output: Op::Output) -> Result<(), ResolveError> {
+        self.resolve(output)
     }
 }
 
