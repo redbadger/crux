@@ -12,6 +12,7 @@ use crate::{
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 enum AnOperation {
+    Notify,
     Request(usize),
     Stream(String),
 }
@@ -98,6 +99,39 @@ fn request() {
 
         assert!(cmd.is_done());
     }
+}
+
+#[test]
+fn request_then_notify() {
+    let mut cmd = Capability::request(10)
+        .then_notify(|response| {
+            let AnOperationOutput::Response(_response) = response else {
+                panic!("Invalid output!")
+            };
+
+            // possibly do something with the response
+
+            Command::notify_shell(AnOperation::Notify)
+        })
+        .build();
+
+    let effect = cmd.effects().next().unwrap();
+    assert!(cmd.events().next().is_none());
+
+    let Effect::AnEffect(mut request) = effect;
+
+    assert_eq!(request.operation, AnOperation::Request(10));
+
+    request
+        .resolve(AnOperationOutput::Response("ten".to_string()))
+        .expect("should work");
+
+    assert!(cmd.events().next().is_none());
+    let effect = cmd.effects().next().unwrap();
+    let Effect::AnEffect(request) = effect;
+
+    assert_eq!(request.operation, AnOperation::Notify);
+    assert!(cmd.is_done());
 }
 
 #[test]
