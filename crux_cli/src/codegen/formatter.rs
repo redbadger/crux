@@ -8,15 +8,31 @@ use rustdoc_types::{GenericArg, GenericArgs, Item, ItemEnum, Type};
 use crate::codegen::collect;
 
 use super::{
+    filter::is_public,
     indexed::Indexed,
     item::{
         is_plain_variant, is_struct_plain, is_struct_tuple, is_struct_unit, is_struct_variant,
-        is_tuple_variant,
+        is_tuple_variant, is_type_alias,
     },
     node::ItemNode,
     serde::case::RenameRule,
     serde_generate::format::{ContainerFormat, Format, Named, VariantFormat},
 };
+
+/// Check if a type name is a framework internal type that shouldn't be generated
+fn is_framework_internal(name: &str) -> bool {
+    matches!(
+        name,
+        "CapabilityContext"
+            | "Resolve"
+            | "Core"
+            | "Bridge"
+            | "Capability"
+            | "Context"
+            | "ContextInner"
+            | "KeyValue"
+    )
+}
 
 ascent! {
     #![measure_rule_times]
@@ -35,6 +51,9 @@ ascent! {
 
     relation struct_tuple(ItemNode);
     struct_tuple(s) <-- edge(s, _), if is_struct_tuple(&s.item);
+
+    relation type_alias(ItemNode);
+    type_alias(a) <-- edge(a, _), if is_type_alias(&a.item);
 
     relation field(ItemNode, ItemNode);
     field(x, f) <-- edge(x, f), if x.has_field(f);
@@ -104,20 +123,34 @@ ascent! {
     container(name, container) <--
         struct_plain(s),
         if let Some(name) = s.name(),
+        if is_public(s),
+        if !is_framework_internal(name),
         agg field_formats = collect(format) in format_named(s, format),
         let container = make_struct_plain(&field_formats);
     container(name, container) <--
         struct_unit(s),
         if let Some(name) = s.name(),
+        if is_public(s),
+        if !is_framework_internal(name),
         let container = make_struct_unit();
     container(name, container) <--
         struct_tuple(s),
         if let Some(name) = s.name(),
+        if is_public(s),
+        if !is_framework_internal(name),
         agg field_formats = collect(format) in format(s, format),
         let container = make_struct_tuple(&field_formats);
     container(name, container) <--
+        type_alias(a),
+        if let Some(name) = a.name(),
+        if is_public(a),
+        if !is_framework_internal(name),
+        if let Some(container) = make_type_alias(a);
+    container(name, container) <--
         variant(e, _),
         if let Some(name) = e.name(),
+        if is_public(e),
+        if !is_framework_internal(name),
         agg variant_formats = collect(format) in format_variant(e, format),
         let container = make_enum(&variant_formats);
     container("Range".to_string(), container) <--
@@ -285,6 +318,17 @@ fn make_enum(formats: &[(&Indexed<Named<VariantFormat>>,)]) -> ContainerFormat {
     ContainerFormat::Enum(map)
 }
 
+fn make_type_alias(alias_node: &ItemNode) -> Option<ContainerFormat> {
+    // For type aliases like `type TimerId = String`, we generate a wrapper struct
+    // that contains a single field with the target type
+    if let Some(target_type) = alias_node.get_type_alias_target() {
+        let target_format: Format = target_type.into();
+        Some(ContainerFormat::NewTypeStruct(Box::new(target_format)))
+    } else {
+        None
+    }
+}
+
 fn make_range(field: &ItemNode) -> Option<ContainerFormat> {
     match &field.item.inner {
         ItemEnum::StructField(range_type) => {
@@ -367,15 +411,15 @@ impl From<&Type> for Format {
                                 };
                                 Format::Seq(Box::new(format))
                             }
-                            "Box" => {
-                                // Box<T> is semantically equivalent to T for serialization
-                                // since Box is just a heap allocation wrapper
+                            "Box" | "Arc" | "Rc" => {
+                                // Box<T>, Arc<T>, Rc<T> are semantically equivalent to T for serialization
+                                // since they are just smart pointer wrappers
                                 match args.first() {
                                     Some(GenericArg::Type(ref type_)) => type_.into(),
                                     Some(other) => {
-                                        panic!("Box<T> expects a type parameter, got: {other:?}")
+                                        panic!("{name}<T> expects a type parameter, got: {other:?}")
                                     }
-                                    None => panic!("Box<T> requires exactly one type parameter"),
+                                    None => panic!("{name}<T> requires exactly one type parameter"),
                                 }
                             }
                             "HashMap" | "BTreeMap" => {
@@ -383,16 +427,12 @@ impl From<&Type> for Format {
                                 if args.len() >= 2 {
                                     let key_format = match args.first() {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        Some(other) => panic!(
-                                            "{name}<K, V> expects type parameter for K, got: {other:?}"
-                                        ),
+                                        Some(other) => panic!("{name}<K, V> expects type parameter for K, got: {other:?}"),
                                         None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     let value_format = match args.get(1) {
                                         Some(GenericArg::Type(ref type_)) => type_.into(),
-                                        Some(other) => panic!(
-                                            "{name}<K, V> expects type parameter for V, got: {other:?}"
-                                        ),
+                                        Some(other) => panic!("{name}<K, V> expects type parameter for V, got: {other:?}"),
                                         None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     Format::Map {
@@ -407,6 +447,30 @@ impl From<&Type> for Format {
                                     )
                                 }
                             }
+                            "DateTime" => {
+                                // DateTime<Tz> is treated as a timestamp/string for serialization
+                                // The timezone parameter doesn't affect the serialized format
+                                Format::Str
+                            }
+                            "Decimal" => {
+                                // Decimal types are commonly used for precise numbers
+                                // For rates and percentages, double precision is usually sufficient
+                                Format::F64
+                            }
+                            "Mutex" | "RefCell" => {
+                                panic!(
+                                    "{name} should not be used in types that cross FFI boundaries. \
+                                    These are runtime constructs that cannot be serialized. \
+                                    Consider refactoring your data model to use plain data types instead."
+                                )
+                            }
+                            "Instant" => {
+                                // For time-related types, consider using a serializable representation
+                                panic!(
+                                    "Instant cannot be directly serialized across FFI. \
+                                    Consider using a timestamp (u64 milliseconds) or a string representation instead."
+                                )
+                            }
                             _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
@@ -418,8 +482,19 @@ impl From<&Type> for Format {
                     Format::TypeName(name)
                 }
             }
-            Type::DynTrait(_dyn_trait) => todo!(),
-            Type::Generic(_param_name) => todo!(),
+            Type::DynTrait(_dyn_trait) => {
+                // Dynamic trait objects (dyn Trait) are not serializable
+                // Skip these types rather than crashing
+                log::warn!(
+                    "Skipping dynamic trait object (dyn Trait) - not supported for serialization"
+                );
+                Format::TypeName("UnsupportedDynTrait".to_string())
+            }
+            Type::Generic(param_name) => {
+                // Generic type parameters (like T, U, etc.) should be treated as opaque type names
+                // since they'll be resolved to concrete types during compilation
+                Format::TypeName(param_name.clone())
+            }
             Type::Primitive(s) => match s.as_ref() {
                 "bool" => Format::Bool,
                 "char" => Format::Char,

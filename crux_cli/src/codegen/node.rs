@@ -6,7 +6,8 @@ use rustdoc_types::{
 use serde::{Deserialize, Serialize};
 
 use super::item::{
-    field_ids, has_associated_item, has_field, has_variant, is_impl_for, variant_ids,
+    field_ids, get_type_alias_target, has_associated_item, has_field, has_variant, is_impl_for,
+    variant_ids,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -71,19 +72,36 @@ impl SummaryNode {
         }
     }
 
-    pub fn in_same_module_as(&self, other: &SummaryNode) -> bool {
-        let this = &self.summary.path;
-        let other = &other.summary.path;
-
-        if this.len() != other.len() {
-            return false;
-        }
-
-        this[..(this.len() - 1)] == other[..(other.len() - 1)]
-    }
-
     pub fn points_to_crate(&self, crate_: &CrateNode) -> bool {
         self.id.crate_ == crate_.id.crate_ && self.summary.crate_id == crate_.id.id
+    }
+
+    pub fn path_components(&self) -> Option<String> {
+        // Convert the path vector to a string like "crux_core::render::RenderOperation"
+        if self.summary.path.is_empty() {
+            return None;
+        }
+        Some(self.summary.path.join("::"))
+    }
+
+    /// Get the actual crate name from the type path (not rustdoc's crate field)
+    /// This is crucial because rustdoc marks all types as belonging to the generating crate
+    pub fn actual_crate_name(&self) -> Option<String> {
+        if let Some(path) = self.path_components() {
+            // Extract the first component as the actual crate name
+            path.split("::").next().map(str::to_string)
+        } else {
+            None
+        }
+    }
+
+    /// Check if this type is from a workspace crate using the `PackageGraph`
+    pub fn is_workspace_type(&self, workspace_crates: &std::collections::HashSet<String>) -> bool {
+        if let Some(actual_crate) = self.actual_crate_name() {
+            workspace_crates.contains(&actual_crate)
+        } else {
+            false
+        }
     }
 }
 
@@ -130,10 +148,6 @@ impl ItemNode {
         } else {
             Some(new_name)
         }
-    }
-
-    pub fn has_summary(&self, summary: &SummaryNode) -> bool {
-        self.id == summary.id
     }
 
     pub fn is_impl_for(&self, for_: &ItemNode, trait_name: &str) -> bool {
@@ -232,6 +246,10 @@ impl ItemNode {
             } => target.id.0 == id.id,
             _ => false,
         }
+    }
+
+    pub fn get_type_alias_target(&self) -> Option<&Type> {
+        get_type_alias_target(&self.item)
     }
 
     pub fn has_associated_item(&self, associated_item: &ItemNode, with_name: &str) -> bool {
