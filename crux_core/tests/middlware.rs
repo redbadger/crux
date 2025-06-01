@@ -19,6 +19,7 @@ mod app {
     // Other effects will be passed to the shell
 
     #[effect]
+    #[derive(Debug)]
     pub enum Effect {
         Random(RandomNumberRequest),
         Http(crux_http::protocol::HttpRequest),
@@ -155,6 +156,7 @@ mod middleware {
     //! thread or the random generator thread, we don't mind which.
 
     use std::{
+        marker::PhantomData,
         sync::{Arc, Weak},
         thread::spawn,
     };
@@ -164,6 +166,8 @@ mod middleware {
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::app::{RandomNumber, RandomNumberRequest};
+
+    // --- Eventually part of crux code ---
 
     /// A layer in the middleware stack. Implemented by the Core and the different
     /// kinds of middlewares, so that they are interchangeable
@@ -197,6 +201,13 @@ mod middleware {
             Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect>,
         {
             EffectMiddlewareLayer::new(self, middleware)
+        }
+
+        fn convert_effect<NewEffect>(self) -> ConvertEffectLayer<Self, NewEffect>
+        where
+            NewEffect: From<Self::Effect> + Send + 'static,
+        {
+            ConvertEffectLayer::new(self)
         }
     }
 
@@ -232,6 +243,78 @@ mod middleware {
 
         fn view(&self) -> Self::ViewModel {
             self.view()
+        }
+    }
+
+    pub struct ConvertEffectLayer<Next, Effect>
+    where
+        Next: Layer,
+        Effect: 'static,
+    {
+        next: Next,
+        effect: PhantomData<fn() -> Effect>, // to avoid losing Sync
+    }
+
+    impl<Next, Effect> ConvertEffectLayer<Next, Effect>
+    where
+        Next: Layer,
+    {
+        fn new(next: Next) -> Self {
+            Self {
+                next,
+                effect: PhantomData,
+            }
+        }
+
+        fn map_effects(effects: Vec<Next::Effect>) -> Vec<Effect>
+        where
+            Effect: From<Next::Effect> + Send + 'static,
+        {
+            effects.into_iter().map(From::from).collect()
+        }
+    }
+
+    impl<Next, Effect> Layer for ConvertEffectLayer<Next, Effect>
+    where
+        Next: Layer,
+        Effect: From<Next::Effect> + Send + 'static,
+    {
+        type Event = Next::Event;
+        type Effect = Effect;
+
+        type ViewModel = Next::ViewModel;
+
+        fn process_event<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
+        where
+            F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
+        {
+            Self::map_effects(
+                self.next
+                    .process_event(event, move |effects: Vec<Next::Effect>| {
+                        effect_callback(Self::map_effects(effects))
+                    }),
+            )
+        }
+
+        fn resolve<Op, F>(
+            &self,
+            request: &mut Request<Op>,
+            output: Op::Output,
+            effect_callback: F,
+        ) -> Result<Vec<Self::Effect>, ResolveError>
+        where
+            F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
+            Op: Operation,
+        {
+            Ok(Self::map_effects(self.next.resolve(
+                request,
+                output,
+                move |effects| effect_callback(Self::map_effects(effects)),
+            )?))
+        }
+
+        fn view(&self) -> Self::ViewModel {
+            self.next.view()
         }
     }
 
@@ -459,6 +542,8 @@ mod middleware {
         ) -> Result<(), Effect>;
     }
 
+    // --- Test Local code ---
+
     // Random number generating middleware
     #[allow(clippy::type_complexity)]
     pub struct RngMiddleware {
@@ -617,6 +702,7 @@ mod tests {
     };
     use crossbeam_channel::RecvError;
     use crux_core::{render::RenderOperation, Core};
+    use crux_macros::effect;
 
     #[test]
     fn roll_one_dice() {
@@ -734,5 +820,44 @@ mod tests {
         };
 
         eprintln!("Test complete");
+    }
+
+    #[effect]
+    pub enum NarrowEffect {
+        Render(RenderOperation),
+    }
+
+    impl From<Effect> for NarrowEffect {
+        fn from(effect: Effect) -> Self {
+            match effect {
+                Effect::Render(render_operation) => NarrowEffect::Render(render_operation),
+                Effect::Random(_) => panic!("Attempted to convert Effect::Random to NarrowEffect"),
+                Effect::Http(_) => panic!("Attempted to convert Effect::Http to NarrowEffect"),
+            }
+        }
+    }
+
+    #[test]
+    fn roll_three_dice_with_http_and_effect_narrowing() {
+        let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let effect_callback = move |effects: Vec<NarrowEffect>| effects_tx.send(effects).unwrap();
+
+        let inner_core: Core<Dice> = Core::new();
+        let core = inner_core
+            .handle_effects_using(RngMiddleware::new())
+            .handle_effects_using(FakeHttpMiddleware)
+            .convert_effect::<NarrowEffect>();
+
+        let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
+        assert!(effects.is_empty());
+
+        let Ok(mut effects) = effects_rx.recv() else {
+            panic!()
+        };
+
+        let NarrowEffect::Render(request) = effects.remove(0);
+        let render_operation = request.operation;
+
+        assert_eq!(RenderOperation, render_operation);
     }
 }
