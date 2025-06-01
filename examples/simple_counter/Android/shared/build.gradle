@@ -1,3 +1,6 @@
+import com.android.build.gradle.tasks.MergeSourceSetFolders
+import com.nishtahir.CargoBuildTask
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -86,8 +89,8 @@ afterEvaluate {
         }
 
         // The below dependsOn is needed till https://github.com/mozilla/rust-android-gradle/issues/85 is resolved this fix was got from #118
-        tasks.withType(com.nishtahir.CargoBuildTask).forEach { buildTask ->
-              tasks.withType(com.android.build.gradle.tasks.MergeSourceSetFolders).configureEach {
+        tasks.withType(CargoBuildTask).forEach { buildTask ->
+              tasks.withType(MergeSourceSetFolders).configureEach {
                   it.inputs.dir(new File(new File(buildDir, "rustJniLibs"), buildTask.toolchain.folder))
                   it.dependsOn(buildTask)
               }
@@ -105,11 +108,15 @@ tasks.register('bindGen', Exec) {
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
         commandLine("cmd", "/c",
-                "cargo build -p shared && " + "target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " + "--language kotlin " + "--out-dir " + outDir.replace('/', '\\'))
+                """\
+                cargo build --package shared && \
+                cargo build --package shared --bin uniffi-bindgen --features cli && \
+                target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl --language kotlin --out-dir """ + outDir.replace('/', '\\'))
     } else {
         commandLine("sh", "-c",
                 """\
-                cargo build -p shared && \
+                cargo build --package shared && \
+                cargo build --package shared --bin uniffi-bindgen --features cli && \
                 target/debug/uniffi-bindgen generate shared/src/shared.udl \
                 --language kotlin \
                 --out-dir $outDir
@@ -120,8 +127,8 @@ tasks.register('bindGen', Exec) {
 tasks.register('typesGen', Exec) {
     workingDir "../../"
     if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-        commandLine("cmd", "/c", "cargo build -p shared_types")
+        commandLine("cmd", "/c", "cargo build --package shared_types")
     } else {
-        commandLine("sh", "-c", "cargo build -p shared_types")
+        commandLine("sh", "-c", "cargo build --package shared_types")
     }
 }

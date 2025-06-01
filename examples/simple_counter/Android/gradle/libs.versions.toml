@@ -1,17 +1,17 @@
 [versions]
-agp = "8.9.1"
+agp = "8.10.1"
 kotlin = "2.0.0"
-coreKtx = "1.15.0"
+coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.8.7"
+lifecycleRuntimeKtx = "2.9.0"
 activityCompose = "1.10.1"
-composeBom = "2025.03.00"
+composeBom = "2025.05.01"
 
 # added
 jna = "5.15.0"
-lifecycle = "2.8.7"
+lifecycle = "2.9.0"
 appcompat = "1.7.0"
 material = "1.12.0"
 rustAndroid = "0.9.6"
