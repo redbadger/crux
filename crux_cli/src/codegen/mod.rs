@@ -119,36 +119,6 @@ fn has_library_target(crate_name: &str, metadata: &cargo_metadata::Metadata) -> 
         })
 }
 
-/// Check if a rustdoc JSON file is up-to-date compared to the source files
-fn is_rustdoc_cache_valid(json_path: &Path, manifest_path: &str) -> Result<bool> {
-    if !json_path.exists() {
-        return Ok(false);
-    }
-
-    let json_modified = json_path.metadata()?.modified()?;
-    let manifest_modified = Path::new(manifest_path).metadata()?.modified()?;
-
-    if manifest_modified > json_modified {
-        return Ok(false);
-    }
-
-    let manifest_dir = Path::new(manifest_path).parent().unwrap_or(Path::new("."));
-    let src_dir = manifest_dir.join("src");
-
-    if src_dir.exists() {
-        if let Ok(entries) = fs::read_dir(&src_dir) {
-            for entry in entries.flatten() {
-                if let Ok(metadata) = entry.metadata() {
-                    if metadata.is_file() && metadata.modified()? > json_modified {
-                        return Ok(false);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(true)
-}
 
 pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let mut cmd = MetadataCommand::new();
@@ -294,28 +264,24 @@ fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate
     json_path.push(name);
     json_path.set_extension("json");
 
-    // Check if we can use cached rustdoc JSON
-    if is_rustdoc_cache_valid(json_path.as_std_path(), manifest_path)? {
-        info!("Using cached rustdoc JSON for {name}");
-    } else {
-        info!("Generating rustdoc JSON for {name}");
-        let status = Command::new("cargo")
-            .env("RUSTC_BOOTSTRAP", "1")
-            .env(
-                "RUSTDOCFLAGS",
-                "-Z unstable-options --output-format=json --cap-lints=allow",
-            )
-            .arg("doc")
-            .arg("--no-deps")
-            .arg("--lib")
-            .args(["--manifest-path", manifest_path])
-            .arg("--all-features")
-            .arg("--document-private-items")
-            .status()?;
+    // Always regenerate rustdoc JSON (caching removed for reliability)
+    info!("Generating rustdoc JSON for {name}");
+    let status = Command::new("cargo")
+        .env("RUSTC_BOOTSTRAP", "1")
+        .env(
+            "RUSTDOCFLAGS",
+            "-Z unstable-options --output-format=json --cap-lints=allow",
+        )
+        .arg("doc")
+        .arg("--no-deps")
+        .arg("--lib")
+        .args(["--manifest-path", manifest_path])
+        .arg("--all-features")
+        .arg("--document-private-items")
+        .status()?;
 
-        if !status.success() {
-            bail!("failed to generate rustdoc json for {manifest_path} with error code {status}");
-        }
+    if !status.success() {
+        bail!("failed to generate rustdoc json for {manifest_path} with error code {status}");
     }
 
     debug!("Loading rustdoc JSON from {json_path}");
