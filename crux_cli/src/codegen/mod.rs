@@ -118,7 +118,6 @@ fn has_library_target(crate_name: &str, metadata: &cargo_metadata::Metadata) -> 
         })
 }
 
-
 pub fn codegen(args: &CodegenArgs) -> Result<()> {
     let mut cmd = MetadataCommand::new();
     let package_graph = PackageGraph::from_command(&mut cmd)?;

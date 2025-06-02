@@ -144,8 +144,6 @@ ascent! {
     root(x) <-- output(x);
     root(x) <-- type_alias_root(x);
 
-
-
     // set of all the edges we are interested in
     relation edge(ItemNode, ItemNode);
 
@@ -176,7 +174,6 @@ ascent! {
     edge(field, type_) <--
         edge(_, field),
         local_type_of(field, type_);
-
 
     relation crates(String);
     crates(n) <--
