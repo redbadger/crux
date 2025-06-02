@@ -14,13 +14,16 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{capability::Operation, App, Core, Request, ResolveError};
+use crate::{bridge::BridgeError, capability::Operation, App, Core, Effect, Request, ResolveError};
 
+mod bridge;
 mod effect_conversion;
 mod effect_handling;
 
+pub use bridge::{Bridge, FfiFormat};
 pub use effect_conversion::MapEffectLayer;
 pub use effect_handling::{EffectMiddleware, HandleEffectLayer};
+use serde::Deserialize;
 
 /// A layer in the middleware stack.
 ///
@@ -76,6 +79,17 @@ pub trait Layer: Send + Sync + Sized {
         F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
         Op: Operation;
 
+    /// Process any tasks in the effect runtime of the Core, which are able to proceed.
+    /// The tasks may produce effects which will be returned by the core and may be
+    /// processed by lower middleware layers.
+    ///
+    /// This is used by the [`Bridge`], when resolving effects over FFI. It can't call
+    /// [`resolve`], because the `Op` type argument is not known due to the type erasure
+    /// involved in serializing effects and storing request handles for the FFI.
+    fn process_tasks<F>(&self, effect_callback: F) -> Vec<Self::Effect>
+    where
+        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static;
+
     /// Return the current state of the view model
     fn view(&self) -> Self::ViewModel;
 
@@ -100,6 +114,17 @@ pub trait Layer: Send + Sync + Sized {
         NewEffect: From<Self::Effect> + Send + 'static,
     {
         MapEffectLayer::new(self)
+    }
+
+    fn bridge(
+        self,
+        effect_callback: impl Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static,
+    ) -> Bridge<Self>
+    where
+        Self::Effect: Effect,
+        Self::Event: for<'a> Deserialize<'a>,
+    {
+        Bridge::new(self, effect_callback)
     }
 }
 
@@ -135,5 +160,12 @@ where
 
     fn view(&self) -> Self::ViewModel {
         self.view()
+    }
+
+    fn process_tasks<F>(&self, _effect_callback: F) -> Vec<Self::Effect>
+    where
+        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
+    {
+        self.process()
     }
 }

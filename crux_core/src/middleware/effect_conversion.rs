@@ -79,4 +79,14 @@ where
     fn view(&self) -> Self::ViewModel {
         self.next.view()
     }
+
+    fn process_tasks<F>(&self, effect_callback: F) -> Vec<Self::Effect>
+    where
+        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
+    {
+        Self::map_effects(
+            self.next
+                .process_tasks(move |effects| effect_callback(Self::map_effects(effects))),
+        )
+    }
 }

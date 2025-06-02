@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{core::ResolveError, App, Core};
-use registry::{EffectId, ResolveRegistry};
+pub(crate) use registry::{EffectId, ResolveRegistry};
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveSerialized;

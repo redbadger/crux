@@ -5,7 +5,7 @@ use slab::Slab;
 
 use super::{BridgeError, Request};
 use crate::bridge::request_serde::ResolveSerialized;
-use crate::Effect;
+use crate::{Effect, ResolveError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -58,8 +58,7 @@ impl ResolveRegistry {
         let entry = registry_lock.get_mut(id.0 as usize);
 
         let Some(entry) = entry else {
-            // FIXME return an Err instead of panicking here.
-            panic!("Request with {id:?} not found.");
+            return Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)));
         };
 
         let resolved = entry.resolve(body);
