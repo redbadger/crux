@@ -52,12 +52,25 @@ pub fn update(event: AddFavoriteEvent, model: &mut crate::Model) -> Command<Effe
         }
         AddFavoriteEvent::Submit(geo) => {
             let favorite = Favorite::from(*geo);
-            model.favorites.push(favorite.clone());
-            model.search_results = None;
-            model.page = Workflow::Favorites(FavoritesState::Idle);
-            render().and(Command::event(Event::Favorites(Box::new(
-                FavoritesEvent::Set,
-            ))))
+            // Check if a favorite with the same coordinates already exists
+            if !model
+                .favorites
+                .iter()
+                .any(|f| f.geo.lat == favorite.geo.lat && f.geo.lon == favorite.geo.lon)
+            {
+                model.favorites.push(favorite.clone());
+                model.search_results = None;
+                model.page = Workflow::Favorites(FavoritesState::Idle);
+                render().and(Command::event(Event::Favorites(Box::new(
+                    FavoritesEvent::Set,
+                ))))
+            } else {
+                // If it's a duplicate, just return to favorites view without adding
+                // TODO: show a toast message
+                model.search_results = None;
+                model.page = Workflow::Favorites(FavoritesState::Idle);
+                render()
+            }
         }
         AddFavoriteEvent::Cancel => {
             model.search_results = None;
@@ -137,12 +150,29 @@ mod tests {
     #[test]
     fn test_submit_persists_favorite() {
         let mut model = crate::Model::default();
-        let geo = test_geocoding();
+        let geo1 = test_geocoding();
+        let geo2 = GeocodingResponse {
+            name: "New York".to_string(),
+            local_names: None,
+            lat: 40.7128,
+            lon: -74.0060,
+            country: "US".to_string(),
+            state: None,
+        };
 
-        // Submit the favorite
-        let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo.clone())), &mut model);
+        // Submit first favorite
+        let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo1.clone())), &mut model);
+        let event = cmd.events().next().unwrap();
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
+        }
+        assert_eq!(model.favorites.len(), 1);
+        assert_eq!(model.favorites[0].geo, geo1);
 
-        // Verify we get the Set event which will trigger KV storage
+        // Submit second favorite (different location)
+        let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo2.clone())), &mut model);
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
             assert!(matches!(**event, FavoritesEvent::Set))
@@ -150,16 +180,15 @@ mod tests {
             panic!("Expected Favorites event")
         }
 
-        // Verify the favorite was added
-        assert_eq!(model.favorites.len(), 1);
-        assert_eq!(model.favorites[0].geo, geo);
+        // Verify both favorites are in the list
+        assert_eq!(model.favorites.len(), 2);
+        assert_eq!(model.favorites[0].geo, geo1);
+        assert_eq!(model.favorites[1].geo, geo2);
 
-        // Submit another favorite to verify persistence
-        let _cmd = update(AddFavoriteEvent::Submit(Box::new(geo.clone())), &mut model);
-
-        // Verify the favorite persists after loading
-        assert_eq!(model.favorites.len(), 2); // Now we have 2 favorites since we submitted again
-        assert_eq!(model.favorites[1].geo, geo);
+        // Verify we can't add the same favorite again
+        let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo1.clone())), &mut model);
+        assert!(cmd.events().next().is_none()); // No Set event for duplicate
+        assert_eq!(model.favorites.len(), 2); // List unchanged
     }
 
     #[test]
@@ -254,5 +283,40 @@ mod tests {
             Some(SAMPLE_GEOCODING_RESPONSE.clone())
         );
         insta::assert_yaml_snapshot!(model.search_results);
+    }
+
+    #[test]
+    fn test_submit_duplicate_favorite() {
+        let mut model = crate::Model::default();
+        let geo = test_geocoding();
+
+        // First submit - should succeed
+        let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo.clone())), &mut model);
+
+        // Verify first submit worked
+        let event = cmd.events().next().unwrap();
+        if let Event::Favorites(event) = &event {
+            assert!(matches!(**event, FavoritesEvent::Set))
+        } else {
+            panic!("Expected Favorites event")
+        }
+        assert_eq!(model.favorites.len(), 1);
+        assert_eq!(model.favorites[0].geo, geo);
+
+        // Try to submit the same favorite again
+        let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo.clone())), &mut model);
+
+        // Verify no Set event was generated (no storage update)
+        assert!(cmd.events().next().is_none());
+
+        // Verify favorites list is unchanged
+        assert_eq!(model.favorites.len(), 1);
+        assert_eq!(model.favorites[0].geo, geo);
+
+        // Verify we still return to favorites view
+        assert!(matches!(
+            model.page,
+            Workflow::Favorites(FavoritesState::Idle)
+        ));
     }
 }
