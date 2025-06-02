@@ -1,0 +1,8 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crux_core = "0.15.0"
+serde = { version = "1.0", features = ["derive"] }

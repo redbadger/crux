@@ -8,8 +8,7 @@ pub mod codegen;
 use anyhow::Result;
 use clap::Parser;
 
-pub use args::CodegenArgs;
-use args::{Cli, Commands};
+pub use args::*;
 
 pub fn run() -> Result<()> {
     env_logger::init();
