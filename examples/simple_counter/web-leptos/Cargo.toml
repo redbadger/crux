@@ -10,7 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 shared = { path = "../shared" }
-leptos = { version = "0.8.2", features = ["csr"] }
+leptos = { version = "=0.7.8", features = ["csr"] }
 
 [lints.clippy]
 empty_docs = "allow"
