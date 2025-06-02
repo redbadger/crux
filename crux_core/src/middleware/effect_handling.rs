@@ -1,0 +1,247 @@
+use std::sync::{Arc, Weak};
+
+use crate::{capability::Operation, Request, ResolveError};
+
+use super::Layer;
+
+/// An effect processing middleware.
+///
+/// Implement this trait to provide effect processing in Rust on the core side. The two typical uses for this are
+/// 1. Reusing a Rust implementation of a capability compatible with all target platforms
+/// 2. Using an existing crate which is not built with Sans-IO in mind.
+///
+/// There are a number of considerations for doing this:
+/// - The effect processing will rely on system APIs or crates which MUST be portable to all platforms
+///   the library using this middleware is going to be deployed to. This is fundamentally trading off
+///   portability for reuse of the Rust implementation.
+/// - The middlware MUST process the effect in a non-blocking fashion on a separate thread. This thread
+///   may be one of a pool from an async runtime or a simple background worker thread - this is left to the
+///   implementation to decide.
+/// - Due to the multi-threaded nature of the processing, the core, and therefore the app are shared between
+///   threads. The app must be `Send` and `Sync`, which also forces the `Model` type to be Send and Sync.
+///   This should not be a problem - `Model` should not normally be `!Send` or `!Sync`.
+pub trait EffectMiddleware<Effect>
+where
+    Effect: TryInto<Request<Self::Op>, Error = Effect>,
+{
+    /// The operation type this middlware can process
+    type Op: Operation;
+
+    /// Try to process `effect` if is of the right type (can convert in to a `Request<Self::Op>`).
+    ///
+    /// The implementation should return `Ok(())` if the conversion succeds, and call the `resolve_callback`
+    /// with the output later on. If the effect fails to convert, it should be returned wrapped in `Err(_)`.
+    fn try_process_effect_with(
+        &self,
+        effect: Effect,
+        resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
+            + Send
+            + 'static,
+    ) -> Result<(), Effect>;
+}
+
+struct EffectMiddlewareLayerInner<Next, EM>
+where
+    Next: Layer + Sync + Send + 'static,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+{
+    next: Next,
+    middleware: EM,
+}
+
+/// Middleware layer able to process some of the effects. This implements the general
+/// behaviour making sure all follow-up effects are processed and routed to the right place
+/// and delegates to the generic parameter `M`, which implements [`EffectMiddleware`].
+pub struct HandleEffectLayer<Next, EM>
+where
+    Next: Layer + Sync + Send + 'static,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+{
+    inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
+}
+
+impl<Next, M> Layer for HandleEffectLayer<Next, M>
+where
+    // Next layer down, core being at the bottom
+    Next: Layer,
+    // Effect has to try_into the operation which the middleware handles
+    Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
+    // The actual middleware effect handling implementation
+    M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+{
+    type Event = Next::Event;
+    type Effect = Next::Effect;
+    type ViewModel = Next::ViewModel;
+
+    fn process_event<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+        &self,
+        event: Self::Event,
+        effect_callback: F,
+    ) -> Vec<Self::Effect> {
+        self.process_event(event, effect_callback)
+    }
+
+    fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+        &self,
+        request: &mut Request<Op>,
+        output: Op::Output,
+        effect_callback: F,
+    ) -> Result<Vec<Self::Effect>, ResolveError> {
+        self.resolve(request, output, effect_callback)
+    }
+
+    fn view(&self) -> Self::ViewModel {
+        self.view()
+    }
+}
+
+impl<Next, EM> HandleEffectLayer<Next, EM>
+where
+    Next: Layer,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+{
+    pub fn new(next: Next, middleware: EM) -> Self {
+        Self {
+            inner: Arc::new(EffectMiddlewareLayerInner { next, middleware }),
+        }
+    }
+
+    pub fn process_event(
+        &self,
+        event: Next::Event,
+        return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+    ) -> Vec<Next::Effect> {
+        let inner = Arc::downgrade(&self.inner);
+        let return_effects = Arc::new(return_effects);
+        let return_effects_copy = return_effects.clone();
+
+        let effects = self
+            .inner
+            .next
+            .process_event(event, move |later_effects_from_next| {
+                // Eventual route
+                Self::process_known_effects_with(
+                    &inner,
+                    later_effects_from_next,
+                    return_effects.clone(),
+                );
+            });
+
+        // Immediate route
+        Self::process_known_effects(&Arc::downgrade(&self.inner), effects, return_effects_copy)
+    }
+
+    #[allow(unused)]
+    pub fn resolve<Op: Operation>(
+        &self,
+        request: &mut Request<Op>,
+        result: Op::Output,
+        return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+    ) -> Result<Vec<Next::Effect>, ResolveError> {
+        let inner = Arc::downgrade(&self.inner);
+        let return_effects = Arc::new(return_effects);
+        let return_effects_copy = return_effects.clone();
+
+        let effects = self
+            .inner
+            .next
+            .resolve(request, result, move |later_effects_from_next| {
+                Self::process_known_effects_with(
+                    &inner,
+                    later_effects_from_next,
+                    return_effects.clone(),
+                )
+            })?;
+
+        // Immediate route
+        Ok(Self::process_known_effects(
+            &Arc::downgrade(&self.inner),
+            effects,
+            return_effects_copy,
+        ))
+    }
+
+    #[allow(unused)]
+    pub fn view(&self) -> Next::ViewModel {
+        self.inner.next.view()
+    }
+
+    fn process_known_effects(
+        inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
+        effects: Vec<Next::Effect>,
+        return_effects: Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
+    ) -> Vec<Next::Effect> {
+        effects
+            .into_iter()
+            .filter_map(|effect| {
+                // This is where the middleware handler will send the result of its work
+                let resolve_callback = {
+                    let return_effects = return_effects.clone();
+                    let inner = inner.clone();
+
+                    move |mut effect_request, effect_out_value| {
+                        // This allows us to do the recursion without requiring `inner` to outlive 'static
+                        let Some(strong_inner) = inner.upgrade() else {
+                            // do nothing, inner is gone, we can't process further effects
+                            eprintln!("Inner cant't be upgraded after resolving effect");
+                            return;
+                        };
+
+                        if let Ok(immediate_effects) =
+                            strong_inner
+                                .next
+                                .resolve(&mut effect_request, effect_out_value, {
+                                    let return_effects = return_effects.clone();
+                                    let future_inner = inner.clone();
+
+                                    // Eventual eventual route
+                                    move |eventual_effects| {
+                                        // Process known effects
+                                        Self::process_known_effects_with(
+                                            &future_inner,
+                                            eventual_effects,
+                                            return_effects.clone(),
+                                        );
+                                    }
+                                })
+                        {
+                            Self::process_known_effects_with(
+                                &inner,
+                                immediate_effects,
+                                return_effects,
+                            )
+                        }
+                    } // TODO: handle/propagate resolve error?
+                };
+
+                let Some(strong_inner) = inner.upgrade() else {
+                    // do nothing, inner is gone, we can't process further effects
+                    eprintln!("Inner cant't be upgraded to resolve effect");
+                    return Some(effect);
+                };
+
+                // Ask middleware impl to process the effect
+                // calling back with the result, potentially on a different thread (!)
+                strong_inner
+                    .middleware
+                    .try_process_effect_with(effect, resolve_callback)
+                    .err()
+            })
+            .collect()
+    }
+
+    fn process_known_effects_with(
+        inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
+        effects: Vec<<Next as Layer>::Effect>,
+        return_effects: Arc<impl Fn(Vec<<Next as Layer>::Effect>) + Send + Sync + 'static>,
+    ) {
+        let unknown_effects = Self::process_known_effects(inner, effects, return_effects.clone());
+
+        if !unknown_effects.is_empty() {
+            return_effects(unknown_effects)
+        }
+    }
+}
