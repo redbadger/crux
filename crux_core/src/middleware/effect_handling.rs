@@ -95,6 +95,13 @@ where
     fn view(&self) -> Self::ViewModel {
         self.view()
     }
+
+    fn process_tasks<F>(&self, effect_callback: F) -> Vec<Self::Effect>
+    where
+        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
+    {
+        self.process_tasks(effect_callback)
+    }
 }
 
 impl<Next, EM> HandleEffectLayer<Next, EM>
@@ -134,7 +141,6 @@ where
         Self::process_known_effects(&Arc::downgrade(&self.inner), effects, return_effects_copy)
     }
 
-    #[allow(unused)]
     pub fn resolve<Op: Operation>(
         &self,
         request: &mut Request<Op>,
@@ -164,9 +170,32 @@ where
         ))
     }
 
-    #[allow(unused)]
     pub fn view(&self) -> Next::ViewModel {
         self.inner.next.view()
+    }
+
+    fn process_tasks<F>(&self, return_effects: F) -> Vec<Next::Effect>
+    where
+        F: Fn(Vec<Next::Effect>) + Sync + Send + 'static,
+    {
+        let inner = Arc::downgrade(&self.inner);
+        let return_effects = Arc::new(return_effects);
+        let return_effects_copy = return_effects.clone();
+
+        let effects = self
+            .inner
+            .next
+            .process_tasks(move |later_effects_from_next| {
+                // Eventual route
+                Self::process_known_effects_with(
+                    &inner,
+                    later_effects_from_next,
+                    return_effects.clone(),
+                );
+            });
+
+        // Immediate route
+        Self::process_known_effects(&Arc::downgrade(&self.inner), effects, return_effects_copy)
     }
 
     fn process_known_effects(

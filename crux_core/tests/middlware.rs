@@ -23,7 +23,7 @@ mod app {
         Render(crux_core::render::RenderOperation),
     }
 
-    #[derive(Serialize, PartialEq, Eq, Debug)]
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     pub enum Event {
         Roll(Vec<usize>), // roll N dice with F_i faces
 
@@ -307,7 +307,8 @@ mod tests {
         middleware::{FakeHttpMiddleware, RemoteTriggerHttp, RngMiddleware},
     };
     use crossbeam_channel::RecvError;
-    use crux_core::{middleware::Layer as _, render::RenderOperation, Core};
+    use crux_core::{bridge, middleware::Layer as _, render::RenderOperation, Core};
+    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use crux_macros::effect;
 
     #[test]
@@ -466,4 +467,133 @@ mod tests {
 
         assert_eq!(RenderOperation, render_operation);
     }
+
+    #[effect]
+    pub enum BridgeEffect {
+        Http(HttpRequest),
+        Render(RenderOperation),
+    }
+
+    impl From<Effect> for BridgeEffect {
+        fn from(effect: Effect) -> Self {
+            match effect {
+                Effect::Render(render_operation) => BridgeEffect::Render(render_operation),
+                Effect::Http(http_request) => BridgeEffect::Http(http_request),
+                Effect::Random(_) => panic!("Attempted to convert Effect::Random to NarrowEffect"),
+            }
+        }
+    }
+
+    // struct BincodeFfiFormat;
+
+    // impl BincodeFfiFormat {
+    //     fn bincode_options() -> impl bincode::Options + Copy {
+    //         DefaultOptions::new()
+    //             .with_fixint_encoding()
+    //             .allow_trailing_bytes()
+    //     }
+    // }
+
+    // impl FfiFormat for BincodeFfiFormat {
+    //     type Serializer<'b> = bincode::Serializer<&'b mut [u8], impl Options + Copy>;
+    //     type Deserializer<'b> = bincode::Deserializer<SliceReader<'b>, impl Options + Copy>;
+
+    //     fn deserializer(bytes: &[u8]) -> Self::Deserializer {
+    //         let d = bincode::Deserializer::from_slice(bytes, Self::bincode_options());
+
+    //         d
+    //     }
+
+    //     fn serializer(buffer: &mut [u8]) -> Self::Serializer {
+    //         let s = bincode::Serializer::new(buffer, Self::bincode_options());
+
+    //         s
+    //     }
+    // }
+
+    #[test]
+    fn roll_three_dice_with_type_narrowing_and_bridge() -> anyhow::Result<()> {
+        let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let effect_callback = move |effects| effects_tx.send(effects).unwrap();
+
+        let inner_core: Core<Dice> = Core::new();
+        let core = inner_core
+            .handle_effects_using(RngMiddleware::new())
+            .map_effect::<BridgeEffect>()
+            .bridge(effect_callback);
+
+        let event: Vec<u8> = bincode::serialize(&Event::Roll(vec![6, 10, 20]))?;
+
+        eprintln!("Process event:");
+        let effect_bytes = core.process_event(&event)?;
+        eprintln!("Deserialize effects:");
+        let effects: Vec<bridge::Request<BridgeEffectFfi>> = bincode::deserialize(&effect_bytes)?;
+
+        assert!(effects.is_empty());
+
+        eprintln!("Receive effects:");
+        let Ok(effects_bytes) = effects_rx.recv()? else {
+            panic!()
+        };
+
+        eprintln!("Deserialize received effects:");
+        let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
+            bincode::deserialize(&effects_bytes)?;
+
+        let bridge::Request {
+            effect: BridgeEffectFfi::Http(_),
+            id: effect_id,
+        } = effects.remove(0)
+        else {
+            panic!("Expected a HTTP request")
+        };
+
+        let response = HttpResult::Ok(HttpResponse::status(201).build());
+        eprintln!("Serialize response:");
+        let response_bytes = bincode::serialize(&response)?;
+
+        let effect_bytes = core.resolve(effect_id, &response_bytes)?;
+        eprintln!("Deserialize effects:");
+        let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
+            bincode::deserialize(&effect_bytes)?;
+
+        let bridge::Request {
+            effect: BridgeEffectFfi::Render(render_operation),
+            ..
+        } = effects.remove(0)
+        else {
+            panic!("Expected a HTTP request")
+        };
+
+        assert_eq!(RenderOperation, render_operation);
+
+        Ok(())
+    }
+
+    // #[test]
+    // fn roll_three_dice_with_type_narrowing_and_json_bridge() {
+    //     let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+    //     let effect_callback = move |effects: Vec<NarrowEffect>| effects_tx.send(effects).unwrap();
+
+    //     let inner_core: Core<Dice> = Core::new();
+    //     let core = inner_core
+    //         .handle_effects_using(RngMiddleware::new())
+    //         .handle_effects_using(FakeHttpMiddleware)
+    //         .map_effect::<NarrowEffect>()
+    //         .bridge();
+
+    //     event: Vec<u8> = Event::Roll(vec![6, 10, 20])
+
+    //     let effects = core.process_event(, effect_callback);
+    //     assert!(effects.is_empty());
+
+    //     let Ok(mut effects) = effects_rx.recv() else {
+    //         panic!()
+    //     };
+
+    //     let NarrowEffect::Render(request) = effects.remove(0);
+    //     let render_operation = request.operation;
+
+    //     assert_eq!(RenderOperation, render_operation);
+    // }
 }
