@@ -10,20 +10,20 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "bulma": "^1.0.3",
-    "eslint": "9.21.0",
-    "eslint-config-next": "15.2.1",
-    "next": "15.2.1",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "bulma": "^1.0.4",
+    "eslint": "9.28.0",
+    "eslint-config-next": "15.3.3",
+    "next": "15.3.3",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "shared": "file:../shared/pkg",
     "shared_types": "file:../shared_types/generated/typescript",
-    "typescript": "5.8.2"
+    "typescript": "5.8.3"
   },
   "devDependencies": {
-    "@types/node": "22.13.9",
-    "@types/react": "19.0.10",
-    "@types/react-dom": "19.0.4"
+    "@types/node": "22.15.29",
+    "@types/react": "19.1.6",
+    "@types/react-dom": "19.1.5"
   },
   "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e"
 }
