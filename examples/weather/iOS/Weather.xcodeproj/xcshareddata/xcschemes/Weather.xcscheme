@@ -53,6 +53,7 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "OPENWEATHER_API_KEY"
+            value = "FOOBAR"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
