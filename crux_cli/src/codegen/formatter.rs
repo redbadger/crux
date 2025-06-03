@@ -444,13 +444,6 @@ impl From<&Type> for Format {
                                     Consider refactoring your data model to use plain data types instead."
                                 )
                             }
-                            "Instant" => {
-                                // For time-related types, consider using a serializable representation
-                                panic!(
-                                    "Instant cannot be directly serialized across FFI. \
-                                    Consider using a timestamp (u64 milliseconds) or a string representation instead."
-                                )
-                            }
                             _ => Format::TypeName(name),
                         },
                         GenericArgs::Parenthesized {
