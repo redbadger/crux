@@ -47,7 +47,7 @@ mod tests {
                     lat: lat_lng.0.to_string(),
                     lon: lat_lng.1.to_string(),
                     units: "metric",
-                    appid: API_KEY,
+                    appid: API_KEY.clone(),
                 })
                 .expect("could not serialize query string")
                 .build()
