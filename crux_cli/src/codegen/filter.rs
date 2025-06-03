@@ -69,8 +69,7 @@ ascent! {
     relation external_type_needed(SummaryNode);
     external_type_needed(t) <--
         remote_type_of(_, t),
-        summary(t),
-        if t.actual_crate_name().map_or(false, |c| !c.starts_with("crux_"));
+        summary(t);
 
     // app structs have an implementation of the App trait
     relation app(ItemNode, ItemNode);
