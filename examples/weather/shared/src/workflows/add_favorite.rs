@@ -3,16 +3,15 @@ use crux_http::command::Http;
 use serde::{Deserialize, Serialize};
 
 use super::favorites::{Favorite, FavoritesEvent, FavoritesState};
-use crate::{Effect, Event, GeocodingResponse, Workflow};
+use crate::{events::current::API_KEY, Effect, Event, GeocodingResponse, Workflow};
 
 pub const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
-pub const API_KEY: &str = "4e72eedd054f22249d785de2ac3ab627";
 
 #[derive(Serialize)]
 pub struct GeocodingQueryString {
     pub q: String,
     pub limit: &'static str,
-    pub appid: &'static str,
+    pub appid: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -26,12 +25,14 @@ pub enum AddFavoriteEvent {
 
 pub fn update(event: AddFavoriteEvent, model: &mut crate::Model) -> Command<Effect, Event> {
     match event {
+        // TODO: use a Time Capability and debounce the search
+        // TODO: Search should be a part of events/geocoding.rs
         AddFavoriteEvent::Search(query) => Http::get(GEOCODING_URL)
             .expect_json()
             .query(&GeocodingQueryString {
                 q: query,
                 limit: "5",
-                appid: API_KEY,
+                appid: API_KEY.clone(),
             })
             .expect("could not serialize query string")
             .build()
@@ -253,7 +254,7 @@ mod tests {
                 .query(&GeocodingQueryString {
                     q: query.to_string(),
                     limit: "5",
-                    appid: API_KEY,
+                    appid: API_KEY.clone(),
                 })
                 .expect("could not serialize query string")
                 .build()

@@ -1,18 +1,24 @@
 use crux_core::{render::render, Command};
 use crux_http::command::Http;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::env;
 
 use crate::{CurrentResponse, Effect, Event, Model};
 
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
-pub const API_KEY: &str = "4e72eedd054f22249d785de2ac3ab627";
+
+pub static API_KEY: Lazy<String> = Lazy::new(|| {
+    // For now we're using env::var because once we build the app, we're not able to set the env (tried via dotenvy)
+    env::var("OPENWEATHER_API_KEY").expect("OPENWEATHER_API_KEY must be set in .env or environment")
+});
 
 #[derive(Serialize)]
 pub struct CurrentQueryString {
     pub lat: String,
     pub lon: String,
     pub units: &'static str,
-    pub appid: &'static str,
+    pub appid: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -36,7 +42,7 @@ pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, 
                 lat: lat.to_string(),
                 lon: long.to_string(),
                 units: "metric",
-                appid: API_KEY,
+                appid: API_KEY.clone(),
             })
             .expect("could not serialize query string")
             .build()
@@ -82,7 +88,7 @@ pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, 
                     lat: lat.to_string(),
                     lon: long.to_string(),
                     units: "metric",
-                    appid: API_KEY,
+                    appid: API_KEY.clone(),
                 })
                 .expect("could not serialize query string")
                 .build()
@@ -158,7 +164,7 @@ mod tests {
                     lat: lat_lng.0.to_string(),
                     lon: lat_lng.1.to_string(),
                     units: "metric",
-                    appid: API_KEY,
+                    appid: API_KEY.clone(),
                 })
                 .expect("could not serialize query string")
                 .build()
@@ -213,7 +219,7 @@ mod tests {
                     lat: lat_lng.0.to_string(),
                     lon: lat_lng.1.to_string(),
                     units: "metric",
-                    appid: API_KEY,
+                    appid: API_KEY.clone(),
                 })
                 .expect("could not serialize query string")
                 .build()
