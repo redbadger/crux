@@ -2,13 +2,15 @@ import Foundation
 import SharedTypes
 import UIKit
 import os.log
+import CoreLocation
 
 @MainActor
 class Core: ObservableObject {
     @Published var view: ViewModel
     private let logger = Logger(subsystem: "com.example.weather", category: "Core")
     private let keyValueStore: KeyValueStore
-
+    
+    
     init() {
         logger.info("Initializing Core")
         self.view = try! .bincodeDeserialize(input: [UInt8](Weather.view()))
@@ -19,7 +21,7 @@ class Core: ObservableObject {
         logger.info("Triggering favorites restore on app start")
         update(.favorites(.restore))
     }
-
+    
     func update(_ event: Event) {
         logger.info("Processing event: \(String(describing: event))")
         let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
@@ -32,7 +34,7 @@ class Core: ObservableObject {
             processEffect(request)
         }
     }
-
+    
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
@@ -66,7 +68,7 @@ class Core: ObservableObject {
             }
             
         case let .keyValue(keyValue):
-        
+            
             logger.debug("Processing KeyValue effect: \(String(describing: keyValue))")
             Task {
                 do {
@@ -134,42 +136,104 @@ class Core: ObservableObject {
                         logger.debug("Processing effect from KeyValue response: \(String(describing: request.effect))")
                         processEffect(request)
                     }
-                } 
+                }
             }
             
         case let .location(locationOp):
             logger.debug("Processing Location effect: \(String(describing: locationOp))")
+            
             Task {
                 do {
                     let result: SharedTypes.LocationResult
                     switch locationOp {
                     case .isLocationEnabled:
-                        // TODO: Implement actual location permission check
-                        let enabled = true // Replace with real check
+                        let enabled = CLLocationManager.locationServicesEnabled()
                         result = .enabled(enabled)
+                        
                     case .getLocation:
-                        // TODO: Implement actual location fetching
-                        let lat = 37.7749
-                        let lon = -122.4194
-                        let location = SharedTypes.LocationResponse(lat: lat, lon: lon)
-                        result = .location(location)
+                        let locationManager = CLLocationManager()
+                        let location = try await withCheckedThrowingContinuation { continuation in
+                            class LocationDelegate: NSObject, CLLocationManagerDelegate {
+                                let continuation: CheckedContinuation<CLLocation, Error>
+                                var manager: CLLocationManager?
+                                var timer: Timer?
+                                
+                                init(manager: CLLocationManager, continuation: CheckedContinuation<CLLocation, Error>) {
+                                    self.manager = manager
+                                    self.continuation = continuation
+                                    super.init()
+                                    self.manager?.delegate = self
+                                    
+                                    // Set a 10-second timeout
+                                    self.timer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+                                        self?.handleTimeout()
+                                    }
+                                }
+                                
+                                func handleTimeout() {
+                                    self.manager?.stopUpdatingLocation()
+                                    self.continuation.resume(throwing: NSError(domain: "LocationError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Location request timed out"]))
+                                }
+                                
+                                func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+                                    if let location = locations.first {
+                                        self.timer?.invalidate()
+                                        self.timer = nil
+                                        continuation.resume(returning: location)
+                                        self.manager?.stopUpdatingLocation()
+                                    }
+                                }
+                                
+                                func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+                                    self.timer?.invalidate()
+                                    self.timer = nil
+                                    continuation.resume(throwing: error)
+                                }
+                                
+                                deinit {
+                                    self.timer?.invalidate()
+                                    self.manager?.stopUpdatingLocation()
+                                }
+                            }
+                            
+                            // Request authorization first
+                            locationManager.requestWhenInUseAuthorization()
+                            
+                            // Create and retain the delegate
+                            let delegate = LocationDelegate(manager: locationManager, continuation: continuation)
+                            // Store the delegate in a strong reference to prevent deallocation
+                            objc_setAssociatedObject(locationManager, "delegate", delegate, .OBJC_ASSOCIATION_RETAIN)
+                            
+                            // Start updating location
+                            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                            locationManager.startUpdatingLocation()
+                        }
+                        
+                        let lat = location.coordinate.latitude
+                        let lon = location.coordinate.longitude
+                        let locationResponse = SharedTypes.LocationResponse(lat: lat, lon: lon)
+                        result = .location(locationResponse)
                     }
+                    
                     let effects = [UInt8](
                         handleResponse(
                             request.id,
-                            Data(try! result.bincodeSerialize())
+                            Data(try result.bincodeSerialize())
                         )
                     )
-                    let requests: [Request] = try! .bincodeDeserialize(input: effects)
+                    let requests: [Request] = try .bincodeDeserialize(input: effects)
                     logger.debug("Received \(requests.count) effects from Location response")
                     for request in requests {
                         logger.debug("Processing effect from Location response: \(String(describing: request.effect))")
                         processEffect(request)
                     }
+                } catch {
+                    logger.error("Failed to fetch location: \(error.localizedDescription)")
                 }
             }
+            
+            
+            
         }
-        
-        
     }
 }
