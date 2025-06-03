@@ -8,6 +8,7 @@ use crux_kv::KeyValueOperation;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    effects::location::LocationResponse,
     effects::LocationOperation,
     events::{self, CurrentWeatherEvent},
     workflows::{
@@ -53,6 +54,8 @@ pub struct Model {
     pub favorites: Vec<Favorite>,
     pub show_add_modal: bool,
     pub search_results: Option<Vec<GeocodingResponse>>,
+    pub location_enabled: bool,
+    pub last_location: Option<LocationResponse>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

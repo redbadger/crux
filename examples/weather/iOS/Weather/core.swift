@@ -66,6 +66,7 @@ class Core: ObservableObject {
             }
             
         case let .keyValue(keyValue):
+        
             logger.debug("Processing KeyValue effect: \(String(describing: keyValue))")
             Task {
                 do {
@@ -135,6 +136,40 @@ class Core: ObservableObject {
                     }
                 } 
             }
+            
+        case let .location(locationOp):
+            logger.debug("Processing Location effect: \(String(describing: locationOp))")
+            Task {
+                do {
+                    let result: SharedTypes.LocationResult
+                    switch locationOp {
+                    case .isLocationEnabled:
+                        // TODO: Implement actual location permission check
+                        let enabled = true // Replace with real check
+                        result = .enabled(enabled)
+                    case .getLocation:
+                        // TODO: Implement actual location fetching
+                        let lat = 37.7749
+                        let lon = -122.4194
+                        let location = SharedTypes.LocationResponse(lat: lat, lon: lon)
+                        result = .location(location)
+                    }
+                    let effects = [UInt8](
+                        handleResponse(
+                            request.id,
+                            Data(try! result.bincodeSerialize())
+                        )
+                    )
+                    let requests: [Request] = try! .bincodeDeserialize(input: effects)
+                    logger.debug("Received \(requests.count) effects from Location response")
+                    for request in requests {
+                        logger.debug("Processing effect from Location response: \(String(describing: request.effect))")
+                        processEffect(request)
+                    }
+                }
+            }
         }
+        
+        
     }
 }
