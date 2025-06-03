@@ -8,6 +8,7 @@ use crux_kv::KeyValueOperation;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    effects::LocationOperation,
     events::{self, CurrentWeatherEvent},
     workflows::{
         self,
@@ -34,6 +35,7 @@ pub enum Effect {
     Render(RenderOperation),
     KeyValue(KeyValueOperation),
     Http(HttpRequest),
+    Location(LocationOperation),
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
