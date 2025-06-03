@@ -19,21 +19,6 @@ use super::{
     serde_generate::format::{ContainerFormat, Format, Named, VariantFormat},
 };
 
-/// Check if a type name is a framework internal type that shouldn't be generated
-fn is_framework_internal(name: &str) -> bool {
-    matches!(
-        name,
-        "CapabilityContext"
-            | "Resolve"
-            | "Core"
-            | "Bridge"
-            | "Capability"
-            | "Context"
-            | "ContextInner"
-            | "KeyValue"
-    )
-}
-
 ascent! {
     #![measure_rule_times]
     pub struct Formatter;
@@ -124,33 +109,28 @@ ascent! {
         struct_plain(s),
         if let Some(name) = s.name(),
         if is_public(s),
-        if !is_framework_internal(name),
         agg field_formats = collect(format) in format_named(s, format),
         let container = make_struct_plain(&field_formats);
     container(name, container) <--
         struct_unit(s),
         if let Some(name) = s.name(),
         if is_public(s),
-        if !is_framework_internal(name),
         let container = make_struct_unit();
     container(name, container) <--
         struct_tuple(s),
         if let Some(name) = s.name(),
         if is_public(s),
-        if !is_framework_internal(name),
         agg field_formats = collect(format) in format(s, format),
         let container = make_struct_tuple(&field_formats);
     container(name, container) <--
         type_alias(a),
         if let Some(name) = a.name(),
         if is_public(a),
-        if !is_framework_internal(name),
         if let Some(container) = make_type_alias(a);
     container(name, container) <--
         variant(e, _),
         if let Some(name) = e.name(),
         if is_public(e),
-        if !is_framework_internal(name),
         agg variant_formats = collect(format) in format_variant(e, format),
         let container = make_enum(&variant_formats);
     container("Range".to_string(), container) <--
