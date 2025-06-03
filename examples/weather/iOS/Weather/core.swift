@@ -9,16 +9,57 @@ class Core: ObservableObject {
     @Published var view: ViewModel
     private let logger = Logger(subsystem: "com.example.weather", category: "Core")
     private let keyValueStore: KeyValueStore
-    
+    private var isInitialized = false
     
     init() {
         logger.info("Initializing Core")
-        self.view = try! .bincodeDeserialize(input: [UInt8](Weather.view()))
-        self.keyValueStore = KeyValueStore()
+        
+        // Initialize with default view first to prevent crashes
+        do {
+            self.view = try .bincodeDeserialize(input: [UInt8](Weather.view()))
+        } catch {
+            logger.error("Failed to initialize view: \(error.localizedDescription)")
+            // Create a minimal default view as fallback
+            let defaultWeatherData = CurrentResponse(
+                coord: Coord(lat: 0.0, lon: 0.0),
+                weather: [],
+                base: "",
+                main: Main(temp: 0.0, feels_like: 0.0, temp_min: 0.0, temp_max: 0.0, pressure: 0, humidity: 0),
+                visibility: 0,
+                wind: Wind(speed: 0.0, deg: 0, gust: nil),
+                clouds: Clouds(all: 0),
+                dt: 0,
+                sys: Sys(type: 0, id: 0, country: "", sunrise: 0, sunset: 0),
+                timezone: 0,
+                id: 0,
+                name: "",
+                cod: 0
+            )
+            self.view = ViewModel(workflow: .home(weather_data: defaultWeatherData, favorites: []))
+        }
+        
+        do {
+            self.keyValueStore = try KeyValueStore()
+            logger.debug("KeyValueStore initialized successfully")
+        } catch {
+            logger.error("Failed to initialize KeyValueStore: \(error.localizedDescription)")
+            fatalError("KeyValueStore initialization failed: \(error)")
+        }
+        
         logger.debug("Initial view state: \(String(describing: self.view))")
         
-        // Restore favorites when app starts
-        logger.info("Triggering favorites restore on app start")
+        // Delay the favorites restore to ensure everything is properly initialized
+        Task {
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            self.restoreFavoritesIfNeeded()
+        }
+    }
+    
+    private func restoreFavoritesIfNeeded() {
+        guard !isInitialized else { return }
+        isInitialized = true
+        
+        logger.info("Triggering favorites restore after initialization")
         update(.favorites(.restore))
     }
     
@@ -151,68 +192,14 @@ class Core: ObservableObject {
                         result = .enabled(enabled)
                         
                     case .getLocation:
-                        let locationManager = CLLocationManager()
-                        let location = try await withCheckedThrowingContinuation { continuation in
-                            class LocationDelegate: NSObject, CLLocationManagerDelegate {
-                                let continuation: CheckedContinuation<CLLocation, Error>
-                                var manager: CLLocationManager?
-                                var timer: Timer?
-                                
-                                init(manager: CLLocationManager, continuation: CheckedContinuation<CLLocation, Error>) {
-                                    self.manager = manager
-                                    self.continuation = continuation
-                                    super.init()
-                                    self.manager?.delegate = self
-                                    
-                                    // Set a 10-second timeout
-                                    self.timer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
-                                        self?.handleTimeout()
-                                    }
-                                }
-                                
-                                func handleTimeout() {
-                                    self.manager?.stopUpdatingLocation()
-                                    self.continuation.resume(throwing: NSError(domain: "LocationError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Location request timed out"]))
-                                }
-                                
-                                func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-                                    if let location = locations.first {
-                                        self.timer?.invalidate()
-                                        self.timer = nil
-                                        continuation.resume(returning: location)
-                                        self.manager?.stopUpdatingLocation()
-                                    }
-                                }
-                                
-                                func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-                                    self.timer?.invalidate()
-                                    self.timer = nil
-                                    continuation.resume(throwing: error)
-                                }
-                                
-                                deinit {
-                                    self.timer?.invalidate()
-                                    self.manager?.stopUpdatingLocation()
-                                }
-                            }
-                            
-                            // Request authorization first
-                            locationManager.requestWhenInUseAuthorization()
-                            
-                            // Create and retain the delegate
-                            let delegate = LocationDelegate(manager: locationManager, continuation: continuation)
-                            // Store the delegate in a strong reference to prevent deallocation
-                            objc_setAssociatedObject(locationManager, "delegate", delegate, .OBJC_ASSOCIATION_RETAIN)
-                            
-                            // Start updating location
-                            locationManager.desiredAccuracy = kCLLocationAccuracyBest
-                            locationManager.startUpdatingLocation()
+                        do {
+                            let location = try await getCurrentLocationSafely()
+                            let locationResponse = SharedTypes.LocationResponse(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
+                            result = .location(locationResponse)
+                        } catch {
+                            logger.error("Failed to fetch location: \(error.localizedDescription)")
+                            result = .location(nil)
                         }
-                        
-                        let lat = location.coordinate.latitude
-                        let lon = location.coordinate.longitude
-                        let locationResponse = SharedTypes.LocationResponse(lat: lat, lon: lon)
-                        result = .location(locationResponse)
                     }
                     
                     let effects = [UInt8](
@@ -228,12 +215,146 @@ class Core: ObservableObject {
                         processEffect(request)
                     }
                 } catch {
-                    logger.error("Failed to fetch location: \(error.localizedDescription)")
+                    logger.error("Failed to process location effect: \(error.localizedDescription)")
+                    // Even if something goes wrong with the effect processing, return nil location
+                    let result = SharedTypes.LocationResult.location(nil)
+                    let effects = [UInt8](
+                        handleResponse(
+                            request.id,
+                            Data(try result.bincodeSerialize())
+                        )
+                    )
+                    let requests: [Request] = try .bincodeDeserialize(input: effects)
+                    for request in requests {
+                        processEffect(request)
+                    }
                 }
             }
             
+        }
+    }
+}
+
+extension Core {
+    private func getCurrentLocationSafely() async throws -> CLLocation {
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CLLocation, Error>) in
+            class LocationDelegate: NSObject, CLLocationManagerDelegate {
+                let continuation: CheckedContinuation<CLLocation, Error>
+                var manager: CLLocationManager?
+                private var hasResumed = false
+                private var timeoutTask: Task<Void, Never>?
+                private let resumeLock = NSLock()
+                
+                init(manager: CLLocationManager, continuation: CheckedContinuation<CLLocation, Error>) {
+                    self.manager = manager
+                    self.continuation = continuation
+                    super.init()
+                    self.manager?.delegate = self
+                    
+                    // Set up timeout with proper coordination
+                    self.timeoutTask = Task { [weak self] in
+                        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
+                        self?.handleTimeout()
+                    }
+                }
+                
+                private func handleTimeout() {
+                    safeResume {
+                        continuation.resume(throwing: NSError(domain: "LocationError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Location request timed out"]))
+                    }
+                }
+                
+                private func safeResume(_ action: () -> Void) {
+                    resumeLock.lock()
+                    defer { resumeLock.unlock() }
+                    
+                    guard !hasResumed else { return }
+                    hasResumed = true
+                    timeoutTask?.cancel()
+                    action()
+                    cleanup()
+                }
+                
+                private func cleanup() {
+                    manager?.stopUpdatingLocation()
+                    manager?.delegate = nil
+                    manager = nil
+                }
+                
+                func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+                    if let location = locations.first {
+                        safeResume {
+                            continuation.resume(returning: location)
+                        }
+                    }
+                }
+                
+                func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+                    safeResume {
+                        continuation.resume(throwing: error)
+                    }
+                }
+                
+                func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+                    switch manager.authorizationStatus {
+                    case .denied, .restricted:
+                        safeResume {
+                            continuation.resume(throwing: NSError(domain: "LocationError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Location access not available"]))
+                        }
+                    case .authorizedWhenInUse, .authorizedAlways:
+                        if CLLocationManager.locationServicesEnabled() {
+                            manager.startUpdatingLocation()
+                        } else {
+                            safeResume {
+                                continuation.resume(throwing: NSError(domain: "LocationError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Location services are disabled"]))
+                            }
+                        }
+                    case .notDetermined:
+                        // Wait for user decision
+                        break
+                    @unknown default:
+                        safeResume {
+                            continuation.resume(throwing: NSError(domain: "LocationError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unknown authorization status"]))
+                        }
+                    }
+                }
+                
+                deinit {
+                    cleanup()
+                    timeoutTask?.cancel()
+                }
+            }
             
+            let locationManager = CLLocationManager()
+            let delegate = LocationDelegate(manager: locationManager, continuation: continuation)
             
+            // Store the delegate in a strong reference to prevent deallocation
+            objc_setAssociatedObject(locationManager, "delegate", delegate, .OBJC_ASSOCIATION_RETAIN)
+            
+            // Configure location manager
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+            locationManager.distanceFilter = kCLDistanceFilterNone
+            
+            // Check authorization status asynchronously but off main thread to avoid warnings
+            Task.detached {
+                await MainActor.run {
+                    let status = locationManager.authorizationStatus
+                    switch status {
+                    case .denied, .restricted:
+                        delegate.locationManagerDidChangeAuthorization(locationManager)
+                    case .notDetermined:
+                        locationManager.requestWhenInUseAuthorization()
+                    case .authorizedWhenInUse, .authorizedAlways:
+                        if CLLocationManager.locationServicesEnabled() {
+                            locationManager.startUpdatingLocation()
+                        } else {
+                            delegate.locationManagerDidChangeAuthorization(locationManager)
+                        }
+                    @unknown default:
+                        delegate.locationManagerDidChangeAuthorization(locationManager)
+                    }
+                }
+            }
         }
     }
 }
