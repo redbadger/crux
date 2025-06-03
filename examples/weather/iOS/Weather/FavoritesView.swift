@@ -81,7 +81,7 @@ struct FavoriteCard: View {
     
     var body: some View {
         Button(action: {
-            core.update(.home(.show(favorite.lat, favorite.lon)))
+            core.update(.home(.show))
         }) {
             HStack {
                 VStack(alignment: .leading) {

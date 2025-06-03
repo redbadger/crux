@@ -67,7 +67,7 @@ struct HomeView: View {
             }
             .onAppear {
                 if !hasLoadedInitialData {
-                    core.update(.home(.show(51.5074, -0.1278)))
+                    core.update(.home(.show))
                     hasLoadedInitialData = true
                 }
             }

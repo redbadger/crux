@@ -1,6 +1,5 @@
 // !$*UTF8*$!
 {
-	/* generated with cargo-xcode 1.7.0 */
 	archiveVersion = 1;
 	classes = {
 	};
@@ -11,7 +10,6 @@
 		CA0075449799D346A0A05154 /* Cargo.toml in Sources */ = {isa = PBXBuildFile; fileRef = CAF972D1F1633EF4668187A5 /* Cargo.toml */; settings = {COMPILER_FLAGS = "--lib"; }; };
 		CA017544979925C0556334E4 /* Cargo.toml in Sources */ = {isa = PBXBuildFile; fileRef = CAF972D1F1633EF4668187A5 /* Cargo.toml */; settings = {COMPILER_FLAGS = "--lib"; }; };
 		CA02754497994296ADE0F606 /* Cargo.toml in Sources */ = {isa = PBXBuildFile; fileRef = CAF972D1F1633EF4668187A5 /* Cargo.toml */; settings = {COMPILER_FLAGS = "--bin 'uniffi-bindgen'"; }; };
-
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -37,7 +35,6 @@
 		CA01C51694BE10F7F7FCAC5B /* shared.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = shared.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA02FA85CE9E8109328FB0D5 /* uniffi-bindgen */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "uniffi-bindgen"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAF972D1F1633EF4668187A5 /* Cargo.toml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Cargo.toml; sourceTree = "<group>"; };
-
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -211,7 +208,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -223,10 +219,9 @@
 				INSTALL_GROUP = "";
 				INSTALL_MODE_FLAG = "";
 				INSTALL_OWNER = "";
-				SKIP_INSTALL = YES;
 				PRODUCT_NAME = shared_static;
+				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos appletvsimulator appletvos";
-				
 			};
 			name = Release;
 		};
@@ -238,10 +233,9 @@
 				INSTALL_GROUP = "";
 				INSTALL_MODE_FLAG = "";
 				INSTALL_OWNER = "";
-				SKIP_INSTALL = YES;
 				PRODUCT_NAME = shared_static;
+				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos appletvsimulator appletvos";
-				
 			};
 			name = Debug;
 		};
@@ -250,10 +244,9 @@
 			buildSettings = {
 				CARGO_XCODE_CARGO_DEP_FILE_NAME = libshared.d;
 				CARGO_XCODE_CARGO_FILE_NAME = libshared.dylib;
-				
+				DYLIB_COMPATIBILITY_VERSION = 0;
 				PRODUCT_NAME = shared;
 				SUPPORTED_PLATFORMS = macosx;
-				DYLIB_COMPATIBILITY_VERSION = 0;
 			};
 			name = Release;
 		};
@@ -262,10 +255,9 @@
 			buildSettings = {
 				CARGO_XCODE_CARGO_DEP_FILE_NAME = libshared.d;
 				CARGO_XCODE_CARGO_FILE_NAME = libshared.dylib;
-				
+				DYLIB_COMPATIBILITY_VERSION = 0;
 				PRODUCT_NAME = shared;
 				SUPPORTED_PLATFORMS = macosx;
-				DYLIB_COMPATIBILITY_VERSION = 0;
 			};
 			name = Debug;
 		};
@@ -274,10 +266,8 @@
 			buildSettings = {
 				CARGO_XCODE_CARGO_DEP_FILE_NAME = "uniffi-bindgen.d";
 				CARGO_XCODE_CARGO_FILE_NAME = "uniffi-bindgen";
-				
 				PRODUCT_NAME = "uniffi-bindgen";
 				SUPPORTED_PLATFORMS = macosx;
-				
 			};
 			name = Release;
 		};
@@ -286,14 +276,11 @@
 			buildSettings = {
 				CARGO_XCODE_CARGO_DEP_FILE_NAME = "uniffi-bindgen.d";
 				CARGO_XCODE_CARGO_FILE_NAME = "uniffi-bindgen";
-				
 				PRODUCT_NAME = "uniffi-bindgen";
 				SUPPORTED_PLATFORMS = macosx;
-				
 			};
 			name = Debug;
 		};
-
 		CAF73C790FAA3CC16B37690B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -375,7 +362,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-
 		CAF672D1F16380E02D6C7F57 /* Build configuration list for PBXProject "shared" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
