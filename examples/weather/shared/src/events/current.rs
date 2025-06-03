@@ -9,8 +9,15 @@ use crate::{CurrentResponse, Effect, Event, Model};
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
 pub static API_KEY: Lazy<String> = Lazy::new(|| {
-    // For now we're using env::var because once we build the app, we're not able to set the env (tried via dotenvy)
-    env::var("OPENWEATHER_API_KEY").expect("OPENWEATHER_API_KEY must be set in .env or environment")
+    #[cfg(test)]
+    {
+        "test_api_key".to_string()
+    }
+    #[cfg(not(test))]
+    {
+        env::var("OPENWEATHER_API_KEY")
+            .expect("OPENWEATHER_API_KEY must be set in .env or environment")
+    }
 });
 
 #[derive(Serialize)]
