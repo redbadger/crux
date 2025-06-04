@@ -8,7 +8,7 @@ use crux_http::{command::Http, protocol::HttpRequest};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::sse::{ServerSentEvents, SseRequest};
+use crate::sse::{self, SseRequest};
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
@@ -119,7 +119,7 @@ impl crux_core::App for App {
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
-                ServerSentEvents::get(url).then_send(Event::Update)
+                sse::get(url).then_send(Event::Update)
             }
         }
     }
