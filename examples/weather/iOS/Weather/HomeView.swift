@@ -9,26 +9,25 @@ struct HomeView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
+            VStack {
                 if case .home(let weatherData, let favorites) = core.view.workflow {
                     if weatherData.main.temp.isNormal {
                         TabView(selection: $selectedPage) {
                             WeatherCard(weatherData: weatherData)
-                                .frame(width: UIScreen.main.bounds.width - 8)
+                                .frame(width: UIScreen.main.bounds.width)
                                 .shadow(radius: 2)
                                 .tag(0)
                             ForEach(Array(favorites.enumerated()), id: \.element.name) { idx, favorite in
                                 if let current = favorite.current {
                                     WeatherCard(weatherData: current)
-                                        .frame(width: UIScreen.main.bounds.width - 8)
+                                        .frame(width: UIScreen.main.bounds.width)
                                         .shadow(radius: 2)
                                         .tag(idx + 1)
                                 }
                             }
                         }
                         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-                        .frame(height: UIScreen.main.bounds.height * 0.75)
-                        .padding(.vertical, 8)
+                        .frame(maxHeight: .infinity)
                     } else {
                         ProgressView("Loading weather data...")
                             .padding()
@@ -55,7 +54,6 @@ struct HomeView: View {
             }
             .padding(.vertical)
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Weather")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
