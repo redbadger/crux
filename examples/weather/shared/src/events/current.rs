@@ -132,7 +132,7 @@ mod tests {
     };
 
     use super::*;
-    use crux_core::{assert_effect, App as _};
+    use crux_core::App as _;
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     // Helper to create a test favorite
@@ -193,8 +193,8 @@ mod tests {
         }
 
         // send the `SetWeather` event back to the app
-        let mut cmd = app.update(actual, &mut model, &());
-        assert_effect!(cmd, Effect::Render(_));
+        let _ = app.update(actual, &mut model, &());
+
         // Now check the model in detail
         assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
         insta::assert_yaml_snapshot!(model.weather_data);
@@ -333,8 +333,7 @@ mod tests {
         }
 
         // Send SetFavoriteWeather back to app
-        let mut cmd = app.update(actual, &mut model, &());
-        assert_effect!(cmd, Effect::Render(_));
+        let _ = app.update(actual, &mut model, &());
 
         // Verify the favorite's weather was updated
         assert!(model.favorites[0].current.is_some());

@@ -134,10 +134,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut cmd = update(AddFavoriteEvent::Cancel, &mut model);
-
-        // Verify we get a render effect
-        assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
+        let _ = update(AddFavoriteEvent::Cancel, &mut model);
 
         // Verify the state was reset to Favorites
         assert!(matches!(

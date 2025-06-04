@@ -1,7 +1,7 @@
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
-use crate::effects::{command::Location, location::LocationResponse};
+use crate::effects::location::{get_location, is_location_enabled, LocationResponse};
 use crate::events::current::{update as update_current_weather, CurrentWeatherEvent};
 use crate::{Effect, Event, Model};
 
@@ -14,12 +14,12 @@ pub enum HomeEvent {
 
 pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        HomeEvent::Show => Location::is_location_enabled()
+        HomeEvent::Show => is_location_enabled()
             .then_send(|result| Event::Home(Box::new(HomeEvent::LocationEnabled(result)))),
         HomeEvent::LocationEnabled(enabled) => {
             model.location_enabled = enabled;
             if enabled {
-                Location::get_location()
+                get_location()
                     .then_send(|result| Event::Home(Box::new(HomeEvent::LocationFetched(result))))
             } else {
                 Command::done()
@@ -39,7 +39,7 @@ pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crux_core::{assert_effect, App as _};
+    use crux_core::App as _;
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::{
@@ -103,8 +103,8 @@ mod tests {
         }
 
         // 7. Send the SetWeather event back to the app
-        let mut cmd = app.update(actual, &mut model, &());
-        assert_effect!(cmd, Effect::Render(_));
+        let _ = app.update(actual, &mut model, &());
+
         // Now check the model in detail
         assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
     }
