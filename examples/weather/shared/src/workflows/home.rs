@@ -26,7 +26,7 @@ pub fn update(event: HomeEvent, model: &mut Model) -> Command<Effect, Event> {
             }
         }
         HomeEvent::LocationFetched(location) => {
-            model.last_location = location.clone();
+            model.last_location.clone_from(&location);
             if let Some(loc) = location {
                 update_current_weather(CurrentWeatherEvent::Fetch(loc.lat, loc.lon), model)
             } else {
@@ -62,8 +62,8 @@ mod tests {
 
         // 3. Simulate the Location::get_location effect (with a test location)
         let test_location = LocationResponse {
-            lat: 33.456789,
-            lon: -112.037222,
+            lat: 33.456_789,
+            lon: -112.037_222,
         };
         let event = Event::Home(Box::new(HomeEvent::LocationFetched(Some(
             test_location.clone(),
@@ -97,7 +97,7 @@ mod tests {
         // 6. The next event should be SetWeather
         let actual = cmd.events().next().unwrap();
         if let Event::CurrentWeather(event) = &actual {
-            assert!(matches!(**event, CurrentWeatherEvent::SetWeather(_)))
+            assert!(matches!(**event, CurrentWeatherEvent::SetWeather(_)));
         } else {
             panic!("Expected CurrentWeather event")
         }

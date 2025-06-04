@@ -104,8 +104,8 @@ pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> = Lazy::new(|| {
             humidity: 50,
         })
         .coord(Coord {
-            lat: 33.456789,
-            lon: -112.037222,
+            lat: 33.456_789,
+            lon: -112.037_222,
         })
         .weather(vec![WeatherData {
             id: 800,
@@ -113,7 +113,7 @@ pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> = Lazy::new(|| {
             description: "clear sky".to_string(),
             icon: "01d".to_string(),
         }])
-        .base("".to_string())
+        .base(String::new())
         .visibility(10000_usize)
         .wind(Wind {
             speed: 4.1,
@@ -121,13 +121,13 @@ pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> = Lazy::new(|| {
             gust: Some(5.2),
         })
         .clouds(Clouds { all: 0 })
-        .dt(1716216000_usize)
+        .dt(1_716_216_000_usize)
         .sys(Sys {
             id: 1,
             country: "US".to_string(),
             sys_type: 1,
-            sunrise: 1716216000,
-            sunset: 1716216000,
+            sunrise: 1_716_216_000,
+            sunset: 1_716_216_000,
         })
         .timezone(1)
         .id(1_usize)

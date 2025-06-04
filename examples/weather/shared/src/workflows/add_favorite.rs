@@ -54,23 +54,22 @@ pub fn update(event: AddFavoriteEvent, model: &mut crate::Model) -> Command<Effe
         AddFavoriteEvent::Submit(geo) => {
             let favorite = Favorite::from(*geo);
             // Check if a favorite with the same coordinates already exists
-            if !model
-                .favorites
-                .iter()
-                .any(|f| f.geo.lat == favorite.geo.lat && f.geo.lon == favorite.geo.lon)
-            {
+            if model.favorites.iter().any(|f| {
+                f.geo.lat.to_bits() == favorite.geo.lat.to_bits()
+                    && f.geo.lon.to_bits() == favorite.geo.lon.to_bits()
+            }) {
+                // If it's a duplicate, just return to favorites view without adding
+                // TODO: show a toast message
+                model.search_results = None;
+                model.page = Workflow::Favorites(FavoritesState::Idle);
+                render()
+            } else {
                 model.favorites.push(favorite.clone());
                 model.search_results = None;
                 model.page = Workflow::Favorites(FavoritesState::Idle);
                 render().and(Command::event(Event::Favorites(Box::new(
                     FavoritesEvent::Set,
                 ))))
-            } else {
-                // If it's a duplicate, just return to favorites view without adding
-                // TODO: show a toast message
-                model.search_results = None;
-                model.page = Workflow::Favorites(FavoritesState::Idle);
-                render()
             }
         }
         AddFavoriteEvent::Cancel => {
@@ -96,8 +95,8 @@ mod tests {
         GeocodingResponse {
             name: "Phoenix".to_string(),
             local_names: None,
-            lat: 33.456789,
-            lon: -112.037222,
+            lat: 33.456_789,
+            lon: -112.037_222,
             country: "US".to_string(),
             state: None,
         }
@@ -114,7 +113,7 @@ mod tests {
         // Verify we get the Set event
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }
@@ -130,8 +129,10 @@ mod tests {
 
     #[test]
     fn test_cancel_returns_to_favorites() {
-        let mut model = crate::Model::default();
-        model.page = Workflow::AddFavorite;
+        let mut model = Model {
+            page: Workflow::AddFavorite,
+            ..Default::default()
+        };
 
         let mut cmd = update(AddFavoriteEvent::Cancel, &mut model);
 
@@ -165,7 +166,7 @@ mod tests {
         let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo1.clone())), &mut model);
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }
@@ -176,7 +177,7 @@ mod tests {
         let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo2.clone())), &mut model);
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }
@@ -209,7 +210,7 @@ mod tests {
         let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo1.clone())), &mut model);
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }
@@ -220,7 +221,7 @@ mod tests {
         let mut cmd = update(AddFavoriteEvent::Submit(Box::new(geo2.clone())), &mut model);
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }
@@ -238,13 +239,13 @@ mod tests {
 
     #[test]
     fn test_search_triggers_api_call() {
-        let app = App::default();
+        let app = App;
         let mut model = Model::default();
 
         let query = "Phoenix";
         let event = Event::AddFavorite(Box::new(AddFavoriteEvent::Search(query.to_string())));
 
-        let mut cmd = app.update(event, &mut model, &mut ());
+        let mut cmd = app.update(event, &mut model, &());
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
@@ -271,13 +272,13 @@ mod tests {
 
         let actual = cmd.events().next().unwrap();
         if let Event::AddFavorite(event) = &actual {
-            assert!(matches!(**event, AddFavoriteEvent::SearchResult(_)))
+            assert!(matches!(**event, AddFavoriteEvent::SearchResult(_)));
         } else {
             panic!("Expected AddFavorite event")
         }
 
         // Send the SearchResult event back to the app
-        let mut cmd = app.update(actual, &mut model, &mut ());
+        let mut cmd = app.update(actual, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
         assert_eq!(
             model.search_results,
@@ -297,7 +298,7 @@ mod tests {
         // Verify first submit worked
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }

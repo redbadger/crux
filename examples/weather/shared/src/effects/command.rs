@@ -13,19 +13,21 @@ where
     Effect: Send + From<Request<LocationOperation>> + 'static,
     Event: Send + 'static,
 {
+    #[must_use]
     pub fn is_location_enabled() -> RequestBuilder<Effect, Event, impl Future<Output = bool>> {
         Command::request_from_shell(LocationOperation::IsLocationEnabled).map(|result| match result
         {
             LocationResult::Enabled(val) => val,
-            _ => false,
+            LocationResult::Location(_) => false,
         })
     }
 
+    #[must_use]
     pub fn get_location(
     ) -> RequestBuilder<Effect, Event, impl Future<Output = Option<LocationResponse>>> {
         Command::request_from_shell(LocationOperation::GetLocation).map(|result| match result {
             LocationResult::Location(loc) => loc,
-            _ => None,
+            LocationResult::Enabled(_) => None,
         })
     }
 }

@@ -37,6 +37,7 @@ impl<Ev> Location<Ev>
 where
     Ev: 'static,
 {
+    #[must_use]
     pub fn new(context: CapabilityContext<LocationOperation, Ev>) -> Self {
         Self { context }
     }
@@ -55,7 +56,7 @@ where
                 // Match on the result
                 let enabled = match result {
                     LocationResult::Enabled(val) => val,
-                    _ => false, // fallback for unexpected result
+                    LocationResult::Location(_) => false, // fallback for unexpected result
                 };
                 // Call make_event and update the app
                 context.update_app(make_event(enabled));
@@ -75,7 +76,7 @@ where
                     .await;
                 let loc = match result {
                     LocationResult::Location(loc) => loc,
-                    _ => None,
+                    LocationResult::Enabled(_) => None,
                 };
                 context.update_app(make_event(loc));
             }
