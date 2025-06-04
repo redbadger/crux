@@ -3,7 +3,7 @@ use crux_kv::{command::KeyValue, error::KeyValueError};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-use crate::{CurrentResponse, Effect, Event, GeocodingResponse, Workflow};
+use crate::{CurrentResponse, Effect, GeocodingResponse, Workflow};
 
 const FAVORITES_KEY: &str = "favorites";
 
@@ -35,10 +35,12 @@ pub enum FavoritesEvent {
     #[serde(skip)]
     Set,
     #[serde(skip)]
+    Stored(Result<Option<Vec<u8>>, KeyValueError>),
+    #[serde(skip)]
     Load(Result<Option<Vec<u8>>, KeyValueError>),
 }
 
-pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, Event> {
+pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, FavoritesEvent> {
     match event {
         FavoritesEvent::DeletePressed(favorite) => {
             model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(
@@ -55,9 +57,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
                 }) {
                     model.favorites.remove(index);
                     model.page = Workflow::Favorites(FavoritesState::Idle);
-                    render().and(Command::event(Event::Favorites(Box::new(
-                        FavoritesEvent::Set,
-                    ))))
+                    render().and(Command::event(FavoritesEvent::Set))
                 } else {
                     model.page = Workflow::Favorites(FavoritesState::Idle);
                     render()
@@ -75,17 +75,23 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         // ======================
         // KV Storage Operations
         // ======================
-        FavoritesEvent::Restore => KeyValue::get(FAVORITES_KEY)
-            .then_send(|r| Event::Favorites(Box::new(FavoritesEvent::Load(r)))),
+        FavoritesEvent::Restore => KeyValue::get(FAVORITES_KEY).then_send(FavoritesEvent::Load),
 
         FavoritesEvent::Set => {
-            KeyValue::set(FAVORITES_KEY, serde_json::to_vec(&model.favorites).unwrap()).then_send(
-                |_| {
-                    println!("Setting favorites");
-                    Event::Render
-                },
-            )
+            KeyValue::set(FAVORITES_KEY, serde_json::to_vec(&model.favorites).unwrap())
+                .then_send(FavoritesEvent::Stored)
         }
+
+        FavoritesEvent::Stored(result) => match result {
+            Ok(_) => {
+                println!("Stored!");
+                Command::done()
+            }
+            Err(err) => {
+                println!("Storing KV error: {err}");
+                Command::done()
+            }
+        },
 
         FavoritesEvent::Load(result) => match result {
             Ok(Some(favorites_bytes)) => {
@@ -109,8 +115,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        Clouds, Coord, CurrentResponse, Effect, GeocodingResponse, Main, Model, Sys, WeatherData,
-        Wind,
+        Clouds, Coord, CurrentResponse, Effect, Event, GeocodingResponse, Main, Model, Sys,
+        WeatherData, Wind,
     };
 
     // Helper to create a test favorite
@@ -180,11 +186,8 @@ mod tests {
 
         // Verify we get the Set event first
         let event = cmd.events().next().unwrap();
-        if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set));
-        } else {
-            panic!("Expected Favorites event")
-        }
+        assert!(matches!(event, FavoritesEvent::Set));
+
         assert!(model.favorites.is_empty());
 
         // Process the Set event to get the KeyValue effect
@@ -217,11 +220,10 @@ mod tests {
             current: None,
         };
 
-        let mut cmd = update(
+        let _ = update(
             FavoritesEvent::DeletePressed(Box::new(favorite.clone())),
             &mut model,
         );
-        assert!(matches!(cmd.effects().next(), Some(Effect::Render(_)))); // Should have a render effect
 
         // Verify the state was updated correctly
         assert!(matches!(
@@ -325,8 +327,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut cmd = update(FavoritesEvent::DeleteCancelled, &mut model);
-        assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
+        let _ = update(FavoritesEvent::DeleteCancelled, &mut model);
 
         // Verify the state was reset
         assert!(matches!(

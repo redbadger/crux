@@ -1,5 +1,5 @@
-pub mod command;
 pub mod location;
 
-pub use command::*;
-pub use location::{LocationOperation, LocationResponse, LocationResult};
+pub use location::{
+    get_location, is_location_enabled, LocationOperation, LocationResponse, LocationResult,
+};

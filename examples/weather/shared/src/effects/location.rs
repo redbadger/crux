@@ -1,8 +1,9 @@
 // This module defines the effect for accessing location information in a cross-platform way using Crux.
 // The structure here is designed to be serializable, portable, and to fit into Crux's command/request architecture.
 
-use crux_core::capability::CapabilityContext;
-use crux_core::capability::Operation;
+use std::future::Future;
+
+use crux_core::{capability::Operation, command::RequestBuilder, Command, Request};
 use serde::{Deserialize, Serialize};
 
 // The operations that can be performed related to location.
@@ -29,59 +30,28 @@ pub enum LocationResult {
     Location(Option<LocationResponse>),
 }
 
-pub struct Location<Ev> {
-    context: CapabilityContext<LocationOperation, Ev>,
+pub fn is_location_enabled<Effect, Event>(
+) -> RequestBuilder<Effect, Event, impl Future<Output = bool>>
+where
+    Effect: Send + From<Request<LocationOperation>> + 'static,
+    Event: Send + 'static,
+{
+    Command::request_from_shell(LocationOperation::IsLocationEnabled).map(|result| match result {
+        LocationResult::Enabled(val) => val,
+        LocationResult::Location(_) => false,
+    })
 }
 
-impl<Ev> Location<Ev>
+pub fn get_location<Effect, Event>(
+) -> RequestBuilder<Effect, Event, impl Future<Output = Option<LocationResponse>>>
 where
-    Ev: 'static,
+    Effect: Send + From<Request<LocationOperation>> + 'static,
+    Event: Send + 'static,
 {
-    #[must_use]
-    pub fn new(context: CapabilityContext<LocationOperation, Ev>) -> Self {
-        Self { context }
-    }
-
-    pub fn is_location_enabled<F>(&self, make_event: F)
-    where
-        F: FnOnce(bool) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                // Send the request to the shell and await the result
-                let result = context
-                    .request_from_shell(LocationOperation::IsLocationEnabled)
-                    .await;
-                // Match on the result
-                let enabled = match result {
-                    LocationResult::Enabled(val) => val,
-                    LocationResult::Location(_) => false, // fallback for unexpected result
-                };
-                // Call make_event and update the app
-                context.update_app(make_event(enabled));
-            }
-        });
-    }
-
-    pub fn get_location<F>(&self, make_event: F)
-    where
-        F: FnOnce(Option<LocationResponse>) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let result = context
-                    .request_from_shell(LocationOperation::GetLocation)
-                    .await;
-                let loc = match result {
-                    LocationResult::Location(loc) => loc,
-                    LocationResult::Enabled(_) => None,
-                };
-                context.update_app(make_event(loc));
-            }
-        });
-    }
+    Command::request_from_shell(LocationOperation::GetLocation).map(|result| match result {
+        LocationResult::Location(loc) => loc,
+        LocationResult::Enabled(_) => None,
+    })
 }
 
 // Implement the Operation trait so that Crux knows how to handle this effect.

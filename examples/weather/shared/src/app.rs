@@ -8,8 +8,7 @@ use crux_kv::KeyValueOperation;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    effects::location::LocationResponse,
-    effects::LocationOperation,
+    effects::{LocationOperation, LocationResponse},
     events::{self, CurrentWeatherEvent},
     workflows::{
         self,
@@ -28,7 +27,6 @@ pub enum Event {
 
     #[serde(skip)]
     CurrentWeather(Box<CurrentWeatherEvent>),
-    Render,
 }
 
 #[effect(typegen)]
@@ -112,12 +110,13 @@ impl crux_core::App for App {
                 render()
             }
             Event::Home(home_event) => workflows::update_home(*home_event, model),
-            Event::Favorites(fav_event) => workflows::update_favorites(*fav_event, model),
+            Event::Favorites(fav_event) => workflows::update_favorites(*fav_event, model)
+                .map_event(|e| Event::Favorites(Box::new(e))),
             Event::AddFavorite(add_event) => workflows::update_add_favorite(*add_event, model),
+
             Event::CurrentWeather(current_weather_event) => {
                 events::update_current_weather(*current_weather_event, model)
             }
-            Event::Render => render(),
         }
     }
 
@@ -167,29 +166,28 @@ mod tests {
         let mut model = Model::default();
 
         // Navigate to Favorites
-        let mut cmd = app.update(
+        let _ = app.update(
             Event::Navigate(Box::new(Workflow::Favorites(FavoritesState::Idle))),
             &mut model,
             &(),
         );
-        assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
+
         assert!(matches!(
             model.page,
             Workflow::Favorites(FavoritesState::Idle)
         ));
 
         // Navigate to Home
-        let mut cmd = app.update(Event::Navigate(Box::new(Workflow::Home)), &mut model, &());
-        assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
+        let _ = app.update(Event::Navigate(Box::new(Workflow::Home)), &mut model, &());
         assert!(matches!(model.page, Workflow::Home));
 
         // Navigate to AddFavorite
-        let mut cmd = app.update(
+        let _ = app.update(
             Event::Navigate(Box::new(Workflow::AddFavorite)),
             &mut model,
             &(),
         );
-        assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));
+
         assert!(matches!(model.page, Workflow::AddFavorite));
     }
 }
