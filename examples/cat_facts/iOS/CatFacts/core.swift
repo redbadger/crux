@@ -7,7 +7,6 @@ class Core: ObservableObject {
     @Published var view: ViewModel
 
     init() {
-
         view = try! .bincodeDeserialize(input: [UInt8](CatFacts.view()))
     }
 

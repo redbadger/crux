@@ -50,11 +50,9 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
 
         FavoritesEvent::DeleteConfirmed => {
             if let Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lng)) = model.page {
-                if let Some(index) = model
-                    .favorites
-                    .iter()
-                    .position(|f| f.geo.lat == lat && f.geo.lon == lng)
-                {
+                if let Some(index) = model.favorites.iter().position(|f| {
+                    f.geo.lat.to_bits() == lat.to_bits() && f.geo.lon.to_bits() == lng.to_bits()
+                }) {
                     model.favorites.remove(index);
                     model.page = Workflow::Favorites(FavoritesState::Idle);
                     render().and(Command::event(Event::Favorites(Box::new(
@@ -93,7 +91,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
             Ok(Some(favorites_bytes)) => {
                 match serde_json::from_slice::<Vec<Favorite>>(&favorites_bytes) {
                     Ok(favorites) => {
-                        println!("Favorites are: {:#?}", favorites);
+                        println!("Favorites are: {favorites:#?}");
                         model.favorites = favorites;
                         Command::done()
                     }
@@ -111,7 +109,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        Clouds, Coord, CurrentResponse, Effect, GeocodingResponse, Main, Sys, WeatherData, Wind,
+        Clouds, Coord, CurrentResponse, Effect, GeocodingResponse, Main, Model, Sys, WeatherData,
+        Wind,
     };
 
     // Helper to create a test favorite
@@ -120,8 +119,8 @@ mod tests {
             geo: GeocodingResponse {
                 name: "Phoenix".to_string(),
                 local_names: None,
-                lat: 33.456789,
-                lon: -112.037222,
+                lat: 33.456_789,
+                lon: -112.037_222,
                 country: "US".to_string(),
                 state: None,
             },
@@ -182,7 +181,7 @@ mod tests {
         // Verify we get the Set event first
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }
@@ -210,8 +209,8 @@ mod tests {
             geo: GeocodingResponse {
                 name: "Phoenix".to_string(),
                 local_names: None,
-                lat: 33.456789,
-                lon: -112.037222,
+                lat: 33.456_789,
+                lon: -112.037_222,
                 country: "US".to_string(),
                 state: None,
             },
@@ -227,7 +226,7 @@ mod tests {
         // Verify the state was updated correctly
         assert!(matches!(
             model.page,
-            Workflow::Favorites(FavoritesState::ConfirmDelete(33.456789, -112.037222))
+            Workflow::Favorites(FavoritesState::ConfirmDelete(33.456_789, -112.037_222))
         ));
     }
 
@@ -239,15 +238,15 @@ mod tests {
             geo: GeocodingResponse {
                 name: "Phoenix".to_string(),
                 local_names: None,
-                lat: 33.456789,
-                lon: -112.037222,
+                lat: 33.456_789,
+                lon: -112.037_222,
                 country: "US".to_string(),
                 state: None,
             },
             current: Some(CurrentResponse {
                 coord: Coord {
-                    lat: 33.456789,
-                    lon: -112.037222,
+                    lat: 33.456_789,
+                    lon: -112.037_222,
                 },
                 weather: vec![WeatherData {
                     id: 800,
@@ -271,13 +270,13 @@ mod tests {
                     gust: Some(5.2),
                 },
                 clouds: Clouds { all: 0 },
-                dt: 1716216000,
+                dt: 1_716_216_000,
                 sys: Sys {
                     id: 1,
                     country: "US".to_string(),
                     sys_type: 1,
-                    sunrise: 1716216000,
-                    sunset: 1716216000,
+                    sunrise: 1_716_216_000,
+                    sunset: 1_716_216_000,
                 },
                 timezone: 1,
                 id: 1,
@@ -301,7 +300,7 @@ mod tests {
         // Verify we get the Set event first
         let event = cmd.events().next().unwrap();
         if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set))
+            assert!(matches!(**event, FavoritesEvent::Set));
         } else {
             panic!("Expected Favorites event")
         }
@@ -321,8 +320,10 @@ mod tests {
 
     #[test]
     fn test_delete_cancelled() {
-        let mut model = crate::Model::default();
-        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(33.456789, -112.037222));
+        let mut model = Model {
+            page: Workflow::Favorites(FavoritesState::ConfirmDelete(33.456_789, 112.037_222)),
+            ..Default::default()
+        };
 
         let mut cmd = update(FavoritesEvent::DeleteCancelled, &mut model);
         assert!(matches!(cmd.effects().next(), Some(Effect::Render(_))));

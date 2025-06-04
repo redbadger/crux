@@ -124,8 +124,8 @@ pub static SAMPLE_GEOCODING_RESPONSE: Lazy<Vec<GeocodingResponse>> = Lazy::new(|
     vec![GeocodingResponse {
         name: "Phoenix".to_string(),
         local_names: None,
-        lat: 33.456789,
-        lon: -112.037222,
+        lat: 33.456_789,
+        lon: -112.037_222,
         country: "US".to_string(),
         state: Some("Arizona".to_string()),
     }]
