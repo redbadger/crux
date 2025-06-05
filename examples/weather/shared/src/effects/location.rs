@@ -30,6 +30,7 @@ pub enum LocationResult {
     Location(Option<LocationResponse>),
 }
 
+#[must_use]
 pub fn is_location_enabled<Effect, Event>(
 ) -> RequestBuilder<Effect, Event, impl Future<Output = bool>>
 where
@@ -42,6 +43,7 @@ where
     })
 }
 
+#[must_use]
 pub fn get_location<Effect, Event>(
 ) -> RequestBuilder<Effect, Event, impl Future<Output = Option<LocationResponse>>>
 where
