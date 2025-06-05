@@ -1,0 +1,389 @@
+use crux_core::{render::render, Command};
+use crux_http::command::Http;
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use std::env;
+
+use crate::{CurrentResponse, Effect, Event, Model};
+
+pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
+
+pub static API_KEY: Lazy<String> = Lazy::new(|| {
+    #[cfg(test)]
+    {
+        "test_api_key".to_string()
+    }
+    #[cfg(not(test))]
+    {
+        env::var("OPENWEATHER_API_KEY")
+            .expect("OPENWEATHER_API_KEY must be set in .env or environment")
+    }
+});
+
+#[derive(Serialize)]
+pub struct CurrentQueryString {
+    pub lat: String,
+    pub lon: String,
+    pub units: &'static str,
+    pub appid: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum CurrentWeatherEvent {
+    Fetch(f64, f64),
+    FetchFavorite(f64, f64),
+    FetchFavorites,
+    SetWeather(Box<crux_http::Result<crux_http::Response<CurrentResponse>>>),
+    SetFavoriteWeather(
+        Box<crux_http::Result<crux_http::Response<CurrentResponse>>>,
+        f64,
+        f64,
+    ),
+}
+
+/// .
+///
+/// # Panics
+///
+/// Panics if `OPENWEATHER_API_KEY` is not set or if the query string is not serializable
+pub fn update(event: CurrentWeatherEvent, model: &mut Model) -> Command<Effect, Event> {
+    match event {
+        CurrentWeatherEvent::Fetch(lat, long) => Http::get(WEATHER_URL)
+            .expect_json()
+            .query(&CurrentQueryString {
+                lat: lat.to_string(),
+                lon: long.to_string(),
+                units: "metric",
+                appid: API_KEY.clone(),
+            })
+            .expect("could not serialize query string")
+            .build()
+            .then_send(|result| {
+                Event::CurrentWeather(Box::new(CurrentWeatherEvent::SetWeather(Box::new(result))))
+            }),
+        CurrentWeatherEvent::SetWeather(result) => {
+            let cmd = match *result {
+                Ok(mut response) => {
+                    model.weather_data = response.take_body().unwrap();
+                    render()
+                }
+                Err(_) => render(),
+            };
+
+            // If we have favorites, trigger FetchFavorites after setting weather
+            if model.favorites.is_empty() {
+                cmd
+            } else {
+                cmd.and(Command::event(Event::CurrentWeather(Box::new(
+                    CurrentWeatherEvent::FetchFavorites,
+                ))))
+            }
+        }
+        CurrentWeatherEvent::FetchFavorites => {
+            // Create a sequence of commands to fetch weather for each favorite
+            let mut cmd = Command::done();
+
+            for favorite in &model.favorites {
+                cmd = cmd.and(Command::event(Event::CurrentWeather(Box::new(
+                    CurrentWeatherEvent::FetchFavorite(favorite.geo.lat, favorite.geo.lon),
+                ))));
+            }
+
+            cmd
+        }
+        CurrentWeatherEvent::FetchFavorite(lat, long) => Http::get(WEATHER_URL)
+            .expect_json()
+            .query(&CurrentQueryString {
+                lat: lat.to_string(),
+                lon: long.to_string(),
+                units: "metric",
+                appid: API_KEY.clone(),
+            })
+            .expect("could not serialize query string")
+            .build()
+            .then_send(move |result| {
+                Event::CurrentWeather(Box::new(CurrentWeatherEvent::SetFavoriteWeather(
+                    Box::new(result),
+                    lat,
+                    long,
+                )))
+            }),
+        CurrentWeatherEvent::SetFavoriteWeather(result, lat, long) => match *result {
+            Ok(mut response) => {
+                let weather = response.take_body().unwrap();
+                // Update the weather data for the matching favorite
+                if let Some(favorite) = model.favorites.iter_mut().find(|f| {
+                    f.geo.lat.to_bits() == lat.to_bits() && f.geo.lon.to_bits() == long.to_bits()
+                }) {
+                    favorite.current = Some(weather);
+                }
+                render()
+            }
+            Err(_) => render(),
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        workflows::favorites::Favorite, App, GeocodingResponse, Model, SAMPLE_CURRENT_RESPONSE,
+        SAMPLE_CURRENT_RESPONSE_JSON,
+    };
+
+    use super::*;
+    use crux_core::App as _;
+    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
+
+    // Helper to create a test favorite
+    fn test_favorite() -> Favorite {
+        Favorite {
+            geo: GeocodingResponse {
+                name: "Phoenix".to_string(),
+                local_names: None,
+                lat: 33.456_789,
+                lon: -112.037_222,
+                country: "US".to_string(),
+                state: None,
+            },
+            current: None,
+        }
+    }
+
+    #[test]
+    fn test_current_weather_fetch() {
+        let app = App;
+        let mut model = Model::default();
+
+        let lat_lng = (33.456_789, 112.037_222);
+        let event =
+            Event::CurrentWeather(Box::new(CurrentWeatherEvent::Fetch(lat_lng.0, lat_lng.1)));
+
+        let mut cmd = app.update(event, &mut model, &());
+
+        let mut request = cmd.effects().next().unwrap().expect_http();
+
+        assert_eq!(
+            &request.operation,
+            &HttpRequest::get(WEATHER_URL)
+                .query(&CurrentQueryString {
+                    lat: lat_lng.0.to_string(),
+                    lon: lat_lng.1.to_string(),
+                    units: "metric",
+                    appid: API_KEY.clone(),
+                })
+                .expect("could not serialize query string")
+                .build()
+        );
+
+        // Test response handling
+        request
+            .resolve(HttpResult::Ok(
+                HttpResponse::ok()
+                    .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
+                    .build(),
+            ))
+            .unwrap();
+
+        let actual = cmd.events().next().unwrap();
+        if let Event::CurrentWeather(event) = &actual {
+            assert!(matches!(**event, CurrentWeatherEvent::SetWeather(_)));
+        } else {
+            panic!("Expected CurrentWeather event")
+        }
+
+        // send the `SetWeather` event back to the app
+        let _ = app.update(actual, &mut model, &());
+
+        // Now check the model in detail
+        assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
+        insta::assert_yaml_snapshot!(model.weather_data);
+    }
+
+    #[test]
+    fn test_fetch_triggers_favorites_fetch_when_favorites_exist() {
+        let app = App;
+        let mut model = Model::default();
+
+        // Add a favorite
+        model.favorites.push(test_favorite());
+
+        let lat_lng = (33.456_789, 112.037_222);
+        let event =
+            Event::CurrentWeather(Box::new(CurrentWeatherEvent::Fetch(lat_lng.0, lat_lng.1)));
+
+        let mut cmd = app.update(event, &mut model, &());
+
+        // First request should be for the main location
+        let mut request = cmd.effects().next().unwrap().expect_http();
+
+        // Verify the request is for the main location
+        assert_eq!(
+            &request.operation,
+            &HttpRequest::get(WEATHER_URL)
+                .query(&CurrentQueryString {
+                    lat: lat_lng.0.to_string(),
+                    lon: lat_lng.1.to_string(),
+                    units: "metric",
+                    appid: API_KEY.clone(),
+                })
+                .expect("could not serialize query string")
+                .build()
+        );
+
+        // Resolve the request
+        request
+            .resolve(HttpResult::Ok(
+                HttpResponse::ok()
+                    .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
+                    .build(),
+            ))
+            .unwrap();
+
+        // Get the next event from the command
+        let actual = cmd.events().next().unwrap();
+        println!("Got event: {actual:?}"); // Debug print
+
+        // Verify it's a CurrentWeather event
+        let Event::CurrentWeather(current_weather_event) = &actual else {
+            panic!("Expected CurrentWeather event, got {actual:?}")
+        };
+
+        // Verify it's a SetWeather event
+        match **current_weather_event {
+            CurrentWeatherEvent::SetWeather(_) => (),
+            _ => panic!("Expected SetWeather event, got {current_weather_event:?}"),
+        }
+
+        // Send SetWeather back to app
+        let mut cmd = app.update(actual, &mut model, &());
+
+        // Get the next event (should be FetchFavorites)
+        let actual = cmd.events().next().unwrap();
+        println!("Got event after SetWeather: {actual:?}"); // Debug print
+
+        // Verify it's a FetchFavorites event
+        match &actual {
+            Event::CurrentWeather(event) => {
+                assert!(
+                    matches!(**event, CurrentWeatherEvent::FetchFavorites),
+                    "Expected FetchFavorites event, got {event:?}"
+                );
+            }
+            _ => panic!("Expected CurrentWeather event, got {actual:?}"),
+        }
+
+        // Send FetchFavorites back to app
+        let mut cmd = app.update(actual, &mut model, &());
+
+        // Get the next event (should be FetchFavorite for our favorite)
+        let actual = cmd.events().next().unwrap();
+        println!("Got event after FetchFavorites: {actual:?}"); // Debug print
+
+        // Verify it's a FetchFavorite event for our favorite
+        match &actual {
+            Event::CurrentWeather(event) => {
+                if let CurrentWeatherEvent::FetchFavorite(lat, lon) = **event {
+                    assert_eq!(lat.to_bits(), 33.456_789f64.to_bits());
+                    assert_eq!(lon.to_bits(), (-112.037_222f64).to_bits());
+                } else {
+                    panic!("Expected FetchFavorite event, got {event:?}");
+                }
+            }
+            _ => panic!("Expected CurrentWeather event, got {actual:?}"),
+        }
+    }
+
+    #[test]
+    fn test_fetch_favorite_updates_favorite_weather() {
+        let app = App;
+        let mut model = Model::default();
+
+        // Add a favorite
+        model.favorites.push(test_favorite());
+
+        let lat_lng = (33.456_789, -112.037_222);
+        let event = Event::CurrentWeather(Box::new(CurrentWeatherEvent::FetchFavorite(
+            lat_lng.0, lat_lng.1,
+        )));
+
+        let mut cmd = app.update(event, &mut model, &());
+
+        // Should get a request for the favorite's weather
+        let mut request = cmd.effects().next().unwrap().expect_http();
+        request
+            .resolve(HttpResult::Ok(
+                HttpResponse::ok()
+                    .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
+                    .build(),
+            ))
+            .unwrap();
+
+        // Next event should be SetFavoriteWeather
+        let actual = cmd.events().next().unwrap();
+        if let Event::CurrentWeather(event) = &actual {
+            if let CurrentWeatherEvent::SetFavoriteWeather(_, lat, lon) = **event {
+                assert_eq!(lat.to_bits(), lat_lng.0.to_bits());
+                assert_eq!(lon.to_bits(), lat_lng.1.to_bits());
+            } else {
+                panic!("Expected SetFavoriteWeather event")
+            }
+        } else {
+            panic!("Expected CurrentWeather event")
+        }
+
+        // Send SetFavoriteWeather back to app
+        let _ = app.update(actual, &mut model, &());
+
+        // Verify the favorite's weather was updated
+        assert!(model.favorites[0].current.is_some());
+        assert_eq!(
+            model.favorites[0].current.as_ref().unwrap(),
+            &*SAMPLE_CURRENT_RESPONSE
+        );
+    }
+
+    #[test]
+    fn test_fetch_favorites_triggers_fetch_for_all_favorites() {
+        let app = App;
+        let mut model = Model::default();
+
+        // Add multiple favorites
+        model.favorites.push(test_favorite());
+        model.favorites.push(Favorite {
+            geo: GeocodingResponse {
+                name: "New York".to_string(),
+                local_names: None,
+                lat: 40.7128,
+                lon: -74.0060,
+                country: "US".to_string(),
+                state: None,
+            },
+            current: None,
+        });
+
+        let event = Event::CurrentWeather(Box::new(CurrentWeatherEvent::FetchFavorites));
+        let mut cmd = app.update(event, &mut model, &());
+
+        // Should get FetchFavorite events for both favorites
+        let mut events = Vec::new();
+        while let Some(event) = cmd.events().next() {
+            events.push(event);
+        }
+
+        assert_eq!(events.len(), 2);
+
+        // Verify both favorites are being fetched
+        let mut fetched_locations = Vec::new();
+        for event in events {
+            if let Event::CurrentWeather(event) = event {
+                if let CurrentWeatherEvent::FetchFavorite(lat, lon) = *event {
+                    fetched_locations.push((lat, lon));
+                }
+            }
+        }
+
+        assert!(fetched_locations.contains(&(33.456_789, -112.037_222)));
+        assert!(fetched_locations.contains(&(40.7128, -74.0060)));
+    }
+}
