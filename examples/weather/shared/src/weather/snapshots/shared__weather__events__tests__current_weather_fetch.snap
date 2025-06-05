@@ -1,5 +1,5 @@
 ---
-source: shared/src/events/current.rs
+source: shared/src/weather/events.rs
 expression: model.weather_data
 ---
 coord:

@@ -1,5 +1,5 @@
 ---
-source: shared/src/workflows/add_favorite.rs
+source: shared/src/favorites/events.rs
 expression: model.search_results
 ---
 - name: Phoenix

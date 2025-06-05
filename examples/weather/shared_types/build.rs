@@ -1,8 +1,9 @@
 use crux_core::typegen::TypeGen;
 use crux_kv::error::KeyValueError;
 use shared::{
-    workflows::{favorites::FavoritesState, AddFavoriteEvent, FavoritesEvent, HomeEvent},
-    App, CurrentResponse, Event, Workflow, WorkflowViewModel,
+    favorites::events::{FavoritesEvent, FavoritesState},
+    weather::{events::WeatherEvent, model::CurrentResponse},
+    App, Event, Workflow, WorkflowViewModel,
 };
 use std::path::PathBuf;
 
@@ -18,9 +19,8 @@ fn main() -> anyhow::Result<()> {
     gen.register_type::<Event>()?;
     gen.register_type::<Workflow>()?;
     gen.register_type::<WorkflowViewModel>()?;
-    gen.register_type::<AddFavoriteEvent>()?;
     gen.register_type::<FavoritesEvent>()?;
-    gen.register_type::<HomeEvent>()?;
+    gen.register_type::<WeatherEvent>()?;
     gen.register_type::<FavoritesState>()?;
     gen.register_type::<KeyValueError>()?;
 

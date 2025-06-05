@@ -21,7 +21,7 @@ struct AddFavoriteView: View {
                             .onChange(of: searchText) { newValue in
                                 if !newValue.isEmpty {
                                     isSearching = true
-                                    core.update(.addFavorite(.search(newValue)))
+                                    core.update(.favorites(.search(newValue)))
                                 } else {
                                     isSearching = false
                                 }
@@ -49,7 +49,7 @@ struct AddFavoriteView: View {
                                 } else {
                                     List(results, id: \.lat) { result in
                                         Button(action: {
-                                            core.update(.addFavorite(.submit(result)))
+                                            core.update(.favorites(.submit(result)))
                                         }) {
                                             VStack(alignment: .leading) {
                                                 Text(result.name)

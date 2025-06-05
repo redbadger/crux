@@ -2,8 +2,6 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use crate::responses::utils::display_option;
-
 #[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone)]
 pub struct LocalNames {
     pub af: Option<String>,
@@ -150,5 +148,12 @@ impl fmt::Display for ZipCodeResponse {
             "ZipCodeResponse: (zip: {}, name: {}, lat: {}, lon: {}, country: {})",
             self.zip, self.name, self.lat, self.lon, self.country,
         )
+    }
+}
+
+pub fn display_option<T: fmt::Display>(option_string: &Option<T>) -> String {
+    match option_string {
+        Some(string) => string.to_string(),
+        None => "None".to_string(),
     }
 }

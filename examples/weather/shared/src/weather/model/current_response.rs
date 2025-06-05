@@ -1,7 +1,7 @@
-use crate::responses::response_elements::Clouds;
-use crate::responses::response_elements::Coord;
-use crate::responses::response_elements::WeatherData;
-use crate::responses::response_elements::Wind;
+use crate::weather::model::response_elements::Clouds;
+use crate::weather::model::response_elements::Coord;
+use crate::weather::model::response_elements::WeatherData;
+use crate::weather::model::response_elements::Wind;
 use derive_builder::Builder;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};

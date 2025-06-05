@@ -8,25 +8,22 @@ use crux_kv::KeyValueOperation;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    effects::{LocationOperation, LocationResponse},
-    events::{self, CurrentWeatherEvent},
-    workflows::{
+    favorites::{
         self,
-        favorites::{Favorite, FavoritesState},
-        AddFavoriteEvent, FavoritesEvent, HomeEvent,
+        events::{Favorite, FavoritesEvent, FavoritesState},
     },
-    CurrentResponse, GeocodingResponse,
+    location::{
+        capability::{LocationOperation, LocationResponse},
+        model::geocoding_response::GeocodingResponse,
+    },
+    weather::{self, events::WeatherEvent, model::current_response::CurrentResponse},
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Event {
     Navigate(Box<Workflow>),
-    Home(Box<HomeEvent>),
+    Home(Box<WeatherEvent>),
     Favorites(Box<FavoritesEvent>),
-    AddFavorite(Box<AddFavoriteEvent>),
-
-    #[serde(skip)]
-    CurrentWeather(Box<CurrentWeatherEvent>),
 }
 
 #[effect(typegen)]
@@ -109,14 +106,9 @@ impl crux_core::App for App {
                 model.page = *page;
                 render()
             }
-            Event::Home(home_event) => workflows::update_home(*home_event, model),
-            Event::Favorites(fav_event) => workflows::update_favorites(*fav_event, model)
+            Event::Home(home_event) => weather::events::update(*home_event, model),
+            Event::Favorites(fav_event) => favorites::events::update(*fav_event, model)
                 .map_event(|e| Event::Favorites(Box::new(e))),
-            Event::AddFavorite(add_event) => workflows::update_add_favorite(*add_event, model),
-
-            Event::CurrentWeather(current_weather_event) => {
-                events::update_current_weather(*current_weather_event, model)
-            }
         }
     }
 

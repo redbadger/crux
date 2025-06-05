@@ -1,20 +1,19 @@
 #![allow(clippy::missing_panics_doc)]
 
 pub mod app;
-pub mod effects;
-pub mod events;
-pub mod responses;
-pub mod workflows;
+pub mod favorites;
+pub mod location;
+pub mod weather;
 
 use lazy_static::lazy_static;
 
 pub use crux_core::{bridge::Bridge, Core, Request};
 
 pub use app::*;
-pub use responses::geocoding_response::{
+pub use location::model::geocoding_response::{
     SAMPLE_GEOCODING_RESPONSE, SAMPLE_GEOCODING_RESPONSE_JSON,
 };
-pub use responses::*;
+pub use location::model::*;
 // TODO hide this plumbing
 
 uniffi::include_scaffolding!("shared");
