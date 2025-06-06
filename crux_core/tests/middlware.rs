@@ -548,19 +548,15 @@ mod tests {
 
         let event: Vec<u8> = bincode::serialize(&Event::Roll(vec![6, 10, 20]))?;
 
-        eprintln!("Process event:");
         let effect_bytes = core.process_event(&event)?;
-        eprintln!("Deserialize effects:");
         let effects: Vec<bridge::Request<BridgeEffectFfi>> = bincode::deserialize(&effect_bytes)?;
 
         assert!(effects.is_empty());
 
-        eprintln!("Receive effects:");
         let Ok(effects_bytes) = effects_rx.recv()? else {
             panic!()
         };
 
-        eprintln!("Deserialize received effects:");
         let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
             bincode::deserialize(&effects_bytes)?;
 
@@ -573,11 +569,9 @@ mod tests {
         };
 
         let response = HttpResult::Ok(HttpResponse::status(201).build());
-        eprintln!("Serialize response:");
         let response_bytes = bincode::serialize(&response)?;
 
         let effect_bytes = core.resolve(effect_id, &response_bytes)?;
-        eprintln!("Deserialize effects:");
         let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
             bincode::deserialize(&effect_bytes)?;
 
@@ -594,30 +588,84 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn roll_three_dice_with_type_narrowing_and_json_bridge() {
-    //     let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
-    //     let effect_callback = move |effects: Vec<NarrowEffect>| effects_tx.send(effects).unwrap();
+    struct JsonFfiFormat;
 
-    //     let inner_core: Core<Dice> = Core::new();
-    //     let core = inner_core
-    //         .handle_effects_using(RngMiddleware::new())
-    //         .handle_effects_using(FakeHttpMiddleware)
-    //         .map_effect::<NarrowEffect>()
-    //         .bridge();
+    impl FfiFormat for JsonFfiFormat {
+        type Serializer<'b> = serde_json::Serializer<&'b mut Vec<u8>>;
+        type Deserializer<'b> = serde_json::Deserializer<serde_json::de::SliceRead<'b>>;
 
-    //     event: Vec<u8> = Event::Roll(vec![6, 10, 20])
+        fn serializer(buffer: &mut Vec<u8>) -> serde_json::Serializer<&mut Vec<u8>> {
+            serde_json::Serializer::new(buffer)
+        }
 
-    //     let effects = core.process_event(, effect_callback);
-    //     assert!(effects.is_empty());
+        fn deserializer(bytes: &[u8]) -> serde_json::Deserializer<serde_json::de::SliceRead<'_>> {
+            serde_json::Deserializer::from_slice(bytes)
+        }
+    }
 
-    //     let Ok(mut effects) = effects_rx.recv() else {
-    //         panic!()
-    //     };
+    #[test]
+    fn roll_three_dice_with_type_narrowing_and_json_bridge() -> anyhow::Result<()> {
+        let (effects_tx, effects_rx) = crossbeam_channel::unbounded();
+        let effect_callback = move |effects| effects_tx.send(effects).unwrap();
 
-    //     let NarrowEffect::Render(request) = effects.remove(0);
-    //     let render_operation = request.operation;
+        let inner_core: Core<Dice> = Core::new();
+        let core = inner_core
+            .handle_effects_using(RngMiddleware::new())
+            .map_effect::<BridgeEffect>()
+            .bridge::<JsonFfiFormat>(effect_callback);
 
-    //     assert_eq!(RenderOperation, render_operation);
-    // }
+        let event = serde_json::to_vec(&Event::Roll(vec![6, 10, 20]))?;
+
+        let effects_bytes = core.process_event(&event)?;
+        assert_eq!(str::from_utf8(&effects_bytes)?, "[]");
+
+        let effects: Vec<bridge::Request<BridgeEffectFfi>> =
+            serde_json::from_slice(&effects_bytes)?;
+        assert!(effects.is_empty());
+
+        let Ok(effects_bytes) = effects_rx.recv()? else {
+            panic!()
+        };
+
+        assert_eq!(
+            str::from_utf8(&effects_bytes)?,
+            r#"[{"id":0,"effect":{"Http":{"method":"POST","url":"http://dice-api.example.com/publish","headers":[{"name":"content-type","value":"application/json"}],"body":[91,54,44,49,48,44,50,48,93]}}}]"#
+        );
+
+        let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
+            serde_json::from_slice(&effects_bytes)?;
+
+        let bridge::Request {
+            effect: BridgeEffectFfi::Http(_),
+            id: effect_id,
+        } = effects.remove(0)
+        else {
+            panic!("Expected a HTTP request")
+        };
+
+        let response = HttpResult::Ok(HttpResponse::status(201).build());
+        let response_bytes = serde_json::to_vec(&response)?;
+
+        let effects_bytes = core.resolve(effect_id, &response_bytes)?;
+
+        assert_eq!(
+            str::from_utf8(&effects_bytes)?,
+            r#"[{"id":0,"effect":{"Render":null}}]"#
+        );
+
+        let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
+            serde_json::from_slice(&effects_bytes)?;
+
+        let bridge::Request {
+            effect: BridgeEffectFfi::Render(render_operation),
+            ..
+        } = effects.remove(0)
+        else {
+            panic!("Expected a HTTP request")
+        };
+
+        assert_eq!(RenderOperation, render_operation);
+
+        Ok(())
+    }
 }
