@@ -116,13 +116,15 @@ pub trait Layer: Send + Sync + Sized {
         MapEffectLayer::new(self)
     }
 
-    fn bridge(
+    fn bridge<Format: FfiFormat>(
         self,
         effect_callback: impl Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static,
-    ) -> Bridge<Self>
+    ) -> Bridge<Self, Format>
     where
         Self::Effect: Effect,
         Self::Event: for<'a> Deserialize<'a>,
+        for<'de, 'b> &'de mut Format::Deserializer<'b>: serde::Deserializer<'b>,
+        for<'se, 'b> &'se mut Format::Serializer<'b>: serde::Serializer,
     {
         Bridge::new(self, effect_callback)
     }
