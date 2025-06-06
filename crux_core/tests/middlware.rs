@@ -306,8 +306,18 @@ mod tests {
         app::{Dice, Effect, Event},
         middleware::{FakeHttpMiddleware, RemoteTriggerHttp, RngMiddleware},
     };
+    use bincode::{
+        config::{AllowTrailing, FixintEncoding, WithOtherIntEncoding, WithOtherTrailing},
+        de::read::SliceReader,
+        DefaultOptions, Options as _,
+    };
     use crossbeam_channel::RecvError;
-    use crux_core::{bridge, middleware::Layer as _, render::RenderOperation, Core};
+    use crux_core::{
+        bridge,
+        middleware::{FfiFormat, Layer as _},
+        render::RenderOperation,
+        Core,
+    };
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use crux_macros::effect;
 
@@ -484,32 +494,46 @@ mod tests {
         }
     }
 
-    // struct BincodeFfiFormat;
+    struct BincodeFfiFormat;
 
-    // impl BincodeFfiFormat {
-    //     fn bincode_options() -> impl bincode::Options + Copy {
-    //         DefaultOptions::new()
-    //             .with_fixint_encoding()
-    //             .allow_trailing_bytes()
-    //     }
-    // }
+    impl BincodeFfiFormat {
+        fn bincode_options(
+        ) -> WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>
+        {
+            DefaultOptions::new()
+                .with_fixint_encoding()
+                .allow_trailing_bytes()
+        }
+    }
 
-    // impl FfiFormat for BincodeFfiFormat {
-    //     type Serializer<'b> = bincode::Serializer<&'b mut [u8], impl Options + Copy>;
-    //     type Deserializer<'b> = bincode::Deserializer<SliceReader<'b>, impl Options + Copy>;
+    impl FfiFormat for BincodeFfiFormat {
+        type Serializer<'b> = bincode::Serializer<
+            &'b mut Vec<u8>,
+            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
+        >;
+        type Deserializer<'b> = bincode::Deserializer<
+            SliceReader<'b>,
+            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
+        >;
 
-    //     fn deserializer(bytes: &[u8]) -> Self::Deserializer {
-    //         let d = bincode::Deserializer::from_slice(bytes, Self::bincode_options());
+        fn serializer(
+            buffer: &mut Vec<u8>,
+        ) -> bincode::Serializer<
+            &'_ mut Vec<u8>,
+            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
+        > {
+            bincode::Serializer::new(buffer, Self::bincode_options())
+        }
 
-    //         d
-    //     }
-
-    //     fn serializer(buffer: &mut [u8]) -> Self::Serializer {
-    //         let s = bincode::Serializer::new(buffer, Self::bincode_options());
-
-    //         s
-    //     }
-    // }
+        fn deserializer(
+            bytes: &[u8],
+        ) -> bincode::Deserializer<
+            SliceReader<'_>,
+            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
+        > {
+            bincode::Deserializer::from_slice(bytes, Self::bincode_options())
+        }
+    }
 
     #[test]
     fn roll_three_dice_with_type_narrowing_and_bridge() -> anyhow::Result<()> {
@@ -520,7 +544,7 @@ mod tests {
         let core = inner_core
             .handle_effects_using(RngMiddleware::new())
             .map_effect::<BridgeEffect>()
-            .bridge(effect_callback);
+            .bridge::<BincodeFfiFormat>(effect_callback);
 
         let event: Vec<u8> = bincode::serialize(&Event::Roll(vec![6, 10, 20]))?;
 

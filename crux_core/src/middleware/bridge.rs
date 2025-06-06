@@ -1,6 +1,5 @@
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
-use bincode::{de::read::SliceReader, DefaultOptions, Options};
 use erased_serde::Serialize;
 use serde::Deserialize;
 
@@ -13,64 +12,34 @@ use super::Layer;
 
 /// A serialization format for the bridge FFI
 pub trait FfiFormat {
-    type Serializer<'s>: 's;
+    type Serializer<'b>;
+    type Deserializer<'b>;
 
-    type Deserializer<'d>: 'd;
+    fn serializer(buffer: &mut Vec<u8>) -> Self::Serializer<'_>;
 
-    fn serializer<'b, 's>(buffer: &'b mut [u8]) -> Self::Serializer<'s>
-    where
-        'b: 's;
-
-    fn deserializer<'b, 'd>(bytes: &'b [u8]) -> Self::Deserializer<'d>
-    where
-        'b: 'd;
-}
-
-// TODO: move out!
-
-struct BincodeFfiFormat;
-
-impl BincodeFfiFormat {
-    fn bincode_options() -> impl bincode::Options + Copy {
-        DefaultOptions::new()
-            .with_fixint_encoding()
-            .allow_trailing_bytes()
-    }
-}
-
-impl BincodeFfiFormat {
-    // TODO: turn into trait impl
-    fn deserializer<'b>(
-        bytes: &'b [u8],
-    ) -> bincode::Deserializer<SliceReader<'b>, impl bincode::Options + Copy> {
-        bincode::Deserializer::from_slice(bytes, Self::bincode_options())
-    }
-
-    fn serializer<'b>(
-        buffer: &'b mut Vec<u8>,
-    ) -> bincode::Serializer<&'b mut Vec<u8>, impl bincode::Options + Copy> {
-        bincode::Serializer::new(buffer, Self::bincode_options())
-    }
+    fn deserializer(bytes: &[u8]) -> Self::Deserializer<'_>;
 }
 
 /// FFI Bridge with support for wrapping a middlware stack
-pub struct Bridge<Next>
+pub struct Bridge<Next, Format>
 where
     Next: Layer,
-    // Fmt: FfiFormat,
+    Format: FfiFormat,
 {
     next: Next,
     effect_callback: Arc<dyn Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static>,
     registry: Arc<ResolveRegistry>,
-    // format: Fmt,
+    format: PhantomData<Format>,
 }
 
-impl<Next> Bridge<Next>
+impl<Next, Format> Bridge<Next, Format>
 where
     Next: Layer,
     Next::Event: for<'a> Deserialize<'a>,
     Next::Effect: Effect,
-    // Fmt: Fmt,
+    Format: FfiFormat,
+    for<'se, 'b> &'se mut Format::Serializer<'b>: serde::Serializer,
+    for<'de, 'b> &'de mut Format::Deserializer<'b>: serde::Deserializer<'b>,
 {
     pub fn new<F>(next: Next, effect_callback: F) -> Self
     where
@@ -80,7 +49,7 @@ where
             next,
             effect_callback: Arc::new(effect_callback),
             registry: Arc::new(ResolveRegistry::default()),
-            // format: PhantomData,
+            format: PhantomData,
         }
     }
 
@@ -89,10 +58,10 @@ where
 
         let result = {
             // scope lifetime of the (de)serializers
-            let mut event_de = BincodeFfiFormat::deserializer(event_bytes);
+            let mut event_de = Format::deserializer(event_bytes);
             let mut erased_event_de = <dyn erased_serde::Deserializer>::erase(&mut event_de);
 
-            let mut request_se = BincodeFfiFormat::serializer(&mut requests_bytes);
+            let mut request_se = Format::serializer(&mut requests_bytes);
             let mut erased_request_se = <dyn erased_serde::Serializer>::erase(&mut request_se);
 
             self.process(None, &mut erased_event_de, &mut erased_request_se)
@@ -105,10 +74,10 @@ where
         let mut requests_bytes = vec![];
 
         let result = {
-            let mut output_de = BincodeFfiFormat::deserializer(output);
+            let mut output_de = Format::deserializer(output);
             let mut erased_output_de = <dyn erased_serde::Deserializer>::erase(&mut output_de);
 
-            let mut request_se = BincodeFfiFormat::serializer(&mut requests_bytes);
+            let mut request_se = Format::serializer(&mut requests_bytes);
             let mut erased_request_se = <dyn erased_serde::Serializer>::erase(&mut request_se);
 
             self.process(Some(id), &mut erased_output_de, &mut erased_request_se)
@@ -135,7 +104,7 @@ where
                 let mut requests_bytes = vec![];
 
                 let result = {
-                    let mut requests_se = BincodeFfiFormat::serializer(&mut requests_bytes);
+                    let mut requests_se = Format::serializer(&mut requests_bytes);
                     let mut erased_request_se =
                         <dyn erased_serde::Serializer>::erase(&mut requests_se);
 
