@@ -35,6 +35,8 @@ thiserror = "2.0.12"
 uniffi_bindgen.workspace = true
 
 [dev-dependencies]
+expect-test = "1.5.1"
 insta = { version = "1.43.1" }
 pretty_assertions = "1.4.1"
 rstest = "0.25.0"
+tempdir = "0.3.7"
