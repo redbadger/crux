@@ -8,15 +8,24 @@ pub mod codegen;
 use anyhow::Result;
 use clap::Parser;
 
-pub use args::CodegenArgs;
 use args::{Cli, Commands};
 
-pub fn run() -> Result<()> {
+pub fn run(crate_name: Option<&str>) -> Result<()> {
     env_logger::init();
 
     let cli = Cli::parse();
-    match &cli.command {
-        Commands::Codegen(args) => codegen::codegen(args),
-        Commands::Bindgen(args) => bindgen::bindgen(args),
+    match cli.command {
+        Commands::Codegen(mut args) => {
+            if let Some(context) = crate_name {
+                args.crate_name = context.to_string();
+            }
+            codegen::codegen(&args)
+        }
+        Commands::Bindgen(mut args) => {
+            if let Some(context) = crate_name {
+                args.crate_name = context.to_string();
+            }
+            bindgen::bindgen(&args)
+        }
     }
 }

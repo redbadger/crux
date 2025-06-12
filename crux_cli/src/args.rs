@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
 use convert_case::{pattern, Boundary, Case, Casing};
@@ -31,7 +29,7 @@ pub enum Commands {
 #[derive(Args)]
 pub struct CodegenArgs {
     /// name of the library containing your Crux App
-    #[arg(long, short, value_name = "STRING", env)]
+    #[arg(long, short, value_name = "STRING", default_value = "shared")]
     pub crate_name: String,
 
     /// Output directory for generated code
@@ -42,7 +40,7 @@ pub struct CodegenArgs {
         value_hint = DirPath,
         default_value = "./shared/generated",
     )]
-    pub out_dir: PathBuf,
+    pub out_dir: Utf8PathBuf,
 
     /// Specify a package name for each language you want to generate code for.
     #[command(flatten)]
@@ -85,8 +83,8 @@ pub struct Generate {
 
 #[derive(Args)]
 pub struct BindgenArgs {
-    /// Package name of the crate containing your Crux App, e.g. "shared"
-    #[arg(long, short, value_name = "STRING", env)]
+    /// Package name of the crate containing your Crux App
+    #[arg(long, short, value_name = "STRING", default_value = "shared")]
     pub crate_name: String,
 
     /// Output directory for generated code
