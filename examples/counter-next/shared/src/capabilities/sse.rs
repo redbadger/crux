@@ -1,10 +1,10 @@
 use std::{convert::From, future};
 
-use async_sse::{decode, Event as SseEvent};
+use async_sse::{Event as SseEvent, decode};
 use async_std::io::Cursor;
-use crux_core::{capability::Operation, command::StreamBuilder, Request};
+use crux_core::{Request, capability::Operation, command::StreamBuilder};
 use futures::{Stream, StreamExt};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SseRequest {

@@ -6,7 +6,6 @@ rust-version.workspace = true
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
-name = "shared"
 
 [features]
 typegen = ["crux_core/typegen"]
