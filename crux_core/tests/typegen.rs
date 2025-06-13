@@ -46,7 +46,7 @@ mod shared {
 #[cfg(feature = "typegen")]
 mod test {
     use super::shared::{App, Event};
-    use crux_core::typegen::TypeGen;
+    use crux_core::type_generation::serde::TypeGen;
     use uuid::Uuid;
 
     // FIXME this test is quite slow
@@ -90,10 +90,10 @@ mod test {
             .expect("Should register types in App");
 
         let registry = match typegen.state {
-            crux_core::typegen::State::Registering(tracer, _) => {
+            crux_core::type_generation::serde::State::Registering(tracer, _) => {
                 tracer.registry().expect("Should get registry")
             }
-            crux_core::typegen::State::Generating(_) => {
+            crux_core::type_generation::serde::State::Generating(_) => {
                 panic!("Expected to still be in registering stage")
             }
         };

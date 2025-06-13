@@ -1,11 +1,12 @@
 mod app {
-    use crux_core::{capability::Operation, macros::effect, render::render, App, Command};
+    use crux_core::{App, Command, capability::Operation, macros::effect, render::render};
     use crux_http::command::Http;
+    use facet::Facet;
     use serde::{Deserialize, Serialize};
 
     // Inline minimal random number capability
 
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct RandomNumberRequest(pub usize); // request a random number from 1 to N, inclusive
 
     #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -109,11 +110,7 @@ mod app {
                                 .copied()
                                 .find_map(
                                     |(size, value)| {
-                                        if value.is_none() {
-                                            Some(size)
-                                        } else {
-                                            None
-                                        }
+                                        if value.is_none() { Some(size) } else { None }
                                     },
                                 )
                                 .unwrap();
@@ -148,7 +145,7 @@ mod middleware {
     use std::thread::spawn;
 
     use crossbeam_channel::Receiver;
-    use crux_core::{capability::Operation, middleware::EffectMiddleware, Request, RequestHandle};
+    use crux_core::{Request, RequestHandle, capability::Operation, middleware::EffectMiddleware};
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::app::{RandomNumber, RandomNumberRequest};
@@ -223,10 +220,10 @@ mod middleware {
             &self,
             effect: Effect,
             resolve_callback: impl FnOnce(
-                    RequestHandle<<Self::Op as Operation>::Output>,
-                    <Self::Op as Operation>::Output,
-                ) + Send
-                + 'static,
+                RequestHandle<<Self::Op as Operation>::Output>,
+                <Self::Op as Operation>::Output,
+            ) + Send
+            + 'static,
         ) -> Result<(), Effect> {
             let http_request = effect.try_into()?;
             let (_, handle): (HttpRequest, _) = http_request.split();
@@ -266,10 +263,10 @@ mod middleware {
             &self,
             effect: Effect,
             resolve_callback: impl FnOnce(
-                    RequestHandle<<Self::Op as Operation>::Output>,
-                    <Self::Op as Operation>::Output,
-                ) + Send
-                + 'static,
+                RequestHandle<<Self::Op as Operation>::Output>,
+                <Self::Op as Operation>::Output,
+            ) + Send
+            + 'static,
         ) -> Result<(), Effect> {
             let http_request = effect.try_into()?;
 
@@ -306,10 +303,9 @@ mod tests {
     };
     use crossbeam_channel::RecvError;
     use crux_core::{
-        bridge,
+        Core, bridge,
         middleware::{BincodeFfiFormat, FfiFormat, Layer as _},
         render::RenderOperation,
-        Core,
     };
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use crux_macros::effect;

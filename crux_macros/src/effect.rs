@@ -110,19 +110,35 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     });
 
     let type_gen = if has_typegen_attr {
-        let effect_gen = effects.map(|effect| {
+        let effect_gen_1 = effects.map(|effect| {
             let operation = &effect.operation;
 
             quote! {
                 #operation::register_types(generator)?;
             }
         });
+        let effect_gen_2 = effect_gen_1.clone();
         quote! {
             #[cfg(feature = "typegen")]
-            impl crux_core::typegen::Export for #enum_ident {
-                fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
-                    use ::crux_core::capability::{Operation};
-                    #(#effect_gen)*
+            impl ::crux_core::type_generation::serde::Export for #enum_ident {
+                fn register_types(
+                    generator: &mut ::crux_core::type_generation::serde::TypeGen
+                ) -> ::crux_core::type_generation::serde::Result {
+                    use ::crux_core::capability::{ Operation};
+                    #(#effect_gen_1)*
+                    generator.register_type::<#ffi_enum_ident>()?;
+                    generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
+
+                    Ok(())
+                }
+            }
+            #[cfg(feature = "facet_typegen")]
+            impl ::crux_core::type_generation::facet::Export for #enum_ident {
+                fn register_types(
+                    generator: &mut ::crux_core::type_generation::facet::TypeGen
+                ) -> ::crux_core::type_generation::facet::Result {
+                    use ::crux_core::capability::{ Operation};
+                    #(#effect_gen_2)*
                     generator.register_type::<#ffi_enum_ident>()?;
                     generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
 
@@ -142,6 +158,9 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
 
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = #enum_ident_str)]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
+        #[cfg_attr(feature = "facet_typegen", facet(rename = #enum_ident_str))]
+        #[cfg_attr(feature = "facet_typegen", repr(C))]
         #ffi_enum
 
         impl crux_core::Effect for #enum_ident {
@@ -194,13 +213,16 @@ mod test {
 
         let actual = effect_impl(args, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "Effect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
+        #[cfg_attr(feature = "facet_typegen", facet(rename = "Effect"))]
+        #[cfg_attr(feature = "facet_typegen", repr(C))]
         pub enum EffectFfi {
             Render(RenderOperation),
         }
@@ -240,10 +262,10 @@ mod test {
             }
         }
         #[cfg(feature = "typegen")]
-        impl crux_core::typegen::Export for Effect {
+        impl ::crux_core::type_generation::serde::Export for Effect {
             fn register_types(
-                generator: &mut ::crux_core::typegen::TypeGen,
-            ) -> ::crux_core::typegen::Result {
+                generator: &mut ::crux_core::type_generation::serde::TypeGen,
+            ) -> ::crux_core::type_generation::serde::Result {
                 use ::crux_core::capability::Operation;
                 RenderOperation::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
@@ -251,7 +273,19 @@ mod test {
                 Ok(())
             }
         }
-        "##);
+        #[cfg(feature = "facet_typegen")]
+        impl ::crux_core::type_generation::facet::Export for Effect {
+            fn register_types(
+                generator: &mut ::crux_core::type_generation::facet::TypeGen,
+            ) -> ::crux_core::type_generation::facet::Result {
+                use ::crux_core::capability::Operation;
+                RenderOperation::register_types(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "#);
     }
 
     #[test]
@@ -272,6 +306,9 @@ mod test {
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "MyEffect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
+        #[cfg_attr(feature = "facet_typegen", facet(rename = "MyEffect"))]
+        #[cfg_attr(feature = "facet_typegen", repr(C))]
         pub enum MyEffectFfi {
             Render(RenderOperation),
         }
@@ -311,10 +348,22 @@ mod test {
             }
         }
         #[cfg(feature = "typegen")]
-        impl crux_core::typegen::Export for MyEffect {
+        impl ::crux_core::type_generation::serde::Export for MyEffect {
             fn register_types(
-                generator: &mut ::crux_core::typegen::TypeGen,
-            ) -> ::crux_core::typegen::Result {
+                generator: &mut ::crux_core::type_generation::serde::TypeGen,
+            ) -> ::crux_core::type_generation::serde::Result {
+                use ::crux_core::capability::Operation;
+                RenderOperation::register_types(generator)?;
+                generator.register_type::<MyEffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
+                Ok(())
+            }
+        }
+        #[cfg(feature = "facet_typegen")]
+        impl ::crux_core::type_generation::facet::Export for MyEffect {
+            fn register_types(
+                generator: &mut ::crux_core::type_generation::facet::TypeGen,
+            ) -> ::crux_core::type_generation::facet::Result {
                 use ::crux_core::capability::Operation;
                 RenderOperation::register_types(generator)?;
                 generator.register_type::<MyEffectFfi>()?;
@@ -335,13 +384,16 @@ mod test {
 
         let actual = effect_impl(None, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "Effect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
+        #[cfg_attr(feature = "facet_typegen", facet(rename = "Effect"))]
+        #[cfg_attr(feature = "facet_typegen", repr(C))]
         pub enum EffectFfi {
             Render(RenderOperation),
         }
@@ -380,9 +432,10 @@ mod test {
                 }
             }
         }
-        "###);
+        "#);
     }
 
+    #[allow(clippy::too_many_lines)]
     #[test]
     fn multiple_with_typegen() {
         let args = Some(format_ident!("typegen"));
@@ -395,7 +448,7 @@ mod test {
 
         let actual = effect_impl(args, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -403,6 +456,9 @@ mod test {
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "Effect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
+        #[cfg_attr(feature = "facet_typegen", facet(rename = "Effect"))]
+        #[cfg_attr(feature = "facet_typegen", repr(C))]
         pub enum EffectFfi {
             Render(RenderOperation),
             Http(HttpRequest),
@@ -471,10 +527,10 @@ mod test {
             }
         }
         #[cfg(feature = "typegen")]
-        impl crux_core::typegen::Export for Effect {
+        impl ::crux_core::type_generation::serde::Export for Effect {
             fn register_types(
-                generator: &mut ::crux_core::typegen::TypeGen,
-            ) -> ::crux_core::typegen::Result {
+                generator: &mut ::crux_core::type_generation::serde::TypeGen,
+            ) -> ::crux_core::type_generation::serde::Result {
                 use ::crux_core::capability::Operation;
                 RenderOperation::register_types(generator)?;
                 HttpRequest::register_types(generator)?;
@@ -483,7 +539,20 @@ mod test {
                 Ok(())
             }
         }
-        "##);
+        #[cfg(feature = "facet_typegen")]
+        impl ::crux_core::type_generation::facet::Export for Effect {
+            fn register_types(
+                generator: &mut ::crux_core::type_generation::facet::TypeGen,
+            ) -> ::crux_core::type_generation::facet::Result {
+                use ::crux_core::capability::Operation;
+                RenderOperation::register_types(generator)?;
+                HttpRequest::register_types(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "#);
     }
 
     #[test]
@@ -497,7 +566,7 @@ mod test {
 
         let actual = effect_impl(None, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -505,6 +574,9 @@ mod test {
         }
         #[derive(::serde::Serialize, ::serde::Deserialize)]
         #[serde(rename = "Effect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
+        #[cfg_attr(feature = "facet_typegen", facet(rename = "Effect"))]
+        #[cfg_attr(feature = "facet_typegen", repr(C))]
         pub enum EffectFfi {
             Render(RenderOperation),
             Http(HttpRequest),
@@ -572,6 +644,6 @@ mod test {
                 }
             }
         }
-        "###);
+        "#);
     }
 }

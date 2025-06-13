@@ -302,6 +302,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "793db76d6187cd04dff33004d8e6c9cc4e05cd330500379d2394209271b4aeee"
 
 [[package]]
+name = "byteorder"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
+
+[[package]]
 name = "bytes"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -585,6 +591,8 @@ dependencies = [
  "crux_time",
  "doctest_support",
  "erased-serde",
+ "facet",
+ "facet_generate",
  "futures",
  "rand 0.9.1",
  "serde",
@@ -611,6 +619,7 @@ dependencies = [
  "crux_core",
  "derive_builder",
  "encoding_rs",
+ "facet",
  "futures-test",
  "futures-util",
  "http",
@@ -631,6 +640,7 @@ version = "0.9.0"
 dependencies = [
  "anyhow",
  "crux_core",
+ "facet",
  "serde",
  "serde_bytes",
  "thiserror 2.0.12",
@@ -643,6 +653,7 @@ dependencies = [
  "crux_core",
  "crux_http",
  "darling",
+ "facet",
  "heck 0.5.0",
  "insta",
  "prettyplease",
@@ -667,6 +678,7 @@ version = "0.13.0"
 dependencies = [
  "chrono",
  "crux_core",
+ "facet",
  "futures",
  "serde",
  "serde_json",
@@ -805,6 +817,7 @@ version = "0.1.0"
 dependencies = [
  "crux_core",
  "crux_http",
+ "facet",
  "serde",
  "serde_json",
 ]
@@ -919,6 +932,69 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener 5.4.0",
  "pin-project-lite",
+]
+
+[[package]]
+name = "facet"
+version = "0.27.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfa337c2c038af4187e9de8114cb0e5cfb91acb3f80a11cd7f1cd8e41df1e79f"
+dependencies = [
+ "facet-core",
+ "facet-macros",
+ "static_assertions",
+]
+
+[[package]]
+name = "facet-core"
+version = "0.27.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5546e2ef2b0b8bb08e37ed75e1ba7f1f011866deb644b468dc57ab6087b286f1"
+dependencies = [
+ "bitflags",
+ "impls",
+]
+
+[[package]]
+name = "facet-macros"
+version = "0.27.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ce3261034d213cc6341f60646f93f08037a615e62f6f89bbde3e1a07a9e3619"
+dependencies = [
+ "facet-core",
+ "facet-macros-emit",
+]
+
+[[package]]
+name = "facet-macros-emit"
+version = "0.27.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e390d85bbdd57eb8ef7f7b10254feaf9727f77cf4312722cd8f030a8c182491e"
+dependencies = [
+ "facet-macros-parse",
+ "quote",
+]
+
+[[package]]
+name = "facet-macros-parse"
+version = "0.27.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76290ce9f9701d81b4c2d4b819a64caea9334056d2fb5c5f8c88b24afd9b6dc1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unsynn",
+]
+
+[[package]]
+name = "facet_generate"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47408be7a50b54d823ace34e6b87db5e3e19b2b248f18c326f79564050514aef"
+dependencies = [
+ "anyhow",
+ "facet",
+ "serde-reflection 0.4.0",
 ]
 
 [[package]]
@@ -1099,6 +1175,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fxhash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1252,13 +1337,14 @@ dependencies = [
 
 [[package]]
 name = "http-types-red-badger-temporary-fork"
-version = "2.12.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "667889388f104630be2d14a09cd78f4867ddb54787c6c83366cbfb72fa3ce793"
+checksum = "35d5ff8d7cf3f80d71cc473b63293e2fa25c134bc290af787472c7690ae694f8"
 dependencies = [
  "anyhow",
  "async-channel 1.9.0",
  "base64",
+ "facet",
  "futures-lite",
  "infer",
  "pin-project-lite",
@@ -1428,6 +1514,12 @@ dependencies = [
  "walkdir",
  "winapi-util",
 ]
+
+[[package]]
+name = "impls"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a46645bbd70538861a90d0f26c31537cdf1e44aae99a794fb75a664b70951bc"
 
 [[package]]
 name = "include_dir"
@@ -1646,6 +1738,12 @@ name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
+name = "mutants"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc0287524726960e07b119cebd01678f852f147742ae0d925e6a520dca956126"
 
 [[package]]
 name = "nested"
@@ -2424,6 +2522,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "shadow_counted"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65da48d447333cebe1aadbdd3662f3ba56e76e67f53bc46f3dd5f67c74629d6b"
+
+[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2443,12 +2547,9 @@ checksum = "38b58827f4464d87d377d175e90bf58eb00fd8716ff0a62f80356b5e61555d0d"
 
 [[package]]
 name = "slab"
-version = "0.4.9"
+version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f92a496fb766b417c996b9c5e57daf2f7ad3b0bebe1ccfca4856390e3d3bb67"
-dependencies = [
- "autocfg",
-]
+checksum = "04dc19736151f35336d325007ac991178d504a119863a2fcb3758cdb5e52c50d"
 
 [[package]]
 name = "smallvec"
@@ -2815,6 +2916,18 @@ dependencies = [
  "textwrap 0.16.2",
  "uniffi_meta",
  "weedle2",
+]
+
+[[package]]
+name = "unsynn"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7940603a9e25cf11211cc43b81f4fcad2b8ab4df291ca855f32c40e1ac22d5bc"
+dependencies = [
+ "fxhash",
+ "mutants",
+ "proc-macro2",
+ "shadow_counted",
 ]
 
 [[package]]

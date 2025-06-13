@@ -20,7 +20,7 @@
 		0BC930BE6C51EBF4D7F07A9C /* Shared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Shared; path = ../shared/Shared; sourceTree = SOURCE_ROOT; };
 		408B50841C0469CE0D78A7C2 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		67D62EB120D164DFC93E7EC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
+		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		72B940D339BFB9B4DC05041C /* sse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sse.swift; sourceTree = "<group>"; };
 		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BCEAEA08AFCD101ED86B664C /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
@@ -126,7 +126,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D3BF0BCB5F0BABF3D7D00966 /* XCLocalSwiftPackageReference "../shared/Shared" */,
-				066464F6ED3284D9A331A3C6 /* XCLocalSwiftPackageReference "../shared/generated/swift/SharedTypes" */,
+				C259B15E6BEC83EABD3451C7 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
 			);
 			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
@@ -328,9 +328,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		066464F6ED3284D9A331A3C6 /* XCLocalSwiftPackageReference "../shared/generated/swift/SharedTypes" */ = {
+		C259B15E6BEC83EABD3451C7 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared/generated/swift/SharedTypes;
+			relativePath = ../shared_types/generated/swift/SharedTypes;
 		};
 		D3BF0BCB5F0BABF3D7D00966 /* XCLocalSwiftPackageReference "../shared/Shared" */ = {
 			isa = XCLocalSwiftPackageReference;

@@ -2,11 +2,12 @@
 
 use std::future::Future;
 
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 #[expect(deprecated)]
-use crate::{capability::CapabilityContext, Capability};
-use crate::{capability::Operation, command::NotificationBuilder, Command, Request};
+use crate::{Capability, capability::CapabilityContext};
+use crate::{Command, Request, capability::Operation, command::NotificationBuilder};
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
 /// interface. This assumes a declarative UI framework is used in the Shell, which will
@@ -34,7 +35,7 @@ impl<Ev> Clone for Render<Ev> {
 }
 
 /// The single operation `Render` implements.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct RenderOperation;
 
 impl Operation for RenderOperation {
@@ -99,8 +100,8 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 ///# });
 /// ```
 #[must_use]
-pub fn render_builder<Effect, Event>(
-) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
+pub fn render_builder<Effect, Event>()
+-> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where
     Effect: From<Request<RenderOperation>> + Send + 'static,
     Event: Send + 'static,

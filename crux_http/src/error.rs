@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
+#[derive(facet::Facet, Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
+#[repr(C)]
 pub enum HttpError {
     #[error("HTTP error {code}: {message}")]
     #[serde(skip)]
+    #[facet(skip)]
     Http {
         code: http_types::StatusCode,
         message: String,
@@ -12,6 +14,7 @@ pub enum HttpError {
     },
     #[error("JSON serialisation error: {0}")]
     #[serde(skip)]
+    #[facet(skip)]
     Json(String),
     #[error("URL parse error: {0}")]
     Url(String),

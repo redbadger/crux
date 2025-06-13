@@ -8,6 +8,7 @@ pub mod command;
 pub mod error;
 pub mod value;
 
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 #[expect(deprecated)]
@@ -18,7 +19,8 @@ use error::KeyValueError;
 use value::Value;
 
 /// Supported operations
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(C)]
 pub enum KeyValueOperation {
     /// Read bytes stored under a key
     Get { key: String },
@@ -123,7 +125,9 @@ impl Operation for KeyValueOperation {
     type Output = KeyValueResult;
 
     #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+    fn register_types(
+        generator: &mut crux_core::type_generation::serde::TypeGen,
+    ) -> crux_core::type_generation::serde::Result {
         generator.register_type::<KeyValueResponse>()?;
         generator.register_type::<KeyValueError>()?;
         generator.register_type::<Value>()?;

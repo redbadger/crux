@@ -3,7 +3,7 @@ packages:
   Shared:
     path: ../shared/Shared
   SharedTypes:
-    path: ../shared/generated/swift/SharedTypes
+    path: ../shared_types/generated/swift/SharedTypes
 options:
   bundleIdPrefix: com.crux.example.counter
 targets:
