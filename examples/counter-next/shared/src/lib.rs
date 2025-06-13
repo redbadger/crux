@@ -1,8 +1,8 @@
 mod app;
 mod capabilities;
 
-use crux_core::bridge::Bridge;
 pub use crux_core::Core;
+use crux_core::bridge::Bridge;
 pub use crux_http as http;
 use std::sync::LazyLock;
 
@@ -13,8 +13,8 @@ static CORE: LazyLock<Bridge<App>> = LazyLock::new(|| Bridge::new(Core::new()));
 
 #[cfg(not(target_family = "wasm"))]
 const _: () = assert!(
-    uniffi::check_compatible_version("0.29.2"),
-    "please use uniffi v0.29.2"
+    uniffi::check_compatible_version("0.29.3"),
+    "please use uniffi v0.29.3"
 );
 
 #[cfg(not(target_family = "wasm"))]
