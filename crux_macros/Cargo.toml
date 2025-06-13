@@ -1,13 +1,13 @@
 [package]
 name = "crux_macros"
-description = "Macros for use with crux_core"
 version = "0.6.1"
 authors.workspace = true
-repository.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+description = "Macros for use with crux_core"
+repository.workspace = true
 license.workspace = true
 keywords.workspace = true
-rust-version.workspace = true
 
 [lib]
 proc-macro = true
@@ -15,14 +15,15 @@ proc-macro = true
 [dependencies]
 darling = "0.20.11"
 heck = "0.5.0"
-proc-macro-error = "1.0.4"
 proc-macro2 = "1.0.95"
+proc-macro-error = "1.0.4"
 quote = "1.0.40"
-syn = "2.0.102"
+syn = "2.0.103"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
+facet = "0.27.14"
 insta = "1.43.1"
 prettyplease = "0.2"
 serde = { version = "1.0.219", features = ["derive"] }

@@ -1,20 +1,14 @@
 [package]
 name = "crux_core"
-description = "Cross-platform app development in Rust"
 version = "0.15.0"
-readme = "README.md"
 authors.workspace = true
-repository.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+description = "Cross-platform app development in Rust"
+readme = "README.md"
+repository.workspace = true
 license.workspace = true
 keywords.workspace = true
-rust-version.workspace = true
-
-[features]
-default = ["bindgen"]
-cli = ["dep:crux_cli"]
-typegen = ["dep:serde-generate", "dep:serde-reflection"]
-bindgen = ["dep:uniffi"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -23,25 +17,21 @@ all-features = true
 anyhow.workspace = true
 bincode = "=1.3.3"
 crossbeam-channel = "0.5.15"
+crux_cli = { version = "0.1.0", optional = true, path = "../crux_cli" }
 crux_macros = { version = "0.6.1", path = "../crux_macros" }
-crux_cli = { version = "0.1.0", path = "../crux_cli", optional = true }
 erased-serde = "0.4"
+facet.workspace = true
+facet_generate = "=0.2.0"
 futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.140"
-slab = "0.4.9"
-thiserror = "2.0.12"
-
 # we can't update serde_generate and serde_reflection yet,
 # as it appears that our undiscovered types aren't registering properly.
 # So I've left them 0.26.0 and 0.4.0 respectively.
 serde-generate = { version = "=0.26.0", optional = true }
 serde-reflection = { version = "=0.4.0", optional = true }
-
-[target.'cfg(target_family = "wasm")'.dependencies]
-wasm-bindgen = "0.2.100"
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
+slab = "0.4.10"
+thiserror = "2.0.12"
 uniffi = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -51,8 +41,21 @@ async-channel = "2.3"
 crux_http = { path = "../crux_http" }
 crux_time = { path = "../crux_time" }
 doctest_support = { path = "../doctest_support" }
+rand = "0.9"
 serde = { version = "1.0.219", features = ["derive"] }
 static_assertions = "1.1"
-rand = "0.9"
 url = "2.5.4"
-uuid = { version = "1.17.0", features = ["v4", "serde"] }
+uuid = { version = "1.17.0", features = ["serde", "v4"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+uniffi.workspace = true
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+wasm-bindgen = "0.2.100"
+
+[features]
+default = ["bindgen"]
+bindgen = ["dep:uniffi"]
+cli = ["dep:crux_cli"]
+facet_typegen = ["dep:serde-generate", "dep:serde-reflection"]
+typegen = ["dep:serde-generate", "dep:serde-reflection"]

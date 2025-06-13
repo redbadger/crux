@@ -1,6 +1,6 @@
-use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
-use proc_macro2::TokenStream;
+use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
 use proc_macro_error::OptionExt;
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
@@ -40,19 +40,41 @@ impl ToTokens for ExportStructReceiver {
             .filter(|e| !e.skip)
             .collect();
 
-        let mut output_type_exports = Vec::new();
+        let mut output_type_exports_serde = Vec::new();
+        let mut output_type_exports_facet = Vec::new();
 
         for (capability, event) in fields.iter().map(|f| split_on_generic(&f.ty)) {
-            output_type_exports.push(quote! {
+            output_type_exports_serde.push(quote! {
                 <#capability::<#event> as Capability<#event>>::Operation::register_types(generator)?;
+            });
+            output_type_exports_facet.push(quote! {
+                <#capability::<#event> as Capability<#event>>::Operation::register_types_facet(generator)?;
             });
         }
 
         tokens.extend(quote! {
-            impl ::crux_core::typegen::Export for #effect_name {
-                fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
+            #[cfg(feature = "typegen")]
+            impl ::crux_core::type_generation::serde::Export for #effect_name {
+                fn register_types(
+                    generator: &mut ::crux_core::type_generation::serde::TypeGen
+                ) -> ::crux_core::type_generation::serde::Result {
                     use ::crux_core::capability::{Capability, Operation};
-                    #(#output_type_exports)*
+                    #(#output_type_exports_serde)*
+                    generator.register_type::<#ffi_export_name>()?;
+                    generator.register_type::<::crux_core::bridge::Request<#ffi_export_name>>()?;
+
+                    Ok(())
+                }
+            }
+
+            #[cfg(feature = "facet_typegen")]
+            #[cfg(not(feature = "typegen"))]
+            impl ::crux_core::type_generation::facet::Export for #effect_name {
+                fn register_types(
+                    generator: &mut ::crux_core::type_generation::facet::TypeGen
+                ) -> ::crux_core::type_generation::facet::Result {
+                    use ::crux_core::capability::{Capability, Operation};
+                    #(#output_type_exports_facet)*
                     generator.register_type::<#ffi_export_name>()?;
                     generator.register_type::<::crux_core::bridge::Request<#ffi_export_name>>()?;
 
@@ -104,7 +126,7 @@ fn split_on_generic(ty: &Type) -> (Type, Type) {
 mod tests {
     use darling::{FromDeriveInput, FromMeta};
     use quote::quote;
-    use syn::{parse_str, Type};
+    use syn::{Type, parse_str};
 
     use crate::export::ExportStructReceiver;
 
@@ -123,11 +145,12 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r"
-        impl ::crux_core::typegen::Export for Effect {
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
+        #[cfg(feature = "typegen")]
+        impl ::crux_core::type_generation::serde::Export for Effect {
             fn register_types(
-                generator: &mut ::crux_core::typegen::TypeGen,
-            ) -> ::crux_core::typegen::Result {
+                generator: &mut ::crux_core::type_generation::serde::TypeGen,
+            ) -> ::crux_core::type_generation::serde::Result {
                 use ::crux_core::capability::{Capability, Operation};
                 <Render<Event> as Capability<Event>>::Operation::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
@@ -135,7 +158,22 @@ mod tests {
                 Ok(())
             }
         }
-        ");
+        #[cfg(feature = "facet_typegen")]
+        #[cfg(not(feature = "typegen"))]
+        impl ::crux_core::type_generation::facet::Export for Effect {
+            fn register_types(
+                generator: &mut ::crux_core::type_generation::facet::TypeGen,
+            ) -> ::crux_core::type_generation::facet::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                <Render<
+                    Event,
+                > as Capability<Event>>::Operation::register_types_facet(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "#);
     }
 
     #[test]
@@ -170,11 +208,12 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r"
-        impl ::crux_core::typegen::Export for Effect {
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
+        #[cfg(feature = "typegen")]
+        impl ::crux_core::type_generation::serde::Export for Effect {
             fn register_types(
-                generator: &mut ::crux_core::typegen::TypeGen,
-            ) -> ::crux_core::typegen::Result {
+                generator: &mut ::crux_core::type_generation::serde::TypeGen,
+            ) -> ::crux_core::type_generation::serde::Result {
                 use ::crux_core::capability::{Capability, Operation};
                 <crux_http::Http<
                     MyEvent,
@@ -191,7 +230,31 @@ mod tests {
                 Ok(())
             }
         }
-        ");
+        #[cfg(feature = "facet_typegen")]
+        #[cfg(not(feature = "typegen"))]
+        impl ::crux_core::type_generation::facet::Export for Effect {
+            fn register_types(
+                generator: &mut ::crux_core::type_generation::facet::TypeGen,
+            ) -> ::crux_core::type_generation::facet::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                <crux_http::Http<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                <KeyValue<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                <Platform<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                <Render<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "#);
     }
 
     #[test]
@@ -211,11 +274,12 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r"
-        impl ::crux_core::typegen::Export for Effect {
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
+        #[cfg(feature = "typegen")]
+        impl ::crux_core::type_generation::serde::Export for Effect {
             fn register_types(
-                generator: &mut ::crux_core::typegen::TypeGen,
-            ) -> ::crux_core::typegen::Result {
+                generator: &mut ::crux_core::type_generation::serde::TypeGen,
+            ) -> ::crux_core::type_generation::serde::Result {
                 use ::crux_core::capability::{Capability, Operation};
                 <crux_http::Http<
                     MyEvent,
@@ -233,7 +297,34 @@ mod tests {
                 Ok(())
             }
         }
-        ");
+        #[cfg(feature = "facet_typegen")]
+        #[cfg(not(feature = "typegen"))]
+        impl ::crux_core::type_generation::facet::Export for Effect {
+            fn register_types(
+                generator: &mut ::crux_core::type_generation::facet::TypeGen,
+            ) -> ::crux_core::type_generation::facet::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                <crux_http::Http<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                <KeyValue<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                <Platform<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                <Render<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                <Time<
+                    MyEvent,
+                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
+                generator.register_type::<EffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "#);
     }
 
     #[test]
@@ -251,11 +342,12 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r"
-        impl ::crux_core::typegen::Export for MyEffect {
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
+        #[cfg(feature = "typegen")]
+        impl ::crux_core::type_generation::serde::Export for MyEffect {
             fn register_types(
-                generator: &mut ::crux_core::typegen::TypeGen,
-            ) -> ::crux_core::typegen::Result {
+                generator: &mut ::crux_core::type_generation::serde::TypeGen,
+            ) -> ::crux_core::type_generation::serde::Result {
                 use ::crux_core::capability::{Capability, Operation};
                 <Render<Event> as Capability<Event>>::Operation::register_types(generator)?;
                 generator.register_type::<MyEffectFfi>()?;
@@ -263,7 +355,22 @@ mod tests {
                 Ok(())
             }
         }
-        ");
+        #[cfg(feature = "facet_typegen")]
+        #[cfg(not(feature = "typegen"))]
+        impl ::crux_core::type_generation::facet::Export for MyEffect {
+            fn register_types(
+                generator: &mut ::crux_core::type_generation::facet::TypeGen,
+            ) -> ::crux_core::type_generation::facet::Result {
+                use ::crux_core::capability::{Capability, Operation};
+                <Render<
+                    Event,
+                > as Capability<Event>>::Operation::register_types_facet(generator)?;
+                generator.register_type::<MyEffectFfi>()?;
+                generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
+                Ok(())
+            }
+        }
+        "#);
     }
 
     fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
