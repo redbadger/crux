@@ -1,8 +1,12 @@
 [package]
 name = "shared"
 version = "0.1.0"
-edition = "2024"
-rust-version = "1.87"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]

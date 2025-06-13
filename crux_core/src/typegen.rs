@@ -118,7 +118,7 @@
 //! ```
 
 use serde::Deserialize;
-use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
+use serde_generate::{Encoding, SourceInstaller, java, swift, typescript};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -155,7 +155,9 @@ pub enum TypeGenError {
     Generation(String),
     #[error("error writing generated types")]
     Io(#[from] std::io::Error),
-    #[error("`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation")]
+    #[error(
+        "`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation"
+    )]
     PnpmNotFound(#[source] std::io::Error),
 }
 
@@ -665,8 +667,8 @@ mod tests {
 
     #[test]
     fn test_typegen_for_uuid_without_samples() {
-        let mut gen = TypeGen::new();
-        let result = gen.register_type::<MyUuid>();
+        let mut typegen = TypeGen::new();
+        let result = typegen.register_type::<MyUuid>();
 
         assert!(
             result.is_err(),
@@ -677,13 +679,13 @@ mod tests {
     #[test]
     fn test_typegen_for_uuid_with_samples() {
         let sample_data = vec![MyUuid(Uuid::new_v4())];
-        let mut gen = TypeGen::new();
-        let result = gen.register_type_with_samples(sample_data);
+        let mut typegen = TypeGen::new();
+        let result = typegen.register_type_with_samples(sample_data);
         dbg!(&result);
         assert!(result.is_ok(), "typegen failed for Uuid, with samples");
 
         let sample_data = vec!["a".to_string(), "b".to_string()];
-        let result = gen.register_type_with_samples(sample_data);
+        let result = typegen.register_type_with_samples(sample_data);
         assert!(result.is_ok(), "typegen failed with second sample data set");
     }
 }
