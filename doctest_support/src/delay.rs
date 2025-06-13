@@ -1,10 +1,12 @@
 use std::future::Future;
 
-use crux_core::{capability::Operation, command::RequestBuilder, Command, Request};
+use crux_core::{Command, Request, capability::Operation, command::RequestBuilder};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 // ANCHOR: operation
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum DelayOperation {
     GetRandom(usize, usize),
     Delay(usize),

@@ -2,12 +2,13 @@
 
 use std::future::Future;
 
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    Capability, Command, Request,
     capability::{CapabilityContext, Operation},
     command::NotificationBuilder,
-    Capability, Command, Request,
 };
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
@@ -30,7 +31,7 @@ impl<Ev> Clone for Render<Ev> {
 }
 
 /// The single operation `Render` implements.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct RenderOperation;
 
 impl Operation for RenderOperation {
@@ -93,8 +94,8 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 ///# });
 /// ```
 #[must_use]
-pub fn render_builder<Effect, Event>(
-) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
+pub fn render_builder<Effect, Event>()
+-> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where
     Effect: From<Request<RenderOperation>> + Send + 'static,
     Event: Send + 'static,

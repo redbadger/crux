@@ -121,7 +121,9 @@ impl Operation for KeyValueOperation {
     type Output = KeyValueResult;
 
     #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+    fn register_types(
+        generator: &mut crux_core::type_generation::serde::TypeGen,
+    ) -> crux_core::type_generation::serde::Result {
         generator.register_type::<KeyValueResponse>()?;
         generator.register_type::<KeyValueError>()?;
         generator.register_type::<Value>()?;

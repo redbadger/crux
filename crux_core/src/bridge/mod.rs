@@ -3,10 +3,11 @@ mod request_serde;
 
 use bincode::{DefaultOptions, Options};
 use erased_serde::{Error as SerdeError, Serialize as _};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{core::ResolveError, App, Core};
+use crate::{App, Core, core::ResolveError};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
@@ -18,7 +19,7 @@ pub use request_serde::ResolveSerialized;
 /// to the [`App::update`] function (wrapped in the event provided to the capability originating the effect).
 // used in docs/internals/bridge.md
 // ANCHOR: request
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Facet, Debug, Serialize, Deserialize)]
 pub struct Request<Eff>
 where
     Eff: Serialize,
