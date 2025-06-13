@@ -3,12 +3,15 @@ mod shared {
     use std::time::SystemTime;
 
     use chrono::{DateTime, Utc};
-    use crux_core::macros::effect;
-    use crux_core::render::{render, RenderOperation};
-    use crux_core::Command;
-    use crux_time::command::Time;
-    use crux_time::command::{TimerHandle, TimerOutcome};
-    use crux_time::TimeRequest;
+    use crux_core::{
+        Command,
+        macros::effect,
+        render::{RenderOperation, render},
+    };
+    use crux_time::{
+        TimeRequest,
+        command::{Time, TimerHandle, TimerOutcome},
+    };
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -177,8 +180,8 @@ mod tests {
         shell::run,
     };
     use chrono::{DateTime, Utc};
-    use crux_core::{testing::AppTester, Core};
-    use crux_time::{command::TimerOutcome, protocol::TimeResponse, TimeRequest};
+    use crux_core::{Core, testing::AppTester};
+    use crux_time::{TimeRequest, command::TimerOutcome, protocol::TimeResponse};
 
     #[test]
     pub fn test_time() {
