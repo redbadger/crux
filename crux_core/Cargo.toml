@@ -11,8 +11,10 @@ keywords.workspace = true
 rust-version.workspace = true
 
 [features]
+default = ["bindgen"]
 cli = ["dep:crux_cli"]
 typegen = ["dep:serde-generate", "dep:serde-reflection"]
+bindgen = ["dep:uniffi"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -40,7 +42,7 @@ serde-reflection = { version = "=0.4.0", optional = true }
 wasm-bindgen = "0.2.100"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-uniffi.workspace = true
+uniffi = { workspace = true, optional = true }
 
 [dev-dependencies]
 assert_fs = "1.1.3"
