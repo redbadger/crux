@@ -27,3 +27,6 @@ facet = "0.27.14"
 insta = "1.43.1"
 prettyplease = "0.2"
 serde = { version = "1.0.219", features = ["derive"] }
+
+[features]
+facet_typegen = []
