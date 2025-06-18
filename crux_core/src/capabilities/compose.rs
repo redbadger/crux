@@ -1,8 +1,8 @@
 //! A capability which can spawn tasks which orchestrate across other capabilities. This
 //! is useful for orchestrating a number of different effects into a single transaction.
 
-use crate::capability::{CapabilityContext, Never};
 use crate::Capability;
+use crate::capability::{CapabilityContext, Never};
 use futures::Future;
 
 /// Compose capability can be used to orchestrate effects into a single transaction.

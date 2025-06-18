@@ -85,20 +85,24 @@ where
 #[derive(Copy, Clone)]
 pub struct Next<'a> {
     next_middleware: &'a [Arc<dyn Middleware>],
-    endpoint: &'a (dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
-             + Send
-             + Sync
-             + 'static),
+    endpoint: &'a (
+            dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
+                + Send
+                + Sync
+                + 'static
+        ),
 }
 
 impl<'a> Next<'a> {
     /// Create a new instance
     pub fn new(
         next: &'a [Arc<dyn Middleware>],
-        endpoint: &'a (dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
-                 + Send
-                 + Sync
-                 + 'static),
+        endpoint: &'a (
+                dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
+                    + Send
+                    + Sync
+                    + 'static
+            ),
     ) -> Self {
         Self {
             endpoint,

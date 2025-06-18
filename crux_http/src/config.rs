@@ -3,8 +3,8 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use http_types::{
-    headers::{HeaderName, HeaderValues, ToHeaderValues},
     Url,
+    headers::{HeaderName, HeaderValues, ToHeaderValues},
 };
 
 use crate::Result;

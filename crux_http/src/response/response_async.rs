@@ -1,7 +1,6 @@
 use http_types::{
-    self,
+    self, Body, Mime, StatusCode, Version,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-    Body, Mime, StatusCode, Version,
 };
 
 use futures_util::io::AsyncRead;

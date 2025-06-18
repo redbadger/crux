@@ -5,9 +5,9 @@ use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
 use http_types::{
+    Body, Method, Mime, Url,
     convert::DeserializeOwned,
     headers::{HeaderName, ToHeaderValues},
-    Body, Method, Mime, Url,
 };
 use serde::Serialize;
 

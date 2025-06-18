@@ -4,7 +4,7 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use futures::{future, Future, FutureExt};
+use futures::{Future, FutureExt, future};
 use slab::Slab;
 
 type BoxFuture = future::BoxFuture<'static, ()>;

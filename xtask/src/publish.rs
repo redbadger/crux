@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use cargo_metadata::{Metadata, MetadataCommand};
 use clap::Args;
 use xshell::cmd;

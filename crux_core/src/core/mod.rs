@@ -9,7 +9,7 @@ pub use request::Request;
 pub use resolve::{RequestHandle, Resolvable, ResolveError};
 
 use crate::capability::CommandSpawner;
-use crate::capability::{self, channel::Receiver, ProtoContext, QueuingExecutor};
+use crate::capability::{self, ProtoContext, QueuingExecutor, channel::Receiver};
 use crate::{App, WithContext};
 
 /// The Crux core. Create an instance of this type with your App type as the type parameter

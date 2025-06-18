@@ -3,7 +3,7 @@
 use crux_core::testing::AppTester;
 
 mod app {
-    use crux_core::{macros::Effect, render::render, App, Command};
+    use crux_core::{App, Command, macros::Effect, render::render};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]

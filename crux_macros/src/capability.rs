@@ -1,6 +1,6 @@
-use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
+use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
+use proc_macro_error::{OptionExt, abort};
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, OptionExt};
 use quote::quote;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
 
@@ -90,7 +90,7 @@ fn first_generic_parameter(ty: &Type) -> Type {
 mod tests {
     use darling::{FromDeriveInput, FromMeta};
     use quote::quote;
-    use syn::{parse_str, Type};
+    use syn::{Type, parse_str};
 
     use crate::capability::CapabilityStructReceiver;
 

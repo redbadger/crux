@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use log::info;
-use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
+use serde_generate::{Encoding, SourceInstaller, java, swift, typescript};
 use serde_reflection::Registry;
 use std::{
     fs::{self, File},
@@ -17,7 +17,9 @@ pub enum TypeGenError {
     Generation(String),
     #[error("error writing generated types")]
     Io(#[from] std::io::Error),
-    #[error("`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation")]
+    #[error(
+        "`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation"
+    )]
     PnpmNotFound(#[source] std::io::Error),
 }
 
