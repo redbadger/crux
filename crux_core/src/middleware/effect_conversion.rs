@@ -51,12 +51,9 @@ where
     where
         F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
     {
-        Self::map_effects(
-            self.next
-                .update(event, move |effects: Vec<Next::Effect>| {
-                    effect_callback(Self::map_effects(effects))
-                }),
-        )
+        Self::map_effects(self.next.update(event, move |effects: Vec<Next::Effect>| {
+            effect_callback(Self::map_effects(effects))
+        }))
     }
 
     fn resolve<Op, F>(
