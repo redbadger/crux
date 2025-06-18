@@ -157,7 +157,7 @@ mod capability {
 
 mod app {
     use crux_core::App;
-    use crux_core::{macros::Effect, Command};
+    use crux_core::{Command, macros::Effect};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]

@@ -14,8 +14,8 @@ use std::{
     process::Command,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
-use guppy::{graph::PackageGraph, MetadataCommand};
+use anyhow::{Context, Result, anyhow, bail};
+use guppy::{MetadataCommand, graph::PackageGraph};
 use log::debug;
 use rustdoc_types::Crate;
 

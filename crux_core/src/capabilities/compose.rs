@@ -9,8 +9,8 @@
 
 #[expect(deprecated)]
 use crate::{
-    capability::{CapabilityContext, Never},
     Capability,
+    capability::{CapabilityContext, Never},
 };
 use futures::Future;
 

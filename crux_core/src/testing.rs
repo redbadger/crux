@@ -5,11 +5,11 @@ use std::{collections::VecDeque, sync::Arc};
 #[expect(deprecated)]
 use crate::WithContext;
 use crate::{
-    capability::{
-        channel::Receiver, executor_and_spawner, CommandSpawner, Operation, ProtoContext,
-        QueuingExecutor,
-    },
     Command, Request, Resolvable,
+    capability::{
+        CommandSpawner, Operation, ProtoContext, QueuingExecutor, channel::Receiver,
+        executor_and_spawner,
+    },
 };
 
 /// `AppTester` is a simplified execution environment for Crux apps for use in

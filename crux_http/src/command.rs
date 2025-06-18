@@ -18,19 +18,19 @@
 
 use std::{fmt, future::Future, marker::PhantomData};
 
-use crux_core::{command, Command};
+use crux_core::{Command, command};
 use http_types::{
+    Body, Method, Mime, Url,
     convert::DeserializeOwned,
     headers::{HeaderName, ToHeaderValues},
-    Body, Method, Mime, Url,
 };
 use serde::Serialize;
 
 use crate::{
+    HttpError, Request, Response,
     expect::{ExpectBytes, ExpectJson, ExpectString, ResponseExpectation},
     middleware::Middleware,
     protocol::{HttpRequest, HttpResult, ProtocolRequestBuilder},
-    HttpError, Request, Response,
 };
 
 pub struct Http<Effect, Event> {
