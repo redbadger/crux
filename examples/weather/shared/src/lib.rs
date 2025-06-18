@@ -1,6 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 
 pub mod app;
+pub mod config;
 pub mod favorites;
 pub mod location;
 pub mod weather;

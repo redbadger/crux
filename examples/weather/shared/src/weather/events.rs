@@ -1,30 +1,12 @@
 use crux_core::render::render;
 use crux_core::Command;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
+use crate::config::API_KEY;
 use crate::location::capability::{get_location, is_location_enabled, LocationResponse};
-use crate::weather::model::CurrentResponse;
+use crate::weather::model::{CurrentResponse, WEATHER_URL};
 use crate::{Effect, Event, Model};
 use crux_http::command::Http;
-
-// Todo move
-
-pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
-
-pub static API_KEY: Lazy<String> = Lazy::new(|| {
-    #[cfg(test)]
-    {
-        "test_api_key".to_string()
-    }
-    #[cfg(not(test))]
-    {
-        use std::env;
-
-        env::var("OPENWEATHER_API_KEY")
-            .expect("OPENWEATHER_API_KEY must be set in .env or environment")
-    }
-});
 
 #[derive(Serialize)]
 pub struct CurrentQueryString {
@@ -33,8 +15,6 @@ pub struct CurrentQueryString {
     pub units: &'static str,
     pub appid: String,
 }
-
-// Todo move
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum WeatherEvent {

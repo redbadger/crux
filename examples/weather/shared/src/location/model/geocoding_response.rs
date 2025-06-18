@@ -2,6 +2,8 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+pub const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
+
 #[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone)]
 pub struct LocalNames {
     pub af: Option<String>,
@@ -156,4 +158,11 @@ pub fn display_option<T: fmt::Display>(option_string: &Option<T>) -> String {
         Some(string) => string.to_string(),
         None => "None".to_string(),
     }
+}
+
+#[derive(Serialize)]
+pub struct GeocodingQueryString {
+    pub q: String,
+    pub limit: &'static str,
+    pub appid: String,
 }

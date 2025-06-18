@@ -7,6 +7,8 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
+
 #[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone)]
 pub struct Sys {
     #[serde(rename = "type")]

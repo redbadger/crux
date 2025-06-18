@@ -4,17 +4,14 @@ use crux_kv::{command::KeyValue, error::KeyValueError};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
+use crate::config::API_KEY;
+use crate::location::model::geocoding_response::{
+    GeocodingQueryString, GeocodingResponse, GEOCODING_URL,
+};
 use crate::weather::model::current_response::CurrentResponse;
-use crate::{Effect, GeocodingResponse, Workflow};
+use crate::{Effect, Workflow};
 
 const FAVORITES_KEY: &str = "favorites";
-pub const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
-#[derive(Serialize)]
-pub struct GeocodingQueryString {
-    pub q: String,
-    pub limit: &'static str,
-    pub appid: String,
-}
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
 pub struct Favorite {
@@ -99,7 +96,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
             .query(&GeocodingQueryString {
                 q: query,
                 limit: "5",
-                appid: crate::weather::events::API_KEY.clone(),
+                appid: API_KEY.clone(),
             })
             .expect("could not serialize query string")
             .build()
@@ -551,7 +548,7 @@ mod tests {
                 .query(&GeocodingQueryString {
                     q: query.to_string(),
                     limit: "5",
-                    appid: crate::weather::events::API_KEY.clone(),
+                    appid: API_KEY.clone(),
                 })
                 .expect("could not serialize query string")
                 .build()
