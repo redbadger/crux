@@ -6,7 +6,7 @@ pub mod favorites;
 pub mod location;
 pub mod weather;
 
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 
 pub use crux_core::{bridge::Bridge, Core, Request};
 
@@ -19,9 +19,7 @@ pub use location::model::*;
 
 uniffi::include_scaffolding!("shared");
 
-lazy_static! {
-    static ref CORE: Bridge<App> = Bridge::new(Core::new());
-}
+static CORE: LazyLock<Bridge<App>> = LazyLock::new(|| Bridge::new(Core::new()));
 
 #[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
 #[must_use]
