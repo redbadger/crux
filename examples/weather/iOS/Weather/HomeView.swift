@@ -1,6 +1,36 @@
 import SwiftUI
 import SharedTypes
 
+// View modifier to handle data state transitions
+private struct WeatherDataTransitionModifier: ViewModifier {
+    let weatherData: CurrentResponse?
+    let favorites: [FavoriteView]
+    @State private var previousWeatherData: CurrentResponse?
+    @State private var previousFavorites: [FavoriteView] = []
+    
+    var displayWeatherData: CurrentResponse? {
+        if let weatherData = weatherData, weatherData.main.temp.isFinite {
+            previousWeatherData = weatherData
+            previousFavorites = favorites
+            return weatherData
+        }
+        return previousWeatherData
+    }
+    
+    var displayFavorites: [FavoriteView] {
+        if let weatherData = weatherData, weatherData.main.temp.isFinite {
+            return favorites
+        }
+        return previousFavorites
+    }
+    
+    func body(content: Content) -> some View {
+        content
+            .opacity(displayWeatherData != nil ? 1 : 0)
+            .animation(.easeInOut, value: displayWeatherData != nil)
+    }
+}
+
 // HomeView is the main entry point for the weather UI.
 struct HomeView: View {
     @ObservedObject var core: Core
@@ -8,68 +38,75 @@ struct HomeView: View {
     @State private var selectedPage = 0
     
     var body: some View {
-        NavigationView {
-            VStack {
-                if case .home(let weatherData, let favorites) = core.view.workflow {
-                    if weatherData.main.temp.isNormal {
-                        TabView(selection: $selectedPage) {
-                            WeatherCard(weatherData: weatherData)
-                                .frame(width: UIScreen.main.bounds.width)
-                                .shadow(radius: 2)
-                                .tag(0)
-                            ForEach(Array(favorites.enumerated()), id: \.element.name) { idx, favorite in
-                                if let current = favorite.current {
-                                    WeatherCard(weatherData: current)
-                                        .frame(width: UIScreen.main.bounds.width)
-                                        .shadow(radius: 2)
-                                        .tag(idx + 1)
-                                }
+        Group {
+            if case .home(let weatherData, let favorites) = core.view.workflow {
+                VStack {
+                    TabView(selection: $selectedPage) {
+                        // Main weather card
+                        Group {
+                            if weatherData.main.temp.isFinite {
+                                WeatherCard(weatherData: weatherData)
+                                    .transition(.opacity)
+                            } else {
+                                LoadingCard()
                             }
                         }
-                        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-                        .frame(maxHeight: .infinity)
-                    } else {
-                        ProgressView("Loading weather data...")
-                            .padding()
+                        .frame(width: UIScreen.main.bounds.width)
+                        .tag(0)
+                        
+                        // Favorite weather cards
+                        ForEach(Array(favorites.enumerated()), id: \.element.name) { idx, favorite in
+                            Group {
+                                if let current = favorite.current {
+                                    WeatherCard(weatherData: current)
+                                        .transition(.opacity)
+                                } else {
+                                    LoadingCard()
+                                }
+                            }
+                            .frame(width: UIScreen.main.bounds.width)
+                            .tag(idx + 1)
+                        }
                     }
-                } else {
-                    Text("Not in home view")
-                        .foregroundColor(.secondary)
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
                 }
-                
-//                Button(action: {
-//                    core.update(.home(.show(51.5074, -0.1278)))
-//                }) {
-//                    HStack {
-//                        Image(systemName: "arrow.clockwise")
-//                        Text("Refresh Weather")
-//                    }
-//                    .padding(.horizontal, 20)
-//                    .padding(.vertical, 12)
-//                    .background(Color.blue)
-//                    .foregroundColor(.white)
-//                    .cornerRadius(12)
-//                }
-//                .padding(.bottom)
-            }
-            .padding(.vertical)
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        core.update(.navigate(Workflow.favorites(FavoritesState.idle)))
-                    }) {
-                        Image(systemName: "star")
+                .padding(.vertical)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                core.update(.navigate(Workflow.favorites(FavoritesState.idle)))
+                            }
+                        } label: {
+                            Image(systemName: "star")
+                        }
                     }
                 }
-            }
-            .onAppear {
-                if !hasLoadedInitialData {
-                    core.update(.home(.show))
-                    hasLoadedInitialData = true
-                }
+            } else {
+                Color.clear // Placeholder for transition
             }
         }
+        .onAppear {
+            if !hasLoadedInitialData {
+                core.update(.home(.show))
+                hasLoadedInitialData = true
+            }
+        }
+    }
+}
+
+// Loading placeholder card
+struct LoadingCard: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            ProgressView()
+            Text("Loading weather data...")
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+        .padding()
     }
 }
 
