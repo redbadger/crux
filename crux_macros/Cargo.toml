@@ -29,4 +29,4 @@ prettyplease = "0.2"
 serde = { version = "1.0.219", features = ["derive"] }
 
 [features]
-facet_typegen = []
+facet_typegen = ["crux_core/facet_typegen"]

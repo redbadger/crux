@@ -161,6 +161,7 @@ pub mod capability;
 pub mod command;
 pub mod middleware;
 pub mod testing;
+#[cfg(any(feature = "typegen", feature = "facet_typegen"))]
 pub mod type_generation;
 
 mod capabilities;
