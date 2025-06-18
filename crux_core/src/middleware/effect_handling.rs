@@ -75,7 +75,7 @@ where
     type Effect = Next::Effect;
     type ViewModel = Next::ViewModel;
 
-    fn process_event<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn update<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
         &self,
         event: Self::Event,
         effect_callback: F,
@@ -128,7 +128,7 @@ where
         let effects = self
             .inner
             .next
-            .process_event(event, move |later_effects_from_next| {
+            .update(event, move |later_effects_from_next| {
                 // Eventual route
                 Self::process_known_effects_with(
                     &inner,

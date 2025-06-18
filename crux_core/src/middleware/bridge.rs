@@ -53,7 +53,7 @@ where
         }
     }
 
-    pub fn process_event<'b>(&self, event_bytes: &'b [u8]) -> Result<Vec<u8>, BridgeError> {
+    pub fn update<'b>(&self, event_bytes: &'b [u8]) -> Result<Vec<u8>, BridgeError> {
         let mut requests_bytes = vec![];
 
         let result = {
@@ -122,7 +122,7 @@ where
                 let shell_event = erased_serde::deserialize(event_or_output)
                     .map_err(BridgeError::DeserializeEvent)?;
 
-                self.next.process_event(shell_event, effect_callback)
+                self.next.update(shell_event, effect_callback)
             }
             Some(id) => {
                 self.registry.resume(id, event_or_output)?;
@@ -143,7 +143,22 @@ where
         Ok(())
     }
 
-    pub fn view(&self) -> Result<Vec<u8>, BridgeError> {
-        todo!()
+    pub fn view(&self) -> Result<Vec<u8>, BridgeError>
+    where
+        Next::ViewModel: Serialize,
+    {
+        let mut view_bytes = vec![];
+
+        let result = {
+            let mut view_se = Format::serializer(&mut view_bytes);
+            let mut erased_view_se = <dyn erased_serde::Serializer>::erase(&mut view_se);
+
+            self.next
+                .view()
+                .erased_serialize(&mut erased_view_se)
+                .map_err(BridgeError::SerializeView)
+        };
+
+        result.map(|()| view_bytes)
     }
 }

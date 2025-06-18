@@ -56,7 +56,7 @@ pub trait Layer: Send + Sync + Sized {
     ///
     /// The expected behaviour of the callback is to process the effects like a shell would
     /// and call [`Layer::resolve`] with the output of the processing.
-    fn process_event<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
+    fn update<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
     where
         F: Fn(Vec<Self::Effect>) + Sync + Send + 'static;
 
@@ -145,7 +145,7 @@ where
     type Effect = A::Effect;
     type ViewModel = A::ViewModel;
 
-    fn process_event<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn update<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
         &self,
         event: Self::Event,
         _effect_callback: F,

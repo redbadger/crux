@@ -460,7 +460,7 @@ mod tests {
             .handle_effects_using(FakeHttpMiddleware)
             .map_effect::<NarrowEffect>();
 
-        let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
+        let effects = core.update(Event::Roll(vec![6, 10, 20]), effect_callback);
         assert!(effects.is_empty());
 
         let Ok(mut effects) = effects_rx.recv() else {
@@ -502,7 +502,7 @@ mod tests {
 
         let event: Vec<u8> = bincode::serialize(&Event::Roll(vec![6, 10, 20]))?;
 
-        let effect_bytes = core.process_event(&event)?;
+        let effect_bytes = core.update(&event)?;
         let effects: Vec<bridge::Request<BridgeEffectFfi>> = bincode::deserialize(&effect_bytes)?;
 
         assert!(effects.is_empty());
@@ -570,7 +570,7 @@ mod tests {
 
         let event = serde_json::to_vec(&Event::Roll(vec![6, 10, 20]))?;
 
-        let effects_bytes = core.process_event(&event)?;
+        let effects_bytes = core.update(&event)?;
         assert_eq!(str::from_utf8(&effects_bytes)?, "[]");
 
         let effects: Vec<bridge::Request<BridgeEffectFfi>> =

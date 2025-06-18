@@ -47,13 +47,13 @@ where
 
     type ViewModel = Next::ViewModel;
 
-    fn process_event<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
+    fn update<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
     where
         F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
     {
         Self::map_effects(
             self.next
-                .process_event(event, move |effects: Vec<Next::Effect>| {
+                .update(event, move |effects: Vec<Next::Effect>| {
                     effect_callback(Self::map_effects(effects))
                 }),
         )
