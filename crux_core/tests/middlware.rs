@@ -306,15 +306,10 @@ mod tests {
         app::{Dice, Effect, Event},
         middleware::{FakeHttpMiddleware, RemoteTriggerHttp, RngMiddleware},
     };
-    use bincode::{
-        config::{AllowTrailing, FixintEncoding, WithOtherIntEncoding, WithOtherTrailing},
-        de::read::SliceReader,
-        DefaultOptions, Options as _,
-    };
     use crossbeam_channel::RecvError;
     use crux_core::{
         bridge,
-        middleware::{FfiFormat, Layer as _},
+        middleware::{BincodeFfiFormat, FfiFormat, Layer as _},
         render::RenderOperation,
         Core,
     };
@@ -491,47 +486,6 @@ mod tests {
                 Effect::Http(http_request) => BridgeEffect::Http(http_request),
                 Effect::Random(_) => panic!("Attempted to convert Effect::Random to NarrowEffect"),
             }
-        }
-    }
-
-    struct BincodeFfiFormat;
-
-    impl BincodeFfiFormat {
-        fn bincode_options(
-        ) -> WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>
-        {
-            DefaultOptions::new()
-                .with_fixint_encoding()
-                .allow_trailing_bytes()
-        }
-    }
-
-    impl FfiFormat for BincodeFfiFormat {
-        type Serializer<'b> = bincode::Serializer<
-            &'b mut Vec<u8>,
-            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
-        >;
-        type Deserializer<'b> = bincode::Deserializer<
-            SliceReader<'b>,
-            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
-        >;
-
-        fn serializer(
-            buffer: &mut Vec<u8>,
-        ) -> bincode::Serializer<
-            &'_ mut Vec<u8>,
-            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
-        > {
-            bincode::Serializer::new(buffer, Self::bincode_options())
-        }
-
-        fn deserializer(
-            bytes: &[u8],
-        ) -> bincode::Deserializer<
-            SliceReader<'_>,
-            WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>,
-        > {
-            bincode::Deserializer::from_slice(bytes, Self::bincode_options())
         }
     }
 

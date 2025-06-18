@@ -19,10 +19,12 @@ use crate::{bridge::BridgeError, capability::Operation, App, Core, Effect, Reque
 mod bridge;
 mod effect_conversion;
 mod effect_handling;
+mod formats;
 
 pub use bridge::{Bridge, FfiFormat};
 pub use effect_conversion::MapEffectLayer;
 pub use effect_handling::{EffectMiddleware, HandleEffectLayer};
+pub use formats::BincodeFfiFormat;
 use serde::Deserialize;
 
 /// A layer in the middleware stack.
