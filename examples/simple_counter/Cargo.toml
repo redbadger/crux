@@ -4,11 +4,11 @@ resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
-edition = "2024"
+edition = "2021"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.87"
+rust-version = "1.78"
 
 [workspace.dependencies]
 anyhow = "1.0.98"
