@@ -19,12 +19,7 @@ pub use location::model::*;
 
 uniffi::include_scaffolding!("shared");
 
-static CORE: LazyLock<Bridge<App>> = LazyLock::new(|| {
-    let core = Core::new();
-    // Trigger initial weather fetch
-    core.update(Event::Home(Box::new(weather::events::WeatherEvent::Show)));
-    Bridge::new(core)
-});
+static CORE: LazyLock<Bridge<App>> = LazyLock::new(|| Bridge::new(Core::new()));
 
 #[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
 #[must_use]
