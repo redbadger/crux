@@ -3021,6 +3021,7 @@ dependencies = [
  "crux_http",
  "futures",
  "insta",
+ "js-sys",
  "serde",
  "serde_json",
  "uniffi",

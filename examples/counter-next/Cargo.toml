@@ -15,3 +15,4 @@ anyhow = "1.0.98"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 serde = "1.0.219"
+js-sys = "0.3.77"                        # FIXME: bring into crux_core, make conditional
