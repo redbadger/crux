@@ -9,7 +9,7 @@ use capability::capability_impl;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use syn::{parse_macro_input, Ident, ItemEnum};
+use syn::{Ident, ItemEnum, parse_macro_input};
 
 /// Deprecated: use the `effect` attribute macro instead.
 ///
@@ -105,7 +105,7 @@ pub fn effect_derive(input: TokenStream) -> TokenStream {
 pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Option<Ident>);
     let input = parse_macro_input!(input as ItemEnum);
-    effect::effect_impl(args, input).into()
+    effect::macro_impl::effect_impl(args, input).into()
 }
 
 #[proc_macro_derive(Export)]
