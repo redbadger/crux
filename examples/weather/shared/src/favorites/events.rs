@@ -5,31 +5,12 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::config::API_KEY;
+use crate::favorites::model::{Favorite, FavoritesState, FAVORITES_KEY};
 use crate::location::model::geocoding_response::{
     GeocodingQueryString, GeocodingResponse, GEOCODING_URL,
 };
-use crate::weather::model::current_response::CurrentResponse;
+
 use crate::{Effect, Workflow};
-
-const FAVORITES_KEY: &str = "favorites";
-
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
-pub struct Favorite {
-    pub geo: GeocodingResponse,
-    pub current: Option<CurrentResponse>,
-}
-
-impl From<GeocodingResponse> for Favorite {
-    fn from(geo: GeocodingResponse) -> Self {
-        Favorite { geo, current: None }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum FavoritesState {
-    Idle,
-    ConfirmDelete(f64, f64),
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum FavoritesEvent {
@@ -184,6 +165,7 @@ mod tests {
         weather::model::{
             current_response::{Main, Sys},
             response_elements::{Clouds, Coord, WeatherData, Wind},
+            CurrentResponse,
         },
         App, Effect, Event, GeocodingResponse, Model, SAMPLE_GEOCODING_RESPONSE,
         SAMPLE_GEOCODING_RESPONSE_JSON,

@@ -17,6 +17,46 @@ This project demonstrates a cross-platform architecture using [Crux](https://git
 - **Rust Core (shared/)**: Contains all business logic, state, and effect management using the Crux pattern.
 - **FFI Bridge (shared_types/)**: Generates type-safe bindings for Swift (and other platforms) using UniFFI and Crux typegen.
 
+## Domain-Oriented Structure
+The codebase follows a domain-oriented approach with the following key domains:
+
+### Weather Domain
+- **Purpose**: Handles weather data fetching and processing
+- **Location**: `shared/src/weather/`
+- **Components**: 
+  - `model/`: Weather data structures and response types
+  - `events.rs`: Weather-related events
+
+### Location Domain
+- **Purpose**: Manages location services and coordinates
+- **Location**: `shared/src/location/`
+- **Components**:
+  - `effect.rs`: Location service operations
+  - `model/`: Location data structures and response types
+  - `events.rs`: Location-related events
+
+### Favorites Domain
+- **Purpose**: Manages user's favorite locations
+- **Location**: `shared/src/favorites/`
+- **Components**:
+  - `model.rs`: Favorite location structures
+  - `events.rs`: Favorites management events (add, delete, list operations)
+
+## View State Management
+The app uses a workflow-based approach for managing view state and data presentation (`app.rs`):
+
+### Workflow Enum
+- Defines distinct UI states: `Home`, `Favorites`, `AddFavorite`
+- Each state corresponds to a specific view with its data requirements
+- Handles navigation between different views
+
+### ViewModel Structure
+- Segregates data based on current workflow state
+- Provides type-safe view models for each workflow variant
+- Ensures UI only receives data relevant to current view
+
+This approach maintains clean separation between domain logic and view state while providing type-safe navigation and data presentation.
+
 ## Data Flow
 1. **User interacts with UI** (e.g., opens the app, requests weather for a location).
 2. **UI sends event to Rust core** via FFI (e.g., `.update(.home(.show))`).
@@ -25,15 +65,15 @@ This project demonstrates a cross-platform architecture using [Crux](https://git
 5. **Rust core returns new state/view model** to the UI for rendering.
 
 ## Key Components
-- `shared/`: Rust crate with all app logic, state, and effect definitions (Crux pattern).
-- `shared_types/`: Rust crate for generating FFI bindings and shared types for Swift, Java, TypeScript, etc.
-- `iOS/Weather/`: SwiftUI app, integrates with Rust via generated bindings.
+- `shared/`: Rust crate with domain-organized logic, state, and effect definitions
+- `shared_types/`: Rust crate for generating FFI bindings and shared types
+- `iOS/Weather/`: SwiftUI app, integrates with Rust via generated bindings
 
 ## Effect System
 
 The app uses several cross-platform effects that are declared in Rust but implemented natively on each platform:
 
-### Location Effect (`shared/src/effects/location.rs`)
+### Location Effect (`shared/src/location/effect.rs`)
 - **Operations**: Check if location services are enabled, get current location coordinates
 - **Cross-platform**: Rust defines the interface, iOS implements using CoreLocation
 - **Features**: Permission handling, timeout management, error handling
@@ -42,6 +82,7 @@ The app uses several cross-platform effects that are declared in Rust but implem
 ### HTTP Effect 
 - **Purpose**: API calls to OpenWeatherMap for weather data and geocoding
 - **Implementation**: Native HTTP clients on each platform
+- **Configuration**: API key managed in `shared/src/config.rs`
 
 ### Key-Value Storage Effect
 - **Purpose**: Persistent storage for user favorites
@@ -56,13 +97,13 @@ The app uses several cross-platform effects that are declared in Rust but implem
 5. **UI Update**: Weather data for current location is displayed
 
 ## Notable Design Decisions
-- **Crux Pattern**: All business logic and state are in Rust, making the app portable to other platforms (Android, Web, etc.) with minimal changes.
-- **UniFFI & Crux Typegen**: Automated, type-safe FFI bindings reduce boilerplate and errors.
-- **Native Platform APIs**: Uses CoreLocation on iOS for location services, keeping platform-specific integrations idiomatic.
-- **Effect System**: Side effects (HTTP, storage, location) are declared in Rust but executed on the platform, ensuring testability and separation of concerns.
-- **Automatic Location Weather**: App intelligently fetches weather for user's current location when available and permitted.
-- **Permission Handling**: Platform-native permission flows with graceful fallbacks when location is unavailable.
-- **Testing**: Rust logic is unit tested independently of the UI; UI can be tested with Xcode tools.
+- **Domain-Oriented Structure**: Code organized by business domains for better maintainability
+- **Crux Pattern**: All business logic and state are in Rust
+- **UniFFI & Crux Typegen**: Automated, type-safe FFI bindings
+- **Centralized Configuration**: API keys and endpoints managed in `shared/src/config.rs`
+- **Native Platform APIs**: Uses CoreLocation on iOS for location services
+- **Effect System**: Side effects declared in Rust but executed on platform
+- **Testing**: Comprehensive testing at domain level
 
 ## Platform-Specific Implementation
 
@@ -74,15 +115,16 @@ The app uses several cross-platform effects that are declared in Rust but implem
 
 ## Extending to Other Platforms
 - Add a new UI (e.g., Android, Web) and generate bindings via `shared_types/`.
-- Implement location services using platform-native APIs (Android LocationManager, Web Geolocation API).
+- Implement location services using platform-native APIs.
 - Reuse the Rust core as-is, ensuring consistent logic and state across all platforms.
 
 ## Why This Architecture?
-- **Consistency**: Single source of truth for business logic across all platforms.
-- **Native Integration**: Platform-specific effects use native APIs for best user experience.
-- **Testability**: Core logic is easily unit tested in Rust, effects can be mocked.
-- **Portability**: Add new platforms with minimal effort, only implementing platform-specific effects.
-- **Maintainability**: Clear separation of concerns between business logic and platform integration.
+- **Domain Separation**: Clear boundaries between different parts of the application
+- **Consistency**: Single source of truth for business logic across all platforms
+- **Native Integration**: Platform-specific effects use native APIs for best user experience
+- **Testability**: Core logic is easily unit tested in Rust, effects can be mocked
+- **Portability**: Add new platforms with minimal effort
+- **Maintainability**: Clear separation of concerns between domains
 
 ## References
 - [Crux](https://github.com/redbadger/crux/)

@@ -1,7 +1,7 @@
 use crux_core::typegen::TypeGen;
 use crux_kv::error::KeyValueError;
 use shared::{
-    favorites::events::{FavoritesEvent, FavoritesState},
+    favorites::{events::FavoritesEvent, model::FavoritesState},
     weather::{events::WeatherEvent, model::CurrentResponse},
     App, Event, Workflow, WorkflowViewModel,
 };

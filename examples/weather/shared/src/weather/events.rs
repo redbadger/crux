@@ -144,7 +144,7 @@ mod tests {
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::{
-        favorites::events::Favorite,
+        favorites::model::Favorite,
         weather::model::current_response::{SAMPLE_CURRENT_RESPONSE, SAMPLE_CURRENT_RESPONSE_JSON},
         App, GeocodingResponse,
     };

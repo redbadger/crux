@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     favorites::{
         self,
-        events::{Favorite, FavoritesEvent, FavoritesState},
+        events::FavoritesEvent,
+        model::{Favorite, FavoritesState},
     },
     location::{
         capability::{LocationOperation, LocationResponse},
