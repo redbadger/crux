@@ -44,7 +44,7 @@ struct HomeView: View {
                     TabView(selection: $selectedPage) {
                         // Main weather card
                         Group {
-                            if weatherData.main.temp.isFinite {
+                            if weatherData.cod == 200 && weatherData.main.temp.isFinite {
                                 WeatherCard(weatherData: weatherData)
                                     .transition(.opacity)
                             } else {
@@ -86,6 +86,7 @@ struct HomeView: View {
                 Color.clear // Placeholder for transition
             }
         }
+        
         .onAppear {
             if !hasLoadedInitialData {
                 core.update(.home(.show))

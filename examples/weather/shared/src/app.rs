@@ -102,14 +102,29 @@ impl crux_core::App for App {
         model: &mut Self::Model,
         _caps: &(),
     ) -> Command<Effect, Event> {
-        match event {
+        // If this is the first update and we're on Home, trigger weather fetch
+        let cmd = match event {
             Event::Navigate(page) => {
+                let old_page = model.page.clone();
                 model.page = *page;
-                render()
+                match (&model.page, &old_page) {
+                    (Workflow::Home, _) => {
+                        render().and(Command::event(Event::Home(Box::new(WeatherEvent::Show))))
+                    }
+                    _ => render(),
+                }
             }
             Event::Home(home_event) => weather::events::update(*home_event, model),
             Event::Favorites(fav_event) => favorites::events::update(*fav_event, model)
                 .map_event(|e| Event::Favorites(Box::new(e))),
+        };
+
+        // If we haven't fetched weather data yet and we're on Home, trigger the fetch
+        if model.weather_data == CurrentResponse::default() && matches!(model.page, Workflow::Home)
+        {
+            cmd.and(Command::event(Event::Home(Box::new(WeatherEvent::Show))))
+        } else {
+            cmd
         }
     }
 

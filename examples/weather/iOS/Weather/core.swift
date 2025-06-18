@@ -47,20 +47,6 @@ class Core: ObservableObject {
         }
         
         logger.debug("Initial view state: \(String(describing: self.view))")
-        
-        // Delay the favorites restore to ensure everything is properly initialized
-        Task {
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-            self.restoreFavoritesIfNeeded()
-        }
-    }
-    
-    private func restoreFavoritesIfNeeded() {
-        guard !isInitialized else { return }
-        isInitialized = true
-        
-        logger.info("Triggering favorites restore after initialization")
-        update(.favorites(.restore))
     }
     
     func update(_ event: Event) {

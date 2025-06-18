@@ -3,6 +3,7 @@ use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
 use crate::config::API_KEY;
+use crate::favorites::events::FavoritesEvent;
 use crate::location::capability::{get_location, is_location_enabled, LocationResponse};
 use crate::weather::model::{CurrentResponse, WEATHER_URL};
 use crate::{Effect, Event, Model};
@@ -41,8 +42,12 @@ pub enum WeatherEvent {
 
 pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        WeatherEvent::Show => is_location_enabled()
-            .then_send(|result| Event::Home(Box::new(WeatherEvent::LocationEnabled(result)))),
+        WeatherEvent::Show => Command::event(Event::Favorites(Box::new(FavoritesEvent::Restore)))
+            .then(
+                is_location_enabled().then_send(|result| {
+                    Event::Home(Box::new(WeatherEvent::LocationEnabled(result)))
+                }),
+            ),
         WeatherEvent::LocationEnabled(enabled) => {
             model.location_enabled = enabled;
             if enabled {
