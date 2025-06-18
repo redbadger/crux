@@ -1,6 +1,5 @@
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{fmt, sync::LazyLock};
 
 pub const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
 
@@ -120,7 +119,7 @@ impl fmt::Display for GeocodingResponse {
     }
 }
 
-pub static SAMPLE_GEOCODING_RESPONSE: Lazy<Vec<GeocodingResponse>> = Lazy::new(|| {
+pub static SAMPLE_GEOCODING_RESPONSE: LazyLock<Vec<GeocodingResponse>> = LazyLock::new(|| {
     vec![GeocodingResponse {
         name: "Phoenix".to_string(),
         local_names: None,
@@ -131,8 +130,8 @@ pub static SAMPLE_GEOCODING_RESPONSE: Lazy<Vec<GeocodingResponse>> = Lazy::new(|
     }]
 });
 
-pub static SAMPLE_GEOCODING_RESPONSE_JSON: Lazy<String> =
-    Lazy::new(|| serde_json::to_string(&*SAMPLE_GEOCODING_RESPONSE).unwrap());
+pub static SAMPLE_GEOCODING_RESPONSE_JSON: LazyLock<String> =
+    LazyLock::new(|| serde_json::to_string(&*SAMPLE_GEOCODING_RESPONSE).unwrap());
 
 #[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone)]
 pub struct ZipCodeResponse {

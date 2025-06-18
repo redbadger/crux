@@ -1297,7 +1297,6 @@ dependencies = [
  "derive_builder",
  "insta",
  "lazy_static",
- "once_cell",
  "serde",
  "serde_json",
  "uniffi",

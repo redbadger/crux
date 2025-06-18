@@ -1,6 +1,6 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
-pub static API_KEY: Lazy<String> = Lazy::new(|| {
+pub static API_KEY: LazyLock<String> = LazyLock::new(|| {
     #[cfg(test)]
     {
         "test_api_key".to_string()

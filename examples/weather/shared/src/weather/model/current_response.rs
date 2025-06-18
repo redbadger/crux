@@ -3,9 +3,10 @@ use crate::weather::model::response_elements::Coord;
 use crate::weather::model::response_elements::WeatherData;
 use crate::weather::model::response_elements::Wind;
 use derive_builder::Builder;
-use once_cell::sync::Lazy;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::sync::LazyLock;
 
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
@@ -95,7 +96,7 @@ impl fmt::Display for CurrentResponse {
     }
 }
 
-pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> = Lazy::new(|| {
+pub static SAMPLE_CURRENT_RESPONSE: LazyLock<CurrentResponse> = LazyLock::new(|| {
     CurrentResponseBuilder::default()
         .main(Main {
             temp: 20.0,
@@ -139,5 +140,5 @@ pub static SAMPLE_CURRENT_RESPONSE: Lazy<CurrentResponse> = Lazy::new(|| {
         .expect("Failed to build sample response")
 });
 
-pub static SAMPLE_CURRENT_RESPONSE_JSON: Lazy<String> =
-    Lazy::new(|| serde_json::to_string(&*SAMPLE_CURRENT_RESPONSE).unwrap());
+pub static SAMPLE_CURRENT_RESPONSE_JSON: LazyLock<String> =
+    LazyLock::new(|| serde_json::to_string(&*SAMPLE_CURRENT_RESPONSE).unwrap());
