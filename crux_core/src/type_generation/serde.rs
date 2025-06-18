@@ -561,7 +561,7 @@ The 2 common cases are:
             .install_module(&config, registry)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let requests_path = self.extensions_path("csharp/Requests.cs");
+        let requests_path = Self::extensions_path("csharp/Requests.cs");
 
         let requests_data = fs::read_to_string(requests_path)?;
 
