@@ -103,7 +103,7 @@ impl crux_core::App for App {
         _caps: &(),
     ) -> Command<Effect, Event> {
         // If this is the first update and we're on Home, trigger weather fetch
-        let cmd = match event {
+        match event {
             Event::Navigate(page) => {
                 model.page = *page;
                 render()
@@ -111,7 +111,7 @@ impl crux_core::App for App {
             Event::Home(home_event) => weather::events::update(*home_event, model),
             Event::Favorites(fav_event) => favorites::events::update(*fav_event, model)
                 .map_event(|e| Event::Favorites(Box::new(e))),
-        };
+        }
     }
 
     fn view(&self, model: &Model) -> ViewModel {
