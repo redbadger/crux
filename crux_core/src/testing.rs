@@ -3,11 +3,11 @@ use anyhow::Result;
 use std::{collections::VecDeque, sync::Arc};
 
 use crate::{
-    capability::{
-        channel::Receiver, executor_and_spawner, CommandSpawner, Operation, ProtoContext,
-        QueuingExecutor,
-    },
     Command, Request, Resolvable, WithContext,
+    capability::{
+        CommandSpawner, Operation, ProtoContext, QueuingExecutor, channel::Receiver,
+        executor_and_spawner,
+    },
 };
 
 /// `AppTester` is a simplified execution environment for Crux apps for use in

@@ -1,6 +1,6 @@
 mod app {
-    use crux_core::render::{render, Render};
-    use crux_core::{macros::Effect, Command};
+    use crux_core::render::{Render, render};
+    use crux_core::{Command, macros::Effect};
     use crux_http::command::Http;
     use serde::{Deserialize, Serialize};
 
@@ -62,8 +62,8 @@ mod tests {
     use crate::app::EffectFfi;
 
     use super::core::Bridge;
-    use crux_core::{bridge::Request, Core};
-    use serde_json::{json, Deserializer, Value};
+    use crux_core::{Core, bridge::Request};
+    use serde_json::{Deserializer, Value, json};
 
     #[test]
     fn event_effect_loop() {

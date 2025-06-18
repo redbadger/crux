@@ -260,7 +260,7 @@ checksum = "2e6fa871e4334a622afd6bb2f611635e8083a6f5e2936c0f90f37c7ef9856298"
 dependencies = [
  "async-channel 1.9.0",
  "futures-lite 1.13.0",
- "http-types 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http-types",
  "log",
  "memchr",
  "pin-project-lite",
@@ -1048,7 +1048,7 @@ dependencies = [
  "encoding_rs",
  "facet",
  "futures-util",
- "http-types 2.12.0",
+ "http-types-red-badger-temporary-fork",
  "pin-project-lite",
  "serde",
  "serde_bytes",
@@ -1888,6 +1888,8 @@ dependencies = [
 [[package]]
 name = "facet_generate"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e56bb421bf46564134ccf73e180f38ae22d929dc226a4a46cd030b73f56fa282"
 dependencies = [
  "anyhow",
  "facet",
@@ -2994,11 +2996,12 @@ dependencies = [
 [[package]]
 name = "http-types"
 version = "2.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e9b187a72d63adbfba487f48095306ac823049cb504ee195541e91c7775f5ad"
 dependencies = [
  "anyhow",
  "async-channel 1.9.0",
  "base64 0.13.1",
- "facet",
  "futures-lite 1.13.0",
  "infer 0.2.3",
  "pin-project-lite",
@@ -3011,14 +3014,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-types"
-version = "2.12.0"
+name = "http-types-red-badger-temporary-fork"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e9b187a72d63adbfba487f48095306ac823049cb504ee195541e91c7775f5ad"
+checksum = "35d5ff8d7cf3f80d71cc473b63293e2fa25c134bc290af787472c7690ae694f8"
 dependencies = [
  "anyhow",
  "async-channel 1.9.0",
  "base64 0.13.1",
+ "facet",
  "futures-lite 1.13.0",
  "infer 0.2.3",
  "pin-project-lite",

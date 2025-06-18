@@ -16,7 +16,7 @@
 
 use crate::middleware::{Middleware, Next, Request};
 use crate::{Client, ResponseAsync, Result};
-use http_types::{headers, StatusCode, Url};
+use http_types::{StatusCode, Url, headers};
 
 // List of acceptable 300-series redirect codes.
 const REDIRECT_CODES: &[StatusCode] = &[

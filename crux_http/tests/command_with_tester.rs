@@ -2,7 +2,7 @@ mod shared {
 
     use std::{cmp::max, collections::HashMap};
 
-    use crux_core::{macros::Effect, Command};
+    use crux_core::{Command, macros::Effect};
     use crux_http::command::Http;
     use futures_util::join;
     use http_types::StatusCode;
