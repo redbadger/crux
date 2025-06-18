@@ -18,6 +18,11 @@ args = [
     "--review",
 ]
 
+[tasks.clippy]
+description = "Run clippy with pedantic lints enabled"
+command = "cargo"
+args = ["clippy", "--", "--no-deps", "-Dclippy::pedantic", "-Dwarnings"]
+
 [tasks.wasm-build]
 description = "Build the WebAssembly package for web deployment using wasm-pack"
 command = "wasm-pack"
@@ -31,4 +36,4 @@ alias = "insta-test"
 # Overrides the default build task to run wasm-build 
 [tasks.build]
 description = "Build the project by first building the WebAssembly package"
-dependencies = ["wasm-build"]
+dependencies = ["clippy", "wasm-build"]
