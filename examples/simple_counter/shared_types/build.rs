@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
 
     typegen.typescript("shared_types", output_root.join("typescript"))?;
 
-    gen.csharp("SharedTypes", output_root.join("csharp"))?;
+    typegen.csharp("SharedTypes", output_root.join("csharp"))?;
 
     Ok(())
 }
