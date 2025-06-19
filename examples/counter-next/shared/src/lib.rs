@@ -2,17 +2,15 @@ mod app;
 mod capabilities;
 
 pub use crux_core::Core;
-use crux_core::bridge::{Bridge, EffectId};
+use crux_core::bridge::EffectId;
 use crux_core::middleware::{self, BincodeFfiFormat, Layer as _};
 
 pub use crux_http as http;
 
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 pub use app::*;
 pub use capabilities::sse;
-
-static CORE: LazyLock<Bridge<App>> = LazyLock::new(|| Bridge::new(Core::new()));
 
 #[cfg(not(target_family = "wasm"))]
 const _: () = assert!(
@@ -22,44 +20,6 @@ const _: () = assert!(
 
 #[cfg(not(target_family = "wasm"))]
 uniffi::setup_scaffolding!();
-
-/// Ask the core to process an event
-/// # Panics
-/// If the core fails to process the event
-#[cfg_attr(not(target_family = "wasm"), uniffi::export)]
-#[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-pub fn process_event(data: &[u8]) -> Vec<u8> {
-    match CORE.process_event(data) {
-        Ok(effects) => effects,
-        Err(e) => panic!("{e}"),
-    }
-}
-
-/// Ask the core to handle a response
-/// # Panics
-/// If the core fails to handle the response
-#[cfg_attr(not(target_family = "wasm"), uniffi::export)]
-#[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-pub fn handle_response(id: u32, data: &[u8]) -> Vec<u8> {
-    match CORE.handle_response(id, data) {
-        Ok(effects) => effects,
-        Err(e) => panic!("{e}"),
-    }
-}
-
-/// Ask the core to render the view
-/// # Panics
-/// If the view cannot be serialized
-#[cfg_attr(not(target_family = "wasm"), uniffi::export)]
-#[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-pub fn view() -> Vec<u8> {
-    match CORE.view() {
-        Ok(view) => view,
-        Err(e) => panic!("{e}"),
-    }
-}
-
-// ---- new FFI ---
 
 /// For the Shell to provide
 /// TODO: Move to Crux
