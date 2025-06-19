@@ -5,6 +5,7 @@ import {
   EventVariantStartWatch,
   EventVariantDecrement,
   EventVariantIncrement,
+  EventVariantRandom,
 } from "shared_types/types/shared_types";
 import { Core } from "../core";
 
@@ -39,19 +40,29 @@ export default function Index() {
       </section>
       <section className="container has-text-centered">
         <p className="is-size-5">{view.text}</p>
-        <div className="buttons section is-centered">
-          <button
-            className="button is-primary is-warning"
-            onClick={() => core.current?.update(new EventVariantDecrement())}
-          >
-            {"Decrement"}
-          </button>
-          <button
-            className="button is-primary is-danger"
-            onClick={() => core.current?.update(new EventVariantIncrement())}
-          >
-            {"Increment"}
-          </button>
+        <div className="section">
+          <p className="buttons is-centered">
+            <button
+              className="button is-primary is-warning"
+              onClick={() => core.current?.update(new EventVariantDecrement())}
+            >
+              {"Decrement"}
+            </button>
+            <button
+              className="button is-primary is-danger"
+              onClick={() => core.current?.update(new EventVariantIncrement())}
+            >
+              {"Increment"}
+            </button>
+          </p>
+          <p className="buttons is-centered">
+            <button
+              className="button is-primary info "
+              onClick={() => core.current?.update(new EventVariantRandom())}
+            >
+              {"I'm feeling lucky"}
+            </button>
+          </p>
         </div>
       </section>
     </main>

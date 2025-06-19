@@ -46,7 +46,9 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            view = try! .bincodeDeserialize(input: [UInt8](core.view()))
+            DispatchQueue.main.async {
+                self.view = try! .bincodeDeserialize(input: [UInt8](self.core.view()))
+            }
         case let .http(req):
             Task {
                 let response = try! await requestHttp(req).get()
@@ -74,6 +76,9 @@ class Core: ObservableObject {
                     }
                 }
             }
+        case .random(_):
+            // FIXME: we should not have this branch, but typegen doesn't help us
+            fatalError("Got a random request!")
         }
     }
 }

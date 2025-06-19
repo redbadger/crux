@@ -13,6 +13,7 @@ import {
   EffectVariantHttp,
   EffectVariantServerSentEvents,
   Request,
+  EffectVariantRandom,
 } from "shared_types/types/shared_types";
 import {
   BincodeSerializer,
@@ -21,6 +22,7 @@ import {
 
 import { request as http } from "./http";
 import { request as sse } from "./sse";
+import { request as random } from "./random";
 
 type Response = HttpResponse | SseResponse;
 
@@ -41,8 +43,6 @@ export class Core {
   }
 
   update(event: Event) {
-    console.log("event", event);
-
     const serializer = new BincodeSerializer();
     event.serialize(serializer);
 
@@ -55,8 +55,6 @@ export class Core {
   }
 
   async resolve(id: number, effect: Effect) {
-    console.log("effect", effect);
-
     switch (effect.constructor) {
       case EffectVariantRender: {
         this.callback(deserializeView(this.core.view()));
@@ -73,6 +71,12 @@ export class Core {
         for await (const response of sse(request)) {
           this.respond(id, response);
         }
+        break;
+      }
+      case EffectVariantRandom: {
+        const request = (effect as EffectVariantRandom).value;
+        const response = random(request);
+        this.respond(id, response);
         break;
       }
     }
