@@ -9,7 +9,7 @@ mod app {
     #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct RandomNumberRequest(pub usize); // request a random number from 1 to N, inclusive
 
-    #[derive(Debug, PartialEq, Eq, Deserialize)]
+    #[derive(Facet, Debug, PartialEq, Eq, Deserialize)]
     pub struct RandomNumber(pub usize);
 
     impl Operation for RandomNumberRequest {

@@ -18,12 +18,12 @@ heck = "0.5.0"
 proc-macro2 = "1.0.95"
 proc-macro-error = "1.0.4"
 quote = "1.0.40"
-syn = "2.0.103"
+syn = "2.0.104"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
-facet = "0.27.14"
+facet = "0.27.15"
 insta = "1.43.1"
 prettyplease = "0.2"
 serde = { version = "1.0.219", features = ["derive"] }
