@@ -116,9 +116,11 @@
 //! ```
 
 use facet::Facet;
+use facet_generate::{
+    serde_generate::{CodeGeneratorConfig, Encoding, SourceInstaller, java, swift, typescript},
+    serde_reflection::Registry,
+};
 use serde::Deserialize;
-use serde_generate::{CodeGeneratorConfig, Encoding, SourceInstaller, java, swift, typescript};
-use serde_reflection::Registry;
 use std::{
     fs::{self, File},
     io::Write,
@@ -425,7 +427,7 @@ impl TypeGen {
         let config = CodeGeneratorConfig::new(module_name.to_string())
             .with_encodings(vec![Encoding::Bincode]);
 
-        let generator = serde_generate::typescript::CodeGenerator::new(&config);
+        let generator = typescript::CodeGenerator::new(&config);
         let mut source = Vec::new();
         generator.output(&mut source, registry)?;
 
