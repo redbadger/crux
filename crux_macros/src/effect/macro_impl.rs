@@ -28,7 +28,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             #[derive(::serde::Serialize, ::serde::Deserialize)]
             #[serde(rename = #enum_ident_str)]
             #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-            #[cfg_attr(feature = "facet_typegen", facet(rename = #enum_ident_str))]
+            #[cfg_attr(feature = "facet_typegen", facet(name = #enum_ident_str))]
             #[cfg_attr(feature = "facet_typegen", repr(C))]
             #ffi_enum
         }

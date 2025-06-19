@@ -491,7 +491,6 @@ dependencies = [
  "crux_macros",
  "erased-serde",
  "facet",
- "facet_generate",
  "futures",
  "serde",
  "serde-generate",
@@ -1121,17 +1120,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unsynn",
-]
-
-[[package]]
-name = "facet_generate"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e56bb421bf46564134ccf73e180f38ae22d929dc226a4a46cd030b73f56fa282"
-dependencies = [
- "anyhow",
- "facet",
- "serde-reflection",
 ]
 
 [[package]]
