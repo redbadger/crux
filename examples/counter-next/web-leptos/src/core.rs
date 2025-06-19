@@ -3,7 +3,7 @@ use std::rc::Rc;
 use futures_util::TryStreamExt;
 use leptos::{prelude::*, task};
 
-use shared::{App, Effect, Event, RandomNumber, ViewModel};
+use shared::{App, Effect, Event, RandomNumber, RandomNumberRequest, ViewModel};
 
 use crate::{http, sse};
 
@@ -64,8 +64,12 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
         }
         Effect::Random(mut request) => {
             // FIXME: implement actual random number generation
+            let RandomNumberRequest(min, max) = request.operation;
+            let number = js_sys::Math::random() * (max as f64 - min as f64) + min as f64;
+            let number = number.floor() as isize;
+
             for effect in core
-                .resolve(&mut request, RandomNumber(2))
+                .resolve(&mut request, RandomNumber(number))
                 .expect("shoudl resolve")
             {
                 process_effect(&core, effect, render);
