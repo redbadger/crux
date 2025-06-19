@@ -52,6 +52,7 @@ pub mod uniffi_ffi {
     }
 
     #[uniffi::export]
+    #[allow(clippy::missing_panics_doc)]
     impl CoreFFI {
         #[uniffi::constructor]
         pub fn new(shell: Arc<dyn CruxShell>) -> Self {
@@ -66,6 +67,7 @@ pub mod uniffi_ffi {
             Self { core }
         }
 
+        #[must_use]
         pub fn update(&self, data: &[u8]) -> Vec<u8> {
             match self.core.update(data) {
                 Ok(effects) => effects,
@@ -73,6 +75,7 @@ pub mod uniffi_ffi {
             }
         }
 
+        #[must_use]
         pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
             match self.core.resolve(EffectId(effect_id), data) {
                 Ok(effects) => effects,
@@ -80,6 +83,7 @@ pub mod uniffi_ffi {
             }
         }
 
+        #[must_use]
         pub fn view(&self) -> Vec<u8> {
             match self.core.view() {
                 Ok(view) => view,

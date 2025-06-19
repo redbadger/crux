@@ -116,7 +116,7 @@ impl crux_core::App for App {
                         base.join("/inc").unwrap()
                     };
 
-                    let n = change.abs() as usize;
+                    let n = change.unsigned_abs();
 
                     Command::new(|ctx| async move {
                         let futures = (0..n).map(|_| {

@@ -65,14 +65,16 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
         Effect::Random(mut request) => {
             // FIXME: implement actual random number generation
             let RandomNumberRequest(min, max) = request.operation;
+            #[allow(clippy::cast_precision_loss)]
             let number = js_sys::Math::random() * (max as f64 - min as f64) + min as f64;
+            #[allow(clippy::cast_possible_truncation)]
             let number = number.floor() as isize;
 
             for effect in core
                 .resolve(&mut request, RandomNumber(number))
                 .expect("shoudl resolve")
             {
-                process_effect(&core, effect, render);
+                process_effect(core, effect, render);
             }
         }
     }

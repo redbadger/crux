@@ -11,6 +11,7 @@ use rand::{
 
 use crate::capabilities::{RandomNumber, RandomNumberRequest};
 
+#[allow(clippy::type_complexity)]
 pub struct RngMiddleware {
     jobs_tx: Sender<(RandomNumberRequest, Box<dyn FnOnce(RandomNumber) + Send>)>,
 }
@@ -22,11 +23,13 @@ impl RngMiddleware {
 
         // Persistent background worker
         spawn(move || {
-            let mut os_rng = OsRng::default();
+            let mut os_rng = OsRng;
             let mut rng = StdRng::seed_from_u64(os_rng.try_next_u64().expect("could not seed RNG"));
 
             while let Ok((RandomNumberRequest(from, to), callback)) = jobs_rx.recv() {
+                #[allow(clippy::cast_sign_loss)]
                 let top = (to - from) as usize;
+                #[allow(clippy::cast_possible_wrap)]
                 let out = rng.random_range(0..top) as isize + from;
 
                 callback(RandomNumber(out));
