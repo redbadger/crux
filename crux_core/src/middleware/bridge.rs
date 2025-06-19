@@ -53,7 +53,12 @@ where
         }
     }
 
-    pub fn update<'b>(&self, event_bytes: &'b [u8]) -> Result<Vec<u8>, BridgeError> {
+    /// Send a serialized event to the core
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`BridgeError`] when any of the (de)serialization fails
+    pub fn update(&self, event_bytes: &[u8]) -> Result<Vec<u8>, BridgeError> {
         let mut requests_bytes = vec![];
 
         let result = {
@@ -70,6 +75,11 @@ where
         result.map(|()| requests_bytes)
     }
 
+    /// Resolve a requested effect, providing the output to the core
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`BridgeError`] when the effect fails to resolve, or any of the (de)serialization fails.
     pub fn resolve(&self, id: EffectId, output: &[u8]) -> Result<Vec<u8>, BridgeError> {
         let mut requests_bytes = vec![];
 
@@ -143,6 +153,11 @@ where
         Ok(())
     }
 
+    /// Get the latest view model
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`BridgeError`] when any of the (de)serialization fails
     pub fn view(&self) -> Result<Vec<u8>, BridgeError>
     where
         Next::ViewModel: Serialize,

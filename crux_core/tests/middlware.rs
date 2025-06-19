@@ -99,7 +99,7 @@ mod app {
                             }
                         }
                         Roll::Complete(_) | Roll::NotStarted => {}
-                    };
+                    }
 
                     match &model.roll {
                         Roll::NotStarted => Command::done(),
@@ -323,7 +323,7 @@ mod tests {
 
         let core = Core::<Dice>::new().handle_effects_using(RngMiddleware::new());
 
-        let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
+        let effects = core.update(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
 
         let Ok(mut effects) = effects_rx.recv() else {
@@ -343,7 +343,7 @@ mod tests {
 
         let core = Core::<Dice>::new().handle_effects_using(RngMiddleware::new());
 
-        let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
+        let effects = core.update(Event::Roll(vec![6, 10, 20]), effect_callback);
         assert!(effects.is_empty());
 
         let Ok(mut effects) = effects_rx.recv() else {
@@ -353,7 +353,7 @@ mod tests {
         let http_request = effects.remove(0).into_http().unwrap().operation;
 
         assert_eq!(http_request.url, "http://dice-api.example.com/publish");
-        assert_eq!(String::from_utf8(http_request.body).unwrap(), "[6,10,20]")
+        assert_eq!(String::from_utf8(http_request.body).unwrap(), "[6,10,20]");
     }
 
     #[test]
@@ -366,7 +366,7 @@ mod tests {
             .handle_effects_using(RngMiddleware::new())
             .handle_effects_using(FakeHttpMiddleware);
 
-        let effects = core.process_event(Event::Roll(vec![6, 10, 20]), effect_callback);
+        let effects = core.update(Event::Roll(vec![6, 10, 20]), effect_callback);
         assert!(effects.is_empty());
 
         let Ok(mut effects) = effects_rx.recv() else {
@@ -389,7 +389,7 @@ mod tests {
             .handle_effects_using(RemoteTriggerHttp::new(remote_rx))
             .handle_effects_using(RngMiddleware::new());
 
-        let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
+        let effects = core.update(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
 
         // Unblock HTTP
@@ -416,7 +416,7 @@ mod tests {
             .handle_effects_using(RemoteTriggerHttp::new(remote_rx))
             .handle_effects_using(RngMiddleware::new());
 
-        let effects = core.process_event(Event::Roll(vec![6]), effect_callback);
+        let effects = core.update(Event::Roll(vec![6]), effect_callback);
         assert!(effects.is_empty());
 
         // Give worker threads a chance to proceed
@@ -502,8 +502,8 @@ mod tests {
 
         let event: Vec<u8> = bincode::serialize(&Event::Roll(vec![6, 10, 20]))?;
 
-        let effect_bytes = core.update(&event)?;
-        let effects: Vec<bridge::Request<BridgeEffectFfi>> = bincode::deserialize(&effect_bytes)?;
+        let effects_bytes = core.update(&event)?;
+        let effects: Vec<bridge::Request<BridgeEffectFfi>> = bincode::deserialize(&effects_bytes)?;
 
         assert!(effects.is_empty());
 
@@ -525,9 +525,9 @@ mod tests {
         let response = HttpResult::Ok(HttpResponse::status(201).build());
         let response_bytes = bincode::serialize(&response)?;
 
-        let effect_bytes = core.resolve(effect_id, &response_bytes)?;
+        let effects_bytes = core.resolve(effect_id, &response_bytes)?;
         let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
-            bincode::deserialize(&effect_bytes)?;
+            bincode::deserialize(&effects_bytes)?;
 
         let bridge::Request {
             effect: BridgeEffectFfi::Render(render_operation),

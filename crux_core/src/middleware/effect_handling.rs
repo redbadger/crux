@@ -31,6 +31,11 @@ where
     ///
     /// The implementation should return `Ok(())` if the conversion succeds, and call the `resolve_callback`
     /// with the output later on. If the effect fails to convert, it should be returned wrapped in `Err(_)`.
+    ///
+    /// # Errors
+    ///
+    /// The expected error type is the same as the input Effect type, allowing the conversion to be attempted
+    /// non-destructively.
     fn try_process_effect_with(
         &self,
         effect: Effect,
@@ -80,7 +85,7 @@ where
         event: Self::Event,
         effect_callback: F,
     ) -> Vec<Self::Effect> {
-        self.process_event(event, effect_callback)
+        self.update(event, effect_callback)
     }
 
     fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
@@ -116,7 +121,7 @@ where
         }
     }
 
-    pub fn process_event(
+    fn update(
         &self,
         event: Next::Event,
         return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
@@ -130,18 +135,14 @@ where
             .next
             .update(event, move |later_effects_from_next| {
                 // Eventual route
-                Self::process_known_effects_with(
-                    &inner,
-                    later_effects_from_next,
-                    return_effects.clone(),
-                );
+                Self::process_known_effects_with(&inner, later_effects_from_next, &return_effects);
             });
 
         // Immediate route
-        Self::process_known_effects(&Arc::downgrade(&self.inner), effects, return_effects_copy)
+        Self::process_known_effects(&Arc::downgrade(&self.inner), effects, &return_effects_copy)
     }
 
-    pub fn resolve<Op: Operation>(
+    fn resolve<Op: Operation>(
         &self,
         request: &mut Request<Op>,
         result: Op::Output,
@@ -155,22 +156,18 @@ where
             .inner
             .next
             .resolve(request, result, move |later_effects_from_next| {
-                Self::process_known_effects_with(
-                    &inner,
-                    later_effects_from_next,
-                    return_effects.clone(),
-                )
+                Self::process_known_effects_with(&inner, later_effects_from_next, &return_effects);
             })?;
 
         // Immediate route
         Ok(Self::process_known_effects(
             &Arc::downgrade(&self.inner),
             effects,
-            return_effects_copy,
+            &return_effects_copy,
         ))
     }
 
-    pub fn view(&self) -> Next::ViewModel {
+    fn view(&self) -> Next::ViewModel {
         self.inner.next.view()
     }
 
@@ -187,21 +184,17 @@ where
             .next
             .process_tasks(move |later_effects_from_next| {
                 // Eventual route
-                Self::process_known_effects_with(
-                    &inner,
-                    later_effects_from_next,
-                    return_effects.clone(),
-                );
+                Self::process_known_effects_with(&inner, later_effects_from_next, &return_effects);
             });
 
         // Immediate route
-        Self::process_known_effects(&Arc::downgrade(&self.inner), effects, return_effects_copy)
+        Self::process_known_effects(&Arc::downgrade(&self.inner), effects, &return_effects_copy)
     }
 
     fn process_known_effects(
         inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
         effects: Vec<Next::Effect>,
-        return_effects: Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
+        return_effects: &Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
     ) -> Vec<Next::Effect> {
         effects
             .into_iter()
@@ -232,7 +225,7 @@ where
                                         Self::process_known_effects_with(
                                             &future_inner,
                                             eventual_effects,
-                                            return_effects.clone(),
+                                            &return_effects,
                                         );
                                     }
                                 })
@@ -240,8 +233,8 @@ where
                             Self::process_known_effects_with(
                                 &inner,
                                 immediate_effects,
-                                return_effects,
-                            )
+                                &return_effects,
+                            );
                         }
                     } // TODO: handle/propagate resolve error?
                 };
@@ -265,12 +258,12 @@ where
     fn process_known_effects_with(
         inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
         effects: Vec<<Next as Layer>::Effect>,
-        return_effects: Arc<impl Fn(Vec<<Next as Layer>::Effect>) + Send + Sync + 'static>,
+        return_effects: &Arc<impl Fn(Vec<<Next as Layer>::Effect>) + Send + Sync + 'static>,
     ) {
-        let unknown_effects = Self::process_known_effects(inner, effects, return_effects.clone());
+        let unknown_effects = Self::process_known_effects(inner, effects, return_effects);
 
         if !unknown_effects.is_empty() {
-            return_effects(unknown_effects)
+            return_effects(unknown_effects);
         }
     }
 }

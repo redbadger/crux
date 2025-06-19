@@ -34,7 +34,7 @@ use serde::Deserialize;
 ///
 /// This is the lower-level of the middleware traits. You might want to implement this
 /// for middlware which filters or transforms events or your view model, with awareness
-/// of your app's Event and ViewModel types.
+/// of your app's Event and `ViewModel` types.
 ///
 /// If you want to build a reusable effect-handling middleware, see [`EffectMiddleware`].
 pub trait Layer: Send + Sync + Sized {
@@ -42,7 +42,7 @@ pub trait Layer: Send + Sync + Sized {
     type Event;
     /// Effect type returned by this layer
     type Effect;
-    /// ViewModel returned by this layer
+    /// `ViewModel` returned by this layer
     type ViewModel;
 
     /// Process event from the Shell. Compared to [`Core::process_event`] this expects an
@@ -71,6 +71,12 @@ pub trait Layer: Send + Sync + Sized {
     ///
     /// The expected behaviour of the callback is to process the effects like a shell would
     /// and call [`Layer::resolve`] with the output of the processing.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ResolveError` if the request fails to resolve due to a type mismatch, or isn't
+    /// expected to be resolved (either it was never expected to be resolved, or it has already
+    /// been resolved)
     fn resolve<Op, F>(
         &self,
         request: &mut Request<Op>,
