@@ -5,10 +5,14 @@ use crux_core::{
     render::{RenderOperation, render},
 };
 use crux_http::{command::Http, protocol::HttpRequest};
+use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::sse::{self, SseRequest};
+use crate::{
+    capabilities::RandomNumberRequest,
+    sse::{self, SseRequest},
+};
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
@@ -38,6 +42,7 @@ pub enum Event {
     Get,
     Increment,
     Decrement,
+    Random,
     StartWatch,
 
     // events local to the core
@@ -45,6 +50,8 @@ pub enum Event {
     Set(crux_http::Result<crux_http::Response<Count>>),
     #[serde(skip)]
     Update(Count),
+    #[serde(skip)]
+    UpdateBy(isize),
 }
 
 #[effect]
@@ -52,6 +59,7 @@ pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
     ServerSentEvents(SseRequest),
+    Random(RandomNumberRequest),
 }
 
 #[derive(Default)]
@@ -86,6 +94,54 @@ impl crux_core::App for App {
                 model.count = count;
                 render()
             }
+            Event::UpdateBy(change) => {
+                model.count = Count {
+                    value: model.count.value + change,
+                    updated_at: None,
+                };
+
+                if change == 0 {
+                    return render();
+                }
+
+                let call_api = {
+                    // Don't look at this too closely.
+                    // The API doesn't support adjusting by a delta, so we just call it
+                    // several times. That's why the range is hardcoded. Don't @ me
+                    let base = Url::parse(API_URL).unwrap();
+
+                    let url = if change < 0 {
+                        base.join("/dec").unwrap()
+                    } else {
+                        base.join("/inc").unwrap()
+                    };
+
+                    let n = change.abs() as usize;
+
+                    Command::new(|ctx| async move {
+                        let futures = (0..n).map(|_| {
+                            Http::post(url.clone())
+                                .expect_json::<Count>()
+                                .build()
+                                .into_future(ctx.clone())
+                        });
+
+                        let result: Result<Vec<crux_http::Response<Count>>, crux_http::HttpError> =
+                            join_all(futures).await.into_iter().collect();
+
+                        let latest = result.map(|counts| {
+                            counts
+                                .into_iter()
+                                .max_by_key(|c| c.body().unwrap().updated_at.unwrap())
+                                .unwrap()
+                        });
+
+                        ctx.send_event(Event::Set(latest));
+                    })
+                };
+
+                render().and(call_api)
+            }
             Event::Increment => {
                 // optimistic update
                 model.count = Count {
@@ -116,6 +172,9 @@ impl crux_core::App for App {
 
                 render().and(call_api)
             }
+            Event::Random => Command::request_from_shell(RandomNumberRequest(-5, 5))
+                .map(|out| out.0)
+                .then_send(Event::UpdateBy),
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
@@ -142,7 +201,11 @@ mod tests {
     use chrono::{TimeZone, Utc};
 
     use super::{App, Event, Model};
-    use crate::{Count, Effect, capabilities::sse::SseRequest, sse::SseResponse};
+    use crate::{
+        Count, Effect,
+        capabilities::{RandomNumber, RandomNumberRequest, sse::SseRequest},
+        sse::SseResponse,
+    };
 
     use crux_core::{App as _, assert_effect};
     use crux_http::{
@@ -436,5 +499,70 @@ mod tests {
                 updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
             })
         );
+    }
+
+    #[test]
+    fn random_change() {
+        let app = App;
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Random, &mut model, &());
+
+        // the app should request a random number from the web API
+        let mut request = cmd.effects().next().unwrap().expect_random();
+
+        assert_eq!(request.operation, RandomNumberRequest(-5, 5));
+        request.resolve(RandomNumber(-2)).unwrap();
+
+        // And start an UpdateBy the number
+
+        let event = cmd.events().next().unwrap();
+        assert_eq!(event, Event::UpdateBy(-2));
+
+        let mut cmd = app.update(event, &mut model, &());
+
+        // we should now see two decrement http requests
+
+        cmd.effects().next().unwrap().expect_render();
+        let mut request_one = cmd.effects().next().unwrap().expect_http();
+        let mut request_two = cmd.effects().next().unwrap().expect_http();
+        assert_eq!(
+            &request_one.operation,
+            &HttpRequest::post("https://crux-counter.fly.dev/dec").build()
+        );
+        assert_eq!(
+            &request_two.operation,
+            &HttpRequest::post("https://crux-counter.fly.dev/dec").build()
+        );
+
+        request_one
+            .resolve(HttpResult::Ok(
+                HttpResponse::ok()
+                    .body(r#"{ "value": 7, "updated_at": 1672531200000 }"#)
+                    .build(),
+            ))
+            .expect("should resolve");
+        request_two
+            .resolve(HttpResult::Ok(
+                HttpResponse::ok()
+                    .body(r#"{ "value": 9, "updated_at": 1672531200001 }"#) // this is the latest
+                    .build(),
+            ))
+            .expect("should resolve");
+
+        // And once we process the event train
+
+        let event = cmd.events().next().unwrap();
+        let mut cmd = app.update(event, &mut model, &());
+
+        let event = cmd.events().next().unwrap();
+        let mut cmd = app.update(event, &mut model, &());
+
+        cmd.effects().next().unwrap().expect_render();
+        assert!(cmd.is_done());
+
+        // The latest count wins
+
+        assert_eq!(model.count.value, 9);
     }
 }
