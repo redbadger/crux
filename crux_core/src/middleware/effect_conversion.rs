@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{capability::Operation, Request, ResolveError};
+use crate::{Request, ResolveError, capability::Operation};
 
 use super::Layer;
 
