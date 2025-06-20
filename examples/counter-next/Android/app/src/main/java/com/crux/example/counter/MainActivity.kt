@@ -75,6 +75,13 @@ fun View(core: Core = viewModel()) {
                             )
             ) { Text(text = "Increment", color = Color.White) }
         }
+        Button(
+            onClick = { coroutineScope.launch { core.update(Event.Random()) } },
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = Color.hsl(276F, 0.60F, 0.42F)
+                )
+        ) { Text(text = "I'm feeling lucky", color = Color.White) }
     }
 }
 

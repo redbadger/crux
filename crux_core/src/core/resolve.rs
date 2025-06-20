@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::bridge::EffectId;
+
 // used in docs/internals/runtime.md
 // ANCHOR: resolve
 type ResolveOnce<Out> = Box<dyn FnOnce(Out) + Send>;
@@ -50,4 +52,6 @@ pub enum ResolveError {
     Never,
     #[error("Attempted to resolve a request that has concluded.")]
     FinishedMany,
+    #[error("Request with {0:?} not found.")]
+    NotFound(EffectId), // FIXME: since it uses EffectId, should ResolveError be defined further up the module tree?
 }

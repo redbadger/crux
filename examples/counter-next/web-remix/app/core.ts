@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { process_event, handle_response, view } from "shared";
+import { CoreFFI } from "shared";
 import type {
   Effect,
   Event,
@@ -13,6 +13,7 @@ import {
   EffectVariantHttp,
   EffectVariantServerSentEvents,
   Request,
+  EffectVariantRandom,
 } from "shared_types/types/shared_types";
 import {
   BincodeSerializer,
@@ -21,67 +22,76 @@ import {
 
 import { request as http } from "./http";
 import { request as sse } from "./sse";
+import { request as random } from "./random";
 
 type Response = HttpResponse | SseResponse;
 
-export function update(
-  event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>
-) {
-  console.log("event", event);
+export class Core {
+  core: CoreFFI;
+  callback: Dispatch<SetStateAction<ViewModel>>;
 
-  const serializer = new BincodeSerializer();
-  event.serialize(serializer);
+  constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
+    this.callback = callback;
 
-  const effects = process_event(serializer.getBytes());
-
-  const requests = deserializeRequests(effects);
-  for (const { id, effect } of requests) {
-    processEffect(id, effect, callback);
-  }
-}
-
-async function processEffect(
-  id: number,
-  effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>
-) {
-  console.log("effect", effect);
-
-  switch (effect.constructor) {
-    case EffectVariantRender: {
-      callback(deserializeView(view()));
-      break;
-    }
-    case EffectVariantHttp: {
-      const request = (effect as EffectVariantHttp).value;
-      const response = await http(request);
-      respond(id, response, callback);
-      break;
-    }
-    case EffectVariantServerSentEvents: {
-      const request = (effect as EffectVariantServerSentEvents).value;
-      for await (const response of sse(request)) {
-        respond(id, response, callback);
+    const self = this;
+    this.core = new CoreFFI((effects: Uint8Array) => {
+      const requests = deserializeRequests(effects);
+      for (const { id, effect } of requests) {
+        self.resolve(id, effect);
       }
-      break;
+    });
+  }
+
+  update(event: Event) {
+    const serializer = new BincodeSerializer();
+    event.serialize(serializer);
+
+    const effects = this.core.update(serializer.getBytes());
+
+    const requests = deserializeRequests(effects);
+    for (const { id, effect } of requests) {
+      this.resolve(id, effect);
     }
   }
-}
 
-function respond(
-  id: number,
-  response: Response,
-  callback: Dispatch<SetStateAction<ViewModel>>
-) {
-  const serializer = new BincodeSerializer();
-  response.serialize(serializer);
+  async resolve(id: number, effect: Effect) {
+    switch (effect.constructor) {
+      case EffectVariantRender: {
+        this.callback(deserializeView(this.core.view()));
+        break;
+      }
+      case EffectVariantHttp: {
+        const request = (effect as EffectVariantHttp).value;
+        const response = await http(request);
+        this.respond(id, response);
+        break;
+      }
+      case EffectVariantServerSentEvents: {
+        const request = (effect as EffectVariantServerSentEvents).value;
+        for await (const response of sse(request)) {
+          this.respond(id, response);
+        }
+        break;
+      }
+      case EffectVariantRandom: {
+        const request = (effect as EffectVariantRandom).value;
+        const response = random(request);
+        this.respond(id, response);
+        break;
+      }
+    }
+  }
 
-  const effects = handle_response(id, serializer.getBytes());
+  respond(id: number, response: Response) {
+    const serializer = new BincodeSerializer();
+    response.serialize(serializer);
 
-  const requests = deserializeRequests(effects);
-  for (const { id, effect } of requests) {
-    processEffect(id, effect, callback);
+    const effects = this.core.resolve(id, serializer.getBytes());
+
+    const requests = deserializeRequests(effects);
+    for (const { id, effect } of requests) {
+      this.resolve(id, effect);
+    }
   }
 }
 
