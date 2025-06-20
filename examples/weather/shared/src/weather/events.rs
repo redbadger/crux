@@ -20,7 +20,10 @@ pub struct CurrentQueryString {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum WeatherEvent {
     Show,
+
+    #[serde(skip)]
     LocationEnabled(bool),
+    #[serde(skip)]
     LocationFetched(Option<LocationResponse>),
 
     // Events related to fetching weather data
@@ -98,14 +101,15 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Event> 
             }
         }
         WeatherEvent::FetchFavorites => {
-            // Create a sequence of commands to fetch weather for each favorite
-            let mut cmd = Command::done();
-
-            for favorite in &model.favorites {
-                cmd = cmd.and(Command::event(Event::Home(Box::new(
-                    WeatherEvent::FetchFavorite(favorite.geo.lat, favorite.geo.lon),
-                ))));
-            }
+            let cmd = model
+                .favorites
+                .iter()
+                .map(|f| {
+                    Command::event(Event::Home(Box::new(WeatherEvent::FetchFavorite(
+                        f.geo.lat, f.geo.lon,
+                    ))))
+                })
+                .collect();
 
             cmd
         }

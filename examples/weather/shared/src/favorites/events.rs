@@ -167,8 +167,7 @@ mod tests {
             response_elements::{Clouds, Coord, WeatherData, Wind},
             CurrentResponse,
         },
-        App, Effect, Event, GeocodingResponse, Model, SAMPLE_GEOCODING_RESPONSE,
-        SAMPLE_GEOCODING_RESPONSE_JSON,
+        App, Effect, Event, GeocodingResponse, Model,
     };
 
     // Helper to create a test favorite
@@ -184,6 +183,21 @@ mod tests {
             },
             current: None,
         }
+    }
+
+    fn sample_geocoding_response() -> Vec<GeocodingResponse> {
+        vec![GeocodingResponse {
+            name: "Phoenix".to_string(),
+            local_names: None,
+            lat: 33.456_789,
+            lon: -112.037_222,
+            country: "US".to_string(),
+            state: Some("Arizona".to_string()),
+        }]
+    }
+
+    fn sample_geocoding_response_json() -> String {
+        serde_json::to_string(&sample_geocoding_response()).unwrap()
     }
 
     #[test]
@@ -540,7 +554,7 @@ mod tests {
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(SAMPLE_GEOCODING_RESPONSE_JSON.as_bytes())
+                    .body(sample_geocoding_response_json().as_bytes())
                     .build(),
             ))
             .unwrap();
@@ -557,7 +571,7 @@ mod tests {
         assert_effect!(cmd, Effect::Render(_));
         assert_eq!(
             model.search_results,
-            Some(SAMPLE_GEOCODING_RESPONSE.clone())
+            Some(sample_geocoding_response().clone())
         );
         insta::assert_yaml_snapshot!(model.search_results);
     }

@@ -48,7 +48,6 @@ pub struct Model {
     pub weather_data: CurrentResponse,
     pub page: Workflow,
     pub favorites: Vec<Favorite>,
-    pub show_add_modal: bool,
     pub search_results: Option<Vec<GeocodingResponse>>,
     pub location_enabled: bool,
     pub last_location: Option<LocationResponse>,

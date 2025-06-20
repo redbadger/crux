@@ -11,9 +11,6 @@ use std::sync::LazyLock;
 pub use crux_core::{bridge::Bridge, Core, Request};
 
 pub use app::*;
-pub use location::model::geocoding_response::{
-    SAMPLE_GEOCODING_RESPONSE, SAMPLE_GEOCODING_RESPONSE_JSON,
-};
 pub use location::model::*;
 // TODO hide this plumbing
 
