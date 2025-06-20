@@ -32,7 +32,6 @@ pub mod uniffi_ffi {
     }
 
     /// For the Shell to provide
-    /// TODO: Move to Crux
     #[uniffi::export(with_foreign)]
     pub trait CruxShell: Send + Sync {
         /// Called when any effects resulting from an asynchronous process

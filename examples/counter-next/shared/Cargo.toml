@@ -31,7 +31,7 @@ rand = { version = "0.9.1", features = ["os_rng"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 wasm-bindgen = "0.2.100"
-js-sys = { workspace = true } # FIXME: should come via crux_core, conditionally
+js-sys = "0.3.77"
 
 [dev-dependencies]
 insta = { version = "1.43.1", features = ["yaml"] }
