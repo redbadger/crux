@@ -72,7 +72,7 @@ pub enum WorkflowViewModel {
     },
     ConfirmDeleteFavorite {
         lat: f64,
-        lng: f64,
+        lon: f64,
         favorites: Vec<FavoriteView>,
     },
 }
@@ -131,10 +131,10 @@ impl crux_core::App for App {
                 favorites,
             },
             Workflow::Favorites(FavoritesState::Idle) => WorkflowViewModel::Favorites { favorites },
-            Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lng)) => {
+            Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lon)) => {
                 WorkflowViewModel::ConfirmDeleteFavorite {
                     lat: *lat,
-                    lng: *lng,
+                    lon: *lon,
                     favorites,
                 }
             }

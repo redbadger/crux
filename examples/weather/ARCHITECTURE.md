@@ -44,7 +44,7 @@ The app uses a workflow-based approach for managing view state and data presenta
 
 ### Workflow Enum
 - Defines distinct UI states: `Home`, `Favorites(FavoritesState)`, `AddFavorite`
-- `FavoritesState` includes `Idle` and `ConfirmDelete(lat, lng)` for delete confirmation
+- `FavoritesState` includes `Idle` and `ConfirmDelete(lat, lon)` for delete confirmation
 - Each state corresponds to a specific view with its data requirements
 - Handles navigation between different views
 

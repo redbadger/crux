@@ -19,9 +19,9 @@ struct FavoritesView: View {
                     switch core.view.workflow {
                     case .favorites(let favorites):
                         favoritesList(favorites)
-                    case .confirmDeleteFavorite(let lat, let lng, let favorites):
+                    case .confirmDeleteFavorite(let lat, let lon, let favorites):
                         favoritesList(favorites)
-                            .overlay(deleteConfirmationOverlay(lat: lat, lng: lng))
+                            .overlay(deleteConfirmationOverlay(lat: lat, lon: lon))
                     default:
                         Spacer()
                         Text("No favorites yet")
@@ -66,11 +66,11 @@ struct FavoritesView: View {
         }
     }
     
-    private func deleteConfirmationOverlay(lat: Double, lng: Double) -> some View {
+    private func deleteConfirmationOverlay(lat: Double, lon: Double) -> some View {
         ZStack {
             Color.black.opacity(0.4)
                 .ignoresSafeArea()
-            DeleteConfirmationView(lat: lat, lng: lng, core: core)
+            DeleteConfirmationView(lat: lat, lon: lon, core: core)
         }
     }
 }
@@ -92,15 +92,7 @@ struct FavoriteCard: View {
                 Spacer()
                 
                 Button(action: {
-                    let geo = GeocodingResponse(
-                        name: favorite.name,
-                        local_names: nil,
-                        lat: favorite.lat,
-                        lon: favorite.lon,
-                        country: "",
-                        state: nil
-                    )
-                    core.update(.favorites(.deletePressed(Favorite(geo: geo, current: nil))))
+                    core.update(.favorites(.deletePressed(Coord(lat: favorite.lat, lon: favorite.lon))))
                 }) {
                     Image(systemName: "trash")
                         .foregroundColor(.red)
@@ -118,7 +110,7 @@ struct FavoriteCard: View {
 
 struct DeleteConfirmationView: View {
     let lat: Double
-    let lng: Double
+    let lon: Double
     let core: Core
     
     var body: some View {

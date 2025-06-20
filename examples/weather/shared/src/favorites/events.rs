@@ -10,12 +10,13 @@ use crate::location::model::geocoding_response::{
     GeocodingQueryString, GeocodingResponse, GEOCODING_URL,
 };
 
+use crate::weather::model::Coord;
 use crate::{Effect, Workflow};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum FavoritesEvent {
     // Workflow - Favorites view
-    DeletePressed(Box<Favorite>),
+    DeletePressed(Coord),
     DeleteConfirmed,
     DeleteCancelled,
 
@@ -37,18 +38,15 @@ pub enum FavoritesEvent {
 
 pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, FavoritesEvent> {
     match event {
-        FavoritesEvent::DeletePressed(favorite) => {
-            model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(
-                favorite.geo.lat,
-                favorite.geo.lon,
-            ));
+        FavoritesEvent::DeletePressed(Coord { lat, lon }) => {
+            model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lon));
             render()
         }
 
         FavoritesEvent::DeleteConfirmed => {
-            if let Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lng)) = model.page {
+            if let Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lon)) = model.page {
                 if let Some(index) = model.favorites.iter().position(|f| {
-                    f.geo.lat.to_bits() == lat.to_bits() && f.geo.lon.to_bits() == lng.to_bits()
+                    f.geo.lat.to_bits() == lat.to_bits() && f.geo.lon.to_bits() == lon.to_bits()
                 }) {
                     model.favorites.remove(index);
                     model.page = Workflow::Favorites(FavoritesState::Idle);
@@ -287,7 +285,10 @@ mod tests {
         };
 
         let _ = update(
-            FavoritesEvent::DeletePressed(Box::new(favorite.clone())),
+            FavoritesEvent::DeletePressed(Coord {
+                lat: favorite.geo.lat,
+                lon: favorite.geo.lon,
+            }),
             &mut model,
         );
 
@@ -353,10 +354,10 @@ mod tests {
             }),
         };
 
-        let latlng = (favorite.geo.lat, favorite.geo.lon);
+        let latlon = (favorite.geo.lat, favorite.geo.lon);
 
         model.favorites.push(favorite.clone());
-        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(latlng.0, latlng.1));
+        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(latlon.0, latlon.1));
 
         // First command from DeleteConfirmed
         let mut cmd = app.update(

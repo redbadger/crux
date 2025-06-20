@@ -239,8 +239,8 @@ mod tests {
         let app = App;
         let mut model = Model::default();
 
-        let lat_lng = (33.456_789, 112.037_222);
-        let event = Event::Home(Box::new(WeatherEvent::Fetch(lat_lng.0, lat_lng.1)));
+        let lat_lon = (33.456_789, 112.037_222);
+        let event = Event::Home(Box::new(WeatherEvent::Fetch(lat_lon.0, lat_lon.1)));
 
         let mut cmd = app.update(event, &mut model, &());
 
@@ -250,8 +250,8 @@ mod tests {
             &request.operation,
             &HttpRequest::get(WEATHER_URL)
                 .query(&CurrentQueryString {
-                    lat: lat_lng.0.to_string(),
-                    lon: lat_lng.1.to_string(),
+                    lat: lat_lon.0.to_string(),
+                    lon: lat_lon.1.to_string(),
                     units: "metric",
                     appid: API_KEY.clone(),
                 })
@@ -291,8 +291,8 @@ mod tests {
         // Add a favorite
         model.favorites.push(test_favorite());
 
-        let lat_lng = (33.456_789, 112.037_222);
-        let event = Event::Home(Box::new(WeatherEvent::Fetch(lat_lng.0, lat_lng.1)));
+        let lat_lon = (33.456_789, 112.037_222);
+        let event = Event::Home(Box::new(WeatherEvent::Fetch(lat_lon.0, lat_lon.1)));
 
         let mut cmd = app.update(event, &mut model, &());
 
@@ -304,8 +304,8 @@ mod tests {
             &request.operation,
             &HttpRequest::get(WEATHER_URL)
                 .query(&CurrentQueryString {
-                    lat: lat_lng.0.to_string(),
-                    lon: lat_lng.1.to_string(),
+                    lat: lat_lon.0.to_string(),
+                    lon: lat_lon.1.to_string(),
                     units: "metric",
                     appid: API_KEY.clone(),
                 })
@@ -384,8 +384,8 @@ mod tests {
         // Add a favorite
         model.favorites.push(test_favorite());
 
-        let lat_lng = (33.456_789, -112.037_222);
-        let event = Event::Home(Box::new(WeatherEvent::FetchFavorite(lat_lng.0, lat_lng.1)));
+        let lat_lon = (33.456_789, -112.037_222);
+        let event = Event::Home(Box::new(WeatherEvent::FetchFavorite(lat_lon.0, lat_lon.1)));
 
         let mut cmd = app.update(event, &mut model, &());
 
@@ -403,8 +403,8 @@ mod tests {
         let actual = cmd.events().next().unwrap();
         if let Event::Home(event) = &actual {
             if let WeatherEvent::SetFavoriteWeather(_, lat, lon) = **event {
-                assert_eq!(lat.to_bits(), lat_lng.0.to_bits());
-                assert_eq!(lon.to_bits(), lat_lng.1.to_bits());
+                assert_eq!(lat.to_bits(), lat_lon.0.to_bits());
+                assert_eq!(lon.to_bits(), lat_lon.1.to_bits());
             } else {
                 panic!("Expected SetFavoriteWeather event")
             }
