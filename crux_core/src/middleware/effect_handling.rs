@@ -14,7 +14,7 @@ use super::Layer;
 /// - The effect processing will rely on system APIs or crates which MUST be portable to all platforms
 ///   the library using this middleware is going to be deployed to. This is fundamentally trading off
 ///   portability for reuse of the Rust implementation.
-/// - The middlware MUST process the effect in a non-blocking fashion on a separate thread. This thread
+/// - The middleware MUST process the effect in a non-blocking fashion on a separate thread. This thread
 ///   may be one of a pool from an async runtime or a simple background worker thread - this is left to the
 ///   implementation to decide.
 /// - Due to the multi-threaded nature of the processing, the core, and therefore the app are shared between
@@ -24,12 +24,12 @@ pub trait EffectMiddleware<Effect>
 where
     Effect: TryInto<Request<Self::Op>, Error = Effect>,
 {
-    /// The operation type this middlware can process
+    /// The operation type this middleware can process
     type Op: Operation;
 
     /// Try to process `effect` if is of the right type (can convert in to a `Request<Self::Op>`).
     ///
-    /// The implementation should return `Ok(())` if the conversion succeds, and call the `resolve_callback`
+    /// The implementation should return `Ok(())` if the conversion succeeds, and call the `resolve_callback`
     /// with the output later on. If the effect fails to convert, it should be returned wrapped in `Err(_)`.
     ///
     /// # Errors
@@ -67,14 +67,14 @@ where
     inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
 }
 
-impl<Next, M> Layer for HandleEffectLayer<Next, M>
+impl<Next, EM> Layer for HandleEffectLayer<Next, EM>
 where
     // Next layer down, core being at the bottom
     Next: Layer,
     // Effect has to try_into the operation which the middleware handles
-    Next::Effect: TryInto<Request<M::Op>, Error = Next::Effect>,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
     // The actual middleware effect handling implementation
-    M: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
 {
     type Event = Next::Event;
     type Effect = Next::Effect;

@@ -1,4 +1,4 @@
-//! Middlware which can be wrapped around the Core to modify its behaviour.
+//! Middleware which can be wrapped around the Core to modify its behaviour.
 //!
 //! This is useful for changing the mechanics of the Core without modifying the actual
 //! behaviour of the app.
@@ -7,7 +7,7 @@
 //! but outside the app itself (which is side-effect free and synchronous). To do this,
 //! use [`Layer::handle_effects_using`] and provide an implementation of [`EffectMiddleware`].
 //!
-//! Note that apps using middleware must be `Send` and `Sync`, because the effect middlwares
+//! Note that apps using middleware must be `Send` and `Sync`, because the effect middlewares
 //! are expected to process effects on a separate thread (in order not to block the thread
 //! the core was originally called on), and resolve them on that thread - different from the
 //! original thread where they were requested. See [`EffectMiddleware`] for more discussion.
@@ -30,10 +30,10 @@ use serde::Deserialize;
 /// A layer in the middleware stack.
 ///
 /// This is implemented by the Core and the different types of middlewares,
-/// so that they can be composed as requied.
+/// so that they can be composed as required.
 ///
 /// This is the lower-level of the middleware traits. You might want to implement this
-/// for middlware which filters or transforms events or your view model, with awareness
+/// for middleware which filters or transforms events or your view model, with awareness
 /// of your app's Event and `ViewModel` types.
 ///
 /// If you want to build a reusable effect-handling middleware, see [`EffectMiddleware`].

@@ -20,7 +20,7 @@ pub trait FfiFormat {
     fn deserializer(bytes: &[u8]) -> Self::Deserializer<'_>;
 }
 
-/// FFI Bridge with support for wrapping a middlware stack
+/// FFI Bridge with support for wrapping a middleware stack
 pub struct Bridge<Next, Format>
 where
     Next: Layer,
@@ -79,7 +79,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an [`BridgeError`] when the effect fails to resolve, or any of the (de)serialization fails.
+    /// Returns a [`BridgeError`] when the effect fails to resolve, or any of the (de)serialization fails.
     pub fn resolve(&self, id: EffectId, output: &[u8]) -> Result<Vec<u8>, BridgeError> {
         let mut requests_bytes = vec![];
 

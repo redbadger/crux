@@ -24,7 +24,7 @@ class Core: ObservableObject {
         self.core = CoreFfi(handler)
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
 
-        // the handler assignment needs to be defered, otherwise we create a circular
+        // the handler assignment needs to be deferred, otherwise we create a circular
         // reference between handler and self, before self is done initializing
         handler.handler = { bytes in
             let requests: [Request] = try! .bincodeDeserialize(input: [UInt8](bytes))

@@ -7,7 +7,7 @@ use super::Layer;
 /// Middleware for converting the effect type to another type.
 ///
 /// Typically, this is used to eliminate some of the effect variants which are processed
-/// by the layers below, so that code using this stack is not forced to have exteaneous
+/// by the layers below, so that code using this stack is not forced to have extraneous
 /// match arms which are never called.
 pub struct MapEffectLayer<Next, Effect>
 where

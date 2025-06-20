@@ -72,7 +72,7 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
 
             for effect in core
                 .resolve(&mut request, RandomNumber(number))
-                .expect("shoudl resolve")
+                .expect("should resolve")
             {
                 process_effect(core, effect, render);
             }
