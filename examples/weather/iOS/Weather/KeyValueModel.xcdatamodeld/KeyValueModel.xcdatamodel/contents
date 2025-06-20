@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22522" systemVersion="24.5.0" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="KeyValueEntity" representedClassName="KeyValueEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="key" attributeType="String"/>
+        <attribute name="value" attributeType="String"/>
+    </entity>
+</model> 

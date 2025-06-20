@@ -1,0 +1,39 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+
+[tasks.insta-test]
+description = "Run snapshot tests using insta and nextest test runner with all features enabled"
+command = "cargo"
+args = ["insta", "test", "--test-runner", "nextest", "--all-features"]
+
+[tasks.insta-test-review]
+description = "Run snapshot tests and open the review UI to approve or reject snapshot changes"
+command = "cargo"
+args = [
+    "insta",
+    "test",
+    "--test-runner",
+    "nextest",
+    "--all-features",
+    "--review",
+]
+
+[tasks.clippy]
+description = "Run clippy with pedantic lints enabled"
+command = "cargo"
+args = ["clippy", "--", "--no-deps", "-Dclippy::pedantic", "-Dwarnings"]
+
+[tasks.wasm-build]
+description = "Build the WebAssembly package for web deployment using wasm-pack"
+command = "wasm-pack"
+args = ["build", "--target", "web"]
+
+# Replace the default test task with the insta-test task
+[tasks.test]
+description = "Alias for insta-test - runs snapshot tests with nextest"
+alias = "insta-test"
+
+# Overrides the default build task to run wasm-build 
+[tasks.build]
+description = "Build the project by first building the WebAssembly package"
+dependencies = ["clippy", "wasm-build"]
