@@ -3,15 +3,15 @@ pub mod uniffi_ffi {
     use std::sync::Arc;
 
     use crux_core::{
+        Core,
         bridge::EffectId,
         macros::effect,
         middleware::{BincodeFfiFormat, Bridge, HandleEffectLayer, Layer as _, MapEffectLayer},
         render::RenderOperation,
-        Core,
     };
     use crux_http::protocol::HttpRequest;
 
-    use crate::{middleware::RngMiddleware, sse::SseRequest, App};
+    use crate::{App, middleware::RngMiddleware, sse::SseRequest};
 
     #[effect]
     pub enum Effect {
@@ -95,7 +95,7 @@ pub mod uniffi_ffi {
 #[cfg(target_family = "wasm")]
 pub mod wasm_ffi {
     use crux_core::middleware::{BincodeFfiFormat, Layer as _};
-    use crux_core::{bridge::EffectId, Core};
+    use crux_core::{Core, bridge::EffectId};
 
     use crate::App;
 
