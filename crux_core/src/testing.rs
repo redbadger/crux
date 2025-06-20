@@ -7,7 +7,7 @@ use crate::{
         channel::Receiver, executor_and_spawner, CommandSpawner, Operation, ProtoContext,
         QueuingExecutor,
     },
-    Command, Request, WithContext,
+    Command, Request, Resolvable, WithContext,
 };
 
 /// `AppTester` is a simplified execution environment for Crux apps for use in
@@ -86,10 +86,10 @@ where
     /// # Errors
     ///
     /// Errors if the request cannot (or should not) be resolved.
-    pub fn resolve<Op: Operation>(
+    pub fn resolve<Output>(
         &self,
-        request: &mut Request<Op>,
-        value: Op::Output,
+        request: &mut impl Resolvable<Output>,
+        value: Output,
     ) -> Result<Update<App::Effect, App::Event>> {
         request.resolve(value)?;
 

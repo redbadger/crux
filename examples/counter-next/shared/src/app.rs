@@ -1,14 +1,14 @@
-use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
+use chrono::{DateTime, Utc, serde::ts_milliseconds_option::deserialize as ts_milliseconds_option};
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
 use crux_http::{command::Http, protocol::HttpRequest};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::sse::{ServerSentEvents, SseRequest};
+use crate::sse::{self, SseRequest};
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
@@ -119,7 +119,7 @@ impl crux_core::App for App {
             Event::StartWatch => {
                 let base = Url::parse(API_URL).unwrap();
                 let url = base.join("/sse").unwrap();
-                ServerSentEvents::get(url).then_send(Event::Update)
+                sse::get(url).then_send(Event::Update)
             }
         }
     }
@@ -142,9 +142,9 @@ mod tests {
     use chrono::{TimeZone, Utc};
 
     use super::{App, Event, Model};
-    use crate::{capabilities::sse::SseRequest, sse::SseResponse, Count, Effect};
+    use crate::{Count, Effect, capabilities::sse::SseRequest, sse::SseResponse};
 
-    use crux_core::{assert_effect, App as _};
+    use crux_core::{App as _, assert_effect};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
@@ -162,11 +162,11 @@ mod tests {
         let mut cmd = app.update(Event::Get, &mut model, &());
 
         // the app should emit an HTTP request to fetch the counter
-        let mut request = cmd.effects().next().unwrap().expect_http();
+        let (operation, mut request) = cmd.effects().next().unwrap().expect_http().split();
 
         // and the request should be a GET to the correct URL
         assert_eq!(
-            &request.operation,
+            &operation,
             &HttpRequest::get("https://crux-counter.fly.dev/").build()
         );
 

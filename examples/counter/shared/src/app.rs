@@ -157,12 +157,12 @@ mod tests {
         let mut cmd = app.update(Event::Get, &mut model, &());
 
         // the app should emit an HTTP request to fetch the counter
-        let mut request = cmd.effects().next().unwrap().expect_http();
+        let (operation, mut request) = cmd.effects().next().unwrap().expect_http().split();
 
         // and the request should be a GET to the correct URL
         assert_eq!(
-            &request.operation,
-            &HttpRequest::get("https://crux-counter.fly.dev/").build()
+            operation,
+            HttpRequest::get("https://crux-counter.fly.dev/").build()
         );
 
         // resolve the request with a simulated response from the web API

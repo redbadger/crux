@@ -115,16 +115,16 @@ fn cancellation_of_a_started_timer() {
 
     // ...however, the _first_ command resolves with a TimeRequest::Clear
     // so that the shell can clean up
-    let Effect::Time(mut request) = cmd1.effects().next().unwrap();
-    let cancel_id = match &request.operation {
-        TimeRequest::Clear { id } => *id,
-        _ => panic!("expected a Clear"),
+    let (operation, mut handle) = cmd1.effects().next().unwrap().expect_time().split();
+
+    let TimeRequest::Clear { id } = operation else {
+        panic!("expected a Clear");
     };
-    assert_eq!(cancel_id, TIMER_ID);
+    assert_eq!(id, TIMER_ID);
 
     // the shell then responds, to say it has cleaned up
     let response = TimeResponse::Cleared { id: TIMER_ID };
-    request.resolve(response).unwrap();
+    handle.resolve(response).unwrap();
 
     // ...no effects
     assert!(cmd1.effects().next().is_none());

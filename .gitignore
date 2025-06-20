@@ -4,4 +4,5 @@
 **/xcuserdata/*
 .bin
 .build
+build
 .swiftpm

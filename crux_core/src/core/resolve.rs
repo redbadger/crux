@@ -7,21 +7,34 @@ type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 
 /// Resolve is a callback used to resolve an effect request and continue
 /// one of the capability Tasks running on the executor.
-pub(crate) enum Resolve<Out> {
+pub enum RequestHandle<Out> {
     Never,
     Once(ResolveOnce<Out>),
     Many(ResolveMany<Out>),
 }
 // ANCHOR_END: resolve
 
-impl<Out> Resolve<Out> {
-    pub fn resolve(&mut self, output: Out) -> Result<(), ResolveError> {
+pub trait Resolvable<Output> {
+    /// Resolve the request with the given output.
+    /// # Errors
+    /// Returns an error if the request is not expected to be resolved.
+    fn resolve(&mut self, output: Output) -> Result<(), ResolveError>;
+}
+
+impl<Output> Resolvable<Output> for RequestHandle<Output> {
+    fn resolve(&mut self, output: Output) -> Result<(), ResolveError> {
+        self.resolve(output)
+    }
+}
+
+impl<Output> RequestHandle<Output> {
+    pub fn resolve(&mut self, output: Output) -> Result<(), ResolveError> {
         match self {
-            Resolve::Never => Err(ResolveError::Never),
-            Resolve::Many(f) => f(output).map_err(|()| ResolveError::FinishedMany),
-            Resolve::Once(_) => {
+            RequestHandle::Never => Err(ResolveError::Never),
+            RequestHandle::Many(f) => f(output).map_err(|()| ResolveError::FinishedMany),
+            RequestHandle::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                if let Resolve::Once(f) = std::mem::replace(self, Resolve::Never) {
+                if let RequestHandle::Once(f) = std::mem::replace(self, RequestHandle::Never) {
                     f(output);
                 }
 

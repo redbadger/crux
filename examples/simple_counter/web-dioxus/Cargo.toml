@@ -1,8 +1,12 @@
 [package]
 name = "web-dioxus"
 version = "0.1.0"
-authors = ["Stuart Harris <stuart.harris@red-badger.com>"]
-edition = "2021"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
