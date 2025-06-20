@@ -3,7 +3,7 @@ use std::rc::Rc;
 use futures_util::TryStreamExt;
 use leptos::{prelude::*, task};
 
-use shared::{App, Effect, Event, ViewModel};
+use shared::{App, Effect, Event, RandomNumber, RandomNumberRequest, ViewModel};
 
 use crate::{http, sse};
 
@@ -28,7 +28,6 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
         Effect::Render(_) => {
             render.update(|view| *view = core.view());
         }
-
         Effect::Http(mut request) => {
             task::spawn_local({
                 let core = core.clone();
@@ -45,7 +44,6 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
                 }
             });
         }
-
         Effect::ServerSentEvents(mut request) => {
             task::spawn_local({
                 let core = core.clone();
@@ -63,6 +61,20 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
                     }
                 }
             });
+        }
+        Effect::Random(mut request) => {
+            let RandomNumberRequest(min, max) = request.operation;
+            #[allow(clippy::cast_precision_loss)]
+            let number = js_sys::Math::random() * (max as f64 - min as f64) + min as f64;
+            #[allow(clippy::cast_possible_truncation)]
+            let number = number.floor() as isize;
+
+            for effect in core
+                .resolve(&mut request, RandomNumber(number))
+                .expect("should resolve")
+            {
+                process_effect(core, effect, render);
+            }
         }
     }
 }

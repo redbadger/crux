@@ -24,6 +24,9 @@ struct ContentView: View {
                     core.update(.increment)
                 }
             }
+            ActionButton(label: "I'm feeling lucky", color: .purple) {
+                core.update(.random)
+            }
         }
     }
 }

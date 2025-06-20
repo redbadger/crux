@@ -159,6 +159,7 @@
 pub mod bridge;
 pub mod capability;
 pub mod command;
+pub mod middleware;
 pub mod testing;
 #[cfg(feature = "typegen")]
 pub mod typegen;

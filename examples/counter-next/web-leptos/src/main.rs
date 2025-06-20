@@ -24,16 +24,23 @@ fn root_component() -> impl IntoView {
             </section>
             <section class="container has-text-centered">
                 <p class="is-size-5">{move || view.get().text}</p>
-                <div class="buttons section is-centered">
-                    <button class="button is-primary is-warning"
-                        on:click=move |_| set_event.update(|value| *value = Event::Decrement)
+                <div class="section ">
+                    <p class="buttons is-centered">
+                        <button class="button is-primary is-warning"
+                            on:click=move |_| set_event.update(|value| *value = Event::Decrement)
+                        >
+                            {"Decrement"}
+                        </button>
+                        <button class="button is-primary is-danger"
+                            on:click=move |_| set_event.update(|value| *value = Event::Increment)
+                        >
+                            {"Increment"}
+                        </button>
+                    </p>
+                    <button class="button is-primary link"
+                        on:click=move |_| set_event.update(|value| *value = Event::Random)
                     >
-                        {"Decrement"}
-                    </button>
-                    <button class="button is-primary is-danger"
-                        on:click=move |_| set_event.update(|value| *value = Event::Increment)
-                    >
-                        {"Increment"}
+                        {"I'm feeling lucky"}
                     </button>
                 </div>
             </section>
