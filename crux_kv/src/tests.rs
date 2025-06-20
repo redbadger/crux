@@ -1,10 +1,10 @@
 use anyhow::Result;
-use crux_core::{macros::Effect, render::Render, testing::AppTester, Command};
+use crux_core::{Command, macros::Effect, render::Render, testing::AppTester};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::KeyValueError, value::Value, KeyValue, KeyValueOperation, KeyValueResponse,
-    KeyValueResult,
+    KeyValue, KeyValueOperation, KeyValueResponse, KeyValueResult, error::KeyValueError,
+    value::Value,
 };
 
 #[derive(Default)]

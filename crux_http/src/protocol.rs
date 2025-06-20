@@ -10,13 +10,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::HttpError;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpHeader {
     pub name: String,
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq, Builder)]
+#[derive(facet::Facet, Serialize, Deserialize, Default, Clone, PartialEq, Eq, Builder)]
 #[builder(
     custom_constructor,
     build_fn(private, name = "fallible_build"),
@@ -28,6 +28,7 @@ pub struct HttpRequest {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
+    #[facet(bytes)]
     pub body: Vec<u8>,
 }
 
@@ -122,7 +123,7 @@ impl HttpRequestBuilder {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq, Builder)]
+#[derive(facet::Facet, Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq, Builder)]
 #[builder(
     custom_constructor,
     build_fn(private, name = "fallible_build"),
@@ -133,6 +134,7 @@ pub struct HttpResponse {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
+    #[facet(bytes)]
     pub body: Vec<u8>,
 }
 
@@ -180,7 +182,8 @@ impl HttpResponseBuilder {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum HttpResult {
     Ok(HttpResponse),
     Err(HttpError),
@@ -199,7 +202,9 @@ impl crux_core::capability::Operation for HttpRequest {
     type Output = HttpResult;
 
     #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+    fn register_types(
+        generator: &mut crux_core::type_generation::serde::TypeGen,
+    ) -> crux_core::type_generation::serde::Result {
         generator.register_type::<HttpError>()?;
         generator.register_type::<Self>()?;
         generator.register_type::<Self::Output>()?;

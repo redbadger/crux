@@ -4,13 +4,15 @@ pub mod duration;
 pub mod instant;
 
 use crux_core::capability::Operation;
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use duration::Duration;
 use instant::Instant;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Facet, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[repr(C)]
 pub enum TimeRequest {
     Now,
     NotifyAt { id: TimerId, instant: Instant },
@@ -18,11 +20,12 @@ pub enum TimeRequest {
     Clear { id: TimerId },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Facet, Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TimerId(pub usize);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[repr(C)]
 pub enum TimeResponse {
     Now { instant: Instant },
     InstantArrived { id: TimerId },
@@ -34,7 +37,9 @@ impl Operation for TimeRequest {
     type Output = TimeResponse;
 
     #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
+    fn register_types(
+        generator: &mut crux_core::type_generation::serde::TypeGen,
+    ) -> crux_core::type_generation::serde::Result {
         generator.register_type::<Instant>()?;
         generator.register_type::<Duration>()?;
         generator.register_type::<Self>()?;

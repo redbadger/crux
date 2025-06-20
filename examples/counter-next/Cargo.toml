@@ -1,14 +1,14 @@
 [workspace]
-members = ["shared", "web-leptos"]
 resolver = "3"
+members = ["shared", "shared_types", "web-leptos"]
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.87"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
-keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.80"
+keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.dependencies]
 anyhow = "1.0.98"

@@ -13,8 +13,8 @@ use std::{
     future::Future,
     pin::Pin,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         LazyLock, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
     task::Poll,
     time::SystemTime,
@@ -22,7 +22,7 @@ use std::{
 
 use crux_core::capability::CapabilityContext;
 
-pub use protocol::{duration::Duration, instant::Instant, TimeRequest, TimeResponse, TimerId};
+pub use protocol::{TimeRequest, TimeResponse, TimerId, duration::Duration, instant::Instant};
 
 fn get_timer_id() -> TimerId {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -113,7 +113,10 @@ where
     pub fn notify_at_async(
         &self,
         system_time: SystemTime,
-    ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
+    ) -> (
+        TimerFuture<impl Future<Output = TimeResponse> + 'static>,
+        TimerId,
+    ) {
         let id = get_timer_id();
         let future = self.context.request_from_shell(TimeRequest::NotifyAt {
             id,
@@ -143,7 +146,10 @@ where
     pub fn notify_after_async(
         &self,
         duration: std::time::Duration,
-    ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
+    ) -> (
+        TimerFuture<impl Future<Output = TimeResponse> + 'static>,
+        TimerId,
+    ) {
         let id = get_timer_id();
         let future = self.context.request_from_shell(TimeRequest::NotifyAfter {
             id,

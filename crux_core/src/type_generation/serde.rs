@@ -55,27 +55,27 @@
 //!
 //!#[test]
 //!fn generate_types() -> anyhow::Result<()> {
-//!    let mut gen = TypeGen::new();
+//!    let mut typegen = TypeGen::new();
 //!
 //!    let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
-//!    gen.register_type_with_samples(sample_events)?;
+//!    typegen.register_type_with_samples(sample_events)?;
 //!
-//!    gen.register_app::<App>()?;
+//!    typegen.register_app::<App>()?;
 //!
 //!    let temp = assert_fs::TempDir::new()?;
 //!    let output_root = temp.join("crux_core_typegen_test");
 //!
-//!    gen.swift("SharedTypes", output_root.join("swift"))?;
+//!    typegen.swift("SharedTypes", output_root.join("swift"))?;
 //!
-//!    gen.java("com.example.counter.shared_types", output_root.join("java"))?;
+//!    typegen.java("com.example.counter.shared_types", output_root.join("java"))?;
 //!
-//!    gen.typescript("shared_types", output_root.join("typescript"))?;
+//!    typegen.typescript("shared_types", output_root.join("typescript"))?;
 //!}
 //! ```
 //!
 //! ## Custom extensions
 //!
-//! May you need to use customized files for one of:
+//! If you need to use customized files for one of:
 //!
 //! - `generated/typescript/*`,
 //! - `generated/swift/(requests | Package).swift` -
@@ -118,7 +118,7 @@
 //! ```
 
 use serde::Deserialize;
-use serde_generate::{java, swift, typescript, Encoding, SourceInstaller};
+use serde_generate::{Encoding, SourceInstaller, java, swift, typescript};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -155,7 +155,9 @@ pub enum TypeGenError {
     Generation(String),
     #[error("error writing generated types")]
     Io(#[from] std::io::Error),
-    #[error("`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation")]
+    #[error(
+        "`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation"
+    )]
     PnpmNotFound(#[source] std::io::Error),
 }
 
@@ -273,9 +275,9 @@ impl TypeGen {
     /// #[derive(Serialize, Deserialize)]
     /// enum MyEnum { None, Nested(MyNestedEnum) }
     /// fn register() -> Result<(), Error> {
-    ///   let mut gen = TypeGen::new();
-    ///   gen.register_type::<MyEnum>()?;
-    ///   gen.register_type::<MyNestedEnum>()?;
+    ///   let mut typegen = TypeGen::new();
+    ///   typegen.register_type::<MyEnum>()?;
+    ///   typegen.register_type::<MyNestedEnum>()?;
     ///   Ok(())
     /// }
     /// ```
@@ -332,9 +334,9 @@ The 2 common cases are:
     /// # #[derive(Serialize, Deserialize, Debug)]
     /// # struct MyUuid(Uuid);
     /// # fn register() -> Result<(), Error> {
-    /// # let mut gen = TypeGen::new();
+    /// # let mut typegen = TypeGen::new();
     ///   let sample_data = vec![MyUuid(Uuid::new_v4())];
-    ///   gen.register_type_with_samples::<MyUuid>(sample_data)?;
+    ///   typegen.register_type_with_samples::<MyUuid>(sample_data)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -387,9 +389,9 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
-    /// # let mut gen = TypeGen::new();
+    /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.swift("SharedTypes", output_root.join("swift"))?;
+    /// typegen.swift("SharedTypes", output_root.join("swift"))?;
     /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
     ///
@@ -458,9 +460,9 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
-    /// # let mut gen = TypeGen::new();
+    /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.java(
+    /// typegen.java(
     ///     "com.redbadger.crux_core.shared_types",
     ///     output_root.join("java"),
     /// )?;
@@ -523,9 +525,9 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
-    /// # let mut gen = TypeGen::new();
+    /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.typescript("shared_types", output_root.join("typescript"))?;
+    /// typegen.typescript("shared_types", output_root.join("typescript"))?;
     /// # Ok::<(), crux_core::typegen::TypeGenError>(())
     /// ```
     /// # Errors
@@ -656,7 +658,7 @@ fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
 #[cfg(feature = "typegen")]
 #[cfg(test)]
 mod tests {
-    use crate::typegen::TypeGen;
+    use crate::type_generation::serde::TypeGen;
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
@@ -665,8 +667,8 @@ mod tests {
 
     #[test]
     fn test_typegen_for_uuid_without_samples() {
-        let mut gen = TypeGen::new();
-        let result = gen.register_type::<MyUuid>();
+        let mut typegen = TypeGen::new();
+        let result = typegen.register_type::<MyUuid>();
 
         assert!(
             result.is_err(),
@@ -677,13 +679,13 @@ mod tests {
     #[test]
     fn test_typegen_for_uuid_with_samples() {
         let sample_data = vec![MyUuid(Uuid::new_v4())];
-        let mut gen = TypeGen::new();
-        let result = gen.register_type_with_samples(sample_data);
+        let mut typegen = TypeGen::new();
+        let result = typegen.register_type_with_samples(sample_data);
         dbg!(&result);
         assert!(result.is_ok(), "typegen failed for Uuid, with samples");
 
         let sample_data = vec!["a".to_string(), "b".to_string()];
-        let result = gen.register_type_with_samples(sample_data);
+        let result = typegen.register_type_with_samples(sample_data);
         assert!(result.is_ok(), "typegen failed with second sample data set");
     }
 }

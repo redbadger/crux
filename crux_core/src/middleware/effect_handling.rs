@@ -1,6 +1,6 @@
 use std::sync::{Arc, Weak};
 
-use crate::{capability::Operation, Request, ResolveError};
+use crate::{Request, ResolveError, capability::Operation};
 
 use super::Layer;
 
@@ -40,8 +40,8 @@ where
         &self,
         effect: Effect,
         resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> Result<(), Effect>;
 }
 

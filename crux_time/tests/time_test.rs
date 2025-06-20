@@ -2,10 +2,10 @@
 mod shared {
     use chrono::{DateTime, Utc};
     use crux_core::render::Render;
-    use crux_core::{macros::Effect, Command};
+    use crux_core::{Command, macros::Effect};
     use crux_time::{
-        protocol::{TimeResponse, TimerId},
         Time,
+        protocol::{TimeResponse, TimerId},
     };
     use serde::{Deserialize, Serialize};
 
@@ -193,7 +193,7 @@ mod tests {
         shell::run,
     };
     use chrono::{DateTime, Utc};
-    use crux_core::{testing::AppTester, Core};
+    use crux_core::{Core, testing::AppTester};
     use crux_time::protocol::TimeResponse;
 
     #[test]

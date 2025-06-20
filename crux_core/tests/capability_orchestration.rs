@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::{macros::Effect, Command};
+    use crux_core::{Command, macros::Effect};
     use futures::future::join;
     use serde::Serialize;
 

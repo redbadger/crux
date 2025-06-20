@@ -5,7 +5,7 @@ pub mod basic_delay;
 pub mod delay;
 
 pub mod command {
-    use crux_core::{capability::Operation, Request};
+    use crux_core::{Request, capability::Operation};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

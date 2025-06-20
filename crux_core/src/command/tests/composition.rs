@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{capability::Operation, Command, Request};
+use crate::{Command, Request, capability::Operation};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct ToString(usize);
