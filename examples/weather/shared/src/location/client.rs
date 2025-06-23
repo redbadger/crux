@@ -18,7 +18,7 @@ pub struct LocationApi;
 
 impl LocationApi {
     /// Build an `HttpRequest` for testing purposes
-    pub fn build(query: String) -> HttpRequest {
+    pub fn build(query: &str) -> HttpRequest {
         HttpRequest::get(GEOCODING_URL)
             .query(&GeocodingQueryString {
                 q: query.to_string(),
@@ -31,7 +31,7 @@ impl LocationApi {
 
     /// Fetch current weather for a specific location
     pub fn fetch<Event>(
-        query: String,
+        query: &str,
     ) -> RequestBuilder<
         Effect,
         Event,
