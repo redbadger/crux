@@ -6,7 +6,6 @@ use derive_builder::Builder;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::sync::LazyLock;
 
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
@@ -95,50 +94,3 @@ impl fmt::Display for CurrentResponse {
         )
     }
 }
-
-pub static SAMPLE_CURRENT_RESPONSE: LazyLock<CurrentResponse> = LazyLock::new(|| {
-    CurrentResponseBuilder::default()
-        .main(Main {
-            temp: 20.0,
-            feels_like: 18.0,
-            temp_min: 18.0,
-            temp_max: 22.0,
-            pressure: 1013,
-            humidity: 50,
-        })
-        .coord(Coord {
-            lat: 33.456_789,
-            lon: -112.037_222,
-        })
-        .weather(vec![WeatherData {
-            id: 800,
-            main: "Clear".to_string(),
-            description: "clear sky".to_string(),
-            icon: "01d".to_string(),
-        }])
-        .base(String::new())
-        .visibility(10000_usize)
-        .wind(Wind {
-            speed: 4.1,
-            deg: 280,
-            gust: Some(5.2),
-        })
-        .clouds(Clouds { all: 0 })
-        .dt(1_716_216_000_usize)
-        .sys(Sys {
-            id: 1,
-            country: "US".to_string(),
-            sys_type: 1,
-            sunrise: 1_716_216_000,
-            sunset: 1_716_216_000,
-        })
-        .timezone(1)
-        .id(1_usize)
-        .name("Phoenix".to_string())
-        .cod(200_usize)
-        .build()
-        .expect("Failed to build sample response")
-});
-
-pub static SAMPLE_CURRENT_RESPONSE_JSON: LazyLock<String> =
-    LazyLock::new(|| serde_json::to_string(&*SAMPLE_CURRENT_RESPONSE).unwrap());

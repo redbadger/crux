@@ -123,7 +123,7 @@ mod tests {
 
     use crate::{
         favorites::model::Favorite,
-        weather::model::current_response::{SAMPLE_CURRENT_RESPONSE, SAMPLE_CURRENT_RESPONSE_JSON},
+        weather::model::{Clouds, Coord, CurrentResponseBuilder, Main, Sys, WeatherData, Wind},
         App, GeocodingResponse,
     };
 
@@ -139,6 +139,54 @@ mod tests {
             },
             current: None,
         }
+    }
+
+    fn test_response() -> CurrentResponse {
+        CurrentResponseBuilder::default()
+            .main(Main {
+                temp: 20.0,
+                feels_like: 18.0,
+                temp_min: 18.0,
+                temp_max: 22.0,
+                pressure: 1013,
+                humidity: 50,
+            })
+            .coord(Coord {
+                lat: 33.456_789,
+                lon: -112.037_222,
+            })
+            .weather(vec![WeatherData {
+                id: 800,
+                main: "Clear".to_string(),
+                description: "clear sky".to_string(),
+                icon: "01d".to_string(),
+            }])
+            .base(String::new())
+            .visibility(10000_usize)
+            .wind(Wind {
+                speed: 4.1,
+                deg: 280,
+                gust: Some(5.2),
+            })
+            .clouds(Clouds { all: 0 })
+            .dt(1_716_216_000_usize)
+            .sys(Sys {
+                id: 1,
+                country: "US".to_string(),
+                sys_type: 1,
+                sunrise: 1_716_216_000,
+                sunset: 1_716_216_000,
+            })
+            .timezone(1)
+            .id(1_usize)
+            .name("Phoenix".to_string())
+            .cod(200_usize)
+            .build()
+            .expect("Failed to build sample response")
+    }
+
+    fn test_response_json() -> String {
+        serde_json::to_string(&test_response()).unwrap()
     }
 
     #[test]
@@ -176,7 +224,7 @@ mod tests {
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
+                    .body(test_response_json().as_bytes())
                     .build(),
             ))
             .unwrap();
@@ -193,7 +241,7 @@ mod tests {
         let _ = app.update(actual.clone(), &mut model, &());
 
         // Now check the model in detail
-        assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
+        assert_eq!(model.weather_data, test_response());
     }
 
     #[test]
@@ -214,7 +262,7 @@ mod tests {
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
+                    .body(test_response_json().as_bytes())
                     .build(),
             ))
             .unwrap();
@@ -230,7 +278,7 @@ mod tests {
         let _ = app.update(actual, &mut model, &());
 
         // Now check the model in detail
-        assert_eq!(model.weather_data, *SAMPLE_CURRENT_RESPONSE);
+        assert_eq!(model.weather_data, test_response());
         insta::assert_yaml_snapshot!(model.weather_data);
     }
 
@@ -259,7 +307,7 @@ mod tests {
                     request
                         .resolve(HttpResult::Ok(
                             HttpResponse::ok()
-                                .body(SAMPLE_CURRENT_RESPONSE_JSON.as_bytes())
+                                .body(test_response_json().as_bytes())
                                 .build(),
                         ))
                         .unwrap();
@@ -277,7 +325,7 @@ mod tests {
         assert!(model.favorites[0].current.is_some());
         assert_eq!(
             model.favorites[0].current.as_ref().unwrap(),
-            &*SAMPLE_CURRENT_RESPONSE
+            &test_response()
         );
     }
 
