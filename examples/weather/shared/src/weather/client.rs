@@ -15,11 +15,11 @@ pub struct CurrentQueryString {
     pub appid: String,
 }
 
-pub struct WeatherApiClient;
+pub struct WeatherApi;
 
-impl WeatherApiClient {
+impl WeatherApi {
     /// Build an `HttpRequest` for testing purposes
-    pub fn build_request(lat: f64, lon: f64) -> HttpRequest {
+    pub fn build(lat: f64, lon: f64) -> HttpRequest {
         HttpRequest::get(WEATHER_URL)
             .query(&CurrentQueryString {
                 lat: lat.to_string(),
@@ -32,7 +32,7 @@ impl WeatherApiClient {
     }
 
     /// Fetch current weather for a specific location
-    pub fn fetch_weather(
+    pub fn fetch(
         lat: f64,
         lon: f64,
     ) -> RequestBuilder<

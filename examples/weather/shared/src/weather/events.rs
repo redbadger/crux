@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::favorites::events::FavoritesEvent;
 use crate::location::capability::{get_location, is_location_enabled, LocationResponse};
-use crate::weather::model::{CurrentResponse, WeatherApiClient};
+use crate::weather::client::WeatherApi;
+use crate::weather::model::CurrentResponse;
 use crate::{Effect, Event, Model};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -59,11 +60,9 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Event> 
         }
 
         // Internal events related to fetching weather data
-        WeatherEvent::Fetch(lat, long) => {
-            WeatherApiClient::fetch_weather(lat, long).then_send(move |result| {
-                Event::Home(Box::new(WeatherEvent::SetWeather(Box::new(result))))
-            })
-        }
+        WeatherEvent::Fetch(lat, long) => WeatherApi::fetch(lat, long).then_send(move |result| {
+            Event::Home(Box::new(WeatherEvent::SetWeather(Box::new(result))))
+        }),
         WeatherEvent::SetWeather(result) => {
             let cmd = match *result {
                 Ok(mut response) => {
@@ -88,7 +87,7 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Event> 
                 let cmds = model.favorites.iter().map(|f| {
                     let lat = f.geo.lat;
                     let lon = f.geo.lon;
-                    WeatherApiClient::fetch_weather(lat, lon).then_send(move |result| {
+                    WeatherApi::fetch(lat, lon).then_send(move |result| {
                         Event::Home(Box::new(WeatherEvent::SetFavoriteWeather(
                             Box::new(result),
                             lat,
@@ -170,7 +169,7 @@ mod tests {
 
         assert_eq!(
             &request.operation,
-            &WeatherApiClient::build_request(test_location.lat, test_location.lon)
+            &WeatherApi::build(test_location.lat, test_location.lon)
         );
 
         // 5. Resolve the HTTP request with a simulated response from the web API
@@ -209,10 +208,7 @@ mod tests {
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
-        assert_eq!(
-            &request.operation,
-            &WeatherApiClient::build_request(lat_lon.0, lat_lon.1)
-        );
+        assert_eq!(&request.operation, &WeatherApi::build(lat_lon.0, lat_lon.1));
 
         // Test response handling
         request
