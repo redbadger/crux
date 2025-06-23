@@ -67,7 +67,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         // ======================
         // TODO: use a Time Capability and debounce the search
         // TODO: Search should be a part of events/geocoding.rs
-        FavoritesEvent::Search(query) => LocationApi::fetch::<FavoritesEvent>(query)
+        FavoritesEvent::Search(query) => LocationApi::fetch::<FavoritesEvent>(&query)
             .then_send(|result| FavoritesEvent::SearchResult(Box::new(result))),
         FavoritesEvent::SearchResult(result) => {
             match *result {
@@ -529,7 +529,7 @@ mod tests {
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
-        assert_eq!(&request.operation, &LocationApi::build(query.to_string()));
+        assert_eq!(&request.operation, &LocationApi::build(query));
 
         // Test response handling
         request
