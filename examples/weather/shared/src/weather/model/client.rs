@@ -18,7 +18,7 @@ pub struct CurrentQueryString {
 pub struct WeatherApiClient;
 
 impl WeatherApiClient {
-    /// Build an HttpRequest for testing purposes
+    /// Build an `HttpRequest` for testing purposes
     pub fn build_request(lat: f64, lon: f64) -> HttpRequest {
         HttpRequest::get(WEATHER_URL)
             .query(&CurrentQueryString {
