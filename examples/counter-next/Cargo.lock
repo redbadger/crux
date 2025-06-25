@@ -1182,13 +1182,11 @@ dependencies = [
 [[package]]
 name = "facet_generate"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f81d14ed7cac3ec43d6ca813a1fa06a1140da392c075208be1c7c5c1ae62a21f"
 dependencies = [
  "anyhow",
  "erased-discriminant",
  "facet",
- "heck 0.3.3",
+ "heck 0.5.0",
  "include_dir 0.7.4",
  "once_cell",
  "serde",

@@ -11,11 +11,11 @@ fn main() -> anyhow::Result<()> {
 
     let output_root = PathBuf::from("./generated");
 
-    typegen.swift("SharedTypes", output_root.join("swift"))?;
+    // typegen.swift("SharedTypes", output_root.join("swift"))?;
 
-    typegen.java("com.crux.example.counter.shared", output_root.join("java"))?;
+    // typegen.java("com.crux.example.counter.shared", output_root.join("java"))?;
 
     typegen.typescript("shared_types", output_root.join("typescript"))?;
-
+    panic!();
     Ok(())
 }

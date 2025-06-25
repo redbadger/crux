@@ -8,11 +8,13 @@ use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(namespace = "server_sent_events")]
 pub struct SseRequest {
     pub url: String,
 }
 
 #[derive(Facet, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[facet(namespace = "server_sent_events")]
 #[repr(C)]
 pub enum SseResponse {
     Chunk(Vec<u8>),

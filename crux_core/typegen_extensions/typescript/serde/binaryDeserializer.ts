@@ -107,8 +107,10 @@ export abstract class BinaryDeserializer implements Deserializer {
     const high = this.deserializeI32();
 
     // combine the two 32-bit values and return (little endian)
-    return (BigInt(high.toString()) << BinaryDeserializer.BIG_32) |
-      BigInt(low.toString());
+    return (
+      (BigInt(high.toString()) << BinaryDeserializer.BIG_32) |
+      BigInt(low.toString())
+    );
   }
 
   public deserializeI128(): bigint {
@@ -116,8 +118,10 @@ export abstract class BinaryDeserializer implements Deserializer {
     const high = this.deserializeI64();
 
     // combine the two 64-bit values and return (little endian)
-    return (BigInt(high.toString()) << BinaryDeserializer.BIG_64) |
-      BigInt(low.toString());
+    return (
+      (BigInt(high.toString()) << BinaryDeserializer.BIG_64) |
+      BigInt(low.toString())
+    );
   }
 
   public deserializeOptionTag(): boolean {

@@ -117,8 +117,9 @@
 
 use facet::Facet;
 use facet_generate::{
-    serde_generate::{CodeGeneratorConfig, Encoding, SourceInstaller, java, swift, typescript},
-    serde_reflection::Registry,
+    Registry,
+    namespace::Namespace,
+    serde_generate::{Encoding, SourceInstaller, java, swift, typescript},
 };
 use serde::Deserialize;
 use std::{
@@ -245,7 +246,7 @@ impl TypeGen {
         match &mut self.state {
             State::Registering(registry) => {
                 let incoming = facet_generate::reflect::<T>();
-                registry.extend(incoming.consume());
+                registry.extend(Registry::from(incoming));
                 Ok(())
             }
             State::Generating(_) => Err(TypeGenError::LateRegistration),
@@ -268,14 +269,14 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
+    pub fn swift(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry();
 
-        let path = path.as_ref().join(module_name);
+        let path = path.as_ref().join(package_name);
 
         fs::create_dir_all(&path)?;
 
-        let installer = swift::Installer::new(path.clone());
+        let mut installer = swift::Installer::new(package_name.to_string(), path.clone());
         installer
             .install_serde_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -283,42 +284,38 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let State::Generating(registry) = &self.state else {
+        let State::Generating(ref registry) = self.state else {
             panic!("registry creation failed");
         };
 
-        let config = CodeGeneratorConfig::new(module_name.to_string())
-            .with_encodings(vec![Encoding::Bincode]);
+        let root_module = package_name;
+        for (module, registry) in facet_generate::namespace::split(root_module, registry.clone())
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?
+        {
+            let config = module
+                .config()
+                .clone()
+                .with_encodings(vec![Encoding::Bincode]);
 
-        installer
-            .install_module(&config, registry)
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+            installer
+                .install_module(&config, &registry)
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
 
         // add bincode deserialization for Vec<Request>
         let mut output = File::create(
             path.join("Sources")
-                .join(module_name)
+                .join(package_name)
                 .join("Requests.swift"),
         )?;
 
         let requests_path = Self::extensions_path("swift/requests.swift");
-
         let requests_data = fs::read_to_string(requests_path)?;
-
         write!(output, "{requests_data}")?;
 
-        // wrap it all up in a swift package
-        let mut output = File::create(path.join("Package.swift"))?;
-
-        let package_path = Self::extensions_path("swift/Package.swift");
-
-        let package_data = fs::read_to_string(package_path)?;
-
-        write!(
-            output,
-            "{}",
-            package_data.replace("SharedTypes", module_name)
-        )?;
+        installer
+            .install_manifest(package_name)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         Ok(())
     }
@@ -352,10 +349,7 @@ impl TypeGen {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(path.as_ref().join(&package_path)).unwrap_or(());
 
-        let config = CodeGeneratorConfig::new(package_name.to_string())
-            .with_encodings(vec![Encoding::Bincode]);
-
-        let installer = java::Installer::new(path.as_ref().to_path_buf());
+        let mut installer = java::Installer::new(path.as_ref().to_path_buf());
         installer
             .install_serde_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -363,13 +357,30 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let State::Generating(registry) = &self.state else {
+        let State::Generating(ref mut registry) = self.state else {
             panic!("registry creation failed");
         };
 
-        installer
-            .install_module(&config, registry)
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        let root_module = package_name;
+        for (module, registry) in facet_generate::namespace::split(root_module, registry.clone())
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?
+        {
+            let this_module = &module.config().module_name;
+            let module = if root_module == this_module {
+                module
+            } else {
+                Namespace::new([root_module, this_module].join("."))
+            };
+
+            let config = module
+                .config()
+                .clone()
+                .with_encodings(vec![Encoding::Bincode]);
+
+            installer
+                .install_module(&config, &registry)
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
 
         let requests_path = Self::extensions_path("java/Requests.java");
 
@@ -403,11 +414,14 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
+    pub fn typescript(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry();
 
         fs::create_dir_all(&path)?;
         let output_dir = path.as_ref().to_path_buf();
+
+        let types_dir = output_dir.join("types");
+        fs::create_dir_all(&types_dir)?;
 
         let installer = typescript::Installer::new(output_dir.clone());
         installer
@@ -417,33 +431,39 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let extensions_dir = Self::extensions_path("typescript");
-        copy(extensions_dir, path)?;
-
-        let State::Generating(registry) = &self.state else {
+        let State::Generating(ref mut registry) = self.state else {
             panic!("registry creation failed");
         };
 
-        let config = CodeGeneratorConfig::new(module_name.to_string())
-            .with_encodings(vec![Encoding::Bincode]);
+        let root_module = package_name;
+        for (module, registry) in facet_generate::namespace::split(root_module, registry.clone())
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?
+        {
+            let config = module
+                .config()
+                .clone()
+                .with_encodings(vec![Encoding::Bincode]);
 
-        let generator = typescript::CodeGenerator::new(&config);
-        let mut source = Vec::new();
-        generator.output(&mut source, registry)?;
+            let module_name = config.module_name();
 
-        // FIXME fix import paths in generated code which assume running on Deno
-        let out = String::from_utf8_lossy(&source)
-            .replace(
-                "import { BcsSerializer, BcsDeserializer } from '../bcs/mod.ts';",
-                "",
-            )
-            .replace(".ts'", "'");
+            let generator = typescript::CodeGenerator::new(&config);
+            let mut source = Vec::new();
+            generator.output(&mut source, &registry)?;
 
-        let types_dir = output_dir.join("types");
-        fs::create_dir_all(&types_dir)?;
+            // FIXME fix import paths in generated code which assume running on Deno
+            let out = String::from_utf8_lossy(&source)
+                .replace(
+                    "import { BcsSerializer, BcsDeserializer } from '../bcs/mod.ts';",
+                    "",
+                )
+                .replace(".ts'", "'");
 
-        let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
-        write!(output, "{out}")?;
+            let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
+            write!(output, "{out}")?;
+        }
+
+        let extensions_dir = Self::extensions_path("typescript");
+        copy(extensions_dir, path)?;
 
         // Install dependencies
         std::process::Command::new("pnpm")

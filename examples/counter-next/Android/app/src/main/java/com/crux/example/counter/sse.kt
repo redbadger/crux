@@ -1,7 +1,7 @@
 package com.crux.example.counter
 
-import com.crux.example.counter.shared.SseRequest
-import com.crux.example.counter.shared.SseResponse
+import com.crux.example.counter.shared.server_sent_events.SseRequest
+import com.crux.example.counter.shared.server_sent_events.SseResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
