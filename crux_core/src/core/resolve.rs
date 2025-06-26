@@ -11,6 +11,7 @@ type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
 /// one of the capability Tasks running on the executor.
 pub enum RequestHandle<Out> {
     Never,
+    Twice,
     Once(ResolveOnce<Out>),
     Many(ResolveMany<Out>),
 }
@@ -36,12 +37,13 @@ impl<Output> RequestHandle<Output> {
             RequestHandle::Many(f) => f(output).map_err(|()| ResolveError::FinishedMany),
             RequestHandle::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                if let RequestHandle::Once(f) = std::mem::replace(self, RequestHandle::Never) {
+                if let RequestHandle::Once(f) = std::mem::replace(self, RequestHandle::Twice) {
                     f(output);
                 }
 
                 Ok(())
             }
+            RequestHandle::Twice =>  Err(ResolveError::Twice),
         }
     }
 }
@@ -52,6 +54,8 @@ pub enum ResolveError {
     Never,
     #[error("Attempted to resolve a request that has concluded.")]
     FinishedMany,
+    #[error("Attempted to resolve twice a request that is only expected to be resolved once")]
+    Twice,
     #[error("Request with {0:?} not found.")]
     NotFound(EffectId), // FIXME: since it uses EffectId, should ResolveError be defined further up the module tree?
 }
