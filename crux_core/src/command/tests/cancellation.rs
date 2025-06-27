@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{capability::Operation, Request};
+use crate::{Request, capability::Operation};
 
 use super::super::Command;
 

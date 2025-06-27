@@ -16,13 +16,12 @@
 
 use error::{Error, Result};
 use serde::{
-    de, ser,
+    Deserialize, Serialize, de, ser,
     ser::{SerializeMap, SerializeStruct},
-    Deserialize, Serialize,
 };
 use std::{
     cell::{Ref, RefCell, RefMut},
-    collections::{btree_map::Entry, BTreeMap},
+    collections::{BTreeMap, btree_map::Entry},
     rc::Rc,
 };
 

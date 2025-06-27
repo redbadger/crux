@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use super::super::Command;
 use crate::{
+    Request,
     capability::Operation,
     command::builder::{RequestBuilder, StreamBuilder},
-    Request,
 };
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

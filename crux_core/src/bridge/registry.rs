@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 
@@ -7,8 +8,9 @@ use super::{BridgeError, Request};
 use crate::bridge::request_serde::ResolveSerialized;
 use crate::{Effect, ResolveError};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
+#[facet(transparent)]
 pub struct EffectId(pub u32);
 
 pub struct ResolveRegistry(Mutex<Slab<ResolveSerialized>>);

@@ -1,18 +1,18 @@
 use super::{decode::decode_body, new_headers};
+use facet::Facet;
 use http_types::{
-    self,
+    self, Mime, StatusCode, Version,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-    Mime, StatusCode, Version,
 };
 
-use http_types::{headers::CONTENT_TYPE, Headers};
+use http_types::{Headers, headers::CONTENT_TYPE};
 use serde::de::DeserializeOwned;
 
 use std::fmt;
 use std::ops::Index;
 
 /// An HTTP Response that will be passed to in a message to an apps update function
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Facet, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
     version: Option<http_types::Version>,
     status: http_types::StatusCode,
@@ -424,7 +424,7 @@ fn headers_to_hyperium_headers(headers: &mut Headers, hyperium_headers: &mut htt
 mod header_serde {
     use crate::{http::Headers, response::new_headers};
     use http_types::headers::{HeaderName, HeaderValue};
-    use serde::{de::Error, Deserializer, Serializer};
+    use serde::{Deserializer, Serializer, de::Error};
 
     pub fn serialize<S>(headers: &Headers, serializer: S) -> Result<S::Ok, S::Error>
     where

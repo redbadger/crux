@@ -10,7 +10,7 @@ use std::{future::Future, pin::pin};
 
 use futures::{FutureExt, Stream, StreamExt};
 
-use super::{context::CommandContext, Command};
+use super::{Command, context::CommandContext};
 
 /// A builder of one-off notify command
 // Task is a future which does the shell talking and returns an output

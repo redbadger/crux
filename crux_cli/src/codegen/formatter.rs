@@ -294,7 +294,7 @@ fn make_range(field: &ItemNode) -> Option<ContainerFormat> {
                         GenericArgs::AngleBracketed { args, .. } => {
                             let type_ = args.iter().next()?;
                             match type_ {
-                                GenericArg::Type(ref type_) => Some(type_.into()),
+                                GenericArg::Type(type_) => Some(type_.into()),
                                 _ => None,
                             }
                         }
@@ -348,7 +348,7 @@ impl From<&Type> for Format {
                         } => match name.as_str() {
                             "Option" => {
                                 let format = match args.first() {
-                                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                                    Some(GenericArg::Type(type_)) => type_.into(),
                                     Some(other) => {
                                         panic!("Option<T> expects a type parameter, got: {other:?}")
                                     }
@@ -359,7 +359,7 @@ impl From<&Type> for Format {
                             "String" => Format::Str,
                             "Vec" => {
                                 let format = match args.first() {
-                                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                                    Some(GenericArg::Type(type_)) => type_.into(),
                                     Some(other) => {
                                         panic!("Vec<T> expects a type parameter, got: {other:?}")
                                     }
@@ -371,7 +371,7 @@ impl From<&Type> for Format {
                                 // Box<T> is semantically equivalent to T for serialization
                                 // since Box is just a heap allocation wrapper
                                 match args.first() {
-                                    Some(GenericArg::Type(ref type_)) => type_.into(),
+                                    Some(GenericArg::Type(type_)) => type_.into(),
                                     Some(other) => {
                                         panic!("Box<T> expects a type parameter, got: {other:?}")
                                     }
@@ -382,14 +382,14 @@ impl From<&Type> for Format {
                                 // Handle HashMap<K, V> and BTreeMap<K, V>
                                 if args.len() >= 2 {
                                     let key_format = match args.first() {
-                                        Some(GenericArg::Type(ref type_)) => type_.into(),
+                                        Some(GenericArg::Type(type_)) => type_.into(),
                                         Some(other) => panic!(
                                             "{name}<K, V> expects type parameter for K, got: {other:?}"
                                         ),
                                         None => unreachable!("Already checked args.len() >= 2"),
                                     };
                                     let value_format = match args.get(1) {
-                                        Some(GenericArg::Type(ref type_)) => type_.into(),
+                                        Some(GenericArg::Type(type_)) => type_.into(),
                                         Some(other) => panic!(
                                             "{name}<K, V> expects type parameter for V, got: {other:?}"
                                         ),

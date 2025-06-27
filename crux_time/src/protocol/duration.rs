@@ -1,3 +1,4 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 /// The number of nanoseconds in seconds.
@@ -6,7 +7,7 @@ const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
 
 /// Represents a duration of time, internally stored as nanoseconds
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Duration {
     pub(crate) nanos: u64,

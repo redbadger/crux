@@ -1,6 +1,6 @@
 use std::{future::Future, marker::PhantomData};
 
-use crux_core::{command::RequestBuilder, Command, Request};
+use crux_core::{Command, Request, command::RequestBuilder};
 
 use crate::{PlatformRequest, PlatformResponse};
 

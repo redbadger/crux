@@ -1,7 +1,7 @@
 use crate::middleware::Middleware;
 use http_types::{
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
     Body, Method, Mime, Url,
+    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
 };
 
 use serde::Serialize;

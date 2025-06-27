@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Args;
 use xshell::cmd;
 
-use crate::{package_args, Context};
+use crate::{Context, package_args};
 
 const CARGO: &str = crate::CARGO;
 
