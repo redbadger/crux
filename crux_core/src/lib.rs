@@ -172,7 +172,7 @@ use serde::Serialize;
 pub use capabilities::*;
 pub use capability::{Capability, WithContext};
 pub use command::Command;
-pub use core::{Core, Effect, Request, Resolvable, ResolveError};
+pub use core::{Core, Effect, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "cli")]
 pub use crux_cli as cli;
 pub use crux_macros as macros;
