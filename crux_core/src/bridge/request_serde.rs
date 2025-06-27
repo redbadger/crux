@@ -21,6 +21,7 @@ type ResolveManySerialized =
 /// If you see a better way around this, please open a PR.
 pub enum ResolveSerialized {
     Never,
+    Twice,
     Once(ResolveOnceSerialized),
     Many(ResolveManySerialized),
 }
@@ -33,6 +34,7 @@ impl ResolveSerialized {
     ) -> Result<(), BridgeError> {
         match self {
             ResolveSerialized::Never => Err(BridgeError::ProcessResponse(ResolveError::Never)),
+            ResolveSerialized::Twice => Err(BridgeError::ProcessResponse(ResolveError::Twice)),
             ResolveSerialized::Many(f) => f(bytes),
             ResolveSerialized::Once(_) => {
                 // The resolve has been used, turn it into a Never
@@ -84,14 +86,15 @@ impl<Out> RequestHandle<Out> {
         match self {
             RequestHandle::Never => ResolveSerialized::Never,
             RequestHandle::Once(resolve) => ResolveSerialized::Once(Box::new(move |deser| {
-                let out = func(deser)?;
-                resolve(out);
-                Ok(())
-            })),
+                        let out = func(deser)?;
+                        resolve(out);
+                        Ok(())
+                    })),
             RequestHandle::Many(resolve) => ResolveSerialized::Many(Box::new(move |deser| {
-                let out = func(deser)?;
-                resolve(out).map_err(|()| BridgeError::ProcessResponse(ResolveError::FinishedMany))
-            })),
+                        let out = func(deser)?;
+                        resolve(out).map_err(|()| BridgeError::ProcessResponse(ResolveError::FinishedMany))
+                    })),
+            RequestHandle::Twice => ResolveSerialized::Twice,
         }
     }
 }

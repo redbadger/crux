@@ -119,7 +119,7 @@ where
 // ANCHOR_END: resolve_sig
     {
         let resolve_result = request.resolve(result);
-        debug_assert!(resolve_result.is_ok());
+        debug_assert!(resolve_result.is_ok(), "{:?}", resolve_result);
 
         resolve_result?;
 
