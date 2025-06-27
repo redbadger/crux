@@ -1,6 +1,6 @@
 use std::sync::{Arc, Weak};
 
-use crate::{capability::Operation, Request, ResolveError};
+use crate::{capability::Operation, core::RequestHandle, Request, Resolvable, ResolveError};
 
 use super::Layer;
 
@@ -39,7 +39,7 @@ where
     fn try_process_effect_with(
         &self,
         effect: Effect,
-        resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
+        resolve_callback: impl FnOnce(RequestHandle<<Self::Op as Operation>::Output>, <Self::Op as Operation>::Output)
             + Send
             + 'static,
     ) -> Result<(), Effect>;
@@ -88,10 +88,10 @@ where
         self.update(event, effect_callback)
     }
 
-    fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn resolve<Output, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
         &self,
-        request: &mut Request<Op>,
-        output: Op::Output,
+        request: &mut impl Resolvable<Output>,
+        output: Output,
         effect_callback: F,
     ) -> Result<Vec<Self::Effect>, ResolveError> {
         self.resolve(request, output, effect_callback)
@@ -142,10 +142,10 @@ where
         Self::process_known_effects(&Arc::downgrade(&self.inner), effects, &return_effects_copy)
     }
 
-    fn resolve<Op: Operation>(
+    fn resolve<Output>(
         &self,
-        request: &mut Request<Op>,
-        result: Op::Output,
+        request: &mut impl Resolvable<Output>,
+        result: Output,
         return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
     ) -> Result<Vec<Next::Effect>, ResolveError> {
         let inner = Arc::downgrade(&self.inner);
@@ -204,7 +204,10 @@ where
                     let return_effects = return_effects.clone();
                     let inner = inner.clone();
 
-                    move |mut effect_request, effect_out_value| {
+                    // Ideally, we'd want the `handle` to be an `impl Resolvable`, alas,
+                    // generic closures are not a thing.
+                    move |mut handle: RequestHandle<<EM::Op as Operation>::Output>,
+                          effect_out_value| {
                         // This allows us to do the recursion without requiring `inner` to outlive 'static
                         let Some(strong_inner) = inner.upgrade() else {
                             // do nothing, inner is gone, we can't process further effects
@@ -213,22 +216,20 @@ where
                         };
 
                         if let Ok(immediate_effects) =
-                            strong_inner
-                                .next
-                                .resolve(&mut effect_request, effect_out_value, {
-                                    let return_effects = return_effects.clone();
-                                    let future_inner = inner.clone();
+                            strong_inner.next.resolve(&mut handle, effect_out_value, {
+                                let return_effects = return_effects.clone();
+                                let future_inner = inner.clone();
 
-                                    // Eventual eventual route
-                                    move |eventual_effects| {
-                                        // Process known effects
-                                        Self::process_known_effects_with(
-                                            &future_inner,
-                                            eventual_effects,
-                                            &return_effects,
-                                        );
-                                    }
-                                })
+                                // Eventual eventual route
+                                move |eventual_effects| {
+                                    // Process known effects
+                                    Self::process_known_effects_with(
+                                        &future_inner,
+                                        eventual_effects,
+                                        &return_effects,
+                                    );
+                                }
+                            })
                         {
                             Self::process_known_effects_with(
                                 &inner,
