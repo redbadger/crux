@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.87"
 
+[package.metadata.component]
+package = "counter-next:shared"
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 
@@ -11,12 +14,9 @@ crate-type = ["lib", "staticlib", "cdylib"]
 name = "crux_cli"
 required-features = ["cli"]
 
-[features]
-cli = ["crux_core/cli"]
 
 [dependencies]
 async-sse = "5.1.0"
-async-std = "1.13.1"
 chrono = { version = "0.4.41", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
@@ -33,5 +33,12 @@ rand = { version = "0.9.1", features = ["os_rng"] }
 wasm-bindgen = "0.2.100"
 js-sys = "0.3.77"
 
+[target.'cfg(all(target_os = "wasi", target_env = "p2"))'.dependencies]
+wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
+
 [dev-dependencies]
 insta = { version = "1.43.1", features = ["yaml"] }
+
+[features]
+cli = ["crux_core/cli"]
+typegen = ["crux_core/typegen"]
