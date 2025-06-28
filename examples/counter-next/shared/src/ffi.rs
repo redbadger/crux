@@ -92,7 +92,7 @@ pub mod uniffi_ffi {
     }
 }
 
-#[cfg(target_family = "wasm")]
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
 pub mod wasm_ffi {
     use crux_core::middleware::{BincodeFfiFormat, Layer as _};
     use crux_core::{Core, bridge::EffectId};
@@ -163,4 +163,73 @@ pub mod wasm_ffi {
             }
         }
     }
+}
+
+#[cfg(all(target_os = "wasi", target_env = "p2"))]
+pub mod wasip2 {
+    use crux_core::{Core, bridge::Bridge};
+    use std::sync::OnceLock;
+
+    use crate::{App, bindings};
+
+    /// The main interface used by the shell
+    pub struct CoreFFI {
+        core: Bridge<App>,
+    }
+
+    impl CoreFFI {
+        pub fn new() -> Self {
+            let core = Bridge::new(Core::new());
+
+            Self { core }
+        }
+
+        #[must_use]
+        pub fn update(&self, data: &[u8]) -> Vec<u8> {
+            match self.core.process_event(data) {
+                Ok(effects) => effects,
+                Err(e) => panic!("{e}"),
+            }
+        }
+
+        #[must_use]
+        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
+            match self.core.handle_response(effect_id, data) {
+                Ok(effects) => effects,
+                Err(e) => panic!("{e}"),
+            }
+        }
+
+        #[must_use]
+        pub fn view(&self) -> Vec<u8> {
+            match self.core.view() {
+                Ok(view) => view,
+                Err(e) => panic!("{e}"),
+            }
+        }
+    }
+
+    static CORE: OnceLock<CoreFFI> = OnceLock::new();
+
+    fn get_core() -> &'static CoreFFI {
+        CORE.get_or_init(|| CoreFFI::new())
+    }
+
+    pub struct Component;
+
+    impl bindings::Guest for Component {
+        fn update(data: Vec<u8>) -> Vec<u8> {
+            get_core().update(&data)
+        }
+
+        fn resolve(effect_id: u32, data: Vec<u8>) -> Vec<u8> {
+            get_core().resolve(effect_id, &data)
+        }
+
+        fn view() -> Vec<u8> {
+            get_core().view()
+        }
+    }
+
+    bindings::export!(Component with_types_in bindings);
 }
