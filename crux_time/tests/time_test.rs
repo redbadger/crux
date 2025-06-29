@@ -1,26 +1,29 @@
 #[cfg(feature = "chrono")]
 mod shared {
+    use std::time::SystemTime;
+
     use chrono::{DateTime, Utc};
-    use crux_core::render::Render;
-    use crux_core::{macros::Effect, Command};
-    use crux_time::{
-        protocol::{TimeResponse, TimerId},
-        Time,
-    };
+    use crux_core::macros::effect;
+    use crux_core::render::{render, RenderOperation};
+    use crux_core::Command;
+    use crux_time::command::Time;
+    use crux_time::command::{TimerHandle, TimerOutcome};
+    use crux_time::TimeRequest;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
     pub struct App;
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub enum Event {
         Get,
         GetAsync,
-        Set(TimeResponse),
-
+        Set(SystemTime),
         StartDebounce,
-        DurationElapsed(usize, TimeResponse),
-        Cancel(TimerId),
+        Cancel,
+
+        #[serde(skip)]
+        DurationElapsed(usize, TimerOutcome),
     }
 
     #[derive(Default)]
@@ -44,7 +47,7 @@ mod shared {
         pub time: String,
         debounce: Debounce,
         pub debounce_complete: bool,
-        pub debounce_time_id: Option<TimerId>,
+        pub debounce_timer_handle: Option<TimerHandle>,
     }
 
     #[derive(Serialize, Deserialize, Default)]
@@ -56,62 +59,45 @@ mod shared {
         type Event = Event;
         type Model = Model;
         type ViewModel = ViewModel;
-        type Capabilities = Capabilities;
+        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(
-            &self,
-            event: Event,
-            model: &mut Model,
-            caps: &Capabilities,
-        ) -> Command<Effect, Event> {
+        fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
             match event {
-                Event::Get => caps.time.now(Event::Set),
-                Event::GetAsync => caps.compose.spawn(|ctx| {
-                    let time = caps.time.clone();
-
-                    async move {
-                        ctx.update_app(Event::Set(time.now_async().await));
-                    }
+                Event::Get => Time::now().then_send(Event::Set),
+                Event::GetAsync => Command::new(|ctx| async move {
+                    ctx.send_event(Event::Set(Time::now().into_future(ctx.clone()).await));
                 }),
-                Event::Set(time) => {
-                    if let TimeResponse::Now { instant } = time {
-                        let time: DateTime<Utc> = instant.try_into().unwrap();
-                        model.time = time.to_rfc3339();
-                        caps.render.render();
-                    }
+                Event::Set(instant) => {
+                    let time: DateTime<Utc> = instant.into();
+                    model.time = time.to_rfc3339();
+
+                    render()
                 }
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
 
-                    let tid = caps.time.notify_after(
-                        std::time::Duration::from_millis(300),
-                        event_with_user_info(pending, Event::DurationElapsed),
-                    );
+                    let (time, tid) = Time::notify_after(std::time::Duration::from_millis(300));
+                    model.debounce_timer_handle = Some(tid);
 
-                    model.debounce_time_id = Some(tid);
+                    time.then_send(event_with_user_info(pending, Event::DurationElapsed))
                 }
-                Event::DurationElapsed(pending, TimeResponse::DurationElapsed { id: _ }) => {
+                Event::DurationElapsed(pending, TimerOutcome::Completed(_)) => {
                     if model.debounce.resolve(pending) {
                         model.debounce_complete = true;
                     }
+
+                    Command::done()
                 }
-                Event::DurationElapsed(_, TimeResponse::Cleared { id }) => {
-                    if let Some(tid) = model.debounce_time_id {
-                        if tid == id {
-                            model.debounce_time_id = None;
-                        }
+                Event::DurationElapsed(_, TimerOutcome::Cleared) => Command::done(),
+                Event::Cancel => {
+                    if let Some(handle) = model.debounce_timer_handle.take() {
+                        handle.clear();
                     }
-                }
-                Event::DurationElapsed(_, _) => {
-                    panic!("Unexpected debounce event")
-                }
-                Event::Cancel(timer_id) => {
-                    caps.time.clear(timer_id);
+
+                    Command::done()
                 }
             }
-
-            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -121,12 +107,10 @@ mod shared {
         }
     }
 
-    #[derive(Effect)]
-    pub struct Capabilities {
-        pub time: Time<Event>,
-        pub render: Render<Event>,
-        #[effect(skip)]
-        pub compose: crux_core::compose::Compose<Event>,
+    #[effect]
+    pub enum Effect {
+        Time(TimeRequest),
+        Render(RenderOperation),
     }
 
     /// Helper to create an event with additional user info captured
@@ -194,7 +178,7 @@ mod tests {
     };
     use chrono::{DateTime, Utc};
     use crux_core::{testing::AppTester, Core};
-    use crux_time::protocol::TimeResponse;
+    use crux_time::{command::TimerOutcome, protocol::TimeResponse, TimeRequest};
 
     #[test]
     pub fn test_time() {
@@ -239,11 +223,12 @@ mod tests {
             .expect_time();
 
         // resolve and update
+        let TimeRequest::NotifyAfter { id, .. } = request1.operation else {
+            panic!("Expected NotifyAfter");
+        };
         app.resolve_to_event_then_update(
             request1,
-            TimeResponse::DurationElapsed {
-                id: model.debounce_time_id.unwrap(),
-            },
+            TimeResponse::DurationElapsed { id },
             &mut model,
         )
         .assert_empty();
@@ -252,11 +237,13 @@ mod tests {
         assert!(!model.debounce_complete);
 
         // resolve and update
+        let TimeRequest::NotifyAfter { id, .. } = request2.operation else {
+            panic!("Expected NotifyAfter");
+        };
+
         app.resolve_to_event_then_update(
             request2,
-            TimeResponse::DurationElapsed {
-                id: model.debounce_time_id.unwrap(),
-            },
+            TimeResponse::DurationElapsed { id },
             &mut model,
         )
         .assert_empty();
@@ -269,30 +256,27 @@ mod tests {
     pub fn test_start_debounce_then_clear() {
         let app = AppTester::<App>::default();
         let mut model = Model::default();
-        let mut debounce = app
+        let debounce = app
             .update(Event::StartDebounce, &mut model)
             .expect_one_effect()
             .expect_time();
-        let timer_id = model.debounce_time_id.unwrap();
-        let _cancel = app
-            .update(Event::Cancel(timer_id), &mut model)
+
+        let TimeRequest::NotifyAfter { id: timer_id, .. } = debounce.operation else {
+            panic!("Expected NotifyAfter");
+        };
+
+        let mut cancel = app
+            .update(Event::Cancel, &mut model)
             .expect_one_effect()
             .expect_time();
-        // this is a little strange-looking. We have cleared the timer,
-        // so the in-flight debounce should have resolved. But to force that
-        // to happen, we have to run the app, and the easiest way to do that
-        // is to resolve the original debounce effect with a fake outcome -
-        // which will be ignored in favour of TimeResponse::Cleared
+
         let ev = app
-            .resolve(
-                &mut debounce,
-                TimeResponse::DurationElapsed { id: timer_id },
-            )
+            .resolve(&mut cancel, TimeResponse::Cleared { id: timer_id })
             .unwrap()
             .expect_one_event();
-        let Event::DurationElapsed(_, TimeResponse::Cleared { id }) = ev else {
+
+        let Event::DurationElapsed(_, TimerOutcome::Cleared) = ev else {
             panic!()
         };
-        assert_eq!(id, timer_id);
     }
 }
