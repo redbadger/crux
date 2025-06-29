@@ -213,6 +213,7 @@ pub(crate) trait EffectSender {
 }
 
 #[async_trait]
+#[expect(deprecated)]
 impl<Ev> EffectSender for crux_core::capability::CapabilityContext<HttpRequest, Ev>
 where
     Ev: 'static,

@@ -1,5 +1,7 @@
 //! Middleware which can be wrapped around the Core to modify its behaviour.
 //!
+//! Note that this is still somewhat experimental.
+//!
 //! This is useful for changing the mechanics of the Core without modifying the actual
 //! behaviour of the app.
 //!

@@ -2,8 +2,8 @@ mod shared {
 
     use std::{cmp::max, collections::HashMap};
 
-    use crux_core::{macros::Effect, Command};
-    use crux_http::command::Http;
+    use crux_core::{macros::effect, Command};
+    use crux_http::{command::Http, protocol::HttpRequest};
     use futures_util::join;
     use http_types::StatusCode;
     use serde::{Deserialize, Serialize};
@@ -40,15 +40,10 @@ mod shared {
         type Model = Model;
         type ViewModel = ViewModel;
 
-        type Capabilities = Capabilities;
+        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(
-            &self,
-            event: Event,
-            model: &mut Model,
-            _caps: &Capabilities,
-        ) -> Command<Effect, Event> {
+        fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
             match event {
                 Event::Get => Http::get("http://example.com")
                     .header("Authorization", "secret-token")
@@ -129,10 +124,9 @@ mod shared {
         }
     }
 
-    #[derive(Effect)]
-    #[allow(unused)]
-    pub(crate) struct Capabilities {
-        pub http: crux_http::Http<Event>,
+    #[effect]
+    pub enum Effect {
+        Http(HttpRequest),
     }
 }
 

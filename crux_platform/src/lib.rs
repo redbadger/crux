@@ -3,7 +3,10 @@
 
 pub mod command;
 
-use crux_core::capability::{CapabilityContext, Operation};
+#[expect(deprecated)]
+use crux_core::capability::CapabilityContext;
+
+use crux_core::capability::Operation;
 use crux_core::macros::Capability;
 use serde::{Deserialize, Serialize};
 
@@ -19,10 +22,13 @@ impl Operation for PlatformRequest {
 }
 
 #[derive(Capability)]
+#[deprecated]
+#[expect(deprecated)]
 pub struct Platform<Ev> {
     context: CapabilityContext<PlatformRequest, Ev>,
 }
 
+#[expect(deprecated)]
 impl<Ev> Platform<Ev>
 where
     Ev: 'static,
