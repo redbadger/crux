@@ -1,3 +1,5 @@
+#![expect(deprecated)] // FIXME: Migrate PubSub to Command API
+
 use std::future::Future;
 
 use futures::Stream;
