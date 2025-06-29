@@ -10,13 +10,19 @@ use crate::{
 
 use super::Layer;
 
-/// A serialization format for the bridge FFI
+/// A serialization format for the bridge FFI.
+///
+/// **Note**: While you can implement your own format for use with the [`Bridge`],
+/// the type generation system doesn't yet support automatically generating the shell-side support
+/// for different formats, and you'll need to bring your own solution for this.
 pub trait FfiFormat {
     type Serializer<'b>;
     type Deserializer<'b>;
 
+    /// Create a serializer instance with a provided growable byte buffer
     fn serializer(buffer: &mut Vec<u8>) -> Self::Serializer<'_>;
 
+    /// Create a deserializer instance for a provided byte slice
     fn deserializer(bytes: &[u8]) -> Self::Deserializer<'_>;
 }
 
@@ -41,6 +47,7 @@ where
     for<'se, 'b> &'se mut Format::Serializer<'b>: serde::Serializer,
     for<'de, 'b> &'de mut Format::Deserializer<'b>: serde::Deserializer<'b>,
 {
+    /// Typically, you would would use [`Layer::bridge`] to construct a `Bridge` instance
     pub fn new<F>(next: Next, effect_callback: F) -> Self
     where
         F: Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static,

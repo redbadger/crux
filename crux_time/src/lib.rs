@@ -30,10 +30,7 @@ fn get_timer_id() -> TimerId {
     TimerId(COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
-/// The Time capability API
-///
-/// This capability provides access to the current time and allows the app to ask for
-/// notifications when a specific instant has arrived or a duration has elapsed.
+/// The original Time capability API, deprecated in favour of [`command::Time`].
 #[deprecated(
     since = "0.14.0",
     note = "The Capability API has been deprecated. Use command::Time instead."

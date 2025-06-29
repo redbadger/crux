@@ -36,7 +36,7 @@ use serde::Deserialize;
 ///
 /// This is the lower-level of the middleware traits. You might want to implement this
 /// for middleware which filters or transforms events or your view model, with awareness
-/// of your app's Event and `ViewModel` types.
+/// of your app's `Event` and `ViewModel` types.
 ///
 /// If you want to build a reusable effect-handling middleware, see [`EffectMiddleware`].
 pub trait Layer: Send + Sync + Sized {
@@ -92,8 +92,11 @@ pub trait Layer: Send + Sync + Sized {
     /// The tasks may produce effects which will be returned by the core and may be
     /// processed by lower middleware layers.
     ///
+    /// You should not need to call this method directly. Most implementations should
+    /// simply forward the call to the next `Layer`.
+    ///
     /// This is used by the [`Bridge`], when resolving effects over FFI. It can't call
-    /// [`resolve`], because the `Op` type argument is not known due to the type erasure
+    /// [`Core::resolve`], because the `Output` type argument is not known due to the type erasure
     /// involved in serializing effects and storing request handles for the FFI.
     fn process_tasks<F>(&self, effect_callback: F) -> Vec<Self::Effect>
     where

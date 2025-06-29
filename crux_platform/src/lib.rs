@@ -1,5 +1,5 @@
 #![deny(clippy::pedantic)]
-//! TODO mod docs
+//! A demo capability to get a name of the current platform
 
 pub mod command;
 
@@ -22,7 +22,10 @@ impl Operation for PlatformRequest {
 }
 
 #[derive(Capability)]
-#[deprecated(since = "0.7.0", note = "The Platform capability has been deprecated.")]
+#[deprecated(
+    since = "0.7.0",
+    note = "The Platform capability has been deprecated. Use command::Platform"
+)]
 #[expect(deprecated)]
 pub struct Platform<Ev> {
     context: CapabilityContext<PlatformRequest, Ev>,

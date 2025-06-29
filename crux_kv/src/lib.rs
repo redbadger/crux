@@ -133,6 +133,7 @@ impl Operation for KeyValueOperation {
     }
 }
 
+/// The original API for `KeyValue` capability, now deprecated. Use [`command::KeyValue`] instead.
 #[deprecated(
     since = "0.10.0",
     note = "The capabilities API has been deprecated. Use command::KeyValue instead."
