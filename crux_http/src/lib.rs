@@ -39,7 +39,10 @@ use client::Client;
 pub type Result<T> = std::result::Result<T, HttpError>;
 
 /// The Http capability API.
-#[deprecated]
+#[deprecated(
+    since = "0.15.0",
+    note = "The capabilities API has been deprecated. Use command::Http instead."
+)]
 pub struct Http<Ev> {
     #[expect(deprecated)]
     context: CapabilityContext<protocol::HttpRequest, Ev>,

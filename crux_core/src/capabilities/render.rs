@@ -15,7 +15,10 @@ use crate::{capability::Operation, command::NotificationBuilder, Command, Reques
 ///
 /// For imperative UIs, the Shell will need to understand the difference between the two
 /// view models and update the user interface accordingly.
-#[deprecated]
+#[deprecated(
+    since = "0.16.0",
+    note = "The Render capability has been deprecated. Use render::render() with the Command API instead."
+)]
 pub struct Render<Ev> {
     #[expect(deprecated)]
     context: CapabilityContext<RenderOperation, Ev>,

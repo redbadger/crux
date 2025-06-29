@@ -300,7 +300,10 @@ impl Operation for Never {
 ///     }
 /// }
 /// ```
-#[deprecated]
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub trait Capability<Ev> {
     type Operation: Operation + DeserializeOwned;
 
@@ -374,7 +377,10 @@ pub trait Capability<Ev> {
 ///     }
 /// }
 /// ```
-#[deprecated]
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead. If you're using #[derive(Effect)] on a Capabilities type, you should use the #[effect] macro with an enum Effect instead."
+)]
 pub trait WithContext<Ev, Ef> {
     fn new_with_context(context: ProtoContext<Ef, Ev>) -> Self;
 }
@@ -421,7 +427,10 @@ impl<Event, Effect> WithContext<Event, Effect> for () {
 ///
 // used in docs/internals/runtime.md
 // ANCHOR: capability_context
-#[deprecated]
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub struct CapabilityContext<Op, Event>
 where
     Op: Operation,
