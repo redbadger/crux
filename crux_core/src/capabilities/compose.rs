@@ -37,7 +37,10 @@ use futures::Future;
 /// Note that testing composed effects is more difficult, because it is not possible to enter the effect
 /// transaction "in the middle" - only from the beginning - or to ignore some of the effects with out
 /// stalling the entire downstream dependency chain.
-#[deprecated]
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub struct Compose<Ev> {
     #[expect(deprecated)]
     context: CapabilityContext<Never, Ev>,
@@ -45,7 +48,10 @@ pub struct Compose<Ev> {
 
 /// A restricted context given to the closure passed to [`Compose::spawn`]. This context can only
 /// update the app, not request from the shell or spawn further tasks.
-#[deprecated]
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub struct ComposeContext<Ev> {
     #[expect(deprecated)]
     context: CapabilityContext<Never, Ev>,

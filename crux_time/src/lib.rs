@@ -34,7 +34,10 @@ fn get_timer_id() -> TimerId {
 ///
 /// This capability provides access to the current time and allows the app to ask for
 /// notifications when a specific instant has arrived or a duration has elapsed.
-#[deprecated]
+#[deprecated(
+    since = "0.14.0",
+    note = "The Capability API has been deprecated. Use command::Time instead."
+)]
 #[expect(deprecated)]
 pub struct Time<Ev> {
     context: CapabilityContext<TimeRequest, Ev>,

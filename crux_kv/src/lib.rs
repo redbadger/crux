@@ -133,7 +133,10 @@ impl Operation for KeyValueOperation {
     }
 }
 
-#[deprecated]
+#[deprecated(
+    since = "0.10.0",
+    note = "The capabilities API has been deprecated. Use command::KeyValue instead."
+)]
 pub struct KeyValue<Ev> {
     #[expect(deprecated)]
     context: CapabilityContext<KeyValueOperation, Ev>,

@@ -22,7 +22,7 @@ impl Operation for PlatformRequest {
 }
 
 #[derive(Capability)]
-#[deprecated]
+#[deprecated(since = "0.7.0", note = "The Platform capability has been deprecated.")]
 #[expect(deprecated)]
 pub struct Platform<Ev> {
     context: CapabilityContext<PlatformRequest, Ev>,
