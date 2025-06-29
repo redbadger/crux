@@ -18,6 +18,7 @@ mod app {
     }
 
     #[derive(Effect)]
+    #[expect(deprecated)]
     pub struct Capabilities {
         one: super::capabilities::one::CapabilityOne<Event>,
         two: super::capabilities::two::CapabilityTwo<Event>,
@@ -66,7 +67,9 @@ mod app {
 
 pub mod capabilities {
     pub mod one {
-        use crux_core::capability::{CapabilityContext, Operation};
+        #[expect(deprecated)]
+        use crux_core::capability::CapabilityContext;
+        use crux_core::capability::Operation;
         use crux_core::macros::Capability;
         use serde::{Deserialize, Serialize};
 
@@ -80,6 +83,7 @@ pub mod capabilities {
         }
 
         #[derive(Capability)]
+        #[expect(deprecated)]
         pub struct CapabilityOne<E> {
             context: CapabilityContext<OpOne, E>,
         }
@@ -94,6 +98,7 @@ pub mod capabilities {
             }
         }
 
+        #[expect(deprecated)]
         impl<E> CapabilityOne<E> {
             #[must_use]
             pub fn new(context: CapabilityContext<OpOne, E>) -> Self {
@@ -128,7 +133,9 @@ pub mod capabilities {
     }
 
     pub mod two {
-        use crux_core::capability::{CapabilityContext, Operation};
+        #[expect(deprecated)]
+        use crux_core::capability::CapabilityContext;
+        use crux_core::capability::Operation;
         use crux_core::macros::Capability;
         use serde::{Deserialize, Serialize};
 
@@ -142,6 +149,7 @@ pub mod capabilities {
         }
 
         #[derive(Capability)]
+        #[expect(deprecated)]
         pub struct CapabilityTwo<E> {
             context: CapabilityContext<OpTwo, E>,
         }
@@ -156,6 +164,7 @@ pub mod capabilities {
             }
         }
 
+        #[expect(deprecated)]
         impl<E> CapabilityTwo<E> {
             #[must_use]
             pub fn new(context: CapabilityContext<OpTwo, E>) -> Self {

@@ -1,7 +1,8 @@
 mod app {
-    use crux_core::render::{render, Render};
-    use crux_core::{macros::Effect, Command};
-    use crux_http::command::Http;
+    use crux_core::render::{render, RenderOperation};
+    use crux_core::Command;
+    use crux_http::{command::Http, protocol::HttpRequest};
+    use crux_macros::effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -13,20 +14,26 @@ mod app {
         Get,
     }
 
+    #[effect]
+    pub enum Effect {
+        Http(HttpRequest),
+        Render(RenderOperation),
+    }
+
     #[derive(Serialize, Deserialize)]
     pub struct ViewModel;
     impl crux_core::App for App {
         type Event = Event;
         type Model = ();
         type ViewModel = ViewModel;
-        type Capabilities = Capabilities;
+        type Capabilities = ();
         type Effect = Effect;
 
         fn update(
             &self,
             event: Event,
             _model: &mut Self::Model,
-            _caps: &Capabilities,
+            _caps: &(),
         ) -> Command<Effect, Event> {
             match event {
                 Event::Trigger => render(),
@@ -39,13 +46,6 @@ mod app {
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
             unimplemented!();
         }
-    }
-
-    #[derive(Effect)]
-    #[allow(dead_code)]
-    pub struct Capabilities {
-        pub http: crux_http::Http<Event>,
-        pub render: Render<Event>,
     }
 }
 

@@ -48,11 +48,13 @@ pub struct RequestBuilder<Event, ExpectBody = Vec<u8>> {
 // Middleware request builders won't have access to the capability, so they get a client
 // and therefore can't send events themselves.  Normal request builders get direct access
 // to the capability itself.
+#[expect(deprecated)]
 enum CapOrClient<Event> {
     Client(Client),
     Capability(crate::Http<Event>),
 }
 
+#[expect(deprecated)]
 impl<Event> RequestBuilder<Event, Vec<u8>> {
     pub(crate) fn new(method: Method, url: Url, capability: crate::Http<Event>) -> Self {
         Self {
@@ -414,6 +416,7 @@ where
     /// dispatched to the app's `update` function.
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
+    #[expect(deprecated)]
     pub fn send<F>(self, make_event: F)
     where
         F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
@@ -468,6 +471,7 @@ impl<T, Eb> std::future::IntoFuture for RequestBuilder<T, Eb> {
         Box::pin({
             let client = match self.cap_or_client {
                 CapOrClient::Client(c) => c,
+                #[expect(deprecated)]
                 CapOrClient::Capability(c) => c.client,
             };
 

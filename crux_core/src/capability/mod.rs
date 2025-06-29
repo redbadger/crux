@@ -1,5 +1,10 @@
 //! Capabilities provide a user-friendly API to request side-effects from the shell.
 //!
+//! NOTE: Capabilities are the legacy interface to side-effect and this module will be removed in a future version
+//! of crux. If you're starting a new app, you should use the [`command`](crate::command) API.
+//!
+//! For more help migrating from Capabilities to Commands, see [the documentation book](https://redbadger.github.io/crux/guide/effects.html#migrating-from-previous-versions-of-crux)
+//!
 //! Typically, capabilities provide I/O and host API access. Capabilities are external to the
 //! core Crux library. Some are part of the Crux core distribution, others are expected to be built by the
 //! community. Apps can also build single-use capabilities where necessary.
@@ -295,6 +300,7 @@ impl Operation for Never {
 ///     }
 /// }
 /// ```
+#[deprecated]
 pub trait Capability<Ev> {
     type Operation: Operation + DeserializeOwned;
 
@@ -368,10 +374,12 @@ pub trait Capability<Ev> {
 ///     }
 /// }
 /// ```
+#[deprecated]
 pub trait WithContext<Ev, Ef> {
     fn new_with_context(context: ProtoContext<Ef, Ev>) -> Self;
 }
 
+#[expect(deprecated)]
 impl<Event, Effect> WithContext<Event, Effect> for () {
     fn new_with_context(_context: ProtoContext<Effect, Event>) -> Self {}
 }
@@ -413,6 +421,7 @@ impl<Event, Effect> WithContext<Event, Effect> for () {
 ///
 // used in docs/internals/runtime.md
 // ANCHOR: capability_context
+#[deprecated]
 pub struct CapabilityContext<Op, Event>
 where
     Op: Operation,
@@ -480,6 +489,7 @@ impl<Effect, Event> CommandSpawner<Effect, Event> {
     }
 }
 
+#[expect(deprecated)]
 impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
 where
     Op: Operation,
@@ -491,6 +501,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<Eff, Ev> ProtoContext<Eff, Ev>
 where
     Ev: 'static,
@@ -528,6 +539,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<Op, Ev> CapabilityContext<Op, Ev>
 where
     Op: Operation,
@@ -671,6 +683,7 @@ where
 }
 
 #[cfg(test)]
+#[expect(deprecated)]
 mod tests {
     use serde::{Deserialize, Serialize};
     use static_assertions::assert_impl_all;

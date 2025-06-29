@@ -67,6 +67,7 @@ impl<T> Future for ShellRequest<T> {
     }
 }
 
+#[expect(deprecated)]
 impl<Op, Ev> crate::capability::CapabilityContext<Op, Ev>
 where
     Op: crate::capability::Operation,
@@ -126,6 +127,7 @@ where
 }
 
 #[cfg(test)]
+#[expect(deprecated)]
 mod tests {
     use assert_matches::assert_matches;
 

@@ -20,6 +20,7 @@ use std::{
     time::SystemTime,
 };
 
+#[expect(deprecated)]
 use crux_core::capability::CapabilityContext;
 
 pub use protocol::{duration::Duration, instant::Instant, TimeRequest, TimeResponse, TimerId};
@@ -33,10 +34,13 @@ fn get_timer_id() -> TimerId {
 ///
 /// This capability provides access to the current time and allows the app to ask for
 /// notifications when a specific instant has arrived or a duration has elapsed.
+#[deprecated]
+#[expect(deprecated)]
 pub struct Time<Ev> {
     context: CapabilityContext<TimeRequest, Ev>,
 }
 
+#[expect(deprecated)]
 impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
     type Operation = TimeRequest;
     type MappedSelf<MappedEv> = Time<MappedEv>;
@@ -51,6 +55,7 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Clone for Time<Ev> {
     fn clone(&self) -> Self {
         Self {
@@ -59,6 +64,7 @@ impl<Ev> Clone for Time<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Time<Ev>
 where
     Ev: 'static,

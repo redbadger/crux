@@ -1,6 +1,8 @@
 mod capability {
     use async_channel::Sender;
-    use crux_core::capability::{CapabilityContext, Operation};
+    #[expect(deprecated)]
+    use crux_core::capability::CapabilityContext;
+    use crux_core::capability::Operation;
     use crux_core::macros::Capability;
     use futures::{FutureExt, StreamExt};
     use serde::{Deserialize, Serialize};
@@ -15,6 +17,7 @@ mod capability {
     }
 
     #[derive(Capability)]
+    #[expect(deprecated)]
     pub struct Crawler<Ev> {
         context: CapabilityContext<Fetch, Ev>,
         tasks_tx: Sender<(usize, Sender<usize>)>,
@@ -40,6 +43,7 @@ mod capability {
     //
     // We use this in the test to make sure the capability runtime supports
     // this type of use-case correctly.
+    #[expect(deprecated)]
     impl<Ev> Crawler<Ev>
     where
         Ev: 'static,
@@ -165,6 +169,7 @@ mod app {
     }
 
     #[derive(Effect)]
+    #[expect(deprecated)]
     pub struct Capabilities {
         crawler: super::capability::Crawler<Event>,
         render: crux_core::render::Render<Event>,

@@ -4,11 +4,9 @@ use std::future::Future;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    capability::{CapabilityContext, Operation},
-    command::NotificationBuilder,
-    Capability, Command, Request,
-};
+#[expect(deprecated)]
+use crate::{capability::CapabilityContext, Capability};
+use crate::{capability::Operation, command::NotificationBuilder, Command, Request};
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
 /// interface. This assumes a declarative UI framework is used in the Shell, which will
@@ -17,10 +15,13 @@ use crate::{
 ///
 /// For imperative UIs, the Shell will need to understand the difference between the two
 /// view models and update the user interface accordingly.
+#[deprecated]
 pub struct Render<Ev> {
+    #[expect(deprecated)]
     context: CapabilityContext<RenderOperation, Ev>,
 }
 
+#[expect(deprecated)]
 impl<Ev> Clone for Render<Ev> {
     fn clone(&self) -> Self {
         Self {
@@ -38,6 +39,7 @@ impl Operation for RenderOperation {
 }
 
 /// Public API of the capability, called by `App::update`.
+#[expect(deprecated)]
 impl<Ev> Render<Ev>
 where
     Ev: 'static,
@@ -57,6 +59,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Capability<Ev> for Render<Ev> {
     type Operation = RenderOperation;
     type MappedSelf<MappedEv> = Render<MappedEv>;

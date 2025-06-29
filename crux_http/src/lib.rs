@@ -6,6 +6,7 @@
 //! This is still work in progress and large parts of HTTP are not yet supported.
 // #![warn(missing_docs)]
 
+#[expect(deprecated)]
 use crux_core::capability::CapabilityContext;
 use http_types::Method;
 use url::Url;
@@ -38,11 +39,14 @@ use client::Client;
 pub type Result<T> = std::result::Result<T, HttpError>;
 
 /// The Http capability API.
+#[deprecated]
 pub struct Http<Ev> {
+    #[expect(deprecated)]
     context: CapabilityContext<protocol::HttpRequest, Ev>,
     client: Client,
 }
 
+#[expect(deprecated)]
 impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
     type Operation = protocol::HttpRequest;
 
@@ -58,6 +62,7 @@ impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Clone for Http<Ev> {
     fn clone(&self) -> Self {
         Self {
@@ -67,6 +72,7 @@ impl<Ev> Clone for Http<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Http<Ev>
 where
     Ev: 'static,

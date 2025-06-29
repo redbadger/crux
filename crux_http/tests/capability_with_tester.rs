@@ -1,3 +1,5 @@
+#![expect(deprecated)]
+
 mod shared {
 
     use std::{cmp::max, collections::HashMap, future::IntoFuture};

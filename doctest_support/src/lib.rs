@@ -121,6 +121,7 @@ pub mod command {
 }
 
 pub mod compose {
+    #[expect(deprecated)]
     pub mod capabilities {
         pub mod capability_one {
             use crux_core::capability::{CapabilityContext, Operation};
