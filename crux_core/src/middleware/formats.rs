@@ -6,6 +6,7 @@ use bincode::{
 
 use super::FfiFormat;
 
+/// The default serialisation format implementation used in the FFI calls. Uses [`bincode`].
 pub struct BincodeFfiFormat;
 
 impl BincodeFfiFormat {

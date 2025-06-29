@@ -1,4 +1,20 @@
 //! The Command based API for `crux_http`
+//!
+//! Use methods on the [`Http`] type. For example:
+//!
+//! ```
+//! # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
+//! # #[derive(crux_core::macros::Effect)]
+//! # #[allow(unused)]
+//! # struct Capabilities { http: crux_http::Http<Event> }
+//! # type Http = crux_http::command::Http<Effect, Event>;
+//! Http::get("https://httpbin.org/get")
+//!     .expect_string()
+//!     .build()
+//!     .then_send(Event::ReceiveResponse);
+//! ```
+//!
+//!
 
 use std::{fmt, future::Future, marker::PhantomData};
 

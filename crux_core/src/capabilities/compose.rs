@@ -1,3 +1,9 @@
+//! ## DEPRECATED
+//!
+//! Capabilities are the legacy interface to side-effects, and this module will be removed in a future version
+//! of crux. If you're starting a new app, you should use the [`command`](crate::command) API, specifically
+//! [`CommandContext::spawn`](crate::command::CommandContext::spawn).
+//!
 //! A capability which can spawn tasks which orchestrate across other capabilities. This
 //! is useful for orchestrating a number of different effects into a single transaction.
 

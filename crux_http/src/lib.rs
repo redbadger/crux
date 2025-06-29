@@ -38,7 +38,7 @@ use client::Client;
 
 pub type Result<T> = std::result::Result<T, HttpError>;
 
-/// The Http capability API.
+/// The original Http capability API, now deprecated.
 #[deprecated(
     since = "0.15.0",
     note = "The capabilities API has been deprecated. Use command::Http instead."

@@ -21,6 +21,13 @@ pub enum TimerOutcome {
     Cleared,
 }
 
+/// Time capability API.
+///
+/// This capability provides access to the current time and allows the app to ask for
+/// notifications when a specific instant has arrived or a duration has elapsed.
+///
+/// The capability also supports cancellation from the core side, using the [`TimerHandle`]
+/// returned by [`notify_at`](Time::notify_at) and [`notify_after`](Time::notify_after).
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
     effect: PhantomData<Effect>,
@@ -33,6 +40,7 @@ where
     Event: Send + 'static,
 {
     /// Ask for the current wall-clock time.
+    ///
     /// # Panics
     /// Panics if the response is not `TimeResponse::Now`.
     #[must_use]
@@ -47,7 +55,9 @@ where
     }
 
     /// Ask to receive a notification when the specified
-    /// [`SystemTime`] has arrived.
+    /// [`SystemTime`] has arrived. Returns the `RequestBuilder` alongside a [`TimerHandle`],
+    /// which can be stored and used to clear the timer.
+    ///
     /// # Panics
     /// Panics if the response is not `TimeResponse::InstantArrived`
     /// or if the timer ID is not the same as the one used to create the handle.
@@ -120,7 +130,9 @@ where
     }
 
     /// Ask to receive a notification after the specified
-    /// [`Duration`] has elapsed.
+    /// [`Duration`] has elapsed. Returns the `RequestBuilder` alongside a [`TimerHandle`],
+    /// which can be stored and used to clear the timer.
+    ///
     /// # Panics
     /// Panics if the response is not `TimeResponse::DurationElapsed`
     /// or if the timer ID is not the same as the one used to create the handle.
@@ -210,6 +222,10 @@ impl TimerHandle {
     }
 }
 
+/// Equivalent of [`TimerHandle`] for timers which completed (i.e. specified time is in the past).
+///
+/// `CompletedTimerHandle` can no longer be cleared, but can be compared with a
+/// previously stored `TimerHandle`, if the app uses several timers at the same time.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CompletedTimerHandle {
     timer_id: TimerId,

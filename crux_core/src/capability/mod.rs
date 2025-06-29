@@ -1,6 +1,6 @@
-//! Capabilities provide a user-friendly API to request side-effects from the shell.
+//! ## DEPRECATED
 //!
-//! NOTE: Capabilities are the legacy interface to side-effect and this module will be removed in a future version
+//! Capabilities are the legacy interface to side-effects, and this module will be removed in a future version
 //! of crux. If you're starting a new app, you should use the [`command`](crate::command) API.
 //!
 //! For more help migrating from Capabilities to Commands, see [the documentation book](https://redbadger.github.io/crux/guide/effects.html#migrating-from-previous-versions-of-crux)
