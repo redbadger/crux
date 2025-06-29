@@ -12,6 +12,7 @@
    1. [Swift and SwiftUI (manual)](./getting_started/iOS/manual.md)
 1. [Android](./getting_started/Android/index.md)
    1. [Kotlin and Jetpack Compose](./getting_started/Android/android.md)
+   1. [Android minify](./getting_started/Android/android-apk-shrink.md)
 1. [Web](./getting_started/web/index.md)
    1. [TypeScript and React (Next.js)](./getting_started/web/nextjs.md)
    1. [TypeScript and React (Remix)](./getting_started/web/remix.md)
@@ -30,7 +31,6 @@
 1. [Testing](./guide/testing.md)
 1. [Interface between core and shell](./guide/message_interface.md)
 1. [Composable Applications](./guide/composing.md)
-1. [Android minify](./guide/android-apk-shrink.md)
 
 # Internals
 

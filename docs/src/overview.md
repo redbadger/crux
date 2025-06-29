@@ -50,8 +50,8 @@ the Core is side–effect free. This is both a technical requirement (to be able
 to target WebAssembly), and an intentional design goal, to separate logic from
 effects and make them both easier to test in isolation.
 
-The core requests side-effects from the Shell through common
-[capabilities](./guide/capabilities.md). The basic concept is that instead of
+Crux uses [managed side-effects](./guide/effects.md) – the app requests side-effects
+from the Shell, which executes them. The basic concept is that instead of
 _doing_ the asynchronous work, the core _describes_ the intent for the work with
 data, and passes this to the Shell to be performed. The Shell performs the work,
 and returns the outcomes back to the Core. This approach is inspired by
@@ -79,7 +79,7 @@ overall goals of Crux are to:
 - Follow the Ports and Adapters pattern, also known as
   [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
   to facilitate pushing side-effects to the edge, making behavior easy to test
-- Separate the behavior from the look and feel and interaction design
+- Strictly separate the behavior from the look and feel and interaction design
 - Use the native UI tool kits to create user experience that is the best fit for
   a given platform
 
@@ -89,14 +89,14 @@ Crux is used in production apps today, and we consider it production ready. Howe
 
 Below is a list of some of the things we know we want to do before 1.0:
 
+* ✅ ~~Revised capabilities and effects to allow for better, more natural
+  [app composition](./guide/composing.md) in larger apps, for composing capabilities,
+  and generally for a more ergonomic effect API overall~~ See [managed effects](./guide/effects.md)
+* Better code generation with additional features, and support for more languages (e.g. C#, Dart, even C++...)
+  and in trurn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
 * Improved documentation, code examples, and example apps for newcomers
 * Improved onboarding experience, with less boilerplate code that end users have
-  to deal with
-* Better FFI code generation to enable support for more languages (e.g. C#, Dart, even C++...)
-  and in trurn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
-* Revised capabilities and effects to allow for better, more natural
-  [app composition](./guide/composing.md) in larger apps, for composing capabilities,
-  and generally for a more ergonomic effect API overall
+  to write or copy from an example
 
 Until then, we hope you will work with us on the rough edges, and adapt to the necessary
 API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable.
