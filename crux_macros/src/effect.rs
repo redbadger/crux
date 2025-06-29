@@ -121,7 +121,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             #[cfg(feature = "typegen")]
             impl crux_core::typegen::Export for #enum_ident {
                 fn register_types(generator: &mut ::crux_core::typegen::TypeGen) -> ::crux_core::typegen::Result {
-                    use ::crux_core::capability::{Capability, Operation};
+                    use ::crux_core::capability::{Operation};
                     #(#effect_gen)*
                     generator.register_type::<#ffi_enum_ident>()?;
                     generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
@@ -194,7 +194,7 @@ mod test {
 
         let actual = effect_impl(args, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -244,14 +244,14 @@ mod test {
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
-                use ::crux_core::capability::{Capability, Operation};
+                use ::crux_core::capability::Operation;
                 RenderOperation::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
                 Ok(())
             }
         }
-        "###);
+        "##);
     }
 
     #[test]
@@ -265,7 +265,7 @@ mod test {
 
         let actual = effect_impl(args, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r#"
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
         pub enum MyEffect {
             Render(::crux_core::Request<RenderOperation>),
@@ -315,14 +315,14 @@ mod test {
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
-                use ::crux_core::capability::{Capability, Operation};
+                use ::crux_core::capability::Operation;
                 RenderOperation::register_types(generator)?;
                 generator.register_type::<MyEffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
                 Ok(())
             }
         }
-        "#);
+        "##);
     }
 
     #[test]
@@ -395,7 +395,7 @@ mod test {
 
         let actual = effect_impl(args, input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r###"
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
         pub enum Effect {
             Render(::crux_core::Request<RenderOperation>),
@@ -475,7 +475,7 @@ mod test {
             fn register_types(
                 generator: &mut ::crux_core::typegen::TypeGen,
             ) -> ::crux_core::typegen::Result {
-                use ::crux_core::capability::{Capability, Operation};
+                use ::crux_core::capability::Operation;
                 RenderOperation::register_types(generator)?;
                 HttpRequest::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
@@ -483,7 +483,7 @@ mod test {
                 Ok(())
             }
         }
-        "###);
+        "##);
     }
 
     #[test]
