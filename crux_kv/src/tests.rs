@@ -1,9 +1,14 @@
 use anyhow::Result;
-use crux_core::{macros::Effect, render::Render, testing::AppTester, Command};
+use crux_core::{
+    macros::effect,
+    render::{render, RenderOperation},
+    testing::AppTester,
+    Command,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::KeyValueError, value::Value, KeyValue, KeyValueOperation, KeyValueResponse,
+    command::KeyValue, error::KeyValueError, value::Value, KeyValueOperation, KeyValueResponse,
     KeyValueResult,
 };
 
@@ -43,49 +48,44 @@ impl crux_core::App for App {
     type Model = Model;
     type ViewModel = ViewModel;
 
-    type Capabilities = Capabilities;
+    type Capabilities = ();
     type Effect = Effect;
 
-    fn update(
-        &self,
-        event: Event,
-        model: &mut Model,
-        caps: &Capabilities,
-    ) -> Command<Effect, Event> {
+    fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
         let key = "test".to_string();
         match event {
-            Event::Get => caps.key_value.get(key, Event::GetResponse),
+            Event::Get => KeyValue::get(key).then_send(Event::GetResponse),
             Event::Set => {
-                caps.key_value
-                    .set(key, 42i32.to_ne_bytes().to_vec(), Event::SetResponse);
+                KeyValue::set(key, 42i32.to_ne_bytes().to_vec()).then_send(Event::SetResponse)
             }
-            Event::Delete => caps.key_value.delete(key, Event::SetResponse),
-            Event::Exists => caps.key_value.exists(key, Event::ExistsResponse),
+            Event::Delete => KeyValue::delete(key).then_send(Event::SetResponse),
+            Event::Exists => KeyValue::exists(key).then_send(Event::ExistsResponse),
             Event::ListKeys => {
-                caps.key_value
-                    .list_keys("test:".to_string(), 0, Event::ListKeysResponse);
+                KeyValue::list_keys("test:".to_string(), 0).then_send(Event::ListKeysResponse)
             }
 
-            Event::GetThenSet => caps.compose.spawn(|ctx| {
-                let kv = caps.key_value.clone();
+            Event::GetThenSet => Command::new(|ctx| async move {
+                let Result::Ok(Some(value)) = KeyValue::get("test_num".to_string())
+                    .into_future(ctx.clone())
+                    .await
+                else {
+                    panic!("expected get response with a value");
+                };
 
-                async move {
-                    let Result::Ok(Some(value)) = kv.get_async("test_num".to_string()).await else {
-                        panic!("expected get response with a value");
-                    };
-
-                    let num = i32::from_ne_bytes(value.try_into().unwrap());
-                    let result = kv
-                        .set_async("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
+                let num = i32::from_ne_bytes(value.try_into().unwrap());
+                let result =
+                    KeyValue::set("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
+                        .into_future(ctx.clone())
                         .await;
 
-                    ctx.update_app(Event::SetResponse(result));
-                }
+                ctx.send_event(Event::SetResponse(result));
             }),
 
             Event::GetResponse(Ok(Some(value))) => {
                 let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                 model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
+
+                Command::done()
             }
 
             Event::GetResponse(Ok(None)) => {
@@ -94,18 +94,20 @@ impl crux_core::App for App {
 
             Event::SetResponse(Ok(_response)) => {
                 model.successful = true;
-                caps.render.render();
+
+                render()
             }
 
             Event::ExistsResponse(Ok(_response)) => {
                 model.successful = true;
-                caps.render.render();
+                render()
             }
 
             Event::ListKeysResponse(Ok((keys, cursor))) => {
                 model.keys = keys;
                 model.cursor = cursor;
-                caps.render.render();
+
+                render()
             }
 
             Event::GetResponse(Err(error))
@@ -115,8 +117,6 @@ impl crux_core::App for App {
                 panic!("Error: {error:?}");
             }
         }
-
-        Command::done()
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -126,12 +126,10 @@ impl crux_core::App for App {
     }
 }
 
-#[derive(Effect)]
-pub struct Capabilities {
-    pub key_value: KeyValue<Event>,
-    pub render: Render<Event>,
-    #[effect(skip)]
-    pub compose: crux_core::compose::Compose<Event>,
+#[effect]
+pub enum Effect {
+    KeyValue(KeyValueOperation),
+    Render(RenderOperation),
 }
 
 #[test]

@@ -34,18 +34,18 @@
 //! * Effect - A side-effect the core can request from the shell. This is typically a form of I/O or similar
 //!   interaction with the host platform. Updating the UI is considered an effect.
 //!
-//! * Capability - A user-friendly API used to request effects and provide events that should be dispatched
-//!   when an effect is completed. For example, a HTTP client is a capability.
-//!
-//! * Command - A description of a side-effect to be executed by the shell. Commands can be combined
-//!   (synchronously with combinators, or asynchronously with Rust async) to run
+//! * Command - A description of a side-effect or a sequence of side-effects to be executed by the shell.
+//!   Commands can be combined (synchronously with combinators, or asynchronously with Rust async) to run
 //!   sequentially or concurrently, or any combination thereof.
+//!
+//! * Capability - A user-friendly API used to create Commands for a specific effect type (e.g. HTTP)
+//!
 //!
 //! Below is a minimal example of a Crux-based application Core:
 //!
 //! ```rust
 //!// src/app.rs
-//!use crux_core::{render::{self, Render}, App, macros::Effect, Command};
+//!use crux_core::{render::{self, RenderOperation}, App, macros::effect, Command};
 //!use serde::{Deserialize, Serialize};
 //!
 //!// Model describing the application state
@@ -62,12 +62,10 @@
 //!    Reset,
 //!}
 //!
-//!// Capabilities listing the side effects the Core
-//!// will use to request side effects from the Shell
-//!#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-//!#[derive(Effect)]
-//!pub struct Capabilities {
-//!    pub render: Render<Event>,
+//!// Effects the Core will request from the Shell
+//!#[effect(typegen)]
+//!pub enum Effect {
+//!    Render(RenderOperation),
 //!}
 //!
 //!#[derive(Default)]
@@ -79,12 +77,11 @@
 //!    // Use the above Model
 //!    type Model = Model;
 //!    type ViewModel = String;
-//!    // Use the above Capabilities
-//!    type Capabilities = Capabilities;
+//!    type Capabilities = (); // unused, see https://redbadger.github.io/crux/guide/effects.html
 //!    // Use the above generated Effect
 //!    type Effect = Effect;
 //!
-//!    fn update(&self, event: Event, model: &mut Model, caps: &Capabilities) -> Command<Effect, Event> {
+//!    fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
 //!        match event {
 //!            Event::Increment => model.count += 1,
 //!            Event::Decrement => model.count -= 1,
@@ -170,6 +167,7 @@ mod core;
 use serde::Serialize;
 
 pub use capabilities::*;
+#[expect(deprecated)]
 pub use capability::{Capability, WithContext};
 pub use command::Command;
 pub use core::{Core, Effect, Request, RequestHandle, Resolvable, ResolveError};

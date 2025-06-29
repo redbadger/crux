@@ -10,7 +10,9 @@ pub mod value;
 
 use serde::{Deserialize, Serialize};
 
-use crux_core::capability::{CapabilityContext, Operation};
+#[expect(deprecated)]
+use crux_core::capability::CapabilityContext;
+use crux_core::capability::Operation;
 
 use error::KeyValueError;
 use value::Value;
@@ -131,10 +133,17 @@ impl Operation for KeyValueOperation {
     }
 }
 
+/// The original API for `KeyValue` capability, now deprecated. Use [`command::KeyValue`] instead.
+#[deprecated(
+    since = "0.10.0",
+    note = "The capabilities API has been deprecated. Use command::KeyValue instead."
+)]
 pub struct KeyValue<Ev> {
+    #[expect(deprecated)]
     context: CapabilityContext<KeyValueOperation, Ev>,
 }
 
+#[expect(deprecated)]
 impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
     type Operation = KeyValueOperation;
 
@@ -150,6 +159,7 @@ impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Clone for KeyValue<Ev> {
     fn clone(&self) -> Self {
         Self {
@@ -158,6 +168,7 @@ impl<Ev> Clone for KeyValue<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> KeyValue<Ev>
 where
     Ev: 'static,
@@ -320,6 +331,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 async fn get<Ev: 'static>(
     context: &CapabilityContext<KeyValueOperation, Ev>,
     key: String,
@@ -330,6 +342,7 @@ async fn get<Ev: 'static>(
         .unwrap_get()
 }
 
+#[expect(deprecated)]
 async fn set<Ev: 'static>(
     context: &CapabilityContext<KeyValueOperation, Ev>,
     key: String,
@@ -341,6 +354,7 @@ async fn set<Ev: 'static>(
         .unwrap_set()
 }
 
+#[expect(deprecated)]
 async fn delete<Ev: 'static>(
     context: &CapabilityContext<KeyValueOperation, Ev>,
     key: String,
@@ -351,6 +365,7 @@ async fn delete<Ev: 'static>(
         .unwrap_delete()
 }
 
+#[expect(deprecated)]
 async fn exists<Ev: 'static>(
     context: &CapabilityContext<KeyValueOperation, Ev>,
     key: String,
@@ -361,6 +376,7 @@ async fn exists<Ev: 'static>(
         .unwrap_exists()
 }
 
+#[expect(deprecated)]
 async fn list_keys<Ev: 'static>(
     context: &CapabilityContext<KeyValueOperation, Ev>,
     prefix: String,

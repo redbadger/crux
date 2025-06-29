@@ -1,8 +1,17 @@
+//! ## DEPRECATED
+//!
+//! Capabilities are the legacy interface to side-effects, and this module will be removed in a future version
+//! of crux. If you're starting a new app, you should use the [`command`](crate::command) API, specifically
+//! [`CommandContext::spawn`](crate::command::CommandContext::spawn).
+//!
 //! A capability which can spawn tasks which orchestrate across other capabilities. This
 //! is useful for orchestrating a number of different effects into a single transaction.
 
-use crate::capability::{CapabilityContext, Never};
-use crate::Capability;
+#[expect(deprecated)]
+use crate::{
+    capability::{CapabilityContext, Never},
+    Capability,
+};
 use futures::Future;
 
 /// Compose capability can be used to orchestrate effects into a single transaction.
@@ -34,16 +43,27 @@ use futures::Future;
 /// Note that testing composed effects is more difficult, because it is not possible to enter the effect
 /// transaction "in the middle" - only from the beginning - or to ignore some of the effects with out
 /// stalling the entire downstream dependency chain.
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub struct Compose<Ev> {
+    #[expect(deprecated)]
     context: CapabilityContext<Never, Ev>,
 }
 
 /// A restricted context given to the closure passed to [`Compose::spawn`]. This context can only
 /// update the app, not request from the shell or spawn further tasks.
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub struct ComposeContext<Ev> {
+    #[expect(deprecated)]
     context: CapabilityContext<Never, Ev>,
 }
 
+#[expect(deprecated)]
 impl<Ev> Clone for ComposeContext<Ev> {
     fn clone(&self) -> Self {
         Self {
@@ -52,6 +72,7 @@ impl<Ev> Clone for ComposeContext<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> ComposeContext<Ev> {
     /// Update the app with an event. This forwards to [`CapabilityContext::update_app`].
     pub fn update_app(&self, event: Ev)
@@ -62,6 +83,7 @@ impl<Ev> ComposeContext<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Compose<Ev> {
     #[must_use]
     pub fn new(context: CapabilityContext<Never, Ev>) -> Self {
@@ -141,6 +163,7 @@ impl<Ev> Compose<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<E> Clone for Compose<E> {
     fn clone(&self) -> Self {
         Self {
@@ -149,6 +172,7 @@ impl<E> Clone for Compose<E> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Capability<Ev> for Compose<Ev> {
     type Operation = Never;
     type MappedSelf<MappedEv> = Compose<MappedEv>;

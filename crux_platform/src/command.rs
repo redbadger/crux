@@ -14,6 +14,7 @@ where
     Effect: From<Request<PlatformRequest>> + Send + 'static,
     Event: Send + 'static,
 {
+    /// Get the platform of the shell
     #[must_use]
     pub fn get() -> RequestBuilder<Effect, Event, impl Future<Output = PlatformResponse>> {
         Command::request_from_shell(PlatformRequest)

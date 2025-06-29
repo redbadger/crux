@@ -1,8 +1,8 @@
 #[cfg(feature = "typegen")]
 mod shared {
-    use crux_core::macros::{Effect, Export};
-    use crux_core::render::Render;
+    use crux_core::render::RenderOperation;
     use crux_core::Command;
+    use crux_macros::effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -20,14 +20,14 @@ mod shared {
         type Event = Event;
         type Model = ();
         type ViewModel = ViewModel;
-        type Capabilities = Capabilities;
+        type Capabilities = ();
         type Effect = Effect;
 
         fn update(
             &self,
             _event: Event,
             _model: &mut Self::Model,
-            _caps: &Capabilities,
+            _caps: &(),
         ) -> Command<Effect, Event> {
             Command::done()
         }
@@ -37,10 +37,9 @@ mod shared {
         }
     }
 
-    #[derive(Effect, Export)]
-    pub struct Capabilities {
-        #[allow(dead_code)]
-        pub render: Render<Event>,
+    #[effect(typegen)]
+    pub enum Effect {
+        Render(RenderOperation),
     }
 }
 
