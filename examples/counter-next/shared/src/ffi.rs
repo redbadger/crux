@@ -170,7 +170,7 @@ pub mod wasip2 {
     use crux_core::{Core, bridge::Bridge};
     use std::sync::OnceLock;
 
-    use crate::{App, bindings};
+    use crate::App;
 
     /// The main interface used by the shell
     pub struct CoreFFI {
@@ -215,9 +215,11 @@ pub mod wasip2 {
         CORE.get_or_init(|| CoreFFI::new())
     }
 
+    wit_bindgen::generate!();
+
     pub struct Component;
 
-    impl bindings::Guest for Component {
+    impl Guest for Component {
         fn update(data: Vec<u8>) -> Vec<u8> {
             get_core().update(&data)
         }
@@ -231,5 +233,5 @@ pub mod wasip2 {
         }
     }
 
-    bindings::export!(Component with_types_in bindings);
+    export!(Component);
 }
