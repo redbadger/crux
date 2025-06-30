@@ -22,7 +22,7 @@ keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-facet = "0.27.15"
+facet = "=0.27.14"
 serde = "1.0.219"
 uniffi = "0.29.3"
 uniffi_bindgen = "0.29.3"

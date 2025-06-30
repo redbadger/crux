@@ -21,16 +21,7 @@ async-std = "1.13.1"
 chrono = { version = "0.4.41", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
-facet = { version = "0.27.14", features = [
-  "bytes",
-  "camino",
-  "chrono",
-  "jiff02",
-  "ordered-float",
-  "time",
-  "ulid",
-  "uuid",
-] }
+facet = { version = "=0.27.14", features = ["bytes", "chrono"] }
 futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.140"
@@ -50,5 +41,5 @@ js-sys = "0.3.77"
 
 [features]
 cli = ["crux_core/cli"]
+typegen = ["facet_typegen"]
 facet_typegen = ["crux_core/facet_typegen"]
-typegen = ["crux_core/typegen"]

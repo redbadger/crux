@@ -36,9 +36,6 @@ fn single_with_typegen() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "Effect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "Effect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
     pub enum EffectFfi {
         Render(RenderOperation),
     }
@@ -77,13 +74,13 @@ fn single_with_typegen() {
             }
         }
     }
-    #[cfg(feature = "facet_typegen")]
-    impl ::crux_core::type_generation::facet::Export for Effect {
+    #[cfg(feature = "typegen")]
+    impl ::crux_core::type_generation::serde::Export for Effect {
         fn register_types(
-            generator: &mut ::crux_core::type_generation::facet::TypeGen,
-        ) -> ::crux_core::type_generation::facet::Result {
-            use ::crux_core::capability::{Capability, Operation};
-            RenderOperation::register_types_facet(generator)?;
+            generator: &mut ::crux_core::type_generation::serde::TypeGen,
+        ) -> ::crux_core::type_generation::serde::Result {
+            use ::crux_core::capability::Operation;
+            RenderOperation::register_types(generator)?;
             generator.register_type::<EffectFfi>()?;
             generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
             Ok(())
@@ -110,9 +107,6 @@ fn single_with_new_name() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "MyEffect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "MyEffect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
     pub enum MyEffectFfi {
         Render(RenderOperation),
     }
@@ -151,13 +145,13 @@ fn single_with_new_name() {
             }
         }
     }
-    #[cfg(feature = "facet_typegen")]
-    impl ::crux_core::type_generation::facet::Export for MyEffect {
+    #[cfg(feature = "typegen")]
+    impl ::crux_core::type_generation::serde::Export for MyEffect {
         fn register_types(
-            generator: &mut ::crux_core::type_generation::facet::TypeGen,
-        ) -> ::crux_core::type_generation::facet::Result {
-            use ::crux_core::capability::{Capability, Operation};
-            RenderOperation::register_types_facet(generator)?;
+            generator: &mut ::crux_core::type_generation::serde::TypeGen,
+        ) -> ::crux_core::type_generation::serde::Result {
+            use ::crux_core::capability::Operation;
+            RenderOperation::register_types(generator)?;
             generator.register_type::<MyEffectFfi>()?;
             generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
             Ok(())
@@ -183,9 +177,6 @@ fn single_without_typegen() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "Effect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "Effect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
     pub enum EffectFfi {
         Render(RenderOperation),
     }
@@ -248,9 +239,6 @@ fn multiple_with_typegen() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "Effect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "Effect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
     pub enum EffectFfi {
         Render(RenderOperation),
         Http(HttpRequest),
@@ -318,14 +306,14 @@ fn multiple_with_typegen() {
             }
         }
     }
-    #[cfg(feature = "facet_typegen")]
-    impl ::crux_core::type_generation::facet::Export for Effect {
+    #[cfg(feature = "typegen")]
+    impl ::crux_core::type_generation::serde::Export for Effect {
         fn register_types(
-            generator: &mut ::crux_core::type_generation::facet::TypeGen,
-        ) -> ::crux_core::type_generation::facet::Result {
-            use ::crux_core::capability::{Capability, Operation};
-            RenderOperation::register_types_facet(generator)?;
-            HttpRequest::register_types_facet(generator)?;
+            generator: &mut ::crux_core::type_generation::serde::TypeGen,
+        ) -> ::crux_core::type_generation::serde::Result {
+            use ::crux_core::capability::Operation;
+            RenderOperation::register_types(generator)?;
+            HttpRequest::register_types(generator)?;
             generator.register_type::<EffectFfi>()?;
             generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
             Ok(())
@@ -353,9 +341,6 @@ fn multiple_without_typegen() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "Effect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "Effect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
     pub enum EffectFfi {
         Render(RenderOperation),
         Http(HttpRequest),

@@ -23,21 +23,10 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     ffi_enum.attrs = vec![];
     let ffi_enum_ident = &ffi_enum.ident;
 
-    let ffi_enum = if cfg!(feature = "facet_typegen") {
-        quote! {
-            #[derive(::serde::Serialize, ::serde::Deserialize)]
-            #[serde(rename = #enum_ident_str)]
-            #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-            #[cfg_attr(feature = "facet_typegen", facet(name = #enum_ident_str))]
-            #[cfg_attr(feature = "facet_typegen", repr(C))]
-            #ffi_enum
-        }
-    } else {
-        quote! {
-            #[derive(::serde::Serialize, ::serde::Deserialize)]
-            #[serde(rename = #enum_ident_str)]
-            #ffi_enum
-        }
+    let ffi_enum = quote! {
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #[serde(rename = #enum_ident_str)]
+        #ffi_enum
     };
 
     let effects = input.variants.into_iter().map(|variant| {
@@ -127,50 +116,25 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     });
 
     let type_gen = if has_typegen_attr {
-        if cfg!(feature = "facet_typegen") {
-            let effect_gen = effects.map(|effect| {
-                let operation = &effect.operation;
+        let effect_gen = effects.map(|effect| {
+            let operation = &effect.operation;
 
-                quote! {
-                    #operation::register_types_facet(generator)?;
-                }
-            });
             quote! {
-                #[cfg(feature = "facet_typegen")]
-                impl ::crux_core::type_generation::facet::Export for #enum_ident {
-                    fn register_types(
-                        generator: &mut ::crux_core::type_generation::facet::TypeGen
-                    ) -> ::crux_core::type_generation::facet::Result {
-                        use ::crux_core::capability::{Capability, Operation};
-                        #(#effect_gen)*
-                        generator.register_type::<#ffi_enum_ident>()?;
-                        generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
-
-                        Ok(())
-                    }
-                }
+                #operation::register_types(generator)?;
             }
-        } else {
-            let effect_gen = effects.map(|effect| {
-                let operation = &effect.operation;
+        });
+        quote! {
+            #[cfg(feature = "typegen")]
+            impl ::crux_core::type_generation::serde::Export for #enum_ident {
+                fn register_types(
+                    generator: &mut ::crux_core::type_generation::serde::TypeGen
+                ) -> ::crux_core::type_generation::serde::Result {
+                    use ::crux_core::capability::Operation;
+                    #(#effect_gen)*
+                    generator.register_type::<#ffi_enum_ident>()?;
+                    generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
 
-                quote! {
-                    #operation::register_types(generator)?;
-                }
-            });
-            quote! {
-                #[cfg(feature = "typegen")]
-                impl ::crux_core::type_generation::serde::Export for #enum_ident {
-                    fn register_types(
-                        generator: &mut ::crux_core::type_generation::serde::TypeGen
-                    ) -> ::crux_core::type_generation::serde::Result {
-                        use ::crux_core::capability::{Capability, Operation};
-                        #(#effect_gen)*
-                        generator.register_type::<#ffi_enum_ident>()?;
-                        generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
-
-                        Ok(())
-                    }
+                    Ok(())
                 }
             }
         }
