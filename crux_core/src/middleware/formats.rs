@@ -1,7 +1,7 @@
 use bincode::{
+    DefaultOptions, Options as _,
     config::{AllowTrailing, FixintEncoding, WithOtherIntEncoding, WithOtherTrailing},
     de::read::SliceReader,
-    DefaultOptions, Options as _,
 };
 
 use super::FfiFormat;
@@ -10,9 +10,8 @@ use super::FfiFormat;
 pub struct BincodeFfiFormat;
 
 impl BincodeFfiFormat {
-    fn bincode_options(
-    ) -> WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing>
-    {
+    fn bincode_options()
+    -> WithOtherTrailing<WithOtherIntEncoding<DefaultOptions, FixintEncoding>, AllowTrailing> {
         DefaultOptions::new()
             .with_fixint_encoding()
             .allow_trailing_bytes()

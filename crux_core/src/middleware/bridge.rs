@@ -4,8 +4,8 @@ use erased_serde::Serialize;
 use serde::Deserialize;
 
 use crate::{
-    bridge::{BridgeError, EffectId, ResolveRegistry},
     Effect,
+    bridge::{BridgeError, EffectId, ResolveRegistry},
 };
 
 use super::Layer;

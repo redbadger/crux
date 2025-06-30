@@ -1,6 +1,6 @@
 use std::sync::{Arc, Weak};
 
-use crate::{capability::Operation, core::RequestHandle, Request, Resolvable, ResolveError};
+use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
 
 use super::Layer;
 
@@ -39,9 +39,11 @@ where
     fn try_process_effect_with(
         &self,
         effect: Effect,
-        resolve_callback: impl FnOnce(RequestHandle<<Self::Op as Operation>::Output>, <Self::Op as Operation>::Output)
-            + Send
-            + 'static,
+        resolve_callback: impl FnOnce(
+            RequestHandle<<Self::Op as Operation>::Output>,
+            <Self::Op as Operation>::Output,
+        ) + Send
+        + 'static,
     ) -> Result<(), Effect>;
 }
 

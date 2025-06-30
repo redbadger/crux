@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::super::Command;
-use crate::{capability::Operation, Request};
+use crate::{Request, capability::Operation};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct AnOperation;

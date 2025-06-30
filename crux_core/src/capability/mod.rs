@@ -206,9 +206,9 @@ use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
 pub(crate) use channel::channel;
-pub(crate) use executor::{executor_and_spawner, QueuingExecutor};
+pub(crate) use executor::{QueuingExecutor, executor_and_spawner};
 
-use crate::{command::CommandOutput, Command, Request};
+use crate::{Command, Request, command::CommandOutput};
 use channel::Sender;
 
 /// Operation trait links together input and output of a side-effect.
@@ -230,7 +230,23 @@ pub trait Operation:
 
     #[cfg(feature = "typegen")]
     #[allow(clippy::missing_errors_doc)]
-    fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
+    fn register_types(
+        generator: &mut crate::type_generation::serde::TypeGen,
+    ) -> crate::type_generation::serde::Result {
+        generator.register_type::<Self>()?;
+        generator.register_type::<Self::Output>()?;
+        Ok(())
+    }
+
+    #[cfg(feature = "facet_typegen")]
+    #[allow(clippy::missing_errors_doc)]
+    fn register_types_facet<'a>(
+        generator: &mut crate::type_generation::facet::TypeGen,
+    ) -> crate::type_generation::facet::Result
+    where
+        Self: facet::Facet<'a>,
+        <Self as Operation>::Output: facet::Facet<'a>,
+    {
         generator.register_type::<Self>()?;
         generator.register_type::<Self::Output>()?;
         Ok(())

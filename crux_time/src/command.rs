@@ -4,13 +4,14 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crux_core::{command::RequestBuilder, Command, Request};
+use crux_core::{Command, Request, command::RequestBuilder};
 use futures::{
+    FutureExt,
     channel::oneshot::{self, Sender},
-    select_biased, FutureExt,
+    select_biased,
 };
 
-use crate::{get_timer_id, TimeRequest, TimeResponse, TimerId};
+use crate::{TimeRequest, TimeResponse, TimerId, get_timer_id};
 
 /// Result of the timer run. Timers can either run to completion or be cleared early.
 #[derive(Debug, PartialEq, Eq, Clone)]

@@ -1,6 +1,6 @@
-use darling::{ast, util, FromDeriveInput, FromField, ToTokens};
+use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
+use proc_macro_error::{OptionExt, abort_call_site};
 use proc_macro2::{Literal, TokenStream};
-use proc_macro_error::{abort_call_site, OptionExt};
 use quote::{format_ident, quote};
 use std::collections::BTreeMap;
 use syn::{DeriveInput, GenericArgument, Ident, PathArguments, Type};
@@ -96,7 +96,9 @@ impl ToTokens for EffectStructReceiver {
         ) in &fields
         {
             if *skip {
-                let msg = format!("Requesting effects from capability \"{variant}\" is impossible because it was skipped",);
+                let msg = format!(
+                    "Requesting effects from capability \"{variant}\" is impossible because it was skipped",
+                );
                 with_context_fields.push(quote! {
                     #field_name: #capability::new(context.specialize(|_| unreachable!(#msg)))
                 });
@@ -228,7 +230,7 @@ fn split_on_generic(ty: &Type) -> (Type, Ident, Type) {
 mod tests {
     use darling::{FromDeriveInput, FromMeta, ToTokens};
     use quote::quote;
-    use syn::{parse_str, Type};
+    use syn::{Type, parse_str};
 
     use crate::effect_derive::EffectStructReceiver;
 

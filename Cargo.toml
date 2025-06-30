@@ -1,4 +1,5 @@
 [workspace]
+resolver = "3"
 members = [
   "crux_cli",
   "crux_core",
@@ -10,27 +11,27 @@ members = [
   "doctest_support",
   "xtask",
 ]
-resolver = "1"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.87"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
-keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.80"
+keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.dependencies]
 anyhow = "1.0.98"
+facet = "=0.27.14"
 serde = "1.0.219"
 uniffi = "0.29.3"
 uniffi_bindgen = "0.29.3"
 
-[workspace.lints.rust]
-unsafe_code = "forbid"
-
 [workspace.lints.clippy]
 pedantic = "warn"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
 
 [profile.dev]
 split-debuginfo = "unpacked"

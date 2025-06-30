@@ -31,7 +31,7 @@ android {
         jvmTarget = '20'
     }
     sourceSets {
-        main.java.srcDirs += "${projectDir}/../../shared/generated/java"
+        main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
     }
 }
 

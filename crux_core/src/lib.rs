@@ -158,8 +158,8 @@ pub mod capability;
 pub mod command;
 pub mod middleware;
 pub mod testing;
-#[cfg(feature = "typegen")]
-pub mod typegen;
+#[cfg(any(feature = "typegen", feature = "facet_typegen"))]
+pub mod type_generation;
 
 mod capabilities;
 mod core;
@@ -174,6 +174,8 @@ pub use core::{Core, Effect, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "cli")]
 pub use crux_cli as cli;
 pub use crux_macros as macros;
+#[cfg(feature = "typegen")]
+pub use type_generation::serde as typegen;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](crate::bridge::Bridge).

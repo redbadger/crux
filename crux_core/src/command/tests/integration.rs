@@ -25,7 +25,7 @@ mod http {
 
     use serde::{Deserialize, Serialize};
 
-    use crate::{capability::Operation, command::builder::RequestBuilder, Command};
+    use crate::{Command, capability::Operation, command::builder::RequestBuilder};
 
     pub struct Http;
 

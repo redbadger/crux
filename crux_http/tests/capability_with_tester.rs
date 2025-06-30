@@ -5,7 +5,7 @@ mod shared {
     use std::{cmp::max, collections::HashMap, future::IntoFuture};
 
     use crux_core::macros::Effect;
-    use crux_core::{compose::Compose, Command};
+    use crux_core::{Command, compose::Compose};
     use crux_http::Http;
     use futures_util::join;
     use http_types::StatusCode;

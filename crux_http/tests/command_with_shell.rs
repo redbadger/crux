@@ -1,8 +1,8 @@
 mod shared {
     use crux_core::{
-        macros::effect,
-        render::{render, RenderOperation},
         Command,
+        macros::effect,
+        render::{RenderOperation, render},
     };
     use crux_http::{command::Http, protocol::HttpRequest};
     use serde::{Deserialize, Serialize};

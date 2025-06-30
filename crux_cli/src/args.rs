@@ -1,6 +1,6 @@
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
-use convert_case::{pattern, Boundary, Case, Casing};
+use convert_case::{Boundary, Case, Casing, pattern};
 
 #[derive(Parser)]
 #[command(

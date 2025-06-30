@@ -1,7 +1,7 @@
 #[cfg(feature = "typegen")]
 mod shared {
-    use crux_core::render::RenderOperation;
     use crux_core::Command;
+    use crux_core::render::RenderOperation;
     use crux_macros::effect;
     use serde::{Deserialize, Serialize};
 
@@ -46,29 +46,32 @@ mod shared {
 #[cfg(feature = "typegen")]
 mod test {
     use super::shared::{App, Event};
-    use crux_core::typegen::TypeGen;
+    use crux_core::type_generation::serde::TypeGen;
     use uuid::Uuid;
 
     // FIXME this test is quite slow
     #[test]
     fn generate_types() {
-        let mut gen = TypeGen::new();
+        let mut typegen = TypeGen::new();
 
         let sample_events = vec![Event::SendUuid(Uuid::new_v4())];
-        gen.register_type_with_samples(sample_events).unwrap();
+        typegen.register_type_with_samples(sample_events).unwrap();
 
-        gen.register_app::<App>().unwrap();
+        typegen.register_app::<App>().unwrap();
 
         let temp = assert_fs::TempDir::new().unwrap();
         let output_root = temp.join("crux_core_typegen_test");
 
-        gen.swift("SharedTypes", output_root.join("swift"))
+        typegen
+            .swift("SharedTypes", output_root.join("swift"))
             .expect("swift type gen failed");
 
-        gen.java("com.example.counter.shared_types", output_root.join("java"))
+        typegen
+            .java("com.example.counter.shared_types", output_root.join("java"))
             .expect("java type gen failed");
 
-        gen.typescript("shared_types", output_root.join("typescript"))
+        typegen
+            .typescript("shared_types", output_root.join("typescript"))
             .expect("typescript type gen failed");
     }
 
@@ -76,19 +79,21 @@ mod test {
     // capability that has an output type
     #[test]
     fn test_autodiscovery() {
-        let mut gen = TypeGen::new();
+        let mut typegen = TypeGen::new();
 
-        gen.register_samples(vec![Event::SendUuid(Uuid::new_v4())])
+        typegen
+            .register_samples(vec![Event::SendUuid(Uuid::new_v4())])
             .unwrap();
 
-        gen.register_app::<App>()
+        typegen
+            .register_app::<App>()
             .expect("Should register types in App");
 
-        let registry = match gen.state {
-            crux_core::typegen::State::Registering(tracer, _) => {
+        let registry = match typegen.state {
+            crux_core::type_generation::serde::State::Registering(tracer, _) => {
                 tracer.registry().expect("Should get registry")
             }
-            crux_core::typegen::State::Generating(_) => {
+            crux_core::type_generation::serde::State::Generating(_) => {
                 panic!("Expected to still be in registering stage")
             }
         };

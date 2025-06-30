@@ -8,11 +8,11 @@ pub use effect::Effect;
 pub use request::Request;
 pub use resolve::{RequestHandle, Resolvable, ResolveError};
 
-use crate::capability::CommandSpawner;
-use crate::capability::{self, channel::Receiver, ProtoContext, QueuingExecutor};
 use crate::App;
 #[expect(deprecated)]
 use crate::WithContext;
+use crate::capability::CommandSpawner;
+use crate::capability::{self, ProtoContext, QueuingExecutor, channel::Receiver};
 
 /// The Crux core. Create an instance of this type with your App type as the type parameter
 ///

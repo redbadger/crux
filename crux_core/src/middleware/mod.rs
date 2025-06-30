@@ -16,7 +16,7 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{bridge::BridgeError, App, Core, Effect, Request, Resolvable, ResolveError};
+use crate::{App, Core, Effect, Request, Resolvable, ResolveError, bridge::BridgeError};
 
 mod bridge;
 mod effect_conversion;
