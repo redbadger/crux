@@ -51,6 +51,13 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
     /// Create a one-off request for an operation. Returns a future which eventually resolves
     /// with the output of the operation provided by the shell.
+    ///
+    /// # Cancellation behaviour
+    ///
+    /// `ShellRequest` futures may never resolve, if the corresponding [`RequestHandle`]
+    /// is dropped by the shell. Such cases are detected by the Command and the owning task is aborted.
+    /// That is to say - any `.await` point on a `ShellRequest` is a potential abort point for the
+    /// enclosing future.
     #[allow(clippy::missing_panics_doc)]
     pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
     where
@@ -79,6 +86,13 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
     /// Create a stream request for an operation. Returns a stream producing the
     /// with the output of the operation every time it is provided by the shell.
+    ///
+    /// # Cancellation behaviour
+    ///
+    /// `ShellStream` futures may never resolve, if the corresponding [`RequestHandle`]
+    /// is dropped by the shell. Such cases are detected by the Command and the owning task is aborted.
+    /// That is to say - any `.await` point on a `ShellRequest` is a potential abort point for the
+    /// enclosing future.
     #[allow(clippy::missing_panics_doc)]
     pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
     where
