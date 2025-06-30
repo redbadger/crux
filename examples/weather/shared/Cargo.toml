@@ -25,7 +25,7 @@ crux_core.workspace = true
 crux_http.workspace = true
 crux_kv.workspace = true
 serde = { workspace = true, features = ["derive"] }
-uniffi = "0.29.2"
+uniffi = "0.29.3"
 wasm-bindgen = "0.2.100"
 serde_json = "1.0"
 derive_builder = "0.20.2"
@@ -35,7 +35,7 @@ insta = { version = "1.43.1", features = ["yaml"] }
 serde_json = "1.0"
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.29.2", features = ["cli"] }
+uniffi = { version = "0.29.3", features = ["cli"] }
 
 [build-dependencies]
-uniffi = { version = "0.29.2", features = ["build"] }
+uniffi = { version = "0.29.3", features = ["build"] }

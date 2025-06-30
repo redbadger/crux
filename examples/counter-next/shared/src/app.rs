@@ -76,7 +76,7 @@ pub enum Event {
     UpdateBy(isize),
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),

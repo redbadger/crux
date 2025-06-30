@@ -1,15 +1,14 @@
 mod app {
     use crux_core::{App, Command, capability::Operation, macros::effect, render::render};
     use crux_http::command::Http;
-    use facet::Facet;
     use serde::{Deserialize, Serialize};
 
     // Inline minimal random number capability
 
-    #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct RandomNumberRequest(pub usize); // request a random number from 1 to N, inclusive
 
-    #[derive(Facet, Debug, PartialEq, Eq, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
     pub struct RandomNumber(pub usize);
 
     impl Operation for RandomNumberRequest {

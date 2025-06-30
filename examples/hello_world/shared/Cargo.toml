@@ -22,6 +22,3 @@ uniffi = { version = "0.29.3", features = ["build"] }
 
 [target.uniffi-bindgen.dependencies]
 uniffi = { version = "0.29.3", features = ["cli"] }
-
-[features]
-typegen = ["crux_core/typegen"]

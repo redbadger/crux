@@ -105,11 +105,7 @@ pub fn effect_derive(input: TokenStream) -> TokenStream {
 pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Option<Ident>);
     let input = parse_macro_input!(input as ItemEnum);
-    if cfg!(feature = "typegen") {
-        effect::serde::macro_impl::effect_impl(args, input).into()
-    } else {
-        effect::facet::macro_impl::effect_impl(args, input).into()
-    }
+    effect::macro_impl::effect_impl(args, input).into()
 }
 
 #[proc_macro_derive(Export)]
