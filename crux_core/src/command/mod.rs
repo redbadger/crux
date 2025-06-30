@@ -1,4 +1,5 @@
 //! Command represents one or more side-effects, resulting in interactions with the shell.
+//!
 //! Core creates Commands and returns them from the `update` function in response to events.
 //! Commands can be created directly, but more often they will be created and returned
 //! by capability APIs.

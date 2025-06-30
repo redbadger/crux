@@ -1,10 +1,10 @@
 mod shared {
     use crux_core::{
-        macros::Effect,
-        render::{render, Render},
+        macros::effect,
+        render::{render, RenderOperation},
         Command,
     };
-    use crux_http::command::Http;
+    use crux_http::{command::Http, protocol::HttpRequest};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -39,15 +39,10 @@ mod shared {
         type Model = Model;
         type ViewModel = ViewModel;
 
-        type Capabilities = Capabilities;
+        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(
-            &self,
-            event: Event,
-            model: &mut Model,
-            _caps: &Capabilities,
-        ) -> Command<Effect, Event> {
+        fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
             match event {
                 Event::Get => Http::get("http://example.com")
                     .build()
@@ -83,11 +78,10 @@ mod shared {
         }
     }
 
-    #[derive(Effect)]
-    #[allow(dead_code)]
-    pub(crate) struct Capabilities {
-        pub http: crux_http::Http<Event>,
-        pub render: Render<Event>,
+    #[effect]
+    pub enum Effect {
+        Http(HttpRequest),
+        Render(RenderOperation),
     }
 }
 

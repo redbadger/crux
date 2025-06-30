@@ -1,4 +1,5 @@
 //! Test for the testing APIs
+#![expect(deprecated)]
 
 use crux_core::testing::AppTester;
 

@@ -115,6 +115,8 @@ where
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
     EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
 {
+    /// Typically, you would would use [`Layer::handle_effects_using`] to construct a `HandleEffectLayer` instance
+    /// for a specific [`EffectMiddleware`].
     pub fn new(next: Next, middleware: EM) -> Self {
         Self {
             inner: Arc::new(EffectMiddlewareLayerInner { next, middleware }),

@@ -10,7 +10,9 @@ pub use resolve::{RequestHandle, Resolvable, ResolveError};
 
 use crate::capability::CommandSpawner;
 use crate::capability::{self, channel::Receiver, ProtoContext, QueuingExecutor};
-use crate::{App, WithContext};
+use crate::App;
+#[expect(deprecated)]
+use crate::WithContext;
 
 /// The Crux core. Create an instance of this type with your App type as the type parameter
 ///
@@ -57,6 +59,7 @@ where
     /// ```
     ///
     #[must_use]
+    #[expect(deprecated)]
     pub fn new() -> Self
     where
         A::Capabilities: WithContext<A::Event, A::Effect>,
@@ -160,6 +163,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<A> Default for Core<A>
 where
     A: App,

@@ -7,7 +7,7 @@ use crux_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{capabilities::delay::Delay, DelayOperation};
+use crate::{capabilities::delay::delay, DelayOperation};
 pub use payment::{Payment, PaymentStatus, Receipt, ReceiptStatus};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -97,7 +97,7 @@ impl crux_core::App for App {
                     payment.send();
 
                     // Simulate processing delay
-                    commands.push(Delay::start(2500).then_send(|()| Event::ConfirmSend));
+                    commands.push(delay(2500).then_send(|()| Event::ConfirmSend));
                 }
                 commands.push(render());
                 Command::all(commands)
@@ -137,7 +137,7 @@ impl crux_core::App for App {
                         receipt.send();
 
                         // Simulate processing delay
-                        commands.push(Delay::start(1200).then_send(|()| Event::ConfirmSendReceipt));
+                        commands.push(delay(1200).then_send(|()| Event::ConfirmSendReceipt));
                     }
                 }
                 commands.push(render());

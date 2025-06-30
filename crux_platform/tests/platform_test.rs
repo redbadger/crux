@@ -1,3 +1,5 @@
+#![expect(deprecated)]
+
 mod shared {
     use crux_core::render::Render;
     use crux_core::{macros::Effect, Command};
