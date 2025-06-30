@@ -1,7 +1,5 @@
 mod app;
-#[cfg(all(target_os = "wasi", target_env = "p2"))]
-#[allow(warnings)]
-pub mod bindings;
+
 mod capabilities;
 mod ffi;
 #[cfg(not(target_family = "wasm"))]
