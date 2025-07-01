@@ -118,14 +118,14 @@ impl crux_core::App for App {
                 render()
             }
             Event::UpdateBy(change) => {
+                if change == 0 {
+                    return render();
+                }
+
                 model.count = Count {
                     value: model.count.value + change,
                     updated_at: None,
                 };
-
-                if change == 0 {
-                    return render();
-                }
 
                 let call_api = {
                     // Don't look at this too closely.
@@ -592,5 +592,36 @@ mod tests {
         // The latest count wins
 
         assert_eq!(model.count.value, 9);
+    }
+
+    #[test]
+    fn random_change_with_0() {
+        let app = App;
+        let mut model = Model::default();
+
+        model.count.value = 3;
+        model.count.updated_at = Some(Utc::now());
+
+        let mut cmd = app.update(Event::Random, &mut model, &());
+
+        // the app should request a random number from the web API
+        let mut request = cmd.effects().next().unwrap().expect_random();
+
+        assert_eq!(request.operation, RandomNumberRequest(-5, 5));
+        request.resolve(RandomNumber(0)).unwrap();
+
+        // And start an UpdateBy the number
+
+        let event = cmd.events().next().unwrap();
+        assert_eq!(event, Event::UpdateBy(0));
+
+        let mut cmd = app.update(event, &mut model, &());
+        cmd.effects().next().unwrap().expect_render();
+        assert!(cmd.is_done());
+
+        // The latest count wins
+
+        assert_eq!(model.count.value, 3);
+        assert!(model.count.updated_at.is_some());
     }
 }
