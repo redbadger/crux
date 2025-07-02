@@ -82,7 +82,6 @@ pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<Str
 #[cfg(all(feature = "encoding", not(target_arch = "wasm32")))]
 pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<String, Error> {
     use encoding_rs::Encoding;
-    use std::borrow::Cow;
 
     let content_encoding = content_encoding.unwrap_or("utf-8");
     if let Some(encoding) = Encoding::for_label(content_encoding.as_bytes()) {
@@ -94,13 +93,7 @@ pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<Str
             };
             Err(io::Error::new(io::ErrorKind::InvalidData, err).into())
         } else {
-            Ok(match decoded {
-                // If encoding_rs returned a `Cow::Borrowed`, the bytes are guaranteed to be valid
-                // UTF-8, by virtue of being UTF-8 or being in the subset of ASCII that is the same
-                // in UTF-8.
-                Cow::Borrowed(_) => unsafe { String::from_utf8_unchecked(bytes) },
-                Cow::Owned(string) => string,
-            })
+            Ok(decoded.into_owned())
         }
     } else {
         let err = DecodeError {
