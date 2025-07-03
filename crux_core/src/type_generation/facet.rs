@@ -1,8 +1,8 @@
 //! Generation of foreign language types (currently Swift, Java, TypeScript) for Crux
 //!
-//! In order to use this module, you'll need a separate crate from your shared library, possibly
-//! called `shared_types`. This is necessary because we need to reference types from your shared library
-//! during the build process (`build.rs`).
+//! To use this module, you can add a separate crate from your shared library, possibly
+//! called `shared_types`, which will allow you to reference types from your shared library
+//! during the build process (e.g. in `shared_types/build.rs`).
 //!
 //! This module is behind the feature called `facet_typegen`, and is not compiled into the default crate.
 //!
@@ -10,7 +10,7 @@
 //!
 //! ```rust,ignore
 //! [build-dependencies]
-//! crux_core = { version = "0.7", features = ["facet_typegen"] }
+//! crux_core = { version = "0.15", features = ["facet_typegen"] }
 //! ```
 //!
 //! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
@@ -70,55 +70,14 @@
 //!    typegen.typescript("shared_types", output_root.join("typescript"))?;
 //!}
 //! ```
-//!
-//! ## Custom extensions
-//!
-//! If you need to use customized files for one of:
-//!
-//! - `generated/typescript/*`,
-//! - `generated/swift/(requests | Package).swift` -
-//! - `generated/java/Requests.java`
-//!
-//! Then create the `typegen_extensions/{target}/{target-file}`
-//! with the desired content next to your `build.rs` file.
-//!
-//! For example `typegen_extensions/swift/Package.swift`:
-//!
-//! ```swift
-//! // swift-tools-version: 5.7.1
-//! // The swift-tools-version declares the minimum version of Swift required to build this package.
-//!
-//! import PackageDescription
-//!
-//! let package = Package(
-//!     name: "SharedTypes",
-//!     products: [
-//!         // Products define the executables and libraries a package produces, and make them visible to other packages.
-//!         .library(
-//!             name: "SharedTypes",
-//!             targets: ["SharedTypes"]),
-//!     ],
-//!     dependencies: [
-//!         // Dependencies declare other packages that this package depends on.
-//!         // .package(url: /* package url */, from: "1.0.0"),
-//!     ],
-//!     targets: [
-//!         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-//!         // Targets can depend on other targets in this package, and on products in packages this package depends on.
-//!         .target(
-//!             name: "Serde",
-//!             dependencies: []),
-//!         .target(
-//!             name: "SharedTypes",
-//!             dependencies: ["Serde"]),
-//!     ]
-//! )
-//! ```
-
 use facet::Facet;
 use facet_generate::{
-    serde_generate::{CodeGeneratorConfig, Encoding, SourceInstaller, java, swift, typescript},
-    serde_reflection::Registry,
+    generation::{Encoding, SourceInstaller, java, swift, typescript},
+    reflection::{
+        Registry,
+        namespace::{self, Namespace},
+        reflect,
+    },
 };
 use serde::Deserialize;
 use std::{
@@ -244,8 +203,8 @@ impl TypeGen {
     {
         match &mut self.state {
             State::Registering(registry) => {
-                let incoming = facet_generate::reflect::<T>();
-                registry.extend(incoming.consume());
+                let incoming = reflect::<T>();
+                registry.extend(Registry::from(incoming));
                 Ok(())
             }
             State::Generating(_) => Err(TypeGenError::LateRegistration),
@@ -268,14 +227,14 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn swift(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
+    pub fn swift(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry();
 
-        let path = path.as_ref().join(module_name);
+        let path = path.as_ref().join(package_name);
 
         fs::create_dir_all(&path)?;
 
-        let installer = swift::Installer::new(path.clone());
+        let mut installer = swift::Installer::new(package_name.to_string(), path.clone());
         installer
             .install_serde_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -283,42 +242,34 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let State::Generating(registry) = &self.state else {
+        let State::Generating(ref registry) = self.state else {
             panic!("registry creation failed");
         };
 
-        let config = CodeGeneratorConfig::new(module_name.to_string())
-            .with_encodings(vec![Encoding::Bincode]);
+        let root_module = package_name;
+        for (module, registry) in namespace::split(root_module, registry.clone()) {
+            let config = module
+                .config()
+                .clone()
+                .with_encodings(vec![Encoding::Bincode]);
 
-        installer
-            .install_module(&config, registry)
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+            installer
+                .install_module(&config, &registry)
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
 
         // add bincode deserialization for Vec<Request>
-        let mut output = File::create(
-            path.join("Sources")
-                .join(module_name)
-                .join("Requests.swift"),
-        )?;
+        let output_dir = path.join("Sources").join(package_name);
+        fs::create_dir_all(&output_dir)?;
+        let mut output = File::create(output_dir.join("Requests.swift"))?;
 
         let requests_path = Self::extensions_path("swift/requests.swift");
-
         let requests_data = fs::read_to_string(requests_path)?;
-
         write!(output, "{requests_data}")?;
 
-        // wrap it all up in a swift package
-        let mut output = File::create(path.join("Package.swift"))?;
-
-        let package_path = Self::extensions_path("swift/Package.swift");
-
-        let package_data = fs::read_to_string(package_path)?;
-
-        write!(
-            output,
-            "{}",
-            package_data.replace("SharedTypes", module_name)
-        )?;
+        installer
+            .install_manifest(package_name)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         Ok(())
     }
@@ -330,10 +281,7 @@ impl TypeGen {
     /// # use std::env::temp_dir;
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// typegen.java(
-    ///     "com.redbadger.crux_core.shared_types",
-    ///     output_root.join("java"),
-    /// )?;
+    /// typegen.java("com.crux.example", output_root.join("java"))?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
     ///
@@ -352,10 +300,7 @@ impl TypeGen {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(path.as_ref().join(&package_path)).unwrap_or(());
 
-        let config = CodeGeneratorConfig::new(package_name.to_string())
-            .with_encodings(vec![Encoding::Bincode]);
-
-        let installer = java::Installer::new(path.as_ref().to_path_buf());
+        let mut installer = java::Installer::new(path.as_ref().to_path_buf());
         installer
             .install_serde_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -363,13 +308,28 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let State::Generating(registry) = &self.state else {
+        let State::Generating(ref mut registry) = self.state else {
             panic!("registry creation failed");
         };
 
-        installer
-            .install_module(&config, registry)
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        let root_module = package_name;
+        for (module, registry) in namespace::split(root_module, registry.clone()) {
+            let this_module = &module.config().module_name;
+            let module = if root_module == this_module {
+                module
+            } else {
+                Namespace::new([root_module, this_module].join("."))
+            };
+
+            let config = module
+                .config()
+                .clone()
+                .with_encodings(vec![Encoding::Bincode]);
+
+            installer
+                .install_module(&config, &registry)
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
 
         let requests_path = Self::extensions_path("java/Requests.java");
 
@@ -377,13 +337,9 @@ impl TypeGen {
 
         let requests = format!("package {package_name};\n\n{requests_data}");
 
-        fs::write(
-            path.as_ref()
-                .to_path_buf()
-                .join(package_path)
-                .join("Requests.java"),
-            requests,
-        )?;
+        let output_dir = path.as_ref().join(package_path);
+        fs::create_dir_all(&output_dir)?;
+        fs::write(output_dir.join("Requests.java"), requests)?;
 
         Ok(())
     }
@@ -403,11 +359,14 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn typescript(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
+    pub fn typescript(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry();
 
         fs::create_dir_all(&path)?;
         let output_dir = path.as_ref().to_path_buf();
+
+        let types_dir = output_dir.join("types");
+        fs::create_dir_all(&types_dir)?;
 
         let installer = typescript::Installer::new(output_dir.clone());
         installer
@@ -417,33 +376,37 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let extensions_dir = Self::extensions_path("typescript");
-        copy(extensions_dir, path)?;
-
-        let State::Generating(registry) = &self.state else {
+        let State::Generating(ref mut registry) = self.state else {
             panic!("registry creation failed");
         };
 
-        let config = CodeGeneratorConfig::new(module_name.to_string())
-            .with_encodings(vec![Encoding::Bincode]);
+        let root_module = package_name;
+        for (module, registry) in namespace::split(root_module, registry.clone()) {
+            let config = module
+                .config()
+                .clone()
+                .with_encodings(vec![Encoding::Bincode]);
 
-        let generator = typescript::CodeGenerator::new(&config);
-        let mut source = Vec::new();
-        generator.output(&mut source, registry)?;
+            let module_name = config.module_name();
 
-        // FIXME fix import paths in generated code which assume running on Deno
-        let out = String::from_utf8_lossy(&source)
-            .replace(
-                "import { BcsSerializer, BcsDeserializer } from '../bcs/mod.ts';",
-                "",
-            )
-            .replace(".ts'", "'");
+            let generator = typescript::CodeGenerator::new(&config);
+            let mut source = Vec::new();
+            generator.output(&mut source, &registry)?;
 
-        let types_dir = output_dir.join("types");
-        fs::create_dir_all(&types_dir)?;
+            // FIXME fix import paths in generated code which assume running on Deno
+            let out = String::from_utf8_lossy(&source)
+                .replace(
+                    "import { BcsSerializer, BcsDeserializer } from '../bcs/mod.ts';",
+                    "",
+                )
+                .replace(".ts'", "'");
 
-        let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
-        write!(output, "{out}")?;
+            let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
+            write!(output, "{out}")?;
+        }
+
+        let extensions_dir = Self::extensions_path("typescript");
+        copy(extensions_dir, path)?;
 
         // Install dependencies
         std::process::Command::new("pnpm")
