@@ -8,6 +8,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.15.0-rc1](https://github.com/redbadger/crux/compare/crux_http-v0.14.0...crux_http-v0.15.0-rc1) - 2025-07-03
+
+### 🚀 Features
+
+- *(crux_core)* Facet-based typegen frontend
+
+### 🚜 Refactor
+
+- *(crux_http)* Drop `unsafe` block
+
+### ⚙️ Miscellaneous Tasks
+
+- *(crux)* Format fixes
+
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_http-v0.13.0...crux_http-v0.14.0) - 2025-05-27
 
 This is a minor bump because of breaking changes in `crux_core`

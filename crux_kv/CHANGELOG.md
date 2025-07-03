@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.0-rc1](https://github.com/redbadger/crux/compare/crux_kv-v0.9.0...crux_kv-v0.10.0-rc1) - 2025-07-03
+
+### 🚀 Features
+
+- *(crux_core)* Facet-based typegen frontend
+
+### ⚙️ Miscellaneous Tasks
+
+- *(crux)* Format fixes
+
 ## [0.9.0](https://github.com/redbadger/crux/compare/crux_kv-v0.8.1...crux_kv-v0.9.0) - 2025-05-27
 
 This is a minor bump because of breaking changes in `crux_core`

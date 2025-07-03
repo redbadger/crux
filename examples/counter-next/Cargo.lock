@@ -805,7 +805,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.15.0"
+version = "0.16.0-rc1"
 dependencies = [
  "anyhow",
  "bincode",
@@ -826,7 +826,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.14.0"
+version = "0.15.0-rc1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -848,7 +848,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.6.1"
+version = "0.7.0-rc1"
 dependencies = [
  "darling",
  "heck 0.5.0",
@@ -1181,7 +1181,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.4.1"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1de4ac1cbf6c2a93fd148365c18e2dc9efafa7d373fb20a590822b7abc691708"
 dependencies = [
  "anyhow",
  "erased-discriminant",
