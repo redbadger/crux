@@ -15,9 +15,7 @@ anyhow = "1.0.98"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }
-# crux_core = "0.15.0"
-# crux_http = "0.14.0"
-# crux_kv = "0.9.0"
+
 serde = "1.0.219"
 
 [workspace.metadata.bin]

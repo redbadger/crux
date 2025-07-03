@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.14.0-rc1](https://github.com/redbadger/crux/compare/crux_time-v0.13.0...crux_time-v0.14.0-rc1) - 2025-07-03
+
+### 🚀 Features
+
+- *(crux_core)* Request::split() into a tuple of operation and handle
+- *(crux_core)* Facet-based typegen frontend
+
+### ⚙️ Miscellaneous Tasks
+
+- *(crux)* Format fixes
+
 ## [0.13.0](https://github.com/redbadger/crux/compare/crux_time-v0.12.0...crux_time-v0.13.0) - 2025-05-27
 
 This is a minor bump because of breaking changes in `crux_core`

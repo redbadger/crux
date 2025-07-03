@@ -8,6 +8,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.16.0-rc1](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0-rc1) - 2025-07-03
+
+### 🚀 Features
+
+- *(crux_core)* Request::split() into a tuple of operation and handle
+- *(crux_core)* Introduce Resolvable trait, and make `RequestHandle` public
+- *(crux_core)* Add `then_notify` and `build` methods to `*Builder`
+- *(crux_core)* Facet-based typegen frontend
+- *(crux_macros)* Be explicit in effect macro about typegen kind
+- *(crux_core)* Facet typegen with module support
+
+### 🐛 Bug Fixes
+
+- *(crux_cli)* Remove need for env::set_var as unsafe in 2024 edition
+- *(crux_core)* Pass facet-typegen feature through core to macros
+- *(crux)* Fix tests for all feature combinations
+
 ## [0.15.0](https://github.com/redbadger/crux/compare/crux_core-v0.14.0...crux_core-v0.15.0) - 2025-05-27
 
 This is a breaking change, due to additional information being reported for `TypeGen` errors.

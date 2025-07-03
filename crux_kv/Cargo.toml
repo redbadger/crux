@@ -1,6 +1,6 @@
 [package]
 name = "crux_kv"
-version = "0.9.0"
+version = "0.10.0-rc1"
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ keywords.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-crux_core = { version = "0.15", path = "../crux_core" }
+crux_core = { version = "0.16.0-rc1", path = "../crux_core" }
 facet.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11.17"
