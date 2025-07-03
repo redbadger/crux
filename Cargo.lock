@@ -222,9 +222,9 @@ dependencies = [
 
 [[package]]
 name = "async-channel"
-version = "2.3.1"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89b47800b0be77592da0afd425cc03468052844aff33b84e33cc696f64e77b6a"
+checksum = "16c74e56284d2188cabb6ad99603d1ace887a5d7e7b695d01b728155ed9ed427"
 dependencies = [
  "concurrent-queue",
  "event-listener-strategy",
@@ -582,7 +582,7 @@ dependencies = [
  "anyhow",
  "assert_fs",
  "assert_matches",
- "async-channel 2.3.1",
+ "async-channel 2.4.0",
  "bincode",
  "crossbeam-channel",
  "crux_cli",
@@ -936,9 +936,9 @@ dependencies = [
 
 [[package]]
 name = "facet"
-version = "0.27.15"
+version = "0.27.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a219b97d2f75648ed5470f9efaed7fac98b0f5218d701e305444578cfbb33d3b"
+checksum = "0be4cf803e7c34ab73217e3c05b6c382b8a70a5948a9282ed9d64f62c2a03a90"
 dependencies = [
  "facet-core",
  "facet-macros",
@@ -947,9 +947,9 @@ dependencies = [
 
 [[package]]
 name = "facet-core"
-version = "0.27.15"
+version = "0.27.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea8f4f44d3904eb16187e3c0d93c1f6eed2d5f5e5532fb3cbf60a0849fdae726"
+checksum = "bc0dfc311334e2fad887baaebdc3773c05bbbddc286bef7c9c87cfb3fb4235fb"
 dependencies = [
  "bitflags",
  "impls",
@@ -957,9 +957,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros"
-version = "0.27.15"
+version = "0.27.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41934d083cf0dab2dc480d9c69240448478f06455c69a738833dbe8ef244efbe"
+checksum = "c10707410fd2c4f6b779fa04eac1a25d2907322dfb31039f16829c7996236768"
 dependencies = [
  "facet-core",
  "facet-macros-emit",
@@ -967,9 +967,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros-emit"
-version = "0.27.15"
+version = "0.27.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e390d85bbdd57eb8ef7f7b10254feaf9727f77cf4312722cd8f030a8c182491e"
+checksum = "c496a4d3bd731444d278cf1178302d854c46dd04661e79a67d926b63d60a4cbb"
 dependencies = [
  "facet-macros-parse",
  "quote",
@@ -977,9 +977,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros-parse"
-version = "0.27.15"
+version = "0.27.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76290ce9f9701d81b4c2d4b819a64caea9334056d2fb5c5f8c88b24afd9b6dc1"
+checksum = "e5e81c2f638023b13c3ab6e73b29be6fec44bdced5e418839c215a4b81afc6e2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -988,7 +988,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.3.0"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1de4ac1cbf6c2a93fd148365c18e2dc9efafa7d373fb20a590822b7abc691708"
 dependencies = [
  "anyhow",
  "erased-discriminant",

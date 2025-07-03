@@ -1,8 +1,8 @@
 //! Generation of foreign language types (currently Swift, Java, TypeScript) for Crux
 //!
-//! In order to use this module, you'll need a separate crate from your shared library, possibly
-//! called `shared_types`. This is necessary because we need to reference types from your shared library
-//! during the build process (`build.rs`).
+//! To use this module, you can add a separate crate from your shared library, possibly
+//! called `shared_types`, which will allow you to reference types from your shared library
+//! during the build process (e.g. in `shared_types/build.rs`).
 //!
 //! This module is behind the feature called `typegen`, and is not compiled into the default crate.
 //!
@@ -10,7 +10,7 @@
 //!
 //! ```rust,ignore
 //! [build-dependencies]
-//! crux_core = { version = "0.7", features = ["typegen"] }
+//! crux_core = { version = "0.15", features = ["typegen"] }
 //! ```
 //!
 //! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.

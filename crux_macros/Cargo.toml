@@ -23,7 +23,7 @@ syn = "2.0.104"
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
-facet = "0.27.15"
+facet = { workspace = true }
 insta = "1.43.1"
 prettyplease = "0.2"
 serde = { version = "1.0.219", features = ["derive"] }

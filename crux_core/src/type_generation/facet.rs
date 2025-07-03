@@ -1,8 +1,8 @@
 //! Generation of foreign language types (currently Swift, Java, TypeScript) for Crux
 //!
-//! In order to use this module, you'll need a separate crate from your shared library, possibly
-//! called `shared_types`. This is necessary because we need to reference types from your shared library
-//! during the build process (`build.rs`).
+//! To use this module, you can add a separate crate from your shared library, possibly
+//! called `shared_types`, which will allow you to reference types from your shared library
+//! during the build process (e.g. in `shared_types/build.rs`).
 //!
 //! This module is behind the feature called `facet_typegen`, and is not compiled into the default crate.
 //!
@@ -10,7 +10,7 @@
 //!
 //! ```rust,ignore
 //! [build-dependencies]
-//! crux_core = { version = "0.7", features = ["facet_typegen"] }
+//! crux_core = { version = "0.15", features = ["facet_typegen"] }
 //! ```
 //!
 //! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
@@ -70,56 +70,14 @@
 //!    typegen.typescript("shared_types", output_root.join("typescript"))?;
 //!}
 //! ```
-//!
-//! ## Custom extensions
-//!
-//! If you need to use customized files for one of:
-//!
-//! - `generated/typescript/*`,
-//! - `generated/swift/(requests | Package).swift` -
-//! - `generated/java/Requests.java`
-//!
-//! Then create the `typegen_extensions/{target}/{target-file}`
-//! with the desired content next to your `build.rs` file.
-//!
-//! For example `typegen_extensions/swift/Package.swift`:
-//!
-//! ```swift
-//! // swift-tools-version: 5.7.1
-//! // The swift-tools-version declares the minimum version of Swift required to build this package.
-//!
-//! import PackageDescription
-//!
-//! let package = Package(
-//!     name: "SharedTypes",
-//!     products: [
-//!         // Products define the executables and libraries a package produces, and make them visible to other packages.
-//!         .library(
-//!             name: "SharedTypes",
-//!             targets: ["SharedTypes"]),
-//!     ],
-//!     dependencies: [
-//!         // Dependencies declare other packages that this package depends on.
-//!         // .package(url: /* package url */, from: "1.0.0"),
-//!     ],
-//!     targets: [
-//!         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-//!         // Targets can depend on other targets in this package, and on products in packages this package depends on.
-//!         .target(
-//!             name: "Serde",
-//!             dependencies: []),
-//!         .target(
-//!             name: "SharedTypes",
-//!             dependencies: ["Serde"]),
-//!     ]
-//! )
-//! ```
-
 use facet::Facet;
 use facet_generate::{
-    Registry,
-    namespace::Namespace,
-    serde_generate::{Encoding, SourceInstaller, java, swift, typescript},
+    generation::{Encoding, SourceInstaller, java, swift, typescript},
+    reflection::{
+        Registry,
+        namespace::{self, Namespace},
+        reflect,
+    },
 };
 use serde::Deserialize;
 use std::{
@@ -245,7 +203,7 @@ impl TypeGen {
     {
         match &mut self.state {
             State::Registering(registry) => {
-                let incoming = facet_generate::reflect::<T>();
+                let incoming = reflect::<T>();
                 registry.extend(Registry::from(incoming));
                 Ok(())
             }
@@ -289,9 +247,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in facet_generate::namespace::split(root_module, registry.clone())
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?
-        {
+        for (module, registry) in namespace::split(root_module, registry.clone()) {
             let config = module
                 .config()
                 .clone()
@@ -303,11 +259,9 @@ impl TypeGen {
         }
 
         // add bincode deserialization for Vec<Request>
-        let mut output = File::create(
-            path.join("Sources")
-                .join(package_name)
-                .join("Requests.swift"),
-        )?;
+        let output_dir = path.join("Sources").join(package_name);
+        fs::create_dir_all(&output_dir)?;
+        let mut output = File::create(output_dir.join("Requests.swift"))?;
 
         let requests_path = Self::extensions_path("swift/requests.swift");
         let requests_data = fs::read_to_string(requests_path)?;
@@ -327,10 +281,7 @@ impl TypeGen {
     /// # use std::env::temp_dir;
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// typegen.java(
-    ///     "com.redbadger.crux_core.shared_types",
-    ///     output_root.join("java"),
-    /// )?;
+    /// typegen.java("com.crux.example", output_root.join("java"))?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
     ///
@@ -362,9 +313,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in facet_generate::namespace::split(root_module, registry.clone())
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?
-        {
+        for (module, registry) in namespace::split(root_module, registry.clone()) {
             let this_module = &module.config().module_name;
             let module = if root_module == this_module {
                 module
@@ -388,13 +337,9 @@ impl TypeGen {
 
         let requests = format!("package {package_name};\n\n{requests_data}");
 
-        fs::write(
-            path.as_ref()
-                .to_path_buf()
-                .join(package_path)
-                .join("Requests.java"),
-            requests,
-        )?;
+        let output_dir = path.as_ref().join(package_path);
+        fs::create_dir_all(&output_dir)?;
+        fs::write(output_dir.join("Requests.java"), requests)?;
 
         Ok(())
     }
@@ -436,9 +381,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in facet_generate::namespace::split(root_module, registry.clone())
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?
-        {
+        for (module, registry) in namespace::split(root_module, registry.clone()) {
             let config = module
                 .config()
                 .clone()
