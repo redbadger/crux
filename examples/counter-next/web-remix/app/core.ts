@@ -5,8 +5,8 @@ import type {
   Effect,
   Event,
   HttpResponse,
-  SseResponse,
 } from "shared_types/types/shared_types";
+import type { SseResponse } from "shared_types/types/server_sent_events";
 import {
   EffectVariantRender,
   ViewModel,
