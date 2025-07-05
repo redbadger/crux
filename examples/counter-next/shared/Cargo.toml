@@ -32,15 +32,17 @@ url = "2.5.4"
 [dev-dependencies]
 insta = { version = "1.43.1", features = ["yaml"] }
 
+# not wasm
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
+rand = "0.9.1"
 uniffi = "0.29.3"
-rand = { version = "0.9.1", features = ["os_rng"] }
 
-[target.'cfg(target_family = "wasm")'.dependencies]
-getrandom = { version = "0.3.3", features = ["wasm_js"] }
+# wasm32-unknown-unknown, but not wasm32-wasip2
+[target.'cfg(any(target_family = "wasm", not(all(target_os = "wasi", target_env = "p2"))))'.dependencies]
 wasm-bindgen = "0.2.100"
 js-sys = "0.3.77"
 
+# wasm32-wasip2
 [target.'cfg(all(target_os = "wasi", target_env = "p2"))'.dependencies]
 wit-bindgen = "0.43.0"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
