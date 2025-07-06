@@ -4,4 +4,5 @@ world shared {
     export update: func(data: list<u8>) -> list<u8>;
     export resolve: func(effect-id: u32, data: list<u8>) -> list<u8>;
     export view: func() -> list<u8>;
+    export schema: func() -> string;
 }

@@ -44,6 +44,8 @@ js-sys = "0.3.77"
 
 # wasm32-wasip2
 [target.'cfg(all(target_os = "wasi", target_env = "p2"))'.dependencies]
+crux_core = { workspace = true, features = ["facet_typegen"] }
+crux_http = { workspace = true, features = ["facet_typegen"] }
 wit-bindgen = "0.43.0"
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 
