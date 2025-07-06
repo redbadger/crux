@@ -77,5 +77,6 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
                 process_effect(core, effect, render);
             }
         }
+        Effect::Test(_request) => {}
     }
 }

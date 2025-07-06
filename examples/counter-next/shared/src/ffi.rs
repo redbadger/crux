@@ -11,13 +11,14 @@ pub mod uniffi_ffi {
     };
     use crux_http::protocol::HttpRequest;
 
-    use crate::{App, middleware::RngMiddleware, sse::SseRequest};
+    use crate::{App, TestRequest, middleware::RngMiddleware, sse::SseRequest};
 
     #[effect(facet_typegen)]
     pub enum Effect {
         Render(RenderOperation),
         Http(HttpRequest),
         ServerSentEvents(SseRequest),
+        Test(TestRequest),
     }
 
     impl From<crate::app::Effect> for Effect {
@@ -27,6 +28,7 @@ pub mod uniffi_ffi {
                 crate::Effect::Http(request) => Effect::Http(request),
                 crate::Effect::ServerSentEvents(request) => Effect::ServerSentEvents(request),
                 crate::Effect::Random(_) => panic!("Encountered a Random effect"),
+                crate::Effect::Test(request) => Effect::Test(request),
             }
         }
     }

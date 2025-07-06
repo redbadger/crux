@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc, serde::ts_milliseconds_option::deserialize as ts_milliseconds_option};
 use crux_core::{
     Command,
+    capability::Operation,
     macros::effect,
     render::{RenderOperation, render},
 };
@@ -58,6 +59,7 @@ pub struct ViewModel {
 #[repr(C)]
 pub enum Event {
     // events from the shell
+    Test,
     Get,
     Increment,
     Decrement,
@@ -65,6 +67,9 @@ pub enum Event {
     StartWatch,
 
     // events local to the core
+    #[serde(skip)]
+    #[facet(skip)]
+    TestSet(TestResponse),
     #[serde(skip)]
     #[facet(skip)]
     Set(HttpResult<crux_http::Response<Count>, HttpError>),
@@ -75,6 +80,16 @@ pub enum Event {
     UpdateBy(isize),
 }
 
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct TestRequest;
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct TestResponse(isize);
+
+impl Operation for TestRequest {
+    type Output = TestResponse;
+}
+
 #[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
@@ -82,6 +97,7 @@ pub enum Effect {
     Http(HttpRequest),
     ServerSentEvents(SseRequest),
     Random(RandomNumberRequest),
+    Test(TestRequest),
 }
 
 #[derive(Default)]
@@ -94,6 +110,7 @@ impl crux_core::App for App {
     type Capabilities = ();
     type Effect = Effect;
 
+    #[allow(clippy::too_many_lines)]
     fn update(
         &self,
         msg: Self::Event,
@@ -101,6 +118,14 @@ impl crux_core::App for App {
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
         match msg {
+            Event::Test => Command::request_from_shell(TestRequest).then_send(Event::TestSet),
+            Event::TestSet(TestResponse(value)) => {
+                model.count = Count {
+                    value,
+                    updated_at: None,
+                };
+                Command::done()
+            }
             Event::Get => Http::get(API_URL)
                 .expect_json()
                 .build()
