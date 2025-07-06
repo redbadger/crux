@@ -167,53 +167,65 @@ pub mod wasm_ffi {
 
 #[cfg(all(target_os = "wasi", target_env = "p2"))]
 pub mod wasip2 {
-    use crux_core::{Core, bridge::Bridge};
-    use std::sync::OnceLock;
+    use crux_core::{Core, bridge::BridgeWithSerializer};
+    use std::sync::LazyLock;
 
     use crate::App;
 
     /// The main interface used by the shell
     pub struct CoreFFI {
-        core: Bridge<App>,
+        core: BridgeWithSerializer<App>,
     }
 
     impl CoreFFI {
         pub fn new() -> Self {
-            let core = Bridge::new(Core::new());
+            let core = BridgeWithSerializer::new(Core::new());
 
             Self { core }
         }
 
         #[must_use]
         pub fn update(&self, data: &[u8]) -> Vec<u8> {
-            match self.core.process_event(data) {
-                Ok(effects) => effects,
-                Err(e) => panic!("{e}"),
-            }
+            let mut deser = serde_json::Deserializer::from_slice(data);
+
+            let mut return_buffer = vec![];
+            let mut ser = serde_json::Serializer::new(&mut return_buffer);
+
+            if let Err(err) = self.core.process_event(&mut deser, &mut ser) {
+                panic!("Failed to process event: {}", err)
+            };
+
+            return_buffer
         }
 
         #[must_use]
         pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
-            match self.core.handle_response(effect_id, data) {
-                Ok(effects) => effects,
-                Err(e) => panic!("{e}"),
-            }
+            let mut deser = serde_json::Deserializer::from_slice(data);
+
+            let mut return_buffer = vec![];
+            let mut ser = serde_json::Serializer::new(&mut return_buffer);
+
+            if let Err(err) = self.core.handle_response(effect_id, &mut deser, &mut ser) {
+                panic!("Failed to handle response: {}", err)
+            };
+
+            return_buffer
         }
 
         #[must_use]
         pub fn view(&self) -> Vec<u8> {
-            match self.core.view() {
-                Ok(view) => view,
-                Err(e) => panic!("{e}"),
-            }
+            let mut return_buffer = vec![];
+            let mut ser = serde_json::Serializer::new(&mut return_buffer);
+
+            if let Err(err) = self.core.view(&mut ser) {
+                panic!("Failed to get view: {}", err)
+            };
+
+            return_buffer
         }
     }
 
-    static CORE: OnceLock<CoreFFI> = OnceLock::new();
-
-    fn get_core() -> &'static CoreFFI {
-        CORE.get_or_init(|| CoreFFI::new())
-    }
+    static CORE: LazyLock<CoreFFI> = LazyLock::new(|| CoreFFI::new());
 
     wit_bindgen::generate!();
 
@@ -221,15 +233,15 @@ pub mod wasip2 {
 
     impl Guest for Component {
         fn update(data: Vec<u8>) -> Vec<u8> {
-            get_core().update(&data)
+            CORE.update(&data)
         }
 
         fn resolve(effect_id: u32, data: Vec<u8>) -> Vec<u8> {
-            get_core().resolve(effect_id, &data)
+            CORE.resolve(effect_id, &data)
         }
 
         fn view() -> Vec<u8> {
-            get_core().view()
+            CORE.view()
         }
     }
 
