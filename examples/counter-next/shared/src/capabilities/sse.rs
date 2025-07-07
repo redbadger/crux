@@ -1,10 +1,9 @@
 use std::{convert::From, future};
 
 use async_sse::{Event as SseEvent, decode};
-use async_std::io::Cursor;
 use crux_core::{Request, capability::Operation, command::StreamBuilder};
 use facet::Facet;
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, io::Cursor};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

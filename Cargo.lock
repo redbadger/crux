@@ -387,9 +387,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.27"
+version = "1.2.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d487aa071b5f64da6f19a3e848e3578944b726ee5a4854b82172f02aa876bfdc"
+checksum = "5c1599538de2394445747c8cf7935946e3cc27e9625f889d979bfb2aaf569362"
 dependencies = [
  "shlex",
 ]
@@ -988,7 +988,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.4.2"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b557774414687e06ec5547be3f7c56dd2bf291e713c351a97cef1510ff49b96"
 dependencies = [
  "anyhow",
  "erased-discriminant",

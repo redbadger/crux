@@ -84,7 +84,6 @@ use serde::Deserialize;
 use std::{
     fs::{self, File},
     io::Write,
-    mem,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
@@ -113,6 +112,13 @@ pub enum State {
     None,
     Registering(RegistryBuilder),
     Generating(Registry),
+}
+
+impl State {
+    #[must_use]
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
 }
 
 pub trait Export {
@@ -204,12 +210,12 @@ impl TypeGen {
     where
         T: serde::Deserialize<'de> + Facet<'a>,
     {
-        let state = mem::replace(&mut self.state, State::None);
-        let State::Registering(builder) = state else {
+        let State::Registering(builder) = self.state.take() else {
             return Err(TypeGenError::LateRegistration);
         };
-        let builder = builder.add_type::<T>();
-        self.state = State::Registering(builder);
+
+        self.state = State::Registering(builder.add_type::<T>());
+
         Ok(())
     }
 
@@ -249,7 +255,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in module::split(root_module, registry.clone()) {
+        for (module, registry) in module::split(root_module, registry) {
             let config = module
                 .config()
                 .clone()
@@ -315,7 +321,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in module::split(root_module, registry.clone()) {
+        for (module, registry) in module::split(root_module, registry) {
             let this_module = &module.config().module_name;
             let module = if root_module == this_module {
                 module
@@ -383,7 +389,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in module::split(root_module, registry.clone()) {
+        for (module, registry) in module::split(root_module, registry) {
             let config = module
                 .config()
                 .clone()
@@ -434,12 +440,7 @@ impl TypeGen {
 
     fn ensure_registry(&mut self) {
         if let State::Registering(_) = self.state {
-            // replace the current state
-            let old_state = mem::replace(&mut self.state, State::None);
-
-            // move the registry
-            if let State::Registering(registry) = old_state {
-                // replace dummy with registry
+            if let State::Registering(registry) = self.state.take() {
                 self.state = State::Generating(registry.build());
             }
         }
