@@ -1,10 +1,17 @@
 use crux_core::command::RequestBuilder;
 use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::API_KEY;
 use crate::{Effect, GeocodingQueryString, GeocodingResponse, GEOCODING_URL};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum LocationError {
+    NetworkError,
+    ParseError,
+    NoResults,
+}
 
 #[derive(Serialize)]
 pub struct CurrentQueryString {
@@ -29,21 +36,19 @@ impl LocationApi {
             .build()
     }
 
-    /// Fetch current weather for a specific location
+    /// Fetch geocoding results for a location query
     pub fn fetch<Event>(
         query: &str,
     ) -> RequestBuilder<
         Effect,
         Event,
-        impl std::future::Future<
-            Output = Result<crux_http::Response<Vec<GeocodingResponse>>, crux_http::HttpError>,
-        >,
+        impl std::future::Future<Output = Result<Vec<GeocodingResponse>, LocationError>>,
     >
     where
         Event: Send + 'static,
     {
         Http::get(GEOCODING_URL)
-            .expect_json()
+            .expect_json::<Vec<GeocodingResponse>>()
             .query(&GeocodingQueryString {
                 q: query.to_string(),
                 limit: "5",
@@ -51,5 +56,18 @@ impl LocationApi {
             })
             .expect("could not serialize query string")
             .build()
+            .map(|result| match result {
+                Ok(mut response) => match response.take_body() {
+                    Some(results) => {
+                        if results.is_empty() {
+                            Err(LocationError::NoResults)
+                        } else {
+                            Ok(results)
+                        }
+                    }
+                    None => Err(LocationError::ParseError),
+                },
+                Err(_) => Err(LocationError::NetworkError),
+            })
     }
 }
