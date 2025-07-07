@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::favorites::events::FavoritesEvent;
 use crate::location::capability::{get_location, is_location_enabled, LocationResponse};
-use crate::weather::client::WeatherApi;
+use crate::weather::client::{WeatherApi, WeatherError};
 use crate::weather::model::CurrentResponse;
 use crate::{Effect, Event, Model};
 
@@ -21,12 +21,12 @@ pub enum WeatherEvent {
     #[serde(skip)]
     Fetch(f64, f64),
     #[serde(skip)]
-    SetWeather(Box<crux_http::Result<crux_http::Response<CurrentResponse>>>),
+    SetWeather(Box<Result<CurrentResponse, WeatherError>>),
     #[serde(skip)]
     FetchFavorites,
     #[serde(skip)]
     SetFavoriteWeather(
-        Box<crux_http::Result<crux_http::Response<CurrentResponse>>>,
+        Box<Result<CurrentResponse, WeatherError>>,
         f64,
         f64,
     ),
@@ -65,8 +65,8 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Event> 
         }),
         WeatherEvent::SetWeather(result) => {
             let cmd = match *result {
-                Ok(mut response) => {
-                    model.weather_data = response.take_body().unwrap();
+                Ok(weather_data) => {
+                    model.weather_data = weather_data;
                     render()
                 }
                 Err(_) => render(),
@@ -100,8 +100,7 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Event> 
             }
         }
         WeatherEvent::SetFavoriteWeather(result, lat, long) => match *result {
-            Ok(mut response) => {
-                let weather = response.take_body().unwrap();
+            Ok(weather) => {
                 // Update the weather data for the matching favorite
                 if let Some(favorite) = model.favorites.iter_mut().find(|f| {
                     f.geo.lat.to_bits() == lat.to_bits() && f.geo.lon.to_bits() == long.to_bits()

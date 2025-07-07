@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::favorites::model::{Favorite, FavoritesState, FAVORITES_KEY};
-use crate::location::client::LocationApi;
+use crate::location::client::{LocationApi, LocationError};
 use crate::location::model::geocoding_response::GeocodingResponse;
 
 use crate::weather::model::Coord;
@@ -22,7 +22,7 @@ pub enum FavoritesEvent {
     Submit(Box<GeocodingResponse>),
     Cancel,
     #[serde(skip)]
-    SearchResult(Box<crux_http::Result<crux_http::Response<Vec<GeocodingResponse>>>>),
+    SearchResult(Box<Result<Vec<GeocodingResponse>, LocationError>>),
     // KV Related
     Restore,
     #[serde(skip)]
@@ -71,8 +71,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
             .then_send(|result| FavoritesEvent::SearchResult(Box::new(result))),
         FavoritesEvent::SearchResult(result) => {
             match *result {
-                Ok(mut response) => {
-                    let results = response.take_body().unwrap();
+                Ok(results) => {
                     model.search_results = Some(results);
                 }
                 Err(_) => {
