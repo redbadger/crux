@@ -8,6 +8,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.0-rc1](https://github.com/redbadger/crux/compare/crux_macros-v0.6.1...crux_macros-v0.7.0-rc1) - 2025-07-03
+
+### 🚀 Features
+
+- *(crux_core)* Facet-based typegen frontend
+- *(crux_macros)* Be explicit in effect macro about typegen kind
+- *(crux_core)* Facet typegen with module support
+
+### 🐛 Bug Fixes
+
+- *(crux_cli)* Remove need for env::set_var as unsafe in 2024 edition
+- *(crux_core)* Pass facet-typegen feature through core to macros
+- *(crux)* Fix tests for all feature combinations
+
+### ⚙️ Miscellaneous Tasks
+
+- *(crux)* Format fixes
+- Use facet-generate 0.3.0
+- *(crux_macros)* Fix features
+- *(crux_core)* Use facet_generate v0.4
+
 ## [0.6.1](https://github.com/redbadger/crux/compare/crux_macros-v0.6.0...crux_macros-v0.6.1) - 2025-05-27
 
 Minor changes, not breaking.

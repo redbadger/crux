@@ -1,5 +1,7 @@
 //! Middleware which can be wrapped around the Core to modify its behaviour.
 //!
+//! Note that this is still somewhat experimental.
+//!
 //! This is useful for changing the mechanics of the Core without modifying the actual
 //! behaviour of the app.
 //!
@@ -14,7 +16,7 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{bridge::BridgeError, capability::Operation, App, Core, Effect, Request, ResolveError};
+use crate::{App, Core, Effect, Request, Resolvable, ResolveError, bridge::BridgeError};
 
 mod bridge;
 mod effect_conversion;
@@ -34,7 +36,7 @@ use serde::Deserialize;
 ///
 /// This is the lower-level of the middleware traits. You might want to implement this
 /// for middleware which filters or transforms events or your view model, with awareness
-/// of your app's Event and `ViewModel` types.
+/// of your app's `Event` and `ViewModel` types.
 ///
 /// If you want to build a reusable effect-handling middleware, see [`EffectMiddleware`].
 pub trait Layer: Send + Sync + Sized {
@@ -77,22 +79,24 @@ pub trait Layer: Send + Sync + Sized {
     /// Returns a `ResolveError` if the request fails to resolve due to a type mismatch, or isn't
     /// expected to be resolved (either it was never expected to be resolved, or it has already
     /// been resolved)
-    fn resolve<Op, F>(
+    fn resolve<Output, F>(
         &self,
-        request: &mut Request<Op>,
-        output: Op::Output,
+        request: &mut impl Resolvable<Output>,
+        output: Output,
         effect_callback: F,
     ) -> Result<Vec<Self::Effect>, ResolveError>
     where
-        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
-        Op: Operation;
+        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static;
 
     /// Process any tasks in the effect runtime of the Core, which are able to proceed.
     /// The tasks may produce effects which will be returned by the core and may be
     /// processed by lower middleware layers.
     ///
+    /// You should not need to call this method directly. Most implementations should
+    /// simply forward the call to the next `Layer`.
+    ///
     /// This is used by the [`Bridge`], when resolving effects over FFI. It can't call
-    /// [`resolve`], because the `Op` type argument is not known due to the type erasure
+    /// [`Core::resolve`], because the `Output` type argument is not known due to the type erasure
     /// involved in serializing effects and storing request handles for the FFI.
     fn process_tasks<F>(&self, effect_callback: F) -> Vec<Self::Effect>
     where
@@ -159,10 +163,10 @@ where
         self.process_event(event)
     }
 
-    fn resolve<Op: Operation, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn resolve<Output, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
         &self,
-        request: &mut Request<Op>,
-        output: Op::Output,
+        request: &mut impl Resolvable<Output>,
+        output: Output,
         _effect_callback: F,
     ) -> Result<Vec<Self::Effect>, ResolveError> {
         self.resolve(request, output)

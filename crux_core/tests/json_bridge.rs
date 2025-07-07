@@ -1,7 +1,10 @@
 mod app {
-    use crux_core::render::{render, Render};
-    use crux_core::{macros::Effect, Command};
-    use crux_http::command::Http;
+    use crux_core::{
+        Command,
+        render::{RenderOperation, render},
+    };
+    use crux_http::{command::Http, protocol::HttpRequest};
+    use crux_macros::effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -13,20 +16,26 @@ mod app {
         Get,
     }
 
+    #[effect]
+    pub enum Effect {
+        Http(HttpRequest),
+        Render(RenderOperation),
+    }
+
     #[derive(Serialize, Deserialize)]
     pub struct ViewModel;
     impl crux_core::App for App {
         type Event = Event;
         type Model = ();
         type ViewModel = ViewModel;
-        type Capabilities = Capabilities;
+        type Capabilities = ();
         type Effect = Effect;
 
         fn update(
             &self,
             event: Event,
             _model: &mut Self::Model,
-            _caps: &Capabilities,
+            _caps: &(),
         ) -> Command<Effect, Event> {
             match event {
                 Event::Trigger => render(),
@@ -39,13 +48,6 @@ mod app {
         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
             unimplemented!();
         }
-    }
-
-    #[derive(Effect)]
-    #[allow(dead_code)]
-    pub struct Capabilities {
-        pub http: crux_http::Http<Event>,
-        pub render: Render<Event>,
     }
 }
 
@@ -62,8 +64,8 @@ mod tests {
     use crate::app::EffectFfi;
 
     use super::core::Bridge;
-    use crux_core::{bridge::Request, Core};
-    use serde_json::{json, Deserializer, Value};
+    use crux_core::{Core, bridge::Request};
+    use serde_json::{Deserializer, Value, json};
 
     #[test]
     fn event_effect_loop() {

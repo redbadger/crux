@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use anyhow::{anyhow, bail, Context as _, Result};
+use anyhow::{Context as _, Result, anyhow, bail};
 use camino::Utf8PathBuf;
 use cargo_metadata::{Metadata, MetadataCommand};
 use uniffi_bindgen::{

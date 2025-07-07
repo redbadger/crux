@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::{capability::Operation, macros::effect, render::render, App, Command};
+    use crux_core::{App, Command, capability::Operation, macros::effect, render::render};
     use crux_http::command::Http;
     use serde::{Deserialize, Serialize};
 
@@ -109,11 +109,7 @@ mod app {
                                 .copied()
                                 .find_map(
                                     |(size, value)| {
-                                        if value.is_none() {
-                                            Some(size)
-                                        } else {
-                                            None
-                                        }
+                                        if value.is_none() { Some(size) } else { None }
                                     },
                                 )
                                 .unwrap();
@@ -148,7 +144,7 @@ mod middleware {
     use std::thread::spawn;
 
     use crossbeam_channel::Receiver;
-    use crux_core::{capability::Operation, middleware::EffectMiddleware, Request};
+    use crux_core::{Request, RequestHandle, capability::Operation, middleware::EffectMiddleware};
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::app::{RandomNumber, RandomNumberRequest};
@@ -195,17 +191,15 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl FnOnce(Request<RandomNumberRequest>, RandomNumber) + Send + 'static,
+            resolve_callback: impl FnOnce(RequestHandle<RandomNumber>, RandomNumber) + Send + 'static,
         ) -> Result<(), Effect> {
-            let rand_request @ Request {
-                operation: RandomNumberRequest(_),
-                ..
-            } = effect.try_into()?;
+            let rand_request = effect.try_into()?;
+            let (operation, handle): (RandomNumberRequest, _) = rand_request.split();
 
             self.jobs_tx
                 .send((
-                    rand_request.operation.clone(),
-                    Box::new(move |number| resolve_callback(rand_request, number)),
+                    operation,
+                    Box::new(move |number| resolve_callback(handle, number)),
                 ))
                 .expect("Job failed to send to worker thread");
 
@@ -224,14 +218,14 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
-                + Send
-                + 'static,
+            resolve_callback: impl FnOnce(
+                RequestHandle<<Self::Op as Operation>::Output>,
+                <Self::Op as Operation>::Output,
+            ) + Send
+            + 'static,
         ) -> Result<(), Effect> {
-            let http_request @ Request {
-                operation: HttpRequest { .. },
-                ..
-            } = effect.try_into()?;
+            let http_request = effect.try_into()?;
+            let (_, handle): (HttpRequest, _) = http_request.split();
 
             // One-off worker
             eprintln!("Starting HTTP thread...");
@@ -239,7 +233,7 @@ mod middleware {
                 let response = HttpResult::Ok(HttpResponse::status(201).build());
 
                 eprintln!("Resolving HTTP request");
-                resolve_callback(http_request, response);
+                resolve_callback(handle, response);
 
                 eprintln!("HTTP thread terminating...");
             });
@@ -267,15 +261,15 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl FnOnce(Request<Self::Op>, <Self::Op as Operation>::Output)
-                + Send
-                + 'static,
+            resolve_callback: impl FnOnce(
+                RequestHandle<<Self::Op as Operation>::Output>,
+                <Self::Op as Operation>::Output,
+            ) + Send
+            + 'static,
         ) -> Result<(), Effect> {
-            let http_request @ Request {
-                operation: HttpRequest { .. },
-                ..
-            } = effect.try_into()?;
+            let http_request = effect.try_into()?;
 
+            let (_, handle): (HttpRequest, _) = http_request.split();
             let remote = self.remote.clone();
 
             // One-off worker
@@ -288,7 +282,7 @@ mod middleware {
                 if let Ok(()) = remote.recv() {
                     eprintln!("Trigger received, resolving HTTP request");
 
-                    resolve_callback(http_request, response);
+                    resolve_callback(handle, response);
                 }
 
                 eprintln!("HTTP thread terminating...");
@@ -308,10 +302,9 @@ mod tests {
     };
     use crossbeam_channel::RecvError;
     use crux_core::{
-        bridge,
+        Core, bridge,
         middleware::{BincodeFfiFormat, FfiFormat, Layer as _},
         render::RenderOperation,
-        Core,
     };
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use crux_macros::effect;

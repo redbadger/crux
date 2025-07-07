@@ -12,7 +12,7 @@ use std::{
     time::Instant,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use build::Build;
 use cargo_metadata::MetadataCommand;
 use check::Check;

@@ -2,7 +2,7 @@ use std::{future::Future, pin::Pin, task::Poll};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{capability::Operation, Command, Request};
+use crate::{Command, Request, capability::Operation};
 
 struct ImmediateWake {
     wake_count: usize,

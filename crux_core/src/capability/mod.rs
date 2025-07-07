@@ -1,4 +1,9 @@
-//! Capabilities provide a user-friendly API to request side-effects from the shell.
+//! ## DEPRECATED
+//!
+//! Capabilities are the legacy interface to side-effects, and this module will be removed in a future version
+//! of crux. If you're starting a new app, you should use the [`command`](crate::command) API.
+//!
+//! For more help migrating from Capabilities to Commands, see [the documentation book](https://redbadger.github.io/crux/guide/effects.html#migrating-from-previous-versions-of-crux)
 //!
 //! Typically, capabilities provide I/O and host API access. Capabilities are external to the
 //! core Crux library. Some are part of the Crux core distribution, others are expected to be built by the
@@ -201,9 +206,9 @@ use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
 pub(crate) use channel::channel;
-pub(crate) use executor::{executor_and_spawner, QueuingExecutor};
+pub(crate) use executor::{QueuingExecutor, executor_and_spawner};
 
-use crate::{command::CommandOutput, Command, Request};
+use crate::{Command, Request, command::CommandOutput};
 use channel::Sender;
 
 /// Operation trait links together input and output of a side-effect.
@@ -225,7 +230,23 @@ pub trait Operation:
 
     #[cfg(feature = "typegen")]
     #[allow(clippy::missing_errors_doc)]
-    fn register_types(generator: &mut crate::typegen::TypeGen) -> crate::typegen::Result {
+    fn register_types(
+        generator: &mut crate::type_generation::serde::TypeGen,
+    ) -> crate::type_generation::serde::Result {
+        generator.register_type::<Self>()?;
+        generator.register_type::<Self::Output>()?;
+        Ok(())
+    }
+
+    #[cfg(feature = "facet_typegen")]
+    #[allow(clippy::missing_errors_doc)]
+    fn register_types_facet<'a>(
+        generator: &mut crate::type_generation::facet::TypeGen,
+    ) -> crate::type_generation::facet::Result
+    where
+        Self: facet::Facet<'a>,
+        <Self as Operation>::Output: facet::Facet<'a>,
+    {
         generator.register_type::<Self>()?;
         generator.register_type::<Self::Output>()?;
         Ok(())
@@ -295,6 +316,10 @@ impl Operation for Never {
 ///     }
 /// }
 /// ```
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub trait Capability<Ev> {
     type Operation: Operation + DeserializeOwned;
 
@@ -368,10 +393,15 @@ pub trait Capability<Ev> {
 ///     }
 /// }
 /// ```
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead. If you're using #[derive(Effect)] on a Capabilities type, you should use the #[effect] macro with an enum Effect instead."
+)]
 pub trait WithContext<Ev, Ef> {
     fn new_with_context(context: ProtoContext<Ef, Ev>) -> Self;
 }
 
+#[expect(deprecated)]
 impl<Event, Effect> WithContext<Event, Effect> for () {
     fn new_with_context(_context: ProtoContext<Effect, Event>) -> Self {}
 }
@@ -413,6 +443,10 @@ impl<Event, Effect> WithContext<Event, Effect> for () {
 ///
 // used in docs/internals/runtime.md
 // ANCHOR: capability_context
+#[deprecated(
+    since = "0.16.0",
+    note = "The capabilities API has been deprecated. Use Command API instead"
+)]
 pub struct CapabilityContext<Op, Event>
 where
     Op: Operation,
@@ -480,6 +514,7 @@ impl<Effect, Event> CommandSpawner<Effect, Event> {
     }
 }
 
+#[expect(deprecated)]
 impl<Op, Ev> Clone for CapabilityContext<Op, Ev>
 where
     Op: Operation,
@@ -491,6 +526,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<Eff, Ev> ProtoContext<Eff, Ev>
 where
     Ev: 'static,
@@ -528,6 +564,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<Op, Ev> CapabilityContext<Op, Ev>
 where
     Op: Operation,
@@ -671,6 +708,7 @@ where
 }
 
 #[cfg(test)]
+#[expect(deprecated)]
 mod tests {
     use serde::{Deserialize, Serialize};
     use static_assertions::assert_impl_all;

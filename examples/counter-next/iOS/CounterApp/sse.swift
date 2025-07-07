@@ -1,4 +1,4 @@
-import SharedTypes
+import ServerSentEvents
 import SwiftUI
 
 enum SseError: Error {

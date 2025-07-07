@@ -1,6 +1,8 @@
+#![expect(deprecated)]
+
 mod shared {
     use crux_core::render::Render;
-    use crux_core::{macros::Effect, Command};
+    use crux_core::{Command, macros::Effect};
     use crux_platform::{Platform, PlatformResponse};
     use serde::{Deserialize, Serialize};
 

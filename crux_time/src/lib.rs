@@ -13,30 +13,34 @@ use std::{
     future::Future,
     pin::Pin,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         LazyLock, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
     task::Poll,
     time::SystemTime,
 };
 
+#[expect(deprecated)]
 use crux_core::capability::CapabilityContext;
 
-pub use protocol::{duration::Duration, instant::Instant, TimeRequest, TimeResponse, TimerId};
+pub use protocol::{TimeRequest, TimeResponse, TimerId, duration::Duration, instant::Instant};
 
 fn get_timer_id() -> TimerId {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
     TimerId(COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
-/// The Time capability API
-///
-/// This capability provides access to the current time and allows the app to ask for
-/// notifications when a specific instant has arrived or a duration has elapsed.
+/// The original Time capability API, deprecated in favour of [`command::Time`].
+#[deprecated(
+    since = "0.14.0",
+    note = "The Capability API has been deprecated. Use command::Time instead."
+)]
+#[expect(deprecated)]
 pub struct Time<Ev> {
     context: CapabilityContext<TimeRequest, Ev>,
 }
 
+#[expect(deprecated)]
 impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
     type Operation = TimeRequest;
     type MappedSelf<MappedEv> = Time<MappedEv>;
@@ -51,6 +55,7 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Clone for Time<Ev> {
     fn clone(&self) -> Self {
         Self {
@@ -59,6 +64,7 @@ impl<Ev> Clone for Time<Ev> {
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Time<Ev>
 where
     Ev: 'static,
@@ -113,7 +119,10 @@ where
     pub fn notify_at_async(
         &self,
         system_time: SystemTime,
-    ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
+    ) -> (
+        TimerFuture<impl Future<Output = TimeResponse> + 'static>,
+        TimerId,
+    ) {
         let id = get_timer_id();
         let future = self.context.request_from_shell(TimeRequest::NotifyAt {
             id,
@@ -143,7 +152,10 @@ where
     pub fn notify_after_async(
         &self,
         duration: std::time::Duration,
-    ) -> (TimerFuture<impl Future<Output = TimeResponse>>, TimerId) {
+    ) -> (
+        TimerFuture<impl Future<Output = TimeResponse> + 'static>,
+        TimerId,
+    ) {
         let id = get_timer_id();
         let future = self.context.request_from_shell(TimeRequest::NotifyAfter {
             id,

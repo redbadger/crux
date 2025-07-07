@@ -4,7 +4,8 @@ use crux_core::{
     macros::effect,
     render::{RenderOperation, render},
 };
-use crux_http::{command::Http, protocol::HttpRequest};
+use crux_http::{HttpError, command::Http, protocol::HttpRequest};
+use facet::Facet;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -16,13 +17,31 @@ use crate::{
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
+#[derive(Facet, Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[repr(C)]
+pub enum HttpResult<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+impl<T> From<crux_http::Result<crux_http::Response<T>>>
+    for HttpResult<crux_http::Response<T>, HttpError>
+{
+    fn from(value: crux_http::Result<crux_http::Response<T>>) -> Self {
+        match value {
+            Ok(response) => HttpResult::Ok(response),
+            Err(error) => HttpResult::Err(error),
+        }
+    }
+}
+
 // ANCHOR: model
 #[derive(Default, Serialize)]
 pub struct Model {
     count: Count,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
 pub struct Count {
     value: isize,
     #[serde(deserialize_with = "ts_milliseconds_option")]
@@ -30,13 +49,14 @@ pub struct Count {
 }
 // ANCHOR_END: model
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Facet, Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum Event {
     // events from the shell
     Get,
@@ -47,14 +67,16 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
-    Set(crux_http::Result<crux_http::Response<Count>>),
+    #[facet(skip)]
+    Set(HttpResult<crux_http::Response<Count>, HttpError>),
     #[serde(skip)]
+    #[facet(skip)]
     Update(Count),
     #[serde(skip)]
     UpdateBy(isize),
 }
 
-#[effect]
+#[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
@@ -82,12 +104,13 @@ impl crux_core::App for App {
             Event::Get => Http::get(API_URL)
                 .expect_json()
                 .build()
+                .map(Into::into)
                 .then_send(Event::Set),
-            Event::Set(Ok(mut response)) => {
+            Event::Set(HttpResult::Ok(mut response)) => {
                 let count = response.take_body().unwrap();
                 Command::event(Event::Update(count))
             }
-            Event::Set(Err(e)) => {
+            Event::Set(HttpResult::Err(e)) => {
                 panic!("Oh no something went wrong: {e:?}");
             }
             Event::Update(count) => {
@@ -95,14 +118,14 @@ impl crux_core::App for App {
                 render()
             }
             Event::UpdateBy(change) => {
+                if change == 0 {
+                    return render();
+                }
+
                 model.count = Count {
                     value: model.count.value + change,
                     updated_at: None,
                 };
-
-                if change == 0 {
-                    return render();
-                }
 
                 let call_api = {
                     // Don't look at this too closely.
@@ -136,7 +159,7 @@ impl crux_core::App for App {
                                 .unwrap()
                         });
 
-                        ctx.send_event(Event::Set(latest));
+                        ctx.send_event(Event::Set(latest.into()));
                     })
                 };
 
@@ -152,7 +175,11 @@ impl crux_core::App for App {
                 let call_api = {
                     let base = Url::parse(API_URL).unwrap();
                     let url = base.join("/inc").unwrap();
-                    Http::post(url).expect_json().build().then_send(Event::Set)
+                    Http::post(url)
+                        .expect_json()
+                        .build()
+                        .map(Into::into)
+                        .then_send(Event::Set)
                 };
 
                 render().and(call_api)
@@ -167,7 +194,11 @@ impl crux_core::App for App {
                 let call_api = {
                     let base = Url::parse(API_URL).unwrap();
                     let url = base.join("/dec").unwrap();
-                    Http::post(url).expect_json().build().then_send(Event::Set)
+                    Http::post(url)
+                        .expect_json()
+                        .build()
+                        .map(Into::into)
+                        .then_send(Event::Set)
                 };
 
                 render().and(call_api)
@@ -200,11 +231,10 @@ impl crux_core::App for App {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use super::{App, Event, Model};
+    use super::{App, Count, Effect, Event, Model};
     use crate::{
-        Count, Effect,
-        capabilities::{RandomNumber, RandomNumberRequest, sse::SseRequest},
-        sse::SseResponse,
+        RandomNumber, RandomNumberRequest,
+        sse::{SseRequest, SseResponse},
     };
 
     use crux_core::{App as _, assert_effect};
@@ -234,22 +264,22 @@ mod tests {
         );
 
         // resolve the request with a simulated response from the web API
+        let response = HttpResponse::ok()
+            .body(r#"{ "value": 1, "updated_at": 1672531200000 }"#)
+            .build();
         request
-            .resolve(HttpResult::Ok(
-                HttpResponse::ok()
-                    .body(r#"{ "value": 1, "updated_at": 1672531200000 }"#)
-                    .build(),
-            ))
+            .resolve(crux_http::protocol::HttpResult::Ok(response))
             .unwrap();
 
         // the app should emit a `Set` event with the HTTP response
         let actual = cmd.events().next().unwrap();
-        let expected = Event::Set(Ok(ResponseBuilder::ok()
+        let response = ResponseBuilder::ok()
             .body(Count {
                 value: 1,
                 updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
             })
-            .build()));
+            .build();
+        let expected = Event::Set(super::HttpResult::Ok(response));
         assert_eq!(actual, expected);
 
         // send the `Set` event back to the app
@@ -325,12 +355,11 @@ mod tests {
         );
 
         // resolve the request with a simulated response from the web API
+        let response = HttpResponse::ok()
+            .body(r#"{ "value": 2, "updated_at": 1672531200000 }"#)
+            .build();
         request
-            .resolve(HttpResult::Ok(
-                HttpResponse::ok()
-                    .body(r#"{ "value": 2, "updated_at": 1672531200000 }"#)
-                    .build(),
-            ))
+            .resolve(crux_http::protocol::HttpResult::Ok(response))
             .unwrap();
 
         // this should generate a `Set` event
@@ -403,12 +432,11 @@ mod tests {
         );
 
         // resolve the request with a simulated response from the web API
+        let response = HttpResponse::ok()
+            .body(r#"{ "value": -1, "updated_at": 1672531200000 }"#)
+            .build();
         request
-            .resolve(HttpResult::Ok(
-                HttpResponse::ok()
-                    .body(r#"{ "value": -1, "updated_at": 1672531200000 }"#)
-                    .build(),
-            ))
+            .resolve(crux_http::protocol::HttpResult::Ok(response))
             .unwrap();
 
         // this should generate a `Set` event
@@ -564,5 +592,36 @@ mod tests {
         // The latest count wins
 
         assert_eq!(model.count.value, 9);
+    }
+
+    #[test]
+    fn random_change_with_0() {
+        let app = App;
+        let mut model = Model::default();
+
+        model.count.value = 3;
+        model.count.updated_at = Some(Utc::now());
+
+        let mut cmd = app.update(Event::Random, &mut model, &());
+
+        // the app should request a random number from the web API
+        let mut request = cmd.effects().next().unwrap().expect_random();
+
+        assert_eq!(request.operation, RandomNumberRequest(-5, 5));
+        request.resolve(RandomNumber(0)).unwrap();
+
+        // And start an UpdateBy the number
+
+        let event = cmd.events().next().unwrap();
+        assert_eq!(event, Event::UpdateBy(0));
+
+        let mut cmd = app.update(event, &mut model, &());
+        cmd.effects().next().unwrap().expect_render();
+        assert!(cmd.is_done());
+
+        // The latest count wins
+
+        assert_eq!(model.count.value, 3);
+        assert!(model.count.updated_at.is_some());
     }
 }

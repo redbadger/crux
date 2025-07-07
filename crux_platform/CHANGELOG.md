@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0-rc1](https://github.com/redbadger/crux/compare/crux_platform-v0.6.0...crux_platform-v0.7.0-rc1) - 2025-07-03
+
+### ⚙️ Miscellaneous Tasks
+
+- *(crux)* Format fixes
+
 ## [0.6.0](https://github.com/redbadger/crux/compare/crux_platform-v0.5.0...crux_platform-v0.6.0) - 2025-05-27
 
 This is a minor bump because of breaking changes in `crux_core`

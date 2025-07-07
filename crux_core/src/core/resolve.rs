@@ -30,6 +30,9 @@ impl<Output> Resolvable<Output> for RequestHandle<Output> {
 }
 
 impl<Output> RequestHandle<Output> {
+    /// Resolve the request with the given output.
+    /// # Errors
+    /// Returns an error if the request is not expected to be resolved.
     pub fn resolve(&mut self, output: Output) -> Result<(), ResolveError> {
         match self {
             RequestHandle::Never => Err(ResolveError::Never),

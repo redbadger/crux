@@ -2,13 +2,12 @@
 
 use std::future::Future;
 
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    capability::{CapabilityContext, Operation},
-    command::NotificationBuilder,
-    Capability, Command, Request,
-};
+#[expect(deprecated)]
+use crate::{Capability, capability::CapabilityContext};
+use crate::{Command, Request, capability::Operation, command::NotificationBuilder};
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
 /// interface. This assumes a declarative UI framework is used in the Shell, which will
@@ -17,10 +16,16 @@ use crate::{
 ///
 /// For imperative UIs, the Shell will need to understand the difference between the two
 /// view models and update the user interface accordingly.
+#[deprecated(
+    since = "0.16.0",
+    note = "The Render capability has been deprecated. Use render::render() with the Command API instead."
+)]
 pub struct Render<Ev> {
+    #[expect(deprecated)]
     context: CapabilityContext<RenderOperation, Ev>,
 }
 
+#[expect(deprecated)]
 impl<Ev> Clone for Render<Ev> {
     fn clone(&self) -> Self {
         Self {
@@ -30,7 +35,7 @@ impl<Ev> Clone for Render<Ev> {
 }
 
 /// The single operation `Render` implements.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct RenderOperation;
 
 impl Operation for RenderOperation {
@@ -38,6 +43,7 @@ impl Operation for RenderOperation {
 }
 
 /// Public API of the capability, called by `App::update`.
+#[expect(deprecated)]
 impl<Ev> Render<Ev>
 where
     Ev: 'static,
@@ -57,6 +63,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<Ev> Capability<Ev> for Render<Ev> {
     type Operation = RenderOperation;
     type MappedSelf<MappedEv> = Render<MappedEv>;
@@ -93,8 +100,8 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 ///# });
 /// ```
 #[must_use]
-pub fn render_builder<Effect, Event>(
-) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
+pub fn render_builder<Effect, Event>()
+-> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where
     Effect: From<Request<RenderOperation>> + Send + 'static,
     Event: Send + 'static,

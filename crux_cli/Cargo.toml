@@ -7,7 +7,7 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
-rust-version = "1.86"                           # this helps us get the correct rustdoc JSON format version (>=39)
+rust-version.workspace = true
 
 [[bin]]
 name = "crux"
@@ -28,7 +28,7 @@ lazy-regex = "3.4.1"
 log = "0.4.27"
 rustdoc-types = "=0.35.0"
 serde = { workspace = true, features = ["derive"] }
-serde-generate = "0.31.0"
+serde-generate = "0.32.0"
 serde-reflection = "0.5.0"
 serde_json = "1.0.140"
 thiserror = "2.0.12"

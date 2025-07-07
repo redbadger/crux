@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use crux_core::{macros::effect, App, Command};
+use crux_core::{App, Command, macros::effect};
 use crux_time::{
-    command::{Time, TimerHandle, TimerOutcome},
     TimeRequest, TimeResponse, TimerId,
+    command::{Time, TimerHandle, TimerOutcome},
 };
 
 #[derive(Debug, PartialEq, Eq)]

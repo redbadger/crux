@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{capability::Operation, Request, ResolveError};
+use crate::{Resolvable, ResolveError};
 
 use super::Layer;
 
@@ -56,15 +56,14 @@ where
         }))
     }
 
-    fn resolve<Op, F>(
+    fn resolve<Output, F>(
         &self,
-        request: &mut Request<Op>,
-        output: Op::Output,
+        request: &mut impl Resolvable<Output>,
+        output: Output,
         effect_callback: F,
     ) -> Result<Vec<Self::Effect>, ResolveError>
     where
         F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
-        Op: Operation,
     {
         Ok(Self::map_effects(self.next.resolve(
             request,

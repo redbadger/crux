@@ -42,6 +42,7 @@ impl<T> Stream for ShellStream<T> {
     }
 }
 
+#[expect(deprecated)]
 impl<Op, Ev> crate::capability::CapabilityContext<Op, Ev>
 where
     Op: crate::capability::Operation,
@@ -91,10 +92,11 @@ where
 }
 
 #[cfg(test)]
+#[expect(deprecated)]
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::capability::{channel, executor_and_spawner, CapabilityContext, Operation};
+    use crate::capability::{CapabilityContext, Operation, channel, executor_and_spawner};
 
     #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Debug)]
     struct TestOperation;

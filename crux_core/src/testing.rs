@@ -2,12 +2,14 @@
 use anyhow::Result;
 use std::{collections::VecDeque, sync::Arc};
 
+#[expect(deprecated)]
+use crate::WithContext;
 use crate::{
+    Command, Request, Resolvable,
     capability::{
-        channel::Receiver, executor_and_spawner, CommandSpawner, Operation, ProtoContext,
-        QueuingExecutor,
+        CommandSpawner, Operation, ProtoContext, QueuingExecutor, channel::Receiver,
+        executor_and_spawner,
     },
-    Command, Request, Resolvable, WithContext,
 };
 
 /// `AppTester` is a simplified execution environment for Crux apps for use in
@@ -46,6 +48,7 @@ struct AppContext<Ef, Ev> {
     executor: QueuingExecutor,
 }
 
+#[expect(deprecated)]
 impl<App> AppTester<App>
 where
     App: crate::App,
@@ -122,6 +125,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<App> Default for AppTester<App>
 where
     App: crate::App,
