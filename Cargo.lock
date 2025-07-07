@@ -222,9 +222,9 @@ dependencies = [
 
 [[package]]
 name = "async-channel"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16c74e56284d2188cabb6ad99603d1ace887a5d7e7b695d01b728155ed9ed427"
+checksum = "924ed96dd52d1b75e9c1a3e6275715fd320f5f9439fb5a4a11fa51f4221158d2"
 dependencies = [
  "concurrent-queue",
  "event-listener-strategy",
@@ -467,9 +467,9 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
 name = "clone_dyn_types"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7546aa32ad2d6e23c47edfc649c1e78e1a30392f51015efe30d0d4a0ed08310e"
+checksum = "e5e7603267fe5de998900bd2036a97abcabada41333b85c07eb9b267aba63660"
 
 [[package]]
 name = "colorchoice"
@@ -582,7 +582,7 @@ dependencies = [
  "anyhow",
  "assert_fs",
  "assert_matches",
- "async-channel 2.4.0",
+ "async-channel 2.5.0",
  "bincode",
  "crossbeam-channel",
  "crux_cli",
@@ -989,8 +989,6 @@ dependencies = [
 [[package]]
 name = "facet_generate"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1de4ac1cbf6c2a93fd148365c18e2dc9efafa7d373fb20a590822b7abc691708"
 dependencies = [
  "anyhow",
  "erased-discriminant",
@@ -1615,9 +1613,9 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
 name = "iter_tools"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e96d3cdcfec21b319c0dec1d0760a6f25f44b49d273cc7bc70f7444a0c253eb1"
+checksum = "4e8f4940dcd79d6700fa2ee17f8fe923e9c2b6b15da4804da152cb0dc33e0e99"
 dependencies = [
  "clone_dyn_types",
  "itertools 0.11.0",

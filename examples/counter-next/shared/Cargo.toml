@@ -21,7 +21,7 @@ async-std = "1.13.1"
 chrono = { version = "0.4.41", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
-facet = { version = "0.27.15", features = ["bytes", "chrono"] }
+facet = { version = "0.27.16", features = ["bytes", "chrono"] }
 futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.140"
