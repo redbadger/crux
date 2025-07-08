@@ -25,11 +25,7 @@ pub enum WeatherEvent {
     #[serde(skip)]
     FetchFavorites,
     #[serde(skip)]
-    SetFavoriteWeather(
-        Box<Result<CurrentResponse, WeatherError>>,
-        f64,
-        f64,
-    ),
+    SetFavoriteWeather(Box<Result<CurrentResponse, WeatherError>>, f64, f64),
 }
 
 pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Event> {
