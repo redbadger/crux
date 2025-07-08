@@ -386,12 +386,11 @@ mod tests {
         assert_effect!(cmd, Effect::Render(_));
 
         // the model should be updated
-        insta::assert_yaml_snapshot!(model, @r###"
-        ---
+        insta::assert_yaml_snapshot!(model, @r#"
         count:
           value: 2
           updated_at: "2023-01-01T00:00:00Z"
-        "###);
+        "#);
     }
 
     /// Test that a `Decrement` event causes the app to decrement the counter
@@ -463,12 +462,11 @@ mod tests {
         assert_effect!(update, Effect::Render(_));
 
         // the model should be updated
-        insta::assert_yaml_snapshot!(model, @r###"
-        ---
+        insta::assert_yaml_snapshot!(model, @r#"
         count:
           value: -1
           updated_at: "2023-01-01T00:00:00Z"
-        "###);
+        "#);
     }
 
     #[test]

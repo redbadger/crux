@@ -72,18 +72,18 @@
 //! ```
 use facet::Facet;
 use facet_generate::{
-    generation::{Encoding, SourceInstaller, java, swift, typescript},
-    reflection::{
-        Registry,
-        namespace::{self, Namespace},
-        reflect,
+    Registry,
+    generation::{
+        Encoding, SourceInstaller, java,
+        module::{self, Module},
+        swift, typescript,
     },
+    reflection::RegistryBuilder,
 };
 use serde::Deserialize;
 use std::{
     fs::{self, File},
     io::Write,
-    mem,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
@@ -106,10 +106,19 @@ pub enum TypeGenError {
     PnpmNotFound(#[source] std::io::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum State {
-    Registering(Registry),
+    #[default]
+    None,
+    Registering(RegistryBuilder),
     Generating(Registry),
+}
+
+impl State {
+    #[must_use]
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
 }
 
 pub trait Export {
@@ -137,7 +146,7 @@ pub struct TypeGen {
 impl Default for TypeGen {
     fn default() -> Self {
         TypeGen {
-            state: State::Registering(Registry::default()),
+            state: State::Registering(RegistryBuilder::default()),
         }
     }
 }
@@ -201,14 +210,13 @@ impl TypeGen {
     where
         T: serde::Deserialize<'de> + Facet<'a>,
     {
-        match &mut self.state {
-            State::Registering(registry) => {
-                let incoming = reflect::<T>();
-                registry.extend(Registry::from(incoming));
-                Ok(())
-            }
-            State::Generating(_) => Err(TypeGenError::LateRegistration),
-        }
+        let State::Registering(builder) = self.state.take() else {
+            return Err(TypeGenError::LateRegistration);
+        };
+
+        self.state = State::Registering(builder.add_type::<T>());
+
+        Ok(())
     }
 
     /// Generates types for Swift
@@ -247,7 +255,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in namespace::split(root_module, registry.clone()) {
+        for (module, registry) in module::split(root_module, registry) {
             let config = module
                 .config()
                 .clone()
@@ -313,12 +321,12 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in namespace::split(root_module, registry.clone()) {
+        for (module, registry) in module::split(root_module, registry) {
             let this_module = &module.config().module_name;
             let module = if root_module == this_module {
                 module
             } else {
-                Namespace::new([root_module, this_module].join("."))
+                Module::new([root_module, this_module].join("."))
             };
 
             let config = module
@@ -381,7 +389,7 @@ impl TypeGen {
         };
 
         let root_module = package_name;
-        for (module, registry) in namespace::split(root_module, registry.clone()) {
+        for (module, registry) in module::split(root_module, registry) {
             let config = module
                 .config()
                 .clone()
@@ -432,13 +440,8 @@ impl TypeGen {
 
     fn ensure_registry(&mut self) {
         if let State::Registering(_) = self.state {
-            // replace the current state
-            let old_state = mem::replace(&mut self.state, State::Registering(Registry::new()));
-
-            // move the registry
-            if let State::Registering(registry) = old_state {
-                // replace dummy with registry
-                self.state = State::Generating(registry);
+            if let State::Registering(registry) = self.state.take() {
+                self.state = State::Generating(registry.build());
             }
         }
     }
