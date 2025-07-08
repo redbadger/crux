@@ -559,7 +559,6 @@ dependencies = [
  "convert_case",
  "env_logger",
  "guppy",
- "heck 0.5.0",
  "insta",
  "iter_tools",
  "lazy-regex",
@@ -577,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.16.0-rc1"
+version = "0.16.0-rc2"
 dependencies = [
  "anyhow",
  "assert_fs",
@@ -602,15 +601,13 @@ dependencies = [
  "slab",
  "static_assertions",
  "thiserror 2.0.12",
- "uniffi",
  "url",
  "uuid",
- "wasm-bindgen",
 ]
 
 [[package]]
 name = "crux_http"
-version = "0.15.0-rc1"
+version = "0.15.0-rc2"
 dependencies = [
  "anyhow",
  "assert_fs",
@@ -636,7 +633,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.10.0-rc1"
+version = "0.10.0-rc2"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -648,7 +645,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.7.0-rc1"
+version = "0.7.0-rc2"
 dependencies = [
  "crux_core",
  "crux_http",
@@ -666,7 +663,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.7.0-rc1"
+version = "0.7.0-rc2"
 dependencies = [
  "crux_core",
  "serde",
@@ -674,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.14.0-rc1"
+version = "0.14.0-rc2"
 dependencies = [
  "chrono",
  "crux_core",
@@ -2840,20 +2837,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
-name = "uniffi"
-version = "0.29.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b334fd69b3cf198b63616c096aabf9820ab21ed9b2aa1367ddd4b411068bf520"
-dependencies = [
- "anyhow",
- "cargo_metadata 0.19.2",
- "uniffi_bindgen",
- "uniffi_core",
- "uniffi_macros",
- "uniffi_pipeline",
-]
-
-[[package]]
 name = "uniffi_bindgen"
 version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2880,18 +2863,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "uniffi_core"
-version = "0.29.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53e3b997192dc15ef1778c842001811ec7f241a093a693ac864e1fc938e64fa9"
-dependencies = [
- "anyhow",
- "bytes",
- "once_cell",
- "static_assertions",
-]
-
-[[package]]
 name = "uniffi_internal_macros"
 version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2902,23 +2873,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.104",
-]
-
-[[package]]
-name = "uniffi_macros"
-version = "0.29.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8708716d2582e4f3d7e9f320290b5966eb951ca421d7630571183615453efc"
-dependencies = [
- "camino",
- "fs-err",
- "once_cell",
- "proc-macro2",
- "quote",
- "serde",
- "syn 2.0.104",
- "toml 0.5.11",
- "uniffi_meta",
 ]
 
 [[package]]
