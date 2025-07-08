@@ -17,11 +17,10 @@ required-features = ["cli"]
 
 [dependencies]
 async-sse = "5.1.0"
-async-std = "1.13.1"
 chrono = { version = "0.4.41", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
-facet = { version = "0.27.15", features = ["bytes", "chrono"] }
+facet = { version = "0.27.16", features = ["bytes", "chrono"] }
 futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.140"
@@ -35,11 +34,9 @@ uniffi = "0.29.3"
 rand = { version = "0.9.1", features = ["os_rng"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
-getrandom = { version = "0.3.3", features = ["wasm_js"] }
 wasm-bindgen = "0.2.100"
 js-sys = "0.3.77"
 
 [features]
 cli = ["crux_core/cli"]
-typegen = ["facet_typegen"]
 facet_typegen = ["crux_core/facet_typegen"]
