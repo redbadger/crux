@@ -22,7 +22,6 @@ clap = { version = "4.5.40", features = ["derive", "env"] }
 convert_case = "0.8.0"
 env_logger = "0.11.8"
 guppy = "0.17.19"
-heck = "0.5.0"
 iter_tools = "0.30.0"
 lazy-regex = "3.4.1"
 log = "0.4.27"

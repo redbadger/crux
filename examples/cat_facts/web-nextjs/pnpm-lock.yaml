@@ -1561,11 +1561,6 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@5.8.3:
-    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
-    engines: {node: '>=14.17'}
-    hasBin: true
-
   ua-is-frozen@0.1.2:
     resolution: {integrity: sha512-RwKDW2p3iyWn4UbaxpP2+VxwqXh0jpvdxsYpZ5j/MLLiQOfbsV5shpgQiw93+KMYQPcteeMQ289MaAFzs3G9pw==}
 
@@ -3134,9 +3129,7 @@ snapshots:
 
   shared@file:../shared/pkg: {}
 
-  shared_types@file:../shared_types/generated/typescript:
-    dependencies:
-      typescript: 5.8.3
+  shared_types@file:../shared_types/generated/typescript: {}
 
   sharp@0.33.5:
     dependencies:
@@ -3339,8 +3332,6 @@ snapshots:
       reflect.getprototypeof: 1.0.10
 
   typescript@5.8.2: {}
-
-  typescript@5.8.3: {}
 
   ua-is-frozen@0.1.2: {}
 

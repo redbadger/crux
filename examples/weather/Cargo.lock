@@ -247,7 +247,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crux_core"
-version = "0.16.0-rc1"
+version = "0.16.0-rc2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -262,13 +262,11 @@ dependencies = [
  "serde_json",
  "slab",
  "thiserror 2.0.12",
- "uniffi",
- "wasm-bindgen",
 ]
 
 [[package]]
 name = "crux_http"
-version = "0.15.0-rc1"
+version = "0.15.0-rc2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -290,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.10.0-rc1"
+version = "0.10.0-rc2"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -302,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.7.0-rc1"
+version = "0.7.0-rc2"
 dependencies = [
  "darling",
  "heck 0.5.0",

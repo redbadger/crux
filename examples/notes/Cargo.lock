@@ -254,7 +254,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crux_core"
-version = "0.16.0-rc1"
+version = "0.16.0-rc2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -269,13 +269,11 @@ dependencies = [
  "serde_json",
  "slab",
  "thiserror 2.0.12",
- "uniffi",
- "wasm-bindgen",
 ]
 
 [[package]]
 name = "crux_kv"
-version = "0.10.0-rc1"
+version = "0.10.0-rc2"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -287,7 +285,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.7.0-rc1"
+version = "0.7.0-rc2"
 dependencies = [
  "darling",
  "heck 0.5.0",
@@ -299,7 +297,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.14.0-rc1"
+version = "0.14.0-rc2"
 dependencies = [
  "crux_core",
  "facet",
@@ -593,10 +591,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -1106,7 +1102,6 @@ dependencies = [
  "crux_kv",
  "crux_time",
  "futures",
- "getrandom 0.2.15",
  "serde",
  "uniffi",
  "wasm-bindgen",

@@ -11,11 +11,10 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 anyhow.workspace = true
-chrono = "0.4.41"
-clap = { version = "4.5.38", features = ["derive"] }
+clap = { version = "4.5.40", features = ["derive"] }
 crossbeam-channel = "0.5.15"
-reqwest = { version = "0.12.15", features = ["stream"] }
+reqwest = { version = "0.12.22", features = ["stream"] }
 shared = { path = "../shared" }
-tokio = { version = "1.45.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.46.1", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

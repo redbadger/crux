@@ -25,9 +25,6 @@ serde = { workspace = true, features = ["derive"] }
 uniffi = "0.29"
 wasm-bindgen = "0.2"
 
-# see https://docs.rs/getrandom/latest/getrandom/#webassembly-support
-getrandom = { version = "=0.2", features = ["js"] }
-
 [target.uniffi-bindgen.dependencies]
 uniffi = { version = "0.29", features = ["cli"] }
 
