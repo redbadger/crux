@@ -242,7 +242,7 @@ impl TypeGen {
 
         fs::create_dir_all(&path)?;
 
-        let mut installer = swift::Installer::new(package_name.to_string(), path.clone());
+        let mut installer = swift::Installer::new(package_name.to_string(), path.clone(), None);
         installer
             .install_serde_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -320,13 +320,13 @@ impl TypeGen {
             panic!("registry creation failed");
         };
 
-        let root_module = package_name;
-        for (module, registry) in module::split(root_module, registry) {
+        for (module, registry) in module::split(package_name, registry) {
             let this_module = &module.config().module_name;
-            let module = if root_module == this_module {
+            let is_root_package = package_name == this_module;
+            let module = if is_root_package {
                 module
             } else {
-                Module::new([root_module, this_module].join("."))
+                Module::new([package_name, this_module].join("."))
             };
 
             let config = module
@@ -376,7 +376,7 @@ impl TypeGen {
         let types_dir = output_dir.join("types");
         fs::create_dir_all(&types_dir)?;
 
-        let installer = typescript::Installer::new(output_dir.clone());
+        let mut installer = typescript::Installer::new(output_dir.clone());
         installer
             .install_serde_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -388,8 +388,7 @@ impl TypeGen {
             panic!("registry creation failed");
         };
 
-        let root_module = package_name;
-        for (module, registry) in module::split(root_module, registry) {
+        for (module, registry) in module::split(package_name, registry) {
             let config = module
                 .config()
                 .clone()

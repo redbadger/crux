@@ -11,7 +11,7 @@ const CARGO: &str = crate::CARGO;
 
 // in order for publishing
 const PACKAGES: &[&str] = &[
-    "crux_cli",
+    // "crux_cli",
     "crux_macros",
     "crux_core",
     "crux_http",
