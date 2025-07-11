@@ -71,6 +71,7 @@
 //!}
 //! ```
 use facet::Facet;
+pub use facet_generate::generation::ExternalPackage;
 use facet_generate::{
     Registry,
     generation::{
@@ -235,20 +236,30 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn swift(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
+    pub fn swift(
+        &mut self,
+        package_name: &str,
+        path: impl AsRef<Path>,
+        external_packages: Vec<ExternalPackage>,
+        add_runtimes: bool,
+    ) -> Result {
         self.ensure_registry();
 
         let path = path.as_ref().join(package_name);
 
         fs::create_dir_all(&path)?;
 
-        let mut installer = swift::Installer::new(package_name.to_string(), path.clone(), None);
-        installer
-            .install_serde_runtime()
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        installer
-            .install_bincode_runtime()
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        let mut installer =
+            swift::Installer::new(package_name.to_string(), path.clone(), external_packages);
+
+        if add_runtimes {
+            installer
+                .install_serde_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+            installer
+                .install_bincode_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
 
         let State::Generating(ref registry) = self.state else {
             panic!("registry creation failed");
