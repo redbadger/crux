@@ -4,6 +4,8 @@ packages:
     path: ../shared/Shared
   SharedTypes:
     path: ../shared_types/generated/swift/SharedTypes
+  # Model:
+  #   path: ../shared_types/generated/swift/Model
 options:
   bundleIdPrefix: com.crux.example.counter
 targets:
@@ -15,6 +17,7 @@ targets:
     dependencies:
       - package: Shared
       - package: SharedTypes
+      # - package: Model
     info:
       path: CounterApp/Info.plist
       properties:
