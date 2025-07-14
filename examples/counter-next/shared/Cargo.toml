@@ -52,4 +52,3 @@ wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 [features]
 cli = ["crux_core/cli"]
 facet_typegen = ["crux_core/facet_typegen"]
-typegen = ["crux_core/typegen"]
