@@ -714,8 +714,8 @@ dependencies = [
  "log",
  "rustdoc-types",
  "serde",
- "serde-generate 0.32.0",
- "serde-reflection 0.5.0",
+ "serde-generate",
+ "serde-reflection",
  "serde_json",
  "thiserror 2.0.12",
  "uniffi_bindgen",
@@ -735,8 +735,6 @@ dependencies = [
  "facet_generate",
  "futures",
  "serde",
- "serde-generate 0.26.0",
- "serde-reflection 0.4.0",
  "serde_json",
  "slab",
  "thiserror 2.0.12",
@@ -2908,20 +2906,6 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8309fc8d475cf5884e92a463b3a003d433684335be19c3f739af0451b027254b"
-dependencies = [
- "heck 0.3.3",
- "include_dir 0.6.2",
- "phf",
- "serde",
- "serde-reflection 0.4.0",
- "textwrap 0.13.4",
-]
-
-[[package]]
-name = "serde-generate"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8531271b775abcd08076fc0c787cc5ed14071e2aa0950793b3b7c6f6203a077a"
@@ -2931,19 +2915,8 @@ dependencies = [
  "include_dir 0.6.2",
  "phf",
  "serde",
- "serde-reflection 0.5.0",
+ "serde-reflection",
  "textwrap 0.13.4",
-]
-
-[[package]]
-name = "serde-reflection"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b6798a64289ff550d8d79847467789a5fd30b42c9c406a4d6dc0bc9b567e55c"
-dependencies = [
- "once_cell",
- "serde",
- "thiserror 1.0.69",
 ]
 
 [[package]]

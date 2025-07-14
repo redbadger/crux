@@ -11,14 +11,13 @@ pub mod uniffi_ffi {
     };
     use crux_http::protocol::HttpRequest;
 
-    use crate::{App, TestRequest, middleware::RngMiddleware, sse::SseRequest};
+    use crate::{App, middleware::RngMiddleware, sse::SseRequest};
 
     #[effect(facet_typegen)]
     pub enum Effect {
         Render(RenderOperation),
         Http(HttpRequest),
         ServerSentEvents(SseRequest),
-        Test(TestRequest),
     }
 
     impl From<crate::app::Effect> for Effect {
@@ -28,7 +27,6 @@ pub mod uniffi_ffi {
                 crate::Effect::Http(request) => Effect::Http(request),
                 crate::Effect::ServerSentEvents(request) => Effect::ServerSentEvents(request),
                 crate::Effect::Random(_) => panic!("Encountered a Random effect"),
-                crate::Effect::Test(request) => Effect::Test(request),
             }
         }
     }
@@ -191,43 +189,41 @@ pub mod wasip2 {
         }
 
         #[must_use]
-        pub fn update(&self, data: &[u8]) -> Vec<u8> {
+        pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, String> {
             let mut deser = serde_json::Deserializer::from_slice(data);
 
             let mut return_buffer = vec![];
             let mut ser = serde_json::Serializer::new(&mut return_buffer);
 
-            if let Err(err) = self.core.process_event(&mut deser, &mut ser) {
-                panic!("Failed to process event: {}", err)
-            };
+            self.core
+                .process_event(&mut deser, &mut ser)
+                .map_err(|e| e.to_string())?;
 
-            return_buffer
+            Ok(return_buffer)
         }
 
         #[must_use]
-        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
+        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Result<Vec<u8>, String> {
             let mut deser = serde_json::Deserializer::from_slice(data);
 
             let mut return_buffer = vec![];
             let mut ser = serde_json::Serializer::new(&mut return_buffer);
 
-            if let Err(err) = self.core.handle_response(effect_id, &mut deser, &mut ser) {
-                panic!("Failed to handle response: {}", err)
-            };
+            self.core
+                .handle_response(effect_id, &mut deser, &mut ser)
+                .map_err(|e| e.to_string())?;
 
-            return_buffer
+            Ok(return_buffer)
         }
 
         #[must_use]
-        pub fn view(&self) -> Vec<u8> {
+        pub fn view(&self) -> Result<Vec<u8>, String> {
             let mut return_buffer = vec![];
             let mut ser = serde_json::Serializer::new(&mut return_buffer);
 
-            if let Err(err) = self.core.view(&mut ser) {
-                panic!("Failed to get view: {}", err)
-            };
+            self.core.view(&mut ser).map_err(|e| e.to_string())?;
 
-            return_buffer
+            Ok(return_buffer)
         }
     }
 
@@ -238,15 +234,15 @@ pub mod wasip2 {
     pub struct Component;
 
     impl Guest for Component {
-        fn update(data: Vec<u8>) -> Vec<u8> {
+        fn update(data: Vec<u8>) -> Result<Vec<u8>, String> {
             CORE.update(&data)
         }
 
-        fn resolve(effect_id: u32, data: Vec<u8>) -> Vec<u8> {
+        fn resolve(effect_id: u32, data: Vec<u8>) -> Result<Vec<u8>, String> {
             CORE.resolve(effect_id, &data)
         }
 
-        fn view() -> Vec<u8> {
+        fn view() -> Result<Vec<u8>, String> {
             CORE.view()
         }
 
