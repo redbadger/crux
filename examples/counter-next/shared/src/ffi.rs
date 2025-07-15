@@ -92,7 +92,7 @@ pub mod uniffi_ffi {
     }
 }
 
-#[cfg(target_family = "wasm")]
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
 pub mod wasm_ffi {
     use crux_core::middleware::{BincodeFfiFormat, Layer as _};
     use crux_core::{Core, bridge::EffectId};
@@ -163,4 +163,101 @@ pub mod wasm_ffi {
             }
         }
     }
+}
+
+#[cfg(all(target_os = "wasi", target_env = "p2"))]
+pub mod wasip2 {
+    use crux_core::{
+        Core,
+        bridge::BridgeWithSerializer,
+        type_generation::facet::{State, TypeGen},
+    };
+    use std::sync::LazyLock;
+
+    use crate::App;
+
+    /// The main interface used by the shell
+    pub struct CoreFFI {
+        core: BridgeWithSerializer<App>,
+    }
+
+    impl CoreFFI {
+        pub fn new() -> Self {
+            let core = BridgeWithSerializer::new(Core::new());
+
+            Self { core }
+        }
+
+        #[must_use]
+        pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, String> {
+            let mut deser = serde_json::Deserializer::from_slice(data);
+
+            let mut return_buffer = vec![];
+            let mut ser = serde_json::Serializer::new(&mut return_buffer);
+
+            self.core
+                .process_event(&mut deser, &mut ser)
+                .map_err(|e| e.to_string())?;
+
+            Ok(return_buffer)
+        }
+
+        #[must_use]
+        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Result<Vec<u8>, String> {
+            let mut deser = serde_json::Deserializer::from_slice(data);
+
+            let mut return_buffer = vec![];
+            let mut ser = serde_json::Serializer::new(&mut return_buffer);
+
+            self.core
+                .handle_response(effect_id, &mut deser, &mut ser)
+                .map_err(|e| e.to_string())?;
+
+            Ok(return_buffer)
+        }
+
+        #[must_use]
+        pub fn view(&self) -> Result<Vec<u8>, String> {
+            let mut return_buffer = vec![];
+            let mut ser = serde_json::Serializer::new(&mut return_buffer);
+
+            self.core.view(&mut ser).map_err(|e| e.to_string())?;
+
+            Ok(return_buffer)
+        }
+    }
+
+    static CORE: LazyLock<CoreFFI> = LazyLock::new(|| CoreFFI::new());
+
+    wit_bindgen::generate!();
+
+    pub struct Component;
+
+    impl Guest for Component {
+        fn update(data: Vec<u8>) -> Result<Vec<u8>, String> {
+            CORE.update(&data)
+        }
+
+        fn resolve(effect_id: u32, data: Vec<u8>) -> Result<Vec<u8>, String> {
+            CORE.resolve(effect_id, &data)
+        }
+
+        fn view() -> Result<Vec<u8>, String> {
+            CORE.view()
+        }
+
+        fn schema() -> String {
+            let mut typegen = TypeGen::new();
+
+            typegen.register_app::<App>().unwrap();
+
+            let State::Registering(registry) = typegen.state else {
+                panic!("Unexpected state");
+            };
+
+            format!("{registry:#?}")
+        }
+    }
+
+    export!(Component);
 }
