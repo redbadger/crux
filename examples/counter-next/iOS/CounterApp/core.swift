@@ -1,6 +1,7 @@
 import Foundation
 import Shared
 import SharedTypes
+import ViewModel
 
 fileprivate class EffectHandler: CruxShell, @unchecked Sendable {
     public var handler: ((Data) -> Void)?

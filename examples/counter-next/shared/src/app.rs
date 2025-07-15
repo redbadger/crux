@@ -35,7 +35,6 @@ impl<T> From<crux_http::Result<crux_http::Response<T>>>
     }
 }
 
-// ANCHOR: model
 #[derive(Default, Serialize)]
 pub struct Model {
     count: Count,
@@ -47,9 +46,9 @@ pub struct Count {
     #[serde(deserialize_with = "ts_milliseconds_option")]
     updated_at: Option<DateTime<Utc>>,
 }
-// ANCHOR_END: model
 
 #[derive(Facet, Serialize, Deserialize, Debug, Clone, Default)]
+#[facet(namespace = "view_model")]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,
