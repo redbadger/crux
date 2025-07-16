@@ -4,8 +4,8 @@ packages:
     path: ../shared/Shared
   SharedTypes:
     path: ../shared_types/generated/swift/SharedTypes
-  ViewModel:
-    path: ../shared_types/generated/swift/ViewModel
+  ServerSentEvents:
+    path: ../shared_types/generated/swift/ServerSentEvents
   Serde:
     path: ../shared_types/generated/swift/Serde
 options:
@@ -19,7 +19,7 @@ targets:
     dependencies:
       - package: Shared
       - package: SharedTypes
-      - package: ViewModel
+      - package: ServerSentEvents
       - package: Serde
     info:
       path: CounterApp/Info.plist

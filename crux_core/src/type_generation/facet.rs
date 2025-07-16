@@ -70,6 +70,7 @@
 //!    typegen.typescript("shared_types", output_root.join("typescript"))?;
 //!}
 //! ```
+use derive_builder::Builder;
 use facet::Facet;
 pub use facet_generate::generation::{ExternalPackage, PackageLocation};
 use facet_generate::{
@@ -135,6 +136,63 @@ pub trait Export {
 impl Export for () {
     fn register_types(_generator: &mut TypeGen) -> Result {
         Ok(())
+    }
+}
+
+/// Configuration for foreign type generation.
+#[derive(Default, Builder)]
+#[builder(
+    custom_constructor,
+    create_empty = "empty",
+    build_fn(private, name = "fallible_build")
+)]
+pub struct Config {
+    /// The name of the package to generate.
+    #[builder(setter(into))]
+    pub package_name: String,
+    /// The directory to generate the types in.
+    #[builder(setter(into))]
+    pub out_dir: PathBuf,
+    /// External packages to reference.
+    #[builder(default = vec![], setter(each(name = "reference")))]
+    pub external_packages: Vec<ExternalPackage>,
+    /// Whether to add runtimes to the generated types.
+    #[builder(default = false, setter(custom))]
+    pub add_runtimes: bool,
+    /// Whether to add extensions to the generated types.
+    #[builder(default = false, setter(custom))]
+    pub add_extensions: bool,
+}
+
+impl Config {
+    pub fn builder(name: &str, out_dir: impl AsRef<Path>) -> ConfigBuilder {
+        ConfigBuilder {
+            package_name: Some(name.to_string()),
+            out_dir: Some(out_dir.as_ref().to_path_buf()),
+            ..ConfigBuilder::empty()
+        }
+    }
+}
+
+impl ConfigBuilder {
+    #[must_use]
+    pub fn add_runtimes(&mut self) -> &mut Self {
+        self.add_runtimes = Some(true);
+        self
+    }
+
+    #[must_use]
+    pub fn add_extensions(&mut self) -> &mut Self {
+        self.add_extensions = Some(true);
+        self
+    }
+
+    /// # Panics
+    /// If any required fields are not initialized.
+    #[must_use]
+    pub fn build(&self) -> Config {
+        self.fallible_build()
+            .expect("All required fields were initialized")
     }
 }
 
@@ -223,11 +281,16 @@ impl TypeGen {
     /// Generates types for Swift
     /// e.g.
     /// ```rust
-    /// # use crux_core::type_generation::facet::TypeGen;
+    /// # use crux_core::type_generation::facet::{Config, TypeGen};
     /// # use std::env::temp_dir;
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// typegen.swift("SharedTypes", output_root.join("swift"), vec![], true, true)?;
+    /// typegen.swift(
+    ///     Config::builder("SharedTypes", output_root.join("swift"))
+    ///     .add_extensions()
+    ///     .add_runtimes()
+    ///     .build()
+    /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
     ///
@@ -236,24 +299,21 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn swift(
-        &mut self,
-        package_name: &str,
-        path: impl AsRef<Path>,
-        external_packages: Vec<ExternalPackage>,
-        add_runtimes: bool,
-        add_extensions: bool,
-    ) -> Result {
+    pub fn swift(&mut self, config: Config) -> Result {
         self.ensure_registry();
 
-        let path = path.as_ref().join(package_name);
+        let path = config.out_dir.join(&config.package_name);
+        let sources = path.join("Sources");
 
         fs::create_dir_all(&path)?;
 
-        let mut installer =
-            swift::Installer::new(package_name.to_string(), path.clone(), external_packages);
+        let mut installer = swift::Installer::new(
+            config.package_name.to_string(),
+            path,
+            config.external_packages,
+        );
 
-        if add_runtimes {
+        if config.add_runtimes {
             installer
                 .install_serde_runtime()
                 .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -266,8 +326,7 @@ impl TypeGen {
             panic!("registry creation failed");
         };
 
-        let root_module = package_name;
-        for (module, registry) in module::split(root_module, registry) {
+        for (module, registry) in module::split(&config.package_name, registry) {
             let config = module
                 .config()
                 .clone()
@@ -278,9 +337,9 @@ impl TypeGen {
                 .map_err(|e| TypeGenError::Generation(e.to_string()))?;
         }
 
-        if add_extensions {
+        if config.add_extensions {
             // add bincode deserialization for Vec<Request>
-            let output_dir = path.join("Sources").join(package_name);
+            let output_dir = sources.join(&config.package_name);
             fs::create_dir_all(&output_dir)?;
             let mut output = File::create(output_dir.join("Requests.swift"))?;
 
@@ -290,7 +349,7 @@ impl TypeGen {
         }
 
         installer
-            .install_manifest(package_name)
+            .install_manifest(&config.package_name)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         Ok(())
