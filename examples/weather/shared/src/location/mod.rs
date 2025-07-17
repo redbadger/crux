@@ -1,4 +1,5 @@
 pub mod capability;
+pub mod client;
 pub mod model;
 
 pub use capability::{
