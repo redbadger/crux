@@ -38,6 +38,33 @@ enum Event {
 }
 
 #[test]
+fn into_future() {
+    let mut cmd = Command::new(|ctx| async {
+        let output = ctx.request_from_shell(AnOperation::One).await;
+        Command::event(Event::Completed(output))
+            .into_future(ctx)
+            .await;
+    });
+
+    assert!(cmd.events().next().is_none());
+
+    let effect = cmd.effects().next().unwrap();
+    let Effect::AnEffect(mut request) = effect;
+
+    assert_eq!(request.operation, AnOperation::One);
+
+    request
+        .resolve(AnOperationOutput::Other([42, 42]))
+        .expect("request should resolve");
+
+    let event = cmd.events().next().unwrap();
+
+    assert_eq!(event, Event::Completed(AnOperationOutput::Other([42, 42])));
+
+    assert!(cmd.is_done());
+}
+
+#[test]
 fn then() {
     let cmd_one = Command::request_from_shell(AnOperation::One).then_send(Event::Completed);
     let cmd_two = Command::request_from_shell(AnOperation::Two).then_send(Event::Completed);

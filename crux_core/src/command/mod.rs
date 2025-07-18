@@ -460,6 +460,15 @@ where
 
     // Combinators
 
+    /// Convert the command into a future to use in an async context
+    pub async fn into_future(self, ctx: CommandContext<Effect, Event>)
+    where
+        Effect: Unpin + Send + 'static,
+        Event: Unpin + Send + 'static,
+    {
+        self.host(ctx.effects, ctx.events).await;
+    }
+
     /// Create a command running self and the other command in sequence
     // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
     // the output of the first command in building the second one, it just runs them in sequence,
@@ -471,10 +480,10 @@ where
     {
         Command::new(|ctx| async move {
             // first run self until done
-            self.host(ctx.effects.clone(), ctx.events.clone()).await;
+            self.into_future(ctx.clone()).await;
 
             // then run other until done
-            other.host(ctx.effects, ctx.events).await;
+            other.into_future(ctx).await;
         })
     }
 
@@ -484,7 +493,7 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        self.spawn(|ctx| other.host(ctx.effects, ctx.events).map(|_| ()));
+        self.spawn(|ctx| other.into_future(ctx));
 
         self
     }
@@ -499,7 +508,7 @@ where
         let mut command = Command::done();
 
         for c in commands {
-            command.spawn(|ctx| c.host(ctx.effects, ctx.events).map(|_| ()));
+            command.spawn(|ctx| c.into_future(ctx));
         }
 
         command
