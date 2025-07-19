@@ -13,7 +13,7 @@ import com.crux.example.counter.shared.Event
 import com.crux.example.counter.shared.HttpResult
 import com.crux.example.counter.shared.Request
 import com.crux.example.counter.shared.Requests
-import com.crux.example.counter.shared.ViewModel
+import com.crux.example.counter.shared.view_model.ViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.engine.cio.endpoint

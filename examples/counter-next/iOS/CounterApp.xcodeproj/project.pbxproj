@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -14,18 +14,18 @@
 		B6930825270C051C48F86524 /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408B50841C0469CE0D78A7C2 /* core.swift */; };
 		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
 		C9DE83DFE3BDDF3357E9DFC6 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 32258924E0AD419BAA621949 /* SharedTypes */; };
-		DAEFD22602D3904B391A4585 /* ViewModel in Frameworks */ = {isa = PBXBuildFile; productRef = 683E4479AA75D6CE41BF49BD /* ViewModel */; };
+		DAEFD22602D3904B391A4585 /* ServerSentEvents in Frameworks */ = {isa = PBXBuildFile; productRef = 25294CD2464DD084B3FCB6BE /* ServerSentEvents */; };
 		E49A93362F08CF053C69A7F5 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCEAEA08AFCD101ED86B664C /* http.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0BC930BE6C51EBF4D7F07A9C /* Shared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Shared; path = ../shared/Shared; sourceTree = SOURCE_ROOT; };
+		3E8C5370E0452BE8744E1827 /* ServerSentEvents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ServerSentEvents; path = ../shared_types/generated/swift/ServerSentEvents; sourceTree = SOURCE_ROOT; };
 		408B50841C0469CE0D78A7C2 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		67D62EB120D164DFC93E7EC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		72B940D339BFB9B4DC05041C /* sse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sse.swift; sourceTree = "<group>"; };
 		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B28E9A30C34D6FA90F1FB6DF /* ViewModel */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ViewModel; path = ../shared_types/generated/swift/ViewModel; sourceTree = SOURCE_ROOT; };
 		BCEAEA08AFCD101ED86B664C /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
 		D533D9BD281C15290E4016E5 /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
 		D6A6C59672AA736317738B5C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -39,7 +39,7 @@
 			files = (
 				08A5891079278B0627EECC52 /* Shared in Frameworks */,
 				C9DE83DFE3BDDF3357E9DFC6 /* SharedTypes in Frameworks */,
-				DAEFD22602D3904B391A4585 /* ViewModel in Frameworks */,
+				DAEFD22602D3904B391A4585 /* ServerSentEvents in Frameworks */,
 				4673110F6AD3F8E2A37B0111 /* Serde in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -64,9 +64,9 @@
 			isa = PBXGroup;
 			children = (
 				EF9261C9BEE050FA5484A8C7 /* Serde */,
+				3E8C5370E0452BE8744E1827 /* ServerSentEvents */,
 				0BC930BE6C51EBF4D7F07A9C /* Shared */,
 				6D984934DC207C1C28EDF6F1 /* SharedTypes */,
-				B28E9A30C34D6FA90F1FB6DF /* ViewModel */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -106,7 +106,7 @@
 			packageProductDependencies = (
 				D05E19303943AC146E9AB212 /* Shared */,
 				32258924E0AD419BAA621949 /* SharedTypes */,
-				683E4479AA75D6CE41BF49BD /* ViewModel */,
+				25294CD2464DD084B3FCB6BE /* ServerSentEvents */,
 				B5D6D2B0E5CFCCBA18D3CE3E /* Serde */,
 			);
 			productName = CounterApp;
@@ -121,8 +121,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 7851C38F90AFE0DC30E065D2 /* Build configuration list for PBXProject "CounterApp" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -136,11 +134,11 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				1D0047598ACCFDEFDD26D3BE /* XCLocalSwiftPackageReference "../shared_types/generated/swift/Serde" */,
+				FA6E2C9DD0E99F39DDDF0E69 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/ServerSentEvents" */,
 				D3BF0BCB5F0BABF3D7D00966 /* XCLocalSwiftPackageReference "../shared/Shared" */,
 				C259B15E6BEC83EABD3451C7 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
-				767221B0DF16AFB369C1F52F /* XCLocalSwiftPackageReference "../shared_types/generated/swift/ViewModel" */,
 			);
-			preferredProjectObjectVersion = 54;
+			preferredProjectObjectVersion = 70;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -344,10 +342,6 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../shared_types/generated/swift/Serde;
 		};
-		767221B0DF16AFB369C1F52F /* XCLocalSwiftPackageReference "../shared_types/generated/swift/ViewModel" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared_types/generated/swift/ViewModel;
-		};
 		C259B15E6BEC83EABD3451C7 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../shared_types/generated/swift/SharedTypes;
@@ -356,16 +350,20 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../shared/Shared;
 		};
+		FA6E2C9DD0E99F39DDDF0E69 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/ServerSentEvents" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared_types/generated/swift/ServerSentEvents;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		25294CD2464DD084B3FCB6BE /* ServerSentEvents */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ServerSentEvents;
+		};
 		32258924E0AD419BAA621949 /* SharedTypes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SharedTypes;
-		};
-		683E4479AA75D6CE41BF49BD /* ViewModel */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = ViewModel;
 		};
 		B5D6D2B0E5CFCCBA18D3CE3E /* Serde */ = {
 			isa = XCSwiftPackageProductDependency;

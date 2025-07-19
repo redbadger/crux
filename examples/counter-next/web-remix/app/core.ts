@@ -5,16 +5,16 @@ import type {
   Effect,
   Event,
   HttpResponse,
-  SseResponse,
 } from "shared_types/types/shared_types";
+import type { SseResponse } from "shared_types/types/server_sent_events";
 import {
   EffectVariantRender,
-  ViewModel,
   EffectVariantHttp,
   EffectVariantServerSentEvents,
   Request,
   EffectVariantRandom,
 } from "shared_types/types/shared_types";
+import { ViewModel } from "shared_types/types/view_model";
 import {
   BincodeSerializer,
   BincodeDeserializer,
