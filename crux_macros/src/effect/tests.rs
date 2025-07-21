@@ -29,7 +29,7 @@ fn single_with_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    insta::assert_snapshot!(pretty_print(&actual), @r##"
     #[derive(Debug)]
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
@@ -39,7 +39,8 @@ fn single_with_typegen() {
     pub enum EffectFfi {
         Render(RenderOperation),
     }
-    impl crux_core::Effect for Effect {
+    impl crux_core::Effect for Effect {}
+    impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
         fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
             match self {
@@ -86,7 +87,7 @@ fn single_with_typegen() {
             Ok(())
         }
     }
-    "#);
+    "##);
 }
 
 #[test]
@@ -100,7 +101,7 @@ fn single_with_new_name() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    insta::assert_snapshot!(pretty_print(&actual), @r##"
     #[derive(Debug)]
     pub enum MyEffect {
         Render(::crux_core::Request<RenderOperation>),
@@ -110,7 +111,8 @@ fn single_with_new_name() {
     pub enum MyEffectFfi {
         Render(RenderOperation),
     }
-    impl crux_core::Effect for MyEffect {
+    impl crux_core::Effect for MyEffect {}
+    impl crux_core::EffectFFI for MyEffect {
         type Ffi = MyEffectFfi;
         fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
             match self {
@@ -157,7 +159,7 @@ fn single_with_new_name() {
             Ok(())
         }
     }
-    "#);
+    "##);
 }
 
 #[test]
@@ -171,7 +173,7 @@ fn single_with_facet_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    insta::assert_snapshot!(pretty_print(&actual), @r##"
     #[derive(Debug)]
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
@@ -184,7 +186,8 @@ fn single_with_facet_typegen() {
     pub enum EffectFfi {
         Render(RenderOperation),
     }
-    impl crux_core::Effect for Effect {
+    impl crux_core::Effect for Effect {}
+    impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
         fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
             match self {
@@ -231,7 +234,7 @@ fn single_with_facet_typegen() {
             Ok(())
         }
     }
-    "#);
+    "##);
 }
 
 #[test]
@@ -245,7 +248,7 @@ fn single_facet_typegen_with_new_name() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    insta::assert_snapshot!(pretty_print(&actual), @r##"
     #[derive(Debug)]
     pub enum MyEffect {
         Render(::crux_core::Request<RenderOperation>),
@@ -258,7 +261,8 @@ fn single_facet_typegen_with_new_name() {
     pub enum MyEffectFfi {
         Render(RenderOperation),
     }
-    impl crux_core::Effect for MyEffect {
+    impl crux_core::Effect for MyEffect {}
+    impl crux_core::EffectFFI for MyEffect {
         type Ffi = MyEffectFfi;
         fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
             match self {
@@ -305,7 +309,7 @@ fn single_facet_typegen_with_new_name() {
             Ok(())
         }
     }
-    "#);
+    "##);
 }
 
 #[test]
@@ -323,19 +327,7 @@ fn single_without_typegen() {
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "Effect")]
-    pub enum EffectFfi {
-        Render(RenderOperation),
-    }
-    impl crux_core::Effect for Effect {
-        type Ffi = EffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
-            match self {
-                Effect::Render(request) => request.serialize(EffectFfi::Render),
-            }
-        }
-    }
+    impl crux_core::Effect for Effect {}
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -379,7 +371,7 @@ fn multiple_with_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    insta::assert_snapshot!(pretty_print(&actual), @r##"
     #[derive(Debug)]
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
@@ -391,7 +383,8 @@ fn multiple_with_typegen() {
         Render(RenderOperation),
         Http(HttpRequest),
     }
-    impl crux_core::Effect for Effect {
+    impl crux_core::Effect for Effect {}
+    impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
         fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
             match self {
@@ -467,7 +460,7 @@ fn multiple_with_typegen() {
             Ok(())
         }
     }
-    "#);
+    "##);
 }
 
 #[allow(clippy::too_many_lines)]
@@ -483,7 +476,7 @@ fn multiple_with_facet_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    insta::assert_snapshot!(pretty_print(&actual), @r##"
     #[derive(Debug)]
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
@@ -498,7 +491,8 @@ fn multiple_with_facet_typegen() {
         Render(RenderOperation),
         Http(HttpRequest),
     }
-    impl crux_core::Effect for Effect {
+    impl crux_core::Effect for Effect {}
+    impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
         fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
             match self {
@@ -574,7 +568,7 @@ fn multiple_with_facet_typegen() {
             Ok(())
         }
     }
-    "#);
+    "##);
 }
 
 #[test]
@@ -588,27 +582,13 @@ fn multiple_without_typegen() {
 
     let actual = effect_impl(None, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    insta::assert_snapshot!(pretty_print(&actual), @r##"
     #[derive(Debug)]
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
         Http(::crux_core::Request<HttpRequest>),
     }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "Effect")]
-    pub enum EffectFfi {
-        Render(RenderOperation),
-        Http(HttpRequest),
-    }
-    impl crux_core::Effect for Effect {
-        type Ffi = EffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
-            match self {
-                Effect::Render(request) => request.serialize(EffectFfi::Render),
-                Effect::Http(request) => request.serialize(EffectFfi::Http),
-            }
-        }
-    }
+    impl crux_core::Effect for Effect {}
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -663,5 +643,5 @@ fn multiple_without_typegen() {
             }
         }
     }
-    "#);
+    "##);
 }

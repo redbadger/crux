@@ -1,10 +1,12 @@
 //! Test for the testing APIs
-#![expect(deprecated)]
-
 use crux_core::testing::AppTester;
 
 mod app {
-    use crux_core::{App, Command, macros::Effect, render::render};
+    use crux_core::{
+        App, Command,
+        render::{RenderOperation, render},
+    };
+    use crux_macros::effect;
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -12,10 +14,9 @@ mod app {
         Hello,
     }
 
-    #[derive(Effect)]
-    #[allow(dead_code)]
-    pub struct Capabilities {
-        render: crux_core::render::Render<Event>,
+    #[effect]
+    pub enum Effect {
+        Render(RenderOperation),
     }
 
     #[derive(Default)]
@@ -25,14 +26,14 @@ mod app {
         type Event = Event;
         type Model = String;
         type ViewModel = String;
-        type Capabilities = Capabilities;
+        type Capabilities = ();
         type Effect = Effect;
 
         fn update(
             &self,
             _event: Self::Event,
             _model: &mut Self::Model,
-            _caps: &Self::Capabilities,
+            _caps: &(),
         ) -> Command<Effect, Event> {
             render()
         }

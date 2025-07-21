@@ -4,7 +4,7 @@ mod resolve;
 
 use std::sync::RwLock;
 
-pub use effect::Effect;
+pub use effect::{Effect, EffectFFI};
 pub use request::Request;
 pub use resolve::{RequestHandle, Resolvable, ResolveError};
 

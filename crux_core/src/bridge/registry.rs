@@ -6,7 +6,7 @@ use slab::Slab;
 
 use super::{BridgeError, Request};
 use crate::bridge::request_serde::ResolveSerialized;
-use crate::{Effect, ResolveError};
+use crate::{EffectFFI, ResolveError};
 
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -31,7 +31,7 @@ impl ResolveRegistry {
     // ANCHOR: register
     pub fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
     where
-        Eff: Effect,
+        Eff: EffectFFI,
     {
         let (effect, resolve) = effect.serialize();
 

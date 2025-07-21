@@ -16,7 +16,7 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{App, Core, Effect, Request, Resolvable, ResolveError, bridge::BridgeError};
+use crate::{App, Core, EffectFFI, Request, Resolvable, ResolveError, bridge::BridgeError};
 
 mod bridge;
 mod effect_conversion;
@@ -133,7 +133,7 @@ pub trait Layer: Send + Sync + Sized {
         effect_callback: impl Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static,
     ) -> Bridge<Self, Format>
     where
-        Self::Effect: Effect,
+        Self::Effect: EffectFFI,
         Self::Event: for<'a> Deserialize<'a>,
         for<'de, 'b> &'de mut Format::Deserializer<'b>: serde::Deserializer<'b>,
         for<'se, 'b> &'se mut Format::Serializer<'b>: serde::Serializer,

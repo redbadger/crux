@@ -37,7 +37,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     let ffi_enum_ident = &ffi_enum.ident;
 
     let ffi_enum = match typegen_kind {
-        TypegenKind::Serde | TypegenKind::None => quote! {
+        TypegenKind::Serde => quote! {
             #[derive(::serde::Serialize, ::serde::Deserialize)]
             #[serde(rename = #enum_ident_str)]
             #ffi_enum
@@ -50,6 +50,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             #[cfg_attr(feature = "facet_typegen", repr(C))]
             #ffi_enum
         },
+        TypegenKind::None => quote! {},
     };
 
     let effects = input.variants.into_iter().map(|variant| {
@@ -190,6 +191,21 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         TypegenKind::None => quote! {},
     };
 
+    let effect_ffi_derive = if let TypegenKind::None = typegen_kind {
+        quote! {}
+    } else {
+        quote! {
+            impl crux_core::EffectFFI for #enum_ident {
+                type Ffi = #ffi_enum_ident;
+                fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+                    match self {
+                        #(#match_arms ,)*
+                    }
+                }
+            }
+        }
+    };
+
     quote! {
         #[derive(Debug)]
         pub enum #enum_ident {
@@ -198,14 +214,9 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
 
         #ffi_enum
 
-        impl crux_core::Effect for #enum_ident {
-            type Ffi = #ffi_enum_ident;
-            fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
-                match self {
-                    #(#match_arms ,)*
-                }
-            }
-        }
+        impl crux_core::Effect for #enum_ident {}
+
+        #effect_ffi_derive
 
         #(#from_impls)*
 

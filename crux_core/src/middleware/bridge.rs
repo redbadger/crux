@@ -4,7 +4,7 @@ use erased_serde::Serialize;
 use serde::Deserialize;
 
 use crate::{
-    Effect,
+    EffectFFI,
     bridge::{BridgeError, EffectId, ResolveRegistry},
 };
 
@@ -42,7 +42,7 @@ impl<Next, Format> Bridge<Next, Format>
 where
     Next: Layer,
     Next::Event: for<'a> Deserialize<'a>,
-    Next::Effect: Effect,
+    Next::Effect: EffectFFI,
     Format: FfiFormat,
     for<'se, 'b> &'se mut Format::Serializer<'b>: serde::Serializer,
     for<'de, 'b> &'de mut Format::Deserializer<'b>: serde::Deserializer<'b>,
