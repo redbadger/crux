@@ -6,7 +6,7 @@ use crux_core::{
 };
 use serde::{Deserialize, Serialize};
 
-#[effect]
+#[effect(typegen)]
 pub enum Effect {
     Render(RenderOperation),
 }
