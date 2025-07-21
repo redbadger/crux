@@ -165,7 +165,8 @@ impl ToTokens for EffectStructReceiver {
                 #(#ffi_variants ,)*
             }
 
-            impl ::crux_core::Effect for #effect_name {
+            impl ::crux_core::Effect for #effect_name {}
+            impl ::crux_core::EffectFFI for #effect_name {
                 type Ffi = #ffi_effect_name;
 
                 fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
@@ -263,7 +264,8 @@ mod tests {
         pub enum EffectFfi {
             Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
         }
-        impl ::crux_core::Effect for Effect {
+        impl ::crux_core::Effect for Effect {}
+        impl ::crux_core::EffectFFI for Effect {
             type Ffi = EffectFfi;
             fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
                 match self {
@@ -351,7 +353,8 @@ mod tests {
         pub enum EffectFfi {
             Render(<Render<Event> as ::crux_core::capability::Capability<Event>>::Operation),
         }
-        impl ::crux_core::Effect for Effect {
+        impl ::crux_core::Effect for Effect {}
+        impl ::crux_core::EffectFFI for Effect {
             type Ffi = EffectFfi;
             fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
                 match self {
@@ -437,7 +440,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r#"
+        insta::assert_snapshot!(pretty_print(&actual), @r##"
         #[derive(Debug)]
         pub enum MyEffect {
             Http(
@@ -489,7 +492,8 @@ mod tests {
             Render(<Render<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
             Time(<Time<MyEvent> as ::crux_core::capability::Capability<MyEvent>>::Operation),
         }
-        impl ::crux_core::Effect for MyEffect {
+        impl ::crux_core::Effect for MyEffect {}
+        impl ::crux_core::EffectFFI for MyEffect {
             type Ffi = MyEffectFfi;
             fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
                 match self {
@@ -725,7 +729,7 @@ mod tests {
                 Self::Time(value)
             }
         }
-        "#);
+        "##);
     }
 
     #[test]
