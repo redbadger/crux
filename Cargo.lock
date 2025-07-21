@@ -588,7 +588,6 @@ dependencies = [
  "crux_http",
  "crux_macros",
  "crux_time",
- "derive_builder",
  "doctest_support",
  "erased-serde",
  "facet",
@@ -1021,11 +1020,12 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b281328ccb32b4575e06afa06f200d9a826043065a8ce4239cc7e7374f98ee8f"
+checksum = "dc3c0eba50d970733fc155b08b042ca6276623f21ca523b1ab2da97fd7f8d06e"
 dependencies = [
  "anyhow",
+ "derive_builder",
  "erased-discriminant",
  "facet",
  "heck 0.5.0",

@@ -70,9 +70,8 @@
 //!    typegen.typescript("shared_types", output_root.join("typescript"))?;
 //!}
 //! ```
-use derive_builder::Builder;
 use facet::Facet;
-pub use facet_generate::generation::{ExternalPackage, PackageLocation};
+pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
     Registry,
     generation::{
@@ -136,63 +135,6 @@ pub trait Export {
 impl Export for () {
     fn register_types(_generator: &mut TypeGen) -> Result {
         Ok(())
-    }
-}
-
-/// Configuration for foreign type generation.
-#[derive(Default, Builder)]
-#[builder(
-    custom_constructor,
-    create_empty = "empty",
-    build_fn(private, name = "fallible_build")
-)]
-pub struct Config {
-    /// The name of the package to generate.
-    #[builder(setter(into))]
-    pub package_name: String,
-    /// The directory to generate the types in.
-    #[builder(setter(into))]
-    pub out_dir: PathBuf,
-    /// External packages to reference.
-    #[builder(default = vec![], setter(each(name = "reference")))]
-    pub external_packages: Vec<ExternalPackage>,
-    /// Whether to add runtimes to the generated types.
-    #[builder(default = false, setter(custom))]
-    pub add_runtimes: bool,
-    /// Whether to add extensions to the generated types.
-    #[builder(default = false, setter(custom))]
-    pub add_extensions: bool,
-}
-
-impl Config {
-    pub fn builder(name: &str, out_dir: impl AsRef<Path>) -> ConfigBuilder {
-        ConfigBuilder {
-            package_name: Some(name.to_string()),
-            out_dir: Some(out_dir.as_ref().to_path_buf()),
-            ..ConfigBuilder::empty()
-        }
-    }
-}
-
-impl ConfigBuilder {
-    #[must_use]
-    pub fn add_runtimes(&mut self) -> &mut Self {
-        self.add_runtimes = Some(true);
-        self
-    }
-
-    #[must_use]
-    pub fn add_extensions(&mut self) -> &mut Self {
-        self.add_extensions = Some(true);
-        self
-    }
-
-    /// # Panics
-    /// If any required fields are not initialized.
-    #[must_use]
-    pub fn build(&self) -> Config {
-        self.fallible_build()
-            .expect("All required fields were initialized")
     }
 }
 
