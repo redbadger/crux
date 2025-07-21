@@ -16,7 +16,7 @@ mod app {
         Get,
     }
 
-    #[effect]
+    #[effect(typegen)]
     pub enum Effect {
         Http(HttpRequest),
         Render(RenderOperation),

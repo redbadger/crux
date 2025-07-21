@@ -74,6 +74,7 @@ where
     pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError>
     where
         A::Event: for<'a> Deserialize<'a>,
+        A::Effect: crate::core::EffectFFI,
     {
         let options = Self::bincode_options();
 
@@ -104,6 +105,7 @@ where
     // ANCHOR_END: handle_response_sig
     where
         A::Event: for<'a> Deserialize<'a>,
+        A::Effect: crate::core::EffectFFI,
     {
         let options = Self::bincode_options();
 
@@ -122,7 +124,10 @@ where
     /// # Errors
     ///
     /// Returns an error if the view model could not be serialized.
-    pub fn view(&self) -> Result<Vec<u8>, BridgeError> {
+    pub fn view(&self) -> Result<Vec<u8>, BridgeError>
+    where
+        A::ViewModel: Serialize,
+    {
         let options = Self::bincode_options();
 
         let mut return_buffer = vec![];
@@ -182,6 +187,7 @@ where
     pub fn process_event<'de, D, S>(&self, event: D, requests_out: S) -> Result<(), BridgeError>
     where
         for<'a> A::Event: Deserialize<'a>,
+        A::Effect: crate::core::EffectFFI,
         D: ::serde::de::Deserializer<'de> + 'de,
         S: ::serde::ser::Serializer,
     {
@@ -212,6 +218,7 @@ where
     ) -> Result<(), BridgeError>
     where
         for<'a> A::Event: Deserialize<'a>,
+        A::Effect: crate::core::EffectFFI,
         D: ::serde::de::Deserializer<'de>,
         S: ::serde::ser::Serializer,
     {
@@ -231,6 +238,7 @@ where
     ) -> Result<(), BridgeError>
     where
         A::Event: for<'a> Deserialize<'a>,
+        A::Effect: crate::core::EffectFFI,
     {
         let effects = match id {
             None => {
@@ -266,6 +274,7 @@ where
     pub fn view<S>(&self, ser: S) -> Result<(), BridgeError>
     where
         S: ::serde::ser::Serializer,
+        A::ViewModel: Serialize,
     {
         self.core
             .view()

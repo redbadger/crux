@@ -164,13 +164,11 @@ pub mod type_generation;
 mod capabilities;
 mod core;
 
-use serde::Serialize;
-
 pub use capabilities::*;
 #[expect(deprecated)]
 pub use capability::{Capability, WithContext};
 pub use command::Command;
-pub use core::{Core, Effect, Request, RequestHandle, Resolvable, ResolveError};
+pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "cli")]
 pub use crux_cli as cli;
 pub use crux_macros as macros;
@@ -186,7 +184,7 @@ pub trait App: Default {
     type Model: Default;
     /// `ViewModel`, typically a `struct` describes the user interface that should be
     /// displayed to the user
-    type ViewModel: Serialize;
+    type ViewModel;
     /// `Capabilities`, usually a `struct`, lists the capabilities used by this application.
     ///
     /// Typically, Capabilities should contain at least an instance of the built-in [`Render`](crate::render::Render) capability.

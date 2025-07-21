@@ -13,7 +13,7 @@ pub mod uniffi_ffi {
 
     use crate::{App, middleware::RngMiddleware, sse::SseRequest};
 
-    #[effect]
+    #[effect(facet_typegen)]
     pub enum Effect {
         Render(RenderOperation),
         Http(HttpRequest),
