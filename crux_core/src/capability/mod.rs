@@ -373,7 +373,8 @@ pub trait Capability<Ev> {
 /// #         unimplemented!()
 /// #     }
 /// # }
-/// # impl crux_core::Effect for Effect {
+/// # impl crux_core::Effect for Effect {}
+/// # impl crux_core::EffectFFI for Effect {
 /// #     type Ffi = EffectFfi;
 /// #     fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
 /// #         match self {
