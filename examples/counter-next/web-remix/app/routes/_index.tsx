@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
-  ViewModel,
   EventVariantStartWatch,
   EventVariantDecrement,
   EventVariantIncrement,
   EventVariantRandom,
 } from "shared_types/types/shared_types";
+import { ViewModel } from "shared_types/types/view_model";
 import { Core } from "../core";
 
 export const meta = () => {

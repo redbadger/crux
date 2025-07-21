@@ -1020,11 +1020,12 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.7.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "597b8225d4afe8e69add28d721fb02c142aa67230b56d85064ee612779cde545"
+checksum = "dc3c0eba50d970733fc155b08b042ca6276623f21ca523b1ab2da97fd7f8d06e"
 dependencies = [
  "anyhow",
+ "derive_builder",
  "erased-discriminant",
  "facet",
  "heck 0.5.0",
@@ -2551,9 +2552,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.140"
+version = "1.0.141"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20068b6e96dc6c9bd23e01df8827e6c7e1f2fddd43c21810382803c136b99373"
+checksum = "30b9eff21ebe718216c6ec64e1d9ac57087aad11efc64e32002bce4a0d4c03d3"
 dependencies = [
  "itoa",
  "memchr",

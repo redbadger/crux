@@ -71,7 +71,7 @@
 //!}
 //! ```
 use facet::Facet;
-pub use facet_generate::generation::{ExternalPackage, PackageLocation};
+pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
     Registry,
     generation::{
@@ -223,11 +223,16 @@ impl TypeGen {
     /// Generates types for Swift
     /// e.g.
     /// ```rust
-    /// # use crux_core::type_generation::facet::TypeGen;
+    /// # use crux_core::type_generation::facet::{Config, TypeGen};
     /// # use std::env::temp_dir;
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// typegen.swift("SharedTypes", output_root.join("swift"), vec![], true, true)?;
+    /// typegen.swift(
+    ///     Config::builder("SharedTypes", output_root.join("swift"))
+    ///     .add_extensions()
+    ///     .add_runtimes()
+    ///     .build()
+    /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
     ///
@@ -236,24 +241,21 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn swift(
-        &mut self,
-        package_name: &str,
-        path: impl AsRef<Path>,
-        external_packages: Vec<ExternalPackage>,
-        add_runtimes: bool,
-        add_extensions: bool,
-    ) -> Result {
+    pub fn swift(&mut self, config: Config) -> Result {
         self.ensure_registry();
 
-        let path = path.as_ref().join(package_name);
+        let path = config.out_dir.join(&config.package_name);
+        let sources = path.join("Sources");
 
         fs::create_dir_all(&path)?;
 
-        let mut installer =
-            swift::Installer::new(package_name.to_string(), path.clone(), external_packages);
+        let mut installer = swift::Installer::new(
+            config.package_name.to_string(),
+            path,
+            config.external_packages,
+        );
 
-        if add_runtimes {
+        if config.add_runtimes {
             installer
                 .install_serde_runtime()
                 .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -266,8 +268,7 @@ impl TypeGen {
             panic!("registry creation failed");
         };
 
-        let root_module = package_name;
-        for (module, registry) in module::split(root_module, registry) {
+        for (module, registry) in module::split(&config.package_name, registry) {
             let config = module
                 .config()
                 .clone()
@@ -278,9 +279,9 @@ impl TypeGen {
                 .map_err(|e| TypeGenError::Generation(e.to_string()))?;
         }
 
-        if add_extensions {
+        if config.add_extensions {
             // add bincode deserialization for Vec<Request>
-            let output_dir = path.join("Sources").join(package_name);
+            let output_dir = sources.join(&config.package_name);
             fs::create_dir_all(&output_dir)?;
             let mut output = File::create(output_dir.join("Requests.swift"))?;
 
@@ -290,7 +291,7 @@ impl TypeGen {
         }
 
         installer
-            .install_manifest(package_name)
+            .install_manifest(&config.package_name)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         Ok(())
