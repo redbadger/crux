@@ -1,4 +1,4 @@
-use crux_core::type_generation::facet::{Config, ExternalPackage, PackageLocation, TypeGen};
+use crux_core::type_generation::facet::{Config, ExternalPackage, PackageLocation, TypeRegistry};
 use shared::{
     App,
     sse::{SseRequest, SseResponse},
@@ -10,8 +10,7 @@ fn main() -> anyhow::Result<()> {
 
     let output_root = PathBuf::from("./generated");
 
-    let mut typegen = TypeGen::new();
-    typegen.register_app::<App>()?;
+    let typegen = TypeRegistry::new().register_app::<App>().build();
 
     typegen.java("com.crux.example.counter.shared", output_root.join("java"))?;
 
@@ -36,9 +35,6 @@ fn main() -> anyhow::Result<()> {
     typegen.swift(config)?;
 
     // Swift Package for ServerSentEvents
-    let mut typegen = TypeGen::new();
-    typegen.register_type::<SseRequest>()?;
-    typegen.register_type::<SseResponse>()?;
     let config = Config::builder("ServerSentEvents", &output_dir)
         .reference(ExternalPackage {
             for_namespace: "Serde".to_string(),
@@ -46,12 +42,15 @@ fn main() -> anyhow::Result<()> {
             version: None,
         })
         .build();
-    typegen.swift(config)?;
+    TypeRegistry::new()
+        .register_type::<SseRequest>()
+        .register_type::<SseResponse>()
+        .build()
+        .swift(config)?;
 
     // Swift Package for Serde
-    let mut typegen = TypeGen::new();
     let config = Config::builder("Serde", &output_dir).add_runtimes().build();
-    typegen.swift(config)?;
+    TypeRegistry::new().build().swift(config)?;
 
     Ok(())
 }

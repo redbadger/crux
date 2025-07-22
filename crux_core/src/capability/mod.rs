@@ -243,15 +243,15 @@ pub trait Operation: Send + 'static {
     #[cfg(feature = "facet_typegen")]
     #[allow(clippy::missing_errors_doc)]
     fn register_types_facet<'a>(
-        generator: &mut crate::type_generation::facet::TypeGen,
-    ) -> crate::type_generation::facet::Result
+        generator: &mut crate::type_generation::facet::TypeRegistry,
+    ) -> &mut crate::type_generation::facet::TypeRegistry
     where
         Self: facet::Facet<'a> + serde::Serialize + for<'de> serde::de::Deserialize<'de>,
         <Self as Operation>::Output: facet::Facet<'a> + for<'de> serde::de::Deserialize<'de>,
     {
-        generator.register_type::<Self>()?;
-        generator.register_type::<Self::Output>()?;
-        Ok(())
+        generator
+            .register_type::<Self>()
+            .register_type::<Self::Output>()
     }
 }
 

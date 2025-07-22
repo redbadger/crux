@@ -222,13 +222,13 @@ fn single_with_facet_typegen() {
     #[cfg(feature = "facet_typegen")]
     impl ::crux_core::type_generation::facet::Export for Effect {
         fn register_types(
-            generator: &mut ::crux_core::type_generation::facet::TypeGen,
-        ) -> ::crux_core::type_generation::facet::Result {
+            generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
+        ) -> &mut ::crux_core::type_generation::facet::TypeRegistry {
             use ::crux_core::capability::Operation;
-            RenderOperation::register_types_facet(generator)?;
-            generator.register_type::<EffectFfi>()?;
-            generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
-            Ok(())
+            let generator = RenderOperation::register_types_facet(generator);
+            generator
+                .register_type::<EffectFfi>()
+                .register_type::<::crux_core::bridge::Request<EffectFfi>>()
         }
     }
     "#);
@@ -296,13 +296,13 @@ fn single_facet_typegen_with_new_name() {
     #[cfg(feature = "facet_typegen")]
     impl ::crux_core::type_generation::facet::Export for MyEffect {
         fn register_types(
-            generator: &mut ::crux_core::type_generation::facet::TypeGen,
-        ) -> ::crux_core::type_generation::facet::Result {
+            generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
+        ) -> &mut ::crux_core::type_generation::facet::TypeRegistry {
             use ::crux_core::capability::Operation;
-            RenderOperation::register_types_facet(generator)?;
-            generator.register_type::<MyEffectFfi>()?;
-            generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
-            Ok(())
+            let generator = RenderOperation::register_types_facet(generator);
+            generator
+                .register_type::<MyEffectFfi>()
+                .register_type::<::crux_core::bridge::Request<MyEffectFfi>>()
         }
     }
     "#);
@@ -551,14 +551,14 @@ fn multiple_with_facet_typegen() {
     #[cfg(feature = "facet_typegen")]
     impl ::crux_core::type_generation::facet::Export for Effect {
         fn register_types(
-            generator: &mut ::crux_core::type_generation::facet::TypeGen,
-        ) -> ::crux_core::type_generation::facet::Result {
+            generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
+        ) -> &mut ::crux_core::type_generation::facet::TypeRegistry {
             use ::crux_core::capability::Operation;
-            RenderOperation::register_types_facet(generator)?;
-            HttpRequest::register_types_facet(generator)?;
-            generator.register_type::<EffectFfi>()?;
-            generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
-            Ok(())
+            let generator = RenderOperation::register_types_facet(generator);
+            let generator = HttpRequest::register_types_facet(generator);
+            generator
+                .register_type::<EffectFfi>()
+                .register_type::<::crux_core::bridge::Request<EffectFfi>>()
         }
     }
     "#);
