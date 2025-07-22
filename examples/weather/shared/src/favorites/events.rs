@@ -1,14 +1,11 @@
 use crux_core::{render::render, Command};
-use crux_http::command::Http;
 use crux_kv::{command::KeyValue, error::KeyValueError};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-use crate::config::API_KEY;
 use crate::favorites::model::{Favorite, FavoritesState, FAVORITES_KEY};
-use crate::location::model::geocoding_response::{
-    GeocodingQueryString, GeocodingResponse, GEOCODING_URL,
-};
+use crate::location::client::{LocationApi, LocationError};
+use crate::location::model::geocoding_response::GeocodingResponse;
 
 use crate::weather::model::Coord;
 use crate::{Effect, Workflow};
@@ -25,7 +22,7 @@ pub enum FavoritesEvent {
     Submit(Box<GeocodingResponse>),
     Cancel,
     #[serde(skip)]
-    SearchResult(Box<crux_http::Result<crux_http::Response<Vec<GeocodingResponse>>>>),
+    SearchResult(Box<Result<Vec<GeocodingResponse>, LocationError>>),
     // KV Related
     Restore,
     #[serde(skip)]
@@ -70,20 +67,11 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         // ======================
         // TODO: use a Time Capability and debounce the search
         // TODO: Search should be a part of events/geocoding.rs
-        FavoritesEvent::Search(query) => Http::get(GEOCODING_URL)
-            .expect_json()
-            .query(&GeocodingQueryString {
-                q: query,
-                limit: "5",
-                appid: API_KEY.clone(),
-            })
-            .expect("could not serialize query string")
-            .build()
+        FavoritesEvent::Search(query) => LocationApi::fetch::<FavoritesEvent>(&query)
             .then_send(|result| FavoritesEvent::SearchResult(Box::new(result))),
         FavoritesEvent::SearchResult(result) => {
             match *result {
-                Ok(mut response) => {
-                    let results = response.take_body().unwrap();
+                Ok(results) => {
                     model.search_results = Some(results);
                 }
                 Err(_) => {
@@ -156,10 +144,11 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
 #[cfg(test)]
 mod tests {
     use crux_core::{assert_effect, App as _};
-    use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
+    use crux_http::protocol::{HttpResponse, HttpResult};
 
     use super::*;
     use crate::{
+        location::client::LocationApi,
         weather::model::{
             current_response::{Main, Sys},
             response_elements::{Clouds, Coord, WeatherData, Wind},
@@ -539,17 +528,7 @@ mod tests {
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
-        assert_eq!(
-            &request.operation,
-            &HttpRequest::get(GEOCODING_URL)
-                .query(&GeocodingQueryString {
-                    q: query.to_string(),
-                    limit: "5",
-                    appid: API_KEY.clone(),
-                })
-                .expect("could not serialize query string")
-                .build()
-        );
+        assert_eq!(&request.operation, &LocationApi::build(query));
 
         // Test response handling
         request
