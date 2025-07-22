@@ -107,21 +107,6 @@ pub enum TypeGenError {
     PnpmNotFound(#[source] std::io::Error),
 }
 
-#[derive(Debug, Default)]
-pub enum State {
-    #[default]
-    None,
-    Registering(RegistryBuilder),
-    Generating(Registry),
-}
-
-impl State {
-    #[must_use]
-    pub fn take(&mut self) -> Self {
-        std::mem::take(self)
-    }
-}
-
 pub trait Export {
     /// Register types with the type generator.
     ///
@@ -129,34 +114,32 @@ pub trait Export {
     ///
     /// # Errors
     /// Returns a [`TypeGenError`] if the type tracing fails.
-    fn register_types(generator: &mut TypeGen) -> Result;
+    fn register_types(generator: &mut TypeRegistry) -> &mut TypeRegistry;
 }
 
 impl Export for () {
-    fn register_types(_generator: &mut TypeGen) -> Result {
-        Ok(())
+    fn register_types(generator: &mut TypeRegistry) -> &mut TypeRegistry {
+        generator
     }
+}
+
+pub struct TypeRegistry {
+    builder: RegistryBuilder,
+}
+
+pub struct CodeGenerator {
+    registry: Registry,
 }
 
 /// The `TypeGen` struct stores the registered types so that they can be generated for foreign languages
 /// use `TypeGen::new()` to create an instance
-pub struct TypeGen {
-    pub state: State,
-}
-
-impl Default for TypeGen {
-    fn default() -> Self {
-        TypeGen {
-            state: State::Registering(RegistryBuilder::default()),
-        }
-    }
-}
-
-impl TypeGen {
-    /// Creates an instance of the `TypeGen` struct
+impl TypeRegistry {
+    /// Creates an instance of the `TypeGen` struct for registration only
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            builder: RegistryBuilder::new(),
+        }
     }
 
     /// Register all the types used in app `A` to be shared with the Shell.
@@ -171,17 +154,15 @@ impl TypeGen {
     /// # Errors
     ///
     /// If any of the types used in the app cannot be registered, an error will be returned.
-    pub fn register_app<'a, A: App>(&mut self) -> Result
+    pub fn register_app<'a, A: App>(&mut self) -> &mut Self
     where
         A::Effect: Export,
         A::Event: Deserialize<'static> + Facet<'a>,
         A::ViewModel: Deserialize<'static> + Facet<'a> + 'static,
     {
-        A::Effect::register_types(self)?;
-        self.register_type::<A::Event>()?;
-        self.register_type::<A::ViewModel>()?;
-
-        Ok(())
+        A::Effect::register_types(self);
+        self.register_type::<A::Event>()
+            .register_type::<A::ViewModel>()
     }
 
     /// For each of the types that you want to share with the Shell, call this method:
@@ -207,19 +188,32 @@ impl TypeGen {
     /// # Errors
     ///
     /// Errors that can occur during type registration.
-    pub fn register_type<'a, 'de, T>(&mut self) -> Result
+    pub fn register_type<'a, 'de, T>(&mut self) -> &mut Self
     where
         T: serde::Deserialize<'de> + Facet<'a>,
     {
-        let State::Registering(builder) = self.state.take() else {
-            return Err(TypeGenError::LateRegistration);
-        };
+        let builder = std::mem::take(&mut self.builder);
+        self.builder = builder.add_type::<T>();
 
-        self.state = State::Registering(builder.add_type::<T>());
-
-        Ok(())
+        self
     }
 
+    #[must_use]
+    pub fn build(&mut self) -> CodeGenerator {
+        let builder = std::mem::take(&mut self.builder);
+        CodeGenerator {
+            registry: builder.build(),
+        }
+    }
+}
+
+impl Default for TypeRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CodeGenerator {
     /// Generates types for Swift
     /// e.g.
     /// ```rust
@@ -241,9 +235,7 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn swift(&mut self, config: Config) -> Result {
-        self.ensure_registry();
-
+    pub fn swift(&self, config: Config) -> Result {
         let path = config.out_dir.join(&config.package_name);
         let sources = path.join("Sources");
 
@@ -264,11 +256,7 @@ impl TypeGen {
                 .map_err(|e| TypeGenError::Generation(e.to_string()))?;
         }
 
-        let State::Generating(ref registry) = self.state else {
-            panic!("registry creation failed");
-        };
-
-        for (module, registry) in module::split(&config.package_name, registry) {
+        for (module, registry) in module::split(&config.package_name, &self.registry) {
             let config = module
                 .config()
                 .clone()
@@ -313,9 +301,7 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn java(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
-        self.ensure_registry();
-
+    pub fn java(&self, package_name: &str, path: impl AsRef<Path>) -> Result {
         fs::create_dir_all(&path)?;
 
         let package_path = package_name.replace('.', "/");
@@ -331,11 +317,7 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let State::Generating(ref mut registry) = self.state else {
-            panic!("registry creation failed");
-        };
-
-        for (module, registry) in module::split(package_name, registry) {
+        for (module, registry) in module::split(package_name, &self.registry) {
             let this_module = &module.config().module_name;
             let is_root_package = package_name == this_module;
             let module = if is_root_package {
@@ -382,9 +364,7 @@ impl TypeGen {
     ///
     /// # Panics
     /// Panics if the registry creation fails.
-    pub fn typescript(&mut self, package_name: &str, path: impl AsRef<Path>) -> Result {
-        self.ensure_registry();
-
+    pub fn typescript(&self, package_name: &str, path: impl AsRef<Path>) -> Result {
         fs::create_dir_all(&path)?;
         let output_dir = path.as_ref().to_path_buf();
 
@@ -399,11 +379,7 @@ impl TypeGen {
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let State::Generating(ref mut registry) = self.state else {
-            panic!("registry creation failed");
-        };
-
-        for (module, registry) in module::split(package_name, registry) {
+        for (module, registry) in module::split(package_name, &self.registry) {
             let config = module
                 .config()
                 .clone()
@@ -450,14 +426,6 @@ impl TypeGen {
             .map_err(TypeGenError::Io)?;
 
         Ok(())
-    }
-
-    fn ensure_registry(&mut self) {
-        if let State::Registering(_) = self.state {
-            if let State::Registering(registry) = self.state.take() {
-                self.state = State::Generating(registry.build());
-            }
-        }
     }
 
     fn extensions_path(path: &str) -> PathBuf {

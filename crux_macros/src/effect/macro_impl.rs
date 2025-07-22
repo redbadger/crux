@@ -170,21 +170,20 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 let operation = &effect.operation;
 
                 quote! {
-                    #operation::register_types_facet(generator)?;
+                    let generator = #operation::register_types_facet(generator);
                 }
             });
             quote! {
                 #[cfg(feature = "facet_typegen")]
                 impl ::crux_core::type_generation::facet::Export for #enum_ident {
                     fn register_types(
-                        generator: &mut ::crux_core::type_generation::facet::TypeGen
-                    ) -> ::crux_core::type_generation::facet::Result {
+                        generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
+                    ) -> &mut ::crux_core::type_generation::facet::TypeRegistry {
                         use ::crux_core::capability::Operation;
                         #(#effect_gen)*
-                        generator.register_type::<#ffi_enum_ident>()?;
-                        generator.register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()?;
-
-                        Ok(())
+                        generator
+                            .register_type::<#ffi_enum_ident>()
+                            .register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()
                     }
                 }
             }
