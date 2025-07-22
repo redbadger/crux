@@ -207,7 +207,6 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     };
 
     quote! {
-        #[derive(Debug)]
         pub enum #enum_ident {
             #(#effect_variants ,)*
         }
