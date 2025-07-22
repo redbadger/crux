@@ -48,6 +48,7 @@ pub enum Event {
 }
 
 #[effect(typegen)]
+#[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),

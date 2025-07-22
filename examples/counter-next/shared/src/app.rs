@@ -76,6 +76,7 @@ pub enum Event {
 }
 
 #[effect(facet_typegen)]
+#[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
