@@ -1,7 +1,6 @@
 mod app {
     use crux_core::{Command, macros::Effect};
     use futures::future::join;
-    use serde::Serialize;
 
     #[derive(Default, Clone)]
     pub struct App;
@@ -12,7 +11,7 @@ mod app {
         Finished(usize, usize),
     }
 
-    #[derive(Default, Serialize, Debug, PartialEq)]
+    #[derive(Default, Debug, PartialEq)]
     pub struct Model {
         pub total: usize,
     }

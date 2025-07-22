@@ -222,17 +222,19 @@ use channel::Sender;
 ///     type Output = HttpResponse;
 /// }
 /// ```
-pub trait Operation:
-    serde::Serialize + serde::de::DeserializeOwned + Clone + PartialEq + Send + 'static
-{
+pub trait Operation: Clone + PartialEq + Send + 'static {
     /// `Output` assigns the type this request results in.
-    type Output: serde::de::DeserializeOwned + Send + Unpin + 'static;
+    type Output: Send + Unpin + 'static;
 
     #[cfg(feature = "typegen")]
     #[allow(clippy::missing_errors_doc)]
     fn register_types(
         generator: &mut crate::type_generation::serde::TypeGen,
-    ) -> crate::type_generation::serde::Result {
+    ) -> crate::type_generation::serde::Result
+    where
+        Self: serde::Serialize + for<'de> serde::de::Deserialize<'de>,
+        Self::Output: for<'de> serde::de::Deserialize<'de>,
+    {
         generator.register_type::<Self>()?;
         generator.register_type::<Self::Output>()?;
         Ok(())
@@ -244,8 +246,8 @@ pub trait Operation:
         generator: &mut crate::type_generation::facet::TypeGen,
     ) -> crate::type_generation::facet::Result
     where
-        Self: facet::Facet<'a>,
-        <Self as Operation>::Output: facet::Facet<'a>,
+        Self: facet::Facet<'a> + serde::Serialize + for<'de> serde::de::Deserialize<'de>,
+        <Self as Operation>::Output: facet::Facet<'a> + for<'de> serde::de::Deserialize<'de>,
     {
         generator.register_type::<Self>()?;
         generator.register_type::<Self::Output>()?;
