@@ -222,7 +222,7 @@ use channel::Sender;
 ///     type Output = HttpResponse;
 /// }
 /// ```
-pub trait Operation: Clone + PartialEq + Send + 'static {
+pub trait Operation: Send + 'static {
     /// `Output` assigns the type this request results in.
     type Output: Send + Unpin + 'static;
 
