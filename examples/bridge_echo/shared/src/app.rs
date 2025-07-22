@@ -26,6 +26,7 @@ pub struct ViewModel {
 }
 
 #[effect(typegen)]
+#[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
 }

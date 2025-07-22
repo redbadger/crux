@@ -29,8 +29,7 @@ fn single_with_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r##"
-    #[derive(Debug)]
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
@@ -87,7 +86,7 @@ fn single_with_typegen() {
             Ok(())
         }
     }
-    "##);
+    "#);
 }
 
 #[test]
@@ -101,8 +100,7 @@ fn single_with_new_name() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r##"
-    #[derive(Debug)]
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum MyEffect {
         Render(::crux_core::Request<RenderOperation>),
     }
@@ -159,7 +157,7 @@ fn single_with_new_name() {
             Ok(())
         }
     }
-    "##);
+    "#);
 }
 
 #[test]
@@ -173,8 +171,7 @@ fn single_with_facet_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r##"
-    #[derive(Debug)]
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
@@ -234,7 +231,7 @@ fn single_with_facet_typegen() {
             Ok(())
         }
     }
-    "##);
+    "#);
 }
 
 #[test]
@@ -248,8 +245,7 @@ fn single_facet_typegen_with_new_name() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r##"
-    #[derive(Debug)]
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum MyEffect {
         Render(::crux_core::Request<RenderOperation>),
     }
@@ -309,7 +305,7 @@ fn single_facet_typegen_with_new_name() {
             Ok(())
         }
     }
-    "##);
+    "#);
 }
 
 #[test]
@@ -323,7 +319,6 @@ fn single_without_typegen() {
     let actual = effect_impl(None, input);
 
     insta::assert_snapshot!(pretty_print(&actual), @r#"
-    #[derive(Debug)]
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
@@ -371,8 +366,7 @@ fn multiple_with_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r##"
-    #[derive(Debug)]
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
         Http(::crux_core::Request<HttpRequest>),
@@ -460,7 +454,7 @@ fn multiple_with_typegen() {
             Ok(())
         }
     }
-    "##);
+    "#);
 }
 
 #[allow(clippy::too_many_lines)]
@@ -476,8 +470,7 @@ fn multiple_with_facet_typegen() {
 
     let actual = effect_impl(args, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r##"
-    #[derive(Debug)]
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
         Http(::crux_core::Request<HttpRequest>),
@@ -568,7 +561,7 @@ fn multiple_with_facet_typegen() {
             Ok(())
         }
     }
-    "##);
+    "#);
 }
 
 #[test]
@@ -582,8 +575,7 @@ fn multiple_without_typegen() {
 
     let actual = effect_impl(None, input);
 
-    insta::assert_snapshot!(pretty_print(&actual), @r##"
-    #[derive(Debug)]
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
         Http(::crux_core::Request<HttpRequest>),
@@ -643,5 +635,52 @@ fn multiple_without_typegen() {
             }
         }
     }
-    "##);
+    "#);
+}
+
+#[test]
+fn single_without_typegen_with_attributes() {
+    let input = parse_quote! {
+        #[derive(Debug, PartialEq)]
+        pub enum Effect {
+            Render(RenderOperation),
+        }
+    };
+
+    let actual = effect_impl(None, input);
+
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    #[derive(Debug, PartialEq)]
+    pub enum Effect {
+        Render(::crux_core::Request<RenderOperation>),
+    }
+    impl crux_core::Effect for Effect {}
+    impl From<::crux_core::Request<RenderOperation>> for Effect {
+        fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
+            Self::Render(value)
+        }
+    }
+    impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
+        type Error = Effect;
+        fn try_from(value: Effect) -> Result<Self, Self::Error> {
+            if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
+        }
+    }
+    impl Effect {
+        pub fn is_render(&self) -> bool {
+            if let Effect::Render(_) = self { true } else { false }
+        }
+        pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
+            if let Effect::Render(request) = self { Some(request) } else { None }
+        }
+        #[track_caller]
+        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
+            if let Effect::Render(request) = self {
+                request
+            } else {
+                panic!("not a {} effect", "Render")
+            }
+        }
+    }
+    "#);
 }

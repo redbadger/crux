@@ -40,6 +40,7 @@ pub enum Screen {
 }
 
 #[effect(typegen)]
+#[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
     Delay(DelayOperation),

@@ -50,6 +50,7 @@ impl ResolveSerialized {
 impl<Op> Request<Op>
 where
     Op: Operation,
+    Op::Output: for<'de> serde::de::Deserialize<'de>,
 {
     /// Serialize this effect request using `effect` as a constructor
     /// for a serializable Effect `Eff`

@@ -1,6 +1,6 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 use syn::{Ident, ItemEnum, Type};
 
 struct Effect {
@@ -27,6 +27,7 @@ impl From<Option<Ident>> for TypegenKind {
 
 #[allow(clippy::too_many_lines)]
 pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
+    let attrs = &input.attrs;
     let enum_ident = &input.ident;
     let typegen_kind: TypegenKind = args.into();
     let enum_ident_str = enum_ident.to_string();
@@ -206,8 +207,17 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         }
     };
 
+    let attrs = if attrs.is_empty() {
+        quote! {}
+    } else {
+        let tokens = attrs.iter().map(ToTokens::to_token_stream);
+        quote! {
+            #(#tokens)*
+        }
+    };
+
     quote! {
-        #[derive(Debug)]
+        #attrs
         pub enum #enum_ident {
             #(#effect_variants ,)*
         }

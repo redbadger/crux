@@ -133,7 +133,7 @@ mod tests {
 
     use crate::capability::{CapabilityContext, Operation, channel, executor_and_spawner};
 
-    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Debug)]
+    #[derive(Clone, PartialEq, Eq, Debug)]
     struct TestOperation;
 
     impl Operation for TestOperation {
