@@ -6,7 +6,7 @@ use anyhow::Result;
 use crossbeam_channel::unbounded;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-use shared::{Effect, Event};
+use shared::{DataPoint, Effect, Event};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -21,6 +21,19 @@ async fn main() -> Result<()> {
     let (tx, rx) = unbounded::<Effect>();
     let arc_tx = Arc::new(tx);
 
+    let payload: Vec<_> = (1..10)
+        .map(|id| DataPoint {
+            value: 3.0 * f64::from(id),
+            id: 17,
+            label: format!("point_{id}"),
+            metadata: if id % 2 == 0 {
+                Some(format!("meta_{id}"))
+            } else {
+                None
+            },
+        })
+        .collect();
+
     tokio::spawn({
         let arc_tx = arc_tx.clone();
         let core = core.clone();
@@ -33,7 +46,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    core::update(&core, Event::Tick, &arc_tx)?;
+    core::update(&core, Event::Tick(payload.clone()), &arc_tx)?;
 
     while rx.recv().is_ok() {
         let view = core.view();
@@ -44,7 +57,7 @@ async fn main() -> Result<()> {
             print!("\r{text}", text = view.count);
         }
 
-        core::update(&core, Event::Tick, &arc_tx)?;
+        core::update(&core, Event::Tick(payload.clone()), &arc_tx)?;
     }
 
     Ok(())

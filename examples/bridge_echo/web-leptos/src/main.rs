@@ -3,13 +3,26 @@ mod core;
 use std::time::Duration;
 
 use leptos::prelude::*;
-use shared::Event;
+use shared::{DataPoint, Event};
 
 #[component]
 fn RootComponent() -> impl IntoView {
+    let payload: Vec<_> = (1..10)
+        .map(|id| DataPoint {
+            value: 3.0 * f64::from(id),
+            id: 17,
+            label: format!("point_{id}"),
+            metadata: if id % 2 == 0 {
+                Some(format!("meta_{id}"))
+            } else {
+                None
+            },
+        })
+        .collect();
+
     let core = core::new();
     let (view, render) = signal(core.view());
-    let (event, set_event) = signal(Event::Tick);
+    let (event, set_event) = signal(Event::Tick(payload.clone()));
     let (clock, set_clock) = signal(0u64);
 
     Effect::new(move |_| {
@@ -17,9 +30,16 @@ fn RootComponent() -> impl IntoView {
     });
 
     // When render happens, send a new tick immediately
-    Effect::new(move |_| {
-        view.get();
-        set_timeout(move || set_event.set(Event::Tick), Duration::from_millis(0));
+    Effect::new({
+        move |_| {
+            view.get();
+            let payload = payload.clone();
+
+            set_timeout(
+                move || set_event.set(Event::Tick(payload)),
+                Duration::from_millis(0),
+            );
+        }
     });
 
     // Start a new period every second

@@ -6,9 +6,17 @@ use crux_core::{
 };
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+pub struct DataPoint {
+    pub id: u64,
+    pub value: f64,
+    pub label: String,
+    pub metadata: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Event {
-    Tick,
+    Tick(Vec<DataPoint>),
     NewPeriod,
     Reset,
 }
@@ -17,12 +25,14 @@ pub enum Event {
 pub struct Model {
     log: Vec<usize>,
     count: usize,
+    last_payload: Vec<DataPoint>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ViewModel {
     pub count: usize,
     pub log: Vec<usize>,
+    pub last_payload: Vec<DataPoint>,
 }
 
 #[effect(typegen)]
@@ -49,7 +59,10 @@ impl crux_core::App for App {
         _caps: &Self::Capabilities,
     ) -> Command<Effect, Event> {
         match event {
-            Event::Tick => model.count += 1,
+            Event::Tick(payload) => {
+                model.count += 1;
+                model.last_payload = payload;
+            }
             Event::NewPeriod => {
                 model.log.push(model.count);
                 model.count = 0;
@@ -67,6 +80,7 @@ impl crux_core::App for App {
         ViewModel {
             count: model.count,
             log: model.log.clone(),
+            last_payload: model.last_payload.clone(),
         }
     }
 }
@@ -89,6 +103,7 @@ mod test {
         let expected_view = ViewModel {
             count: 0,
             log: vec![],
+            last_payload: vec![],
         };
 
         assert_eq!(actual_view, expected_view);
@@ -99,14 +114,23 @@ mod test {
         let app = App;
         let mut model = Model::default();
 
-        let _ = app.update(Event::Tick, &mut model, &());
-        let _ = app.update(Event::Tick, &mut model, &());
-        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(
+            Event::Tick(vec![DataPoint::default(), DataPoint::default()]),
+            &mut model,
+            &(),
+        );
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
+        let _ = app.update(
+            Event::Tick(vec![DataPoint::default(), DataPoint::default()]),
+            &mut model,
+            &(),
+        );
 
         let actual_view = app.view(&model);
         let expected_view = ViewModel {
             count: 3,
             log: vec![],
+            last_payload: vec![DataPoint::default(), DataPoint::default()],
         };
 
         assert_eq!(actual_view, expected_view);
@@ -117,18 +141,19 @@ mod test {
         let app = App;
         let mut model = Model::default();
 
-        let _ = app.update(Event::Tick, &mut model, &());
-        let _ = app.update(Event::Tick, &mut model, &());
-        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
         let _ = app.update(Event::NewPeriod, &mut model, &());
-        let _ = app.update(Event::Tick, &mut model, &());
-        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
         let _ = app.update(Event::NewPeriod, &mut model, &());
-        let _ = app.update(Event::Tick, &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
 
         let expected = Model {
             log: vec![3, 2],
             count: 1,
+            last_payload: vec![DataPoint::default()],
         };
         assert_eq!(model, expected);
     }
@@ -138,7 +163,7 @@ mod test {
         let app = App;
         let mut model = Model::default();
 
-        app.update(Event::Tick, &mut model, &())
+        app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &())
             .expect_one_effect()
             .expect_render();
     }
