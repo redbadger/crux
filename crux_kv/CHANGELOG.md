@@ -8,7 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.10.0-rc2](https://github.com/redbadger/crux/compare/crux_kv-v0.9.0...crux_kv-v0.10.0-rc2) - 2025-07-03
+## [0.10.0-rc3](https://github.com/redbadger/crux/compare/crux_kv-v0.9.0...crux_kv-v0.10.0-rc3) - 2025-07-22
 
 ### 🚀 Features
 

@@ -43,9 +43,11 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
-      - name: Clippy (pedantic)
+      - name: Lints
         shell: bash
-        run: cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings
+        run: |
+          cargo fmt --all --check
+          cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings
 
       - uses: pnpm/action-setup@v4
         with:
@@ -61,9 +63,11 @@ jobs:
           set -euxo pipefail
           curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - name: Run tests
+      - name: Tests
         shell: bash
-        run: ./scripts/test.sh
+        run: |
+          cargo nextest run --all-features
+          cargo test --doc --all-features
 
   find-examples:
     runs-on: ubuntu-latest
@@ -115,9 +119,15 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
-      - name: Clippy (pedantic)
+      - name: Lints
         shell: bash
-        run: cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings
+        run: |
+          cargo fmt --all --check
+          cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings
+
+      - name: Build ${{ matrix.example }}
+        shell: bash
+        run: cargo build
 
       - name: Install nextest
         shell: bash
@@ -125,18 +135,8 @@ jobs:
           set -euxo pipefail
           curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - name: Check formatting
+      - name: Tests
         shell: bash
-        run: cargo fmt --all --check
-
-      - name: Build ${{ matrix.example }}
-        shell: bash
-        run: cargo build
-
-      - name: Run tests
-        shell: bash
-        run: cargo nextest run --all-features
-
-      - name: Build & run doctests
-        shell: bash
-        run: cargo test --doc --no-fail-fast
+        run: |
+          cargo nextest run --all-features
+          cargo test --doc --all-features
