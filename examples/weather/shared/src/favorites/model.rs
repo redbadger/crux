@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{weather::model::CurrentResponse, GeocodingResponse};
+use crate::{location::Location, weather::model::CurrentResponse, GeocodingResponse};
 
 pub const FAVORITES_KEY: &str = "favorites";
 
@@ -19,5 +19,5 @@ impl From<GeocodingResponse> for Favorite {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum FavoritesState {
     Idle,
-    ConfirmDelete(f64, f64),
+    ConfirmDelete(Location),
 }

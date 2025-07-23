@@ -7,13 +7,13 @@ use crate::favorites::model::{Favorite, FavoritesState, FAVORITES_KEY};
 use crate::location::client::{LocationApi, LocationError};
 use crate::location::model::geocoding_response::GeocodingResponse;
 
-use crate::weather::model::Coord;
+use crate::location::Location;
 use crate::{Effect, Workflow};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum FavoritesEvent {
     // Workflow - Favorites view
-    DeletePressed(Coord),
+    DeletePressed(Location),
     DeleteConfirmed,
     DeleteCancelled,
 
@@ -35,16 +35,18 @@ pub enum FavoritesEvent {
 
 pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, FavoritesEvent> {
     match event {
-        FavoritesEvent::DeletePressed(Coord { lat, lon }) => {
-            model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lon));
+        FavoritesEvent::DeletePressed(location) => {
+            model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(location));
             render()
         }
 
         FavoritesEvent::DeleteConfirmed => {
-            if let Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lon)) = model.page {
-                if let Some(index) = model.favorites.iter().position(|f| {
-                    f.geo.lat.to_bits() == lat.to_bits() && f.geo.lon.to_bits() == lon.to_bits()
-                }) {
+            if let Workflow::Favorites(FavoritesState::ConfirmDelete(ref location)) = model.page {
+                if let Some(index) = model
+                    .favorites
+                    .iter()
+                    .position(|f| f.geo.location() == *location)
+                {
                     model.favorites.remove(index);
                     model.page = Workflow::Favorites(FavoritesState::Idle);
                     render().and(Command::event(FavoritesEvent::Set))
@@ -229,10 +231,10 @@ mod tests {
         model.favorites.push(favorite.clone());
 
         // Set the state to ConfirmDelete with the favorite's coordinates
-        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(
-            favorite.geo.lat,
-            favorite.geo.lon,
-        ));
+        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
+            lat: favorite.geo.lat,
+            lon: favorite.geo.lon,
+        }));
 
         // Delete and verify KV is updated
         let mut cmd = update(FavoritesEvent::DeleteConfirmed, &mut model);
@@ -274,7 +276,7 @@ mod tests {
         };
 
         let _ = update(
-            FavoritesEvent::DeletePressed(Coord {
+            FavoritesEvent::DeletePressed(Location {
                 lat: favorite.geo.lat,
                 lon: favorite.geo.lon,
             }),
@@ -284,7 +286,10 @@ mod tests {
         // Verify the state was updated correctly
         assert!(matches!(
             model.page,
-            Workflow::Favorites(FavoritesState::ConfirmDelete(33.456_789, -112.037_222))
+            Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
+                lat: 33.456_789,
+                lon: -112.037_222,
+            }))
         ));
     }
 
@@ -343,10 +348,13 @@ mod tests {
             }),
         };
 
-        let latlon = (favorite.geo.lat, favorite.geo.lon);
+        let latlon = Location {
+            lat: favorite.geo.lat,
+            lon: favorite.geo.lon,
+        };
 
         model.favorites.push(favorite.clone());
-        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(latlon.0, latlon.1));
+        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(latlon));
 
         // First command from DeleteConfirmed
         let mut cmd = app.update(
@@ -379,7 +387,10 @@ mod tests {
     #[test]
     fn test_delete_cancelled() {
         let mut model = Model {
-            page: Workflow::Favorites(FavoritesState::ConfirmDelete(33.456_789, 112.037_222)),
+            page: Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
+                lat: 33.456_789,
+                lon: 112.037_222,
+            })),
             ..Default::default()
         };
 

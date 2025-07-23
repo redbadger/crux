@@ -16,6 +16,7 @@ use crate::{
     location::{
         capability::{LocationOperation, LocationResponse},
         model::geocoding_response::GeocodingResponse,
+        Location,
     },
     weather::{self, events::WeatherEvent, model::current_response::CurrentResponse},
 };
@@ -66,23 +67,28 @@ pub enum WorkflowViewModel {
     },
     Favorites {
         favorites: Vec<FavoriteView>,
+        delete_confirmation: Option<Location>,
     },
     AddFavorite {
         search_results: Option<Vec<GeocodingResponse>>,
-    },
-    ConfirmDeleteFavorite {
-        lat: f64,
-        lon: f64,
-        favorites: Vec<FavoriteView>,
     },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct FavoriteView {
     name: String,
-    lat: f64,
-    lon: f64,
+    location: Location,
     current: Box<Option<CurrentResponse>>,
+}
+
+impl From<&Favorite> for FavoriteView {
+    fn from(value: &Favorite) -> Self {
+        FavoriteView {
+            name: value.geo.name.clone(),
+            location: (&value.geo).into(),
+            current: Box::new(value.current.clone()),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -114,30 +120,23 @@ impl crux_core::App for App {
     }
 
     fn view(&self, model: &Model) -> ViewModel {
-        let favorites = model
-            .favorites
-            .iter()
-            .map(|f| FavoriteView {
-                name: f.geo.name.clone(),
-                lat: f.geo.lat,
-                lon: f.geo.lon,
-                current: Box::new(f.current.clone()),
-            })
-            .collect();
+        let favorites = model.favorites.iter().map(From::from).collect();
 
         let workflow = match &model.page {
             Workflow::Home => WorkflowViewModel::Home {
                 weather_data: Box::new(model.weather_data.clone()),
                 favorites,
             },
-            Workflow::Favorites(FavoritesState::Idle) => WorkflowViewModel::Favorites { favorites },
-            Workflow::Favorites(FavoritesState::ConfirmDelete(lat, lon)) => {
-                WorkflowViewModel::ConfirmDeleteFavorite {
-                    lat: *lat,
-                    lon: *lon,
+            Workflow::Favorites(favorites_state) => match favorites_state {
+                FavoritesState::Idle => WorkflowViewModel::Favorites {
                     favorites,
-                }
-            }
+                    delete_confirmation: None,
+                },
+                FavoritesState::ConfirmDelete(location) => WorkflowViewModel::Favorites {
+                    favorites,
+                    delete_confirmation: Some(*location),
+                },
+            },
             Workflow::AddFavorite => WorkflowViewModel::AddFavorite {
                 search_results: model.search_results.clone(),
             },
