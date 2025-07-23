@@ -12,7 +12,7 @@ keywords.workspace = true
 crate-type = ["cdylib", "lib", "staticlib"]
 
 [[bin]]
-name = "crux_cli"
+name = "codegen"
 required-features = ["cli"]
 
 [dependencies]
