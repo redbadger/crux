@@ -1,6 +1,4 @@
-use std::process::Command;
-
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result, anyhow};
 use camino::Utf8PathBuf;
 use cargo_metadata::{Metadata, MetadataCommand};
 use uniffi_bindgen::{
@@ -26,35 +24,34 @@ pub(crate) fn bindgen(args: &BindgenArgs) -> Result<()> {
 
     let config_supplier = CrateConfigSupplier::from(metadata);
 
-    if !Command::new("cargo")
-        .args(["build", "--package", crate_name])
-        .status()
-        .context("running cargo build")?
-        .success()
-    {
-        bail!("cargo build failed");
+    if args.kotlin {
+        library_mode::generate_bindings(
+            &library_path,
+            None,
+            &KotlinBindingGenerator,
+            &config_supplier,
+            None,
+            &Utf8PathBuf::from_path_buf(args.out_dir.join("java"))
+                .map_err(|p| anyhow!("path {} has non-unicode characters", p.display()))?,
+            true,
+        )
+        .context("generating Kotlin bindings")?;
     }
 
-    library_mode::generate_bindings(
-        &library_path,
-        None,
-        &KotlinBindingGenerator,
-        &config_supplier,
-        None,
-        &args.out_dir.join("java"),
-        true,
-    )
-    .context("generating Kotlin bindings")?;
-    library_mode::generate_bindings(
-        &library_path,
-        None,
-        &SwiftBindingGenerator,
-        &config_supplier,
-        None,
-        &args.out_dir.join("swift"),
-        true,
-    )
-    .context("generating Swift bindings")?;
+    if args.swift {
+        library_mode::generate_bindings(
+            &library_path,
+            None,
+            &SwiftBindingGenerator,
+            &config_supplier,
+            None,
+            &Utf8PathBuf::from_path_buf(args.out_dir.join("swift"))
+                .map_err(|p| anyhow!("path {} has non-unicode characters", p.display()))?,
+            true,
+        )
+        .context("generating Swift bindings")?;
+    }
+
     Ok(())
 }
 

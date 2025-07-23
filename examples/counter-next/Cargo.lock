@@ -437,9 +437,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.29"
+version = "1.2.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c1599538de2394445747c8cf7935946e3cc27e9625f889d979bfb2aaf569362"
+checksum = "deec109607ca693028562ed836a5f1c4b8bd77755c4e132fc5ce11b0b6211ae7"
 dependencies = [
  "shlex",
 ]
@@ -2729,9 +2729,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.5.13"
+version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d04b7d0ee6b4a0207a0a7adb104d23ecb0b47d6beae7152d0fa34b692b29fd6"
+checksum = "7e8af0dde094006011e6a740d4879319439489813bd0bcdc7d821beaeeff48ec"
 dependencies = [
  "bitflags",
 ]
@@ -2806,15 +2806,15 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.0.7"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c71e83d6afe7ff64890ec6b71d6a69bb8a610ab78ce364b3352876bb4c801266"
+checksum = "11181fbabf243db407ef8df94a6ce0b2f9a733bd8be4ad02b4eda9602296cac8"
 dependencies = [
  "bitflags",
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3117,18 +3117,6 @@ dependencies = [
  "uniffi",
  "url",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "shared_types"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crux_core",
- "crux_http",
- "serde",
- "serde_json",
- "shared",
 ]
 
 [[package]]
@@ -3833,9 +3821,9 @@ dependencies = [
 
 [[package]]
 name = "wasm_split_helpers"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e89b6d18d8f3f816630b6143605172fea32c0bf5a7e75c646abfc784ac714205"
+checksum = "d2614524c94087c0e383c2416182f2b224aea245b4d6ce32ef19075677d84e31"
 dependencies = [
  "async-once-cell",
  "wasm_split_macros",
@@ -3843,9 +3831,9 @@ dependencies = [
 
 [[package]]
 name = "wasm_split_macros"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6be8605b8be6c356fb82182fb3a2b18ef8b80de0836937f04f7702a9dcbf252b"
+checksum = "7e8a7dc657eef9172f8b1f60574780bf32d83c4cb50ff7f8b7f1ef7264b820db"
 dependencies = [
  "base16",
  "digest",
@@ -4107,9 +4095,9 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winnow"
-version = "0.7.11"
+version = "0.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74c7b26e3480b707944fc872477815d29a8e429d2f93a1ce000f5fa84a15cbcd"
+checksum = "f3edebf492c8125044983378ecb5766203ad3b4c2f7a922bd7dd207f6d443e95"
 dependencies = [
  "memchr",
 ]

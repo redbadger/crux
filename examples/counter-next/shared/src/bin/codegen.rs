@@ -1,25 +1,30 @@
-use crux_core::type_generation::facet::{Config, ExternalPackage, PackageLocation, TypeRegistry};
+use std::path::PathBuf;
+
+use crux_core::{
+    cli::BindgenArgs,
+    type_generation::facet::{Config, ExternalPackage, PackageLocation, TypeRegistry},
+};
 use shared::{
     App,
     sse::{SseRequest, SseResponse},
 };
-use std::path::PathBuf;
+use uniffi::deps::anyhow;
 
 fn main() -> anyhow::Result<()> {
-    println!("cargo:rerun-if-changed=../shared");
-
-    let output_root = PathBuf::from("./generated");
+    let out_dir = PathBuf::from("./shared/generated");
 
     let typegen = TypeRegistry::new().register_app::<App>().build();
 
-    typegen.java("com.crux.example.counter.shared", output_root.join("java"))?;
+    let output_java = out_dir.join("java");
+    typegen.java("com.crux.example.counter.shared", output_java)?;
 
-    typegen.typescript("shared_types", output_root.join("typescript"))?;
+    let output_typescript = out_dir.join("typescript");
+    typegen.typescript("shared_types", output_typescript)?;
 
-    let output_dir = output_root.join("swift");
+    let output_swift = out_dir.join("swift");
 
     // Swift Package for shared types
-    let config = Config::builder("SharedTypes", &output_dir)
+    let config = Config::builder("SharedTypes", &output_swift)
         .reference(ExternalPackage {
             for_namespace: "server_sent_events".to_string(),
             location: PackageLocation::Path("../ServerSentEvents".to_string()),
@@ -35,7 +40,7 @@ fn main() -> anyhow::Result<()> {
     typegen.swift(config)?;
 
     // Swift Package for ServerSentEvents
-    let config = Config::builder("ServerSentEvents", &output_dir)
+    let config = Config::builder("ServerSentEvents", &output_swift)
         .reference(ExternalPackage {
             for_namespace: "Serde".to_string(),
             location: PackageLocation::Path("../Serde".to_string()),
@@ -49,8 +54,16 @@ fn main() -> anyhow::Result<()> {
         .swift(config)?;
 
     // Swift Package for Serde
-    let config = Config::builder("Serde", &output_dir).add_runtimes().build();
+    let config = Config::builder("Serde", &output_swift)
+        .add_runtimes()
+        .build();
     TypeRegistry::new().build().swift(config)?;
 
-    Ok(())
+    // bindgen for kotlin
+    crux_core::cli::bindgen(&BindgenArgs {
+        crate_name: env!("CARGO_PKG_NAME").to_string(),
+        out_dir,
+        kotlin: true,
+        swift: false,
+    })
 }

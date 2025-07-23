@@ -1,4 +1,5 @@
-use camino::Utf8PathBuf;
+use std::path::PathBuf;
+
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
 use convert_case::{Boundary, Case, Casing, pattern};
 
@@ -40,7 +41,7 @@ pub struct CodegenArgs {
         value_hint = DirPath,
         default_value = "./shared/generated",
     )]
-    pub out_dir: Utf8PathBuf,
+    pub out_dir: PathBuf,
 
     /// Specify a package name for each language you want to generate code for.
     #[command(flatten)]
@@ -95,7 +96,15 @@ pub struct BindgenArgs {
         value_hint = DirPath,
         default_value = "./shared/generated",
     )]
-    pub out_dir: Utf8PathBuf,
+    pub out_dir: PathBuf,
+
+    /// Generate bindings for Kotlin
+    #[arg(long, short)]
+    pub kotlin: bool,
+
+    /// Generate bindings for Swift
+    #[arg(long, short)]
+    pub swift: bool,
 }
 
 fn dotted_case(s: &str) -> Result<String, String> {

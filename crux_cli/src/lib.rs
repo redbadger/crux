@@ -10,6 +10,8 @@ use clap::Parser;
 
 use args::{Cli, Commands};
 
+pub use crate::args::BindgenArgs;
+
 pub fn run(crate_name: Option<&str>) -> Result<()> {
     env_logger::init();
 
@@ -28,4 +30,8 @@ pub fn run(crate_name: Option<&str>) -> Result<()> {
             bindgen::bindgen(&args)
         }
     }
+}
+
+pub fn bindgen(args: &BindgenArgs) -> Result<()> {
+    bindgen::bindgen(args)
 }

@@ -3,11 +3,11 @@ packages:
   Shared:
     path: ../shared/Shared
   SharedTypes:
-    path: ../shared_types/generated/swift/SharedTypes
+    path: ../shared/generated/swift/SharedTypes
   ServerSentEvents:
-    path: ../shared_types/generated/swift/ServerSentEvents
+    path: ../shared/generated/swift/ServerSentEvents
   Serde:
-    path: ../shared_types/generated/swift/Serde
+    path: ../shared/generated/swift/Serde
 options:
   bundleIdPrefix: com.crux.example.counter
 targets:
