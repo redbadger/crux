@@ -167,11 +167,7 @@ pub mod wasm_ffi {
 
 #[cfg(all(target_os = "wasi", target_env = "p2"))]
 pub mod wasip2 {
-    use crux_core::{
-        Core,
-        bridge::BridgeWithSerializer,
-        type_generation::facet::{State, TypeGen},
-    };
+    use crux_core::{Core, bridge::BridgeWithSerializer, type_generation::facet::TypeRegistry};
     use std::sync::LazyLock;
 
     use crate::App;
@@ -247,13 +243,7 @@ pub mod wasip2 {
         }
 
         fn schema() -> String {
-            let mut typegen = TypeGen::new();
-
-            typegen.register_app::<App>().unwrap();
-
-            let State::Registering(registry) = typegen.state else {
-                panic!("Unexpected state");
-            };
+            let registry = TypeRegistry::new().register_app::<App>().build().registry();
 
             format!("{registry:#?}")
         }

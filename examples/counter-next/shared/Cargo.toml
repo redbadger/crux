@@ -8,9 +8,6 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 
-[package.metadata.component]
-package = "counter-next:shared"
-
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 
