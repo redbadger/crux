@@ -17,11 +17,19 @@ struct FavoritesView: View {
                 
                 VStack {
                     switch core.view.workflow {
-                    case .favorites(let favorites):
-                        favoritesList(favorites)
-                    case .confirmDeleteFavorite(let lat, let lon, let favorites):
-                        favoritesList(favorites)
-                            .overlay(deleteConfirmationOverlay(lat: lat, lon: lon))
+                    case .favorites(let favorites, let deleteConfirmation):
+                        if let deleteConfirmation {
+                            let lat = deleteConfirmation.lat
+                            let lon = deleteConfirmation.lon
+
+                            favoritesList(favorites)
+                                .overlay(deleteConfirmationOverlay(lat: lat, lon: lon))
+                        } else {
+                            favoritesList(favorites)
+                        }
+
+
+
                     default:
                         Spacer()
                         Text("No favorites yet")
@@ -56,7 +64,7 @@ struct FavoritesView: View {
                         .foregroundColor(.secondary)
                         .padding()
                 } else {
-                    ForEach(favorites, id: \.lat) { favorite in
+                    ForEach(favorites, id: \.location) { favorite in
                         FavoriteCard(favorite: favorite, core: core)
                     }
                 }
@@ -92,7 +100,7 @@ struct FavoriteCard: View {
                 Spacer()
                 
                 Button(action: {
-                    core.update(.favorites(.deletePressed(Coord(lat: favorite.lat, lon: favorite.lon))))
+                    core.update(.favorites(.deletePressed(favorite.location)))
                 }) {
                     Image(systemName: "trash")
                         .foregroundColor(.red)

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, sync::LazyLock};
 
+use crate::location::Location;
+
 pub const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
 
 #[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone)]
@@ -102,6 +104,15 @@ pub struct GeocodingResponse {
     pub lon: f64,
     pub country: String,
     pub state: Option<String>,
+}
+
+impl GeocodingResponse {
+    pub(crate) fn location(&self) -> Location {
+        Location {
+            lat: self.lat,
+            lon: self.lon,
+        }
+    }
 }
 
 impl fmt::Display for GeocodingResponse {

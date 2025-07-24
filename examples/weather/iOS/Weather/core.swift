@@ -180,7 +180,7 @@ class Core: ObservableObject {
                     case .getLocation:
                         do {
                             let location = try await getCurrentLocationSafely()
-                            let locationResponse = SharedTypes.LocationResponse(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
+                            let locationResponse = SharedTypes.Location(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
                             result = .location(locationResponse)
                         } catch {
                             logger.error("Failed to fetch location: \(error.localizedDescription)")

@@ -6,6 +6,8 @@ use std::future::Future;
 use crux_core::{capability::Operation, command::RequestBuilder, Command, Request};
 use serde::{Deserialize, Serialize};
 
+use super::Location;
+
 // The operations that can be performed related to location.
 // Using an enum allows us to easily add more operations in the future and ensures type safety.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -16,18 +18,13 @@ pub enum LocationOperation {
 
 // The response structure for a location request.
 // This is serializable so it can be sent across the FFI boundary.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct LocationResponse {
-    pub lat: f64,
-    pub lon: f64,
-}
 
 // The possible results from performing a location operation.
 // This enum allows us to handle different response types in a type-safe way.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum LocationResult {
     Enabled(bool),
-    Location(Option<LocationResponse>),
+    Location(Option<Location>),
 }
 
 #[must_use]
@@ -45,7 +42,7 @@ where
 
 #[must_use]
 pub fn get_location<Effect, Event>(
-) -> RequestBuilder<Effect, Event, impl Future<Output = Option<LocationResponse>>>
+) -> RequestBuilder<Effect, Event, impl Future<Output = Option<Location>>>
 where
     Effect: Send + From<Request<LocationOperation>> + 'static,
     Event: Send + 'static,
@@ -65,7 +62,7 @@ impl Operation for LocationOperation {
     #[cfg(feature = "typegen")]
     fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
         generator.register_type::<Self>()?;
-        generator.register_type::<LocationResponse>()?;
+        generator.register_type::<Location>()?;
         generator.register_type::<LocationResult>()?;
         Ok(())
     }
