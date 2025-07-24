@@ -1,15 +1,20 @@
 # Crux Counter Example
 
-The Crux Counter example is a simple multi-platform application that calls a
+> [!NOTE]
+> This is similar to the [Counter](../counter/README.md) example, except
+> that we use it as a testbed for the latest DX experiments.
+> Your mileage may vary.
+
+This Crux Counter example is a simple multi-platform application that calls a
 cloud-hosted API.
 
 It makes HTTP requests to a shared global counter hosted at
 [https://crux-counter.fly.dev](https://crux-counter.fly.dev), incrementing or
 decrementing the counter value.
 
-The [server](./server/) also has an endpoint for Server Sent Events
+The [server](../counter/server/) also has an endpoint for Server Sent Events
 ([https://crux-counter.fly.dev/sse](https://crux-counter.fly.dev/sse)), which
-signals when changes are made to the global counter value — so that when you
+signals when changes are made to the global counter value — so that when you
 update the counter in one client, all the other clients will update too.
 
 We have included an example of a
@@ -42,31 +47,10 @@ the core's ability to stream responses from the shell.
 
 ## Rust shared library
 
-1. Make sure the core builds
-
-   ```sh
-   cargo build --package shared
-   ```
-
-2. Generate the shared types for your client applications
-
-   ```sh
-   cargo build --package shared_types
-   ```
-
-## Web app — Yew
-
-If you don't have it already, install the `trunk` CLI tool:
+Build the shared core and generate the shared types for your client applications
 
 ```sh
-brew install trunk
-```
-
-To build and run the [Yew](https://yew.rs/) web app:
-
-```
-cd web-yew
-trunk serve
+./build.sh
 ```
 
 ## Web app — Leptos
@@ -84,27 +68,13 @@ cd web-leptos
 trunk serve
 ```
 
-## Web app — Dioxus
+## Web app — Remix (React)
 
-If you don't have it already, install the `dx` CLI tool:
-
-```sh
-cargo install dioxus-cli
-```
-
-To build and run the [Dioxus](https://dioxuslabs.com/) web app:
+To build and run the [Remix](https://remix.run/) web app:
 
 ```
-cd web-dioxus
-dx serve
-```
-
-## Web app — NextJS (React)
-
-To build and run the [NextJS](https://nextjs.org/) web app:
-
-```
-cd web-nextjs
+cd web-remix
+pnpm wasm:build
 pnpm install
 pnpm dev
 ```
@@ -122,7 +92,7 @@ the Mac AppStore
 
 ```
 cd iOS
-open CounterApp.xcodeproj
+xed .
 ```
 
 You should be able to press "Play" to start the app in the simulator, or on an
@@ -139,7 +109,7 @@ iPhone.
   If this happens, then you need to install the
   [Command Line Tools For Xcode](https://developer.apple.com/download/all/).
 
-## Mobile app — Android
+## Mobile app — Android
 
 Open the `Android` folder in
 [Android Studio](https://developer.android.com/studio/). If the build is
@@ -156,13 +126,3 @@ simulator.
     select "NDK (side by side)" and press Apply to install
 - If Android studio fails to install `git`, you can set the path to your git
   binary (e.g. the homebrew one) in the preferences under Version Control > Git
-
-## Tauri
-
-To build and run the [Tauri](https://tauri.app/) app:
-
-```
-cd tauri
-pnpm install
-pnpm tauri dev
-```
