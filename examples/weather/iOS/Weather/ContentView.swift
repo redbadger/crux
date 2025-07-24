@@ -32,7 +32,7 @@ struct ContentView: View {
                         .transition(
                             .opacity.combined(with: .offset(x: 0, y: 10))
                         )
-                case .favorites, .confirmDeleteFavorite:
+                case .favorites:
                     FavoritesView(core: core)
                         .transition(
                             .opacity.combined(with: .offset(x: 0, y: 10))
