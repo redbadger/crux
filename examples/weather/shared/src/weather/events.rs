@@ -78,13 +78,9 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Weather
         WeatherEvent::SetFavoriteWeather(result, location) => {
             if let Ok(weather) = *result {
                 // Update the weather data for the matching favorite
-                if let Some(favorite) = model
+                model
                     .favorites
-                    .iter_mut()
-                    .find(|f| f.geo.location() == location)
-                {
-                    favorite.current = Some(weather);
-                }
+                    .update(&location, |favorite| favorite.current = Some(weather));
             }
 
             render()
@@ -251,7 +247,8 @@ mod tests {
         let mut model = Model::default();
 
         // Add a favorite
-        model.favorites.push(test_favorite());
+        let test_favorite = test_favorite();
+        model.favorites.insert(test_favorite.clone());
 
         let lat_lon = Location {
             lat: 33.456_789,
@@ -288,9 +285,15 @@ mod tests {
         }
 
         // After processing, the favorite's weather should be updated
-        assert!(model.favorites[0].current.is_some());
+        assert!(model.favorites.get(&test_favorite.location()).is_some());
         assert_eq!(
-            model.favorites[0].current.as_ref().unwrap(),
+            model
+                .favorites
+                .get(&test_favorite.location())
+                .unwrap()
+                .current
+                .as_ref()
+                .unwrap(),
             &test_response()
         );
     }
@@ -300,8 +303,8 @@ mod tests {
         let mut model = Model::default();
 
         // Add multiple favorites
-        model.favorites.push(test_favorite());
-        model.favorites.push(Favorite {
+        model.favorites.insert(test_favorite());
+        model.favorites.insert(Favorite {
             geo: GeocodingResponse {
                 name: "New York".to_string(),
                 local_names: None,

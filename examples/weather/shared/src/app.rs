@@ -11,7 +11,7 @@ use crate::{
     favorites::{
         self,
         events::FavoritesEvent,
-        model::{Favorite, FavoritesState},
+        model::{Favorite, Favorites, FavoritesState},
     },
     location::{
         capability::LocationOperation, model::geocoding_response::GeocodingResponse, Location,
@@ -46,7 +46,7 @@ pub enum Workflow {
 pub struct Model {
     pub weather_data: CurrentResponse,
     pub page: Workflow,
-    pub favorites: Vec<Favorite>,
+    pub favorites: Favorites,
     pub search_results: Option<Vec<GeocodingResponse>>,
     pub location_enabled: bool,
     pub last_location: Option<Location>,
