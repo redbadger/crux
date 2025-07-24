@@ -94,6 +94,7 @@ impl crux_core::App for App {
     type Capabilities = ();
     type Effect = Effect;
 
+    #[allow(clippy::too_many_lines)]
     fn update(
         &self,
         msg: Self::Event,

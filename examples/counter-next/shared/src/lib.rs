@@ -1,4 +1,5 @@
 mod app;
+
 mod capabilities;
 mod ffi;
 #[cfg(not(target_family = "wasm"))]
@@ -21,5 +22,8 @@ uniffi::setup_scaffolding!();
 #[cfg(not(target_family = "wasm"))]
 pub use ffi::uniffi_ffi::CoreFFI;
 
-#[cfg(target_family = "wasm")]
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
 pub use ffi::wasm_ffi::CoreFFI;
+
+#[cfg(all(target_os = "wasi", target_env = "p2"))]
+pub use ffi::wasip2::CoreFFI;

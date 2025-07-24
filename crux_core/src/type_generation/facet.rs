@@ -395,6 +395,12 @@ impl CodeGenerator {
         Ok(())
     }
 
+    /// Consumes the generator and returns the registry
+    #[must_use]
+    pub fn registry(self) -> Registry {
+        self.0
+    }
+
     fn extensions_path(path: &str) -> PathBuf {
         let custom = PathBuf::from("./typegen_extensions").join(path);
         let default = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
