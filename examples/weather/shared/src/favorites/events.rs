@@ -41,17 +41,15 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         }
 
         FavoritesEvent::DeleteConfirmed => {
-            if let Workflow::Favorites(FavoritesState::ConfirmDelete(ref location)) = model.page {
-                if model.favorites.remove(location).is_some() {
-                    model.page = Workflow::Favorites(FavoritesState::Idle);
-                    render().and(Command::event(FavoritesEvent::Set))
-                } else {
-                    model.page = Workflow::Favorites(FavoritesState::Idle);
-                    render()
+            if let Workflow::Favorites(FavoritesState::ConfirmDelete(location)) = model.page {
+                model.page = Workflow::Favorites(FavoritesState::Idle);
+
+                if model.favorites.remove(&location).is_some() {
+                    return update(FavoritesEvent::Set, model).and(render());
                 }
-            } else {
-                render()
             }
+
+            render()
         }
 
         FavoritesEvent::DeleteCancelled => {
@@ -64,7 +62,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         // ======================
         // TODO: use a Time Capability and debounce the search
         // TODO: Search should be a part of events/geocoding.rs
-        FavoritesEvent::Search(query) => LocationApi::fetch::<FavoritesEvent>(&query)
+        FavoritesEvent::Search(query) => LocationApi::fetch(&query)
             .then_send(|result| FavoritesEvent::SearchResult(Box::new(result))),
         FavoritesEvent::SearchResult(result) => {
             match *result {
@@ -78,21 +76,18 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
             render()
         }
         FavoritesEvent::Submit(geo) => {
+            model.page = Workflow::Favorites(FavoritesState::Idle);
+            model.search_results = None;
+
             let favorite = Favorite::from(*geo);
+
             // Check if a favorite with the same coordinates already exists
-            if model.favorites.iter().any(|f| {
-                f.geo.lat.to_bits() == favorite.geo.lat.to_bits()
-                    && f.geo.lon.to_bits() == favorite.geo.lon.to_bits()
-            }) {
+            if model.favorites.exists(&favorite.location()) {
                 // If it's a duplicate, just return to favorites view without adding
                 // TODO: show a toast message
-                model.search_results = None;
-                model.page = Workflow::Favorites(FavoritesState::Idle);
                 render()
             } else {
                 model.favorites.insert(favorite.clone());
-                model.search_results = None;
-                model.page = Workflow::Favorites(FavoritesState::Idle);
                 render().and(Command::event(FavoritesEvent::Set))
             }
         }
@@ -112,30 +107,31 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         )
         .then_send(FavoritesEvent::Stored),
 
-        FavoritesEvent::Stored(result) => match result {
-            Ok(_) => {
-                println!("Stored!");
-                Command::done()
-            }
-            Err(err) => {
-                println!("Storing KV error: {err}");
-                Command::done()
-            }
-        },
-
-        FavoritesEvent::Load(result) => match result {
-            Ok(Some(favorites_bytes)) => {
-                match serde_json::from_slice::<Vec<Favorite>>(&favorites_bytes) {
-                    Ok(favorites) => {
-                        println!("Favorites are: {favorites:#?}");
-                        model.favorites = Favorites::from_vec(favorites);
-                        Command::done()
-                    }
-                    Err(_) => Command::done(),
+        FavoritesEvent::Stored(result) => {
+            match result {
+                Ok(_) => {
+                    println!("Stored!");
+                }
+                Err(err) => {
+                    println!("Storing KV error: {err}");
                 }
             }
-            _ => Command::done(),
-        },
+            Command::done()
+        }
+
+        FavoritesEvent::Load(result) => {
+            let Ok(Some(favorites_bytes)) = result else {
+                return Command::done();
+            };
+            let Ok(favorites) = serde_json::from_slice::<Vec<Favorite>>(&favorites_bytes) else {
+                return Command::done();
+            };
+
+            println!("Favorites are: {favorites:#?}");
+            model.favorites = Favorites::from_vec(favorites);
+
+            Command::done()
+        }
     }
 }
 
@@ -234,15 +230,6 @@ mod tests {
 
         // Delete and verify KV is updated
         let mut cmd = update(FavoritesEvent::DeleteConfirmed, &mut model);
-
-        // Verify we get the Set event first
-        let event = cmd.events().next().unwrap();
-        assert!(matches!(event, FavoritesEvent::Set));
-
-        assert!(model.favorites.is_empty());
-
-        // Process the Set event to get the KeyValue effect
-        let mut cmd = update(FavoritesEvent::Set, &mut model);
         let effect = cmd.effects().next().unwrap();
         assert!(matches!(effect, Effect::KeyValue(_)));
 
@@ -361,16 +348,6 @@ mod tests {
             &(),
         );
 
-        // Verify we get the Set event first
-        let event = cmd.events().next().unwrap();
-        if let Event::Favorites(event) = &event {
-            assert!(matches!(**event, FavoritesEvent::Set));
-        } else {
-            panic!("Expected Favorites event")
-        }
-        assert!(model.favorites.is_empty());
-
-        let mut cmd = update(FavoritesEvent::Set, &mut model);
         let effect = cmd.effects().next().unwrap();
         assert!(matches!(effect, Effect::KeyValue(_)));
 

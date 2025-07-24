@@ -74,4 +74,8 @@ impl Favorites {
     pub(crate) fn as_slice(&self) -> &[Favorite] {
         &self.0
     }
+
+    pub(crate) fn exists(&self, location: &Location) -> bool {
+        self.0.iter().any(|fav| &fav.location() == location)
+    }
 }

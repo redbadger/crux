@@ -1,10 +1,10 @@
-use crux_core::command::RequestBuilder;
+use crux_core::{command::RequestBuilder, Request};
 use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::config::API_KEY;
-use crate::{Effect, GeocodingQueryString, GeocodingResponse, GEOCODING_URL};
+use crate::{GeocodingQueryString, GeocodingResponse, GEOCODING_URL};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum LocationError {
@@ -37,7 +37,7 @@ impl LocationApi {
     }
 
     /// Fetch geocoding results for a location query
-    pub fn fetch<Event>(
+    pub fn fetch<Event, Effect>(
         query: &str,
     ) -> RequestBuilder<
         Effect,
@@ -46,6 +46,7 @@ impl LocationApi {
     >
     where
         Event: Send + 'static,
+        Effect: From<Request<HttpRequest>> + Send + 'static,
     {
         Http::get(GEOCODING_URL)
             .expect_json::<Vec<GeocodingResponse>>()
