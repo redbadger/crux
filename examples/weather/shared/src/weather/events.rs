@@ -60,20 +60,23 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Weather
         }
         WeatherEvent::FetchFavorites => {
             if model.favorites.is_empty() {
-                Command::done()
-            } else {
-                let cmds = model.favorites.iter().map(|f| {
+                return Command::done();
+            }
+
+            model
+                .favorites
+                .iter()
+                .map(|f| {
                     let location = f.geo.location();
+
                     WeatherApi::fetch(location).then_send(move |result| {
                         WeatherEvent::SetFavoriteWeather(Box::new(result), location)
                     })
-                });
-
-                cmds.collect()
-            }
+                })
+                .collect()
         }
-        WeatherEvent::SetFavoriteWeather(result, location) => match *result {
-            Ok(weather) => {
+        WeatherEvent::SetFavoriteWeather(result, location) => {
+            if let Ok(weather) = *result {
                 // Update the weather data for the matching favorite
                 if let Some(favorite) = model
                     .favorites
@@ -82,10 +85,10 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Weather
                 {
                     favorite.current = Some(weather);
                 }
-                render()
             }
-            Err(_) => render(),
-        },
+
+            render()
+        }
     }
 }
 
