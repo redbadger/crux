@@ -1,8 +1,5 @@
-package counter-next:shared;
+package crux:shared-lib;
 
 world shared {
-    export update: func(data: list<u8>) -> result<list<u8>, string>;
-    export resolve: func(effect-id: u32, data: list<u8>) -> result<list<u8>, string>;
-    export view: func() -> result<list<u8>, string>;
-    export schema: func() -> string;
+    export core;
 }

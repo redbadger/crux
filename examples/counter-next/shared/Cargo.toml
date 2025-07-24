@@ -44,7 +44,6 @@ js-sys = "0.3.77"
 crux_core = { workspace = true, features = ["facet_typegen"] }
 crux_http = { workspace = true, features = ["facet_typegen"] }
 wit-bindgen = "0.43.0"
-wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 
 [features]
 cli = ["crux_core/cli"]

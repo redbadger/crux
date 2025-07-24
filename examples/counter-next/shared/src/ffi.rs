@@ -167,87 +167,71 @@ pub mod wasm_ffi {
 
 #[cfg(all(target_os = "wasi", target_env = "p2"))]
 pub mod wasip2 {
-    use crux_core::{Core, bridge::BridgeWithSerializer, type_generation::facet::TypeRegistry};
-    use std::sync::LazyLock;
+    use crux_core::{
+        Core,
+        bridge::EffectId,
+        middleware::{Bridge, FfiFormat, Layer as _},
+        type_generation::facet::TypeRegistry,
+    };
+    use serde_json::{Deserializer, Serializer, de::SliceRead};
 
     use crate::App;
-
-    /// The main interface used by the shell
-    pub struct CoreFFI {
-        core: BridgeWithSerializer<App>,
-    }
-
-    impl CoreFFI {
-        pub fn new() -> Self {
-            let core = BridgeWithSerializer::new(Core::new());
-
-            Self { core }
-        }
-
-        #[must_use]
-        pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-            let mut deser = serde_json::Deserializer::from_slice(data);
-
-            let mut return_buffer = vec![];
-            let mut ser = serde_json::Serializer::new(&mut return_buffer);
-
-            self.core
-                .process_event(&mut deser, &mut ser)
-                .map_err(|e| e.to_string())?;
-
-            Ok(return_buffer)
-        }
-
-        #[must_use]
-        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Result<Vec<u8>, String> {
-            let mut deser = serde_json::Deserializer::from_slice(data);
-
-            let mut return_buffer = vec![];
-            let mut ser = serde_json::Serializer::new(&mut return_buffer);
-
-            self.core
-                .handle_response(effect_id, &mut deser, &mut ser)
-                .map_err(|e| e.to_string())?;
-
-            Ok(return_buffer)
-        }
-
-        #[must_use]
-        pub fn view(&self) -> Result<Vec<u8>, String> {
-            let mut return_buffer = vec![];
-            let mut ser = serde_json::Serializer::new(&mut return_buffer);
-
-            self.core.view(&mut ser).map_err(|e| e.to_string())?;
-
-            Ok(return_buffer)
-        }
-    }
-
-    static CORE: LazyLock<CoreFFI> = LazyLock::new(|| CoreFFI::new());
+    use exports::crux::shared_lib::core::{Guest, GuestInstance};
 
     wit_bindgen::generate!();
+    export!(Component);
 
     pub struct Component;
 
     impl Guest for Component {
-        fn update(data: Vec<u8>) -> Result<Vec<u8>, String> {
-            CORE.update(&data)
+        type Instance = CoreFFI;
+    }
+
+    /// The main interface used by the shell
+    pub struct CoreFFI {
+        core: Bridge<Core<App>, JsonFfiFormat>,
+    }
+
+    impl GuestInstance for CoreFFI {
+        fn new() -> Self {
+            let core = Core::<App>::new().bridge::<JsonFfiFormat>(|_| {});
+
+            Self { core }
         }
 
-        fn resolve(effect_id: u32, data: Vec<u8>) -> Result<Vec<u8>, String> {
-            CORE.resolve(effect_id, &data)
+        fn update(&self, data: Vec<u8>) -> Result<Vec<u8>, String> {
+            self.core.update(&data).map_err(|e| e.to_string())
         }
 
-        fn view() -> Result<Vec<u8>, String> {
-            CORE.view()
+        fn resolve(&self, effect_id: u32, data: Vec<u8>) -> Result<Vec<u8>, String> {
+            self.core
+                .resolve(EffectId(effect_id), &data)
+                .map_err(|e| e.to_string())
         }
 
-        fn schema() -> String {
+        fn view(&self) -> Result<Vec<u8>, String> {
+            self.core.view().map_err(|e| e.to_string())
+        }
+
+        fn schema(&self) -> String {
             let registry = TypeRegistry::new().register_app::<App>().build().registry();
 
             format!("{registry:#?}")
         }
     }
 
-    export!(Component);
+    pub struct JsonFfiFormat;
+
+    impl FfiFormat for JsonFfiFormat {
+        type Serializer<'b> = Serializer<&'b mut Vec<u8>>;
+        type Deserializer<'b> = Deserializer<SliceRead<'b>>;
+
+        fn serializer(buffer: &mut Vec<u8>) -> Serializer<&mut Vec<u8>> {
+            Serializer::new(buffer)
+        }
+
+        fn deserializer(bytes: &[u8]) -> Deserializer<SliceRead<'_>> {
+            Deserializer::from_slice(bytes)
+        }
+    }
 }

@@ -3131,7 +3131,6 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "wit-bindgen",
- "wit-bindgen-rt 0.43.0",
 ]
 
 [[package]]
