@@ -14,9 +14,7 @@ use crate::{
         model::{Favorite, FavoritesState},
     },
     location::{
-        capability::{LocationOperation, LocationResponse},
-        model::geocoding_response::GeocodingResponse,
-        Location,
+        capability::LocationOperation, model::geocoding_response::GeocodingResponse, Location,
     },
     weather::{self, events::WeatherEvent, model::current_response::CurrentResponse},
 };
@@ -51,7 +49,7 @@ pub struct Model {
     pub favorites: Vec<Favorite>,
     pub search_results: Option<Vec<GeocodingResponse>>,
     pub location_enabled: bool,
-    pub last_location: Option<LocationResponse>,
+    pub last_location: Option<Location>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

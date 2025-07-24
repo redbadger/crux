@@ -2,7 +2,8 @@ use crux_core::render::render;
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
-use crate::location::capability::{get_location, is_location_enabled, LocationResponse};
+use crate::location::capability::{get_location, is_location_enabled};
+use crate::location::Location;
 use crate::weather::client::{WeatherApi, WeatherError};
 use crate::weather::model::CurrentResponse;
 use crate::{Effect, Model};
@@ -14,17 +15,17 @@ pub enum WeatherEvent {
     #[serde(skip)]
     LocationEnabled(bool),
     #[serde(skip)]
-    LocationFetched(Option<LocationResponse>),
+    LocationFetched(Option<Location>),
 
     // Events related to fetching weather data
     #[serde(skip)]
-    Fetch(f64, f64),
+    Fetch(Location),
     #[serde(skip)]
     SetWeather(Box<Result<CurrentResponse, WeatherError>>),
     #[serde(skip)]
     FetchFavorites,
     #[serde(skip)]
-    SetFavoriteWeather(Box<Result<CurrentResponse, WeatherError>>, f64, f64),
+    SetFavoriteWeather(Box<Result<CurrentResponse, WeatherError>>, Location),
 }
 
 pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, WeatherEvent> {
@@ -41,51 +42,44 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Weather
         WeatherEvent::LocationFetched(location) => {
             model.last_location.clone_from(&location);
             if let Some(loc) = location {
-                update(WeatherEvent::Fetch(loc.lat, loc.lon), model)
+                update(WeatherEvent::Fetch(loc), model)
             } else {
                 Command::done()
             }
         }
 
         // Internal events related to fetching weather data
-        WeatherEvent::Fetch(lat, long) => WeatherApi::fetch(lat, long)
+        WeatherEvent::Fetch(location) => WeatherApi::fetch(location)
             .then_send(move |result| WeatherEvent::SetWeather(Box::new(result))),
         WeatherEvent::SetWeather(result) => {
-            let cmd = match *result {
-                Ok(weather_data) => {
-                    model.weather_data = weather_data;
-                    render()
-                }
-                Err(_) => render(),
-            };
-
-            if model.favorites.is_empty() {
-                cmd
-            } else {
-                cmd.and(update(WeatherEvent::FetchFavorites, model))
+            if let Ok(weather_data) = *result {
+                model.weather_data = weather_data;
             }
+
+            update(WeatherEvent::FetchFavorites, model).and(render())
         }
         WeatherEvent::FetchFavorites => {
             if model.favorites.is_empty() {
                 Command::done()
             } else {
                 let cmds = model.favorites.iter().map(|f| {
-                    let lat = f.geo.lat;
-                    let lon = f.geo.lon;
-                    WeatherApi::fetch(lat, lon).then_send(move |result| {
-                        WeatherEvent::SetFavoriteWeather(Box::new(result), lat, lon)
+                    let location = f.geo.location();
+                    WeatherApi::fetch(location).then_send(move |result| {
+                        WeatherEvent::SetFavoriteWeather(Box::new(result), location)
                     })
                 });
 
                 cmds.collect()
             }
         }
-        WeatherEvent::SetFavoriteWeather(result, lat, long) => match *result {
+        WeatherEvent::SetFavoriteWeather(result, location) => match *result {
             Ok(weather) => {
                 // Update the weather data for the matching favorite
-                if let Some(favorite) = model.favorites.iter_mut().find(|f| {
-                    f.geo.lat.to_bits() == lat.to_bits() && f.geo.lon.to_bits() == long.to_bits()
-                }) {
+                if let Some(favorite) = model
+                    .favorites
+                    .iter_mut()
+                    .find(|f| f.geo.location() == location)
+                {
                     favorite.current = Some(weather);
                 }
                 render()
@@ -181,20 +175,17 @@ mod tests {
         let _ = update(event, &mut model);
 
         // 3. Simulate the Location::get_location effect (with a test location)
-        let test_location = LocationResponse {
+        let test_location = Location {
             lat: 33.456_789,
             lon: -112.037_222,
         };
-        let event = WeatherEvent::LocationFetched(Some(test_location.clone()));
+        let event = WeatherEvent::LocationFetched(Some(test_location));
         let mut cmd = update(event, &mut model);
 
         // 4. Resolve the weather HTTP effect
         let mut request = cmd.effects().next().unwrap().expect_http();
 
-        assert_eq!(
-            &request.operation,
-            &WeatherApi::build(test_location.lat, test_location.lon)
-        );
+        assert_eq!(&request.operation, &WeatherApi::build(test_location));
 
         // 5. Resolve the HTTP request with a simulated response from the web API
         request
@@ -220,14 +211,17 @@ mod tests {
     fn test_current_weather_fetch() {
         let mut model = Model::default();
 
-        let lat_lon = (33.456_789, 112.037_222);
-        let event = WeatherEvent::Fetch(lat_lon.0, lat_lon.1);
+        let lat_lon = Location {
+            lat: 33.456_789,
+            lon: 112.037_222,
+        };
+        let event = WeatherEvent::Fetch(lat_lon);
 
         let mut cmd = update(event, &mut model);
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
-        assert_eq!(&request.operation, &WeatherApi::build(lat_lon.0, lat_lon.1));
+        assert_eq!(&request.operation, &WeatherApi::build(lat_lon));
 
         // Test response handling
         request
@@ -256,8 +250,11 @@ mod tests {
         // Add a favorite
         model.favorites.push(test_favorite());
 
-        let lat_lon = (33.456_789, 112.037_222);
-        let event = WeatherEvent::Fetch(lat_lon.0, lat_lon.1);
+        let lat_lon = Location {
+            lat: 33.456_789,
+            lon: 112.037_222,
+        };
+        let event = WeatherEvent::Fetch(lat_lon);
 
         // Start the event/effect loop
         let cmd = update(event, &mut model);

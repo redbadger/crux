@@ -5,6 +5,7 @@ use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::config::API_KEY;
+use crate::location::Location;
 use crate::weather::model::{CurrentResponse, WEATHER_URL};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -25,11 +26,11 @@ pub struct WeatherApi;
 
 impl WeatherApi {
     /// Build an `HttpRequest` for testing purposes
-    pub fn build(lat: f64, lon: f64) -> HttpRequest {
+    pub fn build(location: Location) -> HttpRequest {
         HttpRequest::get(WEATHER_URL)
             .query(&CurrentQueryString {
-                lat: lat.to_string(),
-                lon: lon.to_string(),
+                lat: location.lat.to_string(),
+                lon: location.lon.to_string(),
                 units: "metric",
                 appid: API_KEY.clone(),
             })
@@ -39,8 +40,7 @@ impl WeatherApi {
 
     /// Fetch current weather for a specific location
     pub fn fetch<Effect, Event>(
-        lat: f64,
-        lon: f64,
+        location: Location,
     ) -> RequestBuilder<
         Effect,
         Event,
@@ -53,8 +53,8 @@ impl WeatherApi {
         Http::get(WEATHER_URL)
             .expect_json::<CurrentResponse>()
             .query(&CurrentQueryString {
-                lat: lat.to_string(),
-                lon: lon.to_string(),
+                lat: location.lat.to_string(),
+                lon: location.lon.to_string(),
                 units: "metric",
                 appid: API_KEY.clone(),
             })
