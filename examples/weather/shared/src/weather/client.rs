@@ -1,11 +1,11 @@
 use crux_core::command::RequestBuilder;
+use crux_core::Request;
 use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::config::API_KEY;
 use crate::weather::model::{CurrentResponse, WEATHER_URL};
-use crate::{Effect, Event};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum WeatherError {
@@ -38,14 +38,18 @@ impl WeatherApi {
     }
 
     /// Fetch current weather for a specific location
-    pub fn fetch(
+    pub fn fetch<Effect, Event>(
         lat: f64,
         lon: f64,
     ) -> RequestBuilder<
         Effect,
         Event,
         impl std::future::Future<Output = Result<CurrentResponse, WeatherError>>,
-    > {
+    >
+    where
+        Effect: From<Request<HttpRequest>> + Send + 'static,
+        Event: Send + 'static,
+    {
         Http::get(WEATHER_URL)
             .expect_json::<CurrentResponse>()
             .query(&CurrentQueryString {

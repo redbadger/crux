@@ -113,7 +113,20 @@ impl crux_core::App for App {
                 model.page = *page;
                 render()
             }
-            Event::Home(home_event) => weather::events::update(*home_event, model),
+            Event::Home(home_event) => {
+                let fav_cmd = if let WeatherEvent::Show = *home_event {
+                    favorites::events::update(FavoritesEvent::Restore, model)
+                        .map_event(|fe| Event::Favorites(Box::new(fe)))
+                } else {
+                    Command::done()
+                };
+
+                let weather_cmd = weather::events::update(*home_event, model)
+                    .map_event(|we| Event::Home(Box::new(we)));
+
+                fav_cmd.and(weather_cmd)
+            }
+
             Event::Favorites(fav_event) => favorites::events::update(*fav_event, model)
                 .map_event(|e| Event::Favorites(Box::new(e))),
         }
