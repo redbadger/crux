@@ -600,6 +600,7 @@ dependencies = [
  "serde_json",
  "slab",
  "static_assertions",
+ "tempfile",
  "thiserror 2.0.12",
  "url",
  "uuid",

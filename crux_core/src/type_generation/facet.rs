@@ -22,19 +22,18 @@
 //! #     use crux_core::render::RenderOperation;
 //! #     use crux_core::macros::effect;
 //! #     use facet::Facet;
-//! #     use serde::{Deserialize, Serialize};
 //! #     #[derive(Default)]
 //! #     pub struct App;
-//! #     #[derive(Facet, Serialize, Deserialize)]
+//! #     #[derive(Facet)]
 //! #     #[repr(C)]
 //! #     pub enum Event {
 //! #         None,
 //! #     }
-//! #     #[effect]
+//! #     #[effect(facet_typegen)]
 //! #     pub enum Effect {
 //! #         Render(RenderOperation),
 //! #     }
-//! #     #[derive(Facet, Serialize, Deserialize)]
+//! #     #[derive(Facet)]
 //! #     pub struct ViewModel;
 //! #     impl crux_core::App for App {
 //! #         type Event = Event;
@@ -50,36 +49,37 @@
 //! #         }
 //! #     }
 //! # }
+//! # use std::path::PathBuf;
+//!use crux_core::type_generation::facet::{Config, TypeRegistry};
+//!use tempfile::tempdir;
 //!use shared::App;
-//!use crux_core::type_generation::facet::TypeRegistry;
 //!
-//!#[test]
-//!fn generate_types() -> anyhow::Result<()> {
-//!  let output_root = PathBuf::from("./generated");
+//!  let tmp_dir = tempdir()?;
+//!  let output_root = tmp_dir.path();
 //!
 //!  let typegen = TypeRegistry::new().register_app::<App>().build();
 //!
+//!  typegen.swift(
+//!      &Config::builder("SharedTypes", &output_root.join("swift"))
+//!      .add_extensions()
+//!      .add_runtimes()
+//!      .build()
+//!  )?;
+//!
 //!  typegen.java(
-//!      Config::builder("com.crux.example.counter.shared", output_root.join("java"))
+//!      &Config::builder("com.crux.example.counter.shared", output_root.join("java"))
 //!      .add_extensions()
 //!      .add_runtimes()
 //!      .build()
 //!  )?;
 //!
 //!  typegen.typescript(
-//!      Config::builder("shared_types", output_root.join("typescript"))
+//!      &Config::builder("shared_types", output_root.join("typescript"))
 //!      .add_extensions()
 //!      .add_runtimes()
 //!      .build()
 //!  )?;
-//!
-//!  let output_dir = output_root.join("swift");
-//!
-//!  let config = Config::builder("SharedTypes", &output_dir)
-//!      .add_extensions()
-//!      .build();
-//!  typegen.swift(config)?;
-//!}
+//! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
 //! ```
 use facet::Facet;
 pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
