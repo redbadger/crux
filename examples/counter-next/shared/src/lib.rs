@@ -13,8 +13,8 @@ pub use capabilities::{RandomNumber, RandomNumberRequest, sse};
 
 #[cfg(not(target_family = "wasm"))]
 const _: () = assert!(
-    uniffi::check_compatible_version("0.29.3"),
-    "please use uniffi v0.29.3"
+    uniffi::check_compatible_version("0.29.4"),
+    "please use uniffi v0.29.4"
 );
 #[cfg(not(target_family = "wasm"))]
 uniffi::setup_scaffolding!();

@@ -1098,9 +1098,9 @@ dependencies = [
 
 [[package]]
 name = "facet"
-version = "0.27.16"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0be4cf803e7c34ab73217e3c05b6c382b8a70a5948a9282ed9d64f62c2a03a90"
+checksum = "3290e0be77e9eeca366489c3b4010764dc897a83e5936a93857c3937f47a57aa"
 dependencies = [
  "facet-core",
  "facet-macros",
@@ -1109,21 +1109,20 @@ dependencies = [
 
 [[package]]
 name = "facet-core"
-version = "0.27.16"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc0dfc311334e2fad887baaebdc3773c05bbbddc286bef7c9c87cfb3fb4235fb"
+checksum = "8643770dc61323e6ae5620f336f4c4fc283a6bf39e6701fed32efa747fba5a6a"
 dependencies = [
  "bitflags",
- "bytes",
  "chrono",
  "impls",
 ]
 
 [[package]]
 name = "facet-macros"
-version = "0.27.16"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c10707410fd2c4f6b779fa04eac1a25d2907322dfb31039f16829c7996236768"
+checksum = "7eb526288148251e984f3a9ab3cef5191ca1da34a45fb5c548781e7053148e19"
 dependencies = [
  "facet-core",
  "facet-macros-emit",
@@ -1131,9 +1130,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros-emit"
-version = "0.27.16"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c496a4d3bd731444d278cf1178302d854c46dd04661e79a67d926b63d60a4cbb"
+checksum = "52619b4834e81068fd915795c297e52f894a18742581627568d451e39dd1c906"
 dependencies = [
  "facet-macros-parse",
  "quote",
@@ -1141,9 +1140,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros-parse"
-version = "0.27.16"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5e81c2f638023b13c3ab6e73b29be6fec44bdced5e418839c215a4b81afc6e2"
+checksum = "e6097c15775794dd66eb69cd4614be654877e3e6e4a93ca0d0440236c1798f0b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1152,9 +1151,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.7.2"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc3c0eba50d970733fc155b08b042ca6276623f21ca523b1ab2da97fd7f8d06e"
+checksum = "1b8e9789d21472322cd27766ad187ac4a091632f53cd5c9908b2f4e3b11b369a"
 dependencies = [
  "anyhow",
  "derive_builder",
@@ -1563,9 +1562,9 @@ dependencies = [
 
 [[package]]
 name = "http-types-red-badger-temporary-fork"
-version = "3.0.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35d5ff8d7cf3f80d71cc473b63293e2fa25c134bc290af787472c7690ae694f8"
+checksum = "10fe78c37484f9560171811e8f0ade5bdeddd0f53f6bba01cebd2275acf5fd88"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2438,9 +2437,9 @@ dependencies = [
 
 [[package]]
 name = "prettyplease"
-version = "0.2.35"
+version = "0.2.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "061c1221631e079b26479d25bbf2275bfe5917ae8419cd7e34f13bfc2aa7539a"
+checksum = "ff24dfcda44452b9816fff4cd4227e1bb73ff5a2f1bc1105aa92fb8565ce44d2"
 dependencies = [
  "proc-macro2",
  "syn 2.0.104",
@@ -3536,9 +3535,9 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "uniffi"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b334fd69b3cf198b63616c096aabf9820ab21ed9b2aa1367ddd4b411068bf520"
+checksum = "c6d968cb62160c11f2573e6be724ef8b1b18a277aededd17033f8a912d73e2b4"
 dependencies = [
  "anyhow",
  "cargo_metadata 0.19.2",
@@ -3550,9 +3549,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_bindgen"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ff0132b533483cf19abb30bba5c72c24d9f3e4d9a2ff71cb3e22e73899fd46e"
+checksum = "f6b39ef1acbe1467d5d210f274fae344cb6f8766339330cb4c9688752899bf6b"
 dependencies = [
  "anyhow",
  "askama",
@@ -3576,9 +3575,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_core"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53e3b997192dc15ef1778c842001811ec7f241a093a693ac864e1fc938e64fa9"
+checksum = "c2d990b553d6b9a7ee9c3ae71134674739913d52350b56152b0e613595bb5a6f"
 dependencies = [
  "anyhow",
  "bytes",
@@ -3588,9 +3587,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_internal_macros"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f64bec2f3a33f2f08df8150e67fa45ba59a2ca740bf20c1beb010d4d791f9a1b"
+checksum = "04f4f224becf14885c10e6e400b95cc4d1985738140cb194ccc2044563f8a56b"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -3601,9 +3600,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_macros"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8708716d2582e4f3d7e9f320290b5966eb951ca421d7630571183615453efc"
+checksum = "b481d385af334871d70904e6a5f129be7cd38c18fcf8dd8fd1f646b426a56d58"
 dependencies = [
  "camino",
  "fs-err",
@@ -3618,9 +3617,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_meta"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d226fc167754ce548c5ece9828c8a06f03bf1eea525d2659ba6bd648bd8e2f3"
+checksum = "10f817868a3b171bb7bf259e882138d104deafde65684689b4694c846d322491"
 dependencies = [
  "anyhow",
  "siphasher",
@@ -3630,9 +3629,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_pipeline"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b925b6421df15cf4bedee27714022cd9626fb4d7eee0923522a608b274ba4371"
+checksum = "4b147e133ad7824e32426b90bc41fda584363563f2ba747f590eca1fd6fd14e6"
 dependencies = [
  "anyhow",
  "heck 0.5.0",
@@ -3643,9 +3642,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_udl"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c42649b721df759d9d4692a376b82b62ce3028ec9fc466f4780fb8cdf728996"
+checksum = "caed654fb73da5abbc7a7e9c741532284532ba4762d6fe5071372df22a41730a"
 dependencies = [
  "anyhow",
  "textwrap 0.16.2",

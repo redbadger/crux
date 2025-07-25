@@ -9,9 +9,6 @@ console_log = "1.0.0"
 log = "0.4.27"
 shared = { path = "../shared" }
 
-# 0.8 needs resolver=2 which is not good for shared/uniffi-bindgen
-# so iOS build struggles. This will all change soon anyway
-# (see https://github.com/redbadger/crux/pull/347)
 leptos = { version = "=0.7.8", features = ["csr"] }
 
 [lints.clippy]

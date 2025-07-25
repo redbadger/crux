@@ -22,10 +22,10 @@ keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-facet = "0.27.16"
+facet = "0.28.0"
 serde = "1.0.219"
-uniffi = "0.29.3"
-uniffi_bindgen = "0.29.3"
+uniffi = "0.29.4"
+uniffi_bindgen = "0.29.4"
 
 [workspace.lints.clippy]
 pedantic = "warn"
