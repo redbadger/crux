@@ -15,10 +15,7 @@ import {
   EffectVariantRandom,
 } from "shared_types/types/shared_types";
 import { ViewModel } from "shared_types/types/view_model";
-import {
-  BincodeSerializer,
-  BincodeDeserializer,
-} from "shared_types/bincode/mod";
+import { BincodeSerializer, BincodeDeserializer } from "shared_types/bincode";
 
 import { request as http } from "./http";
 import { request as sse } from "./sse";

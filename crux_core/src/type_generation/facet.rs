@@ -88,14 +88,15 @@ use facet_generate::{
     generation::{
         Encoding, SourceInstaller, java,
         module::{self, Module},
-        swift, typescript,
+        swift,
+        typescript::{self, InstallTarget},
     },
     reflection::RegistryBuilder,
 };
 use std::{
     fs::{self, File},
     io::Write,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use thiserror::Error;
 
@@ -359,7 +360,7 @@ impl CodeGenerator {
         let types_dir = output_dir.join("types");
         fs::create_dir_all(&types_dir)?;
 
-        let mut installer = typescript::Installer::new(output_dir);
+        let mut installer = typescript::Installer::new(output_dir, &[], InstallTarget::Node);
         if config.add_runtimes {
             installer
                 .install_serde_runtime()
@@ -377,25 +378,21 @@ impl CodeGenerator {
 
             let module_name = module_config.module_name();
 
-            let generator = typescript::CodeGenerator::new(&module_config);
+            let generator = typescript::CodeGenerator::new(&module_config, InstallTarget::Node);
             let mut source = Vec::new();
             generator.output(&mut source, &registry)?;
 
-            // FIXME fix import paths in generated code which assume running on Deno
-            let out = String::from_utf8_lossy(&source)
-                .replace(
-                    "import { BcsSerializer, BcsDeserializer } from '../bcs/mod.ts';",
-                    "",
-                )
-                .replace(".ts'", "'");
-
             let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
-            write!(output, "{out}")?;
+            write!(output, "{}", String::from_utf8_lossy(&source))?;
         }
 
         if config.add_extensions {
             let extensions_dir = Self::extensions_path("typescript");
-            copy(extensions_dir, &config.out_dir)?;
+            for file in ["package.json", "tsconfig.json"] {
+                let source = extensions_dir.join(file);
+                let destination = config.out_dir.join(file);
+                fs::copy(source, destination)?;
+            }
         }
 
         // Install dependencies
@@ -441,22 +438,4 @@ impl CodeGenerator {
             }
         }
     }
-}
-
-fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
-    fs::create_dir_all(to.as_ref())?;
-
-    let entries = fs::read_dir(from)?;
-    for entry in entries {
-        let entry = entry?;
-
-        let to = to.as_ref().to_path_buf().join(entry.file_name());
-        if entry.file_type()?.is_dir() {
-            copy(entry.path(), to)?;
-        } else {
-            fs::copy(entry.path(), to)?;
-        }
-    }
-
-    Ok(())
 }
