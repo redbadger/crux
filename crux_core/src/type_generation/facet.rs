@@ -359,7 +359,7 @@ impl CodeGenerator {
         let types_dir = output_dir.join("types");
         fs::create_dir_all(&types_dir)?;
 
-        let mut installer = typescript::Installer::new(&output_dir);
+        let mut installer = typescript::Installer::new(output_dir);
         if config.add_runtimes {
             installer
                 .install_serde_runtime()
@@ -400,7 +400,7 @@ impl CodeGenerator {
 
         // Install dependencies
         std::process::Command::new("pnpm")
-            .current_dir(output_dir.clone())
+            .current_dir(output_dir)
             .arg("install")
             .status()
             .map_err(|e| match e.kind() {
