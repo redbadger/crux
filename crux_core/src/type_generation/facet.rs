@@ -354,7 +354,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn typescript(&self, config: &Config) -> Result {
         fs::create_dir_all(&config.out_dir)?;
-        let output_dir = config.out_dir.clone();
+        let output_dir = &config.out_dir;
 
         let types_dir = output_dir.join("types");
         fs::create_dir_all(&types_dir)?;
