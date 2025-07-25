@@ -19,12 +19,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.crux.example.bridge_echo.DataPoint
 import com.crux.example.bridge_echo.Event
 import com.example.bridge_echo.ui.theme.BridgeEchoTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Optional
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +55,12 @@ fun View(model: MyCore = viewModel()) {
                 fontSize = 30.sp,
                 modifier = Modifier.padding(10.dp)
         )
+
+        Text(
+            text = "Average: ${(if ((model.view?.log?.count() ?: 0) > 0) ((model.view?.log?.sum() ?: 1) / (model.view?.log?.count() ?: 1)) else 0)}",
+            fontSize = 30.sp,
+            modifier = Modifier.padding(10.dp)
+        )
     }
 }
 
@@ -69,9 +77,17 @@ class MyCore : Core() {
     }
 
     private suspend fun ticker() {
+        val payload = (1..10).map { n ->
+            DataPoint(
+                n.toLong(),
+                n.toDouble(),
+                "item_${n}",
+                if (n % 2 == 0) Optional.of("meta_${n}") else Optional.empty())
+        }
+
         withContext(Dispatchers.Default) {
             while (true) {
-                update(Event.Tick())
+                update(Event.Tick(payload))
             }
         }
     }
