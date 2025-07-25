@@ -5,7 +5,7 @@ members = ["shared", "web-leptos"]
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.88"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]

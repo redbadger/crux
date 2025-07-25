@@ -33,8 +33,8 @@ importers:
         specifier: file:../shared/pkg
         version: file:../shared/pkg
       shared_types:
-        specifier: file:../shared_types/generated/typescript
-        version: file:../shared_types/generated/typescript
+        specifier: file:../shared/generated/typescript
+        version: file:../shared/generated/typescript
     devDependencies:
       '@remix-run/dev':
         specifier: ^2.16.0
@@ -3205,8 +3205,8 @@ packages:
   shared@file:../shared/pkg:
     resolution: {directory: ../shared/pkg, type: directory}
 
-  shared_types@file:../shared_types/generated/typescript:
-    resolution: {directory: ../shared_types/generated/typescript, type: directory}
+  shared_types@file:../shared/generated/typescript:
+    resolution: {directory: ../shared/generated/typescript, type: directory}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -7417,7 +7417,7 @@ snapshots:
 
   shared@file:../shared/pkg: {}
 
-  shared_types@file:../shared_types/generated/typescript: {}
+  shared_types@file:../shared/generated/typescript: {}
 
   shebang-command@2.0.0:
     dependencies:

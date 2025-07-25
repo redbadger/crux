@@ -19,8 +19,8 @@ crux_core.workspace = true
 crux_http.workspace = true
 futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }
-serde_json = "1.0.140"
-uniffi = "0.29.3"
+serde_json = "1.0.141"
+uniffi = "0.29.4"
 url = "2.5.4"
 wasm-bindgen = "0.2.100"
 
@@ -28,10 +28,10 @@ wasm-bindgen = "0.2.100"
 insta = { version = "1.43.1", features = ["yaml"] }
 
 [build-dependencies]
-uniffi = { version = "0.29.3", features = ["build"] }
+uniffi = { version = "0.29.4", features = ["build"] }
 
 [target.uniffi-bindgen.dependencies]
-uniffi = { version = "0.29.3", features = ["cli"] }
+uniffi = { version = "0.29.4", features = ["cli"] }
 
 [features]
 typegen = ["crux_core/typegen"]
