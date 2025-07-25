@@ -59,9 +59,19 @@
 //!
 //!  let typegen = TypeRegistry::new().register_app::<App>().build();
 //!
-//!  typegen.java("com.crux.example.counter.shared", output_root.join("java"))?;
+//!  typegen.java(
+//!      Config::builder("com.crux.example.counter.shared", output_root.join("java"))
+//!      .add_extensions()
+//!      .add_runtimes()
+//!      .build()
+//!  )?;
 //!
-//!  typegen.typescript("shared_types", output_root.join("typescript"))?;
+//!  typegen.typescript(
+//!      Config::builder("shared_types", output_root.join("typescript"))
+//!      .add_extensions()
+//!      .add_runtimes()
+//!      .build()
+//!  )?;
 //!
 //!  let output_dir = output_root.join("swift");
 //!
@@ -208,17 +218,14 @@ impl CodeGenerator {
     ///
     /// # Errors
     /// Errors that can occur during type generation.
-    pub fn swift(&self, config: Config) -> Result {
+    pub fn swift(&self, config: &Config) -> Result {
         let path = config.out_dir.join(&config.package_name);
         let sources = path.join("Sources");
 
         fs::create_dir_all(&path)?;
 
-        let mut installer = swift::Installer::new(
-            config.package_name.to_string(),
-            path,
-            config.external_packages,
-        );
+        let mut installer =
+            swift::Installer::new(&config.package_name, &path, &config.external_packages);
 
         if config.add_runtimes {
             installer
@@ -261,60 +268,69 @@ impl CodeGenerator {
     /// Generates types for Java (for use with Kotlin)
     /// e.g.
     /// ```rust
-    /// # use crux_core::type_generation::facet::TypeRegistry;
+    /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
     /// # let mut typegen = TypeRegistry::new().build();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// typegen.java("com.crux.example", output_root.join("java"))?;
+    /// typegen.java(
+    ///     Config::builder("com.crux.example", output_root.join("java"))
+    ///     .add_extensions()
+    ///     .add_runtimes()
+    ///     .build()
+    /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
     ///
     /// # Errors
     /// Errors that can occur during type generation.
-    pub fn java(&self, package_name: &str, path: impl AsRef<Path>) -> Result {
-        fs::create_dir_all(&path)?;
+    pub fn java(&self, config: &Config) -> Result {
+        fs::create_dir_all(&config.out_dir)?;
 
-        let package_path = package_name.replace('.', "/");
+        let package_path = config.package_name.replace('.', "/");
 
         // remove any existing generated shared types, this ensures that we remove no longer used types
-        fs::remove_dir_all(path.as_ref().join(&package_path)).unwrap_or(());
+        fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        let mut installer = java::Installer::new(path.as_ref().to_path_buf());
-        installer
-            .install_serde_runtime()
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        installer
-            .install_bincode_runtime()
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        let mut installer = java::Installer::new(&config.out_dir);
+        if config.add_runtimes {
+            installer
+                .install_serde_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+            installer
+                .install_bincode_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
 
-        for (module, registry) in module::split(package_name, &self.0) {
+        for (module, registry) in module::split(&config.package_name, &self.0) {
             let this_module = &module.config().module_name;
-            let is_root_package = package_name == this_module;
+            let is_root_package = config.package_name == *this_module;
             let module = if is_root_package {
                 module
             } else {
-                Module::new([package_name, this_module].join("."))
+                Module::new(format!("{}.{}", config.package_name, this_module))
             };
 
-            let config = module
+            let module_config = module
                 .config()
                 .clone()
                 .with_encodings(vec![Encoding::Bincode]);
 
             installer
-                .install_module(&config, &registry)
+                .install_module(&module_config, &registry)
                 .map_err(|e| TypeGenError::Generation(e.to_string()))?;
         }
 
-        let requests_path = Self::extensions_path("java/Requests.java");
+        if config.add_extensions {
+            let requests_path = Self::extensions_path("java/Requests.java");
 
-        let requests_data = fs::read_to_string(requests_path)?;
+            let requests_data = fs::read_to_string(requests_path)?;
 
-        let requests = format!("package {package_name};\n\n{requests_data}");
+            let requests = format!("package {};\n\n{requests_data}", config.package_name);
 
-        let output_dir = path.as_ref().join(package_path);
-        fs::create_dir_all(&output_dir)?;
-        fs::write(output_dir.join("Requests.java"), requests)?;
+            let output_dir = config.out_dir.join(package_path);
+            fs::create_dir_all(&output_dir)?;
+            fs::write(output_dir.join("Requests.java"), requests)?;
+        }
 
         Ok(())
     }
@@ -322,39 +338,46 @@ impl CodeGenerator {
     /// Generates types for TypeScript
     /// e.g.
     /// ```rust
-    /// # use crux_core::type_generation::facet::TypeRegistry;
+    /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
     /// # let mut typegen = TypeRegistry::new().build();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// typegen.typescript("shared_types", output_root.join("typescript"))?;
+    /// typegen.typescript(
+    ///     Config::builder("shared_types", output_root.join("typescript"))
+    ///     .add_extensions()
+    ///     .add_runtimes()
+    ///     .build()
+    /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
     /// # Errors
     /// Errors that can occur during type generation.
-    pub fn typescript(&self, package_name: &str, path: impl AsRef<Path>) -> Result {
-        fs::create_dir_all(&path)?;
-        let output_dir = path.as_ref().to_path_buf();
+    pub fn typescript(&self, config: &Config) -> Result {
+        fs::create_dir_all(&config.out_dir)?;
+        let output_dir = config.out_dir.clone();
 
         let types_dir = output_dir.join("types");
         fs::create_dir_all(&types_dir)?;
 
-        let mut installer = typescript::Installer::new(output_dir.clone());
-        installer
-            .install_serde_runtime()
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        installer
-            .install_bincode_runtime()
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        let mut installer = typescript::Installer::new(&output_dir);
+        if config.add_runtimes {
+            installer
+                .install_serde_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+            installer
+                .install_bincode_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
 
-        for (module, registry) in module::split(package_name, &self.0) {
-            let config = module
+        for (module, registry) in module::split(&config.package_name, &self.0) {
+            let module_config = module
                 .config()
                 .clone()
                 .with_encodings(vec![Encoding::Bincode]);
 
-            let module_name = config.module_name();
+            let module_name = module_config.module_name();
 
-            let generator = typescript::CodeGenerator::new(&config);
+            let generator = typescript::CodeGenerator::new(&module_config);
             let mut source = Vec::new();
             generator.output(&mut source, &registry)?;
 
@@ -370,8 +393,10 @@ impl CodeGenerator {
             write!(output, "{out}")?;
         }
 
-        let extensions_dir = Self::extensions_path("typescript");
-        copy(extensions_dir, path)?;
+        if config.add_extensions {
+            let extensions_dir = Self::extensions_path("typescript");
+            copy(extensions_dir, &config.out_dir)?;
+        }
 
         // Install dependencies
         std::process::Command::new("pnpm")

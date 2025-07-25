@@ -15,11 +15,17 @@ fn main() -> anyhow::Result<()> {
 
     let typegen = TypeRegistry::new().register_app::<App>().build();
 
-    let output_java = out_dir.join("java");
-    typegen.java("com.crux.example.counter.shared", output_java)?;
+    let config = Config::builder("com.crux.example.counter.shared", out_dir.join("java"))
+        .add_extensions()
+        .add_runtimes()
+        .build();
+    typegen.java(&config)?;
 
-    let output_typescript = out_dir.join("typescript");
-    typegen.typescript("shared_types", output_typescript)?;
+    let config = Config::builder("shared_types", out_dir.join("typescript"))
+        .add_extensions()
+        .add_runtimes()
+        .build();
+    typegen.typescript(&config)?;
 
     let output_swift = out_dir.join("swift");
 
@@ -37,7 +43,7 @@ fn main() -> anyhow::Result<()> {
         })
         .add_extensions()
         .build();
-    typegen.swift(config)?;
+    typegen.swift(&config)?;
 
     // Swift Package for ServerSentEvents
     let config = Config::builder("ServerSentEvents", &output_swift)
@@ -51,13 +57,13 @@ fn main() -> anyhow::Result<()> {
         .register_type::<SseRequest>()
         .register_type::<SseResponse>()
         .build()
-        .swift(config)?;
+        .swift(&config)?;
 
     // Swift Package for Serde
     let config = Config::builder("Serde", &output_swift)
         .add_runtimes()
         .build();
-    TypeRegistry::new().build().swift(config)?;
+    TypeRegistry::new().build().swift(&config)?;
 
     // bindgen for kotlin
     crux_core::cli::bindgen(&BindgenArgs {
