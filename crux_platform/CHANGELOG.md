@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0-rc3](https://github.com/redbadger/crux/compare/crux_platform-v0.6.0...crux_platform-v0.7.0-rc3) - 2025-07-03
+## [0.7.0-rc4](https://github.com/redbadger/crux/compare/crux_platform-v0.6.0...crux_platform-v0.7.0-rc4) - 2025-07-03
 
 ### ⚙️ Miscellaneous Tasks
 

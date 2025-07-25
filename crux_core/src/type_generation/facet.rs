@@ -208,7 +208,7 @@ impl CodeGenerator {
     /// # let mut typegen = TypeRegistry::new().build();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.swift(
-    ///     Config::builder("SharedTypes", output_root.join("swift"))
+    ///     &Config::builder("SharedTypes", output_root.join("swift"))
     ///     .add_extensions()
     ///     .add_runtimes()
     ///     .build()
@@ -273,7 +273,7 @@ impl CodeGenerator {
     /// # let mut typegen = TypeRegistry::new().build();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.java(
-    ///     Config::builder("com.crux.example", output_root.join("java"))
+    ///     &Config::builder("com.crux.example", output_root.join("java"))
     ///     .add_extensions()
     ///     .add_runtimes()
     ///     .build()
@@ -343,7 +343,7 @@ impl CodeGenerator {
     /// # let mut typegen = TypeRegistry::new().build();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.typescript(
-    ///     Config::builder("shared_types", output_root.join("typescript"))
+    ///     &Config::builder("shared_types", output_root.join("typescript"))
     ///     .add_extensions()
     ///     .add_runtimes()
     ///     .build()

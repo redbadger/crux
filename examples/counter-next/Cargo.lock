@@ -723,7 +723,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.16.0-rc3"
+version = "0.16.0-rc4"
 dependencies = [
  "anyhow",
  "bincode",
@@ -742,7 +742,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.15.0-rc3"
+version = "0.15.0-rc4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.7.0-rc3"
+version = "0.7.0-rc4"
 dependencies = [
  "darling 0.21.0",
  "heck 0.5.0",

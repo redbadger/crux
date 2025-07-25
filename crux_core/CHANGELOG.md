@@ -8,7 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.16.0-rc3](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0-rc3) - 2025-07-22
+## [0.16.0-rc4](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0-rc4) - 2025-07-22
 
 ### 🚀 Features
 
