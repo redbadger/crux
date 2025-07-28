@@ -1151,9 +1151,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b8e9789d21472322cd27766ad187ac4a091632f53cd5c9908b2f4e3b11b369a"
+checksum = "8a912ea892b30828c973f457e182b0b2d689d264880bf9bf423526db298d461e"
 dependencies = [
  "anyhow",
  "derive_builder",
@@ -1165,6 +1165,7 @@ dependencies = [
  "indoc",
  "once_cell",
  "serde",
+ "serde_json",
  "textwrap 0.16.2",
  "thiserror 2.0.12",
  "typeid",
