@@ -93,6 +93,7 @@ use facet_generate::{
     },
     reflection::RegistryBuilder,
 };
+use serde_json::json;
 use std::{
     fs::{self, File},
     io::Write,
@@ -386,14 +387,25 @@ impl CodeGenerator {
             write!(output, "{}", String::from_utf8_lossy(&source))?;
         }
 
-        if config.add_extensions {
-            let extensions_dir = Self::extensions_path("typescript");
-            for file in ["package.json", "tsconfig.json"] {
-                let source = extensions_dir.join(file);
-                let destination = config.out_dir.join(file);
-                fs::copy(source, destination)?;
+        let ts_config_str = serde_json::to_string_pretty(&json!({
+            "compilerOptions": {
+                "target": "es2020",
+                "module": "commonjs",
+                "declaration": true,
+                "esModuleInterop": true,
+                "strict": true,
+                "esModuleInterop": true,
+                "skipLibCheck": true,
+                "forceConsistentCasingInFileNames": true
             }
-        }
+        }))
+        .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        let mut output = File::create(output_dir.join("tsconfig.json"))?;
+        write!(output, "{ts_config_str}")?;
+
+        installer
+            .install_manifest(&config.package_name)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         // Install dependencies
         std::process::Command::new("pnpm")
