@@ -1,11 +1,10 @@
-use super::{decode::decode_body, new_headers};
-use facet::Facet;
-use http_types::{
-    self, Mime, StatusCode, Version,
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
+use super::decode::decode_body;
+use crate::{
+    Mime, StatusCode, Version,
+    header::{self, HeaderMap, HeaderName, HeaderValue},
 };
+use facet::Facet;
 
-use http_types::{Headers, headers::CONTENT_TYPE};
 use serde::de::DeserializeOwned;
 
 use std::fmt;
@@ -14,10 +13,10 @@ use std::ops::Index;
 /// An HTTP Response that will be passed to in a message to an apps update function
 #[derive(Facet, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
-    version: Option<http_types::Version>,
-    status: http_types::StatusCode,
+    version: Option<Version>,
+    status: StatusCode,
     #[serde(with = "header_serde")]
-    headers: Headers,
+    headers: HeaderMap,
     body: Option<Body>,
 }
 
@@ -35,7 +34,7 @@ impl<Body> Response<Body> {
             });
         }
 
-        let headers: &Headers = res.as_ref();
+        let headers: &HeaderMap = res.as_ref();
         let headers = headers.clone();
 
         Ok(Response {
@@ -81,52 +80,52 @@ impl<Body> Response<Body> {
     /// #   .build();
     /// assert!(res.header("Content-Length").is_some());
     /// ```
-    pub fn header(&self, name: impl Into<HeaderName>) -> Option<&HeaderValues> {
+    pub fn header(&self, name: impl Into<HeaderName>) -> Option<&HeaderMap> {
         self.headers.get(name)
     }
 
     /// Get an HTTP header mutably.
-    pub fn header_mut(&mut self, name: impl Into<HeaderName>) -> Option<&mut HeaderValues> {
+    pub fn header_mut(&mut self, name: impl Into<HeaderName>) -> Option<&mut HeaderMap> {
         self.headers.get_mut(name)
     }
 
     /// Remove a header.
-    pub fn remove_header(&mut self, name: impl Into<HeaderName>) -> Option<HeaderValues> {
+    pub fn remove_header(&mut self, name: impl Into<HeaderName>) -> Option<HeaderMap> {
         self.headers.remove(name)
     }
 
     /// Insert an HTTP header.
-    pub fn insert_header(&mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) {
+    pub fn insert_header(&mut self, key: impl Into<HeaderName>, value: impl Into<HeaderValue>) {
         self.headers.insert(key, value);
     }
 
     /// Append an HTTP header.
-    pub fn append_header(&mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) {
+    pub fn append_header(&mut self, key: impl Into<HeaderName>, value: impl Into<HeaderValue>) {
         self.headers.append(key, value);
     }
 
     /// An iterator visiting all header pairs in arbitrary order.
     #[must_use]
-    pub fn iter(&self) -> headers::Iter<'_> {
+    pub fn iter(&self) -> impl Iterator<Item = (&HeaderName, &HeaderValue)> {
         self.headers.iter()
     }
 
     /// An iterator visiting all header pairs in arbitrary order, with mutable references to the
     /// values.
     #[must_use]
-    pub fn iter_mut(&mut self) -> headers::IterMut<'_> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&HeaderName, &mut HeaderValue)> {
         self.headers.iter_mut()
     }
 
     /// An iterator visiting all header names in arbitrary order.
     #[must_use]
-    pub fn header_names(&self) -> headers::Names<'_> {
-        self.headers.names()
+    pub fn header_names(&self) -> impl Iterator<Item = &HeaderName> {
+        self.headers.keys()
     }
 
     /// An iterator visiting all header values in arbitrary order.
     #[must_use]
-    pub fn header_values(&self) -> headers::Values<'_> {
+    pub fn header_values(&self) -> impl Iterator<Item = &HeaderValue> {
         self.headers.values()
     }
 
@@ -150,7 +149,11 @@ impl<Body> Response<Body> {
     /// assert_eq!(res.content_type(), Some(mime::JSON));
     /// ```
     pub fn content_type(&self) -> Option<Mime> {
-        self.header(CONTENT_TYPE)?.last().as_str().parse().ok()
+        self.header(header::CONTENT_TYPE)?
+            .last()
+            .as_str()
+            .parse()
+            .ok()
     }
 
     pub fn body(&self) -> Option<&Body> {
@@ -172,24 +175,25 @@ impl<Body> Response<Body> {
 }
 
 impl<'a, Body> IntoIterator for &'a Response<Body> {
-    type Item = (&'a headers::HeaderName, &'a headers::HeaderValues);
-    type IntoIter = headers::Iter<'a>;
+    type Item = (&'a header::HeaderName, &'a header::HeaderValue);
+    type IntoIter = header::Iter<'a, HeaderValue>;
+
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
 impl<'a, Body> IntoIterator for &'a mut Response<Body> {
-    type Item = (&'a headers::HeaderName, &'a mut headers::HeaderValues);
-    type IntoIter = headers::IterMut<'a>;
+    type Item = (&'a header::HeaderName, &'a mut header::HeaderValue);
+    type IntoIter = header::IterMut<'a, header::HeaderValue>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
 }
 
 impl Response<Vec<u8>> {
-    pub(crate) fn new_with_status(status: http_types::StatusCode) -> Self {
-        let headers = new_headers();
+    pub(crate) fn new_with_status(status: crate::StatusCode) -> Self {
+        let headers = HeaderMap::new();
 
         Response {
             status,
@@ -306,14 +310,14 @@ impl Response<Vec<u8>> {
     }
 }
 
-impl<Body> AsRef<http_types::Headers> for Response<Body> {
-    fn as_ref(&self) -> &http_types::Headers {
+impl<Body> AsRef<header::HeaderMap> for Response<Body> {
+    fn as_ref(&self) -> &header::HeaderMap {
         &self.headers
     }
 }
 
-impl<Body> AsMut<http_types::Headers> for Response<Body> {
-    fn as_mut(&mut self) -> &mut http_types::Headers {
+impl<Body> AsMut<header::HeaderMap> for Response<Body> {
+    fn as_mut(&mut self) -> &mut header::HeaderMap {
         &mut self.headers
     }
 }
@@ -329,7 +333,7 @@ impl<Body> fmt::Debug for Response<Body> {
 }
 
 impl<Body> Index<HeaderName> for Response<Body> {
-    type Output = HeaderValues;
+    type Output = HeaderValue;
 
     /// Returns a reference to the value corresponding to the supplied name.
     ///
@@ -337,13 +341,13 @@ impl<Body> Index<HeaderName> for Response<Body> {
     ///
     /// Panics if the name is not present in `Response`.
     #[inline]
-    fn index(&self, name: HeaderName) -> &HeaderValues {
+    fn index(&self, name: HeaderName) -> &HeaderValue {
         &self.headers[name]
     }
 }
 
 impl<Body> Index<&str> for Response<Body> {
-    type Output = HeaderValues;
+    type Output = HeaderValue;
 
     /// Returns a reference to the value corresponding to the supplied name.
     ///
@@ -351,7 +355,7 @@ impl<Body> Index<&str> for Response<Body> {
     ///
     /// Panics if the name is not present in `Response`.
     #[inline]
-    fn index(&self, name: &str) -> &HeaderValues {
+    fn index(&self, name: &str) -> &HeaderValue {
         &self.headers[name]
     }
 }
@@ -378,55 +382,11 @@ where
 
 impl<Body> Eq for Response<Body> where Body: Eq {}
 
-#[cfg(feature = "http-compat")]
-impl<Body> TryInto<http::Response<Body>> for Response<Body> {
-    type Error = ();
-
-    fn try_into(self) -> Result<http::Response<Body>, Self::Error> {
-        let mut response = http::Response::new(self.body.ok_or(())?);
-
-        if let Some(version) = self.version {
-            let version = match version {
-                Version::Http0_9 => Some(http::Version::HTTP_09),
-                Version::Http1_0 => Some(http::Version::HTTP_10),
-                Version::Http1_1 => Some(http::Version::HTTP_11),
-                Version::Http2_0 => Some(http::Version::HTTP_2),
-                Version::Http3_0 => Some(http::Version::HTTP_3),
-                _ => None,
-            };
-
-            if let Some(version) = version {
-                *response.version_mut() = version;
-            }
-        }
-
-        let mut headers = self.headers;
-        headers_to_hyperium_headers(&mut headers, response.headers_mut());
-
-        Ok(response)
-    }
-}
-
-#[cfg(feature = "http-compat")]
-fn headers_to_hyperium_headers(headers: &mut Headers, hyperium_headers: &mut http::HeaderMap) {
-    for (name, values) in headers {
-        let name = format!("{name}").into_bytes();
-        let name = http::header::HeaderName::from_bytes(&name).unwrap();
-
-        for value in values.iter() {
-            let value = format!("{value}").into_bytes();
-            let value = http::header::HeaderValue::from_bytes(&value).unwrap();
-            hyperium_headers.append(&name, value);
-        }
-    }
-}
-
 mod header_serde {
-    use crate::{http::Headers, response::new_headers};
-    use http_types::headers::{HeaderName, HeaderValue};
+    use crate::header::{HeaderMap, HeaderName, HeaderValue};
     use serde::{Deserializer, Serializer, de::Error};
 
-    pub fn serialize<S>(headers: &Headers, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(headers: &HeaderMap, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -438,13 +398,13 @@ mod header_serde {
         }))
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Headers, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<HeaderMap, D::Error>
     where
         D: Deserializer<'de>,
     {
         let strs = <Vec<(String, Vec<String>)> as serde::Deserialize>::deserialize(deserializer)?;
 
-        let mut headers = new_headers();
+        let mut headers = HeaderMap::new();
 
         for (name, values) in strs {
             let name = HeaderName::from_string(name).map_err(D::Error::custom)?;

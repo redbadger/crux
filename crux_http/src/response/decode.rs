@@ -1,5 +1,4 @@
-use http_types::Error;
-
+use anyhow::Error; // FIXME: not ideal?
 use std::fmt;
 use std::io;
 

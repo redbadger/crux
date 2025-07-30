@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::middleware::{Middleware, Next};
 use crate::protocol::{EffectSender, HttpResult, ProtocolRequestBuilder};
 use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
-use http_types::{Method, Url};
+use crate::{Method, Url};
 
 /// An HTTP client, capable of sending `Request`s
 ///

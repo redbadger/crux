@@ -1,7 +1,7 @@
 use crate::middleware::Middleware;
-use http_types::{
-    Body, Method, Mime, Url,
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
+use crate::{
+    Method, Mime, Url,
+    header::{self, HeaderName, HeaderValues, ToHeaderValues},
 };
 
 use serde::Serialize;
@@ -14,7 +14,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct Request {
     /// Holds the state of the request.
-    req: http_types::Request,
+    req: http::,
     /// Holds an optional per-request middleware stack.
     middleware: Option<Vec<Arc<dyn Middleware>>>,
 }
@@ -38,7 +38,7 @@ impl Request {
     /// ```
     #[must_use]
     pub fn new(method: Method, url: Url) -> Self {
-        let req = http_types::Request::new(method, url);
+        let req = http::Request::new(method, url);
         Self {
             req,
             middleware: None,

@@ -16,7 +16,7 @@ default = ["encoding"]
 encoding = ["encoding_rs", "web-sys"]
 typegen = ["crux_core/typegen"]
 facet_typegen = ["crux_core/facet_typegen"]
-http-compat = ["dep:http"]
+http-compat = []                            # now default
 
 [dependencies]
 anyhow.workspace = true
@@ -26,8 +26,8 @@ derive_builder = "0.20.2"
 encoding_rs = { version = "0.8.35", optional = true }
 facet.workspace = true
 futures-util = "0.3"
-http = { version = "1.3", optional = true }
-http-types = { package = "http-types-red-badger-temporary-fork", version = "4.0.0", default-features = false }
+http = { version = "1.3" }
+mime = "0.3.17"
 pin-project-lite = "0.2.16"
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11"

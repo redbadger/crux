@@ -16,7 +16,7 @@
 
 use crate::middleware::{Middleware, Next, Request};
 use crate::{Client, ResponseAsync, Result};
-use http_types::{StatusCode, Url, headers};
+use crate::{StatusCode, Url, header};
 
 // List of acceptable 300-series redirect codes.
 const REDIRECT_CODES: &[StatusCode] = &[
@@ -107,7 +107,7 @@ impl Middleware for Redirect {
             let r: Request = request.clone();
             let res: ResponseAsync = client.send(r).await?;
             if REDIRECT_CODES.contains(&res.status()) {
-                if let Some(location) = res.header(headers::LOCATION) {
+                if let Some(location) = res.header(header::LOCATION) {
                     let http_req: &mut http_types::Request = request.as_mut();
                     *http_req.url_mut() = match Url::parse(location.last().as_str()) {
                         Ok(valid_url) => {
@@ -115,7 +115,7 @@ impl Middleware for Redirect {
                             base_url.clone()
                         }
                         Err(e) => match e {
-                            http_types::url::ParseError::RelativeUrlWithoutBase => {
+                            url::ParseError::RelativeUrlWithoutBase => {
                                 base_url.join(location.last().as_str())?
                             }
                             e => return Err(e.into()),

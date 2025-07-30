@@ -8,8 +8,6 @@
 
 #[expect(deprecated)]
 use crux_core::capability::CapabilityContext;
-use http_types::Method;
-use url::Url;
 
 mod config;
 mod error;
@@ -24,7 +22,9 @@ pub mod middleware;
 pub mod protocol;
 pub mod testing;
 
-pub use http_types as http;
+pub use http::{Method, StatusCode, Version, header};
+pub use mime::Mime;
+pub use url::Url;
 
 pub use self::{
     config::Config,
@@ -110,7 +110,7 @@ where
     /// # }
     /// ```
     pub fn get(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::GET, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP HEAD request to the provided `url`.
@@ -135,7 +135,7 @@ where
     /// # }
     /// ```
     pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::HEAD, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP POST request to the provided `url`.
@@ -160,7 +160,7 @@ where
     /// # }
     /// ```
     pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::POST, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP PUT request to the provided `url`.
@@ -185,7 +185,7 @@ where
     /// # }
     /// ```
     pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::PUT, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP DELETE request to the provided `url`.
@@ -210,7 +210,7 @@ where
     /// # }
     /// ```
     pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::DELETE, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP CONNECT request to the provided `url`.
@@ -235,7 +235,7 @@ where
     /// # }
     /// ```
     pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::CONNECT, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP OPTIONS request to the provided `url`.
@@ -260,7 +260,7 @@ where
     /// # }
     /// ```
     pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::OPTIONS, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP TRACE request to the provided `url`.
@@ -285,7 +285,7 @@ where
     /// # }
     /// ```
     pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::TRACE, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform a HTTP PATCH request to the provided `url`.
@@ -300,7 +300,7 @@ where
     ///
     /// This will panic if a malformed URL is passed.
     pub fn patch(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap(), self.clone())
+        RequestBuilder::new(Method::PATCH, url.as_ref().parse().unwrap(), self.clone())
     }
 
     /// Instruct the Shell to perform an HTTP request with the provided `method` and `url`.
@@ -310,7 +310,7 @@ where
     ///
     /// When finished, the response will be wrapped in an event and dispatched to
     /// the app's `update` function.
-    pub fn request(&self, method: http_types::Method, url: Url) -> RequestBuilder<Ev> {
+    pub fn request(&self, method: Method, url: Url) -> RequestBuilder<Ev> {
         RequestBuilder::new(method, url, self.clone())
     }
 }
