@@ -17,7 +17,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "shared": "file:../shared/pkg",
-    "shared_types": "file:../shared/generated/typescript"
+    "app": "file:../shared/generated/app/typescript",
+    "server_sent_events": "file:../shared/generated/sse/typescript",
+    "serde": "file:../shared/generated/serde/typescript"
   },
   "devDependencies": {
     "@remix-run/dev": "^2.16.0",

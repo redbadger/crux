@@ -57,13 +57,15 @@ fn app(out_dir: &Path) -> Result<()> {
         &Config::builder("com.crux.example.counter.app", out_dir.join("java"))
             .reference(ExternalPackage {
                 for_namespace: "server_sent_events".to_string(),
-                location: PackageLocation::Path(String::default()),
+                location: PackageLocation::Path(
+                    "com.crux.example.counter.sse.server_sent_events".to_string(),
+                ),
                 module_name: None,
                 version: None,
             })
             .reference(ExternalPackage {
                 for_namespace: "serde".to_string(),
-                location: PackageLocation::Path(String::default()),
+                location: PackageLocation::Path("com.novi.serde".to_string()),
                 module_name: None,
                 version: None,
             })
@@ -113,7 +115,7 @@ fn sse(out_dir: &Path) -> Result<()> {
         &Config::builder("com.crux.example.counter.sse", out_dir.join("java"))
             .reference(ExternalPackage {
                 for_namespace: "serde".to_string(),
-                location: PackageLocation::Path(String::default()),
+                location: PackageLocation::Path("com.novi.serde".to_string()),
                 module_name: None,
                 version: None,
             })

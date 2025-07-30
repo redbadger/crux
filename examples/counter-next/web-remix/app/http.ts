@@ -1,9 +1,5 @@
-import type { HttpRequest, HttpResult } from "shared_types/types/shared_types";
-import {
-  HttpResponse,
-  HttpHeader,
-  HttpResultVariantOk,
-} from "shared_types/types/shared_types";
+import type { HttpRequest, HttpResult } from "app/app";
+import { HttpResponse, HttpHeader, HttpResultVariantOk } from "app/app";
 
 export async function request({
   url,

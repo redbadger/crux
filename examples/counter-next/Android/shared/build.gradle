@@ -27,14 +27,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_20
-        targetCompatibility JavaVersion.VERSION_20
-    }
-    kotlinOptions {
-        jvmTarget = '20'
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
     sourceSets {
-        main.java.srcDirs += "${projectDir}/../../shared/generated/java"
+        main.java.srcDirs += "${projectDir}/../../shared/generated/app/java"
+        main.java.srcDirs += "${projectDir}/../../shared/generated/sse/java"
+        main.java.srcDirs += "${projectDir}/../../shared/generated/serde/java"
     }
 }
 

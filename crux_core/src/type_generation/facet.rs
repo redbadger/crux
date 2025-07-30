@@ -223,6 +223,7 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn swift(&self, config: &Config) -> Result {
+        info!("Generating Swift types");
         let path = config.out_dir.join(&config.package_name);
         let sources = path.join("Sources");
 
@@ -288,6 +289,7 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn java(&self, config: &Config) -> Result {
+        info!("Generating Java types");
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -295,7 +297,11 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        let mut installer = java::Installer::new(&config.out_dir);
+        let mut installer = java::Installer::new(
+            &config.package_name,
+            &config.out_dir,
+            &config.external_packages,
+        );
         if config.add_runtimes {
             installer
                 .install_serde_runtime()
@@ -357,6 +363,7 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn typescript(&self, config: &Config) -> Result {
+        info!("Generating TypeScript types");
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 

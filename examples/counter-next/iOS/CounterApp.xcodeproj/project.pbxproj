@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,23 +13,23 @@
 		4673110F6AD3F8E2A37B0111 /* Serde in Frameworks */ = {isa = PBXBuildFile; productRef = B5D6D2B0E5CFCCBA18D3CE3E /* Serde */; };
 		B6930825270C051C48F86524 /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408B50841C0469CE0D78A7C2 /* core.swift */; };
 		B80467C7DA8DB82760663B44 /* CounterAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D533D9BD281C15290E4016E5 /* CounterAppApp.swift */; };
-		C9DE83DFE3BDDF3357E9DFC6 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 32258924E0AD419BAA621949 /* SharedTypes */; };
+		C9DE83DFE3BDDF3357E9DFC6 /* App in Frameworks */ = {isa = PBXBuildFile; productRef = 99D49CCBD850626B27A21E79 /* App */; };
 		DAEFD22602D3904B391A4585 /* ServerSentEvents in Frameworks */ = {isa = PBXBuildFile; productRef = 25294CD2464DD084B3FCB6BE /* ServerSentEvents */; };
 		E49A93362F08CF053C69A7F5 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCEAEA08AFCD101ED86B664C /* http.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0BC930BE6C51EBF4D7F07A9C /* Shared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Shared; path = ../shared/Shared; sourceTree = SOURCE_ROOT; };
-		3E8C5370E0452BE8744E1827 /* ServerSentEvents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ServerSentEvents; path = ../shared/generated/swift/ServerSentEvents; sourceTree = SOURCE_ROOT; };
+		3E8C5370E0452BE8744E1827 /* ServerSentEvents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ServerSentEvents; path = ../shared/generated/sse/swift/ServerSentEvents; sourceTree = SOURCE_ROOT; };
 		408B50841C0469CE0D78A7C2 /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		67D62EB120D164DFC93E7EC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		6D984934DC207C1C28EDF6F1 /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		72B940D339BFB9B4DC05041C /* sse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sse.swift; sourceTree = "<group>"; };
 		9D06BFB95E0269CB9E1CD716 /* CounterApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CounterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC65D3FCB825EAD8916AD165 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../shared/generated/app/swift/App; sourceTree = SOURCE_ROOT; };
 		BCEAEA08AFCD101ED86B664C /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
 		D533D9BD281C15290E4016E5 /* CounterAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterAppApp.swift; sourceTree = "<group>"; };
 		D6A6C59672AA736317738B5C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		EF9261C9BEE050FA5484A8C7 /* Serde */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Serde; path = ../shared/generated/swift/Serde; sourceTree = SOURCE_ROOT; };
+		EF9261C9BEE050FA5484A8C7 /* Serde */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Serde; path = ../shared/generated/serde/swift/Serde; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,7 +38,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				08A5891079278B0627EECC52 /* Shared in Frameworks */,
-				C9DE83DFE3BDDF3357E9DFC6 /* SharedTypes in Frameworks */,
+				C9DE83DFE3BDDF3357E9DFC6 /* App in Frameworks */,
 				DAEFD22602D3904B391A4585 /* ServerSentEvents in Frameworks */,
 				4673110F6AD3F8E2A37B0111 /* Serde in Frameworks */,
 			);
@@ -63,10 +63,10 @@
 		79077CB87B15CD5B056551FE /* Packages */ = {
 			isa = PBXGroup;
 			children = (
+				BC65D3FCB825EAD8916AD165 /* App */,
 				EF9261C9BEE050FA5484A8C7 /* Serde */,
 				3E8C5370E0452BE8744E1827 /* ServerSentEvents */,
 				0BC930BE6C51EBF4D7F07A9C /* Shared */,
-				6D984934DC207C1C28EDF6F1 /* SharedTypes */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -105,7 +105,7 @@
 			name = CounterApp;
 			packageProductDependencies = (
 				D05E19303943AC146E9AB212 /* Shared */,
-				32258924E0AD419BAA621949 /* SharedTypes */,
+				99D49CCBD850626B27A21E79 /* App */,
 				25294CD2464DD084B3FCB6BE /* ServerSentEvents */,
 				B5D6D2B0E5CFCCBA18D3CE3E /* Serde */,
 			);
@@ -133,12 +133,12 @@
 			mainGroup = B86E33DC287DA7AC92DD5972;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				F08FCFA16905E12407683298 /* XCLocalSwiftPackageReference "../shared/generated/swift/Serde" */,
-				7FCB0A6E3FA1D48D62ACFF9B /* XCLocalSwiftPackageReference "../shared/generated/swift/ServerSentEvents" */,
+				5F3B23104F6F43C83B57A052 /* XCLocalSwiftPackageReference "../shared/generated/app/swift/App" */,
+				44F3D9986C5BD4CC28278763 /* XCLocalSwiftPackageReference "../shared/generated/serde/swift/Serde" */,
+				46DDB531F7EAF91A6BBD173E /* XCLocalSwiftPackageReference "../shared/generated/sse/swift/ServerSentEvents" */,
 				D3BF0BCB5F0BABF3D7D00966 /* XCLocalSwiftPackageReference "../shared/Shared" */,
-				066464F6ED3284D9A331A3C6 /* XCLocalSwiftPackageReference "../shared/generated/swift/SharedTypes" */,
 			);
-			preferredProjectObjectVersion = 70;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -338,21 +338,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		066464F6ED3284D9A331A3C6 /* XCLocalSwiftPackageReference "../shared/generated/swift/SharedTypes" */ = {
+		44F3D9986C5BD4CC28278763 /* XCLocalSwiftPackageReference "../shared/generated/serde/swift/Serde" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared/generated/swift/SharedTypes;
+			relativePath = ../shared/generated/serde/swift/Serde;
 		};
-		7FCB0A6E3FA1D48D62ACFF9B /* XCLocalSwiftPackageReference "../shared/generated/swift/ServerSentEvents" */ = {
+		46DDB531F7EAF91A6BBD173E /* XCLocalSwiftPackageReference "../shared/generated/sse/swift/ServerSentEvents" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared/generated/swift/ServerSentEvents;
+			relativePath = ../shared/generated/sse/swift/ServerSentEvents;
+		};
+		5F3B23104F6F43C83B57A052 /* XCLocalSwiftPackageReference "../shared/generated/app/swift/App" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared/generated/app/swift/App;
 		};
 		D3BF0BCB5F0BABF3D7D00966 /* XCLocalSwiftPackageReference "../shared/Shared" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../shared/Shared;
-		};
-		F08FCFA16905E12407683298 /* XCLocalSwiftPackageReference "../shared/generated/swift/Serde" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared/generated/swift/Serde;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -361,9 +361,9 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = ServerSentEvents;
 		};
-		32258924E0AD419BAA621949 /* SharedTypes */ = {
+		99D49CCBD850626B27A21E79 /* App */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = SharedTypes;
+			productName = App;
 		};
 		B5D6D2B0E5CFCCBA18D3CE3E /* Serde */ = {
 			isa = XCSwiftPackageProductDependency;
