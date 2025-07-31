@@ -24,6 +24,8 @@ const PACKAGES: &[&str] = &[
 pub(crate) struct Publish {
     #[arg(short, long)]
     pub(crate) yes: bool,
+    #[arg(short, long)]
+    pub(crate) tag_only: bool,
 }
 
 impl Publish {
@@ -46,14 +48,20 @@ impl Publish {
         };
         for pkg in packages {
             let version = &versions[pkg];
-            println!("Publishing {pkg} at version {version}...");
+            let tag = format!("{pkg}-v{version}");
             let _dir = ctx.push_dir(pkg);
-            let dry_run = if self.yes { None } else { Some("--dry-run") };
-            cmd!(ctx.sh, "{CARGO} publish --package {pkg} {dry_run...}").run()?;
-            if self.yes {
-                let tag = format!("{pkg}-v{version}");
+            if self.tag_only {
+                println!("Creating tag {tag}...");
                 cmd!(ctx.sh, "git tag {tag}").run()?;
                 cmd!(ctx.sh, "git push origin tag {tag}").run()?;
+            } else {
+                println!("Publishing {tag}...");
+                let dry_run = if self.yes { None } else { Some("--dry-run") };
+                cmd!(ctx.sh, "{CARGO} publish --package {pkg} {dry_run...}").run()?;
+                if self.yes {
+                    cmd!(ctx.sh, "git tag {tag}").run()?;
+                    cmd!(ctx.sh, "git push origin tag {tag}").run()?;
+                }
             }
             println!();
         }
