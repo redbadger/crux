@@ -467,9 +467,9 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
 name = "clone_dyn_types"
-version = "0.33.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e22dee9904c99f33243dda15797b6312726312b805b1ab47b0df85a59ed74c4"
+checksum = "9bfb8fb19735b27549f095bbb34e7c0f1282e12dc53d6feac944dfad59629ff4"
 
 [[package]]
 name = "colorchoice"
@@ -576,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.16.0-rc4"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "assert_fs",
@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.15.0-rc4"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "assert_fs",
@@ -635,7 +635,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.10.0-rc4"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.7.0-rc4"
+version = "0.7.0"
 dependencies = [
  "crux_core",
  "crux_http",
@@ -665,7 +665,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.7.0-rc4"
+version = "0.7.0"
 dependencies = [
  "crux_core",
  "serde",
@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.14.0-rc4"
+version = "0.14.0"
 dependencies = [
  "chrono",
  "crux_core",
@@ -1022,24 +1022,20 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ce62d1f27071b7a02a640c10920f7f4f6951f86de3db73bdffab6183678715"
+checksum = "fc8ecf8d289bb73389162820cc5ce52f2c59fc17ed0ba38e6a5340a5ac744c4c"
 dependencies = [
- "anyhow",
  "derive_builder",
- "erased-discriminant",
  "facet",
  "heck 0.5.0",
  "include_dir 0.7.4",
  "indent",
  "indoc",
- "once_cell",
  "serde",
  "serde_json",
  "textwrap 0.16.2",
  "thiserror 2.0.12",
- "typeid",
 ]
 
 [[package]]
@@ -1675,9 +1671,9 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
 name = "iter_tools"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "538eebb4c150184dd32e61ddccc12ac8afbf5cc6861d4563b1749e85119b2686"
+checksum = "ee9ea1e015ffd0572a234a231385d5694e34a8b08d6d19463d9e0276468b3d68"
 dependencies = [
  "clone_dyn_types",
  "itertools 0.11.0",

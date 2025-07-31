@@ -8,10 +8,21 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.16.0-rc4](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0-rc4) - 2025-07-22
+## [0.16.0](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0) - 2025-07-31
 
 ### 🚀 Features
 
+#### Highlights:
+* Effect middleware - https://github.com/redbadger/crux/pull/368
+* Request handle and splitting - https://github.com/redbadger/crux/pull/376
+* `then_notify` and `NotifyBuilder` - https://github.com/redbadger/crux/pull/380
+* A new Weather example (iOS only for now)
+* The Capability API is now deprecated - https://github.com/redbadger/crux/pull/402
+* Relaxed Serialize bound in Core - https://github.com/redbadger/crux/pull/413 + https://github.com/redbadger/crux/pull/414
+* Adds support for facet-based typegen, with module support in Swift, Java and TypeScript.
+For and example on how to use facet-based typegen, see the [`crux_counter` example](https://github.com/redbadger/crux/tree/master/examples/counter-next) and the [`facet-generate` crate](https://github.com/redbadger/facet-generate). Proper documentation is coming soon.
+
+#### More details:
 - *(crux_core)* Request::split() into a tuple of operation and handle
 - *(crux_core)* Introduce Resolvable trait, and make `RequestHandle` public
 - *(crux_core)* Add `then_notify` and `build` methods to `*Builder`
