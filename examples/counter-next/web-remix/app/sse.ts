@@ -1,8 +1,8 @@
-import type { SseRequest } from "shared_types/types/server_sent_events";
+import type { SseRequest } from "server_sent_events/server_sent_events";
 import {
   SseResponseVariantDone,
   SseResponseVariantChunk,
-} from "shared_types/types/server_sent_events";
+} from "server_sent_events/server_sent_events";
 
 export async function* request({ url }: SseRequest) {
   const request = new Request(url);

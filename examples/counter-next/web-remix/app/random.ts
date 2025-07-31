@@ -1,7 +1,4 @@
-import {
-  RandomNumber,
-  RandomNumberRequest,
-} from "shared_types/types/shared_types";
+import { RandomNumber, RandomNumberRequest } from "app/app";
 
 export function request(data: RandomNumberRequest): RandomNumber {
   const min = Number(data.field0);

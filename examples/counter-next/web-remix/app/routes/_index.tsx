@@ -5,8 +5,8 @@ import {
   EventVariantDecrement,
   EventVariantIncrement,
   EventVariantRandom,
-} from "shared_types/types/shared_types";
-import { ViewModel } from "shared_types/types/view_model";
+} from "app/app";
+import { ViewModel } from "app/view_model";
 import { Core } from "../core";
 
 export const meta = () => {

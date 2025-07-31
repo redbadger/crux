@@ -11,4 +11,4 @@ popd
 popd
 
 cargo build --package shared
-cargo run --package shared --bin codegen --features cli,facet_typegen
+RUST_LOG=info cargo run --package shared --bin codegen --features cli,facet_typegen

@@ -20,6 +20,9 @@ importers:
       '@remix-run/serve':
         specifier: ^2.16.0
         version: 2.16.0(typescript@5.8.2)
+      app:
+        specifier: file:../shared/generated/app/typescript
+        version: file:../shared/generated/app/typescript
       isbot:
         specifier: ^5.1.23
         version: 5.1.23
@@ -29,12 +32,15 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+      serde:
+        specifier: file:../shared/generated/serde/typescript
+        version: file:../shared/generated/serde/typescript
+      server_sent_events:
+        specifier: file:../shared/generated/sse/typescript
+        version: file:../shared/generated/sse/typescript
       shared:
         specifier: file:../shared/pkg
         version: file:../shared/pkg
-      shared_types:
-        specifier: file:../shared/generated/typescript
-        version: file:../shared/generated/typescript
     devDependencies:
       '@remix-run/dev':
         specifier: ^2.16.0
@@ -1158,6 +1164,9 @@ packages:
   anymatch@3.1.3:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
+
+  app@file:../shared/generated/app/typescript:
+    resolution: {directory: ../shared/generated/app/typescript, type: directory}
 
   arg@5.0.2:
     resolution: {integrity: sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==}
@@ -3180,9 +3189,15 @@ packages:
     resolution: {integrity: sha512-dW41u5VfLXu8SJh5bwRmyYUbAoSB3c9uQh6L8h/KtsFREPWpbX1lrljJo186Jc4nmci/sGUZ9a0a0J2zgfq2hw==}
     engines: {node: '>= 0.8.0'}
 
+  serde@file:../shared/generated/serde/typescript:
+    resolution: {directory: ../shared/generated/serde/typescript, type: directory}
+
   serve-static@1.16.2:
     resolution: {integrity: sha512-VqpjJZKadQB/PEbEwvFdO43Ax5dFBZ2UECszz8bQ7pi7wt//PWe1P6MN7eCnjsatYtBT6EuiClbjSWP2WrIoTw==}
     engines: {node: '>= 0.8.0'}
+
+  server_sent_events@file:../shared/generated/sse/typescript:
+    resolution: {directory: ../shared/generated/sse/typescript, type: directory}
 
   set-cookie-parser@2.7.1:
     resolution: {integrity: sha512-IOc8uWeOZgnb3ptbCURJWNjWUPcO3ZnTTdzsurqERrP6nPyv+paC55vJM0LpOlT2ne+Ix+9+CRG1MNLlyZ4GjQ==}
@@ -3204,9 +3219,6 @@ packages:
 
   shared@file:../shared/pkg:
     resolution: {directory: ../shared/pkg, type: directory}
-
-  shared_types@file:../shared/generated/typescript:
-    resolution: {directory: ../shared/generated/typescript, type: directory}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -4852,6 +4864,11 @@ snapshots:
     dependencies:
       normalize-path: 3.0.0
       picomatch: 2.3.1
+
+  app@file:../shared/generated/app/typescript:
+    dependencies:
+      serde: file:../shared/generated/serde/typescript
+      server_sent_events: file:../shared/generated/sse/typescript
 
   arg@5.0.2: {}
 
@@ -7380,6 +7397,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  serde@file:../shared/generated/serde/typescript: {}
+
   serve-static@1.16.2:
     dependencies:
       encodeurl: 2.0.0
@@ -7388,6 +7407,10 @@ snapshots:
       send: 0.19.0
     transitivePeerDependencies:
       - supports-color
+
+  server_sent_events@file:../shared/generated/sse/typescript:
+    dependencies:
+      serde: file:../shared/generated/serde/typescript
 
   set-cookie-parser@2.7.1: {}
 
@@ -7416,8 +7439,6 @@ snapshots:
   setprototypeof@1.2.0: {}
 
   shared@file:../shared/pkg: {}
-
-  shared_types@file:../shared/generated/typescript: {}
 
   shebang-command@2.0.0:
     dependencies:

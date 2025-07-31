@@ -1,8 +1,8 @@
 package com.crux.example.counter
 
-import com.crux.example.counter.shared.HttpHeader
-import com.crux.example.counter.shared.HttpRequest
-import com.crux.example.counter.shared.HttpResponse
+import com.crux.example.counter.app.HttpHeader
+import com.crux.example.counter.app.HttpRequest
+import com.crux.example.counter.app.HttpResponse
 import com.novi.serde.Bytes
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

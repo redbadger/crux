@@ -5,17 +5,17 @@ coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.9.1"
+lifecycleRuntimeKtx = "2.9.2"
 activityCompose = "1.10.1"
-composeBom = "2025.06.01"
+composeBom = "2025.07.00"
 
 # added
 jna = "5.17.0"
-lifecycle = "2.9.1"
+lifecycle = "2.9.2"
 rustAndroid = "0.9.6"
 appcompat = "1.7.1"
 material = "1.12.0"
-ktorClient = "3.2.0"
+ktorClient = "3.2.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

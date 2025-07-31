@@ -1,21 +1,17 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { CoreFFI } from "shared";
-import type {
-  Effect,
-  Event,
-  HttpResponse,
-} from "shared_types/types/shared_types";
-import type { SseResponse } from "shared_types/types/server_sent_events";
+import type { Effect, Event, HttpResponse } from "app/app";
+import type { SseResponse } from "server_sent_events/server_sent_events";
 import {
   EffectVariantRender,
   EffectVariantHttp,
   EffectVariantServerSentEvents,
   Request,
   EffectVariantRandom,
-} from "shared_types/types/shared_types";
-import { ViewModel } from "shared_types/types/view_model";
-import { BincodeSerializer, BincodeDeserializer } from "shared_types/bincode";
+} from "app/app";
+import { ViewModel } from "app/view_model";
+import { BincodeSerializer, BincodeDeserializer } from "serde/bincode";
 
 import { request as http } from "./http";
 import { request as sse } from "./sse";

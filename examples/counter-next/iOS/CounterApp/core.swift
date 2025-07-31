@@ -1,6 +1,6 @@
 import Foundation
 import Shared
-import SharedTypes
+import App
 import ViewModel
 
 fileprivate class EffectHandler: CruxShell, @unchecked Sendable {

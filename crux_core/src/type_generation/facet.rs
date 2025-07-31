@@ -93,11 +93,13 @@ use facet_generate::{
     },
     reflection::RegistryBuilder,
 };
+use log::info;
 use serde_json::json;
 use std::{
     fs::{self, File},
     io::Write,
     path::PathBuf,
+    process::Command,
 };
 use thiserror::Error;
 
@@ -221,6 +223,7 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn swift(&self, config: &Config) -> Result {
+        info!("Generating Swift types");
         let path = config.out_dir.join(&config.package_name);
         let sources = path.join("Sources");
 
@@ -286,6 +289,7 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn java(&self, config: &Config) -> Result {
+        info!("Generating Java types");
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -293,7 +297,11 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        let mut installer = java::Installer::new(&config.out_dir);
+        let mut installer = java::Installer::new(
+            &config.package_name,
+            &config.out_dir,
+            &config.external_packages,
+        );
         if config.add_runtimes {
             installer
                 .install_serde_runtime()
@@ -355,13 +363,12 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn typescript(&self, config: &Config) -> Result {
+        info!("Generating TypeScript types");
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
-        let types_dir = output_dir.join("types");
-        fs::create_dir_all(&types_dir)?;
-
-        let mut installer = typescript::Installer::new(output_dir, &[], InstallTarget::Node);
+        let mut installer =
+            typescript::Installer::new(output_dir, &config.external_packages, InstallTarget::Node);
         if config.add_runtimes {
             installer
                 .install_serde_runtime()
@@ -372,19 +379,14 @@ impl CodeGenerator {
         }
 
         for (module, registry) in module::split(&config.package_name, &self.0) {
-            let module_config = module
+            let config = module
                 .config()
                 .clone()
                 .with_encodings(vec![Encoding::Bincode]);
 
-            let module_name = module_config.module_name();
-
-            let generator = typescript::CodeGenerator::new(&module_config, InstallTarget::Node);
-            let mut source = Vec::new();
-            generator.output(&mut source, &registry)?;
-
-            let mut output = File::create(types_dir.join(format!("{module_name}.ts")))?;
-            write!(output, "{}", String::from_utf8_lossy(&source))?;
+            installer
+                .install_module(&config, &registry)
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
         }
 
         let ts_config_str = serde_json::to_string_pretty(&json!({
@@ -407,8 +409,8 @@ impl CodeGenerator {
             .install_manifest(&config.package_name)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        // Install dependencies
-        std::process::Command::new("pnpm")
+        info!("Installing dependencies");
+        Command::new("pnpm")
             .current_dir(output_dir)
             .arg("install")
             .status()
@@ -417,8 +419,8 @@ impl CodeGenerator {
                 _ => TypeGenError::Io(e),
             })?;
 
-        // Build TS code and emit declarations
-        std::process::Command::new("pnpm")
+        info!("Building TS code and emitting declarations");
+        Command::new("pnpm")
             .current_dir(output_dir)
             .arg("exec")
             .arg("tsc")

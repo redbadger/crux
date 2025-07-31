@@ -22,6 +22,8 @@ crux_core.workspace = true
 crux_http.workspace = true
 facet = { version = "0.28.0", features = ["chrono"] }
 futures = "0.3.31"
+log = { version = "0.4.27", optional = true }
+pretty_env_logger = { version = "0.5.0", optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.141"
 url = "2.5.4"
@@ -46,5 +48,5 @@ crux_http = { workspace = true, features = ["facet_typegen"] }
 wit-bindgen = "0.43.0"
 
 [features]
-cli = ["crux_core/cli"]
+cli = ["crux_core/cli", "dep:log", "dep:pretty_env_logger"]
 facet_typegen = ["crux_core/facet_typegen"]
