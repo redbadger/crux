@@ -517,9 +517,9 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
 name = "clone_dyn_types"
-version = "0.33.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e22dee9904c99f33243dda15797b6312726312b805b1ab47b0df85a59ed74c4"
+checksum = "9bfb8fb19735b27549f095bbb34e7c0f1282e12dc53d6feac944dfad59629ff4"
 
 [[package]]
 name = "codee"
@@ -562,7 +562,7 @@ dependencies = [
  "convert_case 0.6.0",
  "pathdiff",
  "serde",
- "toml 0.9.2",
+ "toml 0.9.4",
  "winnow",
 ]
 
@@ -600,9 +600,9 @@ dependencies = [
 
 [[package]]
 name = "const-str"
-version = "0.6.3"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "041fbfcf8e7054df725fb9985297e92422cdc80fcf313665f5ca3d761bb63f4c"
+checksum = "451d0640545a0553814b4c646eb549343561618838e9b42495f466131fe3ad49"
 
 [[package]]
 name = "const_format"
@@ -723,7 +723,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.16.0-rc4"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -743,7 +743,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.15.0-rc4"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -765,7 +765,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.7.0-rc4"
+version = "0.7.0"
 dependencies = [
  "darling 0.21.0",
  "heck 0.5.0",
@@ -1165,24 +1165,20 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ce62d1f27071b7a02a640c10920f7f4f6951f86de3db73bdffab6183678715"
+checksum = "fc8ecf8d289bb73389162820cc5ce52f2c59fc17ed0ba38e6a5340a5ac744c4c"
 dependencies = [
- "anyhow",
  "derive_builder",
- "erased-discriminant",
  "facet",
  "heck 0.5.0",
  "include_dir 0.7.4",
  "indent",
  "indoc",
- "once_cell",
  "serde",
  "serde_json",
  "textwrap 0.16.2",
  "thiserror 2.0.12",
- "typeid",
 ]
 
 [[package]]
@@ -1883,9 +1879,9 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
 name = "iter_tools"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "538eebb4c150184dd32e61ddccc12ac8afbf5cc6861d4563b1749e85119b2686"
+checksum = "ee9ea1e015ffd0572a234a231385d5694e34a8b08d6d19463d9e0276468b3d68"
 dependencies = [
  "clone_dyn_types",
  "itertools 0.11.0",
@@ -2783,9 +2779,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.5.15"
+version = "0.5.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e8af0dde094006011e6a740d4879319439489813bd0bcdc7d821beaeeff48ec"
+checksum = "5407465600fb0548f1442edf71dd20683c6ed326200ace4b1ef0763521bb3b77"
 dependencies = [
  "bitflags",
 ]
@@ -3460,9 +3456,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.9.2"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed0aee96c12fa71097902e0bb061a5e1ebd766a6636bb605ba401c45c1650eac"
+checksum = "41ae868b5a0f67631c14589f7e250c1ea2c574ee5ba21c6c8dd4b1485705a5a1"
 dependencies = [
  "serde",
  "serde_spanned 1.0.0",
@@ -3920,9 +3916,9 @@ dependencies = [
 
 [[package]]
 name = "wasm_split_macros"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e8a7dc657eef9172f8b1f60574780bf32d83c4cb50ff7f8b7f1ef7264b820db"
+checksum = "9f8a7f0bf54b0129a337aadfe8b716d843689f69c75b2a6413a0cff2e0d00982"
 dependencies = [
  "base16",
  "digest",
@@ -4063,7 +4059,7 @@ version = "0.60.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2f500e4d28234f72040990ec9d39e3a6b950f9f22d3dba18416c35882612bcb"
 dependencies = [
- "windows-targets 0.53.2",
+ "windows-targets 0.53.3",
 ]
 
 [[package]]
@@ -4084,10 +4080,11 @@ dependencies = [
 
 [[package]]
 name = "windows-targets"
-version = "0.53.2"
+version = "0.53.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c66f69fcc9ce11da9966ddb31a40968cad001c5bedeb5c2b82ede4253ab48aef"
+checksum = "d5fe6031c4041849d7c496a8ded650796e7b6ecc19df1a431c1a363342e5dc91"
 dependencies = [
+ "windows-link",
  "windows_aarch64_gnullvm 0.53.0",
  "windows_aarch64_msvc 0.53.0",
  "windows_i686_gnu 0.53.0",

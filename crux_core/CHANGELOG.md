@@ -8,9 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.16.0-rc4](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0-rc4) - 2025-07-22
+## [0.16.0](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0) - 2025-07-31
 
 ### 🚀 Features
+
+Adds support for facet-based typegen, with module support in Swift, Java and TypeScript
 
 - *(crux_core)* Request::split() into a tuple of operation and handle
 - *(crux_core)* Introduce Resolvable trait, and make `RequestHandle` public
