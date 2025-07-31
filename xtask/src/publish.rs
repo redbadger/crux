@@ -59,7 +59,8 @@ impl Publish {
                 let dry_run = if self.yes { None } else { Some("--dry-run") };
                 cmd!(ctx.sh, "{CARGO} publish --package {pkg} {dry_run...}").run()?;
                 if self.yes {
-                    cmd!(ctx.sh, "git tag {tag}").run()?;
+                    cmd!(ctx.sh, "git push origin :refs/tags/{tag}").run()?;
+                    cmd!(ctx.sh, "git tag --force {tag}").run()?;
                     cmd!(ctx.sh, "git push origin tag {tag}").run()?;
                 }
             }
