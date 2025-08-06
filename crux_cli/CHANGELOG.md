@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/redbadger/crux/releases/tag/crux_cli-v0.1.1) - 2025-08-19
+
+Added support for calling bindgen through the library API.
+
 ## [0.1.0](https://github.com/redbadger/crux/releases/tag/crux_cli-v0.1.0) - 2025-05-27
 
 Initial release.

@@ -1,6 +1,6 @@
 [package]
 name = "crux_cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "Command line tool for crux_core"
 authors.workspace = true
 edition.workspace = true
@@ -16,21 +16,21 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 ascent = "0.8.0"
-camino = "1.1.10"
+camino = "1.1.11"
 cargo_metadata = "=0.19"
-clap = { version = "4.5.42", features = ["derive", "env"] }
+clap = { version = "4.5.45", features = ["derive", "env"] }
 convert_case = "0.8.0"
 env_logger = "0.11.8"
 guppy = "0.17.20"
-iter_tools = "0.32.0"
+iter_tools = "0.37.0"
 lazy-regex = "3.4.1"
 log = "0.4.27"
 rustdoc-types = "=0.35.0"
 serde = { workspace = true, features = ["derive"] }
 serde-generate = "0.32.0"
 serde-reflection = "0.5.0"
-serde_json = "1.0.141"
-thiserror = "2.0.12"
+serde_json = "1.0.143"
+thiserror = "2.0.15"
 uniffi_bindgen.workspace = true
 
 [dev-dependencies]
