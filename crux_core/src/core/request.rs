@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug};
+use std::{
+    fmt::{self, Debug},
+    sync::Arc,
+};
 
 use crate::{
     capability::Operation,
@@ -54,11 +57,11 @@ where
 
     pub(crate) fn resolves_many_times<F>(operation: Op, resolve: F) -> Self
     where
-        F: Fn(Op::Output) -> Result<(), ()> + Send + 'static,
+        F: Fn(Op::Output) -> Result<(), ()> + Send + Sync + 'static,
     {
         Self {
             operation,
-            handle: RequestHandle::Many(Box::new(resolve)),
+            handle: RequestHandle::Many(Arc::new(resolve)),
         }
     }
 }
