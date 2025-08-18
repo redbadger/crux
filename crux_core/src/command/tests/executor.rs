@@ -1,8 +1,12 @@
-use std::{future::Future, pin::Pin, task::Poll};
+use std::{
+    future::{self, Future},
+    pin::Pin,
+    task::Poll,
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Command, Request, capability::Operation};
+use crate::{Command, Request, capability::Operation, command::CommandContext};
 
 struct ImmediateWake {
     wake_count: usize,
@@ -69,6 +73,21 @@ fn tasks_which_wake_themselves_and_drop_wakers_are_not_evicted() {
     });
 
     assert_eq!(cmd.events().next(), Some(Event::Count(0)));
+
+    assert!(cmd.is_done());
+}
+
+#[test]
+fn is_not_done_until_all_contexts_are_dropped() {
+    let mut ctx = None;
+    let mut cmd = Command::new(|cmd_ctx: CommandContext<(), ()>| {
+        ctx = Some(cmd_ctx);
+        future::ready(())
+    });
+
+    assert!(!cmd.is_done());
+
+    drop(ctx);
 
     assert!(cmd.is_done());
 }

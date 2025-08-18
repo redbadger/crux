@@ -316,6 +316,7 @@ where
             effects: effect_sender,
             events: event_sender,
             tasks: spawn_sender,
+            rc: Arc::default(),
         };
 
         let aborted: Arc<AtomicBool> = Arc::default();
@@ -441,7 +442,13 @@ where
     pub fn is_done(&mut self) -> bool {
         self.run_until_settled();
 
-        self.effects.is_empty() && self.events.is_empty() && self.tasks.is_empty()
+        // If a context is alive, the command can still receive effects, events or tasks.
+        let all_context_dropped = Arc::strong_count(&self.context.rc) == 1;
+
+        all_context_dropped
+            && self.effects.is_empty()
+            && self.events.is_empty()
+            && self.tasks.is_empty()
     }
 
     /// Run the effect state machine until it settles and return an iterator over the effects
