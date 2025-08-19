@@ -14,10 +14,10 @@ rust-version.workspace = true
 crux_core = { path = "../crux_core", features = ["facet_typegen", "typegen"] }
 crux_http = { path = "../crux_http" }
 facet.workspace = true
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
 
 [dev-dependencies]
-serde_json = "1.0"
+serde_json = "1.0.143"
 
 [lints]
 workspace = true

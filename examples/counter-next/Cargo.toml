@@ -11,7 +11,7 @@ license = "Apache-2.0"
 keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.99"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 serde = "1.0.219"

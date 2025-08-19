@@ -50,7 +50,7 @@ impl<T> Receiver<T> {
         }
     }
 
-    pub fn drain(&self) -> Drain<T> {
+    pub fn drain(&self) -> Drain<'_, T> {
         Drain { receiver: self }
     }
 }

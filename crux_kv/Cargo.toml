@@ -16,7 +16,7 @@ crux_core = { version = "0.16.0", path = "../crux_core" }
 facet.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11.17"
-thiserror = "2.0.12"
+thiserror = "2.0.15"
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
