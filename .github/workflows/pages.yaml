@@ -56,6 +56,8 @@ jobs:
 
       - name: Build Documentation (stable)
         working-directory: stable
+        env:
+          RUSTFLAGS: -A warnings
         run: cargo doc --all --no-deps
 
       - name: Build book (latest)

@@ -21,7 +21,7 @@ impl Check {
                 .args(package_args)
                 .run()?;
             if self.clippy {
-                cmd!(ctx.sh, "{CARGO} clippy")
+                cmd!(ctx.sh, "{CARGO} clippy --all-targets")
                     .args(package_args)
                     .args(vec!["--", "--no-deps", "-Dclippy::pedantic", "-Dwarnings"])
                     .run()?;
