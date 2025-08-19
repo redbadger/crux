@@ -19,7 +19,7 @@ required-features = ["cli"]
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 uniffi = "0.29.4"
-uniffi-bindgen-cs = { git = "https://github.com/NordSecurity/uniffi-bindgen-cs", branch = "main" }
+uniffi-bindgen-cs = { git = "https://github.com/NordSecurity/uniffi-bindgen-cs", tag = "v0.10.0+v0.29.4" }
 wasm-bindgen = "0.2.100"
 
 [build-dependencies]
