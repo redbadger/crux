@@ -14,5 +14,7 @@ keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 anyhow = "1.0.99"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
+# crux_core = "0.16.0"
+# crux_http = "0.15.0"
 serde = "1.0.219"
-js-sys = "0.3.77"                        # FIXME: bring into crux_core, make conditional
+js-sys = "0.3.77" # FIXME: bring into crux_core, make conditional

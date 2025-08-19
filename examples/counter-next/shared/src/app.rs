@@ -47,14 +47,14 @@ pub struct Count {
     updated_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Facet, Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Facet, Serialize, Deserialize, Debug, Clone)]
 #[facet(namespace = "view_model")]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum Event {
     // events from the shell
