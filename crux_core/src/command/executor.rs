@@ -148,6 +148,9 @@ impl<Effect, Event> Command<Effect, Event> {
     // Run all tasks until all of them are pending
     pub(crate) fn run_until_settled(&mut self) {
         if self.was_aborted() {
+            // Spawn new tasks to clear the spawn_queue as well
+            self.spawn_new_tasks();
+
             self.tasks.clear();
 
             return;
