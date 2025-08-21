@@ -21,6 +21,7 @@ pub struct CommandContext<Effect, Event> {
     pub(crate) effects: Sender<Effect>,
     pub(crate) events: Sender<Event>,
     pub(crate) tasks: Sender<Task>,
+    pub(crate) rc: Arc<()>,
 }
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
@@ -30,6 +31,7 @@ impl<Effect, Event> Clone for CommandContext<Effect, Event> {
             effects: self.effects.clone(),
             events: self.events.clone(),
             tasks: self.tasks.clone(),
+            rc: self.rc.clone(),
         }
     }
 }
