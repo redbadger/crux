@@ -389,10 +389,12 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.swift("SharedTypes", output_root.join("swift"))?;
-    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// # Errors
@@ -460,13 +462,15 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.java(
     ///     "com.redbadger.crux_core.shared_types",
     ///     output_root.join("java"),
     /// )?;
-    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// # Errors
@@ -525,13 +529,15 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
-    /// # let mut gen = TypeGen::new();
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
+    /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// gen.csharp(
+    /// typegen.csharp(
     ///     "SharedTypes",
     ///     output_root.join("csharp"),
     /// )?;
-    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn csharp(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
@@ -580,10 +586,12 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.typescript("shared_types", output_root.join("typescript"))?;
-    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
+    /// # Ok(())
+    /// # }
     /// ```
     /// # Errors
     /// Errors that can occur during type generation.
