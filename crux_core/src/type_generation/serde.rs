@@ -118,7 +118,7 @@
 //! ```
 
 use serde::Deserialize;
-use serde_generate::{csharp, java, swift, typescript, Encoding, SourceInstaller};
+use serde_generate::{Encoding, SourceInstaller, csharp, java, swift, typescript};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -159,6 +159,10 @@ pub enum TypeGenError {
         "`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation"
     )]
     PnpmNotFound(#[source] std::io::Error),
+    #[error(
+        "`dotnet` is needed for C# type generation, but it could not be found in PATH.\nPlease install it from https://dotnet.microsoft.com/en-us/download"
+    )]
+    DotnetNotFound(#[source] std::io::Error),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -577,6 +581,18 @@ The 2 common cases are:
             path.as_ref().join(module_name).join("Requests.cs"),
             requests,
         )?;
+
+        // Build DLLs
+        std::process::Command::new("dotnet")
+            .current_dir(path.as_ref().join(module_name))
+            .arg("build")
+            .arg("-c")
+            .arg("Release")
+            .status()
+            .map_err(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => TypeGenError::DotnetNotFound(e),
+                _ => TypeGenError::Io(e),
+            })?;
 
         Ok(())
     }
