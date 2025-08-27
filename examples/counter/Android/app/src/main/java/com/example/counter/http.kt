@@ -22,6 +22,15 @@ suspend fun requestHttp(
                 append(header.name, header.value)
             }
         }
+        if (request.method in listOf("POST", "PUT", "PATCH")) {
+            request.body?.let { bytes ->
+                val bodyBytes = bytes.content()
+                Log.d("DATA POST", "Body size: ${bodyBytes.size}")
+                setBody(bodyBytes)
+            }
+        } else {
+            Log.d("DATA GET", "${request.url}");
+        }
     }
     val bytes = Bytes.valueOf(response.body())
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
