@@ -1046,7 +1046,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.10.3"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db2b226474e1bb15368eb44b8e04597f97011a03eed1d62646cdf232578ef890"
 dependencies = [
  "derive_builder",
  "facet",
