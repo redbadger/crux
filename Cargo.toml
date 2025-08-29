@@ -21,9 +21,10 @@ license = "Apache-2.0"
 keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.dependencies]
-anyhow = "1.0.99"
+anyhow = "1.0.98"
 facet = "0.28.0"
 serde = "1.0.219"
+thiserror = "2.0.12"
 uniffi = "=0.29.4"
 uniffi_bindgen = "=0.29.4"
 

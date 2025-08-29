@@ -31,9 +31,9 @@ android {
         targetCompatibility JavaVersion.VERSION_21
     }
     sourceSets {
-        main.java.srcDirs += "${projectDir}/../../shared/generated/app/java"
-        main.java.srcDirs += "${projectDir}/../../shared/generated/sse/java"
-        main.java.srcDirs += "${projectDir}/../../shared/generated/serde/java"
+        main.kotlin.srcDirs += "${projectDir}/../../shared/generated/app/kotlin"
+        main.kotlin.srcDirs += "${projectDir}/../../shared/generated/sse/kotlin"
+        main.java.srcDirs += "${projectDir}/../../shared/generated/serde/kotlin"
     }
 }
 

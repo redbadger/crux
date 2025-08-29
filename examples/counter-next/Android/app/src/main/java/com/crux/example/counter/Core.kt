@@ -38,7 +38,7 @@ class Core : androidx.lifecycle.ViewModel(), CruxShell  {
             }
 
     init {
-        viewModelScope.launch { update(Event.StartWatch()) }
+        viewModelScope.launch { update(Event.StartWatch) }
     }
 
     suspend fun update(event: Event) {
@@ -79,6 +79,7 @@ class Core : androidx.lifecycle.ViewModel(), CruxShell  {
                     }
                 }
             }
+            is Effect.Random -> {}
         }
     }
 
