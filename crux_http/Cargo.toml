@@ -20,7 +20,7 @@ http-compat = ["dep:http"]
 
 [dependencies]
 anyhow.workspace = true
-async-trait = "0.1.88"
+async-trait = "0.1.89"
 crux_core = { version = "0.16.0", path = "../crux_core" }
 derive_builder = "0.20.2"
 encoding_rs = { version = "0.8.35", optional = true }
@@ -31,10 +31,10 @@ http-types = { package = "http-types-red-badger-temporary-fork", version = "4.0.
 pin-project-lite = "0.2.16"
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11"
-serde_json = "1.0.141"
+serde_json = "1.0.143"
 serde_qs = "0.15.0"
 thiserror.workspace = true
-url = "2.5.4"
+url = "2.5.7"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { optional = true, version = "0.3.77", features = ["TextDecoder"] }
