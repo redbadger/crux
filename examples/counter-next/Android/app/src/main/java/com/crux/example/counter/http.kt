@@ -8,6 +8,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.headers
 import io.ktor.client.request.request
+import io.ktor.client.request.setBody
 import io.ktor.http.HttpMethod
 import io.ktor.util.flattenEntries
 
@@ -23,6 +24,7 @@ suspend fun requestHttp(
                         append(header.name, header.value)
                     }
                 }
+                setBody(request.body)
             }
     val bytes = Bytes.valueOf(response.body())
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
