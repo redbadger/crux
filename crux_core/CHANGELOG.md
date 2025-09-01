@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.16.1](https://github.com/redbadger/crux/compare/crux_core-v0.16.0...crux_core-v0.16.1) - 2025-09-01
+
+### 🚀 Features
+
+- adds support for generating foreign types in Kotlin. The generated code is idiomatic and clean (and passes `ktlint` checks). Using Kotlin instead of Java can be more ergonomic with, for example, exhaustive `when` statements for enums.
+- crux_core/command: Keep Command pending if a context is alive [#423](https://github.com/redbadger/crux/pull/423)
+- impl Clone for RequestHandle to allow streaming responses from middleware [#424](https://github.com/redbadger/crux/pull/424)
+- crux_core/command: Clear spawn_queue when a command is aborted [#425](https://github.com/redbadger/crux/pull/425)
+- Updated Android projects in examples. Includes newer dependencies and updating gradle files in `counter-next` to Kotlin.
+
 ## [0.16.0](https://github.com/redbadger/crux/compare/crux_core-v0.15.0...crux_core-v0.16.0) - 2025-07-31
 
 ### 🚀 Features

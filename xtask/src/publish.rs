@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Result, bail};
 use cargo_metadata::{Metadata, MetadataCommand};
 use clap::Args;
+use dialoguer::Confirm;
 use xshell::cmd;
 
 use crate::Context;
@@ -11,7 +12,7 @@ const CARGO: &str = crate::CARGO;
 
 // in order for publishing
 const PACKAGES: &[&str] = &[
-    // "crux_cli",
+    "crux_cli",
     "crux_macros",
     "crux_core",
     "crux_http",
@@ -49,6 +50,17 @@ impl Publish {
         for pkg in packages {
             let version = &versions[pkg];
             let tag = format!("{pkg}-v{version}");
+
+            let confirmation = Confirm::new()
+                .with_prompt(format!("Publish {tag}?"))
+                .interact()?;
+
+            if !confirmation {
+                println!("{pkg} aborted");
+                println!();
+                continue;
+            }
+
             let _dir = ctx.push_dir(pkg);
             if self.tag_only {
                 println!("Creating tag {tag}...");

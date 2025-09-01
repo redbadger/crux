@@ -13,6 +13,7 @@ rust-version.workspace = true
 anyhow.workspace = true
 cargo_metadata = "0.22.0"
 clap = { version = "4.5.45", features = ["derive"] }
+dialoguer = "0.12.0"
 human-repr = "1.1.0"
 ignore = "0.4.23"
 xshell = "0.2.7"
