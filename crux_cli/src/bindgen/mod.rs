@@ -31,7 +31,7 @@ pub(crate) fn bindgen(args: &BindgenArgs) -> Result<()> {
             &KotlinBindingGenerator,
             &config_supplier,
             None,
-            &Utf8PathBuf::from_path_buf(args.out_dir.join("java"))
+            &Utf8PathBuf::from_path_buf(args.out_dir.join("kotlin"))
                 .map_err(|p| anyhow!("path {} has non-unicode characters", p.display()))?,
             true,
         )

@@ -18,8 +18,10 @@ fn main() -> Result<()> {
 
     info!("Generating code for Serde");
     serde(&out_dir.join("serde"))?;
+
     info!("Generating code for Server Sent Events");
     sse(&out_dir.join("sse"))?;
+
     info!("Generating code for App");
     app(&out_dir.join("app"))?;
 
@@ -53,8 +55,8 @@ fn app(out_dir: &Path) -> Result<()> {
             .build(),
     )?;
 
-    typegen_app.java(
-        &Config::builder("com.crux.example.counter.app", out_dir.join("java"))
+    typegen_app.kotlin(
+        &Config::builder("com.crux.example.counter.app", out_dir.join("kotlin"))
             .reference(ExternalPackage {
                 for_namespace: "server_sent_events".to_string(),
                 location: PackageLocation::Path(
@@ -111,8 +113,8 @@ fn sse(out_dir: &Path) -> Result<()> {
             .build(),
     )?;
 
-    typegen_sse.java(
-        &Config::builder("com.crux.example.counter.sse", out_dir.join("java"))
+    typegen_sse.kotlin(
+        &Config::builder("com.crux.example.counter.sse", out_dir.join("kotlin"))
             .reference(ExternalPackage {
                 for_namespace: "serde".to_string(),
                 location: PackageLocation::Path("com.novi.serde".to_string()),
@@ -145,8 +147,8 @@ fn serde(out_dir: &Path) -> Result<()> {
             .build(),
     )?;
 
-    typegen_serde.java(
-        &Config::builder("com.crux.example.counter.serde", out_dir.join("java"))
+    typegen_serde.kotlin(
+        &Config::builder("com.crux.example.counter.serde", out_dir.join("kotlin"))
             .add_runtimes()
             .build(),
     )?;

@@ -86,9 +86,7 @@ pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
     Registry,
     generation::{
-        Encoding, SourceInstaller, java,
-        module::{self, Module},
-        swift,
+        Encoding, SourceInstaller, java, kotlin, module, swift,
         typescript::{self, InstallTarget},
     },
     reflection::RegistryBuilder,
@@ -242,10 +240,7 @@ impl CodeGenerator {
         }
 
         for (module, registry) in module::split(&config.package_name, &self.0) {
-            let config = module
-                .config()
-                .clone()
-                .with_encodings(vec![Encoding::Bincode]);
+            let config = module.config().clone().with_encoding(Encoding::Bincode);
 
             installer
                 .install_module(&config, &registry)
@@ -270,7 +265,7 @@ impl CodeGenerator {
         Ok(())
     }
 
-    /// Generates types for Java (for use with Kotlin)
+    /// Generates types for Java
     /// e.g.
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
@@ -312,18 +307,11 @@ impl CodeGenerator {
         }
 
         for (module, registry) in module::split(&config.package_name, &self.0) {
-            let this_module = &module.config().module_name;
-            let is_root_package = config.package_name == *this_module;
-            let module = if is_root_package {
-                module
-            } else {
-                Module::new(format!("{}.{}", config.package_name, this_module))
-            };
-
             let module_config = module
                 .config()
                 .clone()
-                .with_encodings(vec![Encoding::Bincode]);
+                .with_parent(&config.package_name)
+                .with_encoding(Encoding::Bincode);
 
             installer
                 .install_module(&module_config, &registry)
@@ -340,6 +328,74 @@ impl CodeGenerator {
             let output_dir = config.out_dir.join(package_path);
             fs::create_dir_all(&output_dir)?;
             fs::write(output_dir.join("Requests.java"), requests)?;
+        }
+
+        Ok(())
+    }
+
+    /// Generates types for Kotlin
+    /// e.g.
+    /// ```rust
+    /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
+    /// # use std::env::temp_dir;
+    /// # let mut typegen = TypeRegistry::new().build();
+    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
+    /// typegen.kotlin(
+    ///     &Config::builder("com.crux.example", output_root.join("kotlin"))
+    ///     .add_extensions()
+    ///     .add_runtimes()
+    ///     .build()
+    /// )?;
+    /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+    /// ```
+    ///
+    /// # Errors
+    /// Errors that can occur during type generation.
+    pub fn kotlin(&self, config: &Config) -> Result {
+        info!("Generating Kotlin types");
+        fs::create_dir_all(&config.out_dir)?;
+
+        let package_path = config.package_name.replace('.', "/");
+
+        // remove any existing generated shared types, this ensures that we remove no longer used types
+        fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
+
+        let mut installer = kotlin::Installer::new(
+            &config.package_name,
+            &config.out_dir,
+            &config.external_packages,
+        );
+        if config.add_runtimes {
+            installer
+                .install_serde_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+            installer
+                .install_bincode_runtime()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
+
+        for (module, registry) in module::split(&config.package_name, &self.0) {
+            let module_config = module
+                .config()
+                .clone()
+                .with_parent(&config.package_name)
+                .with_encoding(Encoding::Bincode);
+
+            installer
+                .install_module(&module_config, &registry)
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        }
+
+        if config.add_extensions {
+            let requests_path = Self::extensions_path("kotlin/Requests.kt");
+
+            let requests_data = fs::read_to_string(requests_path)?;
+
+            let requests = format!("package {};\n\n{requests_data}", config.package_name);
+
+            let output_dir = config.out_dir.join(package_path);
+            fs::create_dir_all(&output_dir)?;
+            fs::write(output_dir.join("Requests.kt"), requests)?;
         }
 
         Ok(())
@@ -379,10 +435,7 @@ impl CodeGenerator {
         }
 
         for (module, registry) in module::split(&config.package_name, &self.0) {
-            let config = module
-                .config()
-                .clone()
-                .with_encodings(vec![Encoding::Bincode]);
+            let config = module.config().clone().with_encoding(Encoding::Bincode);
 
             installer
                 .install_module(&config, &registry)
