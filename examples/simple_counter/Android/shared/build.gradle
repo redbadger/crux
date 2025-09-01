@@ -8,9 +8,9 @@ plugins {
 
 android {
     namespace 'com.example.simple_counter.shared'
-    compileSdk 35
+    compileSdk = 36
 
-    ndkVersion "28.0.13004108"
+    ndkVersion "28.2.13676358"
 
     defaultConfig {
         minSdk 34
@@ -26,11 +26,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_20
-        targetCompatibility JavaVersion.VERSION_20
-    }
-    kotlinOptions {
-        jvmTarget = '20'
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
     sourceSets {
         main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"

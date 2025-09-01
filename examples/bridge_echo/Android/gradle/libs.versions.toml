@@ -1,18 +1,18 @@
 [versions]
-agp = "8.9.1"
-kotlin = "2.0.0"
-coreKtx = "1.15.0"
+agp = "8.12.2"
+kotlin = "2.2.10"
+coreKtx = "1.17.0"
 junit = "4.13.2"
-junitVersion = "1.2.1"
-espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.8.7"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+lifecycleRuntimeKtx = "2.9.3"
 activityCompose = "1.10.1"
-composeBom = "2025.03.00"
+composeBom = "2025.08.01"
 
 # added
-jna = "5.15.0"
-lifecycle = "2.8.7"
-appcompat = "1.7.0"
+jna = "5.17.0"
+lifecycle = "2.9.3"
+appcompat = "1.7.1"
 material = "1.12.0"
 rustAndroid = "0.9.6"
 
