@@ -28,9 +28,8 @@ fn main() -> Result<()> {
     // bindgen for kotlin
     crux_core::cli::bindgen(&BindgenArgs {
         crate_name: env!("CARGO_PKG_NAME").to_string(),
-        out_dir: out_dir.join("app"),
-        kotlin: true,
-        swift: false,
+        kotlin: Some(out_dir.join("app/kotlin")),
+        swift: None,
     })
 }
 
