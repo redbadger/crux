@@ -543,6 +543,11 @@ The 2 common cases are:
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    /// Errors that can occur during type generation.
+    ///
+    /// # Panics
+    /// Panics if the registry creation fails.
     pub fn csharp(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
         self.ensure_registry()?;
 
@@ -562,9 +567,8 @@ The 2 common cases are:
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let registry = match &self.state {
-            State::Generating(registry) => registry,
-            _ => panic!("registry creation failed"),
+        let State::Generating(registry) = &self.state else {
+            panic!("registry creation failed");
         };
 
         installer
@@ -575,7 +579,7 @@ The 2 common cases are:
 
         let requests_data = fs::read_to_string(requests_path)?;
 
-        let requests = format!("namespace {module_name}{}", requests_data);
+        let requests = format!("namespace {module_name}{requests_data}");
 
         fs::write(
             path.as_ref().join(module_name).join("Requests.cs"),
