@@ -5,6 +5,7 @@ use std::{
 };
 
 use crux_core::{Command, Request, command::RequestBuilder};
+use facet::Facet;
 use futures::{
     FutureExt,
     channel::oneshot::{self, Sender},
@@ -14,7 +15,8 @@ use futures::{
 use crate::{TimeRequest, TimeResponse, TimerId, get_timer_id};
 
 /// Result of the timer run. Timers can either run to completion or be cleared early.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Facet, Debug, PartialEq, Eq, Clone)]
+#[repr(C)]
 pub enum TimerOutcome {
     /// Timer completed successfully.
     Completed(CompletedTimerHandle),
@@ -227,7 +229,7 @@ impl TimerHandle {
 ///
 /// `CompletedTimerHandle` can no longer be cleared, but can be compared with a
 /// previously stored `TimerHandle`, if the app uses several timers at the same time.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Facet, Debug, PartialEq, Eq, Clone)]
 pub struct CompletedTimerHandle {
     timer_id: TimerId,
 }
