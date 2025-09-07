@@ -90,7 +90,7 @@ where
     /// Chain a [`NotificationBuilder`] to run after completion of this one,
     /// passing the result to the provided closure `make_next_builder`.
     ///
-    /// The returned value of the closure must be a `NotificationBuilder`, which
+    /// The returned value of the closure must be a [`NotificationBuilder`], which
     /// can represent the notification to be sent before the composed future
     /// is finished.
     ///
@@ -185,7 +185,7 @@ where
     /// Chain another [`RequestBuilder`] to run after completion of this one,
     /// passing the result to the provided closure `make_next_builder`.
     ///
-    /// The returned value of the closure must be a `RequestBuilder`, which
+    /// The returned value of the closure must be a [`RequestBuilder`], which
     /// can represent some more work to be done before the composed future
     /// is finished.
     ///
@@ -274,7 +274,7 @@ where
     /// Chain a [`StreamBuilder`] to run after completion of this [`RequestBuilder`],
     /// passing the result to the provided closure `make_next_builder`.
     ///
-    /// The returned value of the closure must be a `StreamBuilder`, which
+    /// The returned value of the closure must be a [`StreamBuilder`], which
     /// can represent some more work to be done before the composed future
     /// is finished.
     ///
@@ -428,7 +428,7 @@ where
     /// Chain a [`RequestBuilder`] to run after completion of this [`StreamBuilder`],
     /// passing the result to the provided closure `make_next_builder`.
     ///
-    /// The returned value of the closure must be a [`StreamBuilder`], which
+    /// The returned value of the closure must be a [`RequestBuilder`], which
     /// can represent some more work to be done before the composed future
     /// is finished.
     ///
@@ -517,7 +517,7 @@ where
     /// Chain another [`StreamBuilder`] to run after completion of this one,
     /// passing the result to the provided closure `make_next_builder`.
     ///
-    /// The returned value of the closure must be a `StreamBuilder`, which
+    /// The returned value of the closure must be a [`StreamBuilder`], which
     /// can represent some more work to be done before the composed future
     /// is finished.
     ///
