@@ -8,7 +8,10 @@
   </PropertyGroup>
 
   <Target Name="CruxGenerate" BeforeTargets="CollectPackageReferences;ResolveProjectReferences">
-    <Exec Command="cd ..\..\ &amp;&amp; cargo build --workspace --release &amp;&amp; copy .\target\debug\shared.dll Windows\uniffi.shared\ &amp;&amp; cargo run --release --bin uniffi-bindgen-cs -- --no-format shared\src\shared.udl --out-dir Windows\uniffi.shared\ &amp;&amp; cd shared_types\generated\csharp\SharedTypes &amp;&amp; dotnet build -c Release" />
+    <Exec Condition="'$(Configuration)' == 'Debug'"
+            Command="cd ..\..\ &amp;&amp; cargo build --workspace &amp;&amp; copy .\target\debug\shared.dll Windows\uniffi.shared\ &amp;&amp; cargo run --release --bin uniffi-bindgen-cs -- --no-format shared\src\shared.udl --out-dir Windows\uniffi.shared\ &amp;&amp; cd shared_types\generated\csharp\SharedTypes &amp;&amp; dotnet build -c Debug" />
+    <Exec Condition="'$(Configuration)' == 'Release'"
+            Command="cd ..\..\ &amp;&amp; cargo build --release --workspace &amp;&amp; copy .\target\release\shared.dll Windows\uniffi.shared\ &amp;&amp; cargo run --release --bin uniffi-bindgen-cs -- --no-format shared\src\shared.udl --out-dir Windows\uniffi.shared\ &amp;&amp; cd shared_types\generated\csharp\SharedTypes &amp;&amp; dotnet build -c Release" />
   </Target>
 
   <ItemGroup>
