@@ -1,0 +1,8 @@
+[target.aarch64-pc-windows-msvc]
+rustflags = [
+    "-C", "link-arg=/NODEFAULTLIB:libcmt",
+    "-C", "link-arg=/DEFAULTLIB:msvcrt",
+    "-C", "link-arg=/NODEFAULTLIB:libcmtd",
+    "-C", "link-arg=/NODEFAULTLIB:libcpmt",
+    "-C", "link-arg=/NODEFAULTLIB:libcpmtd"
+]
