@@ -116,6 +116,11 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 

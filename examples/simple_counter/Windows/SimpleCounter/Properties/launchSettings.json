@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SimpleCounter (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "SimpleCounter (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
