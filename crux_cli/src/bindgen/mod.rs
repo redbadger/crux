@@ -24,28 +24,28 @@ pub(crate) fn bindgen(args: &BindgenArgs) -> Result<()> {
 
     let config_supplier = CrateConfigSupplier::from(metadata);
 
-    if args.kotlin {
+    if let Some(out_dir) = &args.kotlin {
         library_mode::generate_bindings(
             &library_path,
             None,
             &KotlinBindingGenerator,
             &config_supplier,
             None,
-            &Utf8PathBuf::from_path_buf(args.out_dir.join("kotlin"))
+            &Utf8PathBuf::from_path_buf(out_dir.clone())
                 .map_err(|p| anyhow!("path {} has non-unicode characters", p.display()))?,
             true,
         )
         .context("generating Kotlin bindings")?;
     }
 
-    if args.swift {
+    if let Some(out_dir) = &args.swift {
         library_mode::generate_bindings(
             &library_path,
             None,
             &SwiftBindingGenerator,
             &config_supplier,
             None,
-            &Utf8PathBuf::from_path_buf(args.out_dir.join("swift"))
+            &Utf8PathBuf::from_path_buf(out_dir.clone())
                 .map_err(|p| anyhow!("path {} has non-unicode characters", p.display()))?,
             true,
         )

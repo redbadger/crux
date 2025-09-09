@@ -88,23 +88,13 @@ pub struct BindgenArgs {
     #[arg(long, short, value_name = "STRING", default_value = "shared")]
     pub crate_name: String,
 
-    /// Output directory for generated code
-    #[arg(
-        long,
-        short,
-        value_name = "DIR",
-        value_hint = DirPath,
-        default_value = "./shared/generated",
-    )]
-    pub out_dir: PathBuf,
+    /// Generate bindings for Kotlin at the specified path
+    #[arg(long, short, value_name = "DIR", value_hint = DirPath)]
+    pub kotlin: Option<PathBuf>,
 
-    /// Generate bindings for Kotlin
-    #[arg(long, short)]
-    pub kotlin: bool,
-
-    /// Generate bindings for Swift
-    #[arg(long, short)]
-    pub swift: bool,
+    /// Generate bindings for Swift at the specified path
+    #[arg(long, short, value_name = "DIR", value_hint = DirPath)]
+    pub swift: Option<PathBuf>,
 }
 
 fn dotted_case(s: &str) -> Result<String, String> {
