@@ -49,15 +49,15 @@ where
     fn try_process_effect_with(
         &self,
         effect: Effect,
-        resolve_callback: impl FnOnce(RequestHandle<RandomNumber>, RandomNumber) + Send + 'static,
+        resolve_callback: impl Fn(&mut RequestHandle<RandomNumber>, RandomNumber) + Send + 'static,
     ) -> Result<(), Effect> {
         let rand_request = effect.try_into()?;
-        let (operation, handle): (RandomNumberRequest, _) = rand_request.split();
+        let (operation, mut handle): (RandomNumberRequest, _) = rand_request.split();
 
         self.jobs_tx
             .send((
                 operation,
-                Box::new(move |number| resolve_callback(handle, number)),
+                Box::new(move |number| resolve_callback(&mut handle, number)),
             ))
             .expect("Job failed to send to worker thread");
 
