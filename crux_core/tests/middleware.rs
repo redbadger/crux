@@ -6,7 +6,7 @@ mod app {
     // Inline minimal random number capability
 
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-    pub struct RandomNumberRequest(pub usize); // request a random number from 1 to N, inclusive
+    pub struct RandomNumberRequest(pub Vec<usize>); // request multiple random numbers from 1 to N
 
     #[derive(Debug, PartialEq, Eq, Deserialize)]
     pub struct RandomNumber(pub usize);
@@ -73,7 +73,7 @@ mod app {
                     let dice = dice.into_iter().map(|dice| (dice, None)).collect();
                     model.roll = Roll::InProgress(dice);
 
-                    Command::request_from_shell(RandomNumberRequest(first_dice))
+                    Command::request_from_shell(RandomNumberRequest(vec![first_dice]))
                         .then_send(Event::Random)
                 }
                 Event::Random(new_number) => {
@@ -104,17 +104,18 @@ mod app {
                     match &model.roll {
                         Roll::NotStarted => Command::done(),
                         Roll::InProgress(items) => {
-                            let next_die_size = items
+                            let next_die_sizes = items
                                 .iter()
                                 .copied()
-                                .find_map(
+                                .filter_map(
                                     |(size, value)| {
                                         if value.is_none() { Some(size) } else { None }
                                     },
                                 )
-                                .unwrap();
+                                .take(2)
+                                .collect();
 
-                            Command::request_from_shell(RandomNumberRequest(next_die_size))
+                            Command::stream_from_shell(RandomNumberRequest(next_die_sizes))
                                 .then_send(Event::Random)
                         }
                         Roll::Complete(items) => Http::post("http://dice-api.example.com/publish")
@@ -126,6 +127,7 @@ mod app {
                     }
                 }
                 Event::Http(_http_result) => {
+                    model.roll = Roll::NotStarted;
                     println!("Got http result!");
 
                     // we don't really care about the result, really...
@@ -153,26 +155,31 @@ mod middleware {
     #[allow(clippy::type_complexity)]
     pub struct RngMiddleware {
         jobs_tx:
-            crossbeam_channel::Sender<(RandomNumberRequest, Box<dyn FnOnce(RandomNumber) + Send>)>,
+            crossbeam_channel::Sender<(RandomNumberRequest, Box<dyn FnMut(RandomNumber) + Send>)>,
     }
 
     impl RngMiddleware {
         pub fn new() -> Self {
             let (jobs_tx, jobs_rx) = crossbeam_channel::unbounded::<(
                 RandomNumberRequest,
-                Box<dyn FnOnce(RandomNumber) + Send>,
+                Box<dyn FnMut(RandomNumber) + Send>,
             )>();
 
             // Persistent background worker
             spawn(move || {
                 eprintln!("Worker thread starting...");
 
-                while let Ok((input, callback)) = jobs_rx.recv() {
+                while let Ok((input, mut callback)) = jobs_rx.recv() {
                     // This is a terrible RNG which always returns the highest number
                     // the die can roll
-                    eprintln!("Processing job for a die with max: {}", input.0);
+                    eprintln!("Processing job for a dice: {:?}", input.0);
 
-                    callback(RandomNumber(input.0));
+                    // Send a random number n times - this simulates subscriptions
+                    let count = input.0.len();
+                    for (i, n) in (input.0).iter().enumerate() {
+                        eprintln!("- Resolving random number #{i} of {count}",);
+                        callback(RandomNumber(*n));
+                    }
                 }
 
                 eprintln!("Worker thread terminating");
@@ -191,16 +198,16 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl FnOnce(RequestHandle<RandomNumber>, RandomNumber) + Send + 'static,
+            resolve_callback: impl Fn(&mut RequestHandle<RandomNumber>, RandomNumber) + Send + 'static,
         ) -> Result<(), Effect> {
             let rand_request = effect.try_into()?;
-            let (operation, handle): (RandomNumberRequest, _) = rand_request.split();
+            let (operation, mut handle): (RandomNumberRequest, RequestHandle<_>) =
+                rand_request.split();
+
+            let callback = move |number| resolve_callback(&mut handle, number);
 
             self.jobs_tx
-                .send((
-                    operation,
-                    Box::new(move |number| resolve_callback(handle, number)),
-                ))
+                .send((operation, Box::new(callback)))
                 .expect("Job failed to send to worker thread");
 
             Ok(())
@@ -218,14 +225,14 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl FnOnce(
-                RequestHandle<<Self::Op as Operation>::Output>,
+            resolve_callback: impl Fn(
+                &mut RequestHandle<<Self::Op as Operation>::Output>,
                 <Self::Op as Operation>::Output,
             ) + Send
             + 'static,
         ) -> Result<(), Effect> {
             let http_request = effect.try_into()?;
-            let (_, handle): (HttpRequest, _) = http_request.split();
+            let (_, mut handle): (HttpRequest, _) = http_request.split();
 
             // One-off worker
             eprintln!("Starting HTTP thread...");
@@ -233,7 +240,7 @@ mod middleware {
                 let response = HttpResult::Ok(HttpResponse::status(201).build());
 
                 eprintln!("Resolving HTTP request");
-                resolve_callback(handle, response);
+                resolve_callback(&mut handle, response);
 
                 eprintln!("HTTP thread terminating...");
             });
@@ -261,15 +268,15 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl FnOnce(
-                RequestHandle<<Self::Op as Operation>::Output>,
+            resolve_callback: impl Fn(
+                &mut RequestHandle<<Self::Op as Operation>::Output>,
                 <Self::Op as Operation>::Output,
             ) + Send
             + 'static,
         ) -> Result<(), Effect> {
             let http_request = effect.try_into()?;
 
-            let (_, handle): (HttpRequest, _) = http_request.split();
+            let (_, mut handle): (HttpRequest, _) = http_request.split();
             let remote = self.remote.clone();
 
             // One-off worker
@@ -282,7 +289,7 @@ mod middleware {
                 if let Ok(()) = remote.recv() {
                     eprintln!("Trigger received, resolving HTTP request");
 
-                    resolve_callback(handle, response);
+                    resolve_callback(&mut handle, response);
                 }
 
                 eprintln!("HTTP thread terminating...");
@@ -302,7 +309,8 @@ mod tests {
     };
     use crossbeam_channel::RecvError;
     use crux_core::{
-        Core, bridge,
+        Core,
+        bridge::{self, Request},
         middleware::{BincodeFfiFormat, FfiFormat, Layer as _},
         render::RenderOperation,
     };
@@ -595,10 +603,15 @@ mod tests {
 
         let effects_bytes = core.resolve(effect_id, &response_bytes)?;
 
-        assert_eq!(
-            str::from_utf8(&effects_bytes)?,
-            r#"[{"id":0,"effect":{"Render":null}}]"#
-        );
+        let effects_de: Vec<Request<BridgeEffectFfi>> = serde_json::from_slice(&effects_bytes)?;
+        assert_eq!(effects_de.len(), 1);
+        assert!(matches!(
+            effects_de[0],
+            Request {
+                effect: BridgeEffectFfi::Render(_),
+                ..
+            }
+        ));
 
         let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
             serde_json::from_slice(&effects_bytes)?;
