@@ -571,6 +571,7 @@ dependencies = [
  "cargo_metadata 0.19.2",
  "clap",
  "convert_case",
+ "derive_builder",
  "env_logger",
  "guppy",
  "insta",

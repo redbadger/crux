@@ -707,6 +707,7 @@ dependencies = [
  "cargo_metadata 0.19.2",
  "clap",
  "convert_case 0.8.0",
+ "derive_builder",
  "env_logger 0.11.8",
  "guppy",
  "iter_tools",
