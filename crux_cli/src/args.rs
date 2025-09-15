@@ -88,11 +88,18 @@ pub struct BindgenArgs {
     #[arg(long, short, value_name = "STRING", default_value = "shared")]
     pub crate_name: String,
 
-    /// Generate bindings for Kotlin at the specified path
+    #[clap(flatten)]
+    pub languages: BindgenLanguages,
+}
+
+#[derive(Args)]
+#[group(required = true, multiple = true)]
+pub struct BindgenLanguages {
+    /// Generate bindings for Kotlin, and output to the specified path
     #[arg(long, short, value_name = "DIR", value_hint = DirPath)]
     pub kotlin: Option<PathBuf>,
 
-    /// Generate bindings for Swift at the specified path
+    /// Generate bindings for Swift, and output to the specified path
     #[arg(long, short, value_name = "DIR", value_hint = DirPath)]
     pub swift: Option<PathBuf>,
 }

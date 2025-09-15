@@ -14,7 +14,7 @@ name = "crux"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1.0.99"
+anyhow.workspace = true
 ascent = "0.8.0"
 camino = "1.1.12"
 cargo_metadata = "=0.19"
@@ -30,7 +30,7 @@ serde = { workspace = true, features = ["derive"] }
 serde-generate = "0.32.0"
 serde-reflection = "0.5.0"
 serde_json = "1.0.143"
-thiserror = "2.0.16"
+thiserror.workspace = true
 uniffi_bindgen.workspace = true
 
 [dev-dependencies]

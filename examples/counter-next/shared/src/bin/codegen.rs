@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crux_core::{
-    cli::BindgenArgs,
+    cli::{BindgenArgs, BindgenLanguages},
     type_generation::facet::{Config, ExternalPackage, PackageLocation, TypeRegistry},
 };
 use log::info;
@@ -28,8 +28,10 @@ fn main() -> Result<()> {
     // bindgen for kotlin
     crux_core::cli::bindgen(&BindgenArgs {
         crate_name: env!("CARGO_PKG_NAME").to_string(),
-        kotlin: Some(out_dir.join("app/kotlin")),
-        swift: None,
+        languages: BindgenLanguages {
+            kotlin: Some(out_dir.join("app/kotlin")),
+            swift: None,
+        },
     })
 }
 

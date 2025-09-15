@@ -24,7 +24,7 @@ pub(crate) fn bindgen(args: &BindgenArgs) -> Result<()> {
 
     let config_supplier = CrateConfigSupplier::from(metadata);
 
-    if let Some(out_dir) = &args.kotlin {
+    if let Some(out_dir) = &args.languages.kotlin {
         library_mode::generate_bindings(
             &library_path,
             None,
@@ -38,7 +38,7 @@ pub(crate) fn bindgen(args: &BindgenArgs) -> Result<()> {
         .context("generating Kotlin bindings")?;
     }
 
-    if let Some(out_dir) = &args.swift {
+    if let Some(out_dir) = &args.languages.swift {
         library_mode::generate_bindings(
             &library_path,
             None,

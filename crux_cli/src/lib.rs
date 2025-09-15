@@ -10,7 +10,7 @@ use clap::Parser;
 
 use args::{Cli, Commands};
 
-pub use crate::args::BindgenArgs;
+pub use crate::args::{BindgenArgs, BindgenLanguages};
 
 pub fn run(crate_name: Option<&str>) -> Result<()> {
     env_logger::init();
