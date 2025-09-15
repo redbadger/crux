@@ -8,9 +8,7 @@ pub mod codegen;
 use anyhow::Result;
 use clap::Parser;
 
-use args::{Cli, Commands};
-
-pub use crate::args::BindgenArgs;
+pub use args::*;
 
 pub fn run(crate_name: Option<&str>) -> Result<()> {
     env_logger::init();

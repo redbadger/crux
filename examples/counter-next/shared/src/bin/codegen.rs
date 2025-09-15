@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crux_core::{
-    cli::BindgenArgs,
+    cli::{BindgenArgsBuilder, bindgen},
     type_generation::facet::{Config, ExternalPackage, PackageLocation, TypeRegistry},
 };
 use log::info;
@@ -16,22 +16,22 @@ fn main() -> Result<()> {
 
     let out_dir = PathBuf::from("./shared/generated");
 
-    info!("Generating code for Serde");
+    info!("Generating types for Serde");
     serde(&out_dir.join("serde"))?;
 
-    info!("Generating code for Server Sent Events");
+    info!("Generating types for Server Sent Events");
     sse(&out_dir.join("sse"))?;
 
-    info!("Generating code for App");
+    info!("Generating types for App");
     app(&out_dir.join("app"))?;
 
     // bindgen for kotlin
-    crux_core::cli::bindgen(&BindgenArgs {
-        crate_name: env!("CARGO_PKG_NAME").to_string(),
-        out_dir: out_dir.join("app"),
-        kotlin: true,
-        swift: false,
-    })
+    bindgen(
+        &BindgenArgsBuilder::default()
+            .crate_name(env!("CARGO_PKG_NAME").to_string())
+            .kotlin(out_dir.join("app/kotlin"))
+            .build()?,
+    )
 }
 
 fn app(out_dir: &Path) -> Result<()> {

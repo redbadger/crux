@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
 use convert_case::{Boundary, Case, Casing, pattern};
+use derive_builder::Builder;
 
 #[derive(Parser)]
 #[command(
@@ -82,29 +83,51 @@ pub struct Generate {
     pub typescript: Option<String>,
 }
 
-#[derive(Args)]
+#[derive(Clone, Args, Builder)]
+#[builder(build_fn(validate = "Self::validate"))]
 pub struct BindgenArgs {
     /// Package name of the crate containing your Crux App
     #[arg(long, short, value_name = "STRING", default_value = "shared")]
     pub crate_name: String,
 
-    /// Output directory for generated code
-    #[arg(
-        long,
-        short,
-        value_name = "DIR",
-        value_hint = DirPath,
-        default_value = "./shared/generated",
-    )]
-    pub out_dir: PathBuf,
+    #[clap(flatten)]
+    pub languages: BindgenLanguages,
+}
 
-    /// Generate bindings for Kotlin
-    #[arg(long, short)]
-    pub kotlin: bool,
+#[derive(Clone, Default, Args)]
+#[group(required = true, multiple = true)]
+pub struct BindgenLanguages {
+    /// Generate bindings for Kotlin, and output to the specified path
+    #[arg(long, short, value_name = "DIR", value_hint = DirPath)]
+    pub kotlin: Option<PathBuf>,
 
-    /// Generate bindings for Swift
-    #[arg(long, short)]
-    pub swift: bool,
+    /// Generate bindings for Swift, and output to the specified path
+    #[arg(long, short, value_name = "DIR", value_hint = DirPath)]
+    pub swift: Option<PathBuf>,
+}
+
+impl BindgenArgsBuilder {
+    pub fn kotlin(&mut self, path: impl AsRef<Path>) -> &mut Self {
+        self.languages.get_or_insert_default().kotlin = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    pub fn swift(&mut self, path: impl AsRef<Path>) -> &mut Self {
+        self.languages.get_or_insert_default().swift = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        const ERROR: &str = "call kotlin() and/or swift() to generate bindings";
+
+        let languages = self.languages.as_ref().ok_or_else(|| ERROR.to_string())?;
+
+        if languages.kotlin.is_none() && languages.swift.is_none() {
+            Err(ERROR.to_string())
+        } else {
+            Ok(())
+        }
+    }
 }
 
 fn dotted_case(s: &str) -> Result<String, String> {

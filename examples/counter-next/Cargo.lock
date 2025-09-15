@@ -699,7 +699,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crux_cli"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ascent",
@@ -707,6 +707,7 @@ dependencies = [
  "cargo_metadata 0.19.2",
  "clap",
  "convert_case 0.8.0",
+ "derive_builder",
  "env_logger 0.11.8",
  "guppy",
  "iter_tools",
