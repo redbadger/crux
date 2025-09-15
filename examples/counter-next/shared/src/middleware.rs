@@ -49,7 +49,9 @@ where
     fn try_process_effect_with(
         &self,
         effect: Effect,
-        resolve_callback: impl Fn(&mut RequestHandle<RandomNumber>, RandomNumber) + Send + 'static,
+        mut resolve_callback: impl FnMut(&mut RequestHandle<RandomNumber>, RandomNumber)
+        + Send
+        + 'static,
     ) -> Result<(), Effect> {
         let rand_request = effect.try_into()?;
         let (operation, mut handle): (RandomNumberRequest, _) = rand_request.split();

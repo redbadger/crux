@@ -39,7 +39,7 @@ where
     fn try_process_effect_with(
         &self,
         effect: Effect,
-        resolve_callback: impl Fn(
+        resolve_callback: impl FnMut(
             &mut RequestHandle<<Self::Op as Operation>::Output>,
             <Self::Op as Operation>::Output,
         ) + Send

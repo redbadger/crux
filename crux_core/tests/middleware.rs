@@ -198,7 +198,9 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl Fn(&mut RequestHandle<RandomNumber>, RandomNumber) + Send + 'static,
+            mut resolve_callback: impl FnMut(&mut RequestHandle<RandomNumber>, RandomNumber)
+            + Send
+            + 'static,
         ) -> Result<(), Effect> {
             let rand_request = effect.try_into()?;
             let (operation, mut handle): (RandomNumberRequest, RequestHandle<_>) =
@@ -225,7 +227,7 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl Fn(
+            mut resolve_callback: impl FnMut(
                 &mut RequestHandle<<Self::Op as Operation>::Output>,
                 <Self::Op as Operation>::Output,
             ) + Send
@@ -268,7 +270,7 @@ mod middleware {
         fn try_process_effect_with(
             &self,
             effect: Effect,
-            resolve_callback: impl Fn(
+            mut resolve_callback: impl FnMut(
                 &mut RequestHandle<<Self::Op as Operation>::Output>,
                 <Self::Op as Operation>::Output,
             ) + Send
