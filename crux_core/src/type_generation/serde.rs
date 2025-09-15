@@ -118,7 +118,7 @@
 //! ```
 
 use serde::Deserialize;
-use serde_generate::{Encoding, SourceInstaller, java, swift, typescript};
+use serde_generate::{Encoding, SourceInstaller, csharp, java, swift, typescript};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use std::{
     fs::{self, File},
@@ -159,6 +159,10 @@ pub enum TypeGenError {
         "`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation"
     )]
     PnpmNotFound(#[source] std::io::Error),
+    #[error(
+        "`dotnet` is needed for C# type generation, but it could not be found in PATH.\nPlease install it from https://dotnet.microsoft.com/en-us/download"
+    )]
+    DotnetNotFound(#[source] std::io::Error),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -389,10 +393,12 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.swift("SharedTypes", output_root.join("swift"))?;
-    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// # Errors
@@ -460,13 +466,15 @@ The 2 common cases are:
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.java(
     ///     "com.redbadger.crux_core.shared_types",
     ///     output_root.join("java"),
     /// )?;
-    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// # Errors
@@ -520,15 +528,90 @@ The 2 common cases are:
         Ok(())
     }
 
+    /// Generates types for C#
+    /// e.g.
+    /// ```rust
+    /// # use crux_core::typegen::TypeGen;
+    /// # use std::env::temp_dir;
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
+    /// # let mut typegen = TypeGen::new();
+    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
+    /// typegen.csharp(
+    ///     "SharedTypes",
+    ///     output_root.join("csharp"),
+    /// )?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    /// # Errors
+    /// Errors that can occur during type generation.
+    ///
+    /// # Panics
+    /// Panics if the registry creation fails.
+    pub fn csharp(&mut self, module_name: &str, path: impl AsRef<Path>) -> Result {
+        self.ensure_registry()?;
+
+        fs::create_dir_all(&path)?;
+
+        // remove any existing generated shared types, this ensures that we remove no longer used types
+        fs::remove_dir_all(&path).unwrap_or(());
+
+        let config = serde_generate::CodeGeneratorConfig::new(module_name.to_string())
+            .with_encodings(vec![Encoding::Bincode]);
+
+        let installer = csharp::Installer::new(path.as_ref().to_path_buf());
+        installer
+            .install_serde_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        installer
+            .install_bincode_runtime()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
+        let State::Generating(registry) = &self.state else {
+            panic!("registry creation failed");
+        };
+
+        installer
+            .install_module(&config, registry)
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
+        let requests_path = Self::extensions_path("csharp/Requests.cs");
+
+        let requests_data = fs::read_to_string(requests_path)?;
+
+        let requests = format!("namespace {module_name}{requests_data}");
+
+        fs::write(
+            path.as_ref().join(module_name).join("Requests.cs"),
+            requests,
+        )?;
+
+        // Build DLLs
+        std::process::Command::new("dotnet")
+            .current_dir(path.as_ref().join(module_name))
+            .arg("build")
+            .arg("-c")
+            .arg("Release")
+            .status()
+            .map_err(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => TypeGenError::DotnetNotFound(e),
+                _ => TypeGenError::Io(e),
+            })?;
+
+        Ok(())
+    }
+
     /// Generates types for TypeScript
     /// e.g.
     /// ```rust
     /// # use crux_core::typegen::TypeGen;
     /// # use std::env::temp_dir;
+    /// # fn example() -> Result<(), crux_core::typegen::TypeGenError> {
     /// # let mut typegen = TypeGen::new();
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.typescript("shared_types", output_root.join("typescript"))?;
-    /// # Ok::<(), crux_core::typegen::TypeGenError>(())
+    /// # Ok(())
+    /// # }
     /// ```
     /// # Errors
     /// Errors that can occur during type generation.
