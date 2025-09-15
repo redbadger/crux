@@ -723,7 +723,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.16.0"
+version = "0.16.1"
 dependencies = [
  "anyhow",
  "bincode",

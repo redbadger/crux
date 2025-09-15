@@ -39,8 +39,8 @@ where
     fn try_process_effect_with(
         &self,
         effect: Effect,
-        resolve_callback: impl FnOnce(
-            RequestHandle<<Self::Op as Operation>::Output>,
+        resolve_callback: impl FnMut(
+            &mut RequestHandle<<Self::Op as Operation>::Output>,
             <Self::Op as Operation>::Output,
         ) + Send
         + 'static,
@@ -210,7 +210,7 @@ where
 
                     // Ideally, we'd want the `handle` to be an `impl Resolvable`, alas,
                     // generic closures are not a thing.
-                    move |mut handle: RequestHandle<<EM::Op as Operation>::Output>,
+                    move |handle: &mut RequestHandle<<EM::Op as Operation>::Output>,
                           effect_out_value| {
                         // This allows us to do the recursion without requiring `inner` to outlive 'static
                         let Some(strong_inner) = inner.upgrade() else {
@@ -220,7 +220,7 @@ where
                         };
 
                         if let Ok(immediate_effects) =
-                            strong_inner.next.resolve(&mut handle, effect_out_value, {
+                            strong_inner.next.resolve(handle, effect_out_value, {
                                 let return_effects = return_effects.clone();
                                 let future_inner = inner.clone();
 
