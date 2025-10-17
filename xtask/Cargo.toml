@@ -11,11 +11,11 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-cargo_metadata = "0.22.0"
-clap = { version = "4.5.46", features = ["derive"] }
+cargo_metadata = "0.23.0"
+clap = { version = "4.5.50", features = ["derive"] }
 dialoguer = "0.12.0"
 human-repr = "1.1.0"
-ignore = "0.4.23"
+ignore = "0.4.24"
 xshell = "0.2.7"
 
 [lints]

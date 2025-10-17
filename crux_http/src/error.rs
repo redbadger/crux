@@ -1,7 +1,8 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
-#[derive(facet::Facet, Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
+#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
 #[repr(C)]
 pub enum HttpError {
     #[error("HTTP error {code}: {message}")]
@@ -12,7 +13,7 @@ pub enum HttpError {
         message: String,
         body: Option<Vec<u8>>,
     },
-    #[error("JSON serialisation error: {0}")]
+    #[error("JSON serialization error: {0}")]
     #[serde(skip)]
     #[facet(skip)]
     Json(String),

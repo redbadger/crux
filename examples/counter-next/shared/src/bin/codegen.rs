@@ -35,7 +35,7 @@ fn main() -> Result<()> {
 }
 
 fn app(out_dir: &Path) -> Result<()> {
-    let typegen_app = TypeRegistry::new().register_app::<App>().build();
+    let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
 
     typegen_app.swift(
         &Config::builder("App", out_dir.join("swift"))
@@ -98,9 +98,9 @@ fn app(out_dir: &Path) -> Result<()> {
 
 fn sse(out_dir: &Path) -> Result<()> {
     let typegen_sse = TypeRegistry::new()
-        .register_type::<SseRequest>()
-        .register_type::<SseResponse>()
-        .build();
+        .register_type::<SseRequest>()?
+        .register_type::<SseResponse>()?
+        .build()?;
 
     typegen_sse.swift(
         &Config::builder("ServerSentEvents", out_dir.join("swift"))
@@ -139,7 +139,7 @@ fn sse(out_dir: &Path) -> Result<()> {
 }
 
 fn serde(out_dir: &Path) -> Result<()> {
-    let typegen_serde = TypeRegistry::new().build();
+    let typegen_serde = TypeRegistry::new().build()?;
 
     typegen_serde.swift(
         &Config::builder("Serde", out_dir.join("swift"))

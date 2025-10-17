@@ -29,7 +29,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
 
     match effect {
         render @ Effect::Render(_) => {
-            tx.send(render).map_err(|e| anyhow!("{:?}", e))?;
+            tx.send(render).map_err(|e| anyhow!("{e:?}"))?;
         }
 
         Effect::Http(mut request) => {

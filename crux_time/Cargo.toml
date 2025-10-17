@@ -11,7 +11,7 @@ license.workspace = true
 keywords.workspace = true
 
 [dependencies]
-chrono = { version = "0.4.41", features = ["serde"], optional = true }
+chrono = { version = "0.4.42", features = ["serde"], optional = true }
 crux_core = { version = "0.16.0", path = "../crux_core" }
 facet.workspace = true
 futures = "0.3.31"
@@ -19,7 +19,7 @@ serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
 [dev-dependencies]
-serde_json = "1.0.143"
+serde_json = "1.0.145"
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]

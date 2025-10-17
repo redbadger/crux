@@ -8,7 +8,7 @@ pub fn get() -> Result<String> {
         .ok_or_else(|| anyhow!("no DOM"))?
         .navigator()
         .user_agent()
-        .map_err(|e| anyhow!("no user agent {:?}", e))?;
+        .map_err(|e| anyhow!("no user agent {e:?}"))?;
 
     Ok(Parser::new()
         .parse(&agent)
