@@ -4,6 +4,7 @@ mod request_serde;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};
+use std::any::TypeId;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -11,9 +12,9 @@ use crate::{App, Core, core::ResolveError};
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
-// ResolveByte is public to be accessible from crux_macros
+// ResolveByte and Response are public to be accessible from crux_macros
 #[doc(hidden)]
-pub use request_serde::ResolveSerialized;
+pub use request_serde::{ResolveSerialized, Response};
 
 /// A serialization format for the bridge FFI.
 ///
@@ -69,6 +70,8 @@ pub enum BridgeError<T: FfiFormat> {
     DeserializeEvent(T::Error),
     #[error("could not deserialize provided effect output: {0}")]
     DeserializeOutput(T::Error),
+    #[error("effect output type mismatch: expected {expected:?}, found {found:?}")]
+    OutputTypeMismatch { expected: TypeId, found: TypeId },
     #[error("could not process response: {0}")]
     ProcessResponse(#[from] ResolveError),
     #[error("could not serialize effect requests: {0}")]
@@ -109,6 +112,22 @@ where
         Ok(return_buffer)
     }
 
+    /// Receive an event.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the effects could not be serialized.
+    pub fn process_event_typed(&self, event: A::Event) -> Result<Vec<u8>, BridgeError<T>>
+    where
+        A::Effect: crate::core::EffectFFI,
+    {
+        let mut return_buffer = vec![];
+
+        self.inner.process_event_typed(event, &mut return_buffer)?;
+
+        Ok(return_buffer)
+    }
+
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
@@ -131,6 +150,24 @@ where
         let mut return_buffer = vec![];
 
         self.inner.handle_response(id, output, &mut return_buffer)?;
+
+        Ok(return_buffer)
+    }
+
+    /// Receive a typed response to a capability request from the shell.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the response type does not match the expected output type.
+    pub fn handle_response_typed<R>(&self, id: u32, output: R) -> Result<Vec<u8>, BridgeError<T>>
+    where
+        A::Effect: crate::core::EffectFFI,
+        R: 'static,
+    {
+        let mut return_buffer = vec![];
+
+        self.inner
+            .handle_response_typed(id, output, &mut return_buffer)?;
 
         Ok(return_buffer)
     }
@@ -205,6 +242,23 @@ where
         self.process(None, event, requests_out)
     }
 
+    /// Receive an event.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the effects could not be serialized.
+    pub fn process_event_typed(
+        &self,
+        event: A::Event,
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<T>>
+    where
+        A::Effect: crate::core::EffectFFI,
+    {
+        let effects = self.core.process_event(event);
+        self.process_effects(effects, requests_out)
+    }
+
     /// Receive a response to a capability request from the shell.
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
@@ -229,6 +283,35 @@ where
         self.process(Some(EffectId(id)), response, requests_out)
     }
 
+    /// Receive a typed response to a capability request from the shell.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the response type does not match the expected output type.
+    ///
+    /// # Panics
+    ///
+    /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
+    pub fn handle_response_typed<R>(
+        &self,
+        id: u32,
+        response: R,
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<T>>
+    where
+        A::Effect: crate::core::EffectFFI,
+        R: 'static,
+    {
+        let effects = {
+            self.registry
+                .resume(EffectId(id), Response::Value(Box::new(response)))?;
+
+            self.core.process()
+        };
+
+        self.process_effects(effects, requests_out)
+    }
+
     fn process<'a>(
         &self,
         id: Option<EffectId>,
@@ -246,7 +329,7 @@ where
                 self.core.process_event(shell_event)
             }
             Some(id) => {
-                self.registry.resume(id, data)?;
+                self.registry.resume(id, Response::Bytes(data))?;
 
                 self.core.process()
             }
