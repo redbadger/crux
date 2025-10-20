@@ -310,10 +310,11 @@ mod tests {
         middleware::{FakeHttpMiddleware, RemoteTriggerHttp, RngMiddleware},
     };
     use crossbeam_channel::RecvError;
+    use crux_core::bridge::JsonFfiFormat;
     use crux_core::{
         Core,
         bridge::{self, Request},
-        middleware::{BincodeFfiFormat, FfiFormat, Layer as _},
+        middleware::{BincodeFfiFormat, Layer as _},
         render::RenderOperation,
     };
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
@@ -544,21 +545,6 @@ mod tests {
         assert_eq!(RenderOperation, render_operation);
 
         Ok(())
-    }
-
-    struct JsonFfiFormat;
-
-    impl FfiFormat for JsonFfiFormat {
-        type Serializer<'b> = serde_json::Serializer<&'b mut Vec<u8>>;
-        type Deserializer<'b> = serde_json::Deserializer<serde_json::de::SliceRead<'b>>;
-
-        fn serializer(buffer: &mut Vec<u8>) -> serde_json::Serializer<&mut Vec<u8>> {
-            serde_json::Serializer::new(buffer)
-        }
-
-        fn deserializer(bytes: &[u8]) -> serde_json::Deserializer<serde_json::de::SliceRead<'_>> {
-            serde_json::Deserializer::from_slice(bytes)
-        }
     }
 
     #[test]
