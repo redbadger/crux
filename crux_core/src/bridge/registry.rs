@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use slab::Slab;
 
 use super::{BridgeError, FfiFormat, Request};
-use crate::bridge::request_serde::ResolveSerialized;
+use crate::bridge::request_serde::{ResolveSerialized, Response};
 use crate::{EffectFFI, ResolveError};
 
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,7 +50,11 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 
     /// Resume a previously registered effect. This may fail, either because `EffectId` wasn't
     /// found or because this effect was not expected to be resumed again.
-    pub fn resume(&self, id: EffectId, response: &[u8]) -> Result<(), BridgeError<T>> {
+    pub fn resume<'a>(
+        &self,
+        id: EffectId,
+        response: impl Into<Response<'a>>,
+    ) -> Result<(), BridgeError<T>> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
         let entry = registry_lock.get_mut(id.0 as usize);
@@ -59,7 +63,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
             return Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)));
         };
 
-        let resolved = entry.resolve(response);
+        let resolved = entry.resolve(response.into());
 
         if let ResolveSerialized::Never = entry {
             registry_lock.remove(id.0 as usize);
