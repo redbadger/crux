@@ -107,7 +107,7 @@ where
     {
         let mut return_buffer = vec![];
 
-        self.inner.process_event(event, &mut return_buffer)?;
+        self.inner.process_event(event, Some(&mut return_buffer))?;
 
         Ok(return_buffer)
     }
@@ -123,7 +123,8 @@ where
     {
         let mut return_buffer = vec![];
 
-        self.inner.process_event_typed(event, &mut return_buffer)?;
+        self.inner
+            .process_event_typed(event, Some(&mut return_buffer))?;
 
         Ok(return_buffer)
     }
@@ -149,7 +150,8 @@ where
     {
         let mut return_buffer = vec![];
 
-        self.inner.handle_response(id, output, &mut return_buffer)?;
+        self.inner
+            .handle_response(id, output, Some(&mut return_buffer))?;
 
         Ok(return_buffer)
     }
@@ -167,7 +169,7 @@ where
         let mut return_buffer = vec![];
 
         self.inner
-            .handle_response_typed(id, output, &mut return_buffer)?;
+            .handle_response_typed(id, output, Some(&mut return_buffer))?;
 
         Ok(return_buffer)
     }
@@ -233,13 +235,15 @@ where
     pub fn process_event<'a>(
         &self,
         event: &'a [u8],
-        requests_out: &mut Vec<u8>,
+        requests_out: Option<&mut Vec<u8>>,
     ) -> Result<(), BridgeError<T>>
     where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        self.process(None, event, requests_out)
+        let shell_event = T::deserialize(event).map_err(BridgeError::DeserializeEvent)?;
+        self.core.submit_event(shell_event);
+        self.process(requests_out)
     }
 
     /// Receive an event.
@@ -250,13 +254,13 @@ where
     pub fn process_event_typed(
         &self,
         event: A::Event,
-        requests_out: &mut Vec<u8>,
+        requests_out: Option<&mut Vec<u8>>,
     ) -> Result<(), BridgeError<T>>
     where
         A::Effect: crate::core::EffectFFI,
     {
-        let effects = self.core.process_event(event);
-        self.process_effects(effects, requests_out)
+        self.core.submit_event(event);
+        self.process(requests_out)
     }
 
     /// Receive a response to a capability request from the shell.
@@ -274,13 +278,15 @@ where
         &self,
         id: u32,
         response: &'a [u8],
-        requests_out: &mut Vec<u8>,
+        requests_out: Option<&mut Vec<u8>>,
     ) -> Result<(), BridgeError<T>>
     where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        self.process(Some(EffectId(id)), response, requests_out)
+        self.registry
+            .resume(EffectId(id), Response::Bytes(response))?;
+        self.process(requests_out)
     }
 
     /// Receive a typed response to a capability request from the shell.
@@ -296,56 +302,28 @@ where
         &self,
         id: u32,
         response: R,
-        requests_out: &mut Vec<u8>,
+        requests_out: Option<&mut Vec<u8>>,
     ) -> Result<(), BridgeError<T>>
     where
         A::Effect: crate::core::EffectFFI,
         R: 'static,
     {
-        let effects = {
-            self.registry
-                .resume(EffectId(id), Response::Value(Box::new(response)))?;
+        self.registry
+            .resume(EffectId(id), Response::Value(Box::new(response)))?;
 
-            self.core.process()
-        };
-
-        self.process_effects(effects, requests_out)
+        self.process(requests_out)
     }
 
-    fn process<'a>(
-        &self,
-        id: Option<EffectId>,
-        data: &'a [u8],
-        requests_out: &mut Vec<u8>,
-    ) -> Result<(), BridgeError<T>>
-    where
-        A::Event: Deserialize<'a>,
-        A::Effect: crate::core::EffectFFI,
-    {
-        let effects = match id {
-            None => {
-                let shell_event = T::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
-
-                self.core.process_event(shell_event)
-            }
-            Some(id) => {
-                self.registry.resume(id, Response::Bytes(data))?;
-
-                self.core.process()
-            }
-        };
-
-        self.process_effects(effects, requests_out)
-    }
-
-    fn process_effects(
-        &self,
-        effects: Vec<A::Effect>,
-        requests_out: &mut Vec<u8>,
-    ) -> Result<(), BridgeError<T>>
+    fn process(&self, requests_out: Option<&mut Vec<u8>>) -> Result<(), BridgeError<T>>
     where
         A::Effect: crate::core::EffectFFI,
     {
+        let Some(requests_out) = requests_out else {
+            return Ok(());
+        };
+
+        let effects = self.core.process();
+
         let requests: Vec<_> = effects
             .into_iter()
             .map(|eff| self.registry.register(eff))
