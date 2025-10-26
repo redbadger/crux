@@ -37,19 +37,6 @@ impl<T> Receiver<T> {
         }
     }
 
-    /// Receives a message if any are waiting.
-    /// Returns the error branch if the sender has disconnected.
-    ///
-    /// This API isn't that nice, but isn't intended for public consumption
-    /// so whatevs.
-    pub fn try_receive(&self) -> Result<Option<T>, ()> {
-        match self.inner.try_recv() {
-            Ok(inner) => Ok(Some(inner)),
-            Err(crossbeam_channel::TryRecvError::Empty) => Ok(None),
-            Err(crossbeam_channel::TryRecvError::Disconnected) => Err(()),
-        }
-    }
-
     pub fn drain(&self) -> Drain<'_, T> {
         Drain { receiver: self }
     }
@@ -86,18 +73,6 @@ where
     pub fn send(&self, t: T) {
         self.inner.send(t);
     }
-
-    pub fn map_input<NewT, F>(&self, func: F) -> Sender<NewT>
-    where
-        F: Fn(NewT) -> T + Send + Sync + 'static,
-    {
-        Sender {
-            inner: Arc::new(MappedInner {
-                sender: Arc::clone(&self.inner),
-                func,
-            }),
-        }
-    }
 }
 
 trait SenderInner<T> {
@@ -107,20 +82,6 @@ trait SenderInner<T> {
 impl<T> SenderInner<T> for crossbeam_channel::Sender<T> {
     fn send(&self, t: T) {
         crossbeam_channel::Sender::send(self, t).unwrap();
-    }
-}
-
-pub struct MappedInner<T, F> {
-    sender: Arc<dyn SenderInner<T> + Send + Sync>,
-    func: F,
-}
-
-impl<F, T, U> SenderInner<U> for MappedInner<T, F>
-where
-    F: Fn(U) -> T,
-{
-    fn send(&self, value: U) {
-        self.sender.send((self.func)(value));
     }
 }
 
