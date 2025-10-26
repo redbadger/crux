@@ -3,11 +3,9 @@
 
 pub mod command;
 
-#[expect(deprecated)]
-use crux_core::capability::CapabilityContext;
+use std::marker::PhantomData;
 
-use crux_core::capability::Operation;
-use crux_core::macros::Capability;
+use crux_core::{Command, Request, capability::Operation, command::RequestBuilder};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,37 +19,19 @@ impl Operation for PlatformRequest {
     type Output = PlatformResponse;
 }
 
-#[derive(Capability)]
-#[deprecated(
-    since = "0.7.0",
-    note = "The Platform capability has been deprecated. Use command::Platform"
-)]
-#[expect(deprecated)]
-pub struct Platform<Ev> {
-    context: CapabilityContext<PlatformRequest, Ev>,
+pub struct Platform<Effect, Event> {
+    effect: PhantomData<Effect>,
+    event: PhantomData<Event>,
 }
 
-#[expect(deprecated)]
-impl<Ev> Platform<Ev>
+impl<Effect, Event> Platform<Effect, Event>
 where
-    Ev: 'static,
+    Effect: From<Request<PlatformRequest>> + Send + 'static,
+    Event: Send + 'static,
 {
+    /// Get the platform of the shell
     #[must_use]
-    pub fn new(context: CapabilityContext<PlatformRequest, Ev>) -> Self {
-        Self { context }
-    }
-
-    pub fn get<F>(&self, callback: F)
-    where
-        F: FnOnce(PlatformResponse) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = context.request_from_shell(PlatformRequest).await;
-
-                context.update_app(callback(response));
-            }
-        });
+    pub fn get() -> RequestBuilder<Effect, Event, impl Future<Output = PlatformResponse>> {
+        Command::request_from_shell(PlatformRequest)
     }
 }
