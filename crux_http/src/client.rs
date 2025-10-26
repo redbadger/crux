@@ -69,6 +69,7 @@ impl fmt::Debug for Client {
 }
 
 impl Client {
+    #[cfg(test)]
     pub(crate) fn new<Sender>(sender: Sender) -> Self
     where
         Sender: EffectSender + Send + Sync + 'static,
