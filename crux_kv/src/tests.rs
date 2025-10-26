@@ -48,10 +48,9 @@ impl crux_core::App for App {
     type Model = Model;
     type ViewModel = ViewModel;
 
-    type Capabilities = ();
     type Effect = Effect;
 
-    fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
+    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         let key = "test".to_string();
         match event {
             Event::Get => KeyValue::get(key).then_send(Event::GetResponse),
