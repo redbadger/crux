@@ -1,9 +1,8 @@
-#![expect(deprecated)]
-
 mod shared {
-    use crux_core::render::Render;
-    use crux_core::{Command, macros::Effect};
-    use crux_platform::{Platform, PlatformResponse};
+    use crux_core::macros::effect;
+    use crux_core::render::RenderOperation;
+    use crux_core::{Command, render::render};
+    use crux_platform::{Platform, PlatformRequest, PlatformResponse};
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -29,24 +28,17 @@ mod shared {
         type Event = Event;
         type Model = Model;
         type ViewModel = ViewModel;
-        type Capabilities = Capabilities;
         type Effect = Effect;
 
-        fn update(
-            &self,
-            event: Event,
-            model: &mut Model,
-            caps: &Capabilities,
-        ) -> Command<Effect, Event> {
+        fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
             match event {
-                Event::PlatformGet => caps.platform.get(Event::PlatformSet),
+                Event::PlatformGet => Platform::get().then_send(Event::PlatformSet),
                 Event::PlatformSet(platform) => {
                     model.platform = platform.0;
-                    caps.render.render();
+
+                    render()
                 }
             }
-
-            Command::done()
         }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -56,10 +48,10 @@ mod shared {
         }
     }
 
-    #[derive(Effect)]
-    pub struct Capabilities {
-        pub platform: Platform<Event>,
-        pub render: Render<Event>,
+    #[effect]
+    pub enum Effect {
+        Platform(PlatformRequest),
+        Render(RenderOperation),
     }
 }
 
