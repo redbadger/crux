@@ -353,7 +353,6 @@ where
 }
 
 #[cfg(test)]
-#[expect(deprecated)]
 mod tests {
     use serde::{Deserialize, Serialize};
     use static_assertions::assert_impl_all;
@@ -374,5 +373,4 @@ mod tests {
     }
 
     assert_impl_all!(ProtoContext<Effect, Event>: Send, Sync);
-    assert_impl_all!(CapabilityContext<Op, Event>: Send, Sync);
 }

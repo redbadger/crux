@@ -26,15 +26,9 @@ mod app {
         type Event = Event;
         type Model = String;
         type ViewModel = String;
-        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(
-            &self,
-            _event: Self::Event,
-            _model: &mut Self::Model,
-            _caps: &(),
-        ) -> Command<Effect, Event> {
+        fn update(&self, _event: Self::Event, _model: &mut Self::Model) -> Command<Effect, Event> {
             render()
         }
 
