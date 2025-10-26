@@ -40,10 +40,9 @@ mod shared {
         type Model = Model;
         type ViewModel = ViewModel;
 
-        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
+        fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
             match event {
                 Event::Get => Http::get("http://example.com")
                     .header("Authorization", "secret-token")

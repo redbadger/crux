@@ -218,17 +218,6 @@ pub(crate) trait EffectSender {
 }
 
 #[async_trait]
-#[expect(deprecated)]
-impl<Ev> EffectSender for crux_core::capability::CapabilityContext<HttpRequest, Ev>
-where
-    Ev: 'static,
-{
-    async fn send(&self, effect: HttpRequest) -> HttpResult {
-        crux_core::capability::CapabilityContext::request_from_shell(self, effect).await
-    }
-}
-
-#[async_trait]
 pub(crate) trait ProtocolRequestBuilder {
     async fn into_protocol_request(mut self) -> crate::Result<HttpRequest>;
 }
