@@ -100,10 +100,6 @@ mod tests {
         send.send(Some(1));
         assert_eq!(recv.receive(), Some(Some(1)));
 
-        let wrapped_send = send.map_input(Some);
-        wrapped_send.send(1);
-        assert_eq!(recv.receive(), Some(Some(1)));
-
         assert_eq!(recv.receive(), None);
     }
 }

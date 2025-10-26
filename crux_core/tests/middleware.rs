@@ -53,14 +53,12 @@ mod app {
         type Event = Event;
         type Model = Model;
         type ViewModel = ();
-        type Capabilities = ();
         type Effect = Effect;
 
         fn update(
             &self,
             event: Self::Event,
             model: &mut Self::Model,
-            _caps: &(),
         ) -> crux_core::Command<Self::Effect, Self::Event> {
             match event {
                 Event::Roll(dice) => {
