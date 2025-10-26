@@ -2,8 +2,6 @@
 use anyhow::Result;
 use std::{collections::VecDeque, sync::Arc};
 
-#[expect(deprecated)]
-use crate::WithContext;
 use crate::{
     Command, Request, Resolvable,
     capability::{
@@ -37,7 +35,6 @@ where
     App: crate::App,
 {
     app: App,
-    capabilities: App::Capabilities,
     context: Arc<AppContext<App::Effect, App::Event>>,
     command_spawner: CommandSpawner<App::Effect, App::Event>,
 }
@@ -48,7 +45,6 @@ struct AppContext<Ef, Ev> {
     executor: QueuingExecutor,
 }
 
-#[expect(deprecated)]
 impl<App> AppTester<App>
 where
     App: crate::App,
@@ -56,10 +52,7 @@ where
     /// Create an `AppTester` instance for an existing app instance. This can be used if your App
     /// has a constructor other than `Default`, for example when used as a child app and expecting
     /// configuration from the parent
-    pub fn new(app: App) -> Self
-    where
-        App::Capabilities: WithContext<App::Event, App::Effect>,
-    {
+    pub fn new(app: App) -> Self {
         Self {
             app,
             ..Default::default()
@@ -75,7 +68,7 @@ where
         event: App::Event,
         model: &mut App::Model,
     ) -> Update<App::Effect, App::Event> {
-        let command = self.app.update(event, model, &self.capabilities);
+        let command = self.app.update(event, model);
         self.command_spawner.spawn(command);
 
         self.context.updates()
@@ -125,22 +118,19 @@ where
     }
 }
 
-#[expect(deprecated)]
 impl<App> Default for AppTester<App>
 where
     App: crate::App,
-    App::Capabilities: WithContext<App::Event, App::Effect>,
 {
     fn default() -> Self {
         let (command_sender, commands) = crate::capability::channel();
         let (event_sender, events) = crate::capability::channel();
         let (executor, spawner) = executor_and_spawner();
-        let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
-        let command_spawner = CommandSpawner::new(capability_context.clone());
+        let command_spawner =
+            CommandSpawner::new(ProtoContext::new(command_sender, event_sender, spawner));
 
         Self {
             app: App::default(),
-            capabilities: App::Capabilities::new_with_context(capability_context),
             context: Arc::new(AppContext {
                 commands,
                 events,
@@ -148,15 +138,6 @@ where
             }),
             command_spawner,
         }
-    }
-}
-
-impl<App> AsRef<App::Capabilities> for AppTester<App>
-where
-    App: crate::App,
-{
-    fn as_ref(&self) -> &App::Capabilities {
-        &self.capabilities
     }
 }
 

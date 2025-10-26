@@ -9,8 +9,6 @@ pub use request::Request;
 pub use resolve::{RequestHandle, Resolvable, ResolveError};
 
 use crate::App;
-#[expect(deprecated)]
-use crate::WithContext;
 use crate::capability::CommandSpawner;
 use crate::capability::{self, ProtoContext, QueuingExecutor, channel::Receiver};
 
@@ -35,7 +33,6 @@ where
 
     // user types
     model: RwLock<A::Model>,
-    capabilities: A::Capabilities,
     app: A,
 
     // internals
@@ -59,11 +56,7 @@ where
     /// ```
     ///
     #[must_use]
-    #[expect(deprecated)]
-    pub fn new() -> Self
-    where
-        A::Capabilities: WithContext<A::Event, A::Effect>,
-    {
+    pub fn new() -> Self {
         let (request_sender, request_receiver) = capability::channel();
         let (event_sender, event_receiver) = capability::channel();
         let (executor, spawner) = capability::executor_and_spawner();
@@ -74,7 +67,6 @@ where
             model: RwLock::default(),
             executor,
             app: A::default(),
-            capabilities: A::Capabilities::new_with_context(proto_context),
             requests: request_receiver,
             capability_events: event_receiver,
             command_spawner,
@@ -92,7 +84,7 @@ where
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
 
-        let command = self.app.update(event, &mut model, &self.capabilities);
+        let command = self.app.update(event, &mut model);
 
         // drop the model here, we don't want to hold the lock for the process() call
         drop(model);
@@ -137,9 +129,7 @@ where
 
         while let Some(capability_event) = self.capability_events.receive() {
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            let command = self
-                .app
-                .update(capability_event, &mut model, &self.capabilities);
+            let command = self.app.update(capability_event, &mut model);
 
             drop(model);
 
@@ -163,11 +153,9 @@ where
     }
 }
 
-#[expect(deprecated)]
 impl<A> Default for Core<A>
 where
     A: App,
-    A::Capabilities: WithContext<A::Event, A::Effect>,
 {
     fn default() -> Self {
         Self::new()
