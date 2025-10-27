@@ -2,15 +2,14 @@ mod effect;
 mod request;
 mod resolve;
 
-use std::sync::RwLock;
+use std::collections::VecDeque;
+use std::sync::{Mutex, RwLock};
 
 pub use effect::{Effect, EffectFFI};
 pub use request::Request;
 pub use resolve::{RequestHandle, Resolvable, ResolveError};
 
-use crate::App;
-use crate::capability::CommandSpawner;
-use crate::capability::{self, ProtoContext, QueuingExecutor, channel::Receiver};
+use crate::{App, Command};
 
 /// The Crux core. Create an instance of this type with your App type as the type parameter
 ///
@@ -36,12 +35,7 @@ where
     app: A,
 
     // internals
-    requests: Receiver<A::Effect>,
-    capability_events: Receiver<A::Event>,
-    executor: QueuingExecutor,
-
-    // temporary command support
-    command_spawner: CommandSpawner<A::Effect, A::Event>,
+    root_command: Mutex<Command<A::Effect, A::Event>>,
 }
 // ANCHOR_END: core
 
@@ -57,19 +51,10 @@ where
     ///
     #[must_use]
     pub fn new() -> Self {
-        let (request_sender, request_receiver) = capability::channel();
-        let (event_sender, event_receiver) = capability::channel();
-        let (executor, spawner) = capability::executor_and_spawner();
-        let proto_context = ProtoContext::new(request_sender, event_sender, spawner);
-        let command_spawner = CommandSpawner::new(proto_context.clone());
-
         Self {
             model: RwLock::default(),
-            executor,
             app: A::default(),
-            requests: request_receiver,
-            capability_events: event_receiver,
-            command_spawner,
+            root_command: Mutex::new(Command::done()),
         }
     }
 
@@ -89,7 +74,14 @@ where
         // drop the model here, we don't want to hold the lock for the process() call
         drop(model);
 
-        self.command_spawner.spawn(command);
+        let mut root_command = self
+            .root_command
+            .lock()
+            .expect("Capability runtime lock was poisoned");
+        root_command.spawn(|ctx| command.into_future(ctx));
+
+        drop(root_command);
+
         self.process()
     }
     // ANCHOR_END: process_event
@@ -125,19 +117,24 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process
     pub(crate) fn process(&self) -> Vec<A::Effect> {
-        self.executor.run_all();
+        let mut root_command = self
+            .root_command
+            .lock()
+            .expect("Capability runtime lock was poisoned");
 
-        while let Some(capability_event) = self.capability_events.receive() {
+        let mut events: VecDeque<_> = root_command.events().collect();
+
+        while let Some(event_from_commands) = events.pop_front() {
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            let command = self.app.update(capability_event, &mut model);
-
+            let command = self.app.update(event_from_commands, &mut model);
             drop(model);
 
-            self.command_spawner.spawn(command);
-            self.executor.run_all();
+            root_command.spawn(|ctx| command.into_future(ctx));
+
+            events.extend(root_command.events());
         }
 
-        self.requests.drain().collect()
+        root_command.effects().collect()
     }
     // ANCHOR_END: process
 

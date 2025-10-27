@@ -62,6 +62,7 @@ mod app {
         ) -> crux_core::Command<Self::Effect, Self::Event> {
             match event {
                 Event::Roll(dice) => {
+                    println!("Roll dice: {dice:?}");
                     if dice.is_empty() {
                         return Command::done();
                     }
@@ -71,6 +72,7 @@ mod app {
                     let dice = dice.into_iter().map(|dice| (dice, None)).collect();
                     model.roll = Roll::InProgress(dice);
 
+                    println!("Requesting first dice: {first_dice:?}");
                     Command::request_from_shell(RandomNumberRequest(vec![first_dice]))
                         .then_send(Event::Random)
                 }
@@ -80,6 +82,9 @@ mod app {
                         Roll::InProgress(results) => {
                             // find position of first None, insert the arriving random_number
                             // request a new random number up to the next dice
+                            println!(
+                                "Got random number: {new_number:?}, results so far: {results:?}",
+                            );
 
                             let mut incomplete_dice =
                                 results.iter_mut().skip_while(|(_, v)| v.is_some());
@@ -90,13 +95,19 @@ mod app {
                             }
 
                             // If there are no more unresolved dice, we're done
+                            //
+                            // NOTE: this logic is somewhat faulty since we're now requesting _two_ dice
+                            // in the next step. When the first of the two arrives, we will request
+                            // the second of them _again_ despite already having requested it before
                             if incomplete_dice.next().is_none() {
                                 let values = results.iter().map(|(_, v)| v.unwrap()).collect();
 
+                                println!("Roll complete");
                                 model.roll = Roll::Complete(values);
                             }
                         }
-                        Roll::Complete(_) | Roll::NotStarted => {}
+                        // We solve the above problem by terminating early if the roll is already complete
+                        Roll::Complete(_) | Roll::NotStarted => return Command::done(),
                     }
 
                     match &model.roll {
@@ -113,20 +124,25 @@ mod app {
                                 .take(2)
                                 .collect();
 
+                            println!("Requesting next dice: {next_die_sizes:?}");
                             Command::stream_from_shell(RandomNumberRequest(next_die_sizes))
                                 .then_send(Event::Random)
                         }
-                        Roll::Complete(items) => Http::post("http://dice-api.example.com/publish")
-                            .body_json(&items)
-                            .expect("numbers should serialize")
-                            .expect_json()
-                            .build()
-                            .then_send(Event::Http),
+                        Roll::Complete(items) => {
+                            println!("Roll complete, submitting to API");
+
+                            Http::post("http://dice-api.example.com/publish")
+                                .body_json(&items)
+                                .expect("numbers should serialize")
+                                .expect_json()
+                                .build()
+                                .then_send(Event::Http)
+                        }
                     }
                 }
                 Event::Http(_http_result) => {
                     model.roll = Roll::NotStarted;
-                    println!("Got http result!");
+                    println!("Got http result! Rendering");
 
                     // we don't really care about the result, really...
                     render()
@@ -581,6 +597,8 @@ mod tests {
         let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
             serde_json::from_slice(&effects_bytes)?;
 
+        eprintln!("#1 Effects length {}", effects.len());
+
         let bridge::Request {
             effect: BridgeEffectFfi::Http(_),
             id: effect_id,
@@ -596,6 +614,8 @@ mod tests {
         core.resolve(effect_id, &response_bytes, &mut effects_bytes)?;
 
         let effects_de: Vec<Request<BridgeEffectFfi>> = serde_json::from_slice(&effects_bytes)?;
+
+        eprintln!("#2 Effects length {}", effects_de.len());
         assert_eq!(effects_de.len(), 1);
         assert!(matches!(
             effects_de[0],
