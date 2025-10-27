@@ -165,8 +165,6 @@ mod capabilities;
 mod core;
 
 pub use capabilities::*;
-#[expect(deprecated)]
-pub use capability::{Capability, WithContext};
 pub use command::Command;
 pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "cli")]
@@ -185,13 +183,6 @@ pub trait App: Default {
     /// `ViewModel`, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel;
-    /// `Capabilities`, usually a `struct`, lists the capabilities used by this application.
-    ///
-    /// Typically, Capabilities should contain at least an instance of the built-in [`Render`](crate::render::Render) capability.
-    ///
-    /// Note: this `Capabilities` associated type will be deprecated soon as part of the completion of
-    /// the migration to the new [`Command`](command) API.
-    type Capabilities;
     /// `Effect`, the enum carrying effect requests created by capabilities.
     /// Normally this type is derived from `Capabilities` using the `crux_macros::Effect` derive macro
     type Effect: Effect + Unpin;
@@ -214,7 +205,6 @@ pub trait App: Default {
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        caps: &Self::Capabilities,
     ) -> Command<Self::Effect, Self::Event>;
 
     /// View method is used by the Shell to request the current state of the user interface

@@ -189,30 +189,6 @@ mod tests {
     };
 
     use super::*;
-    use crate::capability::shell_request::ShellRequest;
-
-    #[test]
-    fn test_task_does_not_leak() {
-        // Arc is a convenient RAII counter
-        let counter = Arc::new(());
-        assert_eq!(Arc::strong_count(&counter), 1);
-
-        let (executor, spawner) = executor_and_spawner();
-
-        let future = {
-            let counter = counter.clone();
-            async move {
-                assert_eq!(Arc::strong_count(&counter), 2);
-                ShellRequest::<()>::new().await;
-            }
-        };
-
-        spawner.spawn(future);
-        executor.run_all();
-        drop(executor);
-        drop(spawner);
-        assert_eq!(Arc::strong_count(&counter), 1);
-    }
 
     #[test]
     fn test_multithreaded_executor() {

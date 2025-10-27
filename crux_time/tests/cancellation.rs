@@ -42,14 +42,12 @@ impl App for Timer {
     type Event = Event;
     type Model = Model;
     type ViewModel = ();
-    type Capabilities = ();
     type Effect = Effect;
 
     fn update(
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-        _caps: &Self::Capabilities,
     ) -> Command<Self::Effect, Self::Event> {
         match event {
             Event::Start => {
@@ -86,7 +84,7 @@ fn cancellation_of_a_started_timer() {
     let mut model = Model::default();
 
     // start the timer...
-    let mut cmd1 = app.update(Event::Start, &mut model, &());
+    let mut cmd1 = app.update(Event::Start, &mut model);
 
     // ...no events
     assert!(cmd1.events().next().is_none());
@@ -105,7 +103,7 @@ fn cancellation_of_a_started_timer() {
     assert_eq!(model.status, Status::Pending);
 
     // cancel the timer...
-    let mut cmd2 = app.update(Event::Cancel, &mut model, &());
+    let mut cmd2 = app.update(Event::Cancel, &mut model);
 
     // ...no events or effects
     assert!(cmd2.events().next().is_none());
@@ -133,7 +131,7 @@ fn cancellation_of_a_started_timer() {
     assert_eq!(&event, &Event::Completed(TimerOutcome::Cleared));
 
     // now we send the event back into the app
-    let _ = app.update(event, &mut model, &());
+    let _ = app.update(event, &mut model);
 
     // ...and the model is updated
     assert_eq!(model.status, Status::Cleared);

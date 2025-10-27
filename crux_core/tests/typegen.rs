@@ -20,15 +20,9 @@ mod shared {
         type Event = Event;
         type Model = ();
         type ViewModel = ViewModel;
-        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(
-            &self,
-            _event: Event,
-            _model: &mut Self::Model,
-            _caps: &(),
-        ) -> Command<Effect, Event> {
+        fn update(&self, _event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
             Command::done()
         }
 

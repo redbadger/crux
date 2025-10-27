@@ -148,7 +148,6 @@ pub trait Layer: Send + Sync + Sized {
 impl<A: App> Layer for Core<A>
 where
     A: Send + Sync + 'static,
-    A::Capabilities: Send + Sync + 'static,
     A::Model: Send + Sync + 'static,
 {
     type Event = A::Event;
