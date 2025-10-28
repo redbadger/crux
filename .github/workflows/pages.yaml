@@ -43,6 +43,7 @@ jobs:
         uses: jontze/action-mdbook@v4
         with:
           token: ${{secrets.GITHUB_TOKEN}}
+          mdbook-version: "0.4.52"
           use-linkcheck: true
           use-admonish: true
 
