@@ -86,6 +86,11 @@ html :is(.admonition-title, summary.admonition-title):last-child {
   display: initial;
 }
 
+@media print {
+  details.admonition::details-content {
+    display: contents;
+  }
+}
 details.admonition > summary.admonition-title::after {
   position: absolute;
   top: 0.625em;
@@ -105,6 +110,9 @@ details.admonition > summary.admonition-title::after {
 }
 details[open].admonition > summary.admonition-title::after {
   transform: rotate(90deg);
+}
+summary.admonition-title::-webkit-details-marker {
+  display: none;
 }
 
 :root {
