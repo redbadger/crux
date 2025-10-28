@@ -40,7 +40,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Setup mdBook
-        uses: jontze/action-mdbook@v3
+        uses: jontze/action-mdbook@v4
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           use-linkcheck: true
