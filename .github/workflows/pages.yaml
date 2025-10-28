@@ -46,9 +46,26 @@ jobs:
           use-linkcheck: true
           use-admonish: true
 
+      - name: Show mdbook version
+        run: mdbook --version
+
+      - name: Show linkchecker version
+        run: mdbook-linkcheck --version
+
+      - name: Show admonish version
+        run: mdbook-admonish --version
+
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
+
+      - name: Build book (latest)
+        working-directory: latest/docs
+        run: mdbook build
+
+      - name: Build book (stable)
+        working-directory: stable/docs
+        run: mdbook build
 
       - name: Build Documentation (latest)
         working-directory: latest
@@ -59,14 +76,6 @@ jobs:
         env:
           RUSTFLAGS: -A warnings
         run: cargo doc --all --no-deps
-
-      - name: Build book (latest)
-        working-directory: latest/docs
-        run: mdbook build
-
-      - name: Build book (stable)
-        working-directory: stable/docs
-        run: mdbook build
 
       - name: Move outputs
         run: |
