@@ -60,11 +60,11 @@ fn find_library_path(metadata: &Metadata, crate_name: &String) -> Result<Utf8Pat
         .workspace_packages()
         .iter()
         .find(|package| &package.name == crate_name)
-        .ok_or_else(|| anyhow!(r#"crate "{}" not found"#, crate_name))?
+        .ok_or_else(|| anyhow!(r#"crate "{crate_name}" not found"#))?
         .targets
         .iter()
         .find(|target| target.is_lib())
-        .ok_or_else(|| anyhow!(r#"crate "{}" has no lib target"#, crate_name))?
+        .ok_or_else(|| anyhow!(r#"crate "{crate_name}" has no lib target"#))?
         .name
         .clone();
     let target_dir = &metadata.target_directory;

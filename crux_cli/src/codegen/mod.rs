@@ -127,7 +127,7 @@ fn format(edges: Vec<(ItemNode, ItemNode)>) -> Registry {
 fn load_crate(name: &str, manifest_paths: &BTreeMap<&str, &str>) -> Result<Crate> {
     let manifest_path = manifest_paths
         .get(name)
-        .ok_or_else(|| anyhow!("unknown crate {}", name))?;
+        .ok_or_else(|| anyhow!("unknown crate {name}"))?;
 
     let status = Command::new("cargo")
         .env("RUSTC_BOOTSTRAP", "1")

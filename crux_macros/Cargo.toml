@@ -15,18 +15,18 @@ proc-macro = true
 [dependencies]
 darling = "0.21.3"
 heck = "0.5.0"
-proc-macro2 = "1.0.101"
+proc-macro2 = "1.0.103"
 proc-macro-error = "1.0.4"
-quote = "1.0.40"
-syn = "2.0.106"
+quote = "1.0.41"
+syn = "2.0.108"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
 facet = { workspace = true }
-insta = "1.43.1"
+insta = "1.43.2"
 prettyplease = "0.2"
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 
 [features]
 typegen = ["crux_core/typegen"]

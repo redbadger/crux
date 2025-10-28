@@ -57,7 +57,7 @@
 //!  let tmp_dir = tempdir()?;
 //!  let output_root = tmp_dir.path();
 //!
-//!  let typegen = TypeRegistry::new().register_app::<App>().build();
+//!  let typegen = TypeRegistry::new().register_app::<App>()?.build()?;
 //!
 //!  typegen.swift(
 //!      &Config::builder("SharedTypes", &output_root.join("swift"))
@@ -81,6 +81,14 @@
 //!  )?;
 //! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
 //! ```
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
+    process::Command,
+    result::Result,
+};
+
 use facet::Facet;
 pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
@@ -93,17 +101,9 @@ use facet_generate::{
 };
 use log::info;
 use serde_json::json;
-use std::{
-    fs::{self, File},
-    io::Write,
-    path::PathBuf,
-    process::Command,
-};
 use thiserror::Error;
 
 use crate::App;
-
-pub type Result = std::result::Result<(), TypeGenError>;
 
 #[derive(Error, Debug)]
 pub enum TypeGenError {
@@ -119,12 +119,14 @@ pub enum TypeGenError {
 
 pub trait Export {
     /// Register types with the type registry.
-    fn register_types(registry: &mut TypeRegistry) -> &mut TypeRegistry;
+    /// # Errors
+    /// Returns a [`TypeGenError`] if the type generation fails.
+    fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>;
 }
 
 impl Export for () {
-    fn register_types(registry: &mut TypeRegistry) -> &mut TypeRegistry {
-        registry
+    fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+        Ok(registry)
     }
 }
 
@@ -149,21 +151,28 @@ impl TypeRegistry {
     /// See the section on
     /// [creating the shared types crate](https://redbadger.github.io/crux/getting_started/core.html#create-the-shared-types-crate)
     /// in the Crux book for more information.
-    pub fn register_app<'a, A: App>(&mut self) -> &mut Self
+    /// # Errors
+    /// Returns a [`TypeGenError`] if the type registration fails.
+    pub fn register_app<'a, A: App>(&mut self) -> Result<&mut Self, TypeGenError>
     where
         A::Effect: Export,
         A::Event: Facet<'a>,
         A::ViewModel: Facet<'a> + 'static,
     {
-        A::Effect::register_types(self);
+        A::Effect::register_types(self).map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
         self.register_type::<A::Event>()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?
             .register_type::<A::ViewModel>()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
+        Ok(self)
     }
 
     /// For each of the types that you want to share with the Shell, call this method:
     /// e.g.
     /// ```rust
-    /// # use crux_core::type_generation::facet::TypeRegistry;
+    /// # use crux_core::type_generation::facet::{TypeGenError, TypeRegistry};
     /// #[derive(facet::Facet)]
     /// struct MyStruct;
     ///
@@ -171,27 +180,40 @@ impl TypeRegistry {
     /// #[repr(C)]
     /// enum MyEnum { None }
     ///
-    /// fn register() {
+    /// fn register() -> Result<(), TypeGenError> {
     ///   TypeRegistry::new()
-    ///     .register_type::<MyEnum>()
-    ///     .register_type::<MyStruct>()
-    ///     .build();
+    ///     .register_type::<MyEnum>()?
+    ///     .register_type::<MyStruct>()?
+    ///     .build()?;
+    ///   Ok(())
     /// }
     /// ```
-    pub fn register_type<'a, 'de, T>(&mut self) -> &mut Self
+    /// # Errors
+    /// Returns a [`TypeGenError`] if the type registration fails.
+    pub fn register_type<'a, 'de, T>(&mut self) -> Result<&mut Self, TypeGenError>
     where
         T: Facet<'a>,
     {
         let builder = std::mem::take(&mut self.0);
-        self.0 = builder.add_type::<T>();
+        self.0 = builder
+            .add_type::<T>()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        self
+        Ok(self)
     }
 
-    #[must_use]
-    pub fn build(&mut self) -> CodeGenerator {
+    /// Builds the type registry and returns a [`CodeGenerator`] instance.
+    /// # Errors
+    /// Returns a [`TypeGenError`] if the type registration fails.
+    pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.0);
-        CodeGenerator(builder.build())
+        let generator = CodeGenerator(
+            builder
+                .build()
+                .map_err(|e| TypeGenError::Generation(e.to_string()))?,
+        );
+
+        Ok(generator)
     }
 }
 
@@ -207,7 +229,7 @@ impl CodeGenerator {
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
-    /// # let mut typegen = TypeRegistry::new().build();
+    /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.swift(
     ///     &Config::builder("SharedTypes", output_root.join("swift"))
@@ -220,7 +242,7 @@ impl CodeGenerator {
     ///
     /// # Errors
     /// Errors that can occur during type generation.
-    pub fn swift(&self, config: &Config) -> Result {
+    pub fn swift(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Swift types");
         let path = config.out_dir.join(&config.package_name);
         let sources = path.join("Sources");
@@ -270,7 +292,7 @@ impl CodeGenerator {
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
-    /// # let mut typegen = TypeRegistry::new().build();
+    /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.java(
     ///     &Config::builder("com.crux.example", output_root.join("java"))
@@ -283,7 +305,7 @@ impl CodeGenerator {
     ///
     /// # Errors
     /// Errors that can occur during type generation.
-    pub fn java(&self, config: &Config) -> Result {
+    pub fn java(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Java types");
         fs::create_dir_all(&config.out_dir)?;
 
@@ -338,7 +360,7 @@ impl CodeGenerator {
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
-    /// # let mut typegen = TypeRegistry::new().build();
+    /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.kotlin(
     ///     &Config::builder("com.crux.example", output_root.join("kotlin"))
@@ -351,7 +373,7 @@ impl CodeGenerator {
     ///
     /// # Errors
     /// Errors that can occur during type generation.
-    pub fn kotlin(&self, config: &Config) -> Result {
+    pub fn kotlin(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Kotlin types");
         fs::create_dir_all(&config.out_dir)?;
 
@@ -406,7 +428,7 @@ impl CodeGenerator {
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
-    /// # let mut typegen = TypeRegistry::new().build();
+    /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.typescript(
     ///     &Config::builder("shared_types", output_root.join("typescript"))
@@ -418,7 +440,7 @@ impl CodeGenerator {
     /// ```
     /// # Errors
     /// Errors that can occur during type generation.
-    pub fn typescript(&self, config: &Config) -> Result {
+    pub fn typescript(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;

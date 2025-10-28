@@ -13,8 +13,8 @@ anyhow.workspace = true
 futures-util = "0.3.31"
 gloo-console = "0.3.0"
 gloo-net = { version = "0.6.0", features = ["http"] }
-js-sys = "0.3.77"
+js-sys = "0.3.82"
 shared = { path = "../shared" }
-wasm-bindgen = "0.2.100"
+wasm-bindgen = "0.2.105"
 wasm-streams = "0.4.2"
 yew = { version = "0.21.0", features = ["csr"] }

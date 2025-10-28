@@ -12,7 +12,7 @@ pub fn new() -> Core {
 }
 
 pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()> {
-    debug!("event: {:?}", event);
+    debug!("event: {event:?}");
 
     for effect in core.process_event(event) {
         process_effect(core, effect, tx)?;
@@ -21,11 +21,11 @@ pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()>
 }
 
 pub fn process_effect(_core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> Result<()> {
-    debug!("effect: {:?}", effect);
+    debug!("effect: {effect:?}");
 
     match effect {
         render @ Effect::Render(_) => {
-            tx.send(render).map_err(|e| anyhow!("{:?}", e))?;
+            tx.send(render).map_err(|e| anyhow!("{e:?}"))?;
         }
     }
     Ok(())

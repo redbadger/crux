@@ -208,6 +208,8 @@ use std::sync::Arc;
 pub(crate) use channel::channel;
 pub(crate) use executor::{QueuingExecutor, executor_and_spawner};
 
+#[cfg(feature = "facet_typegen")]
+use crate::type_generation::facet::TypeGenError;
 use crate::{Command, Request, command::CommandOutput};
 use channel::Sender;
 
@@ -244,14 +246,18 @@ pub trait Operation: Send + 'static {
     #[allow(clippy::missing_errors_doc)]
     fn register_types_facet<'a>(
         generator: &mut crate::type_generation::facet::TypeRegistry,
-    ) -> &mut crate::type_generation::facet::TypeRegistry
+    ) -> Result<&mut crate::type_generation::facet::TypeRegistry, TypeGenError>
     where
         Self: facet::Facet<'a> + serde::Serialize + for<'de> serde::de::Deserialize<'de>,
         <Self as Operation>::Output: facet::Facet<'a> + for<'de> serde::de::Deserialize<'de>,
     {
         generator
             .register_type::<Self>()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?
             .register_type::<Self::Output>()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+
+        Ok(generator)
     }
 }
 

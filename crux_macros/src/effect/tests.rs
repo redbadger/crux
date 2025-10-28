@@ -223,12 +223,25 @@ fn single_with_facet_typegen() {
     impl ::crux_core::type_generation::facet::Export for Effect {
         fn register_types(
             generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
-        ) -> &mut ::crux_core::type_generation::facet::TypeRegistry {
+        ) -> Result<
+            &mut ::crux_core::type_generation::facet::TypeRegistry,
+            ::crux_core::type_generation::facet::TypeGenError,
+        > {
             use ::crux_core::capability::Operation;
-            let generator = RenderOperation::register_types_facet(generator);
+            let generator = RenderOperation::register_types_facet(generator)
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
             generator
                 .register_type::<EffectFfi>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?
                 .register_type::<::crux_core::bridge::Request<EffectFfi>>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
+            Ok(generator)
         }
     }
     "#);
@@ -297,12 +310,25 @@ fn single_facet_typegen_with_new_name() {
     impl ::crux_core::type_generation::facet::Export for MyEffect {
         fn register_types(
             generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
-        ) -> &mut ::crux_core::type_generation::facet::TypeRegistry {
+        ) -> Result<
+            &mut ::crux_core::type_generation::facet::TypeRegistry,
+            ::crux_core::type_generation::facet::TypeGenError,
+        > {
             use ::crux_core::capability::Operation;
-            let generator = RenderOperation::register_types_facet(generator);
+            let generator = RenderOperation::register_types_facet(generator)
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
             generator
                 .register_type::<MyEffectFfi>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?
                 .register_type::<::crux_core::bridge::Request<MyEffectFfi>>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
+            Ok(generator)
         }
     }
     "#);
@@ -552,13 +578,29 @@ fn multiple_with_facet_typegen() {
     impl ::crux_core::type_generation::facet::Export for Effect {
         fn register_types(
             generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
-        ) -> &mut ::crux_core::type_generation::facet::TypeRegistry {
+        ) -> Result<
+            &mut ::crux_core::type_generation::facet::TypeRegistry,
+            ::crux_core::type_generation::facet::TypeGenError,
+        > {
             use ::crux_core::capability::Operation;
-            let generator = RenderOperation::register_types_facet(generator);
-            let generator = HttpRequest::register_types_facet(generator);
+            let generator = RenderOperation::register_types_facet(generator)
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
+            let generator = HttpRequest::register_types_facet(generator)
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
             generator
                 .register_type::<EffectFfi>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?
                 .register_type::<::crux_core::bridge::Request<EffectFfi>>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
+            Ok(generator)
         }
     }
     "#);
