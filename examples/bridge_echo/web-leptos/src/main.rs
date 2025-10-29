@@ -24,6 +24,7 @@ fn RootComponent() -> impl IntoView {
     let (view, render) = signal(core.view());
     let (event, set_event) = signal(Event::Tick(payload.clone()));
     let (clock, set_clock) = signal(0u64);
+    let (average, set_average) = signal(String::new());
 
     Effect::new(move |_| {
         core::update(&core, event.get(), render);
@@ -49,6 +50,11 @@ fn RootComponent() -> impl IntoView {
             move || {
                 set_event.set(Event::NewPeriod);
                 set_clock.update(|c| *c += 1);
+                let data = view.get().log;
+                let sum: usize = data.iter().sum();
+                let count = data.len().max(1);
+                let average = sum / count;
+                set_average.update(|avg| *avg = average.to_string());
             },
             Duration::from_millis(1000),
         );
@@ -57,6 +63,7 @@ fn RootComponent() -> impl IntoView {
     view! {
         <section class="box container has-text-centered m-5">
             <p class="is-size-5">{move || view.get().count}</p>
+            <p class="is-size-5">Average{": "} {move || average}</p>
         </section>
     }
 }
