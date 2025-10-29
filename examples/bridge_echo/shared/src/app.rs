@@ -4,9 +4,10 @@ use crux_core::{
     render::{render, RenderOperation},
     Command,
 };
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct DataPoint {
     pub id: u64,
     pub value: f64,
@@ -14,7 +15,8 @@ pub struct DataPoint {
     pub metadata: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[repr(C)]
 pub enum Event {
     Tick(Vec<DataPoint>),
     NewPeriod,
@@ -28,14 +30,14 @@ pub struct Model {
     last_payload: Vec<DataPoint>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Facet, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ViewModel {
     pub count: usize,
     pub log: Vec<usize>,
     pub last_payload: Vec<DataPoint>,
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),

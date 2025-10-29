@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "shared_types", "web-leptos", "cli"]
+members = ["shared", "web-leptos", "cli"]
 resolver = "1"
 
 [workspace.package]

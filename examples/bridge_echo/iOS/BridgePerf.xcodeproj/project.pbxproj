@@ -8,71 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		0787064227803E37303F8850 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 973DE79248816287A24759FA /* ContentView.swift */; };
-		1D91DEB92273DE4FC7EE2D8F /* (null) in Resources */ = {isa = PBXBuildFile; fileRef = BBD3AE0E65859A8BDC264878; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		153DCC6E5AE94A0AA24EDD92 /* App in Frameworks */ = {isa = PBXBuildFile; productRef = 94C2833AD96E8626B898E338 /* App */; };
 		2391A638B2F2968ACA44FD2D /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6815780EE0429EC63F67067 /* core.swift */; };
-		3BC6ECA0F473F02732E308CF /* libshared_static.a.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D58E719CAB41FB94F163AB8D /* libshared_static.a.a */; };
-		5425067E3C89678E1AEF3F79 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 9CC45FB589F9964637A15D5C /* shared.udl */; };
 		55BFEE680231007BF0D50C56 /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C46EB505F221A795D87B9B4D /* SparklineView.swift */; };
-		9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 987661FD124A360FFF36A4F4 /* SharedTypes */; };
+		9B9D1BF25405F569D6EA675D /* Shared in Frameworks */ = {isa = PBXBuildFile; productRef = 68B4409ADB1848E5A4D33033 /* Shared */; };
 		C4CD26945C055EF9827876AE /* BridgePerfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E902CC2F9431673D47029C6C /* BridgePerfApp.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXBuildRule section */
-		CE78713175AD80D3C2ECFE30 /* PBXBuildRule */ = {
-			isa = PBXBuildRule;
-			compilerSpec = com.apple.compilers.proxy.script;
-			filePatterns = "*.udl";
-			fileType = pattern.proxy;
-			isEditable = 1;
-			name = "Generate FFI";
-			outputFiles = (
-				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift",
-				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h",
-			);
-			outputFilesCompilerFlags = (
-			);
-			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/${CONFIGURATION}/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
-		};
-/* End PBXBuildRule section */
-
-/* Begin PBXContainerItemProxy section */
-		3B6BFE67C9D12C319529549B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA60ACD85ECB8109328FB0D5;
-			remoteInfo = "uniffi-bindgen-bin";
-		};
-		83B41448E196CC4F3B4DDFCF /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA607A8B44DCFB09138082B7;
-			remoteInfo = "shared-staticlib";
-		};
-		B724024E5A9D7E5FEF0FB8C5 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
-			proxyType = 1;
-			remoteGlobalIDString = CA607A8B44DC564A772C0BD1;
-			remoteInfo = "shared-staticlib";
-		};
-		D7237C0DEFADD2FC00B525B2 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 5714ACFE617CB6EE596AD894 /* Shared */;
-			proxyType = 1;
-			remoteGlobalIDString = CA60ACD85ECB522D2C86E215;
-			remoteInfo = "uniffi-bindgen-bin";
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
-		5714ACFE617CB6EE596AD894 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
+		03F368F28520909EA20F73F8 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../shared/generated/swift/App; sourceTree = SOURCE_ROOT; };
+		471D1DCB79406CD635DD3349 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Shared; path = ../shared/generated/swift/Shared; sourceTree = SOURCE_ROOT; };
 		973DE79248816287A24759FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		9CC45FB589F9964637A15D5C /* shared.udl */ = {isa = PBXFileReference; path = shared.udl; sourceTree = "<group>"; };
 		C46EB505F221A795D87B9B4D /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
-		CB21FEAAC10EE53663214F3D /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		CC862345F0CDB156048B1417 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E902CC2F9431673D47029C6C /* BridgePerfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgePerfApp.swift; sourceTree = "<group>"; };
 		EC64E599F518F2E743EA1C66 /* BridgePerf.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BridgePerf.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,8 +31,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3BC6ECA0F473F02732E308CF /* libshared_static.a.a in Frameworks */,
-				9B9D1BF25405F569D6EA675D /* SharedTypes in Frameworks */,
+				9B9D1BF25405F569D6EA675D /* Shared in Frameworks */,
+				153DCC6E5AE94A0AA24EDD92 /* App in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -97,27 +44,17 @@
 			children = (
 				A745C5C6AA1501560EB5DA3C /* BridgePerf */,
 				690F97A271CC1AAFF155F799 /* Packages */,
-				7DD811CAEDAD7DF7CA41F833 /* src */,
 				CB13C3F3A78020B70FBF188F /* Products */,
-				FCE50907855ED2F9637A72B2 /* Projects */,
 			);
 			sourceTree = "<group>";
 		};
 		690F97A271CC1AAFF155F799 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				CB21FEAAC10EE53663214F3D /* SharedTypes */,
+				03F368F28520909EA20F73F8 /* App */,
+				471D1DCB79406CD635DD3349 /* Shared */,
 			);
 			name = Packages;
-			sourceTree = "<group>";
-		};
-		7DD811CAEDAD7DF7CA41F833 /* src */ = {
-			isa = PBXGroup;
-			children = (
-				9CC45FB589F9964637A15D5C /* shared.udl */,
-			);
-			name = src;
-			path = ../shared/src;
 			sourceTree = "<group>";
 		};
 		A745C5C6AA1501560EB5DA3C /* BridgePerf */ = {
@@ -132,29 +69,12 @@
 			path = BridgePerf;
 			sourceTree = "<group>";
 		};
-		ADD693609F892973F1B1FAAC /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				BBD3AE0E65859A8BDC264878,
-				D58E719CAB41FB94F163AB8D /* libshared_static.a.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		CB13C3F3A78020B70FBF188F /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				EC64E599F518F2E743EA1C66 /* BridgePerf.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		FCE50907855ED2F9637A72B2 /* Projects */ = {
-			isa = PBXGroup;
-			children = (
-				5714ACFE617CB6EE596AD894 /* Shared */,
-			);
-			name = Projects;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -165,19 +85,16 @@
 			buildConfigurationList = A66AFC9AFEDD2D8A619E2E2A /* Build configuration list for PBXNativeTarget "BridgePerf" */;
 			buildPhases = (
 				7F7ED5D9102C34900DD37253 /* Sources */,
-				63BEA0E7DE2757751E08E927 /* Resources */,
 				058E488EF07713DF66B51F6D /* Frameworks */,
 			);
 			buildRules = (
-				CE78713175AD80D3C2ECFE30 /* PBXBuildRule */,
 			);
 			dependencies = (
-				5C15DD2899A033B2E75B22E1 /* PBXTargetDependency */,
-				379D55B64F83CAE74DC7B1DA /* PBXTargetDependency */,
 			);
 			name = BridgePerf;
 			packageProductDependencies = (
-				987661FD124A360FFF36A4F4 /* SharedTypes */,
+				68B4409ADB1848E5A4D33033 /* Shared */,
+				94C2833AD96E8626B898E338 /* App */,
 			);
 			productName = BridgePerf;
 			productReference = EC64E599F518F2E743EA1C66 /* BridgePerf.app */;
@@ -203,48 +120,17 @@
 			mainGroup = 5F3D13089EDA162C9AD13180;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				47609C9A3AB7A6BF380DD818 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+				D589A09A78899F071ADD4B8C /* XCLocalSwiftPackageReference "../shared/generated/swift/App" */,
+				5F6BE1B00C3D2188B9345142 /* XCLocalSwiftPackageReference "../shared/generated/swift/Shared" */,
 			);
 			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = ADD693609F892973F1B1FAAC /* Products */;
-					ProjectRef = 5714ACFE617CB6EE596AD894 /* Shared */;
-				},
-			);
 			projectRoot = "";
 			targets = (
 				D4BDC0123D79E2CEE8019CC9 /* BridgePerf */,
 			);
 		};
 /* End PBXProject section */
-
-/* Begin PBXReferenceProxy section */
-		BBD3AE0E65859A8BDC264878 = {
-			isa = PBXReferenceProxy;
-			remoteRef = 3B6BFE67C9D12C319529549B /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		D58E719CAB41FB94F163AB8D /* libshared_static.a.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libshared_static.a.a;
-			remoteRef = 83B41448E196CC4F3B4DDFCF /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-/* End PBXReferenceProxy section */
-
-/* Begin PBXResourcesBuildPhase section */
-		63BEA0E7DE2757751E08E927 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				1D91DEB92273DE4FC7EE2D8F /* (null) in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7F7ED5D9102C34900DD37253 /* Sources */ = {
@@ -255,24 +141,10 @@
 				0787064227803E37303F8850 /* ContentView.swift in Sources */,
 				55BFEE680231007BF0D50C56 /* SparklineView.swift in Sources */,
 				2391A638B2F2968ACA44FD2D /* core.swift in Sources */,
-				5425067E3C89678E1AEF3F79 /* shared.udl in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		379D55B64F83CAE74DC7B1DA /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "shared-staticlib";
-			targetProxy = B724024E5A9D7E5FEF0FB8C5 /* PBXContainerItemProxy */;
-		};
-		5C15DD2899A033B2E75B22E1 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "uniffi-bindgen-bin";
-			targetProxy = D7237C0DEFADD2FC00B525B2 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0C0873955D078661AA1DF0A6 /* Release */ = {
@@ -335,20 +207,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = BridgePerf/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"-w",
-					"-ObjC",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.example.bridge-perf.BridgePerf";
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -420,20 +286,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = BridgePerf/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"-w",
-					"-ObjC",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.example.bridge-perf.BridgePerf";
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -462,16 +322,24 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		47609C9A3AB7A6BF380DD818 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+		5F6BE1B00C3D2188B9345142 /* XCLocalSwiftPackageReference "../shared/generated/swift/Shared" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared_types/generated/swift/SharedTypes;
+			relativePath = ../shared/generated/swift/Shared;
+		};
+		D589A09A78899F071ADD4B8C /* XCLocalSwiftPackageReference "../shared/generated/swift/App" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../shared/generated/swift/App;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		987661FD124A360FFF36A4F4 /* SharedTypes */ = {
+		68B4409ADB1848E5A4D33033 /* Shared */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = SharedTypes;
+			productName = Shared;
+		};
+		94C2833AD96E8626B898E338 /* App */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = App;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
