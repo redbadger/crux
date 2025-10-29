@@ -4,7 +4,7 @@
   "scripts": {
     "build": "pnpm run wasm:build && remix build",
     "dev": "pnpm run wasm:build && remix dev",
-    "wasm:build": "cd ../shared && wasm-pack build --target web",
+    "wasm:build": "cd ../shared && wasm-pack build --target web --out-dir generated/pkg",
     "start": "remix-serve build",
     "typecheck": "tsc"
   },
@@ -16,8 +16,8 @@
     "isbot": "^5.1.23",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "shared": "file:../shared/pkg",
-    "shared_types": "file:../shared_types/generated/typescript"
+    "shared": "file:../shared/generated/pkg",
+    "app": "file:../shared/generated/typescript"
   },
   "devDependencies": {
     "@remix-run/dev": "^2.16.0",
