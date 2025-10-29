@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.crux.example.counter.shared"
+    namespace = "com.crux.example.bridge_echo.shared"
     compileSdk = 36
 
     ndkVersion = "29.0.14206865"
@@ -36,9 +36,10 @@ android {
     }
     sourceSets {
         getByName("main") {
-            kotlin.srcDirs("${projectDir}/../../shared/generated/app/kotlin")
-            kotlin.srcDirs("${projectDir}/../../shared/generated/sse/kotlin")
-            java.srcDirs("${projectDir}/../../shared/generated/serde/kotlin")
+            // types are now generated in kotlin
+            kotlin.srcDirs("${projectDir}/../../shared/generated/kotlin")
+            // except for serde, which is still in java
+            java.srcDirs("${projectDir}/../../shared/generated/kotlin")
         }
     }
 }
