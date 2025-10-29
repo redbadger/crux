@@ -1,4 +1,4 @@
-package com.example.bridge_echo.ui.theme
+package com.crux.example.bridge_echo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

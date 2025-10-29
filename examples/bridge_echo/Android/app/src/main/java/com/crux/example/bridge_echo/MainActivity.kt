@@ -1,4 +1,4 @@
-package com.example.bridge_echo
+package com.crux.example.bridge_echo
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -19,9 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.crux.example.bridge_echo.DataPoint
-import com.crux.example.bridge_echo.Event
-import com.example.bridge_echo.ui.theme.BridgeEchoTheme
+import com.crux.example.bridge_echo.ui.theme.BridgeEchoTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -35,8 +33,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             BridgeEchoTheme {
                 Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) { View() }
             }
         }
@@ -57,7 +55,14 @@ fun View(model: MyCore = viewModel()) {
         )
 
         Text(
-            text = "Average: ${(if ((model.view?.log?.count() ?: 0) > 0) ((model.view?.log?.sum() ?: 1) / (model.view?.log?.count() ?: 1)) else 0)}",
+            text = "Average: ${(
+                    if ((model.view?.log?.count() ?: 0) > 0) {
+                        val sum = model.view?.log?.sum() ?: 1u
+                        val count = model.view?.log?.count() ?: 1
+                        sum / count.toUInt()
+                    } else 
+                        0
+                    )}",
             fontSize = 30.sp,
             modifier = Modifier.padding(10.dp)
         )
@@ -79,10 +84,11 @@ class MyCore : Core() {
     private suspend fun ticker() {
         val payload = (1..10).map { n ->
             DataPoint(
-                n.toLong(),
+                n.toULong(),
                 n.toDouble(),
                 "item_${n}",
-                if (n % 2 == 0) Optional.of("meta_${n}") else Optional.empty())
+                (if (n % 2 == 0) Optional.of("meta_${n}") else Optional.empty()).toString()
+            )
         }
 
         withContext(Dispatchers.Default) {
@@ -95,7 +101,7 @@ class MyCore : Core() {
     private suspend fun clock() {
         withContext(Dispatchers.Default) {
             while (true) {
-                update(Event.NewPeriod())
+                update(Event.NewPeriod)
                 delay(1000)
             }
         }
