@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use clap::{Parser, ValueEnum};
 use crux_core::{
     cli::{bindgen, BindgenArgsBuilder},
     type_generation::facet::{Config, TypeRegistry},
@@ -9,41 +10,65 @@ use uniffi::deps::anyhow::Result;
 
 use shared::App;
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Language {
+    Swift,
+    Kotlin,
+    Typescript,
+}
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, value_enum)]
+    language: Language,
+    #[arg(short, long)]
+    output_dir: PathBuf,
+}
+
 fn main() -> Result<()> {
     pretty_env_logger::init();
-
-    let out_dir = PathBuf::from("./shared/generated");
-
-    info!("Generating types for App");
+    let args = Args::parse();
 
     let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
 
-    typegen_app.swift(
-        &Config::builder("App", out_dir.join("swift"))
-            .add_extensions()
-            .add_runtimes()
-            .build(),
-    )?;
+    match args.language {
+        Language::Swift => {
+            info!("Typegen for Swift");
+            typegen_app.swift(
+                &Config::builder("App", &args.output_dir)
+                    .add_extensions()
+                    .add_runtimes()
+                    .build(),
+            )?;
+        }
+        Language::Kotlin => {
+            info!("Typegen for Kotlin");
+            typegen_app.kotlin(
+                &Config::builder("com.crux.example.bridge_echo", &args.output_dir)
+                    .add_extensions()
+                    .add_runtimes()
+                    .build(),
+            )?;
 
-    typegen_app.kotlin(
-        &Config::builder("com.crux.example.bridge_echo", out_dir.join("kotlin"))
-            .add_extensions()
-            .add_runtimes()
-            .build(),
-    )?;
+            info!("Bindgen for Kotlin");
+            bindgen(
+                &BindgenArgsBuilder::default()
+                    .crate_name(env!("CARGO_PKG_NAME").to_string())
+                    .kotlin(&args.output_dir)
+                    .build()?,
+            )?;
+        }
+        Language::Typescript => {
+            info!("Typegen for TypeScript");
+            typegen_app.typescript(
+                &Config::builder("app", &args.output_dir)
+                    .add_extensions()
+                    .add_runtimes()
+                    .build(),
+            )?;
+        }
+    }
 
-    typegen_app.typescript(
-        &Config::builder("app", out_dir.join("typescript"))
-            .add_extensions()
-            .add_runtimes()
-            .build(),
-    )?;
-
-    // bindgen for kotlin only - swift bindgen is done in /.build.sh by `cargo swift`
-    bindgen(
-        &BindgenArgsBuilder::default()
-            .crate_name(env!("CARGO_PKG_NAME").to_string())
-            .kotlin(out_dir.join("kotlin"))
-            .build()?,
-    )
+    Ok(())
 }

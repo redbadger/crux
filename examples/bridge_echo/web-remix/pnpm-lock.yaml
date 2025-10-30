@@ -21,8 +21,8 @@ importers:
         specifier: ^2.16.0
         version: 2.16.0(typescript@5.8.2)
       app:
-        specifier: file:../shared/generated/typescript
-        version: file:../shared/generated/typescript
+        specifier: file:generated/types
+        version: file:generated/types
       isbot:
         specifier: ^5.1.23
         version: 5.1.23
@@ -33,8 +33,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       shared:
-        specifier: file:../shared/generated/pkg
-        version: file:../shared/generated/pkg
+        specifier: file:generated/pkg
+        version: file:generated/pkg
     devDependencies:
       '@remix-run/dev':
         specifier: ^2.16.0
@@ -1159,8 +1159,8 @@ packages:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
 
-  app@file:../shared/generated/typescript:
-    resolution: {directory: ../shared/generated/typescript, type: directory}
+  app@file:generated/types:
+    resolution: {directory: generated/types, type: directory}
 
   arg@5.0.2:
     resolution: {integrity: sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==}
@@ -3205,8 +3205,8 @@ packages:
   setprototypeof@1.2.0:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
 
-  shared@file:../shared/generated/pkg:
-    resolution: {directory: ../shared/generated/pkg, type: directory}
+  shared@file:generated/pkg:
+    resolution: {directory: generated/pkg, type: directory}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -4853,7 +4853,7 @@ snapshots:
       normalize-path: 3.0.0
       picomatch: 2.3.1
 
-  app@file:../shared/generated/typescript: {}
+  app@file:generated/types: {}
 
   arg@5.0.2: {}
 
@@ -7417,7 +7417,7 @@ snapshots:
 
   setprototypeof@1.2.0: {}
 
-  shared@file:../shared/generated/pkg: {}
+  shared@file:generated/pkg: {}
 
   shebang-command@2.0.0:
     dependencies:
