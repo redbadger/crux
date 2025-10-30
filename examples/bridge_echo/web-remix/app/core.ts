@@ -2,8 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { CoreFFI } from "shared";
 import type { Effect, Event, RenderOperation } from "app/app";
-import { EffectVariantRender, Request } from "app/app";
-import { ViewModel } from "app/app";
+import { EffectVariantRender, Request, ViewModel } from "app/app";
 import { BincodeSerializer, BincodeDeserializer } from "app/bincode";
 
 // union of all Operation types, only render is needed here
@@ -15,14 +14,7 @@ export class Core {
 
   constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
     this.callback = callback;
-
-    const self = this;
-    this.core = new CoreFFI((effects: Uint8Array) => {
-      const requests = deserializeRequests(effects);
-      for (const { id, effect } of requests) {
-        self.resolve(id, effect);
-      }
-    });
+    this.core = new CoreFFI();
   }
 
   update(event: Event) {
