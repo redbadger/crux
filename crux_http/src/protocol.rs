@@ -4,11 +4,10 @@
 //! out all their operations by exchanging messages with the platform specific shell.
 //! This module defines the protocol for `crux_http` to communicate with the shell.
 
-use async_trait::async_trait;
+use crate::HttpError;
+use crux_core::{BoxFuture, MaybeSend, MaybeSync};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-
-use crate::HttpError;
 
 #[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpHeader {
@@ -212,49 +211,47 @@ impl crux_core::capability::Operation for HttpRequest {
     }
 }
 
-#[async_trait]
-pub(crate) trait EffectSender {
-    async fn send(&self, effect: HttpRequest) -> HttpResult;
+pub(crate) trait EffectSender: MaybeSend + MaybeSync {
+    fn send(&self, effect: HttpRequest) -> BoxFuture<'_, HttpResult>;
 }
 
-#[async_trait]
 #[expect(deprecated)]
 impl<Ev> EffectSender for crux_core::capability::CapabilityContext<HttpRequest, Ev>
 where
     Ev: 'static,
 {
-    async fn send(&self, effect: HttpRequest) -> HttpResult {
-        crux_core::capability::CapabilityContext::request_from_shell(self, effect).await
+    fn send(&self, effect: HttpRequest) -> BoxFuture<'_, HttpResult> {
+        Box::pin(crux_core::capability::CapabilityContext::request_from_shell(self, effect))
     }
 }
 
-#[async_trait]
 pub(crate) trait ProtocolRequestBuilder {
-    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest>;
+    fn into_protocol_request(self) -> BoxFuture<'static, crate::Result<HttpRequest>>;
 }
 
-#[async_trait]
 impl ProtocolRequestBuilder for crate::Request {
-    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest> {
-        let body = if self.is_empty() == Some(false) {
-            self.take_body().into_bytes().await?
-        } else {
-            vec![]
-        };
+    fn into_protocol_request(mut self) -> BoxFuture<'static, crate::Result<HttpRequest>> {
+        Box::pin(async move {
+            let body = if self.is_empty() == Some(false) {
+                self.take_body().into_bytes().await?
+            } else {
+                vec![]
+            };
 
-        Ok(HttpRequest {
-            method: self.method().to_string(),
-            url: self.url().to_string(),
-            headers: self
-                .iter()
-                .flat_map(|(name, values)| {
-                    values.iter().map(|value| HttpHeader {
-                        name: name.to_string(),
-                        value: value.to_string(),
+            Ok(HttpRequest {
+                method: self.method().to_string(),
+                url: self.url().to_string(),
+                headers: self
+                    .iter()
+                    .flat_map(|(name, values)| {
+                        values.iter().map(|value| HttpHeader {
+                            name: name.to_string(),
+                            value: value.to_string(),
+                        })
                     })
-                })
-                .collect(),
-            body,
+                    .collect(),
+                body,
+            })
         })
     }
 }

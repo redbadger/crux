@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::super::Command;
 use crate::{
-    Request,
+    MaybeSend, Request,
     capability::Operation,
     command::builder::{RequestBuilder, StreamBuilder},
 };
@@ -50,8 +50,8 @@ struct Capability;
 // FIXME: can the return types be made less verbose...?
 impl Capability
 where
-    Effect: Send + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + 'static,
+    Event: MaybeSend + 'static,
 {
     fn request(
         number: usize,

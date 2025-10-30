@@ -8,6 +8,7 @@ use crux_core::capability::CapabilityContext;
 
 use crux_core::capability::Operation;
 use crux_core::macros::Capability;
+use crux_core::{MaybeSend, MaybeSync};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,7 +44,7 @@ where
 
     pub fn get<F>(&self, callback: F)
     where
-        F: FnOnce(PlatformResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(PlatformResponse) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();

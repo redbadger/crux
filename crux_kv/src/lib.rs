@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 #[expect(deprecated)]
 use crux_core::capability::CapabilityContext;
 use crux_core::capability::Operation;
-
+use crux_core::{MaybeSend, MaybeSync};
 use error::KeyValueError;
 use value::Value;
 
@@ -155,9 +155,9 @@ impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
 
     fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
         Ev: 'static,
-        NewEv: 'static + Send,
+        NewEv: 'static + MaybeSend,
     {
         KeyValue::new(self.context.map_event(f))
     }
@@ -186,7 +186,7 @@ where
     /// `KeyValueResult::Get { value: Vec<u8> }` as payload
     pub fn get<F>(&self, key: String, make_event: F)
     where
-        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -213,7 +213,7 @@ where
     /// Will dispatch the event with a `KeyValueResult::Set { previous: Vec<u8> }` as payload
     pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
     where
-        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -242,7 +242,7 @@ where
     /// `KeyValueResult::Delete { previous: Vec<u8> }` as payload
     pub fn delete<F>(&self, key: String, make_event: F)
     where
-        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -267,7 +267,7 @@ where
     /// `KeyValueResult::Exists { is_present: bool }` as payload
     pub fn exists<F>(&self, key: String, make_event: F)
     where
-        F: FnOnce(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<bool, KeyValueError>) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -302,7 +302,10 @@ where
     /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
     pub fn list_keys<F>(&self, prefix: String, cursor: u64, make_event: F)
     where
-        F: FnOnce(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
+        F: FnOnce(Result<(Vec<String>, u64), KeyValueError>) -> Ev
+            + MaybeSend
+            + MaybeSync
+            + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();

@@ -12,6 +12,7 @@ use crossbeam_channel::Sender;
 use thiserror::Error;
 
 use super::Command;
+use crate::MaybeSend;
 
 /// An item emitted from a Command when used as a Stream.
 #[derive(Debug)]
@@ -22,8 +23,8 @@ pub enum CommandOutput<Effect, Event> {
 
 impl<Effect, Event> Stream for Command<Effect, Event>
 where
-    Effect: Unpin + Send + 'static,
-    Event: Unpin + Send + 'static,
+    Effect: Unpin + MaybeSend + 'static,
+    Event: Unpin + MaybeSend + 'static,
 {
     type Item = CommandOutput<Effect, Event>;
 
@@ -113,7 +114,7 @@ pub(crate) trait CommandStreamExt<Effect, Event>:
     /// effects and events - like Crux does.
     fn host(self, effects: Sender<Effect>, events: Sender<Event>) -> impl Future
     where
-        Self: Send + Sized,
+        Self: MaybeSend + Sized,
     {
         self.map(Ok).forward(CommandSink::new(effects, events))
     }

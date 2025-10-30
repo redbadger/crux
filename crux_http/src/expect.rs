@@ -1,10 +1,10 @@
 use std::marker::PhantomData;
 
+use crate::{Response, Result};
+use crux_core::MaybeSend;
 use http_types::convert::DeserializeOwned;
 
-use crate::{Response, Result};
-
-pub trait ResponseExpectation {
+pub trait ResponseExpectation: MaybeSend {
     type Body;
 
     fn decode(&self, resp: crate::Response<Vec<u8>>) -> Result<Response<Self::Body>>;

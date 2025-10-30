@@ -1,6 +1,8 @@
 use std::sync::{Arc, Weak};
 
-use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
+use crate::{
+    MaybeSend, MaybeSync, Request, RequestHandle, Resolvable, ResolveError, capability::Operation,
+};
 
 use super::Layer;
 
@@ -42,16 +44,16 @@ where
         resolve_callback: impl FnMut(
             &mut RequestHandle<<Self::Op as Operation>::Output>,
             <Self::Op as Operation>::Output,
-        ) + Send
+        ) + MaybeSend
         + 'static,
     ) -> Result<(), Effect>;
 }
 
 struct EffectMiddlewareLayerInner<Next, EM>
 where
-    Next: Layer + Sync + Send + 'static,
+    Next: Layer + MaybeSync + MaybeSend + 'static,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+    EM: EffectMiddleware<Next::Effect> + MaybeSend + MaybeSync,
 {
     next: Next,
     middleware: EM,
@@ -62,9 +64,9 @@ where
 /// and delegates to the generic parameter `M`, which implements [`EffectMiddleware`].
 pub struct HandleEffectLayer<Next, EM>
 where
-    Next: Layer + Sync + Send + 'static,
+    Next: Layer + MaybeSync + MaybeSend + 'static,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+    EM: EffectMiddleware<Next::Effect> + MaybeSend + MaybeSync,
 {
     inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
 }
@@ -76,13 +78,13 @@ where
     // Effect has to try_into the operation which the middleware handles
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
     // The actual middleware effect handling implementation
-    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+    EM: EffectMiddleware<Next::Effect> + MaybeSend + MaybeSync + 'static,
 {
     type Event = Next::Event;
     type Effect = Next::Effect;
     type ViewModel = Next::ViewModel;
 
-    fn update<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn update<F: Fn(Vec<Self::Effect>) + MaybeSend + MaybeSync + 'static>(
         &self,
         event: Self::Event,
         effect_callback: F,
@@ -90,7 +92,7 @@ where
         self.update(event, effect_callback)
     }
 
-    fn resolve<Output, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn resolve<Output, F: Fn(Vec<Self::Effect>) + MaybeSend + MaybeSync + 'static>(
         &self,
         request: &mut impl Resolvable<Output>,
         output: Output,
@@ -105,7 +107,7 @@ where
 
     fn process_tasks<F>(&self, effect_callback: F) -> Vec<Self::Effect>
     where
-        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
+        F: Fn(Vec<Self::Effect>) + MaybeSync + MaybeSend + 'static,
     {
         self.process_tasks(effect_callback)
     }
@@ -115,7 +117,7 @@ impl<Next, EM> HandleEffectLayer<Next, EM>
 where
     Next: Layer,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+    EM: EffectMiddleware<Next::Effect> + MaybeSend + MaybeSync + 'static,
 {
     /// Typically, you would would use [`Layer::handle_effects_using`] to construct a `HandleEffectLayer` instance
     /// for a specific [`EffectMiddleware`].
@@ -128,7 +130,7 @@ where
     fn update(
         &self,
         event: Next::Event,
-        return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+        return_effects: impl Fn(Vec<Next::Effect>) + MaybeSend + MaybeSync + 'static,
     ) -> Vec<Next::Effect> {
         let inner = Arc::downgrade(&self.inner);
         let return_effects = Arc::new(return_effects);
@@ -150,7 +152,7 @@ where
         &self,
         request: &mut impl Resolvable<Output>,
         result: Output,
-        return_effects: impl Fn(Vec<Next::Effect>) + Send + Sync + 'static,
+        return_effects: impl Fn(Vec<Next::Effect>) + MaybeSend + MaybeSync + 'static,
     ) -> Result<Vec<Next::Effect>, ResolveError> {
         let inner = Arc::downgrade(&self.inner);
         let return_effects = Arc::new(return_effects);
@@ -177,7 +179,7 @@ where
 
     fn process_tasks<F>(&self, return_effects: F) -> Vec<Next::Effect>
     where
-        F: Fn(Vec<Next::Effect>) + Sync + Send + 'static,
+        F: Fn(Vec<Next::Effect>) + MaybeSync + MaybeSend + 'static,
     {
         let inner = Arc::downgrade(&self.inner);
         let return_effects = Arc::new(return_effects);
@@ -198,7 +200,7 @@ where
     fn process_known_effects(
         inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
         effects: Vec<Next::Effect>,
-        return_effects: &Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
+        return_effects: &Arc<impl Fn(Vec<Next::Effect>) + MaybeSend + MaybeSync + 'static>,
     ) -> Vec<Next::Effect> {
         effects
             .into_iter()
@@ -263,7 +265,9 @@ where
     fn process_known_effects_with(
         inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
         effects: Vec<<Next as Layer>::Effect>,
-        return_effects: &Arc<impl Fn(Vec<<Next as Layer>::Effect>) + Send + Sync + 'static>,
+        return_effects: &Arc<
+            impl Fn(Vec<<Next as Layer>::Effect>) + MaybeSend + MaybeSync + 'static,
+        >,
     ) {
         let unknown_effects = Self::process_known_effects(inner, effects, return_effects);
 

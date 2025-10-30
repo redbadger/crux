@@ -18,7 +18,7 @@
 
 use std::{fmt, future::Future, marker::PhantomData};
 
-use crux_core::{Command, command};
+use crux_core::{Command, MaybeSend, command};
 use http_types::{
     Body, Method, Mime, Url,
     convert::DeserializeOwned,
@@ -40,8 +40,8 @@ pub struct Http<Effect, Event> {
 
 impl<Effect, Event> Http<Effect, Event>
 where
-    Effect: Send + From<crux_core::Request<HttpRequest>> + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + From<crux_core::Request<HttpRequest>> + 'static,
+    Event: MaybeSend + 'static,
 {
     /// Instruct the Shell to perform a HTTP GET request to the provided `url`.
     ///
@@ -328,12 +328,12 @@ pub struct RequestBuilder<Effect, Event, ExpectBody = Vec<u8>> {
     req: Option<Request>,
     effect: PhantomData<Effect>,
     event: PhantomData<fn() -> Event>,
-    expectation: Box<dyn ResponseExpectation<Body = ExpectBody> + Send>,
+    expectation: Box<dyn ResponseExpectation<Body = ExpectBody>>,
 }
 
 impl<Effect, Event> RequestBuilder<Effect, Event, Vec<u8>>
 where
-    Effect: Send + From<crux_core::Request<HttpRequest>> + 'static,
+    Effect: MaybeSend + From<crux_core::Request<HttpRequest>> + 'static,
     Event: 'static,
 {
     pub(crate) fn new(method: Method, url: Url) -> Self {
@@ -348,8 +348,8 @@ where
 
 impl<Effect, Event, ExpectBody> RequestBuilder<Effect, Event, ExpectBody>
 where
-    Effect: Send + From<crux_core::Request<HttpRequest>> + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + From<crux_core::Request<HttpRequest>> + 'static,
+    Event: MaybeSend + 'static,
     ExpectBody: 'static,
 {
     /// Sets a header on the request.

@@ -31,13 +31,13 @@ impl ShellRequest<()> {
 // for advancing the state from Pending to Complete
 //
 // FIXME this should be a tri-state enum instead:
-// - ReadyToSend(Box<dyn FnOnce() + Send + 'static>)
+// - ReadyToSend(Box<dyn super::SendRequest>)
 // - Pending(Waker)
 // - Complete(T)
 struct SharedState<T> {
     // the effect's output
     result: Option<T>,
-    send_request: Option<Box<dyn FnOnce() + Send + 'static>>,
+    send_request: Option<Box<dyn super::SendRequest>>,
     waker: Option<Waker>,
 }
 

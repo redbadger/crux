@@ -4,7 +4,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crux_core::{Command, Request, command::RequestBuilder};
+use crux_core::{Command, MaybeSend, Request, command::RequestBuilder};
 use facet::Facet;
 use futures::{
     FutureExt,
@@ -39,8 +39,8 @@ pub struct Time<Effect, Event> {
 
 impl<Effect, Event> Time<Effect, Event>
 where
-    Effect: Send + From<Request<TimeRequest>> + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + From<Request<TimeRequest>> + 'static,
+    Event: MaybeSend + 'static,
 {
     /// Ask for the current wall-clock time.
     ///

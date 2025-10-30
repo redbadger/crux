@@ -16,6 +16,7 @@
 
 use crate::middleware::{Middleware, Next, Request};
 use crate::{Client, ResponseAsync, Result};
+use crux_core::BoxFuture;
 use http_types::{StatusCode, Url, headers};
 
 // List of acceptable 300-series redirect codes.
@@ -76,58 +77,59 @@ impl Redirect {
     }
 }
 
-#[async_trait::async_trait]
 impl Middleware for Redirect {
-    async fn handle(
-        &self,
+    fn handle<'a>(
+        &'a self,
         mut request: Request,
         client: Client,
-        next: Next<'_>,
-    ) -> Result<ResponseAsync> {
-        let mut redirect_count: u8 = 0;
+        next: Next<'a>,
+    ) -> BoxFuture<'a, Result<ResponseAsync>> {
+        Box::pin(async move {
+            let mut redirect_count: u8 = 0;
 
-        // Note(Jeremiah): This is not ideal.
-        //
-        // HttpClient is currently too limiting for efficient redirects.
-        // We do not want to make unnecessary full requests, but it is
-        // presently required due to how Body streams work.
-        //
-        // Ideally we'd have methods to send a partial request stream,
-        // without sending the body, that would potnetially be able to
-        // get a server status before we attempt to send the body.
-        //
-        // As a work around we clone the request first (without the body),
-        // and try sending it until we get some status back that is not a
-        // redirect.
+            // Note(Jeremiah): This is not ideal.
+            //
+            // HttpClient is currently too limiting for efficient redirects.
+            // We do not want to make unnecessary full requests, but it is
+            // presently required due to how Body streams work.
+            //
+            // Ideally we'd have methods to send a partial request stream,
+            // without sending the body, that would potnetially be able to
+            // get a server status before we attempt to send the body.
+            //
+            // As a work around we clone the request first (without the body),
+            // and try sending it until we get some status back that is not a
+            // redirect.
 
-        let mut base_url = request.url().clone();
+            let mut base_url = request.url().clone();
 
-        while redirect_count < self.attempts {
-            redirect_count += 1;
-            let r: Request = request.clone();
-            let res: ResponseAsync = client.send(r).await?;
-            if REDIRECT_CODES.contains(&res.status()) {
-                if let Some(location) = res.header(headers::LOCATION) {
-                    let http_req: &mut http_types::Request = request.as_mut();
-                    *http_req.url_mut() = match Url::parse(location.last().as_str()) {
-                        Ok(valid_url) => {
-                            base_url = valid_url;
-                            base_url.clone()
-                        }
-                        Err(e) => match e {
-                            http_types::url::ParseError::RelativeUrlWithoutBase => {
-                                base_url.join(location.last().as_str())?
+            while redirect_count < self.attempts {
+                redirect_count += 1;
+                let r: Request = request.clone();
+                let res: ResponseAsync = client.send(r).await?;
+                if REDIRECT_CODES.contains(&res.status()) {
+                    if let Some(location) = res.header(headers::LOCATION) {
+                        let http_req: &mut http_types::Request = request.as_mut();
+                        *http_req.url_mut() = match Url::parse(location.last().as_str()) {
+                            Ok(valid_url) => {
+                                base_url = valid_url;
+                                base_url.clone()
                             }
-                            e => return Err(e.into()),
-                        },
-                    };
+                            Err(e) => match e {
+                                http_types::url::ParseError::RelativeUrlWithoutBase => {
+                                    base_url.join(location.last().as_str())?
+                                }
+                                e => return Err(e.into()),
+                            },
+                        };
+                    }
+                } else {
+                    break;
                 }
-            } else {
-                break;
             }
-        }
 
-        Ok(next.run(request, client).await?)
+            Ok(next.run(request, client).await?)
+        })
     }
 }
 

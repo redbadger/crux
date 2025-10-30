@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::bridge::ResolveSerialized;
+use crate::{MaybeSend, bridge::ResolveSerialized};
 
 /// Implemented automatically with the effect macro from `crux_macros`.
 /// This is a marker trait to ensure the macro generated traits are present on the effect type.
@@ -8,7 +8,7 @@ use crate::bridge::ResolveSerialized;
 /// You should annotate your type with `#[effect]` to implement this trait.
 // used in docs/internals/bridge.md
 // ANCHOR: effect
-pub trait Effect: Send + 'static {}
+pub trait Effect: MaybeSend + 'static {}
 // ANCHOR_END: effect
 
 /// Implemented automatically with the effect macro from `crux_macros`.

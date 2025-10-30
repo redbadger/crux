@@ -6,7 +6,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 #[expect(deprecated)]
-use crate::{Capability, capability::CapabilityContext};
+use crate::{Capability, MaybeSend, MaybeSync, capability::CapabilityContext};
 use crate::{Command, Request, capability::Operation, command::NotificationBuilder};
 
 /// Use an instance of `Render` to notify the Shell that it should update the user
@@ -70,7 +70,7 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 
     fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
         Ev: 'static,
         NewEv: 'static,
     {
@@ -103,8 +103,8 @@ impl<Ev> Capability<Ev> for Render<Ev> {
 pub fn render_builder<Effect, Event>()
 -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where
-    Effect: From<Request<RenderOperation>> + Send + 'static,
-    Event: Send + 'static,
+    Effect: From<Request<RenderOperation>> + MaybeSend + 'static,
+    Event: MaybeSend + 'static,
 {
     Command::notify_shell(RenderOperation)
 }
@@ -113,8 +113,8 @@ where
 /// Returns a [`Command`].
 pub fn render<Effect, Event>() -> Command<Effect, Event>
 where
-    Effect: From<Request<RenderOperation>> + Send + 'static,
-    Event: Send + 'static,
+    Effect: From<Request<RenderOperation>> + MaybeSend + 'static,
+    Event: MaybeSend + 'static,
 {
     render_builder().into()
 }

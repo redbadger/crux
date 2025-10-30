@@ -1,11 +1,17 @@
 use thiserror::Error;
 
-use crate::bridge::EffectId;
+use crate::{MaybeSend, bridge::EffectId};
+
+pub trait ResolveOnceFn<Out>: FnOnce(Out) + MaybeSend {}
+impl<Out, T> ResolveOnceFn<Out> for T where T: FnOnce(Out) + MaybeSend {}
+
+pub trait ResolveManyFn<Out>: Fn(Out) -> Result<(), ()> + MaybeSend {}
+impl<Out, T> ResolveManyFn<Out> for T where T: Fn(Out) -> Result<(), ()> + MaybeSend {}
 
 // used in docs/internals/runtime.md
 // ANCHOR: resolve
-type ResolveOnce<Out> = Box<dyn FnOnce(Out) + Send>;
-type ResolveMany<Out> = Box<dyn Fn(Out) -> Result<(), ()> + Send>;
+type ResolveOnce<Out> = Box<dyn ResolveOnceFn<Out>>;
+type ResolveMany<Out> = Box<dyn ResolveManyFn<Out>>;
 
 /// Resolve is a callback used to resolve an effect request and continue
 /// one of the capability Tasks running on the executor.

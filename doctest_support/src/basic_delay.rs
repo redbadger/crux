@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use crux_core::{Command, Request, command::RequestBuilder};
+use crux_core::{Command, MaybeSend, Request, command::RequestBuilder};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
@@ -24,8 +24,8 @@ pub fn milliseconds<Effect, Event>(
     millis: usize,
 ) -> RequestBuilder<Effect, Event, impl Future<Output = ()>>
 where
-    Effect: Send + From<Request<DelayOperation>> + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + From<Request<DelayOperation>> + 'static,
+    Event: MaybeSend + 'static,
 {
     Command::request_from_shell(DelayOperation { millis })
 }

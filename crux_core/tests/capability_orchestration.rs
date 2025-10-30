@@ -66,6 +66,7 @@ mod app {
 
 pub mod capabilities {
     pub mod one {
+        use crux_core::MaybeSend;
         #[expect(deprecated)]
         use crux_core::capability::CapabilityContext;
         use crux_core::capability::Operation;
@@ -106,7 +107,7 @@ pub mod capabilities {
 
             pub fn one<F>(&self, number: usize, event: F)
             where
-                F: FnOnce(usize) -> E + Send + 'static,
+                F: FnOnce(usize) -> E + MaybeSend + 'static,
                 E: 'static,
             {
                 let this = Clone::clone(self);
@@ -132,6 +133,7 @@ pub mod capabilities {
     }
 
     pub mod two {
+        use crux_core::MaybeSend;
         #[expect(deprecated)]
         use crux_core::capability::CapabilityContext;
         use crux_core::capability::Operation;
@@ -172,7 +174,7 @@ pub mod capabilities {
 
             pub fn two<F>(&self, number: usize, event: F)
             where
-                F: FnOnce(usize) -> E + Send + 'static,
+                F: FnOnce(usize) -> E + MaybeSend + 'static,
                 E: 'static,
             {
                 let this = Clone::clone(self);

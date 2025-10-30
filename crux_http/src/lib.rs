@@ -35,6 +35,7 @@ pub use self::{
 };
 
 use client::Client;
+use crux_core::{MaybeSend, MaybeSync};
 
 pub type Result<T> = std::result::Result<T, HttpError>;
 
@@ -57,9 +58,9 @@ impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
 
     fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
         Ev: 'static,
-        NewEv: 'static + Send,
+        NewEv: 'static + MaybeSend,
     {
         Http::new(self.context.map_event(f))
     }

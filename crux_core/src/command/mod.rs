@@ -255,10 +255,11 @@ use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
 pub use context::CommandContext;
+pub use executor::BoxFuture;
 pub use stream::CommandOutput;
 
-use crate::Request;
 use crate::capability::Operation;
+use crate::{MaybeSend, MaybeSync, Request};
 
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
@@ -282,8 +283,8 @@ pub struct Command<Effect, Event> {
 
 impl<Effect, Event> Command<Effect, Event>
 where
-    Effect: Send + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + 'static,
+    Event: MaybeSend + 'static,
 {
     /// Create a new command orchestrating effects with async Rust. This is the lowest level
     /// API to create a Command if you need full control over its execution. In most cases you will
@@ -300,7 +301,7 @@ where
     pub fn new<F, Fut>(create_task: F) -> Self
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
-        Fut: Future<Output = ()> + Send + 'static,
+        Fut: Future<Output = ()> + MaybeSend + 'static,
     {
         // RFC: do we need to think about backpressure? The channels are unbounded
         // so a naughty Command can make massive amounts of requests or spawn a huge number of tasks.
@@ -323,7 +324,10 @@ where
         let task = Task {
             finished: Arc::default(),
             aborted: aborted.clone(),
+            #[cfg(not(feature = "unsync"))]
             future: create_task(context.clone()).boxed(),
+            #[cfg(feature = "unsync")]
+            future: create_task(context.clone()).boxed_local(),
             join_handle_wakers: waker_receiver,
         };
 
@@ -356,8 +360,8 @@ where
     /// Create a command from another command with compatible `Effect` and `Event` types
     pub fn from<Ef, Ev>(subcmd: Command<Ef, Ev>) -> Self
     where
-        Ef: Send + 'static + Into<Effect> + Unpin,
-        Ev: Send + 'static + Into<Event> + Unpin,
+        Ef: MaybeSend + 'static + Into<Effect> + Unpin,
+        Ev: MaybeSend + 'static + Into<Event> + Unpin,
         Effect: Unpin,
         Event: Unpin,
     {
@@ -367,8 +371,8 @@ where
     /// Turn the command into another command with compatible `Effect` and `Event` types
     pub fn into<Ef, Ev>(self) -> Command<Ef, Ev>
     where
-        Ef: Send + 'static + Unpin,
-        Ev: Send + 'static + Unpin,
+        Ef: MaybeSend + 'static + Unpin,
+        Ev: MaybeSend + 'static + Unpin,
         Effect: Unpin + Into<Ef>,
         Event: Unpin + Into<Ev>,
     {
@@ -470,8 +474,8 @@ where
     /// Convert the command into a future to use in an async context
     pub async fn into_future(self, ctx: CommandContext<Effect, Event>)
     where
-        Effect: Unpin + Send + 'static,
-        Event: Unpin + Send + 'static,
+        Effect: Unpin + MaybeSend + 'static,
+        Event: Unpin + MaybeSend + 'static,
     {
         self.host(ctx.effects, ctx.events).await;
     }
@@ -529,8 +533,8 @@ where
     /// command of the parent app.
     pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event>
     where
-        F: Fn(Effect) -> NewEffect + Send + Sync + 'static,
-        NewEffect: Send + Unpin + 'static,
+        F: Fn(Effect) -> NewEffect + MaybeSend + MaybeSync + 'static,
+        NewEffect: MaybeSend + Unpin + 'static,
         Effect: Unpin,
         Event: Unpin,
     {
@@ -550,8 +554,8 @@ where
     /// command of the parent app.
     pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent>
     where
-        F: Fn(Event) -> NewEvent + Send + Sync + 'static,
-        NewEvent: Send + Unpin + 'static,
+        F: Fn(Event) -> NewEvent + MaybeSend + MaybeSync + 'static,
+        NewEvent: MaybeSend + Unpin + 'static,
         Effect: Unpin,
         Event: Unpin,
     {
@@ -573,7 +577,7 @@ where
     pub fn spawn<F, Fut>(&mut self, create_task: F)
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
-        Fut: Future<Output = ()> + Send + 'static,
+        Fut: Future<Output = ()> + MaybeSend + 'static,
     {
         self.context.spawn(create_task);
     }
@@ -593,8 +597,8 @@ where
 
 impl<Effect, Event> FromIterator<Command<Effect, Event>> for Command<Effect, Event>
 where
-    Effect: Send + Unpin + 'static,
-    Event: Send + Unpin + 'static,
+    Effect: MaybeSend + Unpin + 'static,
+    Event: MaybeSend + Unpin + 'static,
 {
     fn from_iter<I: IntoIterator<Item = Command<Effect, Event>>>(iter: I) -> Self {
         Command::all(iter)

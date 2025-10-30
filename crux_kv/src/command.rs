@@ -2,7 +2,7 @@
 
 use std::{future::Future, marker::PhantomData};
 
-use crux_core::{Command, Request, command::RequestBuilder};
+use crux_core::{Command, MaybeSend, Request, command::RequestBuilder};
 
 use crate::{KeyValueOperation, error::KeyValueError};
 
@@ -18,8 +18,8 @@ type ListResult = Result<(Vec<String>, u64), KeyValueError>;
 
 impl<Effect, Event> KeyValue<Effect, Event>
 where
-    Effect: Send + From<Request<KeyValueOperation>> + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + From<Request<KeyValueOperation>> + 'static,
+    Event: MaybeSend + 'static,
 {
     /// Read a value under `key`
     pub fn get(

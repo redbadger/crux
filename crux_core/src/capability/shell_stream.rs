@@ -15,7 +15,7 @@ pub struct ShellStream<T> {
 struct SharedState<T> {
     receiver: Receiver<T>,
     waker: Option<Waker>,
-    send_request: Option<Box<dyn FnOnce() + Send + 'static>>,
+    send_request: Option<Box<dyn super::SendRequest>>,
 }
 
 impl<T> Stream for ShellStream<T> {

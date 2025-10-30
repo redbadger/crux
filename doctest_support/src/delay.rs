@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use crux_core::{Command, Request, capability::Operation, command::RequestBuilder};
+use crux_core::{Command, MaybeSend, Request, capability::Operation, command::RequestBuilder};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
@@ -34,8 +34,8 @@ pub fn milliseconds<Effect, Event>(
     millis: usize,
 ) -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
 where
-    Effect: Send + From<Request<DelayOperation>> + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + From<Request<DelayOperation>> + 'static,
+    Event: MaybeSend + 'static,
 {
     Command::request_from_shell(DelayOperation::Delay(millis))
 }
@@ -52,8 +52,8 @@ pub fn random<Effect, Event>(
     max: usize,
 ) -> RequestBuilder<Effect, Event, impl Future<Output = DelayOutput>>
 where
-    Effect: Send + From<Request<DelayOperation>> + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + From<Request<DelayOperation>> + 'static,
+    Event: MaybeSend + 'static,
 {
     assert!(min <= max, "min must be less than or equal to max");
 

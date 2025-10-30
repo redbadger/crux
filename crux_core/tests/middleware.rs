@@ -1,3 +1,4 @@
+#[cfg(not(feature = "unsync"))]
 mod app {
     use crux_core::{App, Command, capability::Operation, macros::effect, render::render};
     use crux_http::command::Http;
@@ -142,11 +143,14 @@ mod app {
     }
 }
 
+#[cfg(not(feature = "unsync"))]
 mod middleware {
     use std::thread::spawn;
 
     use crossbeam_channel::Receiver;
-    use crux_core::{Request, RequestHandle, capability::Operation, middleware::EffectMiddleware};
+    use crux_core::{
+        MaybeSend, Request, RequestHandle, capability::Operation, middleware::EffectMiddleware,
+    };
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::app::{RandomNumber, RandomNumberRequest};
@@ -199,7 +203,7 @@ mod middleware {
             &self,
             effect: Effect,
             mut resolve_callback: impl FnMut(&mut RequestHandle<RandomNumber>, RandomNumber)
-            + Send
+            + MaybeSend
             + 'static,
         ) -> Result<(), Effect> {
             let rand_request = effect.try_into()?;
@@ -230,7 +234,7 @@ mod middleware {
             mut resolve_callback: impl FnMut(
                 &mut RequestHandle<<Self::Op as Operation>::Output>,
                 <Self::Op as Operation>::Output,
-            ) + Send
+            ) + MaybeSend
             + 'static,
         ) -> Result<(), Effect> {
             let http_request = effect.try_into()?;
@@ -273,7 +277,7 @@ mod middleware {
             mut resolve_callback: impl FnMut(
                 &mut RequestHandle<<Self::Op as Operation>::Output>,
                 <Self::Op as Operation>::Output,
-            ) + Send
+            ) + MaybeSend
             + 'static,
         ) -> Result<(), Effect> {
             let http_request = effect.try_into()?;
@@ -302,6 +306,7 @@ mod middleware {
     }
 }
 
+#[cfg(not(feature = "unsync"))]
 mod tests {
     use std::{thread::sleep, time::Duration};
 

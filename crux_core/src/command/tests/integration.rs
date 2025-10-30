@@ -1,11 +1,11 @@
 use http::Http;
 use serde::{Deserialize, Serialize};
 
-use crate::{Command, Request};
+use crate::{Command, MaybeSend, Request};
 
 // The future version of the app trait
 pub trait App: Default {
-    type Event: Send + 'static;
+    type Event: MaybeSend + 'static;
     type Model: Default;
     type ViewModel: Serialize;
     type Effect;
@@ -25,7 +25,7 @@ mod http {
 
     use serde::{Deserialize, Serialize};
 
-    use crate::{Command, capability::Operation, command::builder::RequestBuilder};
+    use crate::{Command, MaybeSend, capability::Operation, command::builder::RequestBuilder};
 
     pub struct Http;
 
@@ -51,8 +51,8 @@ mod http {
             url: impl Into<String>,
         ) -> RequestBuilder<Effect, Event, impl Future<Output = Response>>
         where
-            Effect: From<crate::Request<Request>> + Send + 'static,
-            Event: Send + 'static,
+            Effect: From<crate::Request<Request>> + MaybeSend + 'static,
+            Event: MaybeSend + 'static,
         {
             let request = Request {
                 method: "GET".to_string(),
@@ -68,8 +68,8 @@ mod http {
             body: impl Into<String>,
         ) -> RequestBuilder<Effect, Event, impl Future<Output = Response>>
         where
-            Effect: From<crate::Request<Request>> + Send + 'static,
-            Event: Send + 'static,
+            Effect: From<crate::Request<Request>> + MaybeSend + 'static,
+            Event: MaybeSend + 'static,
         {
             let body = body.into();
             let request = Request {

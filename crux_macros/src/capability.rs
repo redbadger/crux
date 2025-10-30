@@ -38,9 +38,9 @@ impl ToTokens for CapabilityStructReceiver {
 
             fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
             where
-                F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+                F: Fn(NewEv) -> Ev + crux_core::MaybeSend + crux_core::MaybeSync + 'static,
                 Ev: 'static,
-                NewEv: 'static + Send,
+                NewEv: 'static + crux_core::MaybeSend,
             {
               #name::new(self.context.map_event(f))
             }
@@ -115,9 +115,9 @@ mod tests {
             type MappedSelf<MappedEv> = Render<MappedEv>;
             fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
             where
-                F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+                F: Fn(NewEv) -> Ev + crux_core::MaybeSend + crux_core::MaybeSync + 'static,
                 Ev: 'static,
-                NewEv: 'static + Send,
+                NewEv: 'static + crux_core::MaybeSend,
             {
                 Render::new(self.context.map_event(f))
             }

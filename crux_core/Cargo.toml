@@ -47,6 +47,10 @@ uuid = { version = "1.18.1", features = ["serde", "v4"] }
 
 [features]
 default = ["crux_macros"]
+unsync = []
 cli = ["dep:crux_cli"]
 facet_typegen = ["crux_macros/facet_typegen", "dep:facet_generate", "dep:log"]
 typegen = ["crux_macros/typegen", "dep:serde-generate", "dep:serde-reflection"]
+
+[target.'cfg(target_arch = "wasm32")'.features]
+default = ["crux_macros", "unsync"]

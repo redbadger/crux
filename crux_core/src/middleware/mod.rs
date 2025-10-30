@@ -16,7 +16,10 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{App, Core, EffectFFI, Request, Resolvable, ResolveError, bridge::BridgeError};
+use crate::{
+    App, Core, EffectFFI, MaybeSend, MaybeSync, Request, Resolvable, ResolveError,
+    bridge::BridgeError,
+};
 
 mod bridge;
 mod effect_conversion;
@@ -39,7 +42,7 @@ use serde::Deserialize;
 /// of your app's `Event` and `ViewModel` types.
 ///
 /// If you want to build a reusable effect-handling middleware, see [`EffectMiddleware`].
-pub trait Layer: Send + Sync + Sized {
+pub trait Layer: MaybeSend + MaybeSync + Sized {
     /// Event type expected by this layer
     type Event;
     /// Effect type returned by this layer
@@ -60,7 +63,7 @@ pub trait Layer: Send + Sync + Sized {
     /// and call [`Layer::resolve`] with the output of the processing.
     fn update<F>(&self, event: Self::Event, effect_callback: F) -> Vec<Self::Effect>
     where
-        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static;
+        F: Fn(Vec<Self::Effect>) + MaybeSync + MaybeSend + 'static;
 
     /// Resolve a requested effect. Compared to [`Core::process_event`] this expects an
     /// additional argument - a callback to be called with effects requested outside of the
@@ -86,7 +89,7 @@ pub trait Layer: Send + Sync + Sized {
         effect_callback: F,
     ) -> Result<Vec<Self::Effect>, ResolveError>
     where
-        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static;
+        F: Fn(Vec<Self::Effect>) + MaybeSync + MaybeSend + 'static;
 
     /// Process any tasks in the effect runtime of the Core, which are able to proceed.
     /// The tasks may produce effects which will be returned by the core and may be
@@ -100,7 +103,7 @@ pub trait Layer: Send + Sync + Sized {
     /// involved in serializing effects and storing request handles for the FFI.
     fn process_tasks<F>(&self, effect_callback: F) -> Vec<Self::Effect>
     where
-        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static;
+        F: Fn(Vec<Self::Effect>) + MaybeSync + MaybeSend + 'static;
 
     /// Return the current state of the view model
     fn view(&self) -> Self::ViewModel;
@@ -109,7 +112,7 @@ pub trait Layer: Send + Sync + Sized {
     /// must implement the [`EffectMiddleware`] trait.
     fn handle_effects_using<EM>(self, middleware: EM) -> HandleEffectLayer<Self, EM>
     where
-        EM: EffectMiddleware<Self::Effect> + Send + Sync + 'static,
+        EM: EffectMiddleware<Self::Effect> + MaybeSend + MaybeSync + 'static,
         Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect>,
     {
         HandleEffectLayer::new(self, middleware)
@@ -123,14 +126,14 @@ pub trait Layer: Send + Sync + Sized {
     /// exhaustive matches don't require unused branches.
     fn map_effect<NewEffect>(self) -> MapEffectLayer<Self, NewEffect>
     where
-        NewEffect: From<Self::Effect> + Send + 'static,
+        NewEffect: From<Self::Effect> + MaybeSend + 'static,
     {
         MapEffectLayer::new(self)
     }
 
     fn bridge<Format: FfiFormat>(
         self,
-        effect_callback: impl Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static,
+        effect_callback: impl Fn(Result<Vec<u8>, BridgeError>) + MaybeSend + MaybeSync + 'static,
     ) -> Bridge<Self, Format>
     where
         Self::Effect: EffectFFI,
@@ -147,15 +150,15 @@ pub trait Layer: Send + Sync + Sized {
 // be thread-safe (they may get called from different threads)
 impl<A: App> Layer for Core<A>
 where
-    A: Send + Sync + 'static,
-    A::Capabilities: Send + Sync + 'static,
-    A::Model: Send + Sync + 'static,
+    A: MaybeSend + MaybeSync + 'static,
+    A::Capabilities: MaybeSend + MaybeSync + 'static,
+    A::Model: MaybeSend + MaybeSync + 'static,
 {
     type Event = A::Event;
     type Effect = A::Effect;
     type ViewModel = A::ViewModel;
 
-    fn update<F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn update<F: Fn(Vec<Self::Effect>) + MaybeSend + MaybeSync + 'static>(
         &self,
         event: Self::Event,
         _effect_callback: F,
@@ -163,7 +166,7 @@ where
         self.process_event(event)
     }
 
-    fn resolve<Output, F: Fn(Vec<Self::Effect>) + Send + Sync + 'static>(
+    fn resolve<Output, F: Fn(Vec<Self::Effect>) + MaybeSend + MaybeSync + 'static>(
         &self,
         request: &mut impl Resolvable<Output>,
         output: Output,
@@ -178,7 +181,7 @@ where
 
     fn process_tasks<F>(&self, _effect_callback: F) -> Vec<Self::Effect>
     where
-        F: Fn(Vec<Self::Effect>) + Sync + Send + 'static,
+        F: Fn(Vec<Self::Effect>) + MaybeSync + MaybeSend + 'static,
     {
         self.process()
     }

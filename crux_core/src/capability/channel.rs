@@ -2,9 +2,11 @@
 
 use std::sync::Arc;
 
+use crate::{MaybeSend, MaybeSync};
+
 pub(crate) fn channel<T>() -> (Sender<T>, Receiver<T>)
 where
-    T: Send + 'static,
+    T: MaybeSend + 'static,
 {
     let (sender, receiver) = crossbeam_channel::unbounded();
     let sender = Sender {
@@ -68,7 +70,7 @@ impl<T> Iterator for Drain<'_, T> {
 }
 
 pub struct Sender<T> {
-    inner: Arc<dyn SenderInner<T> + Send + Sync>,
+    inner: Arc<dyn SenderInner<T>>,
 }
 
 impl<T> Clone for Sender<T> {
@@ -89,7 +91,7 @@ where
 
     pub fn map_input<NewT, F>(&self, func: F) -> Sender<NewT>
     where
-        F: Fn(NewT) -> T + Send + Sync + 'static,
+        F: Fn(NewT) -> T + MaybeSend + MaybeSync + 'static,
     {
         Sender {
             inner: Arc::new(MappedInner {
@@ -100,24 +102,27 @@ where
     }
 }
 
-trait SenderInner<T> {
+trait SenderInner<T>: MaybeSend + MaybeSync {
     fn send(&self, t: T);
 }
 
-impl<T> SenderInner<T> for crossbeam_channel::Sender<T> {
+impl<T> SenderInner<T> for crossbeam_channel::Sender<T>
+where
+    T: MaybeSend,
+{
     fn send(&self, t: T) {
         crossbeam_channel::Sender::send(self, t).unwrap();
     }
 }
 
 pub struct MappedInner<T, F> {
-    sender: Arc<dyn SenderInner<T> + Send + Sync>,
+    sender: Arc<dyn SenderInner<T>>,
     func: F,
 }
 
 impl<F, T, U> SenderInner<U> for MappedInner<T, F>
 where
-    F: Fn(U) -> T,
+    F: Fn(U) -> T + MaybeSync + MaybeSend,
 {
     fn send(&self, value: U) {
         self.sender.send((self.func)(value));
@@ -130,7 +135,7 @@ mod tests {
 
     use super::*;
 
-    assert_impl_all!(Sender<i32>: Send);
+    assert_impl_all!(Sender<i32>: MaybeSend);
 
     #[test]
     fn test_channels() {
