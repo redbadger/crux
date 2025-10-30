@@ -52,31 +52,29 @@ mod app {
 }
 
 mod core {
-    use crux_core::bridge::BridgeWithSerializer;
+    use crux_core::bridge::{BridgeWithSerializer, JsonFfiFormat};
 
     use crate::app::App;
 
-    pub type Bridge = BridgeWithSerializer<App>;
+    pub type Bridge = BridgeWithSerializer<App, JsonFfiFormat>;
 }
 
 mod tests {
-
     use crate::app::EffectFfi;
 
     use super::core::Bridge;
     use crux_core::{Core, bridge::Request};
-    use serde_json::{Deserializer, Value, json};
+    use serde_json::Value;
 
     #[test]
     fn event_effect_loop() {
         let bridge = Bridge::new(Core::default());
-        let event = json!("Trigger");
+        let event = b"\"Trigger\"";
 
         let mut effects_bytes = vec![];
-        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
         bridge
-            .process_event(&event, &mut result_ser)
+            .process_event(event, &mut effects_bytes)
             .expect("event should process");
 
         let actual_value: Value = serde_json::from_slice(&effects_bytes).unwrap();
@@ -113,12 +111,11 @@ mod tests {
     fn unknown_event() {
         // Unknown
         let bridge = Bridge::new(Core::default());
-        let event = json!("Nopes");
+        let event = b"\"Nopes\"";
 
         let mut effects_bytes = vec![];
-        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
-        let result = bridge.process_event(&event, &mut result_ser);
+        let result = bridge.process_event(event, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("Expected a DeserializeEvent error");
@@ -126,7 +123,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "could not deserialize event: unknown variant `Nopes`, expected `Trigger` or `Get`"
+            "could not deserialize event: unknown variant `Nopes`, expected `Trigger` or `Get` at line 1 column 7"
         );
     }
 
@@ -134,13 +131,11 @@ mod tests {
     fn bad_bytes_event() {
         // Unknown
         let bridge = Bridge::new(Core::default());
-        let event: Vec<u8> = vec![1, 2, 3];
-        let mut de = Deserializer::from_slice(&event);
+        let event = b"123";
 
         let mut effects_bytes = vec![];
-        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
-        let result = bridge.process_event(&mut de, &mut result_ser);
+        let result = bridge.process_event(event, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("Expected a DeserializeEvent error");
@@ -155,13 +150,12 @@ mod tests {
     #[test]
     fn resolve_error() {
         let bridge = Bridge::new(Core::default());
-        let event = json!("Trigger");
+        let event = b"\"Trigger\"";
 
         let mut effects_bytes = vec![];
-        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
         bridge
-            .process_event(&event, &mut result_ser)
+            .process_event(event, &mut effects_bytes)
             .expect("event should process");
 
         let mut effects: Vec<Request<EffectFfi>> =
@@ -170,12 +164,11 @@ mod tests {
         let render = effects.remove(0);
 
         let mut effects_bytes = vec![];
-        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
-        let value = json!("Hi");
+        let value = b"\"Hi\"";
 
         // Render does not expect a value!
-        let result = bridge.handle_response(render.id.0, value, &mut result_ser);
+        let result = bridge.handle_response(render.id.0, value, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("expected an error");
@@ -190,13 +183,12 @@ mod tests {
     #[test]
     fn resolve_bad_value() {
         let bridge = Bridge::new(Core::default());
-        let event = json!("Get");
+        let event = b"\"Get\"";
 
         let mut effects_bytes = vec![];
-        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
         bridge
-            .process_event(&event, &mut result_ser)
+            .process_event(event, &mut effects_bytes)
             .expect("event should process");
 
         let mut effects: Vec<Request<EffectFfi>> =
@@ -205,13 +197,11 @@ mod tests {
         let http = effects.remove(0);
 
         let mut effects_bytes = vec![];
-        let mut result_ser = serde_json::Serializer::new(&mut effects_bytes);
 
-        let event: Vec<u8> = vec![1, 2, 3];
-        let mut de = Deserializer::from_slice(&event);
+        let event = b"123";
 
         // Resolve HTTP with a bad value
-        let result = bridge.handle_response(http.id.0, &mut de, &mut result_ser);
+        let result = bridge.handle_response(http.id.0, event, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("expected an error");

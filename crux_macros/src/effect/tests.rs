@@ -41,7 +41,9 @@ fn single_with_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
             }
@@ -112,7 +114,9 @@ fn single_with_new_name() {
     impl crux_core::Effect for MyEffect {}
     impl crux_core::EffectFFI for MyEffect {
         type Ffi = MyEffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
             }
@@ -186,7 +190,9 @@ fn single_with_facet_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
             }
@@ -273,7 +279,9 @@ fn single_facet_typegen_with_new_name() {
     impl crux_core::Effect for MyEffect {}
     impl crux_core::EffectFFI for MyEffect {
         type Ffi = MyEffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
             }
@@ -406,7 +414,9 @@ fn multiple_with_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
                 Effect::Http(request) => request.serialize(EffectFfi::Http),
@@ -513,7 +523,9 @@ fn multiple_with_facet_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
-        fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
                 Effect::Http(request) => request.serialize(EffectFfi::Http),

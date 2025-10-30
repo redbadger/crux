@@ -4,7 +4,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 
-use super::{BridgeError, Request};
+use super::{BridgeError, FfiFormat, Request};
 use crate::bridge::request_serde::ResolveSerialized;
 use crate::{EffectFFI, ResolveError};
 
@@ -13,15 +13,15 @@ use crate::{EffectFFI, ResolveError};
 #[facet(transparent)]
 pub struct EffectId(pub u32);
 
-pub struct ResolveRegistry(Mutex<Slab<ResolveSerialized>>);
+pub struct ResolveRegistry<T: FfiFormat>(Mutex<Slab<ResolveSerialized<T>>>);
 
-impl Default for ResolveRegistry {
+impl<T: FfiFormat> Default for ResolveRegistry<T> {
     fn default() -> Self {
         Self(Mutex::new(Slab::with_capacity(1024)))
     }
 }
 
-impl ResolveRegistry {
+impl<T: FfiFormat> ResolveRegistry<T> {
     /// Register an effect for future continuation, when it has been processed
     /// and output given back to the core.
     ///
@@ -50,11 +50,7 @@ impl ResolveRegistry {
 
     /// Resume a previously registered effect. This may fail, either because `EffectId` wasn't
     /// found or because this effect was not expected to be resumed again.
-    pub fn resume(
-        &self,
-        id: EffectId,
-        body: &mut dyn erased_serde::Deserializer,
-    ) -> Result<(), BridgeError> {
+    pub fn resume(&self, id: EffectId, response: &[u8]) -> Result<(), BridgeError<T>> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
         let entry = registry_lock.get_mut(id.0 as usize);
@@ -63,7 +59,7 @@ impl ResolveRegistry {
             return Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)));
         };
 
-        let resolved = entry.resolve(body);
+        let resolved = entry.resolve(response);
 
         if let ResolveSerialized::Never = entry {
             registry_lock.remove(id.0 as usize);
