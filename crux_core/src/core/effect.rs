@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::bridge::ResolveSerialized;
+use crate::bridge::{FfiFormat, ResolveSerialized};
 
 /// Implemented automatically with the effect macro from `crux_macros`.
 /// This is a marker trait to ensure the macro generated traits are present on the effect type.
@@ -29,6 +29,6 @@ pub trait EffectFFI: Effect {
     ///
     /// You should not need to call this method directly. It is called by
     /// the [`Bridge`](crate::bridge::Bridge)
-    fn serialize(self) -> (Self::Ffi, ResolveSerialized);
+    fn serialize<T: FfiFormat>(self) -> (Self::Ffi, ResolveSerialized<T>);
 }
 // ANCHOR_END: effect_typegen

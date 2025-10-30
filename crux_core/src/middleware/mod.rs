@@ -21,12 +21,11 @@ use crate::{App, Core, EffectFFI, Request, Resolvable, ResolveError, bridge::Bri
 mod bridge;
 mod effect_conversion;
 mod effect_handling;
-mod formats;
 
-pub use bridge::{Bridge, FfiFormat};
+pub use crate::bridge::{BincodeFfiFormat, FfiFormat, JsonFfiFormat};
+pub use bridge::Bridge;
 pub use effect_conversion::MapEffectLayer;
 pub use effect_handling::{EffectMiddleware, HandleEffectLayer};
-pub use formats::BincodeFfiFormat;
 use serde::Deserialize;
 
 /// A layer in the middleware stack.
@@ -130,13 +129,11 @@ pub trait Layer: Send + Sync + Sized {
 
     fn bridge<Format: FfiFormat>(
         self,
-        effect_callback: impl Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static,
+        effect_callback: impl Fn(Result<Vec<u8>, BridgeError<Format>>) + Send + Sync + 'static,
     ) -> Bridge<Self, Format>
     where
         Self::Effect: EffectFFI,
         Self::Event: for<'a> Deserialize<'a>,
-        for<'de, 'b> &'de mut Format::Deserializer<'b>: serde::Deserializer<'b>,
-        for<'se, 'b> &'se mut Format::Serializer<'b>: serde::Serializer,
     {
         Bridge::new(self, effect_callback)
     }
