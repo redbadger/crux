@@ -4,7 +4,7 @@
   "scripts": {
     "build": "pnpm run wasm:build && remix build",
     "dev": "pnpm run wasm:build && remix dev",
-    "wasm:build": "cd ../shared && wasm-pack build --target web --out-dir generated/pkg",
+    "wasm:build": "cd ../shared && wasm-pack build --target web --out-dir generated/pkg --features wasm_bindgen",
     "start": "remix-serve build",
     "typecheck": "tsc"
   },
