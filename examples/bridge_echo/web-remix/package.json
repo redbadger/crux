@@ -2,11 +2,9 @@
   "private": true,
   "sideEffects": false,
   "scripts": {
-    "build": "pnpm run wasm:build && remix build",
-    "dev": "pnpm run wasm:build && remix dev",
-    "wasm:build": "cd ../shared && wasm-pack build --target web --out-dir generated/pkg --features wasm_bindgen",
-    "start": "remix-serve build",
-    "typecheck": "tsc"
+    "build": "remix build",
+    "dev": "remix dev",
+    "start": "remix-serve build/index.js"
   },
   "dependencies": {
     "@remix-run/css-bundle": "^2.16.0",
@@ -16,8 +14,8 @@
     "isbot": "^5.1.23",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "shared": "file:../shared/generated/pkg",
-    "app": "file:../shared/generated/typescript"
+    "shared": "file:generated/pkg",
+    "app": "file:generated/types"
   },
   "devDependencies": {
     "@remix-run/dev": "^2.16.0",

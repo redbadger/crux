@@ -1,9 +1,9 @@
 name: BridgePerf
 packages:
   Shared:
-    path: ../shared/generated/swift/Shared
+    path: ./generated/Shared
   App:
-    path: ../shared/generated/swift/App
+    path: ./generated/App
 options:
   bundleIdPrefix: com.example.bridge-perf
 attributes:

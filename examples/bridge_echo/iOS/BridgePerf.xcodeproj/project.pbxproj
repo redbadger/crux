@@ -16,8 +16,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		03F368F28520909EA20F73F8 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../shared/generated/swift/App; sourceTree = SOURCE_ROOT; };
-		471D1DCB79406CD635DD3349 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Shared; path = ../shared/generated/swift/Shared; sourceTree = SOURCE_ROOT; };
+		03F368F28520909EA20F73F8 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = generated/App; sourceTree = SOURCE_ROOT; };
+		471D1DCB79406CD635DD3349 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Shared; path = generated/Shared; sourceTree = SOURCE_ROOT; };
 		973DE79248816287A24759FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		C46EB505F221A795D87B9B4D /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
 		CC862345F0CDB156048B1417 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -120,8 +120,8 @@
 			mainGroup = 5F3D13089EDA162C9AD13180;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				D589A09A78899F071ADD4B8C /* XCLocalSwiftPackageReference "../shared/generated/swift/App" */,
-				5F6BE1B00C3D2188B9345142 /* XCLocalSwiftPackageReference "../shared/generated/swift/Shared" */,
+				7C754D7276FE8AE08A41C39D /* XCLocalSwiftPackageReference "generated/App" */,
+				3C3E8CB67BE1E2E78DA94194 /* XCLocalSwiftPackageReference "generated/Shared" */,
 			);
 			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
@@ -322,13 +322,13 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		5F6BE1B00C3D2188B9345142 /* XCLocalSwiftPackageReference "../shared/generated/swift/Shared" */ = {
+		3C3E8CB67BE1E2E78DA94194 /* XCLocalSwiftPackageReference "generated/Shared" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared/generated/swift/Shared;
+			relativePath = generated/Shared;
 		};
-		D589A09A78899F071ADD4B8C /* XCLocalSwiftPackageReference "../shared/generated/swift/App" */ = {
+		7C754D7276FE8AE08A41C39D /* XCLocalSwiftPackageReference "generated/App" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared/generated/swift/App;
+			relativePath = generated/App;
 		};
 /* End XCLocalSwiftPackageReference section */
 

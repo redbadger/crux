@@ -37,9 +37,9 @@ android {
     sourceSets {
         getByName("main") {
             // types are now generated in kotlin
-            kotlin.srcDirs("${projectDir}/../../shared/generated/kotlin")
+            kotlin.srcDirs("${projectDir}/../generated")
             // except for serde, which is still in java
-            java.srcDirs("${projectDir}/../../shared/generated/kotlin")
+            java.srcDirs("${projectDir}/../generated")
         }
     }
 }
