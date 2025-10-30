@@ -6,6 +6,7 @@ use http_types::{
 
 use serde::Serialize;
 
+use crux_core::{MaybeSend, MaybeSync};
 use std::fmt;
 use std::ops::Index;
 use std::sync::Arc;
@@ -187,7 +188,7 @@ impl Request {
 
     /// Get a request extension value.
     #[must_use]
-    pub fn ext<T: Send + Sync + 'static>(&self) -> Option<&T> {
+    pub fn ext<T: MaybeSend + MaybeSync + 'static>(&self) -> Option<&T> {
         self.req.ext().get()
     }
 

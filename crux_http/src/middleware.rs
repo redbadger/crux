@@ -31,7 +31,7 @@
 //! implementations.
 //!
 //! ```no_run
-//! use futures_util::future::BoxFuture;
+//! use crux_core::BoxFuture;
 //! use crux_http::middleware::{Next, Middleware};
 //! use crux_http::{client::Client, Request, ResponseAsync, Result};
 //! use std::time;
@@ -56,28 +56,48 @@ mod redirect;
 
 pub use redirect::Redirect;
 
-use async_trait::async_trait;
-use futures_util::future::BoxFuture;
+use crux_core::{BoxFuture, MaybeSend, MaybeSync};
 
 /// Middleware that wraps around remaining middleware chain.
-#[async_trait]
-pub trait Middleware: 'static + Send + Sync {
+pub trait Middleware: 'static + MaybeSend + MaybeSync {
     /// Asynchronously handle the request, and return a response.
-    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<ResponseAsync>;
+    fn handle<'a>(
+        &'a self,
+        req: Request,
+        client: Client,
+        next: Next<'a>,
+    ) -> BoxFuture<'a, Result<ResponseAsync>>;
 }
 
 // This allows functions to work as middleware too.
-#[async_trait]
 impl<F> Middleware for F
 where
-    F: Send
-        + Sync
+    F: MaybeSend
+        + MaybeSync
         + 'static
         + for<'a> Fn(Request, Client, Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>>,
 {
-    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<ResponseAsync> {
-        (self)(req, client, next).await
+    fn handle<'a>(
+        &'a self,
+        req: Request,
+        client: Client,
+        next: Next<'a>,
+    ) -> BoxFuture<'a, Result<ResponseAsync>> {
+        (self)(req, client, next)
     }
+}
+
+pub trait Endpoint:
+    Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>> + MaybeSend + MaybeSync + 'static
+{
+}
+
+impl<T> Endpoint for T where
+    T: Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>
+        + MaybeSend
+        + MaybeSync
+        + 'static
+{
 }
 
 /// The remainder of a middleware chain, including the endpoint.
@@ -85,25 +105,12 @@ where
 #[derive(Copy, Clone)]
 pub struct Next<'a> {
     next_middleware: &'a [Arc<dyn Middleware>],
-    endpoint: &'a (
-            dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
-                + Send
-                + Sync
-                + 'static
-        ),
+    endpoint: &'a dyn Endpoint,
 }
 
 impl<'a> Next<'a> {
     /// Create a new instance
-    pub fn new(
-        next: &'a [Arc<dyn Middleware>],
-        endpoint: &'a (
-                dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
-                    + Send
-                    + Sync
-                    + 'static
-            ),
-    ) -> Self {
+    pub fn new(next: &'a [Arc<dyn Middleware>], endpoint: &'a dyn Endpoint) -> Self {
         Self {
             endpoint,
             next_middleware: next,

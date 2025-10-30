@@ -22,7 +22,7 @@ use std::{
 
 #[expect(deprecated)]
 use crux_core::capability::CapabilityContext;
-
+use crux_core::{MaybeSend, MaybeSync};
 pub use protocol::{TimeRequest, TimeResponse, TimerId, duration::Duration, instant::Instant};
 
 fn get_timer_id() -> TimerId {
@@ -47,9 +47,9 @@ impl<Ev> crux_core::Capability<Ev> for Time<Ev> {
 
     fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
         Ev: 'static,
-        NewEv: 'static + Send,
+        NewEv: 'static + MaybeSend,
     {
         Time::new(self.context.map_event(f))
     }
@@ -78,7 +78,7 @@ where
     /// wrapped in the event produced by the `callback`.
     pub fn now<F>(&self, callback: F)
     where
-        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(TimeResponse) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         self.context.spawn({
             let context = self.context.clone();
@@ -100,7 +100,7 @@ where
     /// [`SystemTime`] has arrived.
     pub fn notify_at<F>(&self, system_time: SystemTime, callback: F) -> TimerId
     where
-        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(TimeResponse) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         let (future, id) = self.notify_at_async(system_time);
         self.context.spawn({
@@ -134,7 +134,7 @@ where
     /// Ask to receive a notification when the specified [`Duration`](std::time::Duration) has elapsed.
     pub fn notify_after<F>(&self, duration: std::time::Duration, callback: F) -> TimerId
     where
-        F: FnOnce(TimeResponse) -> Ev + Send + Sync + 'static,
+        F: FnOnce(TimeResponse) -> Ev + MaybeSend + MaybeSync + 'static,
     {
         let (future, id) = self.notify_after_async(duration);
         self.context.spawn({

@@ -7,13 +7,19 @@ use std::task::{Context, Poll, Wake, Waker};
 
 use crossbeam_channel::{Receiver, Sender};
 
-use futures::future::BoxFuture;
+use futures::future;
 
 use std::sync::atomic::AtomicBool;
 
 use futures::task::AtomicWaker;
 
 use std::sync::Arc;
+
+#[cfg(not(feature = "unsync"))]
+pub type BoxFuture<'a, T> = future::BoxFuture<'a, T>;
+
+#[cfg(feature = "unsync")]
+pub type BoxFuture<'a, T> = future::LocalBoxFuture<'a, T>;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct TaskId(pub(crate) usize);

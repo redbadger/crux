@@ -7,7 +7,13 @@ use crossbeam_channel::{Receiver, Sender};
 use futures::{Future, FutureExt, future};
 use slab::Slab;
 
+use crate::MaybeSend;
+
+#[cfg(not(feature = "unsync"))]
 type BoxFuture = future::BoxFuture<'static, ()>;
+
+#[cfg(feature = "unsync")]
+type BoxFuture = future::LocalBoxFuture<'static, ()>;
 
 // used in docs/internals/runtime.md
 // ANCHOR: executor
@@ -56,8 +62,11 @@ pub(crate) fn executor_and_spawner() -> (QueuingExecutor, Spawner) {
 // used in docs/internals/runtime.md
 // ANCHOR: spawning
 impl Spawner {
-    pub fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
+    pub fn spawn(&self, future: impl Future<Output = ()> + 'static + MaybeSend) {
+        #[cfg(not(feature = "unsync"))]
         let future = future.boxed();
+        #[cfg(feature = "unsync")]
+        let future = future.boxed_local();
         self.future_sender
             .send(future)
             .expect("unable to spawn an async task, task sender channel is disconnected.");
@@ -182,7 +191,9 @@ enum RunTask {
 #[cfg(test)]
 mod tests {
 
+    #[cfg(not(feature = "unsync"))]
     use rand::Rng;
+    #[cfg(not(feature = "unsync"))]
     use std::{
         sync::atomic::{AtomicI32, Ordering},
         task::Poll,
@@ -215,6 +226,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "unsync"))]
     fn test_multithreaded_executor() {
         // We define a future which chaotically sends notifications to wake up the task
         // The future has a random chance to suspend or to defer to its children which

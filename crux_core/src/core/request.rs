@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug};
 
 use crate::{
+    MaybeSend,
     capability::Operation,
     core::resolve::{RequestHandle, Resolvable, ResolveError},
 };
@@ -44,7 +45,7 @@ where
 
     pub(crate) fn resolves_once<F>(operation: Op, resolve: F) -> Self
     where
-        F: FnOnce(Op::Output) + Send + 'static,
+        F: FnOnce(Op::Output) + MaybeSend + 'static,
     {
         Self {
             operation,
@@ -54,7 +55,7 @@ where
 
     pub(crate) fn resolves_many_times<F>(operation: Op, resolve: F) -> Self
     where
-        F: Fn(Op::Output) -> Result<(), ()> + Send + 'static,
+        F: Fn(Op::Output) -> Result<(), ()> + MaybeSend + 'static,
     {
         Self {
             operation,

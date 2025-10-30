@@ -2,6 +2,9 @@ mod effect;
 mod request;
 mod resolve;
 
+#[cfg(feature = "unsync")]
+use std::cell::RefCell;
+#[cfg(not(feature = "unsync"))]
 use std::sync::RwLock;
 
 pub use effect::{Effect, EffectFFI};
@@ -34,7 +37,10 @@ where
     // reason the executor _must_ outlive the user type instances
 
     // user types
+    #[cfg(not(feature = "unsync"))]
     model: RwLock<A::Model>,
+    #[cfg(feature = "unsync")]
+    model: RefCell<A::Model>,
     capabilities: A::Capabilities,
     app: A,
 
@@ -71,7 +77,7 @@ where
         let command_spawner = CommandSpawner::new(proto_context.clone());
 
         Self {
-            model: RwLock::default(),
+            model: Default::default(),
             executor,
             app: A::default(),
             capabilities: A::Capabilities::new_with_context(proto_context),
@@ -90,7 +96,10 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
+        #[cfg(not(feature = "unsync"))]
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        #[cfg(feature = "unsync")]
+        let mut model = self.model.borrow_mut();
 
         let command = self.app.update(event, &mut model, &self.capabilities);
 
@@ -136,7 +145,11 @@ where
         self.executor.run_all();
 
         while let Some(capability_event) = self.capability_events.receive() {
+            #[cfg(not(feature = "unsync"))]
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            #[cfg(feature = "unsync")]
+            let mut model = self.model.borrow_mut();
+
             let command = self
                 .app
                 .update(capability_event, &mut model, &self.capabilities);
@@ -157,7 +170,10 @@ where
     ///
     /// Panics if the model lock was poisoned.
     pub fn view(&self) -> A::ViewModel {
+        #[cfg(not(feature = "unsync"))]
         let model = self.model.read().expect("Model RwLock was poisoned.");
+        #[cfg(feature = "unsync")]
+        let model = self.model.borrow();
 
         self.app.view(&model)
     }

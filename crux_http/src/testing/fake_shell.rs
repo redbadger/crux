@@ -3,9 +3,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use async_trait::async_trait;
-
 use crate::protocol::{EffectSender, HttpRequest, HttpResponse, HttpResult};
+use crux_core::BoxFuture;
 
 /// `FakeShell` implements `EffectSender` for use in our internal tests.
 #[derive(Clone, Default)]
@@ -34,17 +33,18 @@ impl FakeShell {
     }
 }
 
-#[async_trait]
 impl EffectSender for FakeShell {
-    async fn send(&self, effect: HttpRequest) -> HttpResult {
-        let mut inner = self.inner.lock().unwrap();
-        inner.requests_received.push(effect);
+    fn send(&self, effect: HttpRequest) -> BoxFuture<'_, HttpResult> {
+        Box::pin(async move {
+            let mut inner = self.inner.lock().unwrap();
+            inner.requests_received.push(effect);
 
-        HttpResult::Ok(
-            inner
-                .responses_to_provide
-                .pop_back()
-                .expect("test tried to send an unexpected HttpRequest"),
-        )
+            HttpResult::Ok(
+                inner
+                    .responses_to_provide
+                    .pop_back()
+                    .expect("test tried to send an unexpected HttpRequest"),
+            )
+        })
     }
 }

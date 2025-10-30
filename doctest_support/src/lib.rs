@@ -125,6 +125,7 @@ pub mod compose {
     pub mod capabilities {
         pub mod capability_one {
             use crux_core::capability::{CapabilityContext, Operation};
+            use crux_core::{MaybeSend, MaybeSync};
             use serde::{Deserialize, Serialize};
 
             #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
@@ -158,7 +159,7 @@ pub mod compose {
 
                 pub fn one<F>(&self, number: usize, event: F)
                 where
-                    F: FnOnce(usize) -> E + Send + 'static,
+                    F: FnOnce(usize) -> E + MaybeSend + 'static,
                     E: 'static,
                 {
                     let this = Clone::clone(self);
@@ -188,7 +189,7 @@ pub mod compose {
 
                 fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
                 where
-                    F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+                    F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
                     Ev: 'static,
                     NewEv: 'static,
                 {
@@ -199,6 +200,7 @@ pub mod compose {
 
         pub mod capability_two {
             use crux_core::capability::{CapabilityContext, Operation};
+            use crux_core::{MaybeSend, MaybeSync};
             use serde::{Deserialize, Serialize};
 
             #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
@@ -232,7 +234,7 @@ pub mod compose {
 
                 pub fn two<F>(&self, number: usize, event: F)
                 where
-                    F: FnOnce(usize) -> E + Send + 'static,
+                    F: FnOnce(usize) -> E + MaybeSend + 'static,
                     E: 'static,
                 {
                     let this = Clone::clone(self);
@@ -262,7 +264,7 @@ pub mod compose {
 
                 fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
                 where
-                    F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+                    F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
                     Ev: 'static,
                     NewEv: 'static,
                 {

@@ -3,7 +3,6 @@ use crate::expect::{ExpectBytes, ExpectJson, ExpectString};
 use crate::middleware::Middleware;
 use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
 
-use futures_util::future::BoxFuture;
 use http_types::{
     Body, Method, Mime, Url,
     convert::DeserializeOwned,
@@ -11,6 +10,7 @@ use http_types::{
 };
 use serde::Serialize;
 
+use crux_core::{BoxFuture, MaybeSend};
 use std::{fmt, marker::PhantomData};
 
 /// Request Builder
@@ -42,7 +42,7 @@ pub struct RequestBuilder<Event, ExpectBody = Vec<u8>> {
 
     phantom: PhantomData<fn() -> Event>,
 
-    expectation: Box<dyn ResponseExpectation<Body = ExpectBody> + Send>,
+    expectation: Box<dyn ResponseExpectation<Body = ExpectBody>>,
 }
 
 // Middleware request builders won't have access to the capability, so they get a client
@@ -419,7 +419,7 @@ where
     #[expect(deprecated)]
     pub fn send<F>(self, make_event: F)
     where
-        F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
+        F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + MaybeSend + 'static,
     {
         let CapOrClient::Capability(capability) = self.cap_or_client else {
             panic!("Called RequestBuilder::send in a middleware context");

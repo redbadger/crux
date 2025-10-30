@@ -1,5 +1,6 @@
 mod capability {
     use async_channel::Sender;
+    use crux_core::MaybeSend;
     #[expect(deprecated)]
     use crux_core::capability::CapabilityContext;
     use crux_core::capability::Operation;
@@ -135,7 +136,7 @@ mod capability {
 
         pub fn fetch_tree<F>(&self, id: usize, ev: F)
         where
-            F: FnOnce(Vec<usize>) -> Ev + Send + 'static,
+            F: FnOnce(Vec<usize>) -> Ev + MaybeSend + 'static,
         {
             let (results_tx, results_rx) = async_channel::unbounded::<usize>();
             let tasks_tx = self.tasks_tx.clone();

@@ -11,22 +11,30 @@ use std::{future::Future, pin::pin};
 use futures::{FutureExt, Stream, StreamExt};
 
 use super::{Command, context::CommandContext};
+use crate::MaybeSend;
+
+trait MakeTask<Effect, Event, Task>: FnOnce(CommandContext<Effect, Event>) -> Task + MaybeSend {}
+
+impl<Effect, Event, Task, T> MakeTask<Effect, Event, Task> for T where
+    T: FnOnce(CommandContext<Effect, Event>) -> Task + MaybeSend
+{
+}
 
 /// A builder of one-off notify command
 // Task is a future which does the shell talking and returns an output
 pub struct NotificationBuilder<Effect, Event, Task> {
-    make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
+    make_task: Box<dyn MakeTask<Effect, Event, Task>>,
 }
 
 impl<Effect, Event, Task> NotificationBuilder<Effect, Event, Task>
 where
-    Effect: Send + 'static,
-    Event: Send + 'static,
-    Task: Future<Output = ()> + Send + 'static,
+    Effect: MaybeSend + 'static,
+    Event: MaybeSend + 'static,
+    Task: Future<Output = ()> + MaybeSend + 'static,
 {
     pub fn new<F>(make_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Task + Send + 'static,
+        F: FnOnce(CommandContext<Effect, Event>) -> Task + MaybeSend + 'static,
     {
         let make_task = Box::new(make_task);
 
@@ -50,9 +58,9 @@ where
 
 impl<Effect, Event, Task> From<NotificationBuilder<Effect, Event, Task>> for Command<Effect, Event>
 where
-    Effect: Send + 'static,
-    Event: Send + 'static,
-    Task: Future<Output = ()> + Send + 'static,
+    Effect: MaybeSend + 'static,
+    Event: MaybeSend + 'static,
+    Task: Future<Output = ()> + MaybeSend + 'static,
 {
     fn from(value: NotificationBuilder<Effect, Event, Task>) -> Self {
         Command::new(|ctx| value.into_future(ctx))
@@ -62,18 +70,18 @@ where
 /// A builder of one-off request command
 // Task is a future which does the shell talking and returns an output
 pub struct RequestBuilder<Effect, Event, Task> {
-    make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
+    make_task: Box<dyn MakeTask<Effect, Event, Task>>,
 }
 
 impl<Effect, Event, Task, T> RequestBuilder<Effect, Event, Task>
 where
-    Effect: Send + 'static,
-    Event: Send + 'static,
-    Task: Future<Output = T> + Send + 'static,
+    Effect: MaybeSend + 'static,
+    Event: MaybeSend + 'static,
+    Task: Future<Output = T> + MaybeSend + 'static,
 {
     pub fn new<F>(make_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Task + Send + 'static,
+        F: FnOnce(CommandContext<Effect, Event>) -> Task + MaybeSend + 'static,
     {
         let make_task = Box::new(make_task);
 
@@ -82,7 +90,7 @@ where
 
     pub fn map<F, U>(self, map: F) -> RequestBuilder<Effect, Event, impl Future<Output = U>>
     where
-        F: FnOnce(T) -> U + Send + 'static,
+        F: FnOnce(T) -> U + MaybeSend + 'static,
     {
         RequestBuilder::new(|ctx| self.into_future(ctx.clone()).map(map))
     }
@@ -173,8 +181,8 @@ where
         make_next_builder: F,
     ) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
     where
-        F: FnOnce(T) -> NotificationBuilder<Effect, Event, NextTask> + Send + 'static,
-        NextTask: Future<Output = ()> + Send + 'static,
+        F: FnOnce(T) -> NotificationBuilder<Effect, Event, NextTask> + MaybeSend + 'static,
+        NextTask: Future<Output = ()> + MaybeSend + 'static,
     {
         NotificationBuilder::new(|ctx| {
             self.into_future(ctx.clone())
@@ -262,8 +270,8 @@ where
         make_next_builder: F,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = U>>
     where
-        F: FnOnce(T) -> RequestBuilder<Effect, Event, NextTask> + Send + 'static,
-        NextTask: Future<Output = U> + Send + 'static,
+        F: FnOnce(T) -> RequestBuilder<Effect, Event, NextTask> + MaybeSend + 'static,
+        NextTask: Future<Output = U> + MaybeSend + 'static,
     {
         RequestBuilder::new(|ctx| {
             self.into_future(ctx.clone())
@@ -350,8 +358,8 @@ where
         make_next_builder: F,
     ) -> StreamBuilder<Effect, Event, impl Stream<Item = U>>
     where
-        F: FnOnce(T) -> StreamBuilder<Effect, Event, NextTask> + Send + 'static,
-        NextTask: Stream<Item = U> + Send + 'static,
+        F: FnOnce(T) -> StreamBuilder<Effect, Event, NextTask> + MaybeSend + 'static,
+        NextTask: Stream<Item = U> + MaybeSend + 'static,
     {
         StreamBuilder::new(|ctx| {
             self.into_future(ctx.clone())
@@ -371,8 +379,8 @@ where
     /// Create the command in an evented context
     pub fn then_send<E>(self, event: E) -> Command<Effect, Event>
     where
-        E: FnOnce(T) -> Event + Send + 'static,
-        Task: Future<Output = T> + Send + 'static,
+        E: FnOnce(T) -> Event + MaybeSend + 'static,
+        Task: Future<Output = T> + MaybeSend + 'static,
     {
         Command::new(|ctx| async move {
             let out = self.into_future(ctx.clone()).await;
@@ -398,18 +406,18 @@ where
 
 /// A builder of stream command
 pub struct StreamBuilder<Effect, Event, Task> {
-    make_stream: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
+    make_stream: Box<dyn MakeTask<Effect, Event, Task>>,
 }
 
 impl<Effect, Event, Task, T> StreamBuilder<Effect, Event, Task>
 where
-    Effect: Send + 'static,
-    Event: Send + 'static,
-    Task: Stream<Item = T> + Send + 'static,
+    Effect: MaybeSend + 'static,
+    Event: MaybeSend + 'static,
+    Task: Stream<Item = T> + MaybeSend + 'static,
 {
     pub fn new<F>(make_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Task + Send + 'static,
+        F: FnOnce(CommandContext<Effect, Event>) -> Task + MaybeSend + 'static,
     {
         let make_task = Box::new(make_task);
 
@@ -420,7 +428,7 @@ where
 
     pub fn map<F, U>(self, map: F) -> StreamBuilder<Effect, Event, impl Stream<Item = U>>
     where
-        F: FnMut(T) -> U + Send + 'static,
+        F: FnMut(T) -> U + MaybeSend + 'static,
     {
         StreamBuilder::new(|ctx| self.into_stream(ctx.clone()).map(map))
     }
@@ -505,8 +513,8 @@ where
         make_next_builder: F,
     ) -> StreamBuilder<Effect, Event, impl Stream<Item = U>>
     where
-        F: Fn(T) -> RequestBuilder<Effect, Event, NextTask> + Send + 'static,
-        NextTask: Future<Output = U> + Send + 'static,
+        F: Fn(T) -> RequestBuilder<Effect, Event, NextTask> + MaybeSend + 'static,
+        NextTask: Future<Output = U> + MaybeSend + 'static,
     {
         StreamBuilder::new(|ctx| {
             self.into_stream(ctx.clone())
@@ -593,8 +601,8 @@ where
         make_next_builder: F,
     ) -> StreamBuilder<Effect, Event, impl Stream<Item = U>>
     where
-        F: Fn(T) -> StreamBuilder<Effect, Event, NextTask> + Send + 'static,
-        NextTask: Stream<Item = U> + Send + 'static,
+        F: Fn(T) -> StreamBuilder<Effect, Event, NextTask> + MaybeSend + 'static,
+        NextTask: Stream<Item = U> + MaybeSend + 'static,
     {
         StreamBuilder::new(move |ctx| {
             self.into_stream(ctx.clone())
@@ -609,7 +617,7 @@ where
     /// Create the command in an evented context
     pub fn then_send<E>(self, event: E) -> Command<Effect, Event>
     where
-        E: Fn(T) -> Event + Send + 'static,
+        E: Fn(T) -> Event + MaybeSend + 'static,
     {
         Command::new(|ctx| async move {
             let mut stream = pin!(self.into_stream(ctx.clone()));

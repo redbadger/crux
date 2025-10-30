@@ -9,7 +9,7 @@
 
 #[expect(deprecated)]
 use crate::{
-    Capability,
+    Capability, MaybeSend, MaybeSync,
     capability::{CapabilityContext, Never},
 };
 use futures::Future;
@@ -155,7 +155,7 @@ impl<Ev> Compose<Ev> {
     pub fn spawn<F, Fut>(&self, effects_task: F)
     where
         F: FnOnce(ComposeContext<Ev>) -> Fut,
-        Fut: Future<Output = ()> + 'static + Send,
+        Fut: Future<Output = ()> + 'static + MaybeSend,
         Ev: 'static,
     {
         let context = self.context.clone();
@@ -179,7 +179,7 @@ impl<Ev> Capability<Ev> for Compose<Ev> {
 
     fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
         Ev: 'static,
         NewEv: 'static,
     {

@@ -6,13 +6,13 @@ use http_types::{
 use futures_util::io::AsyncRead;
 use serde::de::DeserializeOwned;
 
+use super::decode::decode_body;
+use crux_core::{MaybeSend, MaybeSync};
 use std::fmt;
 use std::io;
 use std::ops::Index;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-
-use super::decode::decode_body;
 
 pin_project_lite::pin_project! {
     /// An HTTP response that exposes async methods. This is to support async
@@ -125,7 +125,7 @@ impl ResponseAsync {
 
     /// Get a response scoped extension value.
     #[must_use]
-    pub fn ext<T: Send + Sync + 'static>(&self) -> Option<&T> {
+    pub fn ext<T: MaybeSend + MaybeSync + 'static>(&self) -> Option<&T> {
         self.res.ext().get()
     }
 

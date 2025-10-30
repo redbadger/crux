@@ -161,16 +161,19 @@ pub mod testing;
 #[cfg(any(feature = "typegen", feature = "facet_typegen"))]
 pub mod type_generation;
 
+mod bounds;
 mod capabilities;
 mod core;
 
+pub use bounds::{MaybeSend, MaybeSync};
 pub use capabilities::*;
 #[expect(deprecated)]
 pub use capability::{Capability, WithContext};
-pub use command::Command;
+pub use command::{BoxFuture, Command};
 pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "cli")]
 pub use crux_cli as cli;
+#[cfg(feature = "crux_macros")]
 pub use crux_macros as macros;
 #[cfg(feature = "typegen")]
 pub use type_generation::serde as typegen;
@@ -179,7 +182,7 @@ pub use type_generation::serde as typegen;
 /// as the type argument to [`Core`] or [`Bridge`](crate::bridge::Bridge).
 pub trait App: Default {
     /// `Event`, typically an `enum`, defines the actions that can be taken to update the application state.
-    type Event: Unpin + Send + 'static;
+    type Event: Unpin + MaybeSend + 'static;
     /// `Model`, typically a `struct` defines the internal state of the application
     type Model: Default;
     /// `ViewModel`, typically a `struct` describes the user interface that should be

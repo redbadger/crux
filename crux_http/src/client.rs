@@ -14,7 +14,7 @@ use http_types::{Method, Url};
 /// # Examples
 ///
 /// ```no_run
-/// use futures_util::future::BoxFuture;
+/// use crux_core::BoxFuture;
 /// use crux_http::middleware::{Next, Middleware};
 /// use crux_http::{client::Client, Request, RequestBuilder, ResponseAsync, Result};
 /// use std::time;
@@ -34,7 +34,7 @@ use http_types::{Method, Url};
 /// ```
 pub struct Client {
     config: Config,
-    effect_sender: Arc<dyn EffectSender + Send + Sync>,
+    effect_sender: Arc<dyn EffectSender>,
     /// Holds the middleware stack.
     ///
     /// Note(Fishrock123): We do actually want this structure.
@@ -71,7 +71,7 @@ impl fmt::Debug for Client {
 impl Client {
     pub(crate) fn new<Sender>(sender: Sender) -> Self
     where
-        Sender: EffectSender + Send + Sync + 'static,
+        Sender: EffectSender + 'static,
     {
         Self {
             config: Config::default(),

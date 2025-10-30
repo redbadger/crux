@@ -210,7 +210,7 @@ pub(crate) use executor::{QueuingExecutor, executor_and_spawner};
 
 #[cfg(feature = "facet_typegen")]
 use crate::type_generation::facet::TypeGenError;
-use crate::{Command, Request, command::CommandOutput};
+use crate::{Command, MaybeSend, MaybeSync, Request, command::CommandOutput};
 use channel::Sender;
 
 /// Operation trait links together input and output of a side-effect.
@@ -224,9 +224,9 @@ use channel::Sender;
 ///     type Output = HttpResponse;
 /// }
 /// ```
-pub trait Operation: Send + 'static {
+pub trait Operation: MaybeSend + 'static {
     /// `Output` assigns the type this request results in.
-    type Output: Send + Unpin + 'static;
+    type Output: MaybeSend + Unpin + 'static;
 
     #[cfg(feature = "typegen")]
     #[allow(clippy::missing_errors_doc)]
@@ -297,7 +297,7 @@ impl Operation for Never {
 /// Example:
 ///
 /// ```rust
-/// # use crux_core::{Capability, capability::{CapabilityContext, Operation}};
+/// # use crux_core::{Capability, MaybeSend, MaybeSync, capability::{CapabilityContext, Operation}};
 /// # pub struct Http<Ev> {
 /// #     context: CapabilityContext<HttpRequest, Ev>,
 /// # }
@@ -316,7 +316,7 @@ impl Operation for Never {
 ///
 ///     fn map_event<F, NewEvent>(&self, f: F) -> Self::MappedSelf<NewEvent>
 ///     where
-///         F: Fn(NewEvent) -> Ev + Send + Sync + 'static,
+///         F: Fn(NewEvent) -> Ev + MaybeSend + MaybeSync + 'static,
 ///         Ev: 'static,
 ///         NewEvent: 'static,
 ///     {
@@ -335,9 +335,9 @@ pub trait Capability<Ev> {
 
     fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
     where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
+        F: Fn(NewEv) -> Ev + MaybeSend + MaybeSync + 'static,
         Ev: 'static,
-        NewEv: 'static + Send;
+        NewEv: 'static + MaybeSend;
 }
 
 /// Allows Crux to construct app's set of required capabilities, providing context
@@ -505,8 +505,8 @@ impl<Effect, Event> CommandSpawner<Effect, Event> {
     pub(crate) fn spawn(&self, mut command: Command<Effect, Event>)
     where
         Command<Effect, Event>: Stream<Item = CommandOutput<Effect, Event>>,
-        Effect: Unpin + Send + 'static,
-        Event: Unpin + Send + 'static,
+        Effect: Unpin + MaybeSend + 'static,
+        Event: Unpin + MaybeSend + 'static,
     {
         self.context.spawner.spawn({
             let context = self.context.clone();
@@ -562,7 +562,7 @@ where
     /// for the app's `Capabilities` type. You should not need to call this function directly.
     pub fn specialize<Op, F>(&self, func: F) -> CapabilityContext<Op, Ev>
     where
-        F: Fn(Request<Op>) -> Eff + Sync + Send + Copy + 'static,
+        F: Fn(Request<Op>) -> Eff + MaybeSync + MaybeSend + Copy + 'static,
         Op: Operation,
     {
         CapabilityContext::new(
@@ -595,7 +595,7 @@ where
 
     /// Spawn a task to do the asynchronous work. Within the task, async code
     /// can be used to interact with the Shell and the App.
-    pub fn spawn(&self, f: impl Future<Output = ()> + 'static + Send) {
+    pub fn spawn(&self, f: impl Future<Output = ()> + 'static + MaybeSend) {
         self.inner.spawner.spawn(f);
     }
 
@@ -701,7 +701,7 @@ where
     /// capabilities, before passing them down to the submodule.
     pub fn map_event<NewEv, F>(&self, func: F) -> CapabilityContext<Op, NewEv>
     where
-        F: Fn(NewEv) -> Ev + Sync + Send + 'static,
+        F: Fn(NewEv) -> Ev + MaybeSync + MaybeSend + 'static,
         NewEv: 'static,
     {
         CapabilityContext::new(
@@ -715,6 +715,10 @@ where
         self.inner.shell_channel.send(request);
     }
 }
+
+trait SendRequest: FnOnce() + MaybeSend + 'static {}
+
+impl<T> SendRequest for T where T: FnOnce() + MaybeSend + 'static {}
 
 #[cfg(test)]
 #[expect(deprecated)]
@@ -737,6 +741,6 @@ mod tests {
         type Output = ();
     }
 
-    assert_impl_all!(ProtoContext<Effect, Event>: Send, Sync);
-    assert_impl_all!(CapabilityContext<Op, Event>: Send, Sync);
+    assert_impl_all!(ProtoContext<Effect, Event>: MaybeSend, MaybeSync);
+    assert_impl_all!(CapabilityContext<Op, Event>: MaybeSend, MaybeSync);
 }

@@ -4,7 +4,7 @@ use erased_serde::Serialize;
 use serde::Deserialize;
 
 use crate::{
-    EffectFFI,
+    EffectFFI, MaybeSend, MaybeSync,
     bridge::{BridgeError, EffectId, ResolveRegistry},
 };
 
@@ -33,9 +33,16 @@ where
     Format: FfiFormat,
 {
     next: Next,
-    effect_callback: Arc<dyn Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static>,
+    effect_callback: Arc<dyn EffectCallback>,
     registry: Arc<ResolveRegistry>,
     format: PhantomData<Format>,
+}
+
+trait EffectCallback: Fn(Result<Vec<u8>, BridgeError>) + MaybeSend + MaybeSync + 'static {}
+
+impl<T> EffectCallback for T where
+    T: Fn(Result<Vec<u8>, BridgeError>) + MaybeSend + MaybeSync + 'static
+{
 }
 
 impl<Next, Format> Bridge<Next, Format>
@@ -48,9 +55,13 @@ where
     for<'de, 'b> &'de mut Format::Deserializer<'b>: serde::Deserializer<'b>,
 {
     /// Typically, you would would use [`Layer::bridge`] to construct a `Bridge` instance
+    #[cfg_attr(
+        feature = "unsync",
+        expect(clippy::arc_with_non_send_sync, reason = "single-threaded")
+    )]
     pub fn new<F>(next: Next, effect_callback: F) -> Self
     where
-        F: Fn(Result<Vec<u8>, BridgeError>) + Send + Sync + 'static,
+        F: Fn(Result<Vec<u8>, BridgeError>) + MaybeSend + MaybeSync + 'static,
     {
         Self {
             next,

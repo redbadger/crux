@@ -1,17 +1,35 @@
 use crate::{
-    Request,
+    MaybeSend, MaybeSync, Request,
     capability::Operation,
     core::{RequestHandle, ResolveError},
 };
 
 use super::BridgeError;
 
+pub trait ResolveOnceFn:
+    FnOnce(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + MaybeSend
+{
+}
+
+impl<T> ResolveOnceFn for T where
+    T: FnOnce(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + MaybeSend
+{
+}
+
+pub trait ResolveManyFn:
+    FnMut(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + MaybeSend
+{
+}
+
+impl<T> ResolveManyFn for T where
+    T: FnMut(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + MaybeSend
+{
+}
+
 // used in docs/internals/bridge.md
 // ANCHOR: resolve_serialized
-type ResolveOnceSerialized =
-    Box<dyn FnOnce(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + Send>;
-type ResolveManySerialized =
-    Box<dyn FnMut(&mut dyn erased_serde::Deserializer) -> Result<(), BridgeError> + Send>;
+type ResolveOnceSerialized = Box<dyn ResolveOnceFn>;
+type ResolveManySerialized = Box<dyn ResolveManyFn>;
 
 /// A deserializing version of Resolve
 ///
@@ -77,8 +95,8 @@ impl<Out> RequestHandle<Out> {
     fn deserializing<F>(self, mut func: F) -> ResolveSerialized
     where
         F: (FnMut(&mut dyn erased_serde::Deserializer) -> Result<Out, BridgeError>)
-            + Send
-            + Sync
+            + MaybeSend
+            + MaybeSync
             + 'static,
         Out: 'static,
     {

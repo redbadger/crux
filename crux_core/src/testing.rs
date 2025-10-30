@@ -5,7 +5,7 @@ use std::{collections::VecDeque, sync::Arc};
 #[expect(deprecated)]
 use crate::WithContext;
 use crate::{
-    Command, Request, Resolvable,
+    Command, MaybeSend, Request, Resolvable,
     capability::{
         CommandSpawner, Operation, ProtoContext, QueuingExecutor, channel::Receiver,
         executor_and_spawner,
@@ -275,8 +275,8 @@ impl<Ef, Ev> Update<Ef, Ev> {
 
 impl<Effect, Event> Command<Effect, Event>
 where
-    Effect: Send + 'static,
-    Event: Send + 'static,
+    Effect: MaybeSend + 'static,
+    Event: MaybeSend + 'static,
 {
     /// Assert that the Command contains _exactly_ one effect and zero events,
     /// and return the effect

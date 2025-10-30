@@ -10,8 +10,8 @@ use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
 
-use crate::Request;
 use crate::capability::Operation;
+use crate::{MaybeSend, Request};
 
 use super::executor::{JoinHandle, Task};
 
@@ -64,7 +64,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
     where
         Op: Operation,
-        Effect: From<Request<Op>> + Send + 'static,
+        Effect: From<Request<Op>> + MaybeSend + 'static,
     {
         let (output_sender, output_receiver) = mpsc::unbounded();
 
@@ -99,7 +99,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
     where
         Op: Operation,
-        Effect: From<Request<Op>> + Send + 'static,
+        Effect: From<Request<Op>> + MaybeSend + 'static,
     {
         let (output_sender, output_receiver) = mpsc::unbounded();
 
@@ -141,7 +141,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     pub fn spawn<F, Fut>(&self, make_future: F) -> JoinHandle
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
-        Fut: Future<Output = ()> + Send + 'static,
+        Fut: Future<Output = ()> + MaybeSend + 'static,
     {
         let (sender, receiver) = crossbeam_channel::unbounded();
 
@@ -151,7 +151,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let task = Task {
             finished: Arc::default(),
             aborted: Arc::default(),
+            #[cfg(not(feature = "unsync"))]
             future: future.boxed(),
+            #[cfg(feature = "unsync")]
+            future: future.boxed_local(),
             join_handle_wakers: receiver,
         };
 
@@ -169,14 +172,18 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     }
 }
 
-pub enum ShellStream<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, mpsc::UnboundedReceiver<T>),
+pub trait SendRequest: FnOnce() + MaybeSend {}
+
+impl<T> SendRequest for T where T: FnOnce() + MaybeSend {}
+
+pub enum ShellStream<T: Unpin + MaybeSend> {
+    ReadyToSend(Box<dyn SendRequest>, mpsc::UnboundedReceiver<T>),
     Sent(mpsc::UnboundedReceiver<T>),
 }
 
-impl<T: Unpin + Send> ShellStream<T> {
+impl<T: Unpin + MaybeSend> ShellStream<T> {
     fn new(
-        send_request: impl FnOnce() + Send + 'static,
+        send_request: impl FnOnce() + MaybeSend + 'static,
         output_receiver: mpsc::UnboundedReceiver<T>,
     ) -> Self {
         ShellStream::ReadyToSend(Box::new(send_request), output_receiver)
@@ -200,7 +207,7 @@ impl<T: Unpin + Send> ShellStream<T> {
     }
 }
 
-impl<T: Unpin + Send> Stream for ShellStream<T> {
+impl<T: Unpin + MaybeSend> Stream for ShellStream<T> {
     type Item = T;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -218,13 +225,13 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
     }
 }
 
-pub struct ShellRequest<T: Unpin + Send> {
+pub struct ShellRequest<T: Unpin + MaybeSend> {
     inner: Fuse<StreamFuture<ShellStream<T>>>,
 }
 
-impl<T: Unpin + Send + 'static> ShellRequest<T> {
+impl<T: Unpin + MaybeSend + 'static> ShellRequest<T> {
     fn new(
-        send_request: impl FnOnce() + Send + 'static,
+        send_request: impl FnOnce() + MaybeSend + 'static,
         output_receiver: mpsc::UnboundedReceiver<T>,
     ) -> Self {
         let inner = ShellStream::new(send_request, output_receiver)
@@ -235,7 +242,7 @@ impl<T: Unpin + Send + 'static> ShellRequest<T> {
     }
 }
 
-impl<T: Unpin + Send> Future for ShellRequest<T> {
+impl<T: Unpin + MaybeSend> Future for ShellRequest<T> {
     type Output = T;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

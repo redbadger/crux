@@ -1,6 +1,6 @@
 use std::{future::Future, marker::PhantomData};
 
-use crux_core::{Command, Request, command::RequestBuilder};
+use crux_core::{Command, MaybeSend, Request, command::RequestBuilder};
 
 use crate::{PlatformRequest, PlatformResponse};
 
@@ -11,8 +11,8 @@ pub struct Platform<Effect, Event> {
 
 impl<Effect, Event> Platform<Effect, Event>
 where
-    Effect: From<Request<PlatformRequest>> + Send + 'static,
-    Event: Send + 'static,
+    Effect: From<Request<PlatformRequest>> + MaybeSend + 'static,
+    Event: MaybeSend + 'static,
 {
     /// Get the platform of the shell
     #[must_use]
