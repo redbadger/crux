@@ -54,18 +54,9 @@ fun View(model: MyCore = viewModel()) {
                 modifier = Modifier.padding(10.dp)
         )
 
-        Text(
-            text = "Average: ${(
-                    if ((model.view?.log?.count() ?: 0) > 0) {
-                        val sum = model.view?.log?.sum() ?: 1u
-                        val count = model.view?.log?.count() ?: 1
-                        sum / count.toUInt()
-                    } else 
-                        0
-                    )}",
-            fontSize = 30.sp,
-            modifier = Modifier.padding(10.dp)
-        )
+        Text(text = "overall average: ${model.view?.average}")
+        Text(text = "10 second moving average: ${model.view?.movingAverage}")
+        Text(text = "max: ${model.view?.max}")
     }
 }
 
