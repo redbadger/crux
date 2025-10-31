@@ -1,4 +1,4 @@
-import SharedTypes
+import App
 import SwiftUI
 
 struct ContentView: View {
@@ -54,17 +54,6 @@ struct ContentView: View {
         }
     }
 
-    private func calculateStatistics() -> (average: Double, min: UInt64, max: UInt64)? {
-        guard !core.view.log.isEmpty else { return nil }
-
-        let sum = core.view.log.reduce(0, +)
-        let average = Double(sum) / Double(core.view.log.count)
-        let min = core.view.log.min() ?? 0
-        let max = core.view.log.max() ?? 0
-
-        return (average, min, max)
-    }
-
     var body: some View {
         VStack {
             Text(String(core.view.count))
@@ -73,18 +62,28 @@ struct ContentView: View {
             SparklineView(data: core.view.log)
                 .frame(height: 200)
                 .padding()
-
-            if let stats = calculateStatistics() {
-                VStack(alignment: .leading) {
-                    Text("Average: \(stats.average, specifier: "%.2f") /s")
-                    Text("Min: \(stats.min) /s")
-                    Text("Max: \(stats.max) /s")
+            let columns = [
+                GridItem(alignment: .trailing),
+                GridItem(alignment: .leading),
+            ]
+            LazyVGrid(columns: columns) {
+                GridRow {
+                    Text("Overall average:")
+                    Text("\(core.view.average) /s")
                 }
-                .font(.caption)
-                .padding()
-                .background(Color.white.opacity(0.8))
-                .cornerRadius(8)
+                GridRow {
+                    Text("10 second moving average:")
+                    Text("\(core.view.movingAverage) /s")
+                }
+                GridRow {
+                    Text("Max:")
+                    Text("\(core.view.max) /s")
+                }
             }
+            .font(.caption)
+            .padding()
+            .background(Color.white.opacity(0.8))
+            .cornerRadius(8)
 
             Button(action: toggleRunning) {
                 Text(isRunning ? "Stop" : "Start")

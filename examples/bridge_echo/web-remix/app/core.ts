@@ -1,46 +1,57 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { process_event, view } from "shared/shared";
-import type { Effect, Event } from "shared_types/types/shared_types";
-import {
-  EffectVariantRender,
-  ViewModel,
-  Request,
-} from "shared_types/types/shared_types";
-import {
-  BincodeSerializer,
-  BincodeDeserializer,
-} from "shared_types/bincode/mod";
+import { CoreFFI } from "shared";
+import type { Effect, Event, RenderOperation } from "app/app";
+import { EffectVariantRender, Request, ViewModel } from "app/app";
+import { BincodeSerializer, BincodeDeserializer } from "app/bincode";
 
-export function update(
-  event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>,
-) {
-  const serializer = new BincodeSerializer();
-  event.serialize(serializer);
+// union of all Operation types, only render is needed here
+type Response = RenderOperation;
 
-  const effects = process_event(serializer.getBytes());
+export class Core {
+  core: CoreFFI;
+  callback: Dispatch<SetStateAction<ViewModel>>;
 
-  const requests = deserializeRequests(effects);
-  for (const { id, effect } of requests) {
-    processEffect(id, effect, callback);
+  constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
+    this.callback = callback;
+    this.core = new CoreFFI();
   }
-}
 
-function processEffect(
-  _id: number,
-  effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>,
-) {
-  switch (effect.constructor) {
-    case EffectVariantRender: {
-      callback(deserializeView(view()));
-      break;
+  update(event: Event) {
+    const serializer = new BincodeSerializer();
+    event.serialize(serializer);
+
+    const effects = this.core.update(serializer.getBytes());
+
+    const requests = deserializeRequests(effects);
+    for (const { id, effect } of requests) {
+      this.resolve(id, effect);
+    }
+  }
+
+  async resolve(id: number, effect: Effect) {
+    switch (effect.constructor) {
+      case EffectVariantRender: {
+        this.callback(deserializeView(this.core.view()));
+        break;
+      }
+    }
+  }
+
+  respond(id: number, response: Response) {
+    const serializer = new BincodeSerializer();
+    response.serialize(serializer);
+
+    const effects = this.core.resolve(id, serializer.getBytes());
+
+    const requests = deserializeRequests(effects);
+    for (const { id, effect } of requests) {
+      this.resolve(id, effect);
     }
   }
 }
 
-function deserializeRequests(bytes: Uint8Array): Request[] {
+function deserializeRequests(bytes: Uint8Array) {
   const deserializer = new BincodeDeserializer(bytes);
   const len = deserializer.deserializeLen();
   const requests: Request[] = [];
@@ -51,6 +62,6 @@ function deserializeRequests(bytes: Uint8Array): Request[] {
   return requests;
 }
 
-function deserializeView(bytes: Uint8Array): ViewModel {
+function deserializeView(bytes: Uint8Array) {
   return ViewModel.deserialize(new BincodeDeserializer(bytes));
 }
