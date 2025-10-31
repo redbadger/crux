@@ -77,12 +77,11 @@ export default function Index() {
     <main>
       <section className="box container has-text-centered m-5">
         <p className="is-size-5">{view.count.toString()}</p>
+        <p className="is-size-5">overall average: {view.average}</p>
         <p className="is-size-5">
-          Average:{" "}
-          {view.log.length > 0 &&
-            view.log.reduce((sum, n) => sum + n, BigInt(0)) /
-              BigInt(view.log.length)}
+          10 second moving average: {view.moving_average}
         </p>
+        <p className="is-size-5">max: {view.max}</p>
       </section>
     </main>
   );

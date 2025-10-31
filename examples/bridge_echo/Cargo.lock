@@ -2914,6 +2914,7 @@ dependencies = [
  "pretty_env_logger",
  "rand 0.9.2",
  "serde",
+ "simple_moving_average",
  "uniffi",
  "wasm-bindgen",
 ]
@@ -2931,6 +2932,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2a4719bff48cee6b39d12c020eeb490953ad2443b7055bd0b21fca26bd8c28b"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "simple_moving_average"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a4b144ad185430cd033299e2c93e465d5a7e65fbb858593dc57181fa13cd310"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]

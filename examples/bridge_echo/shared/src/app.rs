@@ -6,6 +6,7 @@ use crux_core::{
 };
 use facet::Facet;
 use serde::{Deserialize, Serialize};
+use simple_moving_average::{NoSumSMA, SMA as _};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct DataPoint {
@@ -23,18 +24,35 @@ pub enum Event {
     Reset,
 }
 
-#[derive(Default, Debug, PartialEq)]
+const SMA_WINDOW_SIZE: usize = 10;
+
+#[derive(Debug, Default)]
 pub struct Model {
     log: Vec<usize>,
     count: usize,
     last_payload: Vec<DataPoint>,
+    max: usize,
+    average: usize,
+    sma: Option<NoSumSMA<usize, usize, SMA_WINDOW_SIZE>>,
+    moving_average: usize,
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, PartialEq, Debug)]
+impl PartialEq for Model {
+    fn eq(&self, other: &Self) -> bool {
+        self.log == other.log
+            && self.count == other.count
+            && self.last_payload == other.last_payload
+    }
+}
+
+#[derive(Facet, Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
 pub struct ViewModel {
     pub count: usize,
-    pub log: Vec<usize>,
     pub last_payload: Vec<DataPoint>,
+    pub log: Vec<usize>,
+    pub max: usize,
+    pub average: usize,
+    pub moving_average: usize,
 }
 
 #[effect(facet_typegen)]
@@ -67,6 +85,18 @@ impl crux_core::App for App {
             }
             Event::NewPeriod => {
                 model.log.push(model.count);
+                model
+                    .sma
+                    .get_or_insert_with(NoSumSMA::<usize, usize, SMA_WINDOW_SIZE>::new)
+                    .add_sample(model.count);
+                model.max = *model.log.iter().max().unwrap_or(&0);
+                model.average = if model.log.is_empty() {
+                    0
+                } else {
+                    model.log.iter().sum::<usize>() / model.log.len()
+                };
+                model.moving_average = model.sma.unwrap().get_average();
+
                 model.count = 0;
             }
             Event::Reset => {
@@ -81,8 +111,11 @@ impl crux_core::App for App {
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         ViewModel {
             count: model.count,
-            log: model.log.clone(),
             last_payload: model.last_payload.clone(),
+            log: model.log.clone(),
+            max: model.max,
+            average: model.average,
+            moving_average: model.moving_average,
         }
     }
 }
@@ -102,11 +135,7 @@ mod test {
         let model = Model::default();
 
         let actual_view = app.view(&model);
-        let expected_view = ViewModel {
-            count: 0,
-            log: vec![],
-            last_payload: vec![],
-        };
+        let expected_view = ViewModel::default();
 
         assert_eq!(actual_view, expected_view);
     }
@@ -131,8 +160,8 @@ mod test {
         let actual_view = app.view(&model);
         let expected_view = ViewModel {
             count: 3,
-            log: vec![],
             last_payload: vec![DataPoint::default(), DataPoint::default()],
+            ..Default::default()
         };
 
         assert_eq!(actual_view, expected_view);
@@ -156,8 +185,20 @@ mod test {
             log: vec![3, 2],
             count: 1,
             last_payload: vec![DataPoint::default()],
+            ..Default::default()
         };
         assert_eq!(model, expected);
+
+        let expected = ViewModel {
+            count: 1,
+            log: vec![3, 2],
+            last_payload: vec![DataPoint::default()],
+            max: 3,
+            average: 2,
+            moving_average: 2,
+        };
+        let actual_view = app.view(&model);
+        assert_eq!(actual_view, expected);
     }
 
     #[test]
