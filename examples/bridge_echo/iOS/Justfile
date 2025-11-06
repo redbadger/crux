@@ -10,6 +10,7 @@ dev: build
 
 # remove all the generated artefacts
 clean:
+    cargo clean
     rm -rf *.xcodeproj generated
 
 # rebuild the Xcode project from the `project.yaml` file

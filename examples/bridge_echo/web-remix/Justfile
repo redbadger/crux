@@ -24,6 +24,7 @@ wasm:
 
 # clean up generated files
 clean:
+    cargo clean
     rm -rf generated build .cache node_modules public/build
 
 # install npm dependencies

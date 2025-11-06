@@ -10,10 +10,15 @@ dev: build
 
 # remove all the generated artefacts
 clean:
+    cargo clean
     rm -rf build generated
 
+# build the shared library so that it can be inspected by uniffi
+lib:
+    cargo build --features uniffi
+
 # generate types for Kotlin, and uniffi bindgen as Java
-typegen:
+typegen: lib
     RUST_LOG=info cargo run \
         --package shared \
         --bin codegen \
