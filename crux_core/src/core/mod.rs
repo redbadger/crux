@@ -81,6 +81,25 @@ where
         }
     }
 
+    /// Run the app's `update` function with a given `event`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the model `RwLock` was poisoned.
+    // used in docs/internals/runtime.md
+    // ANCHOR: submit_event
+    pub fn submit_event(&self, event: A::Event) {
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+
+        let command = self.app.update(event, &mut model, &self.capabilities);
+
+        // drop the model here, we don't want to hold the lock for the process() call
+        drop(model);
+
+        self.command_spawner.spawn(command);
+    }
+    // ANCHOR_END: submit_event
+
     /// Run the app's `update` function with a given `event`, returning a vector of
     /// effect requests.
     ///
@@ -90,14 +109,7 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
-        let command = self.app.update(event, &mut model, &self.capabilities);
-
-        // drop the model here, we don't want to hold the lock for the process() call
-        drop(model);
-
-        self.command_spawner.spawn(command);
+        self.submit_event(event);
         self.process()
     }
     // ANCHOR_END: process_event

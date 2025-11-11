@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::Layer;
 use crate::{
     EffectFFI,
-    bridge::{BridgeError, EffectId, FfiFormat, ResolveRegistry},
+    bridge::{BridgeError, EffectId, FfiFormat, ResolveRegistry, Response},
 };
 
 #[doc(hidden)]
@@ -104,7 +104,7 @@ where
                 self.next.update(shell_event, effect_callback)
             }
             Some(id) => {
-                self.registry.resume(id, event_or_output)?;
+                self.registry.resume(id, Response::Bytes(event_or_output))?;
 
                 self.next.process_tasks(effect_callback)
             }
