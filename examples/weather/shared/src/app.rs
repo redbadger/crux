@@ -96,15 +96,9 @@ impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = (); // will be deprecated, so use unit type for now
     type Effect = Effect;
 
-    fn update(
-        &self,
-        event: Self::Event,
-        model: &mut Self::Model,
-        _caps: &(),
-    ) -> Command<Effect, Event> {
+    fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Effect, Event> {
         // If this is the first update and we're on Home, trigger weather fetch
         match event {
             Event::Navigate(page) => {
@@ -172,7 +166,6 @@ mod tests {
         let _ = app.update(
             Event::Navigate(Box::new(Workflow::Favorites(FavoritesState::Idle))),
             &mut model,
-            &(),
         );
 
         assert!(matches!(
@@ -181,15 +174,11 @@ mod tests {
         ));
 
         // Navigate to Home
-        let _ = app.update(Event::Navigate(Box::new(Workflow::Home)), &mut model, &());
+        let _ = app.update(Event::Navigate(Box::new(Workflow::Home)), &mut model);
         assert!(matches!(model.page, Workflow::Home));
 
         // Navigate to AddFavorite
-        let _ = app.update(
-            Event::Navigate(Box::new(Workflow::AddFavorite)),
-            &mut model,
-            &(),
-        );
+        let _ = app.update(Event::Navigate(Box::new(Workflow::AddFavorite)), &mut model);
 
         assert!(matches!(model.page, Workflow::AddFavorite));
     }
