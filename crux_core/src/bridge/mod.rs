@@ -1,18 +1,42 @@
+mod formats;
 mod registry;
 mod request_serde;
 
-use bincode::{DefaultOptions, Options};
-use erased_serde::{Error as SerdeError, Serialize as _};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::{App, Core, core::ResolveError};
+pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveSerialized;
+
+/// A serialization format for the bridge FFI.
+///
+/// **Note**: While you can implement your own format for use with the [`BridgeWithSerializer`],
+/// the type generation system doesn't yet support automatically generating the shell-side support
+/// for different formats, and you'll need to bring your own solution for this.
+pub trait FfiFormat: Debug + 'static {
+    type Error: std::error::Error;
+
+    /// Serialize an instance of `T` into the provided growable byte buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serialization fails.
+    fn serialize<T: Serialize>(buffer: &mut Vec<u8>, value: &T) -> Result<(), Self::Error>;
+
+    /// Deserialize an instance of `T` from the provided byte slice.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deserialization fails.
+    fn deserialize<'de, T: Deserialize<'de>>(bytes: &'de [u8]) -> Result<T, Self::Error>;
+}
 
 /// Request for a side-effect passed from the Core to the Shell. The `EffectId` links
 /// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
@@ -31,30 +55,32 @@ where
 
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
 /// serialized form, using bincode as the serialization format.
-pub struct Bridge<A>
+pub struct Bridge<A, T = BincodeFfiFormat>
 where
     A: App,
+    T: FfiFormat,
 {
-    inner: BridgeWithSerializer<A>,
+    inner: BridgeWithSerializer<A, T>,
 }
 
 #[derive(Debug, Error)]
-pub enum BridgeError {
+pub enum BridgeError<T: FfiFormat> {
     #[error("could not deserialize event: {0}")]
-    DeserializeEvent(SerdeError),
+    DeserializeEvent(T::Error),
     #[error("could not deserialize provided effect output: {0}")]
-    DeserializeOutput(SerdeError),
+    DeserializeOutput(T::Error),
     #[error("could not process response: {0}")]
     ProcessResponse(#[from] ResolveError),
     #[error("could not serialize effect requests: {0}")]
-    SerializeRequests(SerdeError),
+    SerializeRequests(T::Error),
     #[error("could not serialize view model: {0}")]
-    SerializeView(SerdeError),
+    SerializeView(T::Error),
 }
 
-impl<A> Bridge<A>
+impl<A, T> Bridge<A, T>
 where
     A: App,
+    T: FfiFormat,
 {
     /// Create a new Bridge using the provided `core`.
     pub fn new(core: Core<A>) -> Self {
@@ -71,19 +97,14 @@ where
     /// # Errors
     ///
     /// Returns an error if the event could not be deserialized.
-    pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError>
+    pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError<T>>
     where
         A::Event: for<'a> Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        let options = Self::bincode_options();
-
-        let mut deser = bincode::Deserializer::from_slice(event, options);
-
         let mut return_buffer = vec![];
-        let mut ser = bincode::Serializer::new(&mut return_buffer, options);
 
-        self.inner.process_event(&mut deser, &mut ser)?;
+        self.inner.process_event(event, &mut return_buffer)?;
 
         Ok(return_buffer)
     }
@@ -101,20 +122,15 @@ where
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
     // used in docs/internals/bridge.md
     // ANCHOR: handle_response_sig
-    pub fn handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError>
+    pub fn handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError<T>>
     // ANCHOR_END: handle_response_sig
     where
         A::Event: for<'a> Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        let options = Self::bincode_options();
-
-        let mut deser = bincode::Deserializer::from_slice(output, options);
-
         let mut return_buffer = vec![];
-        let mut ser = bincode::Serializer::new(&mut return_buffer, options);
 
-        self.inner.handle_response(id, &mut deser, &mut ser)?;
+        self.inner.handle_response(id, output, &mut return_buffer)?;
 
         Ok(return_buffer)
     }
@@ -124,24 +140,15 @@ where
     /// # Errors
     ///
     /// Returns an error if the view model could not be serialized.
-    pub fn view(&self) -> Result<Vec<u8>, BridgeError>
+    pub fn view(&self) -> Result<Vec<u8>, BridgeError<T>>
     where
         A::ViewModel: Serialize,
     {
-        let options = Self::bincode_options();
-
         let mut return_buffer = vec![];
 
-        self.inner
-            .view(&mut bincode::Serializer::new(&mut return_buffer, options))?;
+        self.inner.view(&mut return_buffer)?;
 
         Ok(return_buffer)
-    }
-
-    fn bincode_options() -> impl bincode::Options + Copy {
-        DefaultOptions::new()
-            .with_fixint_encoding()
-            .allow_trailing_bytes()
     }
 }
 
@@ -156,18 +163,20 @@ where
 /// it using separate tooling.
 // used in docs/internals/bridge.md
 // ANCHOR: bridge_with_serializer
-pub struct BridgeWithSerializer<A>
+pub struct BridgeWithSerializer<A, T = BincodeFfiFormat>
 where
     A: App,
+    T: FfiFormat,
 {
     core: Core<A>,
-    registry: ResolveRegistry,
+    registry: ResolveRegistry<T>,
 }
 // ANCHOR_END: bridge_with_serializer
 
-impl<A> BridgeWithSerializer<A>
+impl<A, T> BridgeWithSerializer<A, T>
 where
     A: App,
+    T: FfiFormat,
 {
     pub fn new(core: Core<A>) -> Self {
         Self {
@@ -184,19 +193,16 @@ where
     /// # Errors
     ///
     /// Returns an error if the event could not be deserialized.
-    pub fn process_event<'de, D, S>(&self, event: D, requests_out: S) -> Result<(), BridgeError>
+    pub fn process_event<'a>(
+        &self,
+        event: &'a [u8],
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<T>>
     where
-        for<'a> A::Event: Deserialize<'a>,
+        A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
-        D: ::serde::de::Deserializer<'de> + 'de,
-        S: ::serde::ser::Serializer,
     {
-        let mut erased_de = <dyn erased_serde::Deserializer>::erase(event);
-        self.process(
-            None,
-            &mut erased_de,
-            &mut <dyn erased_serde::Serializer>::erase(requests_out),
-        )
+        self.process(None, event, requests_out)
     }
 
     /// Receive a response to a capability request from the shell.
@@ -210,40 +216,32 @@ where
     /// # Panics
     ///
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'de, D, S>(
+    pub fn handle_response<'a>(
         &self,
         id: u32,
-        response: D,
-        requests_out: S,
-    ) -> Result<(), BridgeError>
+        response: &'a [u8],
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<T>>
     where
-        for<'a> A::Event: Deserialize<'a>,
+        A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
-        D: ::serde::de::Deserializer<'de>,
-        S: ::serde::ser::Serializer,
     {
-        let mut erased_response = <dyn erased_serde::Deserializer>::erase(response);
-        self.process(
-            Some(EffectId(id)),
-            &mut erased_response,
-            &mut <dyn erased_serde::Serializer>::erase(requests_out),
-        )
+        self.process(Some(EffectId(id)), response, requests_out)
     }
 
-    fn process(
+    fn process<'a>(
         &self,
         id: Option<EffectId>,
-        data: &mut dyn erased_serde::Deserializer,
-        requests_out: &mut dyn erased_serde::Serializer,
-    ) -> Result<(), BridgeError>
+        data: &'a [u8],
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<T>>
     where
-        A::Event: for<'a> Deserialize<'a>,
+        A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
         let effects = match id {
             None => {
-                let shell_event =
-                    erased_serde::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
+                let shell_event = T::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
 
                 self.core.process_event(shell_event)
             }
@@ -254,14 +252,23 @@ where
             }
         };
 
+        self.process_effects(effects, requests_out)
+    }
+
+    fn process_effects(
+        &self,
+        effects: Vec<A::Effect>,
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<T>>
+    where
+        A::Effect: crate::core::EffectFFI,
+    {
         let requests: Vec<_> = effects
             .into_iter()
             .map(|eff| self.registry.register(eff))
             .collect();
 
-        requests
-            .erased_serialize(requests_out)
-            .map_err(BridgeError::SerializeRequests)?;
+        T::serialize(requests_out, &requests).map_err(BridgeError::SerializeRequests)?;
 
         Ok(())
     }
@@ -271,14 +278,10 @@ where
     /// # Errors
     ///
     /// Returns an error if the view model could not be serialized.
-    pub fn view<S>(&self, ser: S) -> Result<(), BridgeError>
+    pub fn view(&self, view_out: &mut Vec<u8>) -> Result<(), BridgeError<T>>
     where
-        S: ::serde::ser::Serializer,
         A::ViewModel: Serialize,
     {
-        self.core
-            .view()
-            .erased_serialize(&mut <dyn erased_serde::Serializer>::erase(ser))
-            .map_err(BridgeError::SerializeView)
+        T::serialize(view_out, &self.core.view()).map_err(BridgeError::SerializeView)
     }
 }

@@ -169,7 +169,7 @@ impl ToTokens for EffectStructReceiver {
             impl ::crux_core::EffectFFI for #effect_name {
                 type Ffi = #ffi_effect_name;
 
-                fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
+                fn serialize<T: ::crux_core::bridge::FfiFormat>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
                     match self {
                         #(#match_arms ,)*
                     }
@@ -250,7 +250,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum Effect {
             Render(
@@ -267,7 +267,9 @@ mod tests {
         impl ::crux_core::Effect for Effect {}
         impl ::crux_core::EffectFFI for Effect {
             type Ffi = EffectFfi;
-            fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
+            fn serialize<T: ::crux_core::bridge::FfiFormat>(
+                self,
+            ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
                 match self {
                     Effect::Render(request) => request.serialize(EffectFfi::Render),
                 }
@@ -321,7 +323,7 @@ mod tests {
                 Self::Render(value)
             }
         }
-        "##);
+        "#);
     }
 
     #[test]
@@ -339,7 +341,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum Effect {
             Render(
@@ -356,7 +358,9 @@ mod tests {
         impl ::crux_core::Effect for Effect {}
         impl ::crux_core::EffectFFI for Effect {
             type Ffi = EffectFfi;
-            fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
+            fn serialize<T: ::crux_core::bridge::FfiFormat>(
+                self,
+            ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
                 match self {
                     Effect::Render(request) => request.serialize(EffectFfi::Render),
                 }
@@ -418,7 +422,7 @@ mod tests {
                 Self::Render(value)
             }
         }
-        "##);
+        "#);
     }
 
     #[test]
@@ -440,7 +444,7 @@ mod tests {
 
         let actual = quote!(#input);
 
-        insta::assert_snapshot!(pretty_print(&actual), @r##"
+        insta::assert_snapshot!(pretty_print(&actual), @r#"
         #[derive(Debug)]
         pub enum MyEffect {
             Http(
@@ -495,7 +499,9 @@ mod tests {
         impl ::crux_core::Effect for MyEffect {}
         impl ::crux_core::EffectFFI for MyEffect {
             type Ffi = MyEffectFfi;
-            fn serialize(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized) {
+            fn serialize<T: ::crux_core::bridge::FfiFormat>(
+                self,
+            ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
                 match self {
                     MyEffect::Http(request) => request.serialize(MyEffectFfi::Http),
                     MyEffect::KeyValue(request) => request.serialize(MyEffectFfi::KeyValue),
@@ -729,7 +735,7 @@ mod tests {
                 Self::Time(value)
             }
         }
-        "##);
+        "#);
     }
 
     #[test]

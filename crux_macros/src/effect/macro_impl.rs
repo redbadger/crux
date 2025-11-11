@@ -202,7 +202,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         quote! {
             impl crux_core::EffectFFI for #enum_ident {
                 type Ffi = #ffi_enum_ident;
-                fn serialize(self) -> (Self::Ffi, crux_core::bridge::ResolveSerialized) {
+                fn serialize<T: ::crux_core::bridge::FfiFormat>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
                     match self {
                         #(#match_arms ,)*
                     }

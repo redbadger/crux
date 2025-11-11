@@ -591,7 +591,6 @@ dependencies = [
  "crux_macros",
  "crux_time",
  "doctest_support",
- "erased-serde",
  "facet",
  "facet_generate",
  "futures",
@@ -932,17 +931,6 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1a6df962265a53221f29081896c412ef325c17fa7d638cd9578febe53d3c82c"
 dependencies = [
- "typeid",
-]
-
-[[package]]
-name = "erased-serde"
-version = "0.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "259d404d09818dec19332e31d94558aeb442fea04c817006456c24b5460bbd4b"
-dependencies = [
- "serde",
- "serde_core",
  "typeid",
 ]
 
