@@ -366,6 +366,7 @@ mod tests {
     enum Event {}
 
     #[derive(PartialEq, Clone, Serialize, Deserialize)]
+    #[allow(dead_code)]
     struct Op {}
 
     impl Operation for Op {
