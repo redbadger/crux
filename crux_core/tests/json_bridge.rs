@@ -52,11 +52,11 @@ mod app {
 }
 
 mod core {
-    use crux_core::bridge::{BridgeWithSerializer, JsonFfiFormat};
+    use crux_core::bridge::{Bridge as BridgeWithFormat, JsonFfiFormat};
 
     use crate::app::App;
 
-    pub type Bridge = BridgeWithSerializer<App, JsonFfiFormat>;
+    pub type Bridge = BridgeWithFormat<App, JsonFfiFormat>;
 }
 
 mod tests {
@@ -74,7 +74,7 @@ mod tests {
         let mut effects_bytes = vec![];
 
         bridge
-            .process_event(event, &mut effects_bytes)
+            .update(event, &mut effects_bytes)
             .expect("event should process");
 
         let actual_value: Value = serde_json::from_slice(&effects_bytes).unwrap();
@@ -115,7 +115,7 @@ mod tests {
 
         let mut effects_bytes = vec![];
 
-        let result = bridge.process_event(event, &mut effects_bytes);
+        let result = bridge.update(event, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("Expected a DeserializeEvent error");
@@ -135,7 +135,7 @@ mod tests {
 
         let mut effects_bytes = vec![];
 
-        let result = bridge.process_event(event, &mut effects_bytes);
+        let result = bridge.update(event, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("Expected a DeserializeEvent error");
@@ -155,7 +155,7 @@ mod tests {
         let mut effects_bytes = vec![];
 
         bridge
-            .process_event(event, &mut effects_bytes)
+            .update(event, &mut effects_bytes)
             .expect("event should process");
 
         let mut effects: Vec<Request<EffectFfi>> =
@@ -168,7 +168,7 @@ mod tests {
         let value = b"\"Hi\"";
 
         // Render does not expect a value!
-        let result = bridge.handle_response(render.id.0, value, &mut effects_bytes);
+        let result = bridge.resolve(render.id, value, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("expected an error");
@@ -188,7 +188,7 @@ mod tests {
         let mut effects_bytes = vec![];
 
         bridge
-            .process_event(event, &mut effects_bytes)
+            .update(event, &mut effects_bytes)
             .expect("event should process");
 
         let mut effects: Vec<Request<EffectFfi>> =
@@ -201,7 +201,7 @@ mod tests {
         let event = b"123";
 
         // Resolve HTTP with a bad value
-        let result = bridge.handle_response(http.id.0, event, &mut effects_bytes);
+        let result = bridge.resolve(http.id, event, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("expected an error");

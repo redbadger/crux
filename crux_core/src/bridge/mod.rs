@@ -55,129 +55,35 @@ where
 
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
 /// serialized form, using bincode as the serialization format.
-pub struct Bridge<A, T = BincodeFfiFormat>
+pub struct Bridge<A, F = BincodeFfiFormat>
 where
     A: App,
-    T: FfiFormat,
+    F: FfiFormat,
 {
-    inner: BridgeWithSerializer<A, T>,
+    core: Core<A>,
+    registry: ResolveRegistry<F>,
 }
 
 #[derive(Debug, Error)]
-pub enum BridgeError<T: FfiFormat> {
+pub enum BridgeError<F: FfiFormat = BincodeFfiFormat> {
     #[error("could not deserialize event: {0}")]
-    DeserializeEvent(T::Error),
+    DeserializeEvent(F::Error),
     #[error("could not deserialize provided effect output: {0}")]
-    DeserializeOutput(T::Error),
+    DeserializeOutput(F::Error),
     #[error("could not process response: {0}")]
     ProcessResponse(#[from] ResolveError),
     #[error("could not serialize effect requests: {0}")]
-    SerializeRequests(T::Error),
+    SerializeRequests(F::Error),
     #[error("could not serialize view model: {0}")]
-    SerializeView(T::Error),
+    SerializeView(F::Error),
 }
 
-impl<A, T> Bridge<A, T>
+impl<A, Format> Bridge<A, Format>
 where
     A: App,
-    T: FfiFormat,
+    Format: FfiFormat,
 {
     /// Create a new Bridge using the provided `core`.
-    pub fn new(core: Core<A>) -> Self {
-        Self {
-            inner: BridgeWithSerializer::new(core),
-        }
-    }
-
-    /// Receive an event from the shell.
-    ///
-    /// The `event` is serialized and will be deserialized by the core before it's passed
-    /// to your app.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the event could not be deserialized.
-    pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError<T>>
-    where
-        A::Event: for<'a> Deserialize<'a>,
-        A::Effect: crate::core::EffectFFI,
-    {
-        let mut return_buffer = vec![];
-
-        self.inner.process_event(event, &mut return_buffer)?;
-
-        Ok(return_buffer)
-    }
-
-    /// Receive a response to a capability request from the shell.
-    ///
-    /// The `output` is serialized capability output. It will be deserialized by the core.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the response could not be deserialized.
-    ///
-    /// # Panics
-    ///
-    /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
-    // used in docs/internals/bridge.md
-    // ANCHOR: handle_response_sig
-    pub fn handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError<T>>
-    // ANCHOR_END: handle_response_sig
-    where
-        A::Event: for<'a> Deserialize<'a>,
-        A::Effect: crate::core::EffectFFI,
-    {
-        let mut return_buffer = vec![];
-
-        self.inner.handle_response(id, output, &mut return_buffer)?;
-
-        Ok(return_buffer)
-    }
-
-    /// Get the current state of the app's view model (serialized).
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the view model could not be serialized.
-    pub fn view(&self) -> Result<Vec<u8>, BridgeError<T>>
-    where
-        A::ViewModel: Serialize,
-    {
-        let mut return_buffer = vec![];
-
-        self.inner.view(&mut return_buffer)?;
-
-        Ok(return_buffer)
-    }
-}
-
-/// A bridge with a user supplied serializer
-///
-/// This is exactly the same as [`Bridge`], except instead of using the default
-/// bincode serialization, you can provide your own [`Serializer`](::serde::ser::Serializer).
-///
-/// **Warning**: the support for custom serialization is **experimental** and
-/// does not have a corresponding type generation support - you will need
-/// to write deserialization code on the shell side yourself, or generate
-/// it using separate tooling.
-// used in docs/internals/bridge.md
-// ANCHOR: bridge_with_serializer
-pub struct BridgeWithSerializer<A, T = BincodeFfiFormat>
-where
-    A: App,
-    T: FfiFormat,
-{
-    core: Core<A>,
-    registry: ResolveRegistry<T>,
-}
-// ANCHOR_END: bridge_with_serializer
-
-impl<A, T> BridgeWithSerializer<A, T>
-where
-    A: App,
-    T: FfiFormat,
-{
     pub fn new(core: Core<A>) -> Self {
         Self {
             core,
@@ -193,11 +99,35 @@ where
     /// # Errors
     ///
     /// Returns an error if the event could not be deserialized.
-    pub fn process_event<'a>(
+    #[deprecated(
+        since = "0.17.0",
+        note = "Bridge API returning vectors has been deprecated. Please use the 'update' method."
+    )]
+    pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError<Format>>
+    where
+        A::Event: for<'a> Deserialize<'a>,
+        A::Effect: crate::core::EffectFFI,
+    {
+        let mut return_buffer = vec![];
+
+        self.update(event, &mut return_buffer)?;
+
+        Ok(return_buffer)
+    }
+
+    /// Send an event from the shell.
+    ///
+    /// The `event` is serialized and will be deserialized by the core before it's passed
+    /// to your app.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the event could not be deserialized.
+    pub fn update<'a>(
         &self,
         event: &'a [u8],
         requests_out: &mut Vec<u8>,
-    ) -> Result<(), BridgeError<T>>
+    ) -> Result<(), BridgeError<Format>>
     where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
@@ -216,17 +146,47 @@ where
     /// # Panics
     ///
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
-    pub fn handle_response<'a>(
+    // used in docs/internals/bridge.md
+    // ANCHOR: handle_response_sig
+    #[deprecated(
+        since = "0.17.0",
+        note = "Bridge API returning vectors has been deprecated. Please use the 'resolve' method."
+    )]
+    pub fn handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError<Format>>
+    // ANCHOR_END: handle_response_sig
+    where
+        A::Event: for<'a> Deserialize<'a>,
+        A::Effect: crate::core::EffectFFI,
+    {
+        let mut return_buffer = vec![];
+
+        self.resolve(EffectId(id), output, &mut return_buffer)?;
+
+        Ok(return_buffer)
+    }
+
+    /// Provide a response to a capability request to resolve it and continue the corresponding command.
+    ///
+    /// The `output` is serialized capability output. It will be deserialized by the core.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the response could not be deserialized.
+    ///
+    /// # Panics
+    ///
+    /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
+    pub fn resolve<'a>(
         &self,
-        id: u32,
+        id: EffectId,
         response: &'a [u8],
         requests_out: &mut Vec<u8>,
-    ) -> Result<(), BridgeError<T>>
+    ) -> Result<(), BridgeError<Format>>
     where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        self.process(Some(EffectId(id)), response, requests_out)
+        self.process(Some(id), response, requests_out)
     }
 
     fn process<'a>(
@@ -234,14 +194,15 @@ where
         id: Option<EffectId>,
         data: &'a [u8],
         requests_out: &mut Vec<u8>,
-    ) -> Result<(), BridgeError<T>>
+    ) -> Result<(), BridgeError<Format>>
     where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
         let effects = match id {
             None => {
-                let shell_event = T::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
+                let shell_event =
+                    Format::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
 
                 self.core.process_event(shell_event)
             }
@@ -259,7 +220,7 @@ where
         &self,
         effects: Vec<A::Effect>,
         requests_out: &mut Vec<u8>,
-    ) -> Result<(), BridgeError<T>>
+    ) -> Result<(), BridgeError<Format>>
     where
         A::Effect: crate::core::EffectFFI,
     {
@@ -268,7 +229,7 @@ where
             .map(|eff| self.registry.register(eff))
             .collect();
 
-        T::serialize(requests_out, &requests).map_err(BridgeError::SerializeRequests)?;
+        Format::serialize(requests_out, &requests).map_err(BridgeError::SerializeRequests)?;
 
         Ok(())
     }
@@ -278,10 +239,10 @@ where
     /// # Errors
     ///
     /// Returns an error if the view model could not be serialized.
-    pub fn view(&self, view_out: &mut Vec<u8>) -> Result<(), BridgeError<T>>
+    pub fn view(&self, view_out: &mut Vec<u8>) -> Result<(), BridgeError<Format>>
     where
         A::ViewModel: Serialize,
     {
-        T::serialize(view_out, &self.core.view()).map_err(BridgeError::SerializeView)
+        Format::serialize(view_out, &self.core.view()).map_err(BridgeError::SerializeView)
     }
 }

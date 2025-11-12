@@ -507,7 +507,8 @@ mod tests {
 
         let event: Vec<u8> = bincode::serialize(&Event::Roll(vec![6, 10, 20]))?;
 
-        let effects_bytes = core.update(&event)?;
+        let mut effects_bytes = Vec::new();
+        core.update(&event, &mut effects_bytes)?;
         let effects: Vec<bridge::Request<BridgeEffectFfi>> = bincode::deserialize(&effects_bytes)?;
 
         assert!(effects.is_empty());
@@ -530,7 +531,8 @@ mod tests {
         let response = HttpResult::Ok(HttpResponse::status(201).build());
         let response_bytes = bincode::serialize(&response)?;
 
-        let effects_bytes = core.resolve(effect_id, &response_bytes)?;
+        let mut effects_bytes = Vec::new();
+        core.resolve(effect_id, &response_bytes, &mut effects_bytes)?;
         let mut effects: Vec<bridge::Request<BridgeEffectFfi>> =
             bincode::deserialize(&effects_bytes)?;
 
@@ -560,7 +562,8 @@ mod tests {
 
         let event = serde_json::to_vec(&Event::Roll(vec![6, 10, 20]))?;
 
-        let effects_bytes = core.update(&event)?;
+        let mut effects_bytes = Vec::new();
+        core.update(&event, &mut effects_bytes)?;
         assert_eq!(str::from_utf8(&effects_bytes)?, "[]");
 
         let effects: Vec<bridge::Request<BridgeEffectFfi>> =
@@ -590,7 +593,8 @@ mod tests {
         let response = HttpResult::Ok(HttpResponse::status(201).build());
         let response_bytes = serde_json::to_vec(&response)?;
 
-        let effects_bytes = core.resolve(effect_id, &response_bytes)?;
+        let mut effects_bytes = Vec::new();
+        core.resolve(effect_id, &response_bytes, &mut effects_bytes)?;
 
         let effects_de: Vec<Request<BridgeEffectFfi>> = serde_json::from_slice(&effects_bytes)?;
         assert_eq!(effects_de.len(), 1);
