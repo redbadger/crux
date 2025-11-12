@@ -109,9 +109,9 @@ class Core: ObservableObject {
                         if !value.isEmpty {
                             // Convert string to Value type
                             let valueData = value.data(using: .utf8) ?? Data()
-                            result = .ok(response: .get(value: SharedTypes.Value.bytes([UInt8](valueData))))
+                            result = .ok(.get([UInt8](valueData)))
                         } else {
-                            result = .ok(response: .get(value: SharedTypes.Value.bytes([])))
+                            result = .ok(.get([]))
                         }
                         
                     case .set(key: let key, value: let value):
@@ -124,7 +124,7 @@ class Core: ObservableObject {
                         let previousData = previousValue.data(using: .utf8) ?? Data()
                         keyValueStore.set(key: key, value: valueString)
                         logger.debug("Value stored successfully")
-                        result = .ok(response: .set(previous: SharedTypes.Value.bytes([UInt8](previousData))))
+                        result = .ok(.set([UInt8](previousData)))
                         
                     case .delete(key: let key):
                         logger.debug("Deleting key: \(key)")
@@ -133,20 +133,20 @@ class Core: ObservableObject {
                         let previousData = previousValue.data(using: .utf8) ?? Data()
                         keyValueStore.delete(key: key)
                         logger.debug("Key deleted successfully")
-                        result = .ok(response: .delete(previous: SharedTypes.Value.bytes([UInt8](previousData))))
+                        result = .ok(.delete([UInt8](previousData)))
                         
                     case .exists(key: let key):
                         logger.debug("Checking existence of key: \(key)")
                         let exists = keyValueStore.exists(key: key)
                         logger.debug("Key exists: \(exists)")
-                        result = .ok(response: .exists(is_present: exists))
+                        result = .ok(.exists(exists))
                         
                     case .listKeys(prefix: let prefix, cursor: let cursor):
                         logger.debug("Listing keys with prefix: \(prefix), cursor: \(String(describing: cursor))")
                         let keys = keyValueStore.listKeys(prefix: prefix, cursor: String(cursor))
                         logger.debug("Found keys: \(keys)")
                         // For simplicity, we'll use 0 as next_cursor since we don't implement pagination
-                        result = .ok(response: .listKeys(keys: keys, next_cursor: 0))
+                        result = .ok(.listKeys(keys: keys, next_cursor: 0))
                     }
                     
                     let effects = [UInt8](

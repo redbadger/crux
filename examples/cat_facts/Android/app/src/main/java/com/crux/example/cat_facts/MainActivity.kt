@@ -1,4 +1,4 @@
-package com.redbadger.catfacts
+package com.crux.example.cat_facts
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -30,9 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.crux.example.cat_facts.Event
 import com.redbadger.catfacts.ui.theme.CatfactsTheme
-import kotlin.jvm.optionals.getOrNull
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -53,8 +51,8 @@ class MainActivity : ComponentActivity() {
 class MyCore : Core() {
     init {
         viewModelScope.launch {
-            update(Event.Get())
-            update(Event.GetPlatform())
+            update(Event.GET)
+            update(Event.GETPLATFORM)
         }
     }
 }
@@ -74,7 +72,7 @@ fun CatFacts(core: MyCore = viewModel()) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.height(250.dp).padding(10.dp)
         ) {
-            core.view?.image?.getOrNull()?.let {
+            core.view?.image?.let {
                 Image(
                         painter = rememberAsyncImagePainter(it.href),
                         contentDescription = "cat image",
@@ -85,21 +83,21 @@ fun CatFacts(core: MyCore = viewModel()) {
         Text(text = core.view?.fact ?: "", modifier = Modifier.padding(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                    onClick = { coroutineScope.launch { core.update(Event.Clear()) } },
+                    onClick = { coroutineScope.launch { core.update(Event.CLEAR) } },
                     colors =
                             ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error
                             )
             ) { Text(text = "Clear", color = Color.White) }
             Button(
-                    onClick = { coroutineScope.launch { core.update(Event.Get()) } },
+                    onClick = { coroutineScope.launch { core.update(Event.GET) } },
                     colors =
                             ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
                             )
             ) { Text(text = "Get", color = Color.White) }
             Button(
-                    onClick = { coroutineScope.launch { core.update(Event.Fetch()) } },
+                    onClick = { coroutineScope.launch { core.update(Event.FETCH) } },
                     colors =
                             ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.secondary

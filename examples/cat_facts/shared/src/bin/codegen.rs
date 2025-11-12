@@ -8,7 +8,7 @@ use crux_core::{
 use log::info;
 use uniffi::deps::anyhow::Result;
 
-use shared::App;
+use shared::CatFacts;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Language {
@@ -30,7 +30,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
+    let typegen_app = TypeRegistry::new().register_app::<CatFacts>()?.build()?;
 
     match args.language {
         Language::Swift => {
@@ -45,7 +45,7 @@ fn main() -> Result<()> {
         Language::Kotlin => {
             info!("Typegen for Kotlin");
             typegen_app.kotlin(
-                &Config::builder("com.crux.example.bridge_echo", &args.output_dir)
+                &Config::builder("com.crux.example.cat_facts", &args.output_dir)
                     .add_extensions()
                     .add_runtimes()
                     .build(),

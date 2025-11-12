@@ -1,27 +1,28 @@
 pub mod platform;
 
-use std::time::SystemTime;
-
 use chrono::{DateTime, Utc};
 use crux_http::{command::Http, protocol::HttpRequest};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 pub use crux_core::App;
 use crux_core::{
+    Command,
     macros::effect,
     render::{self, RenderOperation},
-    Command,
 };
-use crux_kv::{command::KeyValue, error::KeyValueError, KeyValueOperation};
+use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, command::KeyValue};
 use crux_platform::PlatformRequest;
-use crux_time::{command::Time, TimeRequest};
+use crux_time::{Instant, TimeRequest, command::Time};
+
+use crate::result::http::HttpResult;
 
 const CAT_LOADING_URL: &str = "https://c.tenor.com/qACzaJ1EBVYAAAAd/tenor.gif";
 const FACT_API_URL: &str = "https://catfact.ninja/fact";
 const IMAGE_API_URL: &str = "https://crux-counter.fly.dev/cat";
 const KEY: &str = "state";
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
+#[derive(Facet, Debug, Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct CatFact {
     fact: String,
     length: i32,
@@ -41,7 +42,7 @@ pub struct Model {
     time: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct CatImage {
     pub href: String,
 }
@@ -54,14 +55,15 @@ impl Default for CatImage {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Facet, Serialize, Deserialize, Default)]
 pub struct ViewModel {
     pub fact: String,
     pub image: Option<CatImage>,
     pub platform: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(C)]
 pub enum Event {
     // events from the shell
     None,
@@ -73,15 +75,20 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
+    #[facet(skip)]
     Platform(platform::Event),
     #[serde(skip)]
-    SetState(Result<Option<Vec<u8>>, KeyValueError>), // receive the data to restore state with
+    #[facet(skip)]
+    SetState(KeyValueResult), // receive the data to restore state with
     #[serde(skip)]
-    CurrentTime(SystemTime),
+    #[facet(skip)]
+    CurrentTime(Instant),
     #[serde(skip)]
-    SetFact(crux_http::Result<crux_http::Response<CatFact>>),
+    #[facet(skip)]
+    SetFact(HttpResult<crux_http::Response<CatFact>>),
     #[serde(skip)]
-    SetImage(crux_http::Result<crux_http::Response<CatImage>>),
+    #[facet(skip)]
+    SetImage(HttpResult<crux_http::Response<CatImage>>),
 }
 
 #[derive(Default)]
@@ -90,7 +97,7 @@ pub struct CatFacts {
 }
 
 // ANCHOR: effect
-#[effect(typegen)]
+#[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Http(HttpRequest),
@@ -147,20 +154,22 @@ impl App for CatFacts {
                     Http::get(FACT_API_URL)
                         .expect_json()
                         .build()
+                        .map(Into::into)
                         .then_send(Event::SetFact),
                     Http::get(IMAGE_API_URL)
                         .expect_json()
                         .build()
+                        .map(Into::into)
                         .then_send(Event::SetImage),
                 ])
                 // ANCHOR_END: command_all
             }
-            Event::SetFact(Ok(mut response)) => {
+            Event::SetFact(HttpResult::Ok(mut response)) => {
                 model.cat_fact = Some(response.take_body().unwrap());
 
                 Time::now().then_send(Event::CurrentTime)
             }
-            Event::SetImage(Ok(mut response)) => {
+            Event::SetImage(HttpResult::Ok(mut response)) => {
                 model.cat_image = Some(response.take_body().unwrap());
 
                 let bytes = serde_json::to_vec(&model).unwrap();
@@ -170,12 +179,8 @@ impl App for CatFacts {
                     KeyValue::set(KEY, bytes).then_send(|_| Event::None),
                 ])
             }
-            Event::SetFact(Err(_)) | Event::SetImage(Err(_)) | Event::SetState(Err(_)) => {
-                // handle error
-                Command::done()
-            }
             Event::CurrentTime(time) => {
-                let time: DateTime<Utc> = time.into();
+                let time: DateTime<Utc> = time.try_into().unwrap();
                 model.time = Some(time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
 
                 let bytes = serde_json::to_vec(&model).unwrap();
@@ -186,18 +191,21 @@ impl App for CatFacts {
                 ])
             }
             Event::Restore => KeyValue::get(KEY).then_send(Event::SetState),
-            Event::SetState(Ok(Some(value))) => match serde_json::from_slice::<Model>(&value) {
-                Ok(m) => {
-                    *model = m;
-                    render::render()
+            Event::SetState(KeyValueResult::Ok(KeyValueResponse::Get(Some(value)))) => {
+                match serde_json::from_slice::<Model>(&value) {
+                    Ok(m) => {
+                        *model = m;
+                        render::render()
+                    }
+                    Err(_) => {
+                        // handle error
+                        Command::done()
+                    }
                 }
-                Err(_) => {
-                    // handle error
-                    Command::done()
-                }
-            },
-            Event::SetState(Ok(None)) => {
-                // no state to restore
+            }
+
+            Event::SetFact(_) | Event::SetImage(_) | Event::SetState(_) => {
+                println!("shouldn't happen");
                 Command::done()
             }
             Event::None => Command::done(),
@@ -237,7 +245,7 @@ mod tests {
         protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
     };
-    use crux_kv::{value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult};
+    use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult};
     use crux_time::{Instant, TimeResponse};
 
     use super::*;
@@ -276,7 +284,7 @@ mod tests {
         let event = fetch_command.events().next().unwrap();
         assert_eq!(
             event,
-            Event::SetFact(Ok(ResponseBuilder::ok().body(a_fact.clone()).build()))
+            Event::SetFact(Ok(ResponseBuilder::ok().body(a_fact.clone()).build()).into())
         );
 
         // Setting the fact should trigger a time effect
@@ -288,7 +296,7 @@ mod tests {
         request.resolve(TimeResponse::Now { instant }).unwrap();
 
         let event = cmd.events().next().unwrap();
-        assert_eq!(event, Event::CurrentTime(instant.into()));
+        assert_eq!(event, Event::CurrentTime(instant));
 
         // update the app with the current time event
         // and check that we get a render event ...
@@ -306,11 +314,7 @@ mod tests {
         );
 
         request
-            .resolve(KeyValueResult::Ok {
-                response: KeyValueResponse::Set {
-                    previous: Value::None,
-                },
-            })
+            .resolve(KeyValueResult::Ok(KeyValueResponse::Set(None)))
             .unwrap();
 
         // Now we'll handle the image
@@ -327,7 +331,7 @@ mod tests {
         let event = fetch_command.events().next().unwrap();
         assert_eq!(
             event,
-            Event::SetImage(Ok(ResponseBuilder::ok().body(an_image.clone()).build()))
+            Event::SetImage(Ok(ResponseBuilder::ok().body(an_image.clone()).build()).into())
         );
 
         let mut cmd = app.update(event, &mut model, &());

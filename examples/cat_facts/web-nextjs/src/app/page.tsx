@@ -12,12 +12,13 @@ import {
   EventVariantGet,
   EventVariantClear,
   EventVariantFetch,
-} from "shared_types/types/shared_types";
+} from "shared_types/app";
 
-import { update } from "./core";
+import { Core } from "./core";
 
 const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel("", new CatImage(""), ""));
+  const core: React.RefObject<Core | null> = useRef(null);
 
   const initialized = useRef(false);
   useEffect(
@@ -26,9 +27,12 @@ const Home: NextPage = () => {
         initialized.current = true;
 
         init_core().then(() => {
+          if (core.current === null) {
+            core.current = new Core(setView);
+          }
           // Initial events
-          update(new EventVariantGetPlatform(), setView);
-          update(new EventVariantGet(), setView);
+          core.current?.update(new EventVariantGetPlatform());
+          core.current?.update(new EventVariantGet());
         });
       }
     },
@@ -62,19 +66,19 @@ const Home: NextPage = () => {
         <div className="buttons container is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantClear(), setView)}
+            onClick={() => core.current?.update(new EventVariantClear())}
           >
             {"Clear"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() => update(new EventVariantGet(), setView)}
+            onClick={() => core.current?.update(new EventVariantGet())}
           >
             {"Get"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() => update(new EventVariantFetch(), setView)}
+            onClick={() => core.current?.update(new EventVariantFetch())}
           >
             {"Fetch"}
           </button>

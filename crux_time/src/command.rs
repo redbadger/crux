@@ -1,8 +1,4 @@
-use std::{
-    future::Future,
-    marker::PhantomData,
-    time::{Duration, SystemTime},
-};
+use std::{future::Future, marker::PhantomData};
 
 use crux_core::{Command, Request, command::RequestBuilder};
 use facet::Facet;
@@ -12,7 +8,7 @@ use futures::{
     select_biased,
 };
 
-use crate::{TimeRequest, TimeResponse, TimerId, get_timer_id};
+use crate::{Duration, Instant, TimeRequest, TimeResponse, TimerId, get_timer_id};
 
 /// Result of the timer run. Timers can either run to completion or be cleared early.
 #[derive(Facet, Debug, PartialEq, Eq, Clone)]
@@ -47,13 +43,13 @@ where
     /// # Panics
     /// Panics if the response is not `TimeResponse::Now`.
     #[must_use]
-    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = SystemTime>> {
+    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = Instant>> {
         Command::request_from_shell(TimeRequest::Now).map(|r| {
             let TimeResponse::Now { instant } = r else {
                 panic!("Incorrect response received for TimeRequest::Now")
             };
 
-            instant.into()
+            instant
         })
     }
 
@@ -66,7 +62,7 @@ where
     /// or if the timer ID is not the same as the one used to create the handle.
     #[must_use]
     pub fn notify_at(
-        system_time: SystemTime,
+        instant: Instant,
     ) -> (
         RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
         TimerHandle,
@@ -97,7 +93,7 @@ where
                     response = ctx.request_from_shell(
                         TimeRequest::NotifyAt {
                             id: timer_id,
-                            instant: system_time.into()
+                            instant
                         }
                     ).fuse() =>  {
                         let TimeResponse::InstantArrived { id } = response else {
@@ -167,7 +163,7 @@ where
                 response = ctx.request_from_shell(
                     TimeRequest::NotifyAfter {
                         id: timer_id,
-                        duration: duration.into()
+                        duration
                     }
                 ).fuse() => {
                     let TimeResponse::DurationElapsed { id } = response else {
@@ -264,12 +260,10 @@ impl From<TimerHandle> for CompletedTimerHandle {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
     use crux_core::Request;
 
     use super::{Time, TimerOutcome};
-    use crate::{TimeRequest, TimeResponse};
+    use crate::{Duration, TimeRequest, TimeResponse};
 
     enum Effect {
         Time(Request<TimeRequest>),

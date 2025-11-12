@@ -3,13 +3,13 @@ use crux_core::{
     bridge::{Bridge, EffectId},
 };
 
-use crate::App;
+use crate::CatFacts;
 
 /// The main interface used by the shell
 #[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 #[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct CoreFFI {
-    core: Bridge<App>,
+    core: Bridge<CatFacts>,
 }
 
 impl Default for CoreFFI {

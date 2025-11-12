@@ -1,6 +1,6 @@
 mod note;
 
-use std::{ops::Range, time::Duration};
+use std::ops::Range;
 
 use automerge::Change;
 use crux_core::{
@@ -8,10 +8,10 @@ use crux_core::{
     render::{self, RenderOperation},
     App, Command,
 };
-use crux_kv::{command::KeyValue, error::KeyValueError, KeyValueOperation};
+use crux_kv::{command::KeyValue, KeyValueOperation, KeyValueResponse, KeyValueResult};
 use crux_time::{
     command::{Time, TimerHandle, TimerOutcome},
-    TimeRequest,
+    Duration, TimeRequest,
 };
 use serde::{Deserialize, Serialize};
 
@@ -40,9 +40,9 @@ pub enum Event {
     #[serde(skip)]
     EditTimerElapsed(TimerOutcome),
     #[serde(skip)]
-    Written(Result<Option<Vec<u8>>, KeyValueError>),
+    Written(KeyValueResult),
     #[serde(skip)]
-    Load(Result<Option<Vec<u8>>, KeyValueError>),
+    Load(KeyValueResult),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -213,7 +213,7 @@ impl App for NoteEditor {
                 Command::done()
             }
             Event::Open => KeyValue::get("note".to_string()).then_send(Event::Load),
-            Event::Load(Ok(value)) => {
+            Event::Load(KeyValueResult::Ok(KeyValueResponse::Get(value))) => {
                 let mut commands = Vec::new();
                 if value.is_none() {
                     model.note = Note::new();
@@ -230,7 +230,7 @@ impl App for NoteEditor {
                 commands.push(render::render());
                 Command::all(commands)
             }
-            Event::Load(Err(_)) => {
+            Event::Load(_) => {
                 // FIXME handle error
                 Command::done()
             }
@@ -555,7 +555,7 @@ mod editing_tests {
 #[cfg(test)]
 mod save_load_tests {
     use crux_core::assert_effect;
-    use crux_kv::{value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult};
+    use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult};
     use crux_time::{TimeRequest, TimerId};
 
     use super::*;
@@ -587,16 +587,12 @@ mod save_load_tests {
 
         // Read was successful
         request
-            .resolve(KeyValueResult::Ok {
-                response: KeyValueResponse::Get {
-                    value: note.save().into(),
-                },
-            })
+            .resolve(KeyValueResult::Ok(KeyValueResponse::Get(Some(note.save()))))
             .unwrap();
         drop(effects);
 
         let load_event = cmd.events().next().unwrap();
-        assert!(matches!(load_event, Event::Load(Ok(_))));
+        assert!(matches!(load_event, Event::Load(KeyValueResult::Ok(_))));
 
         let mut cmd = app.update(load_event, &mut model, &());
         assert_effect!(cmd, Effect::Render(_));
@@ -629,14 +625,15 @@ mod save_load_tests {
         assert!(effects.next().is_none());
 
         request
-            .resolve(KeyValueResult::Ok {
-                response: KeyValueResponse::Get { value: Value::None },
-            })
+            .resolve(KeyValueResult::Ok(KeyValueResponse::Get(None)))
             .unwrap();
         drop(effects);
 
         let load_event = cmd.events().next().unwrap();
-        assert!(matches!(load_event, Event::Load(Ok(None))));
+        assert!(matches!(
+            load_event,
+            Event::Load(KeyValueResult::Ok(KeyValueResponse::Get(None)))
+        ));
 
         let mut cmd = app.update(load_event, &mut model, &());
         let request = cmd.effects().find_map(Effect::into_key_value).unwrap();
@@ -671,7 +668,7 @@ mod save_load_tests {
             TimeRequest::NotifyAfter { id, duration } => (*id, duration),
             _ => panic!("expected a NotifyAfter"),
         };
-        assert_eq!(duration, &Duration::from_secs(1).into());
+        assert_eq!(duration, &Duration::from_secs(1));
 
         assert!(requests.next().is_none());
         drop(requests); // so we can use cmd1 later
@@ -822,8 +819,12 @@ mod sync_tests {
         let mut alice = Peer::new();
         let mut bob = Peer::new();
 
-        alice.update(Event::Load(Ok(Some(note.clone()))));
-        bob.update(Event::Load(Ok(Some(note))));
+        alice.update(Event::Load(KeyValueResult::Ok(KeyValueResponse::Get(
+            Some(note.clone()),
+        ))));
+        bob.update(Event::Load(KeyValueResult::Ok(KeyValueResponse::Get(
+            Some(note),
+        ))));
 
         (alice, bob)
     }

@@ -6,7 +6,6 @@
 
 pub mod command;
 pub mod error;
-pub mod value;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -16,7 +15,6 @@ use crux_core::capability::CapabilityContext;
 use crux_core::capability::Operation;
 
 use error::KeyValueError;
-use value::Value;
 
 /// Supported operations
 #[derive(Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -87,26 +85,28 @@ impl std::fmt::Debug for KeyValueOperation {
 ///
 /// Note: we can't use `Result` and `Option` here because generics are not currently
 /// supported across the FFI boundary, when using the builtin typegen.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum KeyValueResult {
-    Ok { response: KeyValueResponse },
-    Err { error: KeyValueError },
+    Ok(KeyValueResponse),
+    Err(KeyValueError),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(C)]
 pub enum KeyValueResponse {
     /// Response to a `KeyValueOperation::Get`,
     /// returning the value stored under the key, which may be empty
-    Get { value: Value },
+    Get(Option<Vec<u8>>),
     /// Response to a `KeyValueOperation::Set`,
     /// returning the value that was previously stored under the key, may be empty
-    Set { previous: Value },
+    Set(Option<Vec<u8>>),
     /// Response to a `KeyValueOperation::Delete`,
     /// returning the value that was previously stored under the key, may be empty
-    Delete { previous: Value },
+    Delete(Option<Vec<u8>>),
     /// Response to a `KeyValueOperation::Exists`,
     /// returning whether the key is present in the store
-    Exists { is_present: bool },
+    Exists(bool),
     /// Response to a `KeyValueOperation::ListKeys`,
     /// returning a list of keys that start with the prefix, and a cursor to continue listing
     /// if there are more keys
@@ -130,7 +130,6 @@ impl Operation for KeyValueOperation {
     ) -> crux_core::type_generation::serde::Result {
         generator.register_type::<KeyValueResponse>()?;
         generator.register_type::<KeyValueError>()?;
-        generator.register_type::<Value>()?;
         generator.register_type::<Self>()?;
         generator.register_type::<Self::Output>()?;
         Ok(())
@@ -395,53 +394,53 @@ async fn list_keys<Ev: 'static>(
 impl KeyValueResult {
     fn unwrap_get(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::Get { value } => Ok(value.into()),
+            KeyValueResult::Ok(response) => match response {
+                KeyValueResponse::Get(value) => Ok(value),
                 _ => {
                     panic!("attempt to convert KeyValueResponse other than Get to Option<Vec<u8>>")
                 }
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            KeyValueResult::Err(error) => Err(error.clone()),
         }
     }
 
     fn unwrap_set(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::Set { previous } => Ok(previous.into()),
+            KeyValueResult::Ok(response) => match response {
+                KeyValueResponse::Set(previous) => Ok(previous),
                 _ => {
                     panic!("attempt to convert KeyValueResponse other than Set to Option<Vec<u8>>")
                 }
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            KeyValueResult::Err(error) => Err(error.clone()),
         }
     }
 
     fn unwrap_delete(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::Delete { previous } => Ok(previous.into()),
+            KeyValueResult::Ok(response) => match response {
+                KeyValueResponse::Delete(previous) => Ok(previous),
                 _ => panic!(
                     "attempt to convert KeyValueResponse other than Delete to Option<Vec<u8>>"
                 ),
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            KeyValueResult::Err(error) => Err(error.clone()),
         }
     }
 
     fn unwrap_exists(self) -> Result<bool, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
-                KeyValueResponse::Exists { is_present } => Ok(is_present),
+            KeyValueResult::Ok(response) => match response {
+                KeyValueResponse::Exists(is_present) => Ok(is_present),
                 _ => panic!("attempt to convert KeyValueResponse other than Exists to bool"),
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            KeyValueResult::Err(error) => Err(error.clone()),
         }
     }
 
     fn unwrap_list_keys(self) -> Result<(Vec<String>, u64), KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
+            KeyValueResult::Ok(response) => match response {
                 KeyValueResponse::ListKeys {
                     keys,
                     next_cursor: cursor,
@@ -450,7 +449,7 @@ impl KeyValueResult {
                     "attempt to convert KeyValueResponse other than ListKeys to (Vec<String>, u64)"
                 ),
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            KeyValueResult::Err(error) => Err(error.clone()),
         }
     }
 }

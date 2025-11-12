@@ -1,5 +1,5 @@
 [bindings.kotlin]
-package_name = "com.redbadger.catfacts.shared"
+package_name = "com.crux.example.cat_facts"
 cdylib_name = "shared"
 
 [bindings.swift]

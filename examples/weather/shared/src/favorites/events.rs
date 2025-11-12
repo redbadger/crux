@@ -1,5 +1,6 @@
 use crux_core::{render::render, Command};
-use crux_kv::{command::KeyValue, error::KeyValueError};
+use crux_kv::command::KeyValue;
+use crux_kv::{KeyValueResponse, KeyValueResult};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -28,9 +29,9 @@ pub enum FavoritesEvent {
     #[serde(skip)]
     Set,
     #[serde(skip)]
-    Stored(Result<Option<Vec<u8>>, KeyValueError>),
+    Stored(KeyValueResult),
     #[serde(skip)]
-    Load(Result<Option<Vec<u8>>, KeyValueError>),
+    Load(KeyValueResult),
 }
 
 pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, FavoritesEvent> {
@@ -109,10 +110,10 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
 
         FavoritesEvent::Stored(result) => {
             match result {
-                Ok(_) => {
+                KeyValueResult::Ok(_) => {
                     println!("Stored!");
                 }
-                Err(err) => {
+                KeyValueResult::Err(err) => {
                     println!("Storing KV error: {err}");
                 }
             }
@@ -120,7 +121,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
         }
 
         FavoritesEvent::Load(result) => {
-            let Ok(Some(favorites_bytes)) = result else {
+            let KeyValueResult::Ok(KeyValueResponse::Get(Some(favorites_bytes))) = result else {
                 return Command::done();
             };
             let Ok(favorites) = serde_json::from_slice::<Vec<Favorite>>(&favorites_bytes) else {
@@ -139,6 +140,7 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
 mod tests {
     use crux_core::{assert_effect, App as _};
     use crux_http::protocol::{HttpResponse, HttpResult};
+    use crux_kv::error::KeyValueError;
 
     use super::*;
     use crate::{
@@ -189,7 +191,9 @@ mod tests {
         let favorites = Favorites::from_vec(vec![test_favorite()]);
 
         let mut cmd = update(
-            FavoritesEvent::Load(Ok(Some(serde_json::to_vec(favorites.as_slice()).unwrap()))),
+            FavoritesEvent::Load(KeyValueResult::Ok(KeyValueResponse::Get(Some(
+                serde_json::to_vec(favorites.as_slice()).unwrap(),
+            )))),
             &mut model,
         );
         assert!(cmd.effects().next().is_none());
@@ -199,7 +203,10 @@ mod tests {
     #[test]
     fn test_kv_load_empty() {
         let mut model = crate::Model::default();
-        let mut cmd = update(FavoritesEvent::Load(Ok(None)), &mut model);
+        let mut cmd = update(
+            FavoritesEvent::Load(KeyValueResult::Ok(KeyValueResponse::Get(None))),
+            &mut model,
+        );
         assert!(cmd.effects().next().is_none());
         assert!(model.favorites.is_empty());
     }
@@ -208,7 +215,7 @@ mod tests {
     fn test_kv_load_error() {
         let mut model = crate::Model::default();
         let mut cmd = update(
-            FavoritesEvent::Load(Err(KeyValueError::CursorNotFound)),
+            FavoritesEvent::Load(KeyValueResult::Err(KeyValueError::CursorNotFound)),
             &mut model,
         );
         assert!(cmd.effects().next().is_none());
@@ -235,9 +242,9 @@ mod tests {
 
         // Verify the empty state persists
         let mut cmd = update(
-            FavoritesEvent::Load(Ok(Some(
+            FavoritesEvent::Load(KeyValueResult::Ok(KeyValueResponse::Get(Some(
                 serde_json::to_vec(model.favorites.as_slice()).unwrap(),
-            ))),
+            )))),
             &mut model,
         );
 
