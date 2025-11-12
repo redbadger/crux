@@ -117,7 +117,7 @@ fn main() -> Result<()> {
         Commands::Publish(publish) => publish.run(&ctx)?,
         Commands::Test(test) => test.run(&ctx)?,
         Commands::CI => {
-            Clean { generated: true }.run(&ctx)?;
+            // Clean { generated: true }.run(&ctx)?;
             Format { fix: false }.run(&ctx)?;
             Check { clippy: true }.run(&ctx)?;
             Build { clean: false }.run(&ctx)?;

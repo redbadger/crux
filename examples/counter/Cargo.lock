@@ -993,7 +993,6 @@ dependencies = [
  "bincode",
  "crossbeam-channel",
  "crux_macros",
- "erased-serde",
  "facet",
  "futures",
  "serde",

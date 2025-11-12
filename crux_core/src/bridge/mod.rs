@@ -101,7 +101,7 @@ where
     /// Returns an error if the event could not be deserialized.
     #[deprecated(
         since = "0.17.0",
-        note = "Bridge API returning Vecs has been deprecated. Please use the 'update' method."
+        note = "Bridge API returning vectors has been deprecated. Please use the 'update' method."
     )]
     pub fn process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError<Format>>
     where
@@ -150,7 +150,7 @@ where
     // ANCHOR: handle_response_sig
     #[deprecated(
         since = "0.17.0",
-        note = "Bridge API returning Vectors has been deprecated. Please use the 'resolve' method."
+        note = "Bridge API returning vectors has been deprecated. Please use the 'resolve' method."
     )]
     pub fn handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError<Format>>
     // ANCHOR_END: handle_response_sig
@@ -160,7 +160,7 @@ where
     {
         let mut return_buffer = vec![];
 
-        self.resolve(id, output, &mut return_buffer)?;
+        self.resolve(EffectId(id), output, &mut return_buffer)?;
 
         Ok(return_buffer)
     }
@@ -178,7 +178,7 @@ where
     /// The `id` MUST match the `id` of the effect that triggered it, else the core will panic.
     pub fn resolve<'a>(
         &self,
-        id: u32,
+        id: EffectId,
         response: &'a [u8],
         requests_out: &mut Vec<u8>,
     ) -> Result<(), BridgeError<Format>>
@@ -186,7 +186,7 @@ where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        self.process(Some(EffectId(id)), response, requests_out)
+        self.process(Some(id), response, requests_out)
     }
 
     fn process<'a>(

@@ -20,7 +20,7 @@ async-sse = "5.1.0"
 chrono = { version = "0.4.42", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
-facet = { version = "0.30.0", features = ["chrono", "time"] }
+facet = { version = "=0.30", features = ["chrono", "time"] }
 futures = "0.3.31"
 log = { version = "0.4.28", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }

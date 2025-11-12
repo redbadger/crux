@@ -49,12 +49,12 @@ where
     /// # Errors
     ///
     /// Returns an [`BridgeError`] when any of the (de)serialization fails
-    pub fn update(&self, event_bytes: &[u8]) -> Result<Vec<u8>, BridgeError<Format>> {
-        let mut requests_bytes = vec![];
-
-        let result = self.process(None, event_bytes, &mut requests_bytes);
-
-        result.map(|()| requests_bytes)
+    pub fn update(
+        &self,
+        event_bytes: &[u8],
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<Format>> {
+        self.process(None, event_bytes, requests_out)
     }
 
     /// Resolve a requested effect, providing the output to the core
@@ -62,12 +62,13 @@ where
     /// # Errors
     ///
     /// Returns a [`BridgeError`] when the effect fails to resolve, or any of the (de)serialization fails.
-    pub fn resolve(&self, id: EffectId, output: &[u8]) -> Result<Vec<u8>, BridgeError<Format>> {
-        let mut requests_bytes = vec![];
-
-        let result = self.process(Some(id), output, &mut requests_bytes);
-
-        result.map(|()| requests_bytes)
+    pub fn resolve(
+        &self,
+        id: EffectId,
+        output: &[u8],
+        requests_out: &mut Vec<u8>,
+    ) -> Result<(), BridgeError<Format>> {
+        self.process(Some(id), output, requests_out)
     }
 
     fn process(
@@ -125,15 +126,10 @@ where
     /// # Errors
     ///
     /// Returns an [`BridgeError`] when any of the (de)serialization fails
-    pub fn view(&self) -> Result<Vec<u8>, BridgeError<Format>>
+    pub fn view(&self, view_out: &mut Vec<u8>) -> Result<(), BridgeError<Format>>
     where
         Next::ViewModel: Serialize,
     {
-        let mut view_bytes = vec![];
-
-        let result = Format::serialize(&mut view_bytes, &self.next.view())
-            .map_err(BridgeError::SerializeView);
-
-        result.map(|()| view_bytes)
+        Format::serialize(view_out, &self.next.view()).map_err(BridgeError::SerializeView)
     }
 }

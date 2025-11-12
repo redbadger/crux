@@ -168,7 +168,7 @@ mod tests {
         let value = b"\"Hi\"";
 
         // Render does not expect a value!
-        let result = bridge.resolve(render.id.0, value, &mut effects_bytes);
+        let result = bridge.resolve(render.id, value, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("expected an error");
@@ -201,7 +201,7 @@ mod tests {
         let event = b"123";
 
         // Resolve HTTP with a bad value
-        let result = bridge.resolve(http.id.0, event, &mut effects_bytes);
+        let result = bridge.resolve(http.id, event, &mut effects_bytes);
 
         let Err(error) = result else {
             panic!("expected an error");

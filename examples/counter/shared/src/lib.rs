@@ -3,6 +3,7 @@ pub mod capabilities;
 
 use std::sync::LazyLock;
 
+use crux_core::bridge::EffectId;
 pub use crux_core::bridge::{Bridge, Request};
 pub use crux_core::{Core, ResolveError};
 pub use crux_http as http;
@@ -21,8 +22,9 @@ static CORE: LazyLock<Bridge<App>> = LazyLock::new(|| Bridge::new(Core::new()));
 #[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
 #[must_use]
 pub fn process_event(data: &[u8]) -> Vec<u8> {
-    match CORE.process_event(data) {
-        Ok(effects) => effects,
+    let mut effects = Vec::new();
+    match CORE.update(data, &mut effects) {
+        Ok(()) => effects,
         Err(e) => panic!("{e}"),
     }
 }
@@ -33,8 +35,9 @@ pub fn process_event(data: &[u8]) -> Vec<u8> {
 #[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
 #[must_use]
 pub fn handle_response(id: u32, data: &[u8]) -> Vec<u8> {
-    match CORE.handle_response(id, data) {
-        Ok(effects) => effects,
+    let mut effects = Vec::new();
+    match CORE.resolve(EffectId(id), data, &mut effects) {
+        Ok(()) => effects,
         Err(e) => panic!("{e}"),
     }
 }
@@ -45,8 +48,9 @@ pub fn handle_response(id: u32, data: &[u8]) -> Vec<u8> {
 #[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
 #[must_use]
 pub fn view() -> Vec<u8> {
-    match CORE.view() {
-        Ok(view) => view,
+    let mut view_model = Vec::new();
+    match CORE.view(&mut view_model) {
+        Ok(()) => view_model,
         Err(e) => panic!("{e}"),
     }
 }

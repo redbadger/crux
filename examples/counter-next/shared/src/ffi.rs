@@ -68,24 +68,27 @@ pub mod uniffi_ffi {
 
         #[must_use]
         pub fn update(&self, data: &[u8]) -> Vec<u8> {
-            match self.core.update(data) {
-                Ok(effects) => effects,
+            let mut effects = Vec::new();
+            match self.core.update(data, &mut effects) {
+                Ok(()) => effects,
                 Err(e) => panic!("{e}"),
             }
         }
 
         #[must_use]
         pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
-            match self.core.resolve(EffectId(effect_id), data) {
-                Ok(effects) => effects,
+            let mut effects = Vec::new();
+            match self.core.resolve(EffectId(effect_id), data, &mut effects) {
+                Ok(()) => effects,
                 Err(e) => panic!("{e}"),
             }
         }
 
         #[must_use]
         pub fn view(&self) -> Vec<u8> {
-            match self.core.view() {
-                Ok(view) => view,
+            let mut view_model = Vec::new();
+            match self.core.view(&mut view_model) {
+                Ok(()) => view_model,
                 Err(e) => panic!("{e}"),
             }
         }
