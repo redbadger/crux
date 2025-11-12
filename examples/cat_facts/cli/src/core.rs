@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use crossbeam_channel::Sender;
 use std::{sync::Arc, time::SystemTime};
 use tokio::{
@@ -9,12 +9,10 @@ use tokio::{
 use tracing::debug;
 
 use shared::{
-    key_value::{
-        error::KeyValueError, value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult,
-    },
+    CatFacts, Effect, Event,
+    key_value::{KeyValueOperation, KeyValueResponse, KeyValueResult, Value, error::KeyValueError},
     platform::PlatformResponse,
     time::TimeResponse,
-    CatFacts, Effect, Event,
 };
 
 use crate::http;
@@ -69,7 +67,7 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
                         let response = match read_state(&key).await {
                             Ok(value) => KeyValueResult::Ok {
                                 response: KeyValueResponse::Get {
-                                    value: value.into(),
+                                    value: Value::Bytes(value),
                                 },
                             },
                             Err(err) => KeyValueResult::Err {

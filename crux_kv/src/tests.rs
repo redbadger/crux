@@ -7,8 +7,10 @@ use crux_core::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    KeyValueOperation, KeyValueResponse, KeyValueResult, command::KeyValue, error::KeyValueError,
-    value::Value,
+    KeyValueOperation, KeyValueResult,
+    command::KeyValue,
+    error::KeyValueError,
+    protocol::{KeyValueResponse, Value},
 };
 
 #[derive(Default)]

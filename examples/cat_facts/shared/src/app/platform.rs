@@ -1,9 +1,10 @@
 use crux_core::{
+    Command,
     macros::effect,
     render::{self, RenderOperation},
-    Command,
 };
-use crux_platform::{command::Platform, PlatformRequest, PlatformResponse};
+use crux_platform::{PlatformRequest, PlatformResponse, command::Platform};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
@@ -14,7 +15,8 @@ pub struct Model {
     pub(crate) platform: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(C)]
 pub enum Event {
     Get,
     Set(PlatformResponse),

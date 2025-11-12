@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use crux_core::{
-    cli::{bindgen, BindgenArgsBuilder},
+    cli::{BindgenArgsBuilder, bindgen},
     type_generation::facet::{Config, TypeRegistry},
 };
 use log::info;

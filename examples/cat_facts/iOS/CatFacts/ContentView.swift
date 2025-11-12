@@ -1,4 +1,4 @@
-import SharedTypes
+import Shared
 import SwiftUI
 
 

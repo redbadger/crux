@@ -16,7 +16,9 @@ export const meta = () => {
 };
 
 export default function Index() {
-  const [view, setView] = useState(new ViewModel(BigInt(0), [], []));
+  const [view, setView] = useState(
+    new ViewModel(BigInt(0), [], [], BigInt(0), BigInt(0), BigInt(0))
+  );
 
   const core: React.RefObject<Core | null> = useRef(null);
   useEffect(

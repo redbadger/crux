@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 use crossbeam_channel::unbounded;
 use std::sync::Arc;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use shared::{Effect, Event, ViewModel};
 
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 
     let core = core::new();
 
-    run_loop(&core, vec![Event::Restore])?;
+    run_loop(&core, vec![Event::LoadState])?;
     run_loop(&core, vec![Event::GetPlatform, command.into()])?;
 
     let ViewModel { platform, fact, .. } = core.view();

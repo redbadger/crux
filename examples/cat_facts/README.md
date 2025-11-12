@@ -1,69 +1,28 @@
-## Run the Cat Facts Example Locally
+# Cat Facts Example
 
-Note: Whilst this example _does_ work, the API that it uses is not under our control and can be flaky, so your mileage may vary. I would look at the [Counter](../counter/README.md) example first.
+This example has been updated recently in order to be ready for the upcoming release of `crux_core` v0.17. This means that it depends on the local `crux_core` and you will need to clone the repository to build it.
 
-### Notes:
+In particular, the example uses the `facet_typegen` feature of `crux_core` to generate shared types for each foreign language (meaning we no longer need a separate crate for the shared types). The codegen is done by a binary in the shared lib at [`./shared/src/bin/codegen.rs`](./shared/src/bin/codegen.rs).
 
-1. Please make sure you have the following rust targets installed (there is a [`rust-toolchain.toml`](../../rust-toolchain.toml) in the root directory of this repo, so you should be able to type `rustup target list --installed`, in or below the root directory, and these targets will be installed if they are not already present).
+To get going quickly you can run `just dev` in each of the shell directories (`./Android`, `./cli`, `./iOS`, `./web-nextjs`, `./web-yew`). 
 
-   ```txt
-   aarch64-apple-darwin
-   aarch64-apple-ios
-   aarch64-apple-ios-sim
-   aarch64-linux-android
-   wasm32-unknown-unknown
-   x86_64-apple-ios
-   ```
+The `Justfile` in each of these directories describes what is required to build the example for the respective shell.
 
-2. This example currently depends on the `pnpm` package manager when generating types for TypeScript. We are currently revisiting the type generation for foreign types and so this requirement will probably go, but for now, please [install `pnpm`](https://pnpm.io/installation).
-
-### Rust
-
-1. Make sure the core builds
-
-   ```sh
-   cargo build --package shared
-   # => Finished dev [unoptimized + debuginfo] target(s) in 1.40s
-   ```
-
-2. Generate the shared types for your client applications
-
-   ```sh
-   cargo build --package shared_types
-   ```
-
-### Yew web app
-
-The web application should now build and run
-
-```
-cd web-yew
-trunk serve
+```bash
+cd ./iOS # or `./Android`, `./cli`, `./web-nextjs`, `./web-yew`
+just dev
 ```
 
-### React web app
+## Dependencies
 
-The web application should now build and run
+1. `rustup target list --installed` — installs the targets listed in [`rust-toolchain.toml`](./rust-toolchain.toml) if they are not already present.
 
-```
-cd web-nextjs
-pnpm install
-pnpm dev
-```
+1. `cargo install just` - for running tasks.
 
-### iOS
+1. `brew install xcodegen` - for generating Xcode projects.
 
-You will need XCode, which you can get in the mac AppStore.
-When XCode starts, open the `iOS` directory and run a build, the app should start in the simulator.
+1. `cargo install cargo-swift` - for compiling the shared library as an iOS framework in a Swift package.
 
-### Android
+1. `cargo install wasm-pack` - for compiling the shared library as a WebAssembly module.
 
-You will need [Android Studio](https://developer.android.com/studio/).
-You might face a few problems:
-
-- The build fails due to a `linker-wrapper.sh` script failure.
-  Make sure you have Python installed and your `PATH`
-- Android studio fails to install `git`.
-  You can set the path to your git binary (e.g. the homebrew one) in the preferences under Version Control > Git
-
-You should be able to build and run the project in the simulator.
+1. `brew install pnpm` - for managing dependencies in the web shells.

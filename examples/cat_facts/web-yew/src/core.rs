@@ -1,7 +1,7 @@
 use gloo_console::log;
-use shared::{platform::PlatformResponse, time::TimeResponse, CatFacts, Effect, Event};
+use shared::{CatFacts, Effect, Event, platform::PlatformResponse, time::TimeResponse};
 use std::rc::Rc;
-use yew::{platform::spawn_local, Callback};
+use yew::{Callback, platform::spawn_local};
 
 use crate::{http, platform, time};
 

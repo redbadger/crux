@@ -1,17 +1,21 @@
-import Foundation
-import SharedTypes
+import App
 import UIKit
+import Foundation
+import Shared
 
 @MainActor
 class Core: ObservableObject {
     @Published var view: ViewModel
 
+    private var core: CoreFfi
+
     init() {
-        view = try! .bincodeDeserialize(input: [UInt8](CatFacts.view()))
+        self.core = CoreFfi()
+        self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
     }
 
     func update(_ event: Event) {
-        let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
+        let effects = [UInt8](core.update(Data(try! event.bincodeSerialize())))
 
         let requests: [Request] = try! .bincodeDeserialize(input: effects)
         for request in requests {
@@ -22,38 +26,42 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            view = try! .bincodeDeserialize(input: [UInt8](CatFacts.view()))
-        case let .http(req):
+            DispatchQueue.main.async {
+                self.view = try! .bincodeDeserialize(input: [UInt8](self.core.view()))
+            }
+        case .http(let req):
             Task {
                 let response = try! await requestHttp(req).get()
-                
+
                 let effects = [UInt8](
-                    handleResponse(
+                    core.resolve(
                         request.id,
                         Data(try! HttpResult.ok(response).bincodeSerialize())
                     )
                 )
-                
+
                 let requests: [Request] = try! .bincodeDeserialize(input: effects)
                 for request in requests {
                     processEffect(request)
                 }
             }
         case .time:
-            let now = Date().timeIntervalSince1970;
+            let now = Date().timeIntervalSince1970
             let response = TimeResponse.now(instant: Instant(seconds: UInt64(now), nanos: 0))
-            
-            let effects = [UInt8](handleResponse(request.id, Data(try! response.bincodeSerialize())))
-            
+
+            let effects = [UInt8](
+                core.resolve(request.id, Data(try! response.bincodeSerialize())))
+
             let requests: [Request] = try! .bincodeDeserialize(input: effects)
             for request in requests {
                 processEffect(request)
             }
         case .platform:
             let response = PlatformResponse(value: get_platform())
-            
-            let effects = [UInt8](handleResponse(request.id, Data(try! response.bincodeSerialize())))
-            
+
+            let effects = [UInt8](
+                core.resolve(request.id, Data(try! response.bincodeSerialize())))
+
             let requests: [Request] = try! .bincodeDeserialize(input: effects)
             for request in requests {
                 processEffect(request)
