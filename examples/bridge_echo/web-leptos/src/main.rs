@@ -57,6 +57,9 @@ fn RootComponent() -> impl IntoView {
     view! {
         <section class="box container has-text-centered m-5">
             <p class="is-size-5">{move || view.get().count}</p>
+            <p class="is-size-5">overall average{": "} {move || view.get().average}</p>
+            <p class="is-size-5">10 second moving average{": "} {move || view.get().moving_average}</p>
+            <p class="is-size-5">max{": "} {move || view.get().max}</p>
         </section>
     }
 }

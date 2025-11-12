@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Args;
+use fs_walk::WalkOptions;
 use xshell::cmd;
 
 use crate::{Context, package_args};
@@ -20,7 +21,17 @@ impl Clean {
             let package_args = &package_args(ctx);
             cmd!(ctx.sh, "{CARGO} clean").args(package_args).run()?;
             if self.generated {
-                cmd!(ctx.sh, "echo rm -rf */generated").run()?;
+                for file in WalkOptions::new()
+                    .dirs()
+                    .max_depth(2)
+                    .name("generated")
+                    .name("node_modules")
+                    .walk(dir)
+                    .flatten()
+                {
+                    println!("Removing {}", file.display());
+                    ctx.sh.remove_path(&file)?;
+                }
             }
             println!();
         }
