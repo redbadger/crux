@@ -32,14 +32,8 @@ impl App for Hello {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = (); // will be deprecated, so use unit type for now
 
-    fn update(
-        &self,
-        _event: Self::Event,
-        _model: &mut Self::Model,
-        _caps: &(), // will be deprecated, so prefix with underscore for now
-    ) -> Command<Effect, Event> {
+    fn update(&self, _event: Self::Event, _model: &mut Self::Model) -> Command<Effect, Event> {
         render()
     }
 
@@ -63,7 +57,7 @@ mod tests {
         let mut model = Model;
 
         // Call 'update' and request effects
-        let mut cmd = hello.update(Event::None, &mut model, &());
+        let mut cmd = hello.update(Event::None, &mut model);
 
         // Check update asked us to `Render`
         cmd.expect_one_effect().expect_render();
