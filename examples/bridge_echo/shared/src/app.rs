@@ -69,15 +69,9 @@ impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = ();
     type Effect = Effect;
 
-    fn update(
-        &self,
-        event: Self::Event,
-        model: &mut Self::Model,
-        _caps: &Self::Capabilities,
-    ) -> Command<Effect, Event> {
+    fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Effect, Event> {
         match event {
             Event::Tick(payload) => {
                 model.count += 1;
@@ -148,13 +142,11 @@ mod test {
         let _ = app.update(
             Event::Tick(vec![DataPoint::default(), DataPoint::default()]),
             &mut model,
-            &(),
         );
-        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
         let _ = app.update(
             Event::Tick(vec![DataPoint::default(), DataPoint::default()]),
             &mut model,
-            &(),
         );
 
         let actual_view = app.view(&model);
@@ -172,14 +164,14 @@ mod test {
         let app = App;
         let mut model = Model::default();
 
-        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
-        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
-        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
-        let _ = app.update(Event::NewPeriod, &mut model, &());
-        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
-        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
-        let _ = app.update(Event::NewPeriod, &mut model, &());
-        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &());
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
+        let _ = app.update(Event::NewPeriod, &mut model);
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
+        let _ = app.update(Event::NewPeriod, &mut model);
+        let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
 
         let expected = Model {
             log: vec![3, 2],
@@ -206,7 +198,7 @@ mod test {
         let app = App;
         let mut model = Model::default();
 
-        app.update(Event::Tick(vec![DataPoint::default()]), &mut model, &())
+        app.update(Event::Tick(vec![DataPoint::default()]), &mut model)
             .expect_one_effect()
             .expect_render();
     }
@@ -216,7 +208,7 @@ mod test {
         let app = App;
         let mut model = Model::default();
 
-        app.update(Event::NewPeriod, &mut model, &())
+        app.update(Event::NewPeriod, &mut model)
             .expect_one_effect()
             .expect_render();
     }
