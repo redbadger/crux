@@ -17,7 +17,7 @@ use syn::{Ident, ItemEnum, parse_macro_input};
 ///
 /// e.g.
 /// ```rust
-/// # use crux_core::{Capability, render::RenderOperation, compose::Compose};
+/// # use crux_core::{render::RenderOperation};
 /// # use crux_core::macros::effect;
 /// # use crux_http::protocol::HttpRequest;
 /// # #[derive(Default)]
@@ -27,13 +27,11 @@ use syn::{Ident, ItemEnum, parse_macro_input};
 /// #     type Event = MyEvent;
 /// #     type Model = ();
 /// #     type ViewModel = ();
-/// #     type Capabilities = ();
 /// #     type Effect = MyEffect;
 /// #     fn update(
 /// #         &self,
 /// #         _event: Self::Event,
 /// #         _model: &mut Self::Model,
-/// #         _caps: &Self::Capabilities,
 /// #     ) -> crux_core::Command<MyEffect, MyEvent> {
 /// #         unimplemented!()
 /// #     }
