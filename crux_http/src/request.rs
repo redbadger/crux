@@ -50,16 +50,15 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// # use serde::{Deserialize, Serialize};
-    /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
+    /// fn main() -> crux_http::Result<()> {
+    /// use serde::{Deserialize, Serialize};
+    /// use crux_http::{Request, Method, Url};
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
     ///     page: u32
     /// }
     ///
-    /// let req = caps.http.get("https://httpbin.org/get?page=2").build();
+    /// let req = Request::new(Method::Get, Url::parse("https://httpbin.org/get?page=2")?);
     /// let Index { page } = req.query()?;
     /// assert_eq!(page, 2);
     /// # Ok(()) }
@@ -76,17 +75,16 @@ impl Request {
     /// # Examples
     ///
     /// ```
+    /// fn main() -> crux_http::Result<()> {
     /// # use serde::{Deserialize, Serialize};
-    /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
+    /// # use crux_http::{Request, Method, Url};
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
     ///     page: u32
     /// }
     ///
     /// let query = Index { page: 2 };
-    /// let mut req = caps.http.get("https://httpbin.org/get").build();
+    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
     /// req.set_query(&query)?;
     /// assert_eq!(req.url().query(), Some("page=2"));
     /// assert_eq!(req.url().as_str(), "https://httpbin.org/get?page=2");
@@ -104,10 +102,9 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
-    /// let mut req = caps.http.get("https://httpbin.org/get").build();
+    /// fn main() -> crux_http::Result<()> {
+    /// # use crux_http::{Request, Method, Url};
+    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
     /// req.set_header("X-Requested-With", "surf");
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
@@ -173,10 +170,9 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
-    /// let mut req = caps.http.get("https://httpbin.org/get").build();
+    /// fn main() -> crux_http::Result<()> {
+    /// # use crux_http::{Request, Method, Url};
+    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
     /// req.set_header("X-Requested-With", "surf");
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
@@ -201,10 +197,9 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
-    /// let req = caps.http.get("https://httpbin.org/get").build();
+    /// fn main() -> crux_http::Result<()> {
+    /// # use crux_http::{Request, Method, Url};
+    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
     /// assert_eq!(req.method(), crux_http::http::Method::Get);
     /// # Ok(()) }
     /// ```
@@ -218,11 +213,9 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
-    /// use crux_http::http::Url;
-    /// let req = caps.http.get("https://httpbin.org/get").build();
+    /// fn main() -> crux_http::Result<()> {
+    /// # use crux_http::{Request, Method, Url};
+    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
     /// assert_eq!(req.url(), &Url::parse("https://httpbin.org/get")?);
     /// # Ok(()) }
     /// ```
@@ -353,10 +346,9 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// # enum Event {}
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) -> crux_http::Result<()> {
-    /// let mut req = caps.http.get("https://httpbin.org/get").build();
+    /// fn main() -> crux_http::Result<()> {
+    /// # use crux_http::{Request, Method, Url};
+    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
     /// req.middleware(crux_http::middleware::Redirect::default());
     /// # Ok(()) }
     /// ```

@@ -3,15 +3,18 @@
 //! # Examples
 //!
 //! ```no_run
+//! # use crux_core::macros::effect;
+//! # use crux_http::HttpRequest;
 //! # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-//! # struct Capabilities { http: crux_http::Http<Event> }
-//! # fn update(caps: &Capabilities) {
+//! # #[effect]
+//! # #[allow(unused)]
+//! # enum Effect { Http(HttpRequest) }
+//! # type Http = crux_http::Http<Effect, Event>;
 //!
-//! caps.http
-//!     .get("https://httpbin.org/redirect/2")
+//! Http::get("https://httpbin.org/redirect/2")
 //!     .middleware(crux_http::middleware::Redirect::default())
-//!     .send(Event::ReceiveResponse)
-//! # }
+//!     .build()
+//!     .then_send(Event::ReceiveResponse);
 //! ```
 
 use crate::middleware::{Middleware, Next, Request};
@@ -60,15 +63,18 @@ impl Redirect {
     /// # Examples
     ///
     /// ```no_run
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
     ///
-    /// caps.http
-    ///     .get("https://httpbin.org/redirect/2")
+    /// Http::get("https://httpbin.org/redirect/2")
     ///     .middleware(crux_http::middleware::Redirect::default())
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     #[must_use]
     pub fn new(attempts: u8) -> Self {
@@ -93,7 +99,7 @@ impl Middleware for Redirect {
         // presently required due to how Body streams work.
         //
         // Ideally we'd have methods to send a partial request stream,
-        // without sending the body, that would potnetially be able to
+        // without sending the body, that would potentially be able to
         // get a server status before we attempt to send the body.
         //
         // As a work around we clone the request first (without the body),
