@@ -21,7 +21,7 @@ impl Operation for RenderOperation {
 /// ### Examples:
 /// To use in a sync context:
 /// ```
-///# use crux_core::{Command, render::{render_builder, Render, RenderOperation}};
+///# use crux_core::{Command, render::{render_builder, RenderOperation}};
 ///# #[crux_core::macros::effect]pub enum Effect {Render(RenderOperation)}
 ///# enum Event {None}
 /// let command: Command<Effect, Event> =
@@ -29,7 +29,7 @@ impl Operation for RenderOperation {
 /// ```
 /// To use in an async context:
 /// ```
-///# use crux_core::{Command, render::{render_builder, Render, RenderOperation}};
+///# use crux_core::{Command, render::{render_builder, RenderOperation}};
 ///# #[crux_core::macros::effect]pub enum Effect {Render(RenderOperation)}
 ///# enum Event {None}
 ///# let command: Command<Effect, Event> = Command::new(|ctx| async move {

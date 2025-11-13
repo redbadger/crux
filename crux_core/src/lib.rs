@@ -77,11 +77,10 @@
 //!    // Use the above Model
 //!    type Model = Model;
 //!    type ViewModel = String;
-//!    type Capabilities = (); // unused, see https://redbadger.github.io/crux/guide/effects.html
 //!    // Use the above generated Effect
 //!    type Effect = Effect;
 //!
-//!    fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
+//!    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
 //!        match event {
 //!            Event::Increment => model.count += 1,
 //!            Event::Decrement => model.count -= 1,
