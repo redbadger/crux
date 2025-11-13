@@ -24,8 +24,6 @@ import {
   KeyValueResultVariantOk,
   KeyValueResponseVariantGet,
   KeyValueResponseVariantSet,
-  ValueVariantNone,
-  ValueVariantBytes,
   TimeRequestVariantnotifyAfter,
   TimeResponseVariantdurationElapsed,
   TimeRequestVariantclear,
@@ -159,15 +157,12 @@ export class Core {
             const { key: readKey } = request as KeyValueOperationVariantGet;
 
             const data = window.localStorage.getItem(readKey);
-            const bytes =
+            const value: number[] | null =
               data == null
-                ? new Uint8Array()
-                : new Uint8Array(JSON.parse(data));
-            const value =
-              bytes.length === 0
-                ? new ValueVariantNone()
-                : new ValueVariantBytes(bytes);
+                ? null
+                : Array.from(new Uint8Array(JSON.parse(data)));
 
+            const bytes = value ? new Uint8Array(value) : new Uint8Array();
             console.log(`Loaded document (${bytes.length} bytes)`);
             this.respond(
               id,
@@ -191,9 +186,7 @@ export class Core {
 
             this.respond(
               id,
-              new KeyValueResultVariantOk(
-                new KeyValueResponseVariantSet(new ValueVariantNone()),
-              ),
+              new KeyValueResultVariantOk(new KeyValueResponseVariantSet(null)),
             );
 
             break;

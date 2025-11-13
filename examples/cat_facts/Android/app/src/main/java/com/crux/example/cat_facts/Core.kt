@@ -1,36 +1,24 @@
-@file:Suppress("NAME_SHADOWING")
-
-package com.redbadger.catfacts
+package com.crux.example.cat_facts
 
 import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.crux.example.cat_facts.Effect
-import com.crux.example.cat_facts.Event
-import com.crux.example.cat_facts.HttpResult
-import com.crux.example.cat_facts.Instant
-import com.crux.example.cat_facts.PlatformResponse
-import com.crux.example.cat_facts.Request
-import com.crux.example.cat_facts.Requests
-import com.crux.example.cat_facts.TimeResponse
-import com.crux.example.cat_facts.ViewModel
-import com.redbadger.catfacts.shared.handleResponse
-import com.redbadger.catfacts.shared.processEvent
-import com.redbadger.catfacts.shared.view
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 open class Core : androidx.lifecycle.ViewModel() {
-    var view: ViewModel? by mutableStateOf(null)
-        private set
+    private var core: CoreFfi = CoreFfi()
 
     private val httpClient = HttpClient(CIO)
 
+    var view: ViewModel? by mutableStateOf(null)
+        private set
+
     suspend fun update(event: Event) {
-        val effects = processEvent(event.bincodeSerialize())
+        val effects = core.update(event.bincodeSerialize())
 
         val requests = Requests.bincodeDeserialize(effects)
         for (request in requests) {
@@ -41,43 +29,47 @@ open class Core : androidx.lifecycle.ViewModel() {
     private suspend fun processEffect(request: Request) {
         when (val effect = request.effect) {
             is Effect.Render -> {
-                this.view = ViewModel.bincodeDeserialize(view())
+                this.view = ViewModel.bincodeDeserialize(core.view())
             }
+
             is Effect.Http -> {
                 val response = requestHttp(httpClient, effect.value)
 
                 val effects =
-                        handleResponse(
-                                request.id.toUInt(),
-                                HttpResult.Ok(response).bincodeSerialize()
-                        )
+                    core.resolve(
+                        request.id,
+                        HttpResult.Ok(response).bincodeSerialize()
+                    )
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
+
             is Effect.Time -> {
                 val now = ZonedDateTime.now(ZoneOffset.UTC)
-                val response = TimeResponse.now(Instant(now.toEpochSecond(), now.nano))
+                val response = TimeResponse.Now(Instant(now.toEpochSecond().toULong(), now.nano.toUInt()))
 
-                val effects = handleResponse(request.id.toUInt(), response.bincodeSerialize())
+                val effects = core.resolve(request.id, response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
+
             is Effect.Platform -> {
                 val response = PlatformResponse(Build.BRAND + " " + Build.VERSION.RELEASE)
 
-                val effects = handleResponse(request.id.toUInt(), response.bincodeSerialize())
+                val effects = core.resolve(request.id, response.bincodeSerialize())
 
                 val requests = Requests.bincodeDeserialize(effects)
                 for (request in requests) {
                     processEffect(request)
                 }
             }
+
             is Effect.KeyValue -> {}
         }
     }

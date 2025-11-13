@@ -1,4 +1,3 @@
-#![deny(clippy::pedantic)]
 //! A demo capability to get a name of the current platform
 
 pub mod command;
@@ -6,15 +5,15 @@ pub mod command;
 #[expect(deprecated)]
 use crux_core::capability::CapabilityContext;
 
-use crux_core::capability::Operation;
-use crux_core::macros::Capability;
+use crux_core::{capability::Operation, macros::Capability};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Facet, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformRequest;
 
 // TODO revisit this
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Facet, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformResponse(pub String);
 
 impl Operation for PlatformRequest {

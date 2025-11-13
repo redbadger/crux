@@ -1,8 +1,6 @@
-use std::time::Duration;
-
 use crux_core::{App, Command, macros::effect};
 use crux_time::{
-    TimeRequest, TimeResponse, TimerId,
+    Duration, TimeRequest, TimeResponse, TimerId,
     command::{Time, TimerHandle, TimerOutcome},
 };
 

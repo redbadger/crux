@@ -1,107 +1,91 @@
 import type { Dispatch, SetStateAction } from "react";
-import { UAParser } from "ua-parser-js";
 
-import { handle_response, process_event, view } from "shared/shared";
+import { CoreFFI } from "shared";
+import type { Effect, Event, RenderOperation } from "shared_types/app";
 import {
-  BincodeDeserializer,
-  BincodeSerializer,
-} from "shared_types/bincode/mod";
-import {
-  Effect,
   EffectVariantHttp,
   EffectVariantKeyValue,
   EffectVariantPlatform,
   EffectVariantRender,
   EffectVariantTime,
-  Event,
-  HttpResponse,
   Instant,
-  KeyValueResponse,
   PlatformResponse,
   Request,
-  TimeResponse,
-  TimeResponseVariantnow,
+  TimeResponseVariantNow,
   ViewModel,
-} from "shared_types/types/shared_types";
+} from "shared_types/app";
+import { BincodeSerializer, BincodeDeserializer } from "shared_types/bincode";
+import * as http from "./http";
+import { UAParser } from "ua-parser-js";
 
-import { request as http } from "./http";
+// union of all Operation types, only render is needed here
+type Response = RenderOperation;
 
-type Response =
-  | PlatformResponse
-  | TimeResponse
-  | HttpResponse
-  | KeyValueResponse;
+export class Core {
+  core: CoreFFI;
+  callback: Dispatch<SetStateAction<ViewModel>>;
 
-export function update(
-  event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>,
-) {
-  console.log("event", event);
-
-  const serializer = new BincodeSerializer();
-  event.serialize(serializer);
-
-  const effects = process_event(serializer.getBytes());
-
-  const requests = deserializeRequests(effects);
-  for (const { id, effect } of requests) {
-    processEffect(id, effect, callback);
+  constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
+    this.callback = callback;
+    this.core = new CoreFFI();
   }
-}
 
-async function processEffect(
-  id: number,
-  effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>,
-) {
-  console.log("effect", effect);
+  update(event: Event) {
+    const serializer = new BincodeSerializer();
+    event.serialize(serializer);
 
-  switch (effect.constructor) {
-    case EffectVariantRender: {
-      callback(deserializeView(view()));
-      break;
+    const effects = this.core.update(serializer.getBytes());
+
+    const requests = deserializeRequests(effects);
+    for (const { id, effect } of requests) {
+      this.resolve(id, effect);
     }
-    case EffectVariantHttp: {
-      const request = (effect as EffectVariantHttp).value;
-      const response = await http(request);
-      respond(id, response, callback);
-      break;
-    }
-    case EffectVariantTime: {
-      const now = new Date();
-      const millis = now.getTime();
-      const seconds = Math.floor(millis / 1000);
-      const nanos = Math.floor((millis % 1000) * 1e6);
-      const instant = new Instant(BigInt(seconds), nanos);
-      const response = new TimeResponseVariantnow(instant);
-      respond(id, response, callback);
-      break;
-    }
-    case EffectVariantPlatform: {
-      const response = new PlatformResponse(
-        new UAParser(navigator.userAgent).getBrowser().name || "Unknown",
-      );
-      respond(id, response, callback);
-      break;
-    }
-    case EffectVariantKeyValue:
-      break;
   }
-}
 
-function respond(
-  id: number,
-  response: Response,
-  callback: Dispatch<SetStateAction<ViewModel>>,
-) {
-  const serializer = new BincodeSerializer();
-  response.serialize(serializer);
+  async resolve(id: number, effect: Effect) {
+    switch (effect.constructor) {
+      case EffectVariantRender: {
+        this.callback(deserializeView(this.core.view()));
+        break;
+      }
+      case EffectVariantHttp: {
+        const request = (effect as EffectVariantHttp).value;
+        const response = await http.request(request);
+        this.respond(id, response);
+        break;
+      }
+      case EffectVariantTime: {
+        const now = new Date();
+        const milliseconds = now.getTime();
+        const seconds = Math.floor(milliseconds / 1000);
+        const nanoseconds = Math.floor((milliseconds % 1000) * 1e6);
+        const instant = new Instant(BigInt(seconds), nanoseconds);
+        const response = new TimeResponseVariantNow(instant);
+        this.respond(id, response);
+        break;
+      }
+      case EffectVariantPlatform: {
+        const response = new PlatformResponse(
+          new UAParser(navigator.userAgent).getBrowser().name || "Unknown",
+        );
+        this.respond(id, response);
+        break;
+      }
+      case EffectVariantKeyValue:
+        break;
+    }
+  }
 
-  const effects = handle_response(id, serializer.getBytes());
+  respond(id: number, response: Response) {
+    const serializer = new BincodeSerializer();
+    response.serialize(serializer);
 
-  const requests = deserializeRequests(effects);
-  for (const { id, effect } of requests) {
-    processEffect(id, effect, callback);
+    const effects = this.core.resolve(id, serializer.getBytes());
+
+    const requests = deserializeRequests(effects);
+    for (const { id, effect } of requests) {
+      this.resolve(id, effect);
+    }
   }
 }
 

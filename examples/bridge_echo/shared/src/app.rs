@@ -1,8 +1,8 @@
 // ANCHOR: app
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
 use facet::Facet;
 use serde::{Deserialize, Serialize};

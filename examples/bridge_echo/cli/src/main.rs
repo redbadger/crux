@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use crossbeam_channel::unbounded;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use shared::{DataPoint, Effect, Event};
 

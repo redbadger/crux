@@ -700,6 +700,7 @@ name = "crux_platform"
 version = "0.7.0"
 dependencies = [
  "crux_core",
+ "facet",
  "serde",
 ]
 

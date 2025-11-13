@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 use web_sys::window;
 use woothee::parser::Parser;
 

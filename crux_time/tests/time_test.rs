@@ -1,7 +1,5 @@
 #[cfg(feature = "chrono")]
 mod shared {
-    use std::time::SystemTime;
-
     use chrono::{DateTime, Utc};
     use crux_core::{
         Command,
@@ -9,7 +7,7 @@ mod shared {
         render::{RenderOperation, render},
     };
     use crux_time::{
-        TimeRequest,
+        Duration, Instant, TimeRequest,
         command::{Time, TimerHandle, TimerOutcome},
     };
     use serde::{Deserialize, Serialize};
@@ -21,7 +19,7 @@ mod shared {
     pub enum Event {
         Get,
         GetAsync,
-        Set(SystemTime),
+        Set(Instant),
         StartDebounce,
         Cancel,
 
@@ -72,7 +70,7 @@ mod shared {
                     ctx.send_event(Event::Set(Time::now().into_future(ctx.clone()).await));
                 }),
                 Event::Set(instant) => {
-                    let time: DateTime<Utc> = instant.into();
+                    let time: DateTime<Utc> = instant.try_into().unwrap();
                     model.time = time.to_rfc3339();
 
                     render()
@@ -80,7 +78,7 @@ mod shared {
                 Event::StartDebounce => {
                     let pending = model.debounce.start();
 
-                    let (time, tid) = Time::notify_after(std::time::Duration::from_millis(300));
+                    let (time, tid) = Time::notify_after(Duration::from_millis(300));
                     model.debounce_timer_handle = Some(tid);
 
                     time.then_send(event_with_user_info(pending, Event::DurationElapsed))

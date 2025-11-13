@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use crossbeam_channel::Sender;
 use std::{sync::Arc, time::SystemTime};
 use tokio::{
@@ -9,12 +9,10 @@ use tokio::{
 use tracing::debug;
 
 use shared::{
-    key_value::{
-        error::KeyValueError, value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult,
-    },
+    CatFacts, Effect, Event,
+    key_value::{KeyValueOperation, KeyValueResponse, KeyValueResult, error::KeyValueError},
     platform::PlatformResponse,
     time::TimeResponse,
-    CatFacts, Effect, Event,
 };
 
 use crate::http;
@@ -67,16 +65,10 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
 
                     async move {
                         let response = match read_state(&key).await {
-                            Ok(value) => KeyValueResult::Ok {
-                                response: KeyValueResponse::Get {
-                                    value: value.into(),
-                                },
-                            },
-                            Err(err) => KeyValueResult::Err {
-                                error: KeyValueError::Io {
-                                    message: err.to_string(),
-                                },
-                            },
+                            Ok(value) => KeyValueResult::Ok(KeyValueResponse::Get(Some(value))),
+                            Err(err) => KeyValueResult::Err(KeyValueError::Io {
+                                message: err.to_string(),
+                            }),
                         };
 
                         for effect in core.resolve(&mut request, response)? {
@@ -96,16 +88,10 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
 
                     async move {
                         let response = match write_state(&key, &value).await {
-                            Ok(()) => KeyValueResult::Ok {
-                                response: KeyValueResponse::Set {
-                                    previous: Value::None,
-                                },
-                            },
-                            Err(err) => KeyValueResult::Err {
-                                error: KeyValueError::Io {
-                                    message: err.to_string(),
-                                },
-                            },
+                            Ok(()) => KeyValueResult::Ok(KeyValueResponse::Set(None)),
+                            Err(err) => KeyValueResult::Err(KeyValueError::Io {
+                                message: err.to_string(),
+                            }),
                         };
 
                         for effect in core.resolve(&mut request, response)? {

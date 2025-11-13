@@ -7,10 +7,7 @@ use crux_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    KeyValueOperation, KeyValueResponse, KeyValueResult, command::KeyValue, error::KeyValueError,
-    value::Value,
-};
+use crate::{KeyValueOperation, KeyValueResponse, KeyValueResult, command::KeyValue};
 
 #[derive(Default)]
 pub struct App;
@@ -24,10 +21,10 @@ pub enum Event {
     ListKeys,
     GetThenSet,
 
-    GetResponse(Result<Option<Vec<u8>>, KeyValueError>),
-    SetResponse(Result<Option<Vec<u8>>, KeyValueError>),
-    ExistsResponse(Result<bool, KeyValueError>),
-    ListKeysResponse(Result<(Vec<String>, u64), KeyValueError>),
+    GetResponse(KeyValueResult),
+    SetResponse(KeyValueResult),
+    ExistsResponse(KeyValueResult),
+    ListKeysResponse(KeyValueResult),
 }
 
 #[derive(Debug, Default)]
@@ -65,10 +62,10 @@ impl crux_core::App for App {
             }
 
             Event::GetThenSet => Command::new(|ctx| async move {
-                let Result::Ok(Some(value)) = KeyValue::get("test_num".to_string())
+                let result = KeyValue::get("test_num".to_string())
                     .into_future(ctx.clone())
-                    .await
-                else {
+                    .await;
+                let Ok(Some(value)) = result.unwrap_get() else {
                     panic!("expected get response with a value");
                 };
 
@@ -81,39 +78,40 @@ impl crux_core::App for App {
                 ctx.send_event(Event::SetResponse(result));
             }),
 
-            Event::GetResponse(Ok(Some(value))) => {
+            Event::GetResponse(KeyValueResult::Ok(KeyValueResponse::Get(Some(value)))) => {
                 let (int_bytes, _rest) = value.split_at(std::mem::size_of::<i32>());
                 model.value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
 
                 Command::done()
             }
 
-            Event::GetResponse(Ok(None)) => {
-                panic!("expected value");
-            }
-
-            Event::SetResponse(Ok(_response)) => {
+            Event::SetResponse(KeyValueResult::Ok(_response)) => {
                 model.successful = true;
 
                 render()
             }
 
-            Event::ExistsResponse(Ok(_response)) => {
+            Event::ExistsResponse(KeyValueResult::Ok(_response)) => {
                 model.successful = true;
                 render()
             }
 
-            Event::ListKeysResponse(Ok((keys, cursor))) => {
+            Event::ListKeysResponse(KeyValueResult::Ok(KeyValueResponse::ListKeys {
+                keys,
+                next_cursor,
+            })) => {
                 model.keys = keys;
-                model.cursor = cursor;
+                model.cursor = next_cursor;
 
                 render()
             }
+            Event::GetResponse(KeyValueResult::Ok(_))
+            | Event::ListKeysResponse(KeyValueResult::Ok(_)) => panic!("expected value"),
 
-            Event::GetResponse(Err(error))
-            | Event::SetResponse(Err(error))
-            | Event::ExistsResponse(Err(error))
-            | Event::ListKeysResponse(Err(error)) => {
+            Event::GetResponse(KeyValueResult::Err(error))
+            | Event::SetResponse(KeyValueResult::Err(error))
+            | Event::ExistsResponse(KeyValueResult::Err(error))
+            | Event::ListKeysResponse(KeyValueResult::Err(error)) => {
                 panic!("Error: {error:?}");
             }
         }
@@ -151,11 +149,7 @@ fn test_get() {
 
     let _updated = app.resolve_to_event_then_update(
         request,
-        KeyValueResult::Ok {
-            response: KeyValueResponse::Get {
-                value: 42i32.to_ne_bytes().to_vec().into(),
-            },
-        },
+        KeyValueResult::Ok(KeyValueResponse::Get(42i32.to_ne_bytes().to_vec().into())),
         &mut model,
     );
 
@@ -182,11 +176,7 @@ fn test_set() {
 
     let _updated = app.resolve_to_event_then_update(
         request,
-        KeyValueResult::Ok {
-            response: KeyValueResponse::Set {
-                previous: Value::None,
-            },
-        },
+        KeyValueResult::Ok(KeyValueResponse::Set(None)),
         &mut model,
     );
 
@@ -212,11 +202,7 @@ fn test_delete() {
 
     let _updated = app.resolve_to_event_then_update(
         request,
-        KeyValueResult::Ok {
-            response: KeyValueResponse::Delete {
-                previous: Value::None,
-            },
-        },
+        KeyValueResult::Ok(KeyValueResponse::Delete(None)),
         &mut model,
     );
 
@@ -242,9 +228,7 @@ fn test_exists() {
 
     let _updated = app.resolve_to_event_then_update(
         request,
-        KeyValueResult::Ok {
-            response: KeyValueResponse::Exists { is_present: true },
-        },
+        KeyValueResult::Ok(KeyValueResponse::Exists(true)),
         &mut model,
     );
 
@@ -271,12 +255,10 @@ fn test_list_keys() {
 
     let _updated = app.resolve_to_event_then_update(
         request,
-        KeyValueResult::Ok {
-            response: KeyValueResponse::ListKeys {
-                keys: vec!["test:1".to_string(), "test:2".to_string()],
-                next_cursor: 2,
-            },
-        },
+        KeyValueResult::Ok(KeyValueResponse::ListKeys {
+            keys: vec!["test:1".to_string(), "test:2".to_string()],
+            next_cursor: 2,
+        }),
         &mut model,
     );
 
@@ -304,11 +286,7 @@ pub fn test_kv_async() {
     let request = &mut app
         .resolve(
             request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Get {
-                    value: 17u32.to_ne_bytes().to_vec().into(),
-                },
-            },
+            KeyValueResult::Ok(KeyValueResponse::Get(17u32.to_ne_bytes().to_vec().into())),
         )
         .unwrap()
         .expect_one_effect()
@@ -324,11 +302,7 @@ pub fn test_kv_async() {
 
     let _updated = app.resolve_to_event_then_update(
         request,
-        KeyValueResult::Ok {
-            response: KeyValueResponse::Set {
-                previous: Value::None,
-            },
-        },
+        KeyValueResult::Ok(KeyValueResponse::Set(None)),
         &mut model,
     );
 

@@ -1,9 +1,5 @@
-package com.redbadger.catfacts
+package com.crux.example.cat_facts
 
-import com.crux.example.cat_facts.HttpHeader
-import com.crux.example.cat_facts.HttpRequest
-import com.crux.example.cat_facts.HttpResponse
-import com.novi.serde.Bytes
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.headers
@@ -24,12 +20,9 @@ suspend fun requestHttp(
                         append(header.name, header.value)
                     }
                 }
-                request.body.let { bytes ->
-                    val bodyBytes = bytes.content()
-                    setBody(bodyBytes)
-                }
+                setBody(request.body)
             }
-    val bytes = Bytes.valueOf(response.body())
+    val bytes: ByteArray = response.body()
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
-    return HttpResponse(response.status.value.toShort(), headers, bytes)
+    return HttpResponse(response.status.value.toUShort(), headers, bytes)
 }
