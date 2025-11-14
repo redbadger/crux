@@ -298,10 +298,27 @@ where
     pub fn expect_one_event(&mut self) -> Event {
         let mut events = self.events();
         match (events.next(), events.next()) {
-            (None, _) => panic!("expected one effect but got none"),
+            (None, _) => panic!("expected one event but got none"),
             (Some(event), None) => event,
             _ => panic!("expected one effect but got more than one"),
         }
+    }
+
+    /// Assert that the Command has no effects or events available.
+    /// This doesn't mean it's done. There may be pending requests. If you
+    /// want to check whether it's done, use `expect_done`.
+    ///
+    /// # Panics
+    /// Panics if the command contains any effects or events
+    #[track_caller]
+    pub fn expect_no_effect_or_events(&mut self) {
+        let effects = self.effects().count();
+        let events = self.events().count();
+
+        assert!(
+            effects + events == 0,
+            "expected command to be done, found {effects} effects and {events} events",
+        );
     }
 
     /// Assert that the Command is done,
@@ -310,13 +327,7 @@ where
     /// Panics if the command contains any effects or events
     #[track_caller]
     pub fn expect_done(&mut self) {
-        let effects = self.effects().count();
-        let events = self.events().count();
-
-        assert!(
-            effects + events == 0,
-            "expected command to be done, found {effects} effects and {events} events",
-        );
+        assert!(self.is_done(), "expected command to be done",);
     }
 }
 

@@ -156,7 +156,7 @@ fn test_get() {
         .expect("effect should resolve");
 
     let event = cmd.expect_one_event();
-    app.update(event, &mut model).expect_done();
+    app.update(event, &mut model).expect_no_effect_or_events();
 
     assert_eq!(model.value, 42);
 }

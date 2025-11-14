@@ -179,7 +179,7 @@ mod tests {
         shell::run,
     };
     use chrono::{DateTime, Utc};
-    use crux_core::{Core, testing::AppTester};
+    use crux_core::{App as _, Core};
     use crux_time::{TimeRequest, command::TimerOutcome, protocol::TimeResponse};
 
     #[test]
@@ -193,47 +193,53 @@ mod tests {
 
     #[test]
     pub fn test_time_async() {
-        let app = AppTester::<App>::default();
+        let app = App;
         let mut model = Model::default();
 
-        let request = &mut app
-            .update(Event::GetAsync, &mut model)
-            .expect_one_effect()
-            .expect_time();
+        let mut cmd = app.update(Event::GetAsync, &mut model);
+
+        cmd.expect_no_events();
+        let mut request = cmd.expect_one_effect().expect_time();
 
         let now: DateTime<Utc> = "2022-12-01T01:47:12.746202562+00:00".parse().unwrap();
         let response = TimeResponse::Now {
             instant: now.try_into().unwrap(),
         };
-        let _update = app.resolve_to_event_then_update(request, response, &mut model);
+
+        request.resolve(response).expect("should resolve");
+        let event = cmd.expect_one_event();
+
+        app.update(event, &mut model)
+            .expect_one_effect()
+            .expect_render();
 
         assert_eq!(app.view(&model).time, "2022-12-01T01:47:12.746202562+00:00");
     }
 
     #[test]
     pub fn test_debounce_timer() {
-        let app = AppTester::<App>::default();
+        let app = App;
         let mut model = Model::default();
 
-        let request1 = &mut app
-            .update(Event::StartDebounce, &mut model)
-            .expect_one_effect()
-            .expect_time();
-        let request2 = &mut app
-            .update(Event::StartDebounce, &mut model)
-            .expect_one_effect()
-            .expect_time();
+        let mut cmd1 = app.update(Event::StartDebounce, &mut model);
+        cmd1.expect_no_events();
+        let mut request1 = cmd1.expect_one_effect().expect_time();
+
+        let mut cmd2 = app.update(Event::StartDebounce, &mut model);
+        cmd1.expect_no_events();
+        let mut request2 = cmd2.expect_one_effect().expect_time();
 
         // resolve and update
         let TimeRequest::NotifyAfter { id, .. } = request1.operation else {
             panic!("Expected NotifyAfter");
         };
-        app.resolve_to_event_then_update(
-            request1,
-            TimeResponse::DurationElapsed { id },
-            &mut model,
-        )
-        .assert_empty();
+
+        request1
+            .resolve(TimeResponse::DurationElapsed { id })
+            .expect("should resolve");
+        let event = cmd1.expect_one_event();
+
+        app.update(event, &mut model).expect_no_effect_or_events();
 
         // resolving the first debounce should not set the debounce_complete flag
         assert!(!model.debounce_complete);
@@ -243,12 +249,12 @@ mod tests {
             panic!("Expected NotifyAfter");
         };
 
-        app.resolve_to_event_then_update(
-            request2,
-            TimeResponse::DurationElapsed { id },
-            &mut model,
-        )
-        .assert_empty();
+        request2
+            .resolve(TimeResponse::DurationElapsed { id })
+            .expect("should resolve");
+
+        let event = cmd2.expect_one_event();
+        app.update(event, &mut model).expect_done();
 
         // resolving the second debounce should set the debounce_complete flag
         assert!(model.debounce_complete);
@@ -256,26 +262,25 @@ mod tests {
 
     #[test]
     pub fn test_start_debounce_then_clear() {
-        let app = AppTester::<App>::default();
+        let app = App;
         let mut model = Model::default();
-        let debounce = app
-            .update(Event::StartDebounce, &mut model)
-            .expect_one_effect()
-            .expect_time();
+        let mut debounce_cmd = app.update(Event::StartDebounce, &mut model);
+        let debounce = debounce_cmd.expect_one_effect().expect_time();
 
         let TimeRequest::NotifyAfter { id: timer_id, .. } = debounce.operation else {
             panic!("Expected NotifyAfter");
         };
 
-        let mut cancel = app
-            .update(Event::Cancel, &mut model)
-            .expect_one_effect()
-            .expect_time();
+        app.update(Event::Cancel, &mut model)
+            .expect_no_effect_or_events();
 
-        let ev = app
-            .resolve(&mut cancel, TimeResponse::Cleared { id: timer_id })
-            .unwrap()
-            .expect_one_event();
+        debounce_cmd
+            .expect_one_effect()
+            .expect_time()
+            .resolve(TimeResponse::Cleared { id: timer_id })
+            .expect("should resolve");
+
+        let ev = debounce_cmd.expect_one_event();
 
         let Event::DurationElapsed(_, TimerOutcome::Cleared) = ev else {
             panic!()
