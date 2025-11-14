@@ -106,10 +106,9 @@ impl App for CatFacts {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
-    type Capabilities = ();
     type Effect = Effect;
 
-    fn update(&self, msg: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
+    fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
         match msg {
             Event::GetPlatform => self
                 .platform
@@ -248,7 +247,7 @@ mod tests {
         let mut model = Model::default();
 
         // send fetch event to app
-        let mut fetch_command = app.update(Event::Fetch, &mut model, &());
+        let mut fetch_command = app.update(Event::Fetch, &mut model);
 
         // receive render effect
         fetch_command.effects().next().unwrap().expect_render();
@@ -280,7 +279,7 @@ mod tests {
         );
 
         // Setting the fact should trigger a time effect
-        let mut cmd = app.update(event, &mut model, &());
+        let mut cmd = app.update(event, &mut model);
 
         let request = &mut cmd.effects().next().unwrap().expect_time();
 
@@ -292,7 +291,7 @@ mod tests {
 
         // update the app with the current time event
         // and check that we get a render event ...
-        let mut cmd = app.update(event, &mut model, &());
+        let mut cmd = app.update(event, &mut model);
         cmd.effects().next().unwrap().expect_render();
 
         // ... and a key value set event
@@ -330,7 +329,7 @@ mod tests {
             Event::SetImage(Ok(ResponseBuilder::ok().body(an_image.clone()).build()))
         );
 
-        let mut cmd = app.update(event, &mut model, &());
+        let mut cmd = app.update(event, &mut model);
         cmd.effects().next().unwrap().expect_render();
 
         assert_eq!(model.cat_fact, Some(a_fact));

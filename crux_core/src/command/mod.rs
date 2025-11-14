@@ -27,14 +27,16 @@
 //!
 //! ```
 //!# use url::Url;
-//!# use crux_core::{Command, render};
-//!# use crux_http::command::Http;
+//!# use crux_core::{Command, render::render, render::RenderOperation};
+//!# use crux_core::macros::effect;
+//!# use crux_http::protocol::HttpRequest;
+//!# use crux_http::Http;
 //!# const API_URL: &str = "https://example.com/";
 //!# pub enum Event { Increment, Set(crux_http::Result<crux_http::Response<usize>>) }
-//!# #[derive(crux_core::macros::Effect)]
-//!# pub struct Capabilities {
-//!#     pub render: crux_core::render::Render<Event>,
-//!#     pub http: crux_http::Http<Event>,
+//!# #[effect]
+//!# pub enum Effect {
+//!#     Render(RenderOperation),
+//!#     Http(HttpRequest)
 //!# }
 //!# #[derive(Default)] pub struct Model { count: usize }
 //!# #[derive(Default)] pub struct App;
@@ -42,13 +44,11 @@
 //!#     type Event = Event;
 //!#     type Model = Model;
 //!#     type ViewModel = ();
-//!#     type Capabilities = Capabilities;
 //!#     type Effect = Effect;
 //! fn update(
 //!     &self,
 //!     event: Self::Event,
-//!     model: &mut Self::Model,
-//!     _caps: &Self::Capabilities)
+//!     model: &mut Self::Model)
 //! -> Command<Effect, Event> {
 //!     match event {
 //!         //...
@@ -64,7 +64,7 @@
 //!         Event::Set(Ok(mut response)) => {
 //!              let count = response.take_body().unwrap();
 //!              model.count = count;
-//!              render::render()
+//!              render()
 //!         }
 //!         Event::Set(Err(_)) => todo!()
 //!     }

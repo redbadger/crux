@@ -345,7 +345,6 @@ mod tests {
         let mut cmd = app.update(
             Event::Favorites(Box::new(FavoritesEvent::DeleteConfirmed)),
             &mut model,
-            &(),
         );
 
         let effect = cmd.effects().next().unwrap();
@@ -510,7 +509,7 @@ mod tests {
         let query = "Phoenix";
         let event = Event::Favorites(Box::new(FavoritesEvent::Search(query.to_string())));
 
-        let mut cmd = app.update(event, &mut model, &());
+        let mut cmd = app.update(event, &mut model);
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
@@ -533,7 +532,7 @@ mod tests {
         }
 
         // Send the SearchResult event back to the app
-        let mut cmd = app.update(actual, &mut model, &());
+        let mut cmd = app.update(actual, &mut model);
         assert_effect!(cmd, Effect::Render(_));
         assert_eq!(
             model.search_results,

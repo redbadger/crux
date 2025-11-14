@@ -6,11 +6,6 @@
 //! This is still work in progress and large parts of HTTP are not yet supported.
 // #![warn(missing_docs)]
 
-#[expect(deprecated)]
-use crux_core::capability::CapabilityContext;
-use http_types::Method;
-use url::Url;
-
 mod config;
 mod error;
 mod expect;
@@ -24,77 +19,40 @@ pub mod middleware;
 pub mod protocol;
 pub mod testing;
 
+use std::marker::PhantomData;
+
 pub use http_types as http;
 
-pub use self::{
-    config::Config,
-    error::HttpError,
-    request::Request,
-    request_builder::RequestBuilder,
-    response::{Response, ResponseAsync},
-};
+pub use http_types::Method;
+pub use url::Url;
+
+pub use crate::protocol::{HttpRequest, HttpResponse};
+
+pub use self::{config::Config, error::HttpError, request::Request};
+pub use response::Response;
+
+pub use request_builder::RequestBuilder;
+pub use response::ResponseAsync;
 
 use client::Client;
 
 pub type Result<T> = std::result::Result<T, HttpError>;
 
-/// The original Http capability API, now deprecated.
-#[deprecated(
-    since = "0.15.0",
-    note = "The capabilities API has been deprecated. Use command::Http instead."
-)]
-pub struct Http<Ev> {
-    #[expect(deprecated)]
-    context: CapabilityContext<protocol::HttpRequest, Ev>,
-    client: Client,
+pub struct Http<Effect, Event> {
+    effect: PhantomData<Effect>,
+    event: PhantomData<Event>,
 }
 
-#[expect(deprecated)]
-impl<Ev> crux_core::Capability<Ev> for Http<Ev> {
-    type Operation = protocol::HttpRequest;
-
-    type MappedSelf<MappedEv> = Http<MappedEv>;
-
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static + Send,
-    {
-        Http::new(self.context.map_event(f))
-    }
-}
-
-#[expect(deprecated)]
-impl<Ev> Clone for Http<Ev> {
-    fn clone(&self) -> Self {
-        Self {
-            context: self.context.clone(),
-            client: self.client.clone(),
-        }
-    }
-}
-
-#[expect(deprecated)]
-impl<Ev> Http<Ev>
+impl<Effect, Event> Http<Effect, Event>
 where
-    Ev: 'static,
+    Effect: Send + From<crux_core::Request<HttpRequest>> + 'static,
+    Event: Send + 'static,
 {
-    #[must_use]
-    pub fn new(context: CapabilityContext<protocol::HttpRequest, Ev>) -> Self {
-        Self {
-            client: Client::new(context.clone()),
-            context,
-        }
-    }
-
     /// Instruct the Shell to perform a HTTP GET request to the provided `url`.
     ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
     ///
     /// # Panics
     ///
@@ -102,24 +60,28 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.get("https://httpbin.org/get").send(Event::ReceiveResponse)
-    /// # }
     /// ```
-    pub fn get(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap(), self.clone())
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::get("https://httpbin.org/get")
+    ///     .expect_string()
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    /// ```
+    pub fn get(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP HEAD request to the provided `url`.
     ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
     ///
     /// # Panics
     ///
@@ -127,24 +89,26 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.head("https://httpbin.org/get").send(Event::ReceiveResponse)
-    /// # }
     /// ```
-    pub fn head(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap(), self.clone())
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::head("https://httpbin.org/get")
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn head(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP POST request to the provided `url`.
     ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
     ///
     /// # Panics
     ///
@@ -152,24 +116,27 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.post("https://httpbin.org/post").send(Event::ReceiveResponse)
-    /// # }
     /// ```
-    pub fn post(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap(), self.clone())
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::post("https://httpbin.org/post")
+    ///     .body_bytes(b"hello_world".to_owned())
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn post(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP PUT request to the provided `url`.
     ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
     ///
     /// # Panics
     ///
@@ -177,24 +144,27 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.put("https://httpbin.org/post").send(Event::ReceiveResponse)
-    /// # }
     /// ```
-    pub fn put(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap(), self.clone())
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::put("https://httpbin.org/put")
+    ///     .body_string("hello_world".to_string())
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn put(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP DELETE request to the provided `url`.
     ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
     ///
     /// # Panics
     ///
@@ -202,115 +172,156 @@ where
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.delete("https://httpbin.org/post").send(Event::ReceiveResponse)
-    /// # }
     /// ```
-    pub fn delete(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap(), self.clone())
-    }
-
-    /// Instruct the Shell to perform a HTTP CONNECT request to the provided `url`.
-    ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
-    ///
-    /// # Panics
-    ///
-    /// This will panic if a malformed URL is passed.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.connect("https://httpbin.org/get").send(Event::ReceiveResponse)
-    /// # }
-    /// ```
-    pub fn connect(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap(), self.clone())
-    }
-
-    /// Instruct the Shell to perform a HTTP OPTIONS request to the provided `url`.
-    ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
-    ///
-    /// # Panics
-    ///
-    /// This will panic if a malformed URL is passed.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.options("https://httpbin.org/get").send(Event::ReceiveResponse)
-    /// # }
-    /// ```
-    pub fn options(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap(), self.clone())
-    }
-
-    /// Instruct the Shell to perform a HTTP TRACE request to the provided `url`.
-    ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
-    ///
-    /// # Panics
-    ///
-    /// This will panic if a malformed URL is passed.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http.trace("https://httpbin.org/get").send(Event::ReceiveResponse)
-    /// # }
-    /// ```
-    pub fn trace(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap(), self.clone())
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::delete("https://httpbin.org/delete")
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn delete(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP PATCH request to the provided `url`.
     ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
-    ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
     ///
     /// # Panics
     ///
     /// This will panic if a malformed URL is passed.
-    pub fn patch(&self, url: impl AsRef<str>) -> RequestBuilder<Ev> {
-        RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap(), self.clone())
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::patch("https://httpbin.org/patch")
+    ///     .body_form(&[("name", "Alice")]).unwrap()
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn patch(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap())
     }
 
-    /// Instruct the Shell to perform an HTTP request with the provided `method` and `url`.
+    /// Instruct the Shell to perform a HTTP OPTIONS request to the provided `url`.
     ///
-    /// The request can be configured via associated functions on `RequestBuilder`
-    /// and then sent with `RequestBuilder::send`
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
     ///
-    /// When finished, the response will be wrapped in an event and dispatched to
-    /// the app's `update` function.
-    pub fn request(&self, method: http_types::Method, url: Url) -> RequestBuilder<Ev> {
-        RequestBuilder::new(method, url, self.clone())
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::options("https://httpbin.org/get")
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn options(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap())
+    }
+
+    /// Instruct the Shell to perform a HTTP TRACE request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::trace("https://httpbin.org/get")
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn trace(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap())
+    }
+
+    /// Instruct the Shell to perform a HTTP CONNECT request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::connect("https://httpbin.org/get")
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn connect(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap())
+    }
+
+    /// Instruct the Shell to perform an HTTP request to the provided `url`.
+    ///
+    /// The request can be configured via associated functions on the returned
+    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// with [`RequestBuilder::build`].
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a malformed URL is passed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use http_types::Method;
+    /// # use crux_core::macros::effect;
+    /// # use crux_http::HttpRequest;
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
+    /// # #[effect]
+    /// # #[allow(unused)]
+    /// # enum Effect { Http(HttpRequest) }
+    /// # type Http = crux_http::command::Http<Effect, Event>;
+    /// Http::request(Method::Post, "https://httpbin.org/post".parse().unwrap())
+    ///     .body_form(&[("name", "Alice")]).unwrap()
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
+    pub fn request(method: Method, url: Url) -> command::RequestBuilder<Effect, Event> {
+        command::RequestBuilder::new(method, url)
     }
 }

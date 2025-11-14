@@ -1,4 +1,5 @@
 //! Test for the testing APIs
+#[expect(deprecated)]
 use crux_core::testing::AppTester;
 
 mod app {
@@ -26,15 +27,9 @@ mod app {
         type Event = Event;
         type Model = String;
         type ViewModel = String;
-        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(
-            &self,
-            _event: Self::Event,
-            _model: &mut Self::Model,
-            _caps: &(),
-        ) -> Command<Effect, Event> {
+        fn update(&self, _event: Self::Event, _model: &mut Self::Model) -> Command<Effect, Event> {
             render()
         }
 
@@ -47,6 +42,8 @@ mod app {
 #[test]
 fn app_tester_new() {
     let app = app::MyApp;
+
+    #[expect(deprecated)]
     let tester = AppTester::new(app);
 
     let mut model = "Hello".to_string();

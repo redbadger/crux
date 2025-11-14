@@ -89,6 +89,7 @@ mod tests {
 
         let mut cmd = milliseconds(delay).then_send(Event::Delay);
 
+        cmd.expect_no_events();
         let effect = cmd.expect_one_effect();
         let Effect::Delay(mut request) = effect;
 
@@ -110,12 +111,14 @@ mod tests {
 
         let mut cmd = random(min, max).then_send(Event::Delay);
 
+        cmd.expect_no_events();
         let effect = cmd.expect_one_effect();
         let Effect::Delay(mut request) = effect;
 
         assert_eq!(request.operation, DelayOperation::GetRandom(min, max));
         request.resolve(DelayOutput::Random(150)).unwrap();
 
+        cmd.expect_no_events();
         let effect = cmd.expect_one_effect();
         let Effect::Delay(mut request) = effect;
 

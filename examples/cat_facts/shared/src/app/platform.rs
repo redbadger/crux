@@ -30,28 +30,21 @@ impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = Model;
-    type Capabilities = ();
     type Effect = Effect;
 
-    fn update(&self, msg: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
-        self.update(msg, model)
-    }
-
-    fn view(&self, model: &Model) -> Model {
-        Model {
-            platform: format!("Hello {platform}", platform = model.platform),
-        }
-    }
-}
-
-impl App {
-    pub fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
+    fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
         match msg {
             Event::Get => Platform::get().then_send(Event::Set),
             Event::Set(PlatformResponse(platform)) => {
                 model.platform = platform;
                 render::render()
             }
+        }
+    }
+
+    fn view(&self, model: &Model) -> Model {
+        Model {
+            platform: format!("Hello {platform}", platform = model.platform),
         }
     }
 }

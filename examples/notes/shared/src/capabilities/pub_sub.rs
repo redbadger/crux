@@ -1,12 +1,10 @@
-#![expect(deprecated)] // FIXME: Migrate PubSub to Command API
-
-use std::future::Future;
+use std::{future::Future, marker::PhantomData};
 
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 
 use crux_core::{
-    capability::{CapabilityContext, Operation},
+    capability::Operation,
     command::{NotificationBuilder, StreamBuilder},
     Command, Request,
 };
@@ -26,22 +24,17 @@ impl Operation for PubSubOperation {
     type Output = Message;
 }
 
-#[derive(crux_core::macros::Capability)]
-pub struct PubSub<Event> {
-    context: CapabilityContext<PubSubOperation, Event>,
+pub struct PubSub<Effect, Event> {
+    effect: PhantomData<Effect>,
+    event: PhantomData<Event>,
 }
 
-impl<Event> PubSub<Event>
+impl<Effect, Event> PubSub<Effect, Event>
 where
     Event: Send + 'static,
 {
     #[must_use]
-    pub fn new(context: CapabilityContext<PubSubOperation, Event>) -> Self {
-        Self { context }
-    }
-
-    #[must_use]
-    pub fn subscribe<Effect>() -> StreamBuilder<Effect, Event, impl Stream<Item = Vec<u8>>>
+    pub fn subscribe() -> StreamBuilder<Effect, Event, impl Stream<Item = Vec<u8>>>
     where
         Effect: From<Request<PubSubOperation>> + Send + 'static,
     {
@@ -49,9 +42,7 @@ where
     }
 
     #[must_use]
-    pub fn publish<Effect>(
-        data: Vec<u8>,
-    ) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
+    pub fn publish(data: Vec<u8>) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
     where
         Effect: From<Request<PubSubOperation>> + Send + 'static,
     {

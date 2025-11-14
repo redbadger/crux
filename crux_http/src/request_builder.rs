@@ -1,7 +1,5 @@
-use crate::expect::ResponseExpectation;
-use crate::expect::{ExpectBytes, ExpectJson, ExpectString};
 use crate::middleware::Middleware;
-use crate::{Client, HttpError, Request, Response, ResponseAsync, Result};
+use crate::{Client, HttpError, Request, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
 use http_types::{
@@ -23,56 +21,35 @@ use std::{fmt, marker::PhantomData};
 /// ```no_run
 /// use crux_http::http::{mime::HTML};
 /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-/// # struct Capabilities { http: crux_http::Http<Event> }
-/// # fn update(caps: &Capabilities) {
-/// caps.http
-///     .post("https://httpbin.org/post")
+/// # #[crux_core::macros::effect]
+/// # enum Effect { Http(crux_http::HttpRequest) }
+/// # type Http = crux_http::Http<Effect, Event>;
+/// let cmd = Http::post("https://httpbin.org/post")
 ///     .body("<html>hi</html>")
 ///     .header("custom-header", "value")
 ///     .content_type(HTML)
-///     .send(Event::ReceiveResponse)
-/// # }
+///     .build()
+///     .then_send(Event::ReceiveResponse);
 /// ```
 #[must_use]
 pub struct RequestBuilder<Event, ExpectBody = Vec<u8>> {
     /// Holds the state of the request.
     req: Option<Request>,
 
-    cap_or_client: CapOrClient<Event>,
+    client: Client,
 
-    phantom: PhantomData<fn() -> Event>,
+    phantom_event: PhantomData<fn() -> Event>,
 
-    expectation: Box<dyn ResponseExpectation<Body = ExpectBody> + Send>,
-}
-
-// Middleware request builders won't have access to the capability, so they get a client
-// and therefore can't send events themselves.  Normal request builders get direct access
-// to the capability itself.
-#[expect(deprecated)]
-enum CapOrClient<Event> {
-    Client(Client),
-    Capability(crate::Http<Event>),
-}
-
-#[expect(deprecated)]
-impl<Event> RequestBuilder<Event, Vec<u8>> {
-    pub(crate) fn new(method: Method, url: Url, capability: crate::Http<Event>) -> Self {
-        Self {
-            req: Some(Request::new(method, url)),
-            cap_or_client: CapOrClient::Capability(capability),
-            phantom: PhantomData,
-            expectation: Box::new(ExpectBytes),
-        }
-    }
+    phantom_expect: PhantomData<fn() -> ExpectBody>,
 }
 
 impl RequestBuilder<(), Vec<u8>> {
     pub(crate) fn new_for_middleware(method: Method, url: Url, client: Client) -> Self {
         Self {
             req: Some(Request::new(method, url)),
-            cap_or_client: CapOrClient::Client(client),
-            phantom: PhantomData,
-            expectation: Box::new(ExpectBytes),
+            client,
+            phantom_event: PhantomData,
+            phantom_expect: PhantomData,
         }
     }
 }
@@ -88,14 +65,14 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http
-    ///     .get("https://httpbin.org/get")
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
+    /// let cmd = Http::get("https://httpbin.org/get")
     ///     .body("<html>hi</html>")
     ///     .header("header-name", "header-value")
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
@@ -111,13 +88,13 @@ where
     /// ```no_run
     /// # use crux_http::http::mime;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http
-    ///     .get("https://httpbin.org/get")
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
+    /// let cmd = Http::get("https://httpbin.org/get")
     ///     .content_type(mime::HTML)
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     ///
     /// # Panics
@@ -139,16 +116,16 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
     /// use serde_json::json;
     /// use crux_http::http::mime;
-    /// caps.http
-    ///     .post("https://httpbin.org/post")
+    /// let cmd = Http::post("https://httpbin.org/post")
     ///     .body(json!({"any": "Into<Body>"}))
     ///     .content_type(mime::HTML)
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
@@ -172,20 +149,20 @@ where
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
     /// #[derive(Deserialize, Serialize)]
     /// struct Ip {
     ///     ip: String
     /// }
     ///
     /// let data = &Ip { ip: "129.0.0.1".into() };
-    /// caps.http
-    ///     .post("https://httpbin.org/post")
+    /// let cmd = Http::post("https://httpbin.org/post")
     ///     .body_json(data)
     ///     .expect("could not serialize body")
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
         Ok(self.body(Body::from_json(json)?))
@@ -201,13 +178,13 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http
-    ///     .post("https://httpbin.org/post")
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
+    /// let cmd = Http::post("https://httpbin.org/post")
     ///     .body_string("hello_world".to_string())
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_string(self, string: String) -> Self {
         self.body(Body::from_string(string))
@@ -223,13 +200,13 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http
-    ///     .post("https://httpbin.org/post")
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
+    /// let cmd = Http::post("https://httpbin.org/post")
     ///     .body_bytes(b"hello_world".to_owned())
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_bytes(self, bytes: impl AsRef<[u8]>) -> Self {
         self.body(Body::from(bytes.as_ref()))
@@ -252,18 +229,18 @@ where
     /// ```no_run
     /// # use std::collections::HashMap;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
     /// let form_data = HashMap::from([
     ///     ("name", "Alice"),
     ///     ("location", "UK"),
     /// ]);
-    /// caps.http
-    ///     .post("https://httpbin.org/post")
+    /// let cmd = Http::post("https://httpbin.org/post")
     ///     .body_form(&form_data)
     ///     .expect("could not serialize body")
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
         Ok(self.body(Body::from_form(form)?))
@@ -276,20 +253,20 @@ where
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
     /// #[derive(Serialize, Deserialize)]
     /// struct Index {
     ///     page: u32
     /// }
     ///
     /// let query = Index { page: 2 };
-    /// caps.http
-    ///     .post("https://httpbin.org/post")
+    /// let cmd = Http::post("https://httpbin.org/post")
     ///     .query(&query)
     ///     .expect("could not serialize query string")
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
@@ -316,14 +293,13 @@ where
     ///
     /// ```no_run
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// # fn update(caps: &Capabilities) {
-    ///
-    /// caps.http
-    ///     .get("https://httpbin.org/redirect/2")
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
+    /// let cmd = Http::get("https://httpbin.org/redirect/2")
     ///     .middleware(crux_http::middleware::Redirect::default())
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
@@ -348,23 +324,21 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # struct Capabilities { http: crux_http::Http<Event> }
-    /// enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
-    ///
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http
-    ///     .post("https://httpbin.org/json")
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<String>>) }
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
+    /// let cmd = Http::post("https://httpbin.org/post")
     ///     .expect_string()
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn expect_string(self) -> RequestBuilder<Event, String> {
-        let expectation = Box::<ExpectString>::default();
         RequestBuilder {
             req: self.req,
-            cap_or_client: self.cap_or_client,
-            phantom: PhantomData,
-            expectation,
+            client: self.client,
+            phantom_event: PhantomData,
+            phantom_expect: PhantomData,
         }
     }
 
@@ -377,7 +351,10 @@ where
     ///
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
-    /// # struct Capabilities { http: crux_http::Http<Event> }
+    /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Slideshow>>) }
+    /// # #[crux_core::macros::effect]
+    /// # enum Effect { Http(crux_http::HttpRequest) }
+    /// # type Http = crux_http::Http<Effect, Event>;
     /// #[derive(Deserialize)]
     /// struct Response {
     ///     slideshow: Slideshow
@@ -388,62 +365,21 @@ where
     ///     author: String
     /// }
     ///
-    /// enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Slideshow>>) }
-    ///
-    /// # fn update(caps: &Capabilities) {
-    /// caps.http
-    ///     .post("https://httpbin.org/json")
+    /// let cmd = Http::post("https://httpbin.org/json")
     ///     .expect_json::<Slideshow>()
-    ///     .send(Event::ReceiveResponse)
-    /// # }
+    ///     .build()
+    ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn expect_json<T>(self) -> RequestBuilder<Event, T>
     where
         T: DeserializeOwned + 'static,
     {
-        let expectation = Box::<ExpectJson<T>>::default();
         RequestBuilder {
             req: self.req,
-            cap_or_client: self.cap_or_client,
-            phantom: PhantomData,
-            expectation,
+            client: self.client,
+            phantom_event: PhantomData,
+            phantom_expect: PhantomData,
         }
-    }
-
-    /// Sends the constructed `Request` and returns its result as an update `Event`
-    ///
-    /// When finished, the response will wrapped in an event using `make_event` and
-    /// dispatched to the app's `update` function.
-    /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
-    #[expect(deprecated)]
-    pub fn send<F>(self, make_event: F)
-    where
-        F: FnOnce(crate::Result<Response<ExpectBody>>) -> Event + Send + 'static,
-    {
-        let CapOrClient::Capability(capability) = self.cap_or_client else {
-            panic!("Called RequestBuilder::send in a middleware context");
-        };
-        let request = self.req;
-
-        let ctx = capability.context.clone();
-        ctx.spawn(async move {
-            let result = capability.client.send(request.unwrap()).await;
-
-            let resp = match result {
-                Ok(resp) => resp,
-                Err(e) => {
-                    capability.context.update_app(make_event(Err(e)));
-                    return;
-                }
-            };
-
-            let resp = Response::<Vec<u8>>::new(resp)
-                .await
-                .and_then(|r| self.expectation.decode(r));
-
-            capability.context.update_app(make_event(resp));
-        });
     }
 
     /// Sends the constructed `Request` and returns a future that resolves to [`ResponseAsync`].
@@ -468,15 +404,7 @@ impl<T, Eb> std::future::IntoFuture for RequestBuilder<T, Eb> {
 
     /// Sends the constructed `Request` and returns a future that resolves to the response
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin({
-            let client = match self.cap_or_client {
-                CapOrClient::Client(c) => c,
-                #[expect(deprecated)]
-                CapOrClient::Capability(c) => c.client,
-            };
-
-            async move { client.send(self.req.unwrap()).await }
-        })
+        Box::pin(async move { self.client.send(self.req.unwrap()).await })
     }
 }
 

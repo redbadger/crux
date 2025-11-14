@@ -11,12 +11,12 @@ pub mod value;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-#[expect(deprecated)]
-use crux_core::capability::CapabilityContext;
-use crux_core::capability::Operation;
+use crux_core::{Command, Request, capability::Operation, command::RequestBuilder};
 
 use error::KeyValueError;
 use value::Value;
+
+use std::{future::Future, marker::PhantomData};
 
 /// Supported operations
 #[derive(Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -137,261 +137,6 @@ impl Operation for KeyValueOperation {
     }
 }
 
-/// The original API for `KeyValue` capability, now deprecated. Use [`command::KeyValue`] instead.
-#[deprecated(
-    since = "0.10.0",
-    note = "The capabilities API has been deprecated. Use command::KeyValue instead."
-)]
-pub struct KeyValue<Ev> {
-    #[expect(deprecated)]
-    context: CapabilityContext<KeyValueOperation, Ev>,
-}
-
-#[expect(deprecated)]
-impl<Ev> crux_core::Capability<Ev> for KeyValue<Ev> {
-    type Operation = KeyValueOperation;
-
-    type MappedSelf<MappedEv> = KeyValue<MappedEv>;
-
-    fn map_event<F, NewEv>(&self, f: F) -> Self::MappedSelf<NewEv>
-    where
-        F: Fn(NewEv) -> Ev + Send + Sync + 'static,
-        Ev: 'static,
-        NewEv: 'static + Send,
-    {
-        KeyValue::new(self.context.map_event(f))
-    }
-}
-
-#[expect(deprecated)]
-impl<Ev> Clone for KeyValue<Ev> {
-    fn clone(&self) -> Self {
-        Self {
-            context: self.context.clone(),
-        }
-    }
-}
-
-#[expect(deprecated)]
-impl<Ev> KeyValue<Ev>
-where
-    Ev: 'static,
-{
-    #[must_use]
-    pub fn new(context: CapabilityContext<KeyValueOperation, Ev>) -> Self {
-        Self { context }
-    }
-
-    /// Read a value under `key`, will dispatch the event with a
-    /// `KeyValueResult::Get { value: Vec<u8> }` as payload
-    pub fn get<F>(&self, key: String, make_event: F)
-    where
-        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = get(&context, key).await;
-                context.update_app(make_event(response));
-            }
-        });
-    }
-
-    /// Read a value under `key`, while in an async context. This is used together with
-    /// [`crux_core::compose::Compose`].
-    ///
-    /// Returns the value stored under the key, or `None` if the key is not present.
-    /// # Errors
-    /// Returns a `KeyValueError` if there is a problem getting the value.
-    pub async fn get_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
-        get(&self.context, key).await
-    }
-
-    /// Set `key` to be the provided `value`. Typically the bytes would be
-    /// a value serialized/deserialized by the app.
-    ///
-    /// Will dispatch the event with a `KeyValueResult::Set { previous: Vec<u8> }` as payload
-    pub fn set<F>(&self, key: String, value: Vec<u8>, make_event: F)
-    where
-        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = set(&context, key, value).await;
-                context.update_app(make_event(response));
-            }
-        });
-    }
-
-    /// Set `key` to be the provided `value`, while in an async context. This is used together with
-    /// [`crux_core::compose::Compose`].
-    ///
-    /// Returns the previous value stored under the key, if any.
-    /// # Errors
-    /// Returns a `KeyValueError` if there is a problem setting the value.
-    pub async fn set_async(
-        &self,
-        key: String,
-        value: Vec<u8>,
-    ) -> Result<Option<Vec<u8>>, KeyValueError> {
-        set(&self.context, key, value).await
-    }
-
-    /// Remove a `key` and its value, will dispatch the event with a
-    /// `KeyValueResult::Delete { previous: Vec<u8> }` as payload
-    pub fn delete<F>(&self, key: String, make_event: F)
-    where
-        F: FnOnce(Result<Option<Vec<u8>>, KeyValueError>) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = delete(&context, key).await;
-                context.update_app(make_event(response));
-            }
-        });
-    }
-
-    /// Remove a `key` and its value, while in an async context. This is used together with
-    /// [`crux_core::compose::Compose`].
-    ///
-    /// Returns the previous value stored under the key, if any.
-    /// # Errors
-    /// Returns a `KeyValueError` if there is a problem deleting the value.
-    pub async fn delete_async(&self, key: String) -> Result<Option<Vec<u8>>, KeyValueError> {
-        delete(&self.context, key).await
-    }
-
-    /// Check to see if a `key` exists, will dispatch the event with a
-    /// `KeyValueResult::Exists { is_present: bool }` as payload
-    pub fn exists<F>(&self, key: String, make_event: F)
-    where
-        F: FnOnce(Result<bool, KeyValueError>) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = exists(&context, key).await;
-                context.update_app(make_event(response));
-            }
-        });
-    }
-
-    /// Check to see if a `key` exists, while in an async context. This is used together with
-    /// [`crux_core::compose::Compose`].
-    ///
-    /// Returns `true` if the key exists, `false` otherwise.
-    ///
-    /// # Errors
-    /// Returns a `KeyValueError` if there is a problem checking the existence of the key.
-    pub async fn exists_async(&self, key: String) -> Result<bool, KeyValueError> {
-        exists(&self.context, key).await
-    }
-
-    /// List keys that start with the provided `prefix`, starting from the provided `cursor`.
-    /// Will dispatch the event with a `KeyValueResult::ListKeys { keys: Vec<String>, cursor: u64 }`
-    /// as payload.
-    ///
-    /// A cursor is an opaque value that points to the first key in the next page of keys.
-    ///
-    /// If the cursor is not found for the specified prefix, the response will include
-    /// a `KeyValueError::CursorNotFound` error.
-    ///
-    /// If the cursor is found the result will be a tuple of the keys and the next cursor
-    /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
-    pub fn list_keys<F>(&self, prefix: String, cursor: u64, make_event: F)
-    where
-        F: FnOnce(Result<(Vec<String>, u64), KeyValueError>) -> Ev + Send + Sync + 'static,
-    {
-        self.context.spawn({
-            let context = self.context.clone();
-            async move {
-                let response = list_keys(&context, prefix, cursor).await;
-                context.update_app(make_event(response));
-            }
-        });
-    }
-
-    /// List keys that start with the provided `prefix`, starting from the provided `cursor`,
-    /// while in an async context. This is used together with [`crux_core::compose::Compose`].
-    ///
-    /// A cursor is an opaque value that points to the first key in the next page of keys.
-    ///
-    /// If the cursor is not found for the specified prefix, the response will include
-    /// a `KeyValueError::CursorNotFound` error.
-    ///
-    /// If the cursor is found the result will be a tuple of the keys and the next cursor
-    /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
-    ///
-    /// # Errors
-    /// Returns a `KeyValueError` if there is a problem listing the keys.
-    pub async fn list_keys_async(
-        &self,
-        prefix: String,
-        cursor: u64,
-    ) -> Result<(Vec<String>, u64), KeyValueError> {
-        list_keys(&self.context, prefix, cursor).await
-    }
-}
-
-#[expect(deprecated)]
-async fn get<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
-    key: String,
-) -> Result<Option<Vec<u8>>, KeyValueError> {
-    context
-        .request_from_shell(KeyValueOperation::Get { key })
-        .await
-        .unwrap_get()
-}
-
-#[expect(deprecated)]
-async fn set<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
-    key: String,
-    value: Vec<u8>,
-) -> Result<Option<Vec<u8>>, KeyValueError> {
-    context
-        .request_from_shell(KeyValueOperation::Set { key, value })
-        .await
-        .unwrap_set()
-}
-
-#[expect(deprecated)]
-async fn delete<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
-    key: String,
-) -> Result<Option<Vec<u8>>, KeyValueError> {
-    context
-        .request_from_shell(KeyValueOperation::Delete { key })
-        .await
-        .unwrap_delete()
-}
-
-#[expect(deprecated)]
-async fn exists<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
-    key: String,
-) -> Result<bool, KeyValueError> {
-    context
-        .request_from_shell(KeyValueOperation::Exists { key })
-        .await
-        .unwrap_exists()
-}
-
-#[expect(deprecated)]
-async fn list_keys<Ev: 'static>(
-    context: &CapabilityContext<KeyValueOperation, Ev>,
-    prefix: String,
-    cursor: u64,
-) -> Result<(Vec<String>, u64), KeyValueError> {
-    context
-        .request_from_shell(KeyValueOperation::ListKeys { prefix, cursor })
-        .await
-        .unwrap_list_keys()
-}
-
 impl KeyValueResult {
     fn unwrap_get(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
@@ -452,6 +197,79 @@ impl KeyValueResult {
             },
             KeyValueResult::Err { error } => Err(error.clone()),
         }
+    }
+}
+
+pub struct KeyValue<Effect, Event> {
+    // Allow the impl to declare trait bounds once. Thanks rustc
+    effect: PhantomData<Effect>,
+    event: PhantomData<Event>,
+}
+
+type StatusResult = Result<bool, KeyValueError>;
+type DataResult = Result<Option<Vec<u8>>, KeyValueError>;
+type ListResult = Result<(Vec<String>, u64), KeyValueError>;
+
+impl<Effect, Event> KeyValue<Effect, Event>
+where
+    Effect: Send + From<Request<KeyValueOperation>> + 'static,
+    Event: Send + 'static,
+{
+    /// Read a value under `key`
+    pub fn get(
+        key: impl Into<String>,
+    ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>> {
+        Command::request_from_shell(KeyValueOperation::Get { key: key.into() })
+            .map(KeyValueResult::unwrap_get)
+    }
+
+    /// Set `key` to be the provided `value`. Typically the bytes would be
+    /// a value serialized/deserialized by the app.
+    pub fn set(
+        key: impl Into<String>,
+        value: Vec<u8>,
+    ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>> {
+        Command::request_from_shell(KeyValueOperation::Set {
+            key: key.into(),
+            value,
+        })
+        .map(KeyValueResult::unwrap_set)
+    }
+
+    /// Remove a `key` and its value, return previous value if it existed
+    pub fn delete(
+        key: impl Into<String>,
+    ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>> {
+        Command::request_from_shell(KeyValueOperation::Delete { key: key.into() })
+            .map(KeyValueResult::unwrap_delete)
+    }
+
+    /// Check to see if a `key` exists
+    pub fn exists(
+        key: impl Into<String>,
+    ) -> RequestBuilder<Effect, Event, impl Future<Output = StatusResult>> {
+        Command::request_from_shell(KeyValueOperation::Exists { key: key.into() })
+            .map(KeyValueResult::unwrap_exists)
+    }
+
+    /// List keys that start with the provided `prefix`, starting from the provided `cursor`.
+    ///
+    /// A cursor is an opaque value that points to the first key in the next page of keys.
+    ///
+    /// If the cursor is not found for the specified prefix, the response will include
+    /// a `KeyValueError::CursorNotFound` error.
+    ///
+    /// If the cursor is found the result will be a tuple of the keys and the next cursor
+    /// (if there are more keys to list, the cursor will be non-zero, otherwise it will be zero)
+    pub fn list_keys(
+        prefix: impl Into<String>,
+        cursor: u64,
+    ) -> RequestBuilder<Effect, Event, impl Future<Output = ListResult>> {
+        Command::request_from_shell(KeyValueOperation::ListKeys {
+            prefix: prefix.into(),
+            cursor,
+        })
+        .map(KeyValueResult::unwrap_list_keys)
     }
 }
 

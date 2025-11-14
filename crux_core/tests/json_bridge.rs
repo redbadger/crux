@@ -28,15 +28,9 @@ mod app {
         type Event = Event;
         type Model = ();
         type ViewModel = ViewModel;
-        type Capabilities = ();
         type Effect = Effect;
 
-        fn update(
-            &self,
-            event: Event,
-            _model: &mut Self::Model,
-            _caps: &(),
-        ) -> Command<Effect, Event> {
+        fn update(&self, event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
             match event {
                 Event::Trigger => render(),
                 Event::Get => Http::get("http://example.com/")

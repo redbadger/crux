@@ -1,16 +1,8 @@
 //! Testing support for unit testing Crux apps.
 use anyhow::Result;
-use std::{collections::VecDeque, sync::Arc};
+use std::{collections::VecDeque, sync::Mutex};
 
-#[expect(deprecated)]
-use crate::WithContext;
-use crate::{
-    Command, Request, Resolvable,
-    capability::{
-        CommandSpawner, Operation, ProtoContext, QueuingExecutor, channel::Receiver,
-        executor_and_spawner,
-    },
-};
+use crate::{Command, Request, Resolvable, capability::Operation};
 
 /// `AppTester` is a simplified execution environment for Crux apps for use in
 /// tests.
@@ -32,20 +24,16 @@ use crate::{
 /// ```rust,ignore
 /// let app = AppTester::<ExampleApp, ExampleEffect>::default();
 /// ```
+#[deprecated(
+    since = "0.17.0",
+    note = "AppTester has been deprecated and is left for backwards compatibility of test suites only. Apps can be tested without it using the Command API."
+)]
 pub struct AppTester<App>
 where
     App: crate::App,
 {
     app: App,
-    capabilities: App::Capabilities,
-    context: Arc<AppContext<App::Effect, App::Event>>,
-    command_spawner: CommandSpawner<App::Effect, App::Event>,
-}
-
-struct AppContext<Ef, Ev> {
-    commands: Receiver<Ef>,
-    events: Receiver<Ev>,
-    executor: QueuingExecutor,
+    root_command: Mutex<Command<App::Effect, App::Event>>,
 }
 
 #[expect(deprecated)]
@@ -56,10 +44,7 @@ where
     /// Create an `AppTester` instance for an existing app instance. This can be used if your App
     /// has a constructor other than `Default`, for example when used as a child app and expecting
     /// configuration from the parent
-    pub fn new(app: App) -> Self
-    where
-        App::Capabilities: WithContext<App::Event, App::Effect>,
-    {
+    pub fn new(app: App) -> Self {
         Self {
             app,
             ..Default::default()
@@ -70,15 +55,23 @@ where
     ///
     /// You can use the resulting [`Update`] to inspect the effects which were requested
     /// and potential further events dispatched by capabilities.
+    ///
+    /// # Panics
+    ///
+    /// May panic when the internal lock is poisoned
     pub fn update(
         &self,
         event: App::Event,
         model: &mut App::Model,
     ) -> Update<App::Effect, App::Event> {
-        let command = self.app.update(event, model, &self.capabilities);
-        self.command_spawner.spawn(command);
+        let command = self.app.update(event, model);
 
-        self.context.updates()
+        {
+            let mut root_command = self.root_command.lock().expect("AppTester mutex poisoned");
+            root_command.spawn(|ctx| command.into_future(ctx));
+        }
+
+        self.collect_update()
     }
 
     /// Resolve an effect `request` from previous update with an operation output.
@@ -89,6 +82,10 @@ where
     /// # Errors
     ///
     /// Errors if the request cannot (or should not) be resolved.
+    ///
+    /// # Panics
+    ///
+    /// May panic when the internal lock is poisoned
     pub fn resolve<Output>(
         &self,
         request: &mut impl Resolvable<Output>,
@@ -96,7 +93,7 @@ where
     ) -> Result<Update<App::Effect, App::Event>> {
         request.resolve(value)?;
 
-        Ok(self.context.updates())
+        Ok(self.collect_update())
     }
 
     /// Resolve an effect `request` from previous update, then run the resulting event
@@ -115,7 +112,9 @@ where
         model: &mut App::Model,
     ) -> Update<App::Effect, App::Event> {
         request.resolve(value).expect("failed to resolve request");
-        let event = self.context.updates().expect_one_event();
+
+        let event = self.collect_update().expect_one_event();
+
         self.update(event, model)
     }
 
@@ -123,50 +122,27 @@ where
     pub fn view(&self, model: &App::Model) -> App::ViewModel {
         self.app.view(model)
     }
+
+    fn collect_update(&self) -> Update<App::Effect, App::Event> {
+        let mut root_command = self.root_command.lock().expect("AppTester mutex poisoned");
+
+        let effects: Vec<_> = root_command.effects().collect();
+        let events: Vec<_> = root_command.events().collect();
+
+        Update { effects, events }
+    }
 }
 
 #[expect(deprecated)]
 impl<App> Default for AppTester<App>
 where
     App: crate::App,
-    App::Capabilities: WithContext<App::Event, App::Effect>,
 {
     fn default() -> Self {
-        let (command_sender, commands) = crate::capability::channel();
-        let (event_sender, events) = crate::capability::channel();
-        let (executor, spawner) = executor_and_spawner();
-        let capability_context = ProtoContext::new(command_sender, event_sender, spawner);
-        let command_spawner = CommandSpawner::new(capability_context.clone());
-
         Self {
             app: App::default(),
-            capabilities: App::Capabilities::new_with_context(capability_context),
-            context: Arc::new(AppContext {
-                commands,
-                events,
-                executor,
-            }),
-            command_spawner,
+            root_command: Mutex::new(Command::done()),
         }
-    }
-}
-
-impl<App> AsRef<App::Capabilities> for AppTester<App>
-where
-    App: crate::App,
-{
-    fn as_ref(&self) -> &App::Capabilities {
-        &self.capabilities
-    }
-}
-
-impl<Ef, Ev> AppContext<Ef, Ev> {
-    pub fn updates(self: &Arc<Self>) -> Update<Ef, Ev> {
-        self.executor.run_all();
-        let effects = self.commands.drain().collect();
-        let events = self.events.drain().collect();
-
-        Update { effects, events }
     }
 }
 
@@ -278,23 +254,80 @@ where
     Effect: Send + 'static,
     Event: Send + 'static,
 {
-    /// Assert that the Command contains _exactly_ one effect and zero events,
+    /// Assert that the Command contains _exactly_ one effect,
     /// and return the effect
     ///
     /// # Panics
-    /// Panics if the command does not contain exactly one effect, or contains any events.
+    /// Panics if the command does not contain exactly one effect.
     #[track_caller]
     pub fn expect_one_effect(&mut self) -> Effect {
-        assert!(
-            self.events().next().is_none(),
-            "expected only one effect, but found an event"
-        );
         let mut effects = self.effects();
         match (effects.next(), effects.next()) {
             (None, _) => panic!("expected one effect but got none"),
             (Some(effect), None) => effect,
             _ => panic!("expected one effect but got more than one"),
         }
+    }
+
+    /// Assert that the Command contains zero effects.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the command contains any effects.
+    #[track_caller]
+    pub fn expect_no_effects(&mut self) {
+        assert!(self.effects().next().is_none(), "expected no effects");
+    }
+
+    /// Assert that the Command contains zero events.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the command contains any events.
+    #[track_caller]
+    pub fn expect_no_events(&mut self) {
+        assert!(self.events().next().is_none(), "expected no events");
+    }
+
+    /// Assert that the Command contains _exactly_ one event,
+    /// and return the event
+    ///
+    /// # Panics
+    /// Panics if the command does not contain exactly one event
+    #[track_caller]
+    pub fn expect_one_event(&mut self) -> Event {
+        let mut events = self.events();
+        match (events.next(), events.next()) {
+            (None, _) => panic!("expected one event but got none"),
+            (Some(event), None) => event,
+            _ => panic!("expected one effect but got more than one"),
+        }
+    }
+
+    /// Assert that the Command has no effects or events available.
+    /// This doesn't mean it's done. There may be pending requests. If you
+    /// want to check whether it's done, use `expect_done`.
+    ///
+    /// # Panics
+    /// Panics if the command contains any effects or events
+    #[track_caller]
+    pub fn expect_no_effect_or_events(&mut self) {
+        let effects = self.effects().count();
+        let events = self.events().count();
+
+        assert!(
+            effects + events == 0,
+            "expected command to be done, found {effects} effects and {events} events",
+        );
+    }
+
+    /// Assert that the Command is done,
+    ///
+    /// # Panics
+    /// Panics if the command contains any effects or events
+    #[track_caller]
+    pub fn expect_done(&mut self) {
+        assert!(self.is_done(), "expected command to be done",);
     }
 }
 

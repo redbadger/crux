@@ -19,8 +19,8 @@
 //! ```rust
 //! # mod shared {
 //! #     use crux_core::Command;
-//! #     use crux_core::render::Render;
-//! #     use crux_core::macros::Effect;
+//! #     use crux_core::render::RenderOperation;
+//! #     use crux_core::macros::effect;
 //! #     use serde::{Deserialize, Serialize};
 //! #     #[derive(Default)]
 //! #     pub struct App;
@@ -35,21 +35,20 @@
 //! #         type Event = Event;
 //! #         type Model = ();
 //! #         type ViewModel = ViewModel;
-//! #         type Capabilities = Capabilities;
 //! #         type Effect = Effect;
-//! #         fn update(&self, _event: Event, _model: &mut Self::Model, _caps: &Capabilities) -> Command<Effect, Event> {
+//! #         fn update(&self, _event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
 //! #             todo!()
 //! #         }
 //! #         fn view(&self, _model: &Self::Model) -> Self::ViewModel {
 //! #             todo!();
 //! #         }
 //! #     }
-//! #     #[derive(Effect)]
-//! #     pub struct Capabilities {
-//! #         pub render: Render<Event>,
+//! #     #[effect]
+//! #     pub enum Effect {
+//! #         Render(RenderOperation),
 //! #     }
 //! # }
-//!use shared::{App, EffectFfi, Event};
+//!use shared::{App, Event};
 //!use crux_core::{bridge::Request, typegen::TypeGen};
 //!use uuid::Uuid;
 //!
