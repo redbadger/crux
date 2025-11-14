@@ -1,14 +1,8 @@
 //! Testing support for unit testing Crux apps.
 use anyhow::Result;
-use std::{collections::VecDeque, sync::Arc};
+use std::{collections::VecDeque, sync::Mutex};
 
-use crate::{
-    Command, Request, Resolvable,
-    capability::{
-        CommandSpawner, Operation, ProtoContext, QueuingExecutor, channel::Receiver,
-        executor_and_spawner,
-    },
-};
+use crate::{Command, Request, Resolvable, capability::Operation};
 
 /// `AppTester` is a simplified execution environment for Crux apps for use in
 /// tests.
@@ -35,14 +29,7 @@ where
     App: crate::App,
 {
     app: App,
-    context: Arc<AppContext<App::Effect, App::Event>>,
-    command_spawner: CommandSpawner<App::Effect, App::Event>,
-}
-
-struct AppContext<Ef, Ev> {
-    commands: Receiver<Ef>,
-    events: Receiver<Ev>,
-    executor: QueuingExecutor,
+    root_command: Mutex<Command<App::Effect, App::Event>>,
 }
 
 impl<App> AppTester<App>
@@ -63,15 +50,23 @@ where
     ///
     /// You can use the resulting [`Update`] to inspect the effects which were requested
     /// and potential further events dispatched by capabilities.
+    ///
+    /// # Panics
+    ///
+    /// May panic when the internal lock is poisoned
     pub fn update(
         &self,
         event: App::Event,
         model: &mut App::Model,
     ) -> Update<App::Effect, App::Event> {
         let command = self.app.update(event, model);
-        self.command_spawner.spawn(command);
 
-        self.context.updates()
+        {
+            let mut root_command = self.root_command.lock().expect("AppTester mutex poisoned");
+            root_command.spawn(|ctx| command.into_future(ctx));
+        }
+
+        self.collect_update()
     }
 
     /// Resolve an effect `request` from previous update with an operation output.
@@ -82,6 +77,10 @@ where
     /// # Errors
     ///
     /// Errors if the request cannot (or should not) be resolved.
+    ///
+    /// # Panics
+    ///
+    /// May panic when the internal lock is poisoned
     pub fn resolve<Output>(
         &self,
         request: &mut impl Resolvable<Output>,
@@ -89,7 +88,7 @@ where
     ) -> Result<Update<App::Effect, App::Event>> {
         request.resolve(value)?;
 
-        Ok(self.context.updates())
+        Ok(self.collect_update())
     }
 
     /// Resolve an effect `request` from previous update, then run the resulting event
@@ -108,13 +107,24 @@ where
         model: &mut App::Model,
     ) -> Update<App::Effect, App::Event> {
         request.resolve(value).expect("failed to resolve request");
-        let event = self.context.updates().expect_one_event();
+
+        let event = self.collect_update().expect_one_event();
+
         self.update(event, model)
     }
 
     /// Run the app's `view` function with a model state
     pub fn view(&self, model: &App::Model) -> App::ViewModel {
         self.app.view(model)
+    }
+
+    fn collect_update(&self) -> Update<App::Effect, App::Event> {
+        let mut root_command = self.root_command.lock().expect("AppTester mutex poisoned");
+
+        let effects: Vec<_> = root_command.effects().collect();
+        let events: Vec<_> = root_command.events().collect();
+
+        Update { effects, events }
     }
 }
 
@@ -123,31 +133,10 @@ where
     App: crate::App,
 {
     fn default() -> Self {
-        let (command_sender, commands) = crate::capability::channel();
-        let (event_sender, events) = crate::capability::channel();
-        let (executor, spawner) = executor_and_spawner();
-        let command_spawner =
-            CommandSpawner::new(ProtoContext::new(command_sender, event_sender, spawner));
-
         Self {
             app: App::default(),
-            context: Arc::new(AppContext {
-                commands,
-                events,
-                executor,
-            }),
-            command_spawner,
+            root_command: Mutex::new(Command::done()),
         }
-    }
-}
-
-impl<Ef, Ev> AppContext<Ef, Ev> {
-    pub fn updates(self: &Arc<Self>) -> Update<Ef, Ev> {
-        self.executor.run_all();
-        let effects = self.commands.drain().collect();
-        let events = self.events.drain().collect();
-
-        Update { effects, events }
     }
 }
 
