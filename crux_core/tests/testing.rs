@@ -1,4 +1,5 @@
 //! Test for the testing APIs
+#[expect(deprecated)]
 use crux_core::testing::AppTester;
 
 mod app {
@@ -41,6 +42,8 @@ mod app {
 #[test]
 fn app_tester_new() {
     let app = app::MyApp;
+
+    #[expect(deprecated)]
     let tester = AppTester::new(app);
 
     let mut model = "Hello".to_string();

@@ -53,6 +53,7 @@ mod tests {
 
         let mut cmd = milliseconds(delay).then_send(Event::TimeUp);
 
+        cmd.expect_no_events();
         let effect = cmd.expect_one_effect();
         let Effect::Delay(mut request) = effect;
 

@@ -129,6 +129,7 @@ mod shared {
     }
 }
 
+#[expect(deprecated)]
 mod tests {
     use assert_matches::assert_matches;
 

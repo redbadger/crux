@@ -24,6 +24,10 @@ use crate::{Command, Request, Resolvable, capability::Operation};
 /// ```rust,ignore
 /// let app = AppTester::<ExampleApp, ExampleEffect>::default();
 /// ```
+#[deprecated(
+    since = "0.17.0",
+    note = "AppTester has been deprecated and is left for backwards compatibility of test suites only. Apps can be tested without it using the Command API."
+)]
 pub struct AppTester<App>
 where
     App: crate::App,
@@ -32,6 +36,7 @@ where
     root_command: Mutex<Command<App::Effect, App::Event>>,
 }
 
+#[expect(deprecated)]
 impl<App> AppTester<App>
 where
     App: crate::App,
@@ -128,6 +133,7 @@ where
     }
 }
 
+#[expect(deprecated)]
 impl<App> Default for AppTester<App>
 where
     App: crate::App,
@@ -248,23 +254,69 @@ where
     Effect: Send + 'static,
     Event: Send + 'static,
 {
-    /// Assert that the Command contains _exactly_ one effect and zero events,
+    /// Assert that the Command contains _exactly_ one effect,
     /// and return the effect
     ///
     /// # Panics
-    /// Panics if the command does not contain exactly one effect, or contains any events.
+    /// Panics if the command does not contain exactly one effect.
     #[track_caller]
     pub fn expect_one_effect(&mut self) -> Effect {
-        assert!(
-            self.events().next().is_none(),
-            "expected only one effect, but found an event"
-        );
         let mut effects = self.effects();
         match (effects.next(), effects.next()) {
             (None, _) => panic!("expected one effect but got none"),
             (Some(effect), None) => effect,
             _ => panic!("expected one effect but got more than one"),
         }
+    }
+
+    /// Assert that the Command contains zero effects.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the command contains any effects.
+    #[track_caller]
+    pub fn expect_no_effects(&mut self) {
+        assert!(self.effects().next().is_none(), "expected no effects");
+    }
+
+    /// Assert that the Command contains zero events.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the command contains any events.
+    #[track_caller]
+    pub fn expect_no_events(&mut self) {
+        assert!(self.events().next().is_none(), "expected no events");
+    }
+
+    /// Assert that the Command contains _exactly_ one event,
+    /// and return the event
+    ///
+    /// # Panics
+    /// Panics if the command does not contain exactly one event
+    #[track_caller]
+    pub fn expect_one_event(&mut self) -> Event {
+        let mut events = self.events();
+        match (events.next(), events.next()) {
+            (None, _) => panic!("expected one effect but got none"),
+            (Some(event), None) => event,
+            _ => panic!("expected one effect but got more than one"),
+        }
+    }
+
+    /// Assert that the Command is done,
+    ///
+    /// # Panics
+    /// Panics if the command contains any effects or events
+    #[track_caller]
+    pub fn expect_done(&mut self) {
+        let effects = self.effects().count();
+        let events = self.events().count();
+
+        assert!(
+            effects + events == 0,
+            "expected command to be done, found {effects} effects and {events} events",
+        );
     }
 }
 

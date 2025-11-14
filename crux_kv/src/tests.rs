@@ -1,9 +1,8 @@
 use anyhow::Result;
 use crux_core::{
-    Command,
+    App as _, Command,
     macros::effect,
     render::{RenderOperation, render},
-    testing::AppTester,
 };
 use serde::{Deserialize, Serialize};
 
@@ -133,13 +132,13 @@ pub enum Effect {
 
 #[test]
 fn test_get() {
-    let app = AppTester::<App>::default();
+    let app = App;
     let mut model = Model::default();
 
-    let request = &mut app
-        .update(Event::Get, &mut model)
-        .expect_one_effect()
-        .expect_key_value();
+    let mut cmd = app.update(Event::Get, &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_key_value();
 
     assert_eq!(
         request.operation,
@@ -148,28 +147,29 @@ fn test_get() {
         }
     );
 
-    let _updated = app.resolve_to_event_then_update(
-        request,
-        KeyValueResult::Ok {
+    request
+        .resolve(KeyValueResult::Ok {
             response: KeyValueResponse::Get {
                 value: 42i32.to_ne_bytes().to_vec().into(),
             },
-        },
-        &mut model,
-    );
+        })
+        .expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    app.update(event, &mut model).expect_done();
 
     assert_eq!(model.value, 42);
 }
 
 #[test]
 fn test_set() {
-    let app = AppTester::<App>::default();
+    let app = App;
     let mut model = Model::default();
 
-    let request = &mut app
-        .update(Event::Set, &mut model)
-        .expect_one_effect()
-        .expect_key_value();
+    let mut cmd = app.update(Event::Set, &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_key_value();
 
     assert_eq!(
         request.operation,
@@ -179,28 +179,31 @@ fn test_set() {
         }
     );
 
-    let _updated = app.resolve_to_event_then_update(
-        request,
-        KeyValueResult::Ok {
+    request
+        .resolve(KeyValueResult::Ok {
             response: KeyValueResponse::Set {
                 previous: Value::None,
             },
-        },
-        &mut model,
-    );
+        })
+        .expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    app.update(event, &mut model)
+        .expect_one_effect()
+        .expect_render();
 
     assert!(model.successful);
 }
 
 #[test]
 fn test_delete() {
-    let app = AppTester::<App>::default();
+    let app = App;
     let mut model = Model::default();
 
-    let request = &mut app
-        .update(Event::Delete, &mut model)
-        .expect_one_effect()
-        .expect_key_value();
+    let mut cmd = app.update(Event::Delete, &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_key_value();
 
     assert_eq!(
         request.operation,
@@ -209,28 +212,31 @@ fn test_delete() {
         }
     );
 
-    let _updated = app.resolve_to_event_then_update(
-        request,
-        KeyValueResult::Ok {
+    request
+        .resolve(KeyValueResult::Ok {
             response: KeyValueResponse::Delete {
                 previous: Value::None,
             },
-        },
-        &mut model,
-    );
+        })
+        .expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    app.update(event, &mut model)
+        .expect_one_effect()
+        .expect_render();
 
     assert!(model.successful);
 }
 
 #[test]
 fn test_exists() {
-    let app = AppTester::<App>::default();
+    let app = App;
     let mut model = Model::default();
 
-    let request = &mut app
-        .update(Event::Exists, &mut model)
-        .expect_one_effect()
-        .expect_key_value();
+    let mut cmd = app.update(Event::Exists, &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_key_value();
 
     assert_eq!(
         request.operation,
@@ -239,26 +245,29 @@ fn test_exists() {
         }
     );
 
-    let _updated = app.resolve_to_event_then_update(
-        request,
-        KeyValueResult::Ok {
+    request
+        .resolve(KeyValueResult::Ok {
             response: KeyValueResponse::Exists { is_present: true },
-        },
-        &mut model,
-    );
+        })
+        .expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    app.update(event, &mut model)
+        .expect_one_effect()
+        .expect_render();
 
     assert!(model.successful);
 }
 
 #[test]
 fn test_list_keys() {
-    let app = AppTester::<App>::default();
+    let app = App;
     let mut model = Model::default();
 
-    let request = &mut app
-        .update(Event::ListKeys, &mut model)
-        .expect_one_effect()
-        .expect_key_value();
+    let mut cmd = app.update(Event::ListKeys, &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_key_value();
 
     assert_eq!(
         request.operation,
@@ -268,16 +277,19 @@ fn test_list_keys() {
         }
     );
 
-    let _updated = app.resolve_to_event_then_update(
-        request,
-        KeyValueResult::Ok {
+    request
+        .resolve(KeyValueResult::Ok {
             response: KeyValueResponse::ListKeys {
                 keys: vec!["test:1".to_string(), "test:2".to_string()],
                 next_cursor: 2,
             },
-        },
-        &mut model,
-    );
+        })
+        .expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    app.update(event, &mut model)
+        .expect_one_effect()
+        .expect_render();
 
     assert_eq!(model.keys, vec!["test:1".to_string(), "test:2".to_string()]);
     assert_eq!(model.cursor, 2);
@@ -285,13 +297,13 @@ fn test_list_keys() {
 
 #[test]
 pub fn test_kv_async() {
-    let app = AppTester::<App>::default();
+    let app = App;
     let mut model = Model::default();
 
-    let request = &mut app
-        .update(Event::GetThenSet, &mut model)
-        .expect_one_effect()
-        .expect_key_value();
+    let mut cmd = app.update(Event::GetThenSet, &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_key_value();
 
     assert_eq!(
         request.operation,
@@ -300,18 +312,15 @@ pub fn test_kv_async() {
         }
     );
 
-    let request = &mut app
-        .resolve(
-            request,
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Get {
-                    value: 17u32.to_ne_bytes().to_vec().into(),
-                },
+    request
+        .resolve(KeyValueResult::Ok {
+            response: KeyValueResponse::Get {
+                value: 17u32.to_ne_bytes().to_vec().into(),
             },
-        )
-        .unwrap()
-        .expect_one_effect()
-        .expect_key_value();
+        })
+        .expect("effect should resolve");
+
+    let mut request = cmd.expect_one_effect().expect_key_value();
 
     assert_eq!(
         request.operation,
@@ -321,15 +330,18 @@ pub fn test_kv_async() {
         }
     );
 
-    let _updated = app.resolve_to_event_then_update(
-        request,
-        KeyValueResult::Ok {
+    request
+        .resolve(KeyValueResult::Ok {
             response: KeyValueResponse::Set {
                 previous: Value::None,
             },
-        },
-        &mut model,
-    );
+        })
+        .expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    app.update(event, &mut model)
+        .expect_one_effect()
+        .expect_render();
 
     assert!(model.successful);
 }
