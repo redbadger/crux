@@ -1,7 +1,7 @@
 use crux_core::{
-    App, Command,
     macros::effect,
-    render::{RenderOperation, render},
+    render::{render, RenderOperation},
+    App, Command,
 };
 use crux_http::protocol::HttpRequest;
 use crux_kv::KeyValueOperation;
@@ -15,10 +15,10 @@ use crate::{
         model::{Favorite, Favorites, FavoritesState},
     },
     location::{
-        Location, capability::LocationOperation, model::geocoding_response::GeocodingResponse,
+        capability::LocationOperation, model::geocoding_response::GeocodingResponse, Location,
     },
-    navigation::{CurrentPage, navigate},
-    weather::{self, events::WeatherEvent, model::current_response::CurrentResponse},
+    navigation::{navigate, CurrentPage},
+    weather::{self, events::WeatherEvent, model::current_response::CurrentWeatherResponse},
 };
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -48,7 +48,7 @@ pub enum Workflow {
 
 #[derive(Default, Debug)]
 pub struct Model {
-    pub weather_data: CurrentResponse,
+    pub weather_data: CurrentWeatherResponse,
     pub page: CurrentPage,
     pub workflow: Workflow,
     pub favorites: Favorites,
@@ -66,7 +66,7 @@ pub struct ViewModel {
 #[repr(C)]
 pub enum WorkflowViewModel {
     Home {
-        weather_data: Box<CurrentResponse>,
+        weather_data: Box<CurrentWeatherResponse>,
         favorites: Vec<FavoriteView>,
     },
     Favorites {
@@ -82,7 +82,7 @@ pub enum WorkflowViewModel {
 pub struct FavoriteView {
     name: String,
     location: Location,
-    current: Box<Option<CurrentResponse>>,
+    current: Box<Option<CurrentWeatherResponse>>,
 }
 
 impl From<&Favorite> for FavoriteView {

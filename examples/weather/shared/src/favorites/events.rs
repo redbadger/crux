@@ -156,7 +156,7 @@ mod tests {
         app::{Event, Weather},
         location::client::LocationApi,
         weather::model::{
-            current_response::{CurrentResponse, Main, Sys},
+            current_response::{CurrentWeatherResponse, Main, Sys},
             response_elements::{Clouds, Coord, WeatherData, Wind},
         },
     };
@@ -301,7 +301,7 @@ mod tests {
                 country: "US".to_string(),
                 state: None,
             },
-            current: Some(CurrentResponse {
+            current: Some(CurrentWeatherResponse {
                 coord: Coord {
                     lat: 33.456_789,
                     lon: -112.037_222,

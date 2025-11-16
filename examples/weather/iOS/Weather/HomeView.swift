@@ -3,12 +3,12 @@ import App
 
 // View modifier to handle data state transitions
 private struct WeatherDataTransitionModifier: ViewModifier {
-    let weatherData: CurrentResponse?
+    let weatherData: CurrentWeatherResponse?
     let favorites: [FavoriteView]
-    @State private var previousWeatherData: CurrentResponse?
+    @State private var previousWeatherData: CurrentWeatherResponse?
     @State private var previousFavorites: [FavoriteView] = []
     
-    var displayWeatherData: CurrentResponse? {
+    var displayWeatherData: CurrentWeatherResponse? {
         if let weatherData = weatherData, weatherData.main.temp.isFinite {
             previousWeatherData = weatherData
             previousFavorites = favorites
