@@ -54,7 +54,7 @@ impl fmt::Display for Main {
 
 #[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Builder)]
 #[builder(setter(into))]
-pub struct CurrentResponse {
+pub struct CurrentWeatherResponse {
     pub coord: Coord,
     pub weather: Vec<WeatherData>,
     pub base: String,
@@ -70,7 +70,7 @@ pub struct CurrentResponse {
     pub cod: usize,
 }
 
-impl fmt::Display for CurrentResponse {
+impl fmt::Display for CurrentWeatherResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

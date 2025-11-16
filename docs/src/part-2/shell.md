@@ -1,3 +1,5 @@
+# The shell
+
 # Message interface between core and shell
 
 So far in this book, we've been taking the perspective of being inside the core
@@ -14,9 +16,7 @@ The shell only has two responsibilities:
 1. Laying out the UI components
 2. Supporting the app's capabilities
 
-We'll look at these separately. But first let's remind ourselves of how we
-interact with the core (now would be a good time to read
-[Shared core and types](../getting_started/core.md) if you haven't already).
+We'll look at these separately.
 
 ## The message protocol
 
@@ -67,9 +67,7 @@ Core wants displayed on screen.
 You're probably thinking, "Whoa! I just see slices and vectors of bytes, where's
 the type safety?". Well, the answer is that we also generate all the types that
 pass through the bridge, for each language, along with serialization and
-deserialization helpers. This is done by the `serde-generate` crate (see the
-section on
-[Create the shared types crate](../getting_started/core.md#create-the-shared-types-crate)).
+deserialization helpers. This is done by the `serde-generate` crate.
 
 ```admonish warning title="Sharp edge"
 For now we have to manually invoke the serialization code in the shell. At some point this may be abstracted away.
@@ -169,8 +167,7 @@ Android shell with Kotlin.
 
 The components are bound to the view model, and they send events to the core.
 
-We've already seen a "hello world" example when we were
-[setting up an Android project](../getting_started/Android/android.md#create-some-ui-and-run-in-the-simulator).
+We've already seen a "hello world" example when we were setting up an Android project
 Rather than print that out again here, we'll just look at how we need to enhance
 it to work with Kotlin coroutines. We'll probably need to do this with any real
 shell, because the update function that dispatches side effect requests from the
