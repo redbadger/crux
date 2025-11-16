@@ -1,43 +1,50 @@
 # Summary
 
 [Overview](./overview.md)
-
 [Motivation](./motivation.md)
 
-# Getting Started
+# Part I - Basics
 
-1. [Shared core and types](./getting_started/core.md)
-1. [iOS](./getting_started/iOS/index.md)
-   1. [Swift and SwiftUI (XcodeGen)](./getting_started/iOS/with_xcodegen.md)
-   1. [Swift and SwiftUI (manual)](./getting_started/iOS/manual.md)
-1. [Android](./getting_started/Android/index.md)
-   1. [Kotlin and Jetpack Compose](./getting_started/Android/android.md)
-   1. [Android minify](./getting_started/Android/android-apk-shrink.md)
-1. [Web](./getting_started/web/index.md)
-   1. [TypeScript and React (Next.js)](./getting_started/web/nextjs.md)
-   1. [TypeScript and React (Remix)](./getting_started/web/remix.md)
-   1. [TypeScript and Svelte (Parcel)](./getting_started/web/svelte.md)
-   1. [Rust and Yew](./getting_started/web/yew.md)
-   1. [Rust and Leptos](./getting_started/web/leptos.md)
-   1. [Rust and Dioxus](./getting_started/web/dioxus.md)
+1. [Getting started](./part-1/getting_started.md)
+1. [A very basic app](./part-1/basic_app.md)
+1. [Testing](./part-1/testing.md)
+1. [The shell](./part-1/shell.md)
+    1. [iOS](./part-1/shell/ios/index.md)
+        1. [With xcodegen](./part-1/shell/ios/with_xcodegen.md)
+        1. [Manually](./part-1/shell/ios/manual.md)
+    1. [Android](./part-1/shell/android/index.md)
+        1. [Kotlin and Jetpack Compose](./part-1/shell/android/android.md)
+    1. [React](./part-1/shell/web/react.md)
+    1. [Leptos](./part-1/shell/web/leptos.md)
 
-# Development Guide
+# Part II - A real app
 
-1. [Hello world](./guide/hello_world.md)
-1. [Elm Architecture](./guide/elm_architecture.md)
-1. [Managed Effects](./guide/effects.md)
-1. [Capabilities](./guide/capabilities.md)
-1. [Building capabilities](./guide/capability_apis.md)
-1. [Testing](./guide/testing.md)
-1. [Interface between core and shell](./guide/message_interface.md)
-1. [Composable Applications](./guide/composing.md)
+1. [The Weather App](./part-2/weather_app.md)
+1. [The Elm Architecture](./part-2/elm_architecture.md)
+1. [Managed Effects](./part-2/effects.md)
+1. [Building Capabilities](./part-2/capabilities.md)
+1. [The shell](./part-2/shell.md)
+    1. [iOS](./part-2/shell/ios.md)
+    1. [Android](./part-2/shell/android.md)
+    1. [React](./part-2/shell/react.md)
+    1. [Leptos](./part-2/shell/leptos.md)
 
-# Internals
+# Part III - Advanced topics
 
-1. [Capability runtime and Effects](./internals/runtime.md)
-1. [FFI bridge](./internals/bridge.md)
-1. [The Effect type](./internals/effect.md)
-1. [Type generation](./internals/typegen.md)
+1. [Middleware](./part-3/middleware.md)
+1. [Other platforms](./part-3/platforms.md)
+    1. [Swift and SwiftUI (manual)](./platforms/ios_manual.md)
+    1. [TypeScript and React (Remix)](./platforms/remix.md)
+    1. [TypeScript and Svelte](./platforms/svelte.md)
+    1. [Rust and Yew](./platforms/yew.md)
+    1. [Rust and Dioxus](./platforms/dioxus.md)
+
+# Part IV - Understanding Internals
+
+1. [Effects runtime](./part-4/runtime.md)
+1. [FFI bridge](./part-4/bridge.md)
+1. [The Effect type](./part-4/effect.md)
+1. [Type generation](./part-4/typegen.md)
 
 # RFCs
 

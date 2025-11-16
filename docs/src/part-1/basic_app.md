@@ -1,15 +1,13 @@
-# Hello world
+# A very basic app
 
 As the first step, we will build a simple application, starting with a classic
 Hello World, adding some state, and finally a remote API call. We will focus on
 the core, rely on tests to tell us things work, and return to the shell a little
 later, so unfortunately there won't be much to see until then.
 
-If you want to follow along, you should start by following the
-[Shared core and types](../getting_started/core.md), guide to set up the
-project.
-
 ## Creating an app
+
+FIXME: Build up to the Simple counter app
 
 ```admonish example
 You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/hello_world/shared/src/app.rs)
@@ -54,9 +52,10 @@ implementation of the side-effects and the "non-functional" requirements (NFRs).
 For example, your application knows it wants to store data in a SQL database,
 but it doesn't need to know or care whether that database is local or remote.
 That decision can even change as the application evolves, and be different on
-each platform. If you want to understand this better before we carry on, you can
-read a lot more about how side-effects work in Crux in the chapter on
-[Managed Effects](./effects.md).
+each platform. We won't go into the detail at this point, because we don't need
+the full extent of side effects just yet. If you want to know more now, you can jump ahead
+to the chapter on [Managed Effects](../part-2/effects.md), but it's probably a bit much
+at this point.
 
 To _ask_ the Shell for side effects, it will need to know what side effects it
 needs to handle, so we will need to declare them (as an enum). _Effects_ are
@@ -83,7 +82,7 @@ As you can see, for now, we will use a single capability, `crux_core::render`, w
 
 That means the core can produce a single `Effect`. It will soon be more than one, so we'll wrap it in an enum to give ourselves space. We'll also annotate our `Effect` enum with the `crux_core::macros::effect` attribute, which produces a _real_ `Effect` enum (which is very similar), one for FFI across the boundary to the shell, and various trait implementations and test helpers.
 
-We also need to link the effect to our app. We'll go into the detail of why that is in the [Managed Effects](effects.md) section, but the basic reason is that capabilities need to be able to send the outcomes of their work back into the app.
+We also need to link the effect to our app. We'll go into the detail of why that is in the [Managed Effects](../part-2/effects.md) section, but the basic reason is that capabilities need to be able to send the outcomes of their work back into the app.
 
 You probably also noticed the `Event` type, which defines messages that can be sent back to the app. The same type is also used by the Shell to forward any user interactions to the Core, and in order to pass across the FFI boundary, it needs to be serializable. The resulting code will end up looking like this:
 
@@ -223,7 +222,7 @@ pub enum Event {
 
 The event type covers all the possible events the app can respond to. "Will that
 not get massive really quickly??" I hear you ask. Don't worry about that, there
-is [a nice way to make this scale](./composing.md) and get reuse as well. Let's
+is [a nice way to make this scale](../part-2/elm_architecture.md) and get reuse as well. Let's
 carry on. We need to actually handle those messages.
 
 ```rust,noplayground
@@ -271,8 +270,8 @@ something like this
 
 ```json
 {
-  "value": 34,
-  "updated_at": 1673265904973
+    "value": 34,
+    "updated_at": 1673265904973
 }
 ```
 

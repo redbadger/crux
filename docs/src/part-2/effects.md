@@ -48,7 +48,7 @@ API service, or on an embedded device in a factory). The specific storage soluti
 for persistent caching would be implemented differently on different platforms,
 but would potentially share the key format and eviction strategy across them.
 
-The hard part of designing effects is working out exactly where to draw the line  between what is the intent and what is the implementation detail, what's common across platforms and what may be different on each, and implementing the former in Rust as a set of types, and the latter on the native side in the Shell, however is appropriate.
+The hard part of designing effects is working out exactly where to draw the line between what is the intent and what is the implementation detail, what's common across platforms and what may be different on each, and implementing the former in Rust as a set of types, and the latter on the native side in the Shell, however is appropriate.
 
 Because Effects define the "language" used to express intent, your Crux application code can
 be portable onto any platform capable of executing its effect in some way.
@@ -108,7 +108,6 @@ We will look at writing capabilities in the next chapter, but for now, it's usef
 
 To help that make more sense, lets look at how Commands are typically used.
 
-
 ## Working with Commands
 
 The intent behind the command API is to cover 80% of effect orchestration without asking developers to use `async` Rust. We will look at the `async` use in a minute, but first lets look at what can be done without it.
@@ -159,9 +158,10 @@ You might also want to run effects in a sequence, passing output of one as the i
 ## Command builders
 
 Command builders come in three flavours:
-* [RequestBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.RequestBuilder.html) - the most common, builds a request expecting a single response from the shell (think HTTP client)
-* [StreamBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.StreamBuilder.html) - builds a request expecting a (possibly infinite) sequence of responses from the shell (think WebSockets)
-* [NotificationBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.NotificationBuilder.html) - builds a shell notification, which does not expect a response. The best example is notifying the shell that a new view model is available
+
+- [RequestBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.RequestBuilder.html) - the most common, builds a request expecting a single response from the shell (think HTTP client)
+- [StreamBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.StreamBuilder.html) - builds a request expecting a (possibly infinite) sequence of responses from the shell (think WebSockets)
+- [NotificationBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.NotificationBuilder.html) - builds a shell notification, which does not expect a response. The best example is notifying the shell that a new view model is available
 
 All builders share a common API. Request and stream builder can be converted into commands with a `.then_send`.
 
@@ -252,3 +252,24 @@ line should just work.
 
 To begin with, you can simply return a `Command::done()` from the `update`
 function. `Command::done()` is a no-op effect.
+
+## Capabilities
+
+In the last chapter, we spoke about Effects. In this one we'll look at the APIs
+your app will actually use to request them – the capabilities.
+
+Capabilities are reusable, platform agnostic APIs for a particular type of
+effect. They have two key jobs:
+
+1. Provide a nice ergonomic API for apps to use to create `Command`s
+2. Manage the communication between the app and the Shell by defining an `Operation` type
+
+From the perspective of the app, you can think of capabilities as an equivalent
+to SDKs. And a lot of them will provide an interface to the actual platform
+specific SDKs.
+
+There is not a lot more to be said about using capabilities, your best source is probably
+the [documentation of the provided Time capability](https://docs.rs/crux_time/latest/crux_time/command/struct.Time.html), you'll find
+that the basic capabilities just define some types and a few functions.
+
+If you're interested in building your own capability, read the [next chapter](./capabilities.md).

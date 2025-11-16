@@ -5,7 +5,7 @@ import os.log
 
 /// A card view that displays the current weather information in a visually appealing way.
 struct WeatherCard: View {
-    let weatherData: CurrentResponse
+    let weatherData: CurrentWeatherResponse
     @Environment(\.colorScheme) var colorScheme
     
     private var isDay: Bool {

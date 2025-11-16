@@ -20,44 +20,49 @@ one can learn nothing from their experience (and that's _despite_ long design
 discussions).
 
 We think such experiences with the platform native approach are common, and the
-reason why people look to React Native and Flutter. The issues with React Native
-are two fold
+reason why people look to React Native and Flutter.
+
+The issues with the second approach are two-fold:
 
 - Only _mostly_ native user interface
 - In the case of React Native, the JavaScript ecosystem tooling disaster
 
-React Native effectively takes over, and works hard to insulate the engineer
+React Native and Flutter effectively take over, and work hard to insulate the engineer
 from the native platform underneath and pretend it doesn't really exist, but of
-course, inevitably, it does and the user interface ends up being built in a
-combination of 90% JavaScript/TypeScript and 10% Kotlin/Swift. This was still a
-major win when React Native was first introduced, because the platform native UI
+course, inevitably, it does exist and the user interface ends up being built in a
+combination of 90% JavaScript/TypeScript and 10% Kotlin/Swift. This was a major
+win when React Native was first introduced, because the platform native UI
 toolkits were imperative, following a version of MVC architecture, and generally
 made it quite difficult to get UI state management right. React on the other
 hand is declarative, leaving much less space for errors stemming from the UI
-getting into an undefined state. This benefit was clearly recognised by iOS and
-Android, and both introduced their own declarative UI toolkit - Swift UI and
-Jetpack Compose. Both of them are quite good, matching that particular advantage
-of React Native, and leaving only building things once (in theory). But in
-exchange, they have to be written in JavaScript (and adjacent tools and
-languages).
+getting into an undefined state (although as apps got more complex and codebases grew,
+React's state management model got more complex with them). The benefit of declarative
+UI was clearly recognised by iOS and Android, and both introduced their own declarative
+UI toolkit - Swift UI and Jetpack Compose. Both of them are quite good, matching
+that particular advantage of React Native, and leaving only building things once (in theory). But in
+exchange, they have to be written in JavaScript (and adjacent tools and languages).
+
+## Why _not_ build all apps in JavaScript?
 
 The main issue with the JavaScript ecosystem is that it's built on sand. The
 underlying language is quite loose and has a
 [lot of inconsistencies](https://www.destroyallsoftware.com/talks/wat). It came
 with no package manager originally, now [it](https://www.npmjs.com/)
 [has](https://yarnpkg.com/) [three](https://pnpm.io/). To serve code to the
-browser, it gets bundled, and the list of bundlers is too long to include here.
-[Webpack](https://webpack.js.org/), the most popular one, is famously difficult
-to configure. JavaScript was built as a dynamic language which leads to a lot of
-basic human errors, which are made while writing the code, only being discovered
-when running the code. Static type systems aim to solve that problem and
-[TypeScript](https://www.typescriptlang.org/) adds this onto JavaScript, but the
-types only go so far (until they hit an `any` type, or dependencies with no type
-definitions), and they disappear at runtime.
+browser, it gets bundled, and the list of bundlers is too long to include here,
+and even 10 years since the introduction of ES modules, the ecosystem is still split
+and the competing module standards make all tooling more complex and difficult to configure.
 
-In short, upgrading JavaScript to something modern takes a lot of tooling.
+JavaScript was built as a dynamic language which leads to a lot of basic human errors,
+which are made while writing the code, only being discovered when running the code.
+Static type systems aim to solve that problem and [TypeScript](https://www.typescriptlang.org/)
+adds this onto JavaScript, but the types only go so far (until they hit an `any` type,
+or dependencies with no type definitions), and they disappear at runtime.
+
+In short, upgrading JavaScript to something modern, capable of handling a large app
+codebase with multiple people or even teams working on it takes a lot of tooling.
 Getting all this tooling set up and ready to build things is an all day job, and
-so more tooling, like [Next.js](https://nextjs.org/) has popped up providing
+so more tooling, like [Vite](https://vite.dev/) has popped up providing
 this configuration in a box, batteries included. Perhaps the final admission of
 this problem is the recent [Biome](https://biomejs.dev/blog/annoucing-biome/)
 toolchain (formerly the Rome project), attempting to bring all the various tools
@@ -80,9 +85,10 @@ project.
 
 In short, we think the JS ecosystem has jumped the shark, the "complexity
 toothpaste" is out of the tube, and it's time to stop. But there's no real
-viable alternative. Crux is our attempt to provide one.
+viable alternative.
+
+Crux is our attempt to provide one.
 
 ---
 
-[^once]:
-    In reality it's more like 1.4x effort build the same app for two platforms.
+[^once]: In reality it's more like 1.4x effort build the same app for two platforms.

@@ -3,10 +3,6 @@
 These are the steps to set up Android Studio to build and run a simple Android
 app that calls into a shared core.
 
-```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
-```
-
 ```admonish warning title="Sharp edge"
 We want to make setting up Android Studio to work with Crux really easy. As time progresses we will try to simplify and automate as much as possible, but at the moment there is some manual configuration to do. This only needs doing once, so we hope it's not too much trouble. If you know of any better ways than those we describe below, please either raise an issue (or a PR) at <https://github.com/redbadger/crux>.
 ```
@@ -120,7 +116,7 @@ dynamic library and generating the runtime bindings and the shared types.
 - The [Android NDK](https://developer.android.com/ndk)
 - Mozilla's [Rust gradle plugin](https://github.com/mozilla/rust-android-gradle)
   for Android
-  - This plugin depends on Python 3, make sure you have a version installed
+    - This plugin depends on Python 3, make sure you have a version installed
 - [Java Native Access](https://github.com/java-native-access/jna)
 - [Uniffi](https://mozilla.github.io/uniffi-rs/) to generate Java bindings
 

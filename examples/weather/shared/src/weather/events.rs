@@ -11,7 +11,7 @@ use crate::{
     },
     weather::{
         client::{WeatherApi, WeatherError},
-        model::current_response::CurrentResponse,
+        model::current_response::CurrentWeatherResponse,
     },
 };
 
@@ -35,7 +35,7 @@ pub enum WeatherEvent {
 
     #[serde(skip)]
     #[facet(skip)]
-    SetWeather(#[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>),
+    SetWeather(#[facet(opaque)] Box<Result<CurrentWeatherResponse, WeatherError>>),
 
     #[serde(skip)]
     #[facet(skip)]
@@ -44,7 +44,7 @@ pub enum WeatherEvent {
     #[serde(skip)]
     #[facet(skip)]
     SetFavoriteWeather(
-        #[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>,
+        #[facet(opaque)] Box<Result<CurrentWeatherResponse, WeatherError>>,
         Location,
     ),
 }
@@ -121,7 +121,9 @@ mod tests {
             client::WeatherApi,
             events::{WeatherEvent, update},
             model::{
-                current_response::{CurrentResponse, CurrentResponseBuilder, Main, Sys},
+                current_response::{
+                    CurrentWeatherResponse, CurrentWeatherResponseBuilder, Main, Sys,
+                },
                 response_elements::{Clouds, Coord, WeatherData, Wind},
             },
         },
@@ -141,8 +143,8 @@ mod tests {
         }
     }
 
-    fn test_response() -> CurrentResponse {
-        CurrentResponseBuilder::default()
+    fn test_response() -> CurrentWeatherResponse {
+        CurrentWeatherResponseBuilder::default()
             .main(Main {
                 temp: 20.0,
                 feels_like: 18.0,
