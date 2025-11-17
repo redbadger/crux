@@ -7,8 +7,8 @@ use crux_core::capability::Operation;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use duration::Duration;
-use instant::Instant;
+pub use duration::Duration;
+pub use instant::Instant;
 
 #[derive(Facet, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

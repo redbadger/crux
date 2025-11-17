@@ -1,4 +1,3 @@
-#![deny(clippy::pedantic)]
 //! Current time access for Crux apps
 //!
 //! Current time (on a wall clock) is considered a side-effect (although if we were to get pedantic, it's
@@ -21,9 +20,6 @@ use std::{
     time,
 };
 
-use facet::Facet;
-pub use protocol::{TimeRequest, TimeResponse, TimerId, duration::Duration, instant::Instant};
-
 use crux_core::{Command, Request, command::RequestBuilder};
 use futures::{
     FutureExt,
@@ -31,8 +27,10 @@ use futures::{
     select_biased,
 };
 
+pub use protocol::*;
+
 /// Result of the timer run. Timers can either run to completion or be cleared early.
-#[derive(Facet, Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 #[repr(C)]
 pub enum TimerOutcome {
     /// Timer completed successfully.
@@ -246,7 +244,7 @@ impl TimerHandle {
 ///
 /// `CompletedTimerHandle` can no longer be cleared, but can be compared with a
 /// previously stored `TimerHandle`, if the app uses several timers at the same time.
-#[derive(Facet, Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CompletedTimerHandle {
     timer_id: TimerId,
 }

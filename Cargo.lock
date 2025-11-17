@@ -700,6 +700,7 @@ name = "crux_platform"
 version = "0.7.0"
 dependencies = [
  "crux_core",
+ "facet",
  "serde",
 ]
 
@@ -1056,9 +1057,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3da4053abf9d61bb08145b3f058c559bf9bb0ffb9c6a63ee3bafdb4f49c2a627"
+checksum = "a0f4288e9501bf17657e8967cfdd43a56543775a48ff4536284d7ff5ea19336b"
 dependencies = [
  "derive_builder",
  "facet",

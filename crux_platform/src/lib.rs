@@ -1,23 +1,13 @@
-#![deny(clippy::pedantic)]
 //! A demo capability to get a name of the current platform
 
 pub mod command;
+pub mod protocol;
 
 use std::marker::PhantomData;
 
-use crux_core::{Command, Request, capability::Operation, command::RequestBuilder};
-use serde::{Deserialize, Serialize};
+use crux_core::{Command, Request, command::RequestBuilder};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlatformRequest;
-
-// TODO revisit this
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlatformResponse(pub String);
-
-impl Operation for PlatformRequest {
-    type Output = PlatformResponse;
-}
+pub use protocol::*;
 
 pub struct Platform<Effect, Event> {
     effect: PhantomData<Effect>,

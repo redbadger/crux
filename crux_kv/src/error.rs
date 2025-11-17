@@ -1,9 +1,11 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Error type for `KeyValue` operations
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Error)]
+#[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Error)]
 #[serde(rename_all = "camelCase")]
+#[repr(C)]
 pub enum KeyValueError {
     #[error("IO error: {message}")]
     Io { message: String },
@@ -14,3 +16,8 @@ pub enum KeyValueError {
     #[error("other error: {message}")]
     Other { message: String },
 }
+
+pub type Result<T> = core::result::Result<T, KeyValueError>;
+pub type StatusResult = Result<bool>;
+pub type DataResult = Result<Option<Vec<u8>>>;
+pub type ListResult = Result<(Vec<String>, u64)>;

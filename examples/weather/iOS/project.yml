@@ -13,7 +13,7 @@ targets:
   Weather:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "18.0"
     sources:
       - Weather
       - path: ../shared/src/shared.udl
