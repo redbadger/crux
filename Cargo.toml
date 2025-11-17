@@ -9,6 +9,7 @@ members = [
     "crux_platform",
     "crux_time",
     "doctest_support",
+    "examples_support/api_server",
     "xtask",
 ]
 
