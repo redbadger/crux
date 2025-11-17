@@ -3,14 +3,16 @@
 
 use std::future::Future;
 
-use crux_core::{capability::Operation, command::RequestBuilder, Command, Request};
+use crux_core::{Command, Request, capability::Operation, command::RequestBuilder};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use super::Location;
 
 // The operations that can be performed related to location.
 // Using an enum allows us to easily add more operations in the future and ensures type safety.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[repr(C)]
 pub enum LocationOperation {
     IsLocationEnabled,
     GetLocation,
@@ -21,15 +23,16 @@ pub enum LocationOperation {
 
 // The possible results from performing a location operation.
 // This enum allows us to handle different response types in a type-safe way.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[repr(C)]
 pub enum LocationResult {
     Enabled(bool),
     Location(Option<Location>),
 }
 
 #[must_use]
-pub fn is_location_enabled<Effect, Event>(
-) -> RequestBuilder<Effect, Event, impl Future<Output = bool>>
+pub fn is_location_enabled<Effect, Event>()
+-> RequestBuilder<Effect, Event, impl Future<Output = bool>>
 where
     Effect: Send + From<Request<LocationOperation>> + 'static,
     Event: Send + 'static,
@@ -41,8 +44,8 @@ where
 }
 
 #[must_use]
-pub fn get_location<Effect, Event>(
-) -> RequestBuilder<Effect, Event, impl Future<Output = Option<Location>>>
+pub fn get_location<Effect, Event>()
+-> RequestBuilder<Effect, Event, impl Future<Output = Option<Location>>>
 where
     Effect: Send + From<Request<LocationOperation>> + 'static,
     Event: Send + 'static,
@@ -57,13 +60,4 @@ where
 // This ties the operation type to its output/result type.
 impl Operation for LocationOperation {
     type Output = LocationResult;
-
-    // This is only used for type generation (e.g., for FFI bindings).
-    #[cfg(feature = "typegen")]
-    fn register_types(generator: &mut crux_core::typegen::TypeGen) -> crux_core::typegen::Result {
-        generator.register_type::<Self>()?;
-        generator.register_type::<Location>()?;
-        generator.register_type::<LocationResult>()?;
-        Ok(())
-    }
 }

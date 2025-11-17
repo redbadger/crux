@@ -1,6 +1,6 @@
 # Weather App Example (Crux)
 
-This project is a cross-platform weather application example built using [Crux](https://github.com/redbadger/crux/), demonstrating a clean separation of business logic (in Rust) and platform-specific UI (here, iOS/SwiftUI). The app fetches weather data from the OpenWeatherMap API and displays it in a modern, user-friendly interface.
+This project is a cross-platform weather application example built using [Crux](https://github.com/redbadger/crux/), demonstrating a clean separation of business logic (in Rust) and platform-specific UI (here, iOS/SwiftUI). The app fetches weather data from the [OpenWeatherMap API](https://openweathermap.org/api) and displays it in a modern, user-friendly interface.
 
 ## Features
 - Fetches current weather for a given location using OpenWeatherMap
@@ -17,7 +17,6 @@ This project is a cross-platform weather application example built using [Crux](
       - `favorites/` — Favorite locations management
    - `config.rs` — Shared configuration (API keys, endpoints)
    - `app.rs` — Core app logic and view state management
-- `shared_types/` — Rust crate for generating FFI bindings and shared types
 - `iOS/` — iOS app using SwiftUI, integrates with Rust via FFI
 
 ## Architecture Summary
@@ -69,6 +68,14 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed breakdown.
 
 5. Open `iOS/Weather.xcodeproj` in Xcode and run the app.
 
+1. Set location in a running simulator:
+
+    ```bash
+    # set the location to Big Ben (Elizabeth Tower), London, UK
+    xcrun simctl location booted set 51.500510810750356,-0.12462580696146475
+    ```
+
+
 ### Running Tests
 - Rust logic: `cd shared && cargo test`
 - iOS app: Use Xcode's test runner
@@ -85,4 +92,4 @@ Apache-2.0. See [LICENSE](../LICENSE).
 
 ## Acknowledgements
 - [Crux](https://github.com/redbadger/crux/)
-- [OpenWeatherMap](https://openweathermap.org/) 
+- [OpenWeatherMap](https://openweathermap.org/)

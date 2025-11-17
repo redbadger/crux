@@ -1,6 +1,10 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::{location::Location, weather::model::CurrentResponse, GeocodingResponse};
+use crate::{
+    location::{Location, model::GeocodingResponse},
+    weather::model::current_response::CurrentResponse,
+};
 
 pub const FAVORITES_KEY: &str = "favorites";
 
@@ -16,7 +20,8 @@ impl From<GeocodingResponse> for Favorite {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum FavoritesState {
     Idle,
     ConfirmDelete(Location),

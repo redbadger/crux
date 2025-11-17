@@ -1,16 +1,18 @@
-use crux_core::{render::render, Command};
+use crux_core::{Command, render::render};
 use crux_kv::{command::KeyValue, error::KeyValueError};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-use crate::favorites::model::{Favorite, Favorites, FavoritesState, FAVORITES_KEY};
+use crate::app::{Effect, Model, Workflow};
+use crate::favorites::model::{FAVORITES_KEY, Favorite, Favorites, FavoritesState};
 use crate::location::client::{LocationApi, LocationError};
 use crate::location::model::geocoding_response::GeocodingResponse;
 
 use crate::location::Location;
-use crate::{Effect, Workflow};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum FavoritesEvent {
     // Workflow - Favorites view
     DeletePressed(Location),
@@ -21,19 +23,28 @@ pub enum FavoritesEvent {
     Search(String),
     Submit(Box<GeocodingResponse>),
     Cancel,
+
     #[serde(skip)]
-    SearchResult(Box<Result<Vec<GeocodingResponse>, LocationError>>),
+    #[facet(skip)]
+    SearchResult(#[facet(opaque)] Box<Result<Vec<GeocodingResponse>, LocationError>>),
+
     // KV Related
     Restore,
+
     #[serde(skip)]
+    #[facet(skip)]
     Set,
+
     #[serde(skip)]
-    Stored(Result<Option<Vec<u8>>, KeyValueError>),
+    #[facet(skip)]
+    Stored(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
+
     #[serde(skip)]
-    Load(Result<Option<Vec<u8>>, KeyValueError>),
+    #[facet(skip)]
+    Load(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
 }
 
-pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect, FavoritesEvent> {
+pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, FavoritesEvent> {
     match event {
         FavoritesEvent::DeletePressed(location) => {
             model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(location));
@@ -137,18 +148,17 @@ pub fn update(event: FavoritesEvent, model: &mut crate::Model) -> Command<Effect
 
 #[cfg(test)]
 mod tests {
-    use crux_core::{assert_effect, App as _};
+    use crux_core::{App as _, assert_effect};
     use crux_http::protocol::{HttpResponse, HttpResult};
 
     use super::*;
     use crate::{
+        app::{App, Event},
         location::client::LocationApi,
         weather::model::{
-            current_response::{Main, Sys},
+            current_response::{CurrentResponse, Main, Sys},
             response_elements::{Clouds, Coord, WeatherData, Wind},
-            CurrentResponse,
         },
-        App, Effect, Event, GeocodingResponse, Model,
     };
 
     // Helper to create a test favorite
@@ -184,7 +194,7 @@ mod tests {
     #[test]
     fn test_kv_set_and_load() {
         // Model will have no favorites set
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
 
         let favorites = Favorites::from_vec(vec![test_favorite()]);
 
@@ -198,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_kv_load_empty() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let mut cmd = update(FavoritesEvent::Load(Ok(None)), &mut model);
         assert!(cmd.effects().next().is_none());
         assert!(model.favorites.is_empty());
@@ -206,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_kv_load_error() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let mut cmd = update(
             FavoritesEvent::Load(Err(KeyValueError::CursorNotFound)),
             &mut model,
@@ -217,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_delete_with_persistence() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let favorite = test_favorite();
         let favorite = favorite.clone(); // Clone once at the start
         model.favorites.insert(favorite.clone());
@@ -247,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_delete_pressed() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let favorite = Favorite {
             geo: GeocodingResponse {
                 name: "Phoenix".to_string(),
@@ -280,8 +290,8 @@ mod tests {
 
     #[test]
     fn test_delete_confirmed() {
-        let app = crate::App;
-        let mut model = crate::Model::default();
+        let app = App;
+        let mut model = Model::default();
         let favorite = Favorite {
             geo: GeocodingResponse {
                 name: "Phoenix".to_string(),
@@ -322,7 +332,7 @@ mod tests {
                 sys: Sys {
                     id: 1,
                     country: "US".to_string(),
-                    sys_type: 1,
+                    type_: 1,
                     sunrise: 1_716_216_000,
                     sunset: 1_716_216_000,
                 },
@@ -391,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_submit_adds_favorite() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let geo = test_geocoding();
 
         // Submit the favorite
@@ -431,7 +441,7 @@ mod tests {
 
     #[test]
     fn test_submit_persists_favorite() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let geo1 = test_geocoding();
         let geo2 = GeocodingResponse {
             name: "New York".to_string(),
@@ -467,7 +477,7 @@ mod tests {
 
     #[test]
     fn test_add_multiple_favorites() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let geo1 = test_geocoding();
         let geo2 = GeocodingResponse {
             name: "New York".to_string(),
@@ -543,7 +553,7 @@ mod tests {
 
     #[test]
     fn test_submit_duplicate_favorite() {
-        let mut model = crate::Model::default();
+        let mut model = Model::default();
         let geo = test_geocoding();
 
         // First submit - should succeed

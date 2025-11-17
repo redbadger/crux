@@ -1,22 +1,25 @@
 [workspace]
-members = ["shared", "shared_types"]
-resolver = "1"
+members = ["shared"]
+resolver = "3"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.80.0"
+rust-version = "1.88.0"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }
-
 serde = "1.0.228"
 
 [workspace.metadata.bin]
 cargo-xcode = { version = "=1.7.0" }
+
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3

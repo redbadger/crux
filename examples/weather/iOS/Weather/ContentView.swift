@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 
 // View modifier to handle smooth transitions
 private struct SmoothTransitionModifier: ViewModifier {

@@ -1,7 +1,8 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Eq)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Eq)]
 pub struct WeatherData {
     pub id: u64,
     pub main: String,

@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 
 // View modifier to handle data state transitions
 private struct WeatherDataTransitionModifier: ViewModifier {
@@ -75,7 +75,7 @@ struct HomeView: View {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
                             withAnimation(.easeOut(duration: 0.2)) {
-                                core.update(.navigate(Workflow.favorites(FavoritesState.idle)))
+                                core.update(.navigate(.favorites(FavoritesState.idle)))
                             }
                         } label: {
                             Image(systemName: "star")

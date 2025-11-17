@@ -1,10 +1,11 @@
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
 use crux_http::protocol::HttpRequest;
 use crux_kv::KeyValueOperation;
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,19 +15,20 @@ use crate::{
         model::{Favorite, Favorites, FavoritesState},
     },
     location::{
-        capability::LocationOperation, model::geocoding_response::GeocodingResponse, Location,
+        Location, capability::LocationOperation, model::geocoding_response::GeocodingResponse,
     },
     weather::{self, events::WeatherEvent, model::current_response::CurrentResponse},
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum Event {
     Navigate(Box<Workflow>),
     Home(Box<WeatherEvent>),
     Favorites(Box<FavoritesEvent>),
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
     KeyValue(KeyValueOperation),
@@ -34,7 +36,8 @@ pub enum Effect {
     Location(LocationOperation),
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum Workflow {
     #[default]
     Home,
@@ -52,12 +55,13 @@ pub struct Model {
     pub last_location: Option<Location>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ViewModel {
     pub workflow: WorkflowViewModel,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum WorkflowViewModel {
     Home {
         weather_data: Box<CurrentResponse>,
@@ -72,7 +76,7 @@ pub enum WorkflowViewModel {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct FavoriteView {
     name: String,
     location: Location,

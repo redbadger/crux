@@ -1,8 +1,9 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(
-    Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Copy, Clone,
+    Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Copy, Clone,
 )]
 pub struct Clouds {
     pub all: i64,

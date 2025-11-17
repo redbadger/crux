@@ -2,11 +2,11 @@ pub mod capability;
 pub mod client;
 pub mod model;
 
-pub use capability::{get_location, is_location_enabled, LocationOperation, LocationResult};
+use facet::Facet;
 use model::GeocodingResponse;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct Location {
     pub lat: f64,
     pub lon: f64,

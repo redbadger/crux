@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 import os.log
 
 
@@ -65,12 +65,12 @@ struct WeatherCard: View {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.down")
                         .font(.caption)
-                    Text(String(format: "%.1f°", weatherData.main.temp_min))
+                    Text(String(format: "%.1f°", weatherData.main.tempMin))
                 }
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.up")
                         .font(.caption)
-                    Text(String(format: "%.1f°", weatherData.main.temp_max))
+                    Text(String(format: "%.1f°", weatherData.main.tempMax))
                 }
             }
             .font(.subheadline)
@@ -84,7 +84,7 @@ struct WeatherCard: View {
                 WeatherDetailItem(
                     icon: "thermometer",
                     title: "Feels Like",
-                    value: String(format: "%.1f°", weatherData.main.feels_like)
+                    value: String(format: "%.1f°", weatherData.main.feelsLike)
                 )
                 WeatherDetailItem(
                     icon: "humidity",

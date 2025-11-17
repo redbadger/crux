@@ -12,89 +12,36 @@
 		0F67593482ECEFBFDADA5C00 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD447F86A87DD1C6AE99B778 /* ContentView.swift */; };
 		3021D5DE53EE94F409D37582 /* core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18032855DCE53DAA8CD4873A /* core.swift */; };
 		55ECBDE98E802DD2CEFD2EC3 /* WeatherIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38B9616B0941BE512048956 /* WeatherIcon.swift */; };
-		5DC942049FA5FDE67EDA3CA8 /* (null) in Resources */ = {isa = PBXBuildFile; fileRef = 5378319C628C7ABF2330607A; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		606F39F1898C70652CDBC06A /* TimeDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6111A3515F19948A27D0EE4 /* TimeDisplay.swift */; };
 		60EAD48063946C55CF7C033E /* AddFavoriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF58DE50D9FA14781145E719 /* AddFavoriteView.swift */; };
 		628C717C658B7B4EEA1B60F7 /* FavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E78ACAF923A8436E677CDC2 /* FavoritesView.swift */; };
-		69DBA1DF2B087C9C783C3078 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = E19646B481217068D9307548 /* SharedTypes */; };
+		69DBA1DF2B087C9C783C3078 /* Shared in Frameworks */ = {isa = PBXBuildFile; productRef = 972BABDA469B425640B22AEB /* Shared */; };
 		75BA40A01C537856C405AC48 /* KeyValueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95F9AD6A6E3BCF89778C54D8 /* KeyValueStore.swift */; };
-		A54B79AE3FAAAD3AA27E843A /* libshared_static.a.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B1A389C40B068B0E67D3CDF /* libshared_static.a.a */; };
 		AF554685E0DDC11B77EE4538 /* WeatherCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E48A65B5CDA22FFECD834277 /* WeatherCard.swift */; };
 		CB768B52E7E2670FA1C818CB /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11ECFE18BBA7C626145716C /* HomeView.swift */; };
 		CEB843CF9C3C833A7CD3F9EB /* KeyValueModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = BAFCFD1AFDE59B8F808D6698 /* KeyValueModel.xcdatamodeld */; };
-		E10F52D0311EC904169F0A09 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = 0381D41DA1C1035BB7A80A09 /* shared.udl */; };
+		E7C9BF84A8DEF71C1A7C484F /* App in Frameworks */ = {isa = PBXBuildFile; productRef = 36EEEF4168EE50016B1D4C5E /* App */; };
 		E9AD2BE81BAD28231811D660 /* WeatherDetailItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A5C2A5039DD0702B534783 /* WeatherDetailItem.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXBuildRule section */
-		A801E7F0A1490E165CC69081 /* PBXBuildRule */ = {
-			isa = PBXBuildRule;
-			compilerSpec = com.apple.compilers.proxy.script;
-			filePatterns = "*.udl";
-			fileType = pattern.proxy;
-			isEditable = 1;
-			name = "Generate FFI";
-			outputFiles = (
-				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE).swift",
-				"$(PROJECT_DIR)/generated/$(INPUT_FILE_BASE)FFI.h",
-			);
-			outputFilesCompilerFlags = (
-			);
-			runOncePerArchitecture = 0;
-			script = "#!/bin/bash\nset -e\n\n# Skip during indexing phase in XCode 13+\nif [ \"$ACTION\" == \"indexbuild\" ]; then\n  echo \"Not building *.udl files during indexing.\"\n  exit 0\nfi\n\n# Skip for preview builds\nif [ \"$ENABLE_PREVIEWS\" = \"YES\" ]; then\n  echo \"Not building *.udl files during preview builds.\"\n  exit 0\nfi\n\ncd \"${INPUT_FILE_DIR}/..\"\n\"${BUILD_DIR}/${CONFIGURATION}/uniffi-bindgen\" generate \"src/${INPUT_FILE_NAME}\" --language swift --out-dir \"${PROJECT_DIR}/generated\"\n";
-		};
-/* End PBXBuildRule section */
-
-/* Begin PBXContainerItemProxy section */
-		038AE252B18EFE8E1030345E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C247A47D5014BD4BF299F8FA /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA02FA85CE9E8109328FB0D5;
-			remoteInfo = "uniffi-bindgen-bin";
-		};
-		5E2CE236724E271D3EA47583 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C247A47D5014BD4BF299F8FA /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA0049BF7D4FFB09138082B7;
-			remoteInfo = "shared-staticlib";
-		};
-		73FED9EC0893E0B04607CC88 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C247A47D5014BD4BF299F8FA /* Shared */;
-			proxyType = 1;
-			remoteGlobalIDString = CA0049BF7D4FD346A0A05154;
-			remoteInfo = "shared-staticlib";
-		};
-		AE78604876324602EE009A06 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C247A47D5014BD4BF299F8FA /* Shared */;
-			proxyType = 1;
-			remoteGlobalIDString = CA02FA85CE9E4296ADE0F606;
-			remoteInfo = "uniffi-bindgen-bin";
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
-		0381D41DA1C1035BB7A80A09 /* shared.udl */ = {isa = PBXFileReference; path = shared.udl; sourceTree = "<group>"; };
 		18032855DCE53DAA8CD4873A /* core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = core.swift; sourceTree = "<group>"; };
 		1E78ACAF923A8436E677CDC2 /* FavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesView.swift; sourceTree = "<group>"; };
 		278042B07E146BB0A122BD1C /* Weather.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Weather.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4482EF4DD38B529B74AD3E38 /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
 		4A85E1FCBE09843016D375FE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		582F527522D47E9CF940E580 /* Shared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Shared; path = generated/Shared; sourceTree = SOURCE_ROOT; };
 		95F9AD6A6E3BCF89778C54D8 /* KeyValueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyValueStore.swift; sourceTree = "<group>"; };
+		9F42E8E849453D7711096999 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = generated/App; sourceTree = SOURCE_ROOT; };
 		B591574767845350E99D00FE /* KeyValueModel.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = KeyValueModel.xcdatamodel; sourceTree = "<group>"; };
 		B6A5C2A5039DD0702B534783 /* WeatherDetailItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherDetailItem.swift; sourceTree = "<group>"; };
 		BF58DE50D9FA14781145E719 /* AddFavoriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFavoriteView.swift; sourceTree = "<group>"; };
-		C247A47D5014BD4BF299F8FA /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
 		C6E4EB07D190903C2A7F017E /* WeatherApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherApp.swift; sourceTree = "<group>"; };
 		D11ECFE18BBA7C626145716C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		D38B9616B0941BE512048956 /* WeatherIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherIcon.swift; sourceTree = "<group>"; };
 		DD447F86A87DD1C6AE99B778 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E48A65B5CDA22FFECD834277 /* WeatherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherCard.swift; sourceTree = "<group>"; };
 		F6111A3515F19948A27D0EE4 /* TimeDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeDisplay.swift; sourceTree = "<group>"; };
-		F887CD26404D8EDFC67DAADD /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,27 +49,19 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A54B79AE3FAAAD3AA27E843A /* libshared_static.a.a in Frameworks */,
-				69DBA1DF2B087C9C783C3078 /* SharedTypes in Frameworks */,
+				69DBA1DF2B087C9C783C3078 /* Shared in Frameworks */,
+				E7C9BF84A8DEF71C1A7C484F /* App in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		254165A9D3E500AD72E310E0 /* src */ = {
-			isa = PBXGroup;
-			children = (
-				0381D41DA1C1035BB7A80A09 /* shared.udl */,
-			);
-			name = src;
-			path = ../shared/src;
-			sourceTree = "<group>";
-		};
 		4679C7A9635F49687177EA3F /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				F887CD26404D8EDFC67DAADD /* SharedTypes */,
+				9F42E8E849453D7711096999 /* App */,
+				582F527522D47E9CF940E580 /* Shared */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -152,28 +91,9 @@
 			isa = PBXGroup;
 			children = (
 				4679C7A9635F49687177EA3F /* Packages */,
-				254165A9D3E500AD72E310E0 /* src */,
 				921ED02B8BE9C2869C4B5D72 /* Weather */,
 				EAFAA58F195D6F56A3681DC6 /* Products */,
-				C95B53CD4343B733FDE8C419 /* Projects */,
 			);
-			sourceTree = "<group>";
-		};
-		A819DC3C00731EFBB9F7D8A2 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				5378319C628C7ABF2330607A,
-				1B1A389C40B068B0E67D3CDF /* libshared_static.a.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		C95B53CD4343B733FDE8C419 /* Projects */ = {
-			isa = PBXGroup;
-			children = (
-				C247A47D5014BD4BF299F8FA /* Shared */,
-			);
-			name = Projects;
 			sourceTree = "<group>";
 		};
 		EAFAA58F195D6F56A3681DC6 /* Products */ = {
@@ -192,19 +112,16 @@
 			buildConfigurationList = 7ABCB454428DFDCCE1513E99 /* Build configuration list for PBXNativeTarget "Weather" */;
 			buildPhases = (
 				180F8B77734C82C147B6B367 /* Sources */,
-				EE177338D2AADFDCDBD9F2B6 /* Resources */,
 				5BD6EE0F0D0D14676AD152D7 /* Frameworks */,
 			);
 			buildRules = (
-				A801E7F0A1490E165CC69081 /* PBXBuildRule */,
 			);
 			dependencies = (
-				4E86E0C0B51D9C246ADBFB69 /* PBXTargetDependency */,
-				EE8548F6FEF407EB41770139 /* PBXTargetDependency */,
 			);
 			name = Weather;
 			packageProductDependencies = (
-				E19646B481217068D9307548 /* SharedTypes */,
+				972BABDA469B425640B22AEB /* Shared */,
+				36EEEF4168EE50016B1D4C5E /* App */,
 			);
 			productName = Weather;
 			productReference = 278042B07E146BB0A122BD1C /* Weather.app */;
@@ -230,48 +147,17 @@
 			mainGroup = 980CE069C9D8D6DF46D5BEA0;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				50F813F3D9FAD0B389999685 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */,
+				8546C34928F79514E1A41CB7 /* XCLocalSwiftPackageReference "generated/App" */,
+				36344A18ED203C687CA65E83 /* XCLocalSwiftPackageReference "generated/Shared" */,
 			);
 			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = A819DC3C00731EFBB9F7D8A2 /* Products */;
-					ProjectRef = C247A47D5014BD4BF299F8FA /* Shared */;
-				},
-			);
 			projectRoot = "";
 			targets = (
 				45CD8315A1AD1CFAAAD5F135 /* Weather */,
 			);
 		};
 /* End PBXProject section */
-
-/* Begin PBXReferenceProxy section */
-		1B1A389C40B068B0E67D3CDF /* libshared_static.a.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libshared_static.a.a;
-			remoteRef = 5E2CE236724E271D3EA47583 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		5378319C628C7ABF2330607A = {
-			isa = PBXReferenceProxy;
-			remoteRef = 038AE252B18EFE8E1030345E /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-/* End PBXReferenceProxy section */
-
-/* Begin PBXResourcesBuildPhase section */
-		EE177338D2AADFDCDBD9F2B6 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5DC942049FA5FDE67EDA3CA8 /* (null) in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		180F8B77734C82C147B6B367 /* Sources */ = {
@@ -291,24 +177,10 @@
 				55ECBDE98E802DD2CEFD2EC3 /* WeatherIcon.swift in Sources */,
 				3021D5DE53EE94F409D37582 /* core.swift in Sources */,
 				0E5EAA09A76EB9E5B0BF56FE /* http.swift in Sources */,
-				E10F52D0311EC904169F0A09 /* shared.udl in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		4E86E0C0B51D9C246ADBFB69 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "uniffi-bindgen-bin";
-			targetProxy = AE78604876324602EE009A06 /* PBXContainerItemProxy */;
-		};
-		EE8548F6FEF407EB41770139 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = "shared-staticlib";
-			targetProxy = 73FED9EC0893E0B04607CC88 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		37596FAF292884D1465B1713 /* Debug */ = {
@@ -378,20 +250,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Weather/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"-w",
-					"-ObjC",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.weather.Weather;
+				PRODUCT_BUNDLE_IDENTIFIER = com.crux.example.Weather;
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -401,20 +267,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Weather/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"-w",
-					"-ObjC",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.weather.Weather;
+				PRODUCT_BUNDLE_IDENTIFIER = com.crux.example.Weather;
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = generated/sharedFFI.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -498,16 +358,24 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		50F813F3D9FAD0B389999685 /* XCLocalSwiftPackageReference "../shared_types/generated/swift/SharedTypes" */ = {
+		36344A18ED203C687CA65E83 /* XCLocalSwiftPackageReference "generated/Shared" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shared_types/generated/swift/SharedTypes;
+			relativePath = generated/Shared;
+		};
+		8546C34928F79514E1A41CB7 /* XCLocalSwiftPackageReference "generated/App" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = generated/App;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E19646B481217068D9307548 /* SharedTypes */ = {
+		36EEEF4168EE50016B1D4C5E /* App */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = SharedTypes;
+			productName = App;
+		};
+		972BABDA469B425640B22AEB /* Shared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Shared;
 		};
 /* End XCSwiftPackageProductDependency section */
 

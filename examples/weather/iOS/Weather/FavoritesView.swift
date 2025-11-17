@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 
 struct FavoritesView: View {
     @ObservedObject var core: Core
@@ -56,7 +56,7 @@ struct FavoritesView: View {
         }
     }
     
-    private func favoritesList(_ favorites: [SharedTypes.FavoriteView]) -> some View {
+    private func favoritesList(_ favorites: [FavoriteView]) -> some View {
         ScrollView {
             VStack(spacing: 24) {
                 if favorites.isEmpty {
@@ -84,7 +84,7 @@ struct FavoritesView: View {
 }
 
 struct FavoriteCard: View {
-    let favorite: SharedTypes.FavoriteView
+    let favorite: FavoriteView
     let core: Core
     
     var body: some View {

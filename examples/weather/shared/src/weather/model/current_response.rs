@@ -4,15 +4,18 @@ use crate::weather::model::response_elements::WeatherData;
 use crate::weather::model::response_elements::Wind;
 use derive_builder::Builder;
 
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
-#[derive(Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone)]
+#[derive(
+    Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone,
+)]
 pub struct Sys {
     #[serde(rename = "type")]
-    pub sys_type: usize,
+    pub type_: usize,
     pub id: usize,
     pub country: String,
     pub sunrise: usize,
@@ -24,12 +27,12 @@ impl fmt::Display for Sys {
         write!(
             f,
             "System: (type: {}, id: {}, country: {}, sunrise: {}, sunset: {})",
-            self.sys_type, self.id, self.country, self.sunrise, self.sunset,
+            self.type_, self.id, self.country, self.sunrise, self.sunset,
         )
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Copy, Clone)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Copy, Clone)]
 pub struct Main {
     pub temp: f64,
     pub feels_like: f64,
@@ -44,18 +47,12 @@ impl fmt::Display for Main {
         write!(
             f,
             "Main: (temp: {}, feels_like: {}, temp_min: {}, temp_max: {}, pressure: {}, humidity: {})",
-            self.temp,
-            self.feels_like,
-            self.temp_min,
-            self.temp_max,
-            self.pressure,
-            self.humidity,
-
+            self.temp, self.feels_like, self.temp_min, self.temp_max, self.pressure, self.humidity,
         )
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Builder)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Builder)]
 #[builder(setter(into))]
 pub struct CurrentResponse {
     pub coord: Coord,

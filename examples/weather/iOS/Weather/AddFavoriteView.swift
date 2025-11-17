@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 
 struct AddFavoriteView: View {
     @ObservedObject var core: Core
@@ -18,7 +18,7 @@ struct AddFavoriteView: View {
                             .foregroundColor(.secondary)
                         TextField("Search location...", text: $searchText)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .onChange(of: searchText) { newValue in
+                            .onChange(of: searchText) { oldValue, newValue in
                                 if !newValue.isEmpty {
                                     isSearching = true
                                     core.update(.favorites(.search(newValue)))
