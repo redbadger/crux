@@ -1,8 +1,8 @@
-# Generate types for Swift, build the shared library as a Swift package and rebuild the Xcode project
-build: typegen package generate-project
+# Generate types for Swift, build the shared library as a Swift package
+build: typegen package
 
-# clean and build
-rebuild: clean build
+# clean, rebuild the Xcode project and build
+rebuild: clean generate-project build
 
 # build and run Xcode
 dev: build

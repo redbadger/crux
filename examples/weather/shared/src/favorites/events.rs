@@ -47,13 +47,13 @@ pub enum FavoritesEvent {
 pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, FavoritesEvent> {
     match event {
         FavoritesEvent::DeletePressed(location) => {
-            model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(location));
+            model.workflow = Workflow::Favorites(FavoritesState::ConfirmDelete(location));
             render()
         }
 
         FavoritesEvent::DeleteConfirmed => {
-            if let Workflow::Favorites(FavoritesState::ConfirmDelete(location)) = model.page {
-                model.page = Workflow::Favorites(FavoritesState::Idle);
+            if let Workflow::Favorites(FavoritesState::ConfirmDelete(location)) = model.workflow {
+                model.workflow = Workflow::Favorites(FavoritesState::Idle);
 
                 if model.favorites.remove(&location).is_some() {
                     return update(FavoritesEvent::Set, model).and(render());
@@ -64,7 +64,7 @@ pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, Favor
         }
 
         FavoritesEvent::DeleteCancelled => {
-            model.page = Workflow::Favorites(FavoritesState::Idle);
+            model.workflow = Workflow::Favorites(FavoritesState::Idle);
             render()
         }
 
@@ -87,7 +87,7 @@ pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, Favor
             render()
         }
         FavoritesEvent::Submit(geo) => {
-            model.page = Workflow::Favorites(FavoritesState::Idle);
+            model.workflow = Workflow::Favorites(FavoritesState::Idle);
             model.search_results = None;
 
             let favorite = Favorite::from(*geo);
@@ -104,7 +104,7 @@ pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, Favor
         }
         FavoritesEvent::Cancel => {
             model.search_results = None;
-            model.page = Workflow::Favorites(FavoritesState::Idle);
+            model.workflow = Workflow::Favorites(FavoritesState::Idle);
             render()
         }
         // ======================
@@ -233,7 +233,7 @@ mod tests {
         model.favorites.insert(favorite.clone());
 
         // Set the state to ConfirmDelete with the favorite's coordinates
-        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
+        model.workflow = Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
             lat: favorite.geo.lat,
             lon: favorite.geo.lon,
         }));
@@ -280,7 +280,7 @@ mod tests {
 
         // Verify the state was updated correctly
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
                 lat: 33.456_789,
                 lon: -112.037_222,
@@ -349,7 +349,7 @@ mod tests {
         };
 
         model.favorites.insert(favorite.clone());
-        model.page = Workflow::Favorites(FavoritesState::ConfirmDelete(latlon));
+        model.workflow = Workflow::Favorites(FavoritesState::ConfirmDelete(latlon));
 
         // First command from DeleteConfirmed
         let mut cmd = app.update(
@@ -363,7 +363,7 @@ mod tests {
         // Verify the favorite was removed and state was reset
         assert!(model.favorites.is_empty());
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
     }
@@ -371,7 +371,7 @@ mod tests {
     #[test]
     fn test_delete_cancelled() {
         let mut model = Model {
-            page: Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
+            workflow: Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
                 lat: 33.456_789,
                 lon: 112.037_222,
             })),
@@ -382,7 +382,7 @@ mod tests {
 
         // Verify the state was reset
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
     }
@@ -415,7 +415,7 @@ mod tests {
         assert_eq!(model.favorites.len(), 1);
         assert_eq!(model.favorites.get(&geo.location()).unwrap().geo, geo);
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
     }
@@ -423,7 +423,7 @@ mod tests {
     #[test]
     fn test_cancel_returns_to_favorites() {
         let mut model = Model {
-            page: Workflow::AddFavorite,
+            workflow: Workflow::AddFavorite,
             ..Default::default()
         };
 
@@ -431,7 +431,7 @@ mod tests {
 
         // Verify the state was reset to Favorites
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
 
@@ -506,7 +506,7 @@ mod tests {
         assert_eq!(model.favorites.get(&geo1.location()).unwrap().geo, geo1);
         assert_eq!(model.favorites.get(&geo2.location()).unwrap().geo, geo2);
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
     }
@@ -577,7 +577,7 @@ mod tests {
 
         // Verify we still return to favorites view
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
     }

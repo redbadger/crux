@@ -20,9 +20,10 @@ impl From<GeocodingResponse> for Favorite {
     }
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
 #[repr(C)]
 pub enum FavoritesState {
+    #[default]
     Idle,
     ConfirmDelete(Location),
 }

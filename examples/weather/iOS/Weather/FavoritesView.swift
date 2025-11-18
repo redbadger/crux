@@ -1,61 +1,59 @@
-import SwiftUI
 import App
+import SwiftUI
 
 struct FavoritesView: View {
     @ObservedObject var core: Core
-    
+
     init(core: Core) {
         self.core = core
-        core.update(.favorites(.restore))
     }
-    
+
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color(.systemGroupedBackground)
-                    .ignoresSafeArea()
-                
-                VStack {
-                    switch core.view.workflow {
-                    case .favorites(let favorites, let deleteConfirmation):
-                        if let deleteConfirmation {
-                            let lat = deleteConfirmation.lat
-                            let lon = deleteConfirmation.lon
+        ZStack {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
 
-                            favoritesList(favorites)
-                                .overlay(deleteConfirmationOverlay(lat: lat, lon: lon))
-                        } else {
-                            favoritesList(favorites)
-                        }
+            VStack {
+                switch core.view.workflow {
+                case .favorites(let favorites, let deleteConfirmation):
+                    if let deleteConfirmation {
+                        let lat = deleteConfirmation.lat
+                        let lon = deleteConfirmation.lon
 
-
-
-                    default:
-                        Spacer()
-                        Text("No favorites yet")
-                            .foregroundColor(.secondary)
-                        Spacer()
+                        favoritesList(favorites)
+                            .overlay(deleteConfirmationOverlay(lat: lat, lon: lon))
+                    } else {
+                        favoritesList(favorites)
                     }
-                }
-            }
-            .navigationTitle("Favorites")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { core.update(.navigate(Workflow.home)) }) {
-                        Image(systemName: "chevron.left")
-                        Text("Home")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { core.update(.navigate(.addFavorite)) }) {
-                        Image(systemName: "plus")
-                    }
+
+                default:
+                    Spacer()
+                    Text("No favorites yet")
+                        .foregroundColor(.secondary)
+                    Spacer()
                 }
             }
         }
+        .navigationTitle("Favorites")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { core.update(.navigate(.home)) }) {
+                    Image(systemName: "chevron.left")
+                    Text("Home")
+                }
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { core.update(.navigate(.addFavorite)) }) {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .onAppear {
+            core.update(.favorites(.restore))
+        }
     }
-    
+
     private func favoritesList(_ favorites: [FavoriteView]) -> some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -73,7 +71,7 @@ struct FavoritesView: View {
             .padding(.vertical)
         }
     }
-    
+
     private func deleteConfirmationOverlay(lat: Double, lon: Double) -> some View {
         ZStack {
             Color.black.opacity(0.4)
@@ -86,7 +84,7 @@ struct FavoritesView: View {
 struct FavoriteCard: View {
     let favorite: FavoriteView
     let core: Core
-    
+
     var body: some View {
         Button(action: {
             core.update(.home(.show))
@@ -96,9 +94,9 @@ struct FavoriteCard: View {
                     Text(favorite.name)
                         .font(.headline)
                 }
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     core.update(.favorites(.deletePressed(favorite.location)))
                 }) {
@@ -120,18 +118,18 @@ struct DeleteConfirmationView: View {
     let lat: Double
     let lon: Double
     let core: Core
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Delete Favorite?")
                 .font(.headline)
-            
+
             HStack(spacing: 20) {
                 Button("Cancel") {
                     core.update(.favorites(.deleteCancelled))
                 }
                 .buttonStyle(.bordered)
-                
+
                 Button("Delete") {
                     core.update(.favorites(.deleteConfirmed))
                 }
@@ -149,4 +147,4 @@ struct DeleteConfirmationView: View {
 
 #Preview {
     FavoritesView(core: Core())
-} 
+}

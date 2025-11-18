@@ -6,6 +6,7 @@ mod favorites;
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 mod ffi;
 mod location;
+mod navigation;
 mod weather;
 
 pub use app::App;
