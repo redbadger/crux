@@ -7,7 +7,7 @@ enum Event {}
 
 #[derive(Default)]
 struct Model {
-    test: String
+    test: String,
 }
 
 // Commands can be constructed without async and dispatch basic
@@ -17,7 +17,8 @@ struct Model {
 #[test]
 fn mutate_model() {
     let mut cmd = Command::<Effect, Event, Model>::new_with_model(|ctx| async move {
-        ctx.model(|model| model.test = "Hello World".to_owned()).await;
+        ctx.model(|model| model.test = "Hello World".to_owned())
+            .await;
 
         let value = ctx.model(|model| model.test.clone()).await;
 

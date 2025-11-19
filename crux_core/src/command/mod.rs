@@ -242,7 +242,6 @@ mod executor;
 mod stream;
 
 use std::future::Future;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -278,8 +277,6 @@ pub struct Command<Effect, Event, Model = ()> {
 
     // Signaling
     aborted: Arc<AtomicBool>,
-
-    model: PhantomData<Model>,
 }
 
 // Public API
@@ -288,7 +285,7 @@ impl<Effect, Event, Model> Command<Effect, Event, Model>
 where
     Effect: Send + 'static,
     Event: Send + 'static,
-    Model: Send + 'static,
+    Model: 'static,
 {
     /// Create a new command orchestrating effects with async Rust. This is the lowest level
     /// API to create a Command if you need full control over its execution. In most cases you will
@@ -352,7 +349,6 @@ where
             tasks,
             waker: Arc::default(),
             aborted,
-            model: PhantomData,
         }
     }
 
@@ -369,7 +365,6 @@ where
         Ev: Send + 'static + Into<Event> + Unpin,
         Effect: Unpin,
         Event: Unpin,
-        Model: Unpin,
     {
         subcmd.map_effect(Into::into).map_event(Into::into)
     }
@@ -381,7 +376,6 @@ where
         Ev: Send + 'static + Unpin,
         Effect: Unpin + Into<Ef>,
         Event: Unpin + Into<Ev>,
-        Model: Unpin,
     {
         self.map_effect(Into::into).map_event(Into::into)
     }
@@ -422,7 +416,6 @@ where
     where
         Effect: Unpin + Send + 'static,
         Event: Unpin + Send + 'static,
-        Model: Unpin + Send + 'static,
     {
         self.host(ctx.effects, ctx.events).await;
     }
@@ -435,7 +428,6 @@ where
     where
         Effect: Unpin,
         Event: Unpin,
-        Model: Unpin,
     {
         Command::new_with_model(|ctx| async move {
             // first run self until done
@@ -451,7 +443,6 @@ where
     where
         Effect: Unpin,
         Event: Unpin,
-        Model: Unpin,
     {
         self.spawn(|ctx| other.into_future(ctx));
 
@@ -464,7 +455,6 @@ where
         I: IntoIterator<Item = Self>,
         Effect: Unpin,
         Event: Unpin,
-        Model: Unpin,
     {
         let mut command = Command::done();
 
@@ -487,7 +477,6 @@ where
         NewEffect: Send + Unpin + 'static,
         Effect: Unpin,
         Event: Unpin,
-        Model: Unpin,
     {
         Command::new_with_model(|ctx| async move {
             let mapped = self.map(|output| match output {
@@ -509,7 +498,6 @@ where
         NewEvent: Send + Unpin + 'static,
         Effect: Unpin,
         Event: Unpin,
-        Model: Unpin,
     {
         Command::new_with_model(|ctx| async move {
             let mapped = self.map(|output| match output {

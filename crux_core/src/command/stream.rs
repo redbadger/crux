@@ -24,7 +24,7 @@ impl<Effect, Event, Model> Stream for Command<Effect, Event, Model>
 where
     Effect: Unpin + Send + 'static,
     Event: Unpin + Send + 'static,
-    Model: Unpin + Send + 'static,
+    Model: 'static,
 {
     type Item = CommandOutput<Effect, Event>;
 
