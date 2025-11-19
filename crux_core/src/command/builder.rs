@@ -15,7 +15,7 @@ use super::{Command, context::CommandContext};
 /// A builder of one-off notify command
 // Task is a future which does the shell talking and returns an output
 pub struct NotificationBuilder<Effect, Event, Task> {
-    make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
+    make_task: Box<dyn FnOnce(CommandContext<Effect, Event, ()>) -> Task + Send>,
 }
 
 impl<Effect, Event, Task> NotificationBuilder<Effect, Event, Task>
@@ -26,7 +26,7 @@ where
 {
     pub fn new<F>(make_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Task + Send + 'static,
+        F: FnOnce(CommandContext<Effect, Event, ()>) -> Task + Send + 'static,
     {
         let make_task = Box::new(make_task);
 
@@ -35,7 +35,7 @@ where
 
     /// Convert the [`NotificationBuilder`] into a future to use in an async context
     #[must_use]
-    pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Task {
+    pub fn into_future(self, ctx: CommandContext<Effect, Event, ()>) -> Task {
         let make_task = self.make_task;
         make_task(ctx)
     }
@@ -62,7 +62,7 @@ where
 /// A builder of one-off request command
 // Task is a future which does the shell talking and returns an output
 pub struct RequestBuilder<Effect, Event, Task> {
-    make_task: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
+    make_task: Box<dyn FnOnce(CommandContext<Effect, Event, ()>) -> Task + Send>,
 }
 
 impl<Effect, Event, Task, T> RequestBuilder<Effect, Event, Task>
@@ -73,7 +73,7 @@ where
 {
     pub fn new<F>(make_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Task + Send + 'static,
+        F: FnOnce(CommandContext<Effect, Event, ()>) -> Task + Send + 'static,
     {
         let make_task = Box::new(make_task);
 
@@ -363,7 +363,7 @@ where
 
     /// Convert the [`RequestBuilder`] into a future to use in an async context
     #[must_use]
-    pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> Task {
+    pub fn into_future(self, ctx: CommandContext<Effect, Event, ()>) -> Task {
         let make_task = self.make_task;
         make_task(ctx)
     }
@@ -398,7 +398,7 @@ where
 
 /// A builder of stream command
 pub struct StreamBuilder<Effect, Event, Task> {
-    make_stream: Box<dyn FnOnce(CommandContext<Effect, Event>) -> Task + Send>,
+    make_stream: Box<dyn FnOnce(CommandContext<Effect, Event, ()>) -> Task + Send>,
 }
 
 impl<Effect, Event, Task, T> StreamBuilder<Effect, Event, Task>
@@ -409,7 +409,7 @@ where
 {
     pub fn new<F>(make_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Task + Send + 'static,
+        F: FnOnce(CommandContext<Effect, Event, ()>) -> Task + Send + 'static,
     {
         let make_task = Box::new(make_task);
 
@@ -622,7 +622,7 @@ where
 
     /// Convert the [`StreamBuilder`] into a stream to use in an async context
     #[must_use]
-    pub fn into_stream(self, ctx: CommandContext<Effect, Event>) -> Task {
+    pub fn into_stream(self, ctx: CommandContext<Effect, Event, ()>) -> Task {
         let make_stream = self.make_stream;
 
         make_stream(ctx)

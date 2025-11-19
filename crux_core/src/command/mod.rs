@@ -242,6 +242,7 @@ mod executor;
 mod stream;
 
 use std::future::Future;
+use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -261,10 +262,11 @@ use crate::Request;
 use crate::capability::Operation;
 
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
-pub struct Command<Effect, Event> {
+pub struct Command<Effect, Event, Model = ()> {
     effects: Receiver<Effect>,
     events: Receiver<Event>,
-    context: CommandContext<Effect, Event>,
+    mutations: Receiver<Box<dyn FnOnce(&mut Model) + Send>>,
+    context: CommandContext<Effect, Event, Model>,
 
     // Executor internals
     // TODO: should this be a separate type?
@@ -276,14 +278,17 @@ pub struct Command<Effect, Event> {
 
     // Signaling
     aborted: Arc<AtomicBool>,
+
+    model: PhantomData<Model>,
 }
 
 // Public API
 
-impl<Effect, Event> Command<Effect, Event>
+impl<Effect, Event, Model> Command<Effect, Event, Model>
 where
     Effect: Send + 'static,
     Event: Send + 'static,
+    Model: Send + 'static,
 {
     /// Create a new command orchestrating effects with async Rust. This is the lowest level
     /// API to create a Command if you need full control over its execution. In most cases you will
@@ -297,9 +302,9 @@ where
     /// # Panics
     ///
     /// If we could not make the task ready because the ready channel was disconnected.
-    pub fn new<F, Fut>(create_task: F) -> Self
+    pub fn new_with_model<F, Fut>(create_task: F) -> Self
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
+        F: FnOnce(CommandContext<Effect, Event, Model>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
         // RFC: do we need to think about backpressure? The channels are unbounded
@@ -310,12 +315,14 @@ where
         let (event_sender, event_receiver) = crossbeam_channel::unbounded();
         let (ready_sender, ready_receiver) = crossbeam_channel::unbounded();
         let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
+        let (mutations_sender, mutations_receiver) = crossbeam_channel::unbounded();
         let (_, waker_receiver) = crossbeam_channel::unbounded();
 
         let context = context::CommandContext {
             effects: effect_sender,
             events: event_sender,
             tasks: spawn_sender,
+            mutations: mutations_sender,
             rc: Arc::default(),
         };
 
@@ -337,6 +344,7 @@ where
         Command {
             effects: effect_receiver,
             events: event_receiver,
+            mutations: mutations_receiver,
             context,
             ready_queue: ready_receiver,
             spawn_queue: spawn_receiver,
@@ -344,37 +352,213 @@ where
             tasks,
             waker: Arc::default(),
             aborted,
+            model: PhantomData,
         }
     }
 
     /// Create an empty, completed Command. This is useful as a return value from `update` if
     /// there are no side-effects to perform.
     pub fn done() -> Self {
-        Command::new(|_ctx| futures::future::ready(()))
+        Command::new_with_model(|_ctx| futures::future::ready(()))
     }
 
     /// Create a command from another command with compatible `Effect` and `Event` types
-    pub fn from<Ef, Ev>(subcmd: Command<Ef, Ev>) -> Self
+    pub fn from<Ef, Ev>(subcmd: Command<Ef, Ev, Model>) -> Self
     where
         Ef: Send + 'static + Into<Effect> + Unpin,
         Ev: Send + 'static + Into<Event> + Unpin,
         Effect: Unpin,
         Event: Unpin,
+        Model: Unpin,
     {
         subcmd.map_effect(Into::into).map_event(Into::into)
     }
 
     /// Turn the command into another command with compatible `Effect` and `Event` types
-    pub fn into<Ef, Ev>(self) -> Command<Ef, Ev>
+    pub fn into<Ef, Ev>(self) -> Command<Ef, Ev, Model>
     where
         Ef: Send + 'static + Unpin,
         Ev: Send + 'static + Unpin,
         Effect: Unpin + Into<Ef>,
         Event: Unpin + Into<Ev>,
+        Model: Unpin,
     {
         self.map_effect(Into::into).map_event(Into::into)
     }
 
+    /// Run the effect state machine until it settles, then return true
+    /// if there is any more work to do - tasks to run or events or effects to receive
+    pub fn is_done(&mut self) -> bool {
+        self.run_until_settled(None);
+
+        // If a context is alive, the command can still receive effects, events or tasks.
+        let all_context_dropped = Arc::strong_count(&self.context.rc) == 1;
+
+        all_context_dropped
+            && self.effects.is_empty()
+            && self.events.is_empty()
+            && self.mutations.is_empty()
+            && self.tasks.is_empty()
+    }
+
+    /// Run the effect state machine until it settles and return an iterator over the effects
+    pub fn effects(&mut self) -> impl Iterator<Item = Effect> + '_ {
+        self.run_until_settled(None);
+
+        self.effects.try_iter()
+    }
+
+    /// Run the effect state machine until it settles and return an iterator over the events
+    pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
+        self.run_until_settled(None);
+
+        self.events.try_iter()
+    }
+
+    // Combinators
+
+    /// Convert the command into a future to use in an async context
+    pub async fn into_future(self, ctx: CommandContext<Effect, Event, Model>)
+    where
+        Effect: Unpin + Send + 'static,
+        Event: Unpin + Send + 'static,
+        Model: Unpin + Send + 'static,
+    {
+        self.host(ctx.effects, ctx.events).await;
+    }
+
+    /// Create a command running self and the other command in sequence
+    // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
+    // the output of the first command in building the second one, it just runs them in sequence,
+    // and the benefit is unclear.
+    pub fn then(self, other: Self) -> Self
+    where
+        Effect: Unpin,
+        Event: Unpin,
+        Model: Unpin,
+    {
+        Command::new_with_model(|ctx| async move {
+            // first run self until done
+            self.into_future(ctx.clone()).await;
+
+            // then run other until done
+            other.into_future(ctx).await;
+        })
+    }
+
+    /// Convenience for [`Command::all`] which runs another command concurrently with this one
+    pub fn and(mut self, other: Self) -> Self
+    where
+        Effect: Unpin,
+        Event: Unpin,
+        Model: Unpin,
+    {
+        self.spawn(|ctx| other.into_future(ctx));
+
+        self
+    }
+
+    /// Create a command running a number of commands concurrently
+    pub fn all<I>(commands: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+        Effect: Unpin,
+        Event: Unpin,
+        Model: Unpin,
+    {
+        let mut command = Command::done();
+
+        for c in commands {
+            command.spawn(|ctx| c.into_future(ctx));
+        }
+
+        command
+    }
+
+    // Mapping for composition
+
+    /// Map effects requested as part of this command to a different effect type.
+    ///
+    /// This is useful when composing apps to convert a command from a child app to a
+    /// command of the parent app.
+    pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event, Model>
+    where
+        F: Fn(Effect) -> NewEffect + Send + Sync + 'static,
+        NewEffect: Send + Unpin + 'static,
+        Effect: Unpin,
+        Event: Unpin,
+        Model: Unpin,
+    {
+        Command::new_with_model(|ctx| async move {
+            let mapped = self.map(|output| match output {
+                CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
+                CommandOutput::Event(event) => CommandOutput::Event(event),
+            });
+
+            mapped.host(ctx.effects, ctx.events).await;
+        })
+    }
+
+    /// Map events sent as part of this command to a different effect type
+    ///
+    /// This is useful when composing apps to convert a command from a child app to a
+    /// command of the parent app.
+    pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent, Model>
+    where
+        F: Fn(Event) -> NewEvent + Send + Sync + 'static,
+        NewEvent: Send + Unpin + 'static,
+        Effect: Unpin,
+        Event: Unpin,
+        Model: Unpin,
+    {
+        Command::new_with_model(|ctx| async move {
+            let mapped = self.map(|output| match output {
+                CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
+                CommandOutput::Event(event) => CommandOutput::Event(map(event)),
+            });
+
+            mapped.host(ctx.effects, ctx.events).await;
+        })
+    }
+
+    /// Spawn an additional task on the command. The task will execute concurrently with
+    /// existing tasks
+    ///
+    /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
+    /// events back to the app, and to spawn additional tasks. The closure is expected to return a future.
+    pub fn spawn<F, Fut>(&mut self, create_task: F)
+    where
+        F: FnOnce(CommandContext<Effect, Event, Model>) -> Fut,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        self.context.spawn(create_task);
+    }
+
+    /// Returns an abort handle which can be used to remotely terminate a running Command
+    /// and all its subtask.
+    ///
+    /// This is specifically useful for cancelling subscriptions and long running effects
+    /// which may get superseded, like timers
+    #[must_use]
+    pub fn abort_handle(&self) -> AbortHandle {
+        AbortHandle {
+            aborted: self.aborted.clone(),
+        }
+    }
+}
+
+impl<Effect, Event> Command<Effect, Event, ()>
+where
+    Effect: Send + 'static,
+    Event: Send + 'static,
+{
+    pub fn new<F, Fut>(create_task: F) -> Self
+    where
+        F: FnOnce(CommandContext<Effect, Event, ()>) -> Fut,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        Command::new_with_model(create_task)
+    }
     /// Create a Command which dispatches an event and terminates. This is an alternative
     /// to calling `update` recursively. The only difference is that the two `update` calls
     /// will be visible to Crux and can show up in logs or any tooling. The trade-off is that
@@ -435,159 +619,6 @@ where
         Effect: From<Request<Op>>,
     {
         builder::StreamBuilder::new(|ctx| ctx.stream_from_shell(operation))
-    }
-
-    /// Run the effect state machine until it settles, then return true
-    /// if there is any more work to do - tasks to run or events or effects to receive
-    pub fn is_done(&mut self) -> bool {
-        self.run_until_settled();
-
-        // If a context is alive, the command can still receive effects, events or tasks.
-        let all_context_dropped = Arc::strong_count(&self.context.rc) == 1;
-
-        all_context_dropped
-            && self.effects.is_empty()
-            && self.events.is_empty()
-            && self.tasks.is_empty()
-    }
-
-    /// Run the effect state machine until it settles and return an iterator over the effects
-    pub fn effects(&mut self) -> impl Iterator<Item = Effect> + '_ {
-        self.run_until_settled();
-
-        self.effects.try_iter()
-    }
-
-    /// Run the effect state machine until it settles and return an iterator over the events
-    pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
-        self.run_until_settled();
-
-        self.events.try_iter()
-    }
-
-    // Combinators
-
-    /// Convert the command into a future to use in an async context
-    pub async fn into_future(self, ctx: CommandContext<Effect, Event>)
-    where
-        Effect: Unpin + Send + 'static,
-        Event: Unpin + Send + 'static,
-    {
-        self.host(ctx.effects, ctx.events).await;
-    }
-
-    /// Create a command running self and the other command in sequence
-    // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
-    // the output of the first command in building the second one, it just runs them in sequence,
-    // and the benefit is unclear.
-    pub fn then(self, other: Self) -> Self
-    where
-        Effect: Unpin,
-        Event: Unpin,
-    {
-        Command::new(|ctx| async move {
-            // first run self until done
-            self.into_future(ctx.clone()).await;
-
-            // then run other until done
-            other.into_future(ctx).await;
-        })
-    }
-
-    /// Convenience for [`Command::all`] which runs another command concurrently with this one
-    pub fn and(mut self, other: Self) -> Self
-    where
-        Effect: Unpin,
-        Event: Unpin,
-    {
-        self.spawn(|ctx| other.into_future(ctx));
-
-        self
-    }
-
-    /// Create a command running a number of commands concurrently
-    pub fn all<I>(commands: I) -> Self
-    where
-        I: IntoIterator<Item = Self>,
-        Effect: Unpin,
-        Event: Unpin,
-    {
-        let mut command = Command::done();
-
-        for c in commands {
-            command.spawn(|ctx| c.into_future(ctx));
-        }
-
-        command
-    }
-
-    // Mapping for composition
-
-    /// Map effects requested as part of this command to a different effect type.
-    ///
-    /// This is useful when composing apps to convert a command from a child app to a
-    /// command of the parent app.
-    pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event>
-    where
-        F: Fn(Effect) -> NewEffect + Send + Sync + 'static,
-        NewEffect: Send + Unpin + 'static,
-        Effect: Unpin,
-        Event: Unpin,
-    {
-        Command::new(|ctx| async move {
-            let mapped = self.map(|output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
-                CommandOutput::Event(event) => CommandOutput::Event(event),
-            });
-
-            mapped.host(ctx.effects, ctx.events).await;
-        })
-    }
-
-    /// Map events sent as part of this command to a different effect type
-    ///
-    /// This is useful when composing apps to convert a command from a child app to a
-    /// command of the parent app.
-    pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent>
-    where
-        F: Fn(Event) -> NewEvent + Send + Sync + 'static,
-        NewEvent: Send + Unpin + 'static,
-        Effect: Unpin,
-        Event: Unpin,
-    {
-        Command::new(|ctx| async move {
-            let mapped = self.map(|output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
-                CommandOutput::Event(event) => CommandOutput::Event(map(event)),
-            });
-
-            mapped.host(ctx.effects, ctx.events).await;
-        })
-    }
-
-    /// Spawn an additional task on the command. The task will execute concurrently with
-    /// existing tasks
-    ///
-    /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
-    /// events back to the app, and to spawn additional tasks. The closure is expected to return a future.
-    pub fn spawn<F, Fut>(&mut self, create_task: F)
-    where
-        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
-        Fut: Future<Output = ()> + Send + 'static,
-    {
-        self.context.spawn(create_task);
-    }
-
-    /// Returns an abort handle which can be used to remotely terminate a running Command
-    /// and all its subtask.
-    ///
-    /// This is specifically useful for cancelling subscriptions and long running effects
-    /// which may get superseded, like timers
-    #[must_use]
-    pub fn abort_handle(&self) -> AbortHandle {
-        AbortHandle {
-            aborted: self.aborted.clone(),
-        }
     }
 }
 

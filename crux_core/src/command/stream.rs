@@ -20,10 +20,11 @@ pub enum CommandOutput<Effect, Event> {
     Event(Event),
 }
 
-impl<Effect, Event> Stream for Command<Effect, Event>
+impl<Effect, Event, Model> Stream for Command<Effect, Event, Model>
 where
     Effect: Unpin + Send + 'static,
     Event: Unpin + Send + 'static,
+    Model: Unpin + Send + 'static,
 {
     type Item = CommandOutput<Effect, Event>;
 
@@ -31,7 +32,7 @@ where
         self.waker.register(cx.waker());
 
         // run_until_settled is idempotent
-        self.deref_mut().run_until_settled();
+        self.deref_mut().run_until_settled(None);
 
         // Check events first to preserve the order in which items were emitted. This is because
         // sending events doesn't yield, and the next request/stream await point will be

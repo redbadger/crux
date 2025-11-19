@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use crossbeam_channel::Sender;
-use futures::channel::mpsc;
+use futures::channel::{mpsc, oneshot};
 use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
@@ -17,26 +17,28 @@ use super::executor::{JoinHandle, Task};
 
 /// Context enabling tasks to communicate with the parent Command,
 /// specifically submit effects, events and spawn further tasks
-pub struct CommandContext<Effect, Event> {
+pub struct CommandContext<Effect, Event, Model = ()> {
     pub(crate) effects: Sender<Effect>,
     pub(crate) events: Sender<Event>,
     pub(crate) tasks: Sender<Task>,
+    pub(crate) mutations: Sender<Box<dyn FnOnce(&mut Model) + Send>>,
     pub(crate) rc: Arc<()>,
 }
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
-impl<Effect, Event> Clone for CommandContext<Effect, Event> {
+impl<Effect, Event, Model> Clone for CommandContext<Effect, Event, Model> {
     fn clone(&self) -> Self {
         Self {
             effects: self.effects.clone(),
             events: self.events.clone(),
             tasks: self.tasks.clone(),
+            mutations: self.mutations.clone(),
             rc: self.rc.clone(),
         }
     }
 }
 
-impl<Effect, Event> CommandContext<Effect, Event> {
+impl<Effect, Event, Model> CommandContext<Effect, Event, Model> {
     /// Create a one-off notification to the shell. This method returns immediately.
     #[allow(clippy::missing_panics_doc)]
     pub fn notify_shell<Op>(&self, operation: Op)
@@ -132,6 +134,27 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             .expect("Command could not send event, event channel disconnected");
     }
 
+    /// Send an event which should be handed to the update function. This is used to communicate the result
+    /// (or a sequence of results) of a command back to the app so that state can be updated accordingly
+    #[allow(clippy::missing_panics_doc)]
+    pub async fn model<Ret: Send + 'static>(
+        &self,
+        body: impl FnOnce(&mut Model) -> Ret + Send + 'static,
+    ) -> Ret {
+        let (output_sender, output_receiver) = oneshot::channel();
+
+        self.mutations
+            .send(Box::new(move |model| {
+                let ret = body(model);
+                let _ = output_sender.send(ret);
+            }))
+            .expect("Command could not send model update, model update channel disconnected");
+
+        output_receiver.await.expect(
+            "Command could not receive model update result, model update channel disconnected",
+        )
+    }
+
     /// Spawn a new task within the same command. The task will execute concurrently with other tasks within the
     /// command until it either concludes, is aborted, or until the parent command is aborted.
     ///
@@ -140,7 +163,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     #[allow(clippy::missing_panics_doc)]
     pub fn spawn<F, Fut>(&self, make_future: F) -> JoinHandle
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
+        F: FnOnce(CommandContext<Effect, Event, Model>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
         let (sender, receiver) = crossbeam_channel::unbounded();

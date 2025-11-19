@@ -144,9 +144,9 @@ pub(crate) enum TaskState {
 }
 
 // Command is actually an async executor of sorts, similar to futures::FuturesUnordered
-impl<Effect, Event> Command<Effect, Event> {
+impl<Effect, Event, Model> Command<Effect, Event, Model> {
     // Run all tasks until all of them are pending
-    pub(crate) fn run_until_settled(&mut self) {
+    pub(crate) fn run_until_settled(&mut self, mut model: Option<&mut Model>) {
         if self.was_aborted() {
             // Spawn new tasks to clear the spawn_queue as well
             self.spawn_new_tasks();
@@ -182,6 +182,12 @@ impl<Effect, Event> Command<Effect, Event> {
 
                         drop(task);
                     }
+                }
+            }
+
+            if let Some(model) = model.as_deref_mut() {
+                while let Ok(mutation) = self.mutations.try_recv() {
+                    mutation(model);
                 }
             }
         }
