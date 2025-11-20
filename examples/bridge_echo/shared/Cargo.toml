@@ -28,7 +28,7 @@ codegen = [
 facet_typegen = ["crux_core/facet_typegen"]
 
 [dependencies]
-clap = { version = "4.5.51", optional = true, features = ["derive"] }
+clap = { version = "4.5.53", optional = true, features = ["derive"] }
 crux_core.workspace = true
 facet = { version = "=0.30", features = ["chrono", "time"] }
 log = { version = "0.4.28", optional = true }
