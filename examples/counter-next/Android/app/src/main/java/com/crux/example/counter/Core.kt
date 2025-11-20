@@ -6,8 +6,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.crux.example.counter.shared.CoreFfi
-import com.crux.example.counter.shared.CruxShell
 import com.crux.example.counter.app.Effect
 import com.crux.example.counter.app.Event
 import com.crux.example.counter.app.HttpResult
