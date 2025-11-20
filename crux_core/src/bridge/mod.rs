@@ -57,7 +57,7 @@ where
 /// serialized form, using bincode as the serialization format.
 pub struct Bridge<A, F = BincodeFfiFormat>
 where
-    A: App,
+    A: App + Send,
     F: FfiFormat,
 {
     core: Core<A>,
