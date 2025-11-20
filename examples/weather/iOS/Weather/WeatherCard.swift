@@ -45,7 +45,7 @@ struct WeatherCard: View {
                 
                 HStack() {
                     Text(String(format: "%.1f°", weatherData.main.temp))
-                        .font(.system(size: 72, weight: .medium))
+                        .font(.system(size: 64, weight: .medium))
                     
                     if let weather = weatherData.weather.first {
                         VStack(alignment: .leading, spacing: 4) {

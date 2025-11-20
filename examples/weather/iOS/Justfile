@@ -2,23 +2,24 @@
 build: typegen package
 
 # clean, rebuild the Xcode project and build
-rebuild: clean generate-project build
+rebuild: clean build generate-project
 
 # build and run Xcode
-dev: build
+dev: build generate-project
     xed .
 
-# remove all the generated artefacts
+# remove all the generated artifacts
 clean:
     cargo clean
     rm -rf *.xcodeproj generated
 
 # rebuild the Xcode project from the `project.yaml` file
-generate-project:
+generate-project: build
     xcodegen
 
 # generate types for Swift
 typegen:
+    cargo build --package shared --features uniffi
     RUST_LOG=info cargo run \
         --package shared \
         --bin codegen \
