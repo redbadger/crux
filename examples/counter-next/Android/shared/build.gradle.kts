@@ -36,9 +36,9 @@ android {
     }
     sourceSets {
         getByName("main") {
-            kotlin.srcDirs("${projectDir}/../../shared/generated/app/kotlin")
-            kotlin.srcDirs("${projectDir}/../../shared/generated/sse/kotlin")
-            java.srcDirs("${projectDir}/../../shared/generated/serde/kotlin")
+            kotlin.srcDirs("../generated/app")
+            kotlin.srcDirs("../generated/sse")
+            java.srcDirs("../generated/serde")
         }
     }
 }
@@ -69,7 +69,7 @@ extensions.configure<CargoExtension>("cargo") {
     // make sure you have included the rust toolchain for each of these targets: \
     // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
     targets = listOf("arm", "arm64", "x86", "x86_64")
-    extraCargoBuildArguments = listOf("--package", "shared")
+    extraCargoBuildArguments = listOf("--package", "shared", "--features", "uniffi")
     cargoCommand = System.getProperty("user.home") + "/.cargo/bin/cargo"
     rustcCommand = System.getProperty("user.home") + "/.cargo/bin/rustc"
     pythonCommand = "python3"

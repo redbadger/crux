@@ -1,13 +1,13 @@
 name: CounterApp
 packages:
   Shared:
-    path: ../shared/Shared
+    path: ./generated/Shared
   App:
-    path: ../shared/generated/app/swift/App
+    path: ./generated/app/App
   ServerSentEvents:
-    path: ../shared/generated/sse/swift/ServerSentEvents
+    path: ./generated/sse/ServerSentEvents
   Serde:
-    path: ../shared/generated/serde/swift/Serde
+    path: ./generated/serde/Serde
 options:
   bundleIdPrefix: com.crux.example.counter
 targets:

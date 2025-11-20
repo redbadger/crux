@@ -1,8 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
+use clap::{Parser, ValueEnum};
 use crux_core::{
     cli::{BindgenArgsBuilder, bindgen},
-    type_generation::facet::{Config, ExternalPackage, PackageLocation, TypeRegistry},
+    type_generation::facet::{
+        Config, ExternalPackage, PackageLocation, TypeGenError, TypeRegistry,
+    },
 };
 use log::info;
 use shared::{
@@ -11,153 +14,165 @@ use shared::{
 };
 use uniffi::deps::anyhow::Result;
 
-fn main() -> Result<()> {
-    pretty_env_logger::init();
-
-    let out_dir = PathBuf::from("./shared/generated");
-
-    info!("Generating types for Serde");
-    serde(&out_dir.join("serde"))?;
-
-    info!("Generating types for Server Sent Events");
-    sse(&out_dir.join("sse"))?;
-
-    info!("Generating types for App");
-    app(&out_dir.join("app"))?;
-
-    // bindgen for kotlin
-    bindgen(
-        &BindgenArgsBuilder::default()
-            .crate_name(env!("CARGO_PKG_NAME").to_string())
-            .kotlin(out_dir.join("app/kotlin"))
-            .build()?,
-    )
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Language {
+    Swift,
+    Kotlin,
+    Typescript,
 }
 
-fn app(out_dir: &Path) -> Result<()> {
-    let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, value_enum)]
+    language: Language,
+    #[arg(short, long)]
+    output_dir: PathBuf,
+}
 
-    typegen_app.swift(
-        &Config::builder("App", out_dir.join("swift"))
-            .reference(ExternalPackage {
-                for_namespace: "server_sent_events".to_string(),
-                location: PackageLocation::Path("../../sse/swift/ServerSentEvents".to_string()),
-                module_name: None,
-                version: None,
-            })
-            .reference(ExternalPackage {
-                for_namespace: "serde".to_string(),
-                location: PackageLocation::Path("../../serde/swift/Serde".to_string()),
-                module_name: None,
-                version: None,
-            })
-            .add_extensions()
-            .build(),
-    )?;
+fn main() -> Result<()> {
+    pretty_env_logger::init();
+    let args = Args::parse();
 
-    typegen_app.kotlin(
-        &Config::builder("com.crux.example.counter.app", out_dir.join("kotlin"))
-            .reference(ExternalPackage {
-                for_namespace: "server_sent_events".to_string(),
-                location: PackageLocation::Path(
-                    "com.crux.example.counter.sse.server_sent_events".to_string(),
-                ),
-                module_name: None,
-                version: None,
-            })
-            .reference(ExternalPackage {
-                for_namespace: "serde".to_string(),
-                location: PackageLocation::Path("com.novi.serde".to_string()),
-                module_name: None,
-                version: None,
-            })
-            .add_extensions()
-            .build(),
-    )?;
+    info!("Generating types for Serde");
+    serde(&args)?;
 
-    typegen_app.typescript(
-        &Config::builder("app", out_dir.join("typescript"))
-            .reference(ExternalPackage {
-                for_namespace: "server_sent_events".to_string(),
-                location: PackageLocation::Path("../../sse/typescript".to_string()),
-                module_name: Some("server_sent_events".to_string()),
-                version: None,
-            })
-            .reference(ExternalPackage {
-                for_namespace: "serde".to_string(),
-                location: PackageLocation::Path("../../serde/typescript".to_string()),
-                module_name: Some("serde".to_string()),
-                version: None,
-            })
-            .add_extensions()
-            .build(),
-    )?;
+    info!("Generating types for Server Sent Events");
+    sse(&args)?;
+
+    info!("Generating types for App");
+    app(&args)?;
+
+    if args.language == Language::Kotlin {
+        // bindgen for kotlin
+        bindgen(
+            &BindgenArgsBuilder::default()
+                .crate_name(env!("CARGO_PKG_NAME").to_string())
+                .kotlin(args.output_dir.join("app"))
+                .build()?,
+        )?;
+    }
 
     Ok(())
 }
 
-fn sse(out_dir: &Path) -> Result<()> {
+fn app(args: &Args) -> Result<(), TypeGenError> {
+    let typegen = TypeRegistry::new().register_app::<App>()?.build()?;
+    let out_dir = args.output_dir.join("app");
+
+    match args.language {
+        Language::Swift => typegen.swift(
+            &Config::builder("App", &out_dir)
+                .reference(ExternalPackage {
+                    for_namespace: "server_sent_events".to_string(),
+                    location: PackageLocation::Path("../sse/ServerSentEvents".to_string()),
+                    module_name: None,
+                    version: None,
+                })
+                .reference(ExternalPackage {
+                    for_namespace: "serde".to_string(),
+                    location: PackageLocation::Path("../serde/Serde".to_string()),
+                    module_name: None,
+                    version: None,
+                })
+                .add_extensions()
+                .build(),
+        ),
+        Language::Kotlin => typegen.kotlin(
+            &Config::builder("com.crux.example.counter.app", &out_dir)
+                .reference(ExternalPackage {
+                    for_namespace: "server_sent_events".to_string(),
+                    location: PackageLocation::Path(
+                        "com.crux.example.counter.sse.server_sent_events".to_string(),
+                    ),
+                    module_name: None,
+                    version: None,
+                })
+                .reference(ExternalPackage {
+                    for_namespace: "serde".to_string(),
+                    location: PackageLocation::Path("com.novi.serde".to_string()),
+                    module_name: None,
+                    version: None,
+                })
+                .add_extensions()
+                .build(),
+        ),
+        Language::Typescript => typegen.typescript(
+            &Config::builder("app", &out_dir)
+                .reference(ExternalPackage {
+                    for_namespace: "server_sent_events".to_string(),
+                    location: PackageLocation::Path("../sse".to_string()),
+                    module_name: Some("server_sent_events".to_string()),
+                    version: None,
+                })
+                .reference(ExternalPackage {
+                    for_namespace: "serde".to_string(),
+                    location: PackageLocation::Path("../serde".to_string()),
+                    module_name: Some("serde".to_string()),
+                    version: None,
+                })
+                .add_extensions()
+                .build(),
+        ),
+    }
+}
+
+fn sse(args: &Args) -> Result<(), TypeGenError> {
     let typegen_sse = TypeRegistry::new()
         .register_type::<SseRequest>()?
         .register_type::<SseResponse>()?
         .build()?;
+    let out_dir = args.output_dir.join("sse");
 
-    typegen_sse.swift(
-        &Config::builder("ServerSentEvents", out_dir.join("swift"))
-            .reference(ExternalPackage {
-                for_namespace: "serde".to_string(),
-                location: PackageLocation::Path("../../serde/swift/Serde".to_string()),
-                module_name: None,
-                version: None,
-            })
-            .build(),
-    )?;
-
-    typegen_sse.kotlin(
-        &Config::builder("com.crux.example.counter.sse", out_dir.join("kotlin"))
-            .reference(ExternalPackage {
-                for_namespace: "serde".to_string(),
-                location: PackageLocation::Path("com.novi.serde".to_string()),
-                module_name: None,
-                version: None,
-            })
-            .build(),
-    )?;
-
-    typegen_sse.typescript(
-        &Config::builder("server_sent_events", out_dir.join("typescript"))
-            .reference(ExternalPackage {
-                for_namespace: "serde".to_string(),
-                location: PackageLocation::Path("../../serde/typescript".to_string()),
-                module_name: Some("serde".to_string()),
-                version: None,
-            })
-            .build(),
-    )?;
-
-    Ok(())
+    match args.language {
+        Language::Swift => typegen_sse.swift(
+            &Config::builder("ServerSentEvents", &out_dir)
+                .reference(ExternalPackage {
+                    for_namespace: "serde".to_string(),
+                    location: PackageLocation::Path("../serde/Serde".to_string()),
+                    module_name: None,
+                    version: None,
+                })
+                .build(),
+        ),
+        Language::Kotlin => typegen_sse.kotlin(
+            &Config::builder("com.crux.example.counter.sse", &out_dir)
+                .reference(ExternalPackage {
+                    for_namespace: "serde".to_string(),
+                    location: PackageLocation::Path("com.novi.serde".to_string()),
+                    module_name: None,
+                    version: None,
+                })
+                .build(),
+        ),
+        Language::Typescript => typegen_sse.typescript(
+            &Config::builder("server_sent_events", &out_dir)
+                .reference(ExternalPackage {
+                    for_namespace: "serde".to_string(),
+                    location: PackageLocation::Path("../serde".to_string()),
+                    module_name: Some("serde".to_string()),
+                    version: None,
+                })
+                .build(),
+        ),
+    }
 }
 
-fn serde(out_dir: &Path) -> Result<()> {
+fn serde(args: &Args) -> Result<(), TypeGenError> {
     let typegen_serde = TypeRegistry::new().build()?;
+    let out_dir = args.output_dir.join("serde");
 
-    typegen_serde.swift(
-        &Config::builder("Serde", out_dir.join("swift"))
-            .add_runtimes()
-            .build(),
-    )?;
-
-    typegen_serde.kotlin(
-        &Config::builder("com.crux.example.counter.serde", out_dir.join("kotlin"))
-            .add_runtimes()
-            .build(),
-    )?;
-
-    typegen_serde.typescript(
-        &Config::builder("serde", out_dir.join("typescript"))
-            .add_runtimes()
-            .build(),
-    )?;
-
-    Ok(())
+    match args.language {
+        Language::Swift => {
+            typegen_serde.swift(&Config::builder("Serde", &out_dir).add_runtimes().build())
+        }
+        Language::Kotlin => typegen_serde.kotlin(
+            &Config::builder("com.crux.example.counter.serde", &out_dir)
+                .add_runtimes()
+                .build(),
+        ),
+        Language::Typescript => {
+            typegen_serde.typescript(&Config::builder("serde", &out_dir).add_runtimes().build())
+        }
+    }
 }

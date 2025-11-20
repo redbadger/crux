@@ -6,8 +6,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.crux.example.counter.shared.CoreFfi
-import com.crux.example.counter.shared.CruxShell
 import com.crux.example.counter.app.Effect
 import com.crux.example.counter.app.Event
 import com.crux.example.counter.app.HttpResult
@@ -60,7 +58,7 @@ class Core : androidx.lifecycle.ViewModel(), CruxShell  {
 
                 val effects =
                         core.resolve(
-                                request.id.toUInt(),
+                                request.id,
                                 HttpResult.Ok(response).bincodeSerialize()
                         )
 
@@ -71,7 +69,7 @@ class Core : androidx.lifecycle.ViewModel(), CruxShell  {
             }
             is Effect.ServerSentEvents -> {
                 requestSse(sseClient, effect.value) { response ->
-                    val effects = core.resolve(request.id.toUInt(), response.bincodeSerialize())
+                    val effects = core.resolve(request.id, response.bincodeSerialize())
 
                     val requests = Requests.bincodeDeserialize(effects)
                     for (request in requests) {
