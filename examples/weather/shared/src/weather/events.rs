@@ -1,31 +1,52 @@
-use crux_core::render::render;
 use crux_core::Command;
+use crux_core::render::render;
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::location::capability::{get_location, is_location_enabled};
-use crate::location::Location;
-use crate::weather::client::{WeatherApi, WeatherError};
-use crate::weather::model::CurrentResponse;
-use crate::{Effect, Model};
+use crate::{
+    app::{Effect, Model},
+    location::{
+        Location,
+        capability::{get_location, is_location_enabled},
+    },
+    weather::{
+        client::{WeatherApi, WeatherError},
+        model::current_response::CurrentResponse,
+    },
+};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum WeatherEvent {
     Show,
 
     #[serde(skip)]
+    #[facet(skip)]
     LocationEnabled(bool),
+
     #[serde(skip)]
+    #[facet(skip)]
     LocationFetched(Option<Location>),
 
     // Events related to fetching weather data
     #[serde(skip)]
+    #[facet(skip)]
     Fetch(Location),
+
     #[serde(skip)]
-    SetWeather(Box<Result<CurrentResponse, WeatherError>>),
+    #[facet(skip)]
+    SetWeather(#[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>),
+
     #[serde(skip)]
+    #[facet(skip)]
     FetchFavorites,
+
     #[serde(skip)]
-    SetFavoriteWeather(Box<Result<CurrentResponse, WeatherError>>, Location),
+    #[facet(skip)]
+    SetFavoriteWeather(
+        #[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>,
+        Location,
+    ),
 }
 
 pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, WeatherEvent> {
@@ -90,13 +111,20 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Weather
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crux_http::protocol::{HttpResponse, HttpResult};
 
     use crate::{
+        app::{Effect, Model},
         favorites::model::Favorite,
-        weather::model::{Clouds, Coord, CurrentResponseBuilder, Main, Sys, WeatherData, Wind},
-        GeocodingResponse,
+        location::{Location, model::GeocodingResponse},
+        weather::{
+            client::WeatherApi,
+            events::{WeatherEvent, update},
+            model::{
+                current_response::{CurrentResponse, CurrentResponseBuilder, Main, Sys},
+                response_elements::{Clouds, Coord, WeatherData, Wind},
+            },
+        },
     };
 
     fn test_favorite() -> Favorite {
@@ -145,7 +173,7 @@ mod tests {
             .sys(Sys {
                 id: 1,
                 country: "US".to_string(),
-                sys_type: 1,
+                type_: 1,
                 sunrise: 1_716_216_000,
                 sunset: 1_716_216_000,
             })
@@ -320,11 +348,7 @@ mod tests {
         let mut cmd = update(event, &mut model);
 
         // Should get HTTP effects for both favorites
-        let mut effects = Vec::new();
-        while let Some(effect) = cmd.effects().next() {
-            effects.push(effect);
-        }
-
+        let effects = cmd.effects().collect::<Vec<_>>();
         assert_eq!(effects.len(), 2);
 
         // Verify both favorites are being fetched via HTTP effects

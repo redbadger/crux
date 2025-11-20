@@ -1,10 +1,12 @@
-use crux_core::{command::RequestBuilder, Request};
+use crux_core::{Request, command::RequestBuilder};
 use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
-use crate::config::API_KEY;
-use crate::{GeocodingQueryString, GeocodingResponse, GEOCODING_URL};
+use crate::{
+    config::API_KEY,
+    location::model::{GEOCODING_URL, GeocodingQueryString, GeocodingResponse},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum LocationError {
@@ -14,6 +16,7 @@ pub enum LocationError {
 }
 
 #[derive(Serialize)]
+#[allow(dead_code)] // TODO: why?
 pub struct CurrentQueryString {
     pub lat: String,
     pub lon: String,
@@ -25,6 +28,7 @@ pub struct LocationApi;
 
 impl LocationApi {
     /// Build an `HttpRequest` for testing purposes
+    #[cfg(test)]
     pub fn build(query: &str) -> HttpRequest {
         HttpRequest::get(GEOCODING_URL)
             .query(&GeocodingQueryString {
@@ -42,7 +46,8 @@ impl LocationApi {
     ) -> RequestBuilder<
         Effect,
         Event,
-        impl std::future::Future<Output = Result<Vec<GeocodingResponse>, LocationError>>,
+        impl std::future::Future<Output = Result<Vec<GeocodingResponse>, LocationError>>
+        + use<Event, Effect>,
     >
     where
         Event: Send + 'static,

@@ -1,4 +1,4 @@
-use axum::{response::IntoResponse, Json};
+use axum::{Json, response::IntoResponse};
 use rand::seq::IteratorRandom;
 use serde::Serialize;
 
@@ -13,7 +13,7 @@ pub(crate) async fn get() -> impl IntoResponse {
     Json(CatImage {
         href: CATS
             .lines()
-            .choose(&mut rand::thread_rng())
+            .choose(&mut rand::rng())
             .unwrap_or_default()
             .to_string(),
     })

@@ -1,7 +1,8 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Copy, Clone)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Copy, Clone)]
 pub struct Coord {
     pub lat: f64,
     pub lon: f64,

@@ -1,10 +1,11 @@
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
 use crux_http::protocol::HttpRequest;
 use crux_kv::KeyValueOperation;
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,19 +15,21 @@ use crate::{
         model::{Favorite, Favorites, FavoritesState},
     },
     location::{
-        capability::LocationOperation, model::geocoding_response::GeocodingResponse, Location,
+        Location, capability::LocationOperation, model::geocoding_response::GeocodingResponse,
     },
+    navigation::{CurrentPage, navigate},
     weather::{self, events::WeatherEvent, model::current_response::CurrentResponse},
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum Event {
     Navigate(Box<Workflow>),
     Home(Box<WeatherEvent>),
     Favorites(Box<FavoritesEvent>),
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
     KeyValue(KeyValueOperation),
@@ -34,7 +37,8 @@ pub enum Effect {
     Location(LocationOperation),
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum Workflow {
     #[default]
     Home,
@@ -45,19 +49,21 @@ pub enum Workflow {
 #[derive(Default, Debug)]
 pub struct Model {
     pub weather_data: CurrentResponse,
-    pub page: Workflow,
+    pub page: CurrentPage,
+    pub workflow: Workflow,
     pub favorites: Favorites,
     pub search_results: Option<Vec<GeocodingResponse>>,
     pub location_enabled: bool,
     pub last_location: Option<Location>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ViewModel {
     pub workflow: WorkflowViewModel,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
 pub enum WorkflowViewModel {
     Home {
         weather_data: Box<CurrentResponse>,
@@ -72,7 +78,7 @@ pub enum WorkflowViewModel {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct FavoriteView {
     name: String,
     location: Location,
@@ -99,24 +105,27 @@ impl crux_core::App for App {
     type Effect = Effect;
 
     fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Effect, Event> {
-        // If this is the first update and we're on Home, trigger weather fetch
         match event {
-            Event::Navigate(page) => {
-                model.page = *page;
+            Event::Navigate(next) => {
+                navigate(&mut model.page, &next);
+                model.workflow = *next;
                 render()
             }
             Event::Home(home_event) => {
-                let fav_cmd = if let WeatherEvent::Show = *home_event {
-                    favorites::events::update(FavoritesEvent::Restore, model)
-                        .map_event(|fe| Event::Favorites(Box::new(fe)))
-                } else {
-                    Command::done()
-                };
+                let mut commands = Vec::new();
+                if let WeatherEvent::Show = *home_event {
+                    commands.push(
+                        favorites::events::update(FavoritesEvent::Restore, model)
+                            .map_event(|fe| Event::Favorites(Box::new(fe))),
+                    );
+                }
 
-                let weather_cmd = weather::events::update(*home_event, model)
-                    .map_event(|we| Event::Home(Box::new(we)));
+                commands.push(
+                    weather::events::update(*home_event, model)
+                        .map_event(|we| Event::Home(Box::new(we))),
+                );
 
-                fav_cmd.and(weather_cmd)
+                Command::all(commands)
             }
 
             Event::Favorites(fav_event) => favorites::events::update(*fav_event, model)
@@ -127,7 +136,7 @@ impl crux_core::App for App {
     fn view(&self, model: &Model) -> ViewModel {
         let favorites = model.favorites.iter().map(From::from).collect();
 
-        let workflow = match &model.page {
+        let workflow = match &model.workflow {
             Workflow::Home => WorkflowViewModel::Home {
                 weather_data: Box::new(model.weather_data.clone()),
                 favorites,
@@ -169,17 +178,23 @@ mod tests {
         );
 
         assert!(matches!(
-            model.page,
+            model.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
 
         // Navigate to Home
         let _ = app.update(Event::Navigate(Box::new(Workflow::Home)), &mut model);
-        assert!(matches!(model.page, Workflow::Home));
+        assert!(matches!(model.workflow, Workflow::Home));
+
+        // back to favorites, so we can go to AddFavorite
+        let _ = app.update(
+            Event::Navigate(Box::new(Workflow::Favorites(FavoritesState::Idle))),
+            &mut model,
+        );
 
         // Navigate to AddFavorite
         let _ = app.update(Event::Navigate(Box::new(Workflow::AddFavorite)), &mut model);
 
-        assert!(matches!(model.page, Workflow::AddFavorite));
+        assert!(matches!(model.workflow, Workflow::AddFavorite));
     }
 }
