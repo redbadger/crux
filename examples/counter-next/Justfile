@@ -1,0 +1,13 @@
+build: build-local build-wasip2
+
+build-local:
+    cargo build
+
+build-wasip2:
+    cargo build --package shared --features wit_bindgen --target wasm32-wasip2
+
+clean:
+    cargo clean
+
+test:
+    cargo insta test --review --test-runner nextest --all-features --lib

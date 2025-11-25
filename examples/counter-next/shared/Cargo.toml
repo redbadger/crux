@@ -13,41 +13,41 @@ crate-type = ["cdylib", "lib", "staticlib"]
 
 [[bin]]
 name = "codegen"
-required-features = ["cli"]
+required-features = ["codegen"]
+
+[features]
+uniffi = ["dep:uniffi", "dep:rand"]
+wasm_bindgen = ["dep:wasm-bindgen", "getrandom/wasm_js", "dep:js-sys"]
+wit_bindgen = ["dep:wit-bindgen", "facet_typegen"]
+codegen = [
+    "crux_core/cli",
+    "dep:clap",
+    "dep:log",
+    "dep:pretty_env_logger",
+    "uniffi",
+    "facet_typegen",
+]
+facet_typegen = ["crux_core/facet_typegen"]
 
 [dependencies]
 async-sse = "5.1.0"
 chrono = { version = "0.4.42", features = ["serde"] }
+clap = { version = "4.5.53", optional = true, features = ["derive"] }
 crux_core.workspace = true
 crux_http.workspace = true
 facet = { version = "=0.30", features = ["chrono", "time"] }
 futures = "0.3.31"
+getrandom = { version = "0.3.4", optional = true, default-features = false }
+js-sys = { version = "0.3.82", optional = true }
 log = { version = "0.4.28", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
+rand = { version = "0.9.2", optional = true, features = ["os_rng"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.145"
+uniffi = { version = "=0.29.4", optional = true }
 url = "2.5.7"
+wasm-bindgen = { version = "0.2.105", optional = true }
+wit-bindgen = { version = "0.48.1", optional = true }
 
 [dev-dependencies]
-insta = { version = "1.43.2", features = ["yaml"] }
-
-# not wasm
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
-rand = { version = "0.9.2", features = ["os_rng"] }
-uniffi = "=0.29.4"
-
-# wasm32-unknown-unknown, but not wasm32-wasip2
-[target.'cfg(any(target_family = "wasm", not(all(target_os = "wasi", target_env = "p2"))))'.dependencies]
-getrandom = { version = "0.3.4", features = ["wasm_js"] }
-wasm-bindgen = "0.2.105"
-js-sys = "0.3.82"
-
-# wasm32-wasip2
-[target.'cfg(all(target_os = "wasi", target_env = "p2"))'.dependencies]
-crux_core = { workspace = true, features = ["facet_typegen"] }
-crux_http = { workspace = true, features = ["facet_typegen"] }
-wit-bindgen = "0.47.0"
-
-[features]
-cli = ["crux_core/cli", "dep:log", "dep:pretty_env_logger"]
-facet_typegen = ["crux_core/facet_typegen"]
+insta = { version = "1.44.1", features = ["yaml"] }

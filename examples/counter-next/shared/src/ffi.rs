@@ -1,5 +1,5 @@
-#[cfg(not(target_family = "wasm"))]
-pub mod uniffi_ffi {
+#[cfg(feature = "uniffi")]
+pub mod uniffi {
     use std::sync::Arc;
 
     use crux_core::{
@@ -95,8 +95,8 @@ pub mod uniffi_ffi {
     }
 }
 
-#[cfg(all(target_family = "wasm", target_os = "unknown"))]
-pub mod wasm_ffi {
+#[cfg(feature = "wasm_bindgen")]
+pub mod wasm_bindgen {
     use crux_core::middleware::{BincodeFfiFormat, Layer as _};
     use crux_core::{Core, bridge::EffectId};
 
@@ -123,7 +123,11 @@ pub mod wasm_ffi {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     impl CoreFFI {
+        /// # Panics
+        ///
+        /// This function panics if the provided JavaScript callback function is not callable.
         #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        #[must_use]
         pub fn new(callback: js_sys::Function) -> Self {
             use js_sys::wasm_bindgen::JsValue;
 
@@ -145,38 +149,50 @@ pub mod wasm_ffi {
             Self { core }
         }
 
+        /// # Panics
+        ///
+        /// This function panics if the event is not processed successfully.
         pub fn update(&self, data: &[u8]) -> Vec<u8> {
-            match self.core.update(data) {
-                Ok(effects) => effects,
+            let mut effects = Vec::new();
+            match self.core.update(data, &mut effects) {
+                Ok(()) => effects,
                 Err(e) => panic!("{e}"),
             }
         }
 
-        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
-            match self.core.resolve(EffectId(effect_id), data) {
-                Ok(effects) => effects,
+        /// # Panics
+        ///
+        /// This function panics if the id is not valid,
+        /// or the effect response is not processed successfully.
+        pub fn resolve(&self, id: u32, data: &[u8]) -> Vec<u8> {
+            let mut effects = Vec::new();
+            match self.core.resolve(EffectId(id), data, &mut effects) {
+                Ok(()) => effects,
                 Err(e) => panic!("{e}"),
             }
         }
 
+        /// # Panics
+        ///
+        /// This function panics if the view model cannot be generated.
         pub fn view(&self) -> Vec<u8> {
-            match self.core.view() {
-                Ok(view) => view,
+            let mut view_model = Vec::new();
+            match self.core.view(&mut view_model) {
+                Ok(()) => view_model,
                 Err(e) => panic!("{e}"),
             }
         }
     }
 }
 
-#[cfg(all(target_os = "wasi", target_env = "p2"))]
-pub mod wasip2 {
+#[cfg(all(target_os = "wasi", target_env = "p2", feature = "wit_bindgen"))]
+pub mod wit_bindgen {
     use crux_core::{
         Core,
-        bridge::EffectId,
-        middleware::{Bridge, FfiFormat, Layer as _},
+        bridge::{EffectId, JsonFfiFormat},
+        middleware::{Bridge, Layer as _},
         type_generation::facet::TypeRegistry,
     };
-    use serde_json::{Deserializer, Serializer, de::SliceRead};
 
     use crate::App;
     use exports::crux::shared_lib::core::{Guest, GuestInstance};
@@ -203,38 +219,38 @@ pub mod wasip2 {
         }
 
         fn update(&self, data: Vec<u8>) -> Result<Vec<u8>, String> {
-            self.core.update(&data).map_err(|e| e.to_string())
+            let mut effects = Vec::new();
+            match self.core.update(&data, &mut effects) {
+                Ok(()) => Ok(effects),
+                Err(e) => Err(e.to_string()),
+            }
         }
 
-        fn resolve(&self, effect_id: u32, data: Vec<u8>) -> Result<Vec<u8>, String> {
-            self.core
-                .resolve(EffectId(effect_id), &data)
-                .map_err(|e| e.to_string())
+        fn resolve(&self, id: u32, data: Vec<u8>) -> Result<Vec<u8>, String> {
+            let mut effects = Vec::new();
+            match self.core.resolve(EffectId(id), &data, &mut effects) {
+                Ok(()) => Ok(effects),
+                Err(e) => Err(e.to_string()),
+            }
         }
 
         fn view(&self) -> Result<Vec<u8>, String> {
-            self.core.view().map_err(|e| e.to_string())
+            let mut view_model = Vec::new();
+            match self.core.view(&mut view_model) {
+                Ok(()) => Ok(view_model),
+                Err(e) => Err(e.to_string()),
+            }
         }
 
         fn schema(&self) -> String {
-            let registry = TypeRegistry::new().register_app::<App>().build().registry();
+            let registry = TypeRegistry::new()
+                .register_app::<App>()
+                .expect("to be able to register app")
+                .build()
+                .expect("to be able to build registry")
+                .registry();
 
             format!("{registry:#?}")
-        }
-    }
-
-    pub struct JsonFfiFormat;
-
-    impl FfiFormat for JsonFfiFormat {
-        type Serializer<'b> = Serializer<&'b mut Vec<u8>>;
-        type Deserializer<'b> = Deserializer<SliceRead<'b>>;
-
-        fn serializer(buffer: &mut Vec<u8>) -> Serializer<&mut Vec<u8>> {
-            Serializer::new(buffer)
-        }
-
-        fn deserializer(bytes: &[u8]) -> Deserializer<SliceRead<'_>> {
-            Deserializer::from_slice(bytes)
         }
     }
 }
