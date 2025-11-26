@@ -1,0 +1,54 @@
+dev: build
+
+build: build-local build-wasm typegen
+
+build-local:
+    cargo build
+
+# build wasm package
+build-wasm:
+    wasm-pack build \
+        --target web \
+        --out-dir ../generated/typescript/pkg \
+        ./shared \
+        --features wasm_bindgen
+
+# generate foreign types
+typegen: swift kotlin typescript
+
+# generate types for Swift
+swift:
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language swift \
+            --output-dir generated/swift
+
+# generate types for Kotlin
+kotlin:
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language kotlin \
+            --output-dir generated/kotlin
+
+# generate types for TypeScript
+typescript:
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language typescript \
+            --output-dir generated/typescript/types
+
+clean:
+    cargo clean
+    rm -rf generated
+
+test:
+    cargo nextest run
