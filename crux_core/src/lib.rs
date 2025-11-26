@@ -178,7 +178,7 @@ pub trait App: Default {
     /// `Event`, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event: Unpin + Send + 'static;
     /// `Model`, typically a `struct` defines the internal state of the application
-    type Model: Default;
+    type Model: Default + 'static;
     /// `ViewModel`, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel;
@@ -204,7 +204,7 @@ pub trait App: Default {
         &self,
         event: Self::Event,
         model: &mut Self::Model,
-    ) -> Command<Self::Effect, Self::Event>;
+    ) -> Command<Self::Effect, Self::Event, Self::Model>;
 
     /// View method is used by the Shell to request the current state of the user interface
     fn view(&self, model: &Self::Model) -> Self::ViewModel;
