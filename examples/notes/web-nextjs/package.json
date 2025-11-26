@@ -3,31 +3,29 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "pnpm run wasm:build && next build",
-    "dev": "pnpm run wasm:build && next dev",
-    "wasm:build": "cd ../shared && wasm-pack build --target web",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "next build --webpack",
+    "dev": "next dev --webpack",
+    "start": "next start"
   },
   "dependencies": {
-    "daisyui": "5.0.0",
-    "eslint": "9.21.0",
-    "eslint-config-next": "15.2.1",
-    "next": "15.2.1",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "shared": "file:../shared/pkg",
-    "shared_types": "file:../shared_types/generated/typescript",
-    "typescript": "5.8.2"
+    "daisyui": "5.5.5",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.0.4",
+    "next": "16.0.4",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "shared": "file:generated/pkg",
+    "shared_types": "file:generated/types",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.12",
-    "@types/node": "22.13.9",
-    "@types/react": "19.0.10",
-    "@types/react-dom": "19.0.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.0.12"
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17"
   },
   "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e"
 }

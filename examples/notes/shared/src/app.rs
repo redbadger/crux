@@ -4,27 +4,28 @@ use std::{ops::Range, time::Duration};
 
 use automerge::Change;
 use crux_core::{
+    Command,
     macros::effect,
     render::{self, RenderOperation},
-    App, Command,
 };
-use crux_kv::{command::KeyValue, error::KeyValueError, KeyValueOperation};
+use crux_kv::{KeyValueOperation, command::KeyValue, error::KeyValueError};
 use crux_time::{
-    command::{Time, TimerHandle, TimerOutcome},
     TimeRequest,
+    command::{Time, TimerHandle, TimerOutcome},
 };
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::pub_sub::{PubSub, PubSubOperation};
-
-pub use note::Note;
+use note::Note;
 
 use self::note::EditObserver;
 
 #[derive(Default)]
-pub struct NoteEditor;
+pub struct App;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Facet, Serialize, Deserialize, Debug)]
+#[repr(C)]
 pub enum Event {
     // events from the shell
     Open,
@@ -38,14 +39,20 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
-    EditTimerElapsed(TimerOutcome),
+    #[facet(skip)]
+    EditTimerElapsed(#[facet(opaque)] TimerOutcome),
+
     #[serde(skip)]
-    Written(Result<Option<Vec<u8>>, KeyValueError>),
+    #[facet(skip)]
+    Written(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
+
     #[serde(skip)]
-    Load(Result<Option<Vec<u8>>, KeyValueError>),
+    #[facet(skip)]
+    Load(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[repr(C)]
 pub enum TextCursor {
     Position(usize),
     Selection(Range<usize>),
@@ -64,7 +71,7 @@ pub struct Model {
     timer: Option<TimerHandle>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ViewModel {
     pub text: String,
     pub cursor: TextCursor,
@@ -79,7 +86,7 @@ impl From<&Model> for ViewModel {
     }
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 pub enum Effect {
     Time(TimeRequest),
     Render(RenderOperation),
@@ -89,13 +96,14 @@ pub enum Effect {
 
 const EDIT_TIMER: u64 = 1000;
 
-impl App for NoteEditor {
+impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
     type Effect = Effect;
 
-    #[allow(clippy::too_many_lines)] // ANCHOR: update
+    #[allow(clippy::too_many_lines)]
+    // ANCHOR: update
     fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Effect, Event> {
         match event {
             Event::Insert(text) => {
@@ -303,13 +311,13 @@ impl CursorObserver {
 
 #[cfg(test)]
 mod editing_tests {
-    use crux_core::assert_effect;
+    use crux_core::{App as _, assert_effect};
 
     use super::*;
 
     #[test]
     fn renders_text_and_cursor() {
-        let app = NoteEditor;
+        let app = App;
 
         let model = Model {
             note: Note::with_text("hello"),
@@ -328,7 +336,7 @@ mod editing_tests {
 
     #[test]
     fn moves_cursor() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -347,7 +355,7 @@ mod editing_tests {
 
     #[test]
     fn changes_selection() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -366,7 +374,7 @@ mod editing_tests {
 
     #[test]
     fn inserts_text_at_cursor_and_renders() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -386,7 +394,7 @@ mod editing_tests {
     // ANCHOR: replaces_selection_and_renders
     #[test]
     fn replaces_selection_and_renders() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -407,7 +415,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_range_and_renders() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -426,7 +434,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_empty_range_and_renders() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -448,7 +456,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_before_cursor() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -467,7 +475,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_after_cursor() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -486,7 +494,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_delete() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -505,7 +513,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_backspace() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -524,7 +532,7 @@ mod editing_tests {
 
     #[test]
     fn handles_emoji() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             // the emoji has a skintone modifier, which is a separate unicode character
@@ -546,15 +554,15 @@ mod editing_tests {
 
 #[cfg(test)]
 mod save_load_tests {
-    use crux_core::assert_effect;
-    use crux_kv::{value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult};
+    use crux_core::{App as _, assert_effect};
+    use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, value::Value};
     use crux_time::{TimeRequest, TimerId};
 
     use super::*;
 
     #[test]
     fn opens_a_document() {
-        let app = NoteEditor;
+        let app = App;
         let mut note = Note::with_text("LOADED");
 
         let mut model = Model {
@@ -598,7 +606,7 @@ mod save_load_tests {
 
     #[test]
     fn creates_a_document_if_it_cant_open_one() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -645,7 +653,7 @@ mod save_load_tests {
     // ANCHOR: starts_a_timer_after_an_edit
     #[test]
     fn starts_a_timer_after_an_edit() {
-        let app = NoteEditor;
+        let app = App;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -734,14 +742,14 @@ mod save_load_tests {
 mod sync_tests {
     use std::collections::VecDeque;
 
-    use crux_core::Request;
+    use crux_core::{App as _, Request};
 
     use crate::capabilities::pub_sub::{Message, PubSubOperation};
 
     use super::*;
 
     struct Peer {
-        app: NoteEditor,
+        app: App,
         model: Model,
         subscription: Option<Request<PubSubOperation>>,
         command: Option<Command<Effect, Event>>,
@@ -751,7 +759,7 @@ mod sync_tests {
     // A jig to make testing sync a bit easier
     impl Peer {
         fn new() -> Self {
-            let app = NoteEditor;
+            let app = App;
             let model = Model::default();
 
             Self {

@@ -1,0 +1,10 @@
+build:
+    just web-nextjs/build
+    just iOS/build
+
+clean:
+    just web-nextjs/clean
+    just iOS/clean
+
+test:
+    cargo nextest run
