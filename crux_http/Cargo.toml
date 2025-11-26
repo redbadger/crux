@@ -27,7 +27,7 @@ encoding_rs = { version = "0.8.35", optional = true }
 facet.workspace = true
 futures-util = "0.3"
 http = { version = "1.4", optional = true }
-http-types = { package = "http-types-red-badger-temporary-fork", version = "5.0.0", default-features = false }
+http-types = { version = "2.12.0", default-features = false }
 pin-project-lite = "0.2.16"
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11"

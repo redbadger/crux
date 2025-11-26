@@ -1,11 +1,9 @@
 use super::{decode::decode_body, new_headers};
 use facet::Facet;
 use http_types::{
-    self, Mime, StatusCode, Version,
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
+    self, Headers, Mime, StatusCode, Version,
+    headers::{self, CONTENT_TYPE, HeaderName, HeaderValues, ToHeaderValues},
 };
-
-use http_types::{Headers, headers::CONTENT_TYPE};
 use serde::de::DeserializeOwned;
 
 use std::fmt;
@@ -14,9 +12,24 @@ use std::ops::Index;
 /// An HTTP Response that will be passed to in a message to an apps update function
 #[derive(Facet, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
+    #[facet(
+        opaque,
+        serialize_with = crate::facet_utils::version_ser,
+        deserialize_with = crate::facet_utils::version_deser,
+    )]
     version: Option<http_types::Version>,
+    #[facet(
+        opaque,
+        serialize_with = crate::facet_utils::status_code_ser,
+        deserialize_with = crate::facet_utils::status_code_deser,
+    )]
     status: http_types::StatusCode,
     #[serde(with = "header_serde")]
+    #[facet(
+        opaque,
+        serialize_with = crate::facet_utils::headers_ser,
+        deserialize_with = crate::facet_utils::headers_deser,
+    )]
     headers: Headers,
     body: Option<Body>,
 }

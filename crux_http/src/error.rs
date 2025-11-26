@@ -9,6 +9,11 @@ pub enum HttpError {
     #[serde(skip)]
     #[facet(skip)]
     Http {
+        #[facet(
+            opaque,
+            serialize_with = crate::facet_utils::status_code_ser,
+            deserialize_with = crate::facet_utils::status_code_deser,
+        )]
         code: http_types::StatusCode,
         message: String,
         body: Option<Vec<u8>>,
