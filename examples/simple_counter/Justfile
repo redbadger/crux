@@ -1,0 +1,8 @@
+build:
+    cargo build
+
+clean:
+    cargo clean
+
+test:
+    cargo nextest run

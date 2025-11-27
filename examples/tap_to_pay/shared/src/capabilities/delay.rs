@@ -1,10 +1,12 @@
 use std::future::Future;
 
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crux_core::{capability::Operation, command::RequestBuilder, Command, Request};
+use crux_core::{Command, Request, capability::Operation, command::RequestBuilder};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum DelayOperation {
     Start { millis: usize },
 }
