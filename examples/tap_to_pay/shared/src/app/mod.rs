@@ -1,16 +1,19 @@
 mod payment;
 
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::{capabilities::delay::delay, DelayOperation};
-pub use payment::{Payment, PaymentStatus, Receipt, ReceiptStatus};
+pub use payment::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+use crate::capabilities::delay::{DelayOperation, delay};
+
+#[derive(Facet, Serialize, Deserialize, Debug)]
+#[repr(C)]
 pub enum Event {
     SetAmount(u32),
     StartPayment,
@@ -28,18 +31,19 @@ pub struct Model {
     payment: Option<Payment>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ViewModel {
     screen: Screen,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Facet, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(C)]
 pub enum Screen {
     Payment(Payment),
     // TODO Settings
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
@@ -118,31 +122,31 @@ impl crux_core::App for App {
                 }
             }
             Event::SetReceiptEmail(email) => {
-                if let Some(payment) = &mut model.payment {
-                    if let Some(receipt) = payment.receipt() {
-                        receipt.email = email;
-                    }
+                if let Some(payment) = &mut model.payment
+                    && let Some(receipt) = payment.receipt()
+                {
+                    receipt.email = email;
                 }
                 render()
             }
             Event::SendReceipt => {
                 let mut commands = Vec::new();
-                if let Some(payment) = &mut model.payment {
-                    if let Some(receipt) = payment.receipt() {
-                        receipt.send();
+                if let Some(payment) = &mut model.payment
+                    && let Some(receipt) = payment.receipt()
+                {
+                    receipt.send();
 
-                        // Simulate processing delay
-                        commands.push(delay(1200).then_send(|()| Event::ConfirmSendReceipt));
-                    }
+                    // Simulate processing delay
+                    commands.push(delay(1200).then_send(|()| Event::ConfirmSendReceipt));
                 }
                 commands.push(render());
                 Command::all(commands)
             }
             Event::ConfirmSendReceipt => {
-                if let Some(payment) = &mut model.payment {
-                    if let Some(receipt) = payment.receipt() {
-                        receipt.confirm_send();
-                    }
+                if let Some(payment) = &mut model.payment
+                    && let Some(receipt) = payment.receipt()
+                {
+                    receipt.confirm_send();
                 }
                 render()
             }
@@ -166,7 +170,9 @@ mod tests {
     use assert_let_bind::assert_let;
     use crux_core::App as _;
 
-    use crate::{App, Effect, Event, Model, Payment, PaymentStatus, Receipt, Screen, ViewModel};
+    use crate::app::{
+        App, Effect, Event, Model, Payment, PaymentStatus, Receipt, Screen, ViewModel,
+    };
 
     fn payment(amount: u32, status: PaymentStatus) -> Payment {
         Payment { amount, status }
@@ -236,7 +242,7 @@ mod tests {
         let view = app.view(&model);
         let expected_receipt = Receipt {
             email: "bob@fake.com".to_string(),
-            status: crate::ReceiptStatus::New,
+            status: crate::app::ReceiptStatus::New,
         };
 
         assert_eq!(
@@ -250,7 +256,7 @@ mod tests {
         let view = app.view(&model);
         let expected_receipt = Receipt {
             email: "bob@fake.com".to_string(),
-            status: crate::ReceiptStatus::Pending,
+            status: crate::app::ReceiptStatus::Pending,
         };
 
         assert_eq!(
@@ -267,7 +273,7 @@ mod tests {
         let view = app.view(&model);
         let expected_receipt = Receipt {
             email: "bob@fake.com".to_string(),
-            status: crate::ReceiptStatus::Sent,
+            status: crate::app::ReceiptStatus::Sent,
         };
 
         assert_eq!(
