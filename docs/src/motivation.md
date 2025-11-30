@@ -27,7 +27,8 @@ The issues with the second approach are two-fold:
 - Only _mostly_ native user interface
 - In the case of React Native, the JavaScript ecosystem tooling disaster
 
-React Native and Flutter effectively take over, and work hard to insulate the engineer
+React Native (we'll focus the discussion on it, but most of the below applies to Flutter too)
+effectively takes over, and works hard to insulate the engineer
 from the native platform underneath and pretend it doesn't really exist, but of
 course, inevitably, it does exist and the user interface ends up being built in a
 combination of 90% JavaScript/TypeScript and 10% Kotlin/Swift. This was a major
@@ -53,18 +54,19 @@ browser, it gets bundled, and the list of bundlers is too long to include here,
 and even 10 years since the introduction of ES modules, the ecosystem is still split
 and the competing module standards make all tooling more complex and difficult to configure.
 
-JavaScript was built as a dynamic language which leads to a lot of basic human errors,
-which are made while writing the code, only being discovered when running the code.
+JavaScript was built as a dynamic language. This means a lot of basic human errors,
+which are made while writing the code are only discovered when running the code.
 Static type systems aim to solve that problem and [TypeScript](https://www.typescriptlang.org/)
 adds this onto JavaScript, but the types only go so far (until they hit an `any` type,
-or dependencies with no type definitions), and they disappear at runtime.
+or dependencies with no type definitions), and they disappear at runtime, so you don't
+get a type based conditional (well, [kind of](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates)).
 
 In short, upgrading JavaScript to something modern, capable of handling a large app
-codebase with multiple people or even teams working on it takes a lot of tooling.
+codebase with multiple people or even teams working on it is possible, but takes a lot of tooling.
 Getting all this tooling set up and ready to build things is an all day job, and
 so more tooling, like [Vite](https://vite.dev/) has popped up providing
 this configuration in a box, batteries included. Perhaps the final admission of
-this problem is the recent [Biome](https://biomejs.dev/blog/annoucing-biome/)
+this problem is the [Biome](https://biomejs.dev/blog/annoucing-biome/)
 toolchain (formerly the Rome project), attempting to bring all the various tools
 under one roof (and Biome itself is built in Rust...).
 
