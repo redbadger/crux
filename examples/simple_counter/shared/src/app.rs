@@ -62,7 +62,6 @@ impl App for Counter {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crux_core::assert_effect;
 
     #[test]
     fn renders() {
@@ -72,7 +71,7 @@ mod test {
         let mut cmd = app.update(Event::Reset, &mut model);
 
         // Check update asked us to `Render`
-        assert_effect!(cmd, Effect::Render(_));
+        cmd.expect_one_effect().expect_render();
     }
 
     #[test]
@@ -92,12 +91,12 @@ mod test {
 
         let mut cmd = app.update(Event::Increment, &mut model);
 
+        // Check update asked us to `Render`
+        cmd.expect_one_effect().expect_render();
+
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
         assert_eq!(actual_view, expected_view);
-
-        // Check update asked us to `Render`
-        assert_effect!(cmd, Effect::Render(_));
     }
 
     #[test]
@@ -107,12 +106,12 @@ mod test {
 
         let mut cmd = app.update(Event::Decrement, &mut model);
 
+        // Check update asked us to `Render`
+        cmd.expect_one_effect().expect_render();
+
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: -1";
         assert_eq!(actual_view, expected_view);
-
-        // Check update asked us to `Render`
-        assert_effect!(cmd, Effect::Render(_));
     }
 
     #[test]
