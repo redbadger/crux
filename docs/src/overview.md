@@ -12,12 +12,15 @@ platform on which the core runs.
 
 ![Crux](./crux.png)
 
-The aim is to separate the three kinds of code in a typical app, which have different goals:
-the **presentation** layer in the user interface, the pure logic driving **behaviour**
-and state updates in response to the user's actions, and the **effects** (or I/O) layer where
-network communication, storage, interactions with real-world time, and other
-similar things are handled. The Core handles the behaviour logic, the Shell handles the
-presentation layer and effect execution (but not orchestration, that is part to the behaviour
+The aim is to separate three kinds of code in a typical app, which have different goals:
+
+- the **presentation** layer in the user interface,
+- the pure logic driving **behaviour** and state updates in response to the user's actions, and
+- the **effects** (or I/O) layer where network communication, storage, interactions with real-world time, and other
+  similar things are handled
+
+The Core handles the behaviour logic, the Shell handles the
+presentation layer and effect execution (but not _orchestration_, that is part to the behaviour
 and therefore in the Core). This strict separation makes the behaviour logic much easier to test
 without any of the other layers getting involved.
 
@@ -27,9 +30,11 @@ supported by cross-language code generation and type checking.
 
 ```admonish title="Get to know Crux"
 
-To get playing with Crux quickly, follow the Part I of the book – [Getting Started](./part-1/getting_started.md). It will take you from zero to a basic working app on your preferred platform quickly. From there, continue on to Part II – the [Weather App](./guide/weather_app.md), which builds on the basics and covers the more advanced features needed in a real world app.
+To get playing with Crux quickly, follow the Part I of the book, starting with the [Getting Started](./part-1/getting_started.md) chapter. It will take you from zero to a basic working app on your preferred platform quickly. From there, continue on to Part II – building the [Weather App](./guide/weather_app.md), which builds on the basics and covers the more advanced features and patterns needed in a real world app.
 
-If you're just want to know why we set out to build Crux in the first place and what problems it tries to solve, before you  spend any time trying it (no hard feelings, we would too), read our original [Motivation](./motivation.md).
+If you just want to understand why we set out to build Crux in the first place and what problems it tries to solve, before you  spend any time trying it (no hard feelings, we would too), read our original [Motivation](./motivation.md).
+
+#### API docs
 
 There are two places to find API documentation: the latest published version on docs.rs, or the very latest `master` docs if you too like to live dangerously.
 
@@ -51,27 +56,33 @@ You can also join the friendly conversation on our [Zulip channel](https://crux-
 
 ![Logical architecture](./architecture.svg)
 
-The architecture is event-driven, based on
-[event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html). The Core
-holds the majority of state, which is updated in response to events happening in
+The architecture is event-driven, with state management based on
+[event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), similar to Elm or Redux.
+The Core holds the majority of state, which is updated in response to events happening in
 the Shell. The interface between the Core and the Shell is message-based.
 
+### Native UI
+
 The user interface layer is built natively, with modern declarative UI
-frameworks such as Swift UI, Jetpack Compose and React/Vue or a WASM based
-framework on the web. The UI layer is as thin as it can be, and all other
-application logic is implemented by the shared Core. The one restriction is that
+frameworks such as Swift UI, Jetpack Compose and React/Svelte or a WASM based
+framework on the web. The UI layer is as thin as it can be, and all behaviour
+logic is implemented by the shared Core. The one restriction is that
 the Core is side–effect free. This is both a technical requirement (to be able
-to target WebAssembly), and an intentional design goal, to separate logic from
+to target WebAssembly), and an intentional design goal, to separate behaviour from
 effects and make them both easier to test in isolation.
 
-Crux uses [managed side-effects](./part-2/effects.md) – the app requests side-effects
-from the Shell, which executes them. The basic concept is that instead of
+### Managed effects
+
+Crux uses [managed side-effects](./part-2/effects.md) – the Core requests side-effects
+from the Shell, which executes them. The basic difference is that instead of
 _doing_ the asynchronous work, the core _describes_ the intent for the work with
 data (which also serves as the input for the effect), and passes this to the Shell
 to be performed. The Shell performs the work, and returns the outcomes back to the Core.
 This approach using deferred execution is inspired by [Elm](https://elm-lang.org/),
 and similar to how other purely functional languages deal with effects and I/O
-(e.g. the IO monad in Haskell). It is also similar to how iterators work in Rust.
+(e.g. the IO monad in Haskell). It is also similar in its laziness to how iterators work in Rust.
+
+### Type generation
 
 The Core exports types for the messages it can understand. The Shell can call
 the Core and pass one of the messages. In return, it receives a set of
@@ -102,7 +113,7 @@ more [about our motivation](./motivation.md). The overall goals of Crux are to:
 
 Crux is used in production apps today, and we consider it production ready. However,
 we still have a number of things to work on to call it 1.0, with a stable API and
-other things one would expect from a mature framework.
+excellent DX expected from a mature framework.
 
 Below is a list of some of the things we know we want to do before 1.0:
 
@@ -113,4 +124,5 @@ Below is a list of some of the things we know we want to do before 1.0:
   to write or copy from an example
 
 Until then, we hope you will work with us on the rough edges, and adapt to the necessary
-API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable.
+API updates as we evolve. We strive to minimise the impact of changes as much as we can,
+but before 1.0, some breaking changes will be unavoidable.
