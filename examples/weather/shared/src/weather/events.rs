@@ -1,17 +1,17 @@
-use crux_core::Command;
 use crux_core::render::render;
+use crux_core::Command;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     app::{Effect, Model},
     location::{
-        Location,
         capability::{get_location, is_location_enabled},
+        Location,
     },
     weather::{
         client::{WeatherApi, WeatherError},
-        model::current_response::CurrentResponse,
+        model::current_response::CurrentWeatherResponse,
     },
 };
 
@@ -35,7 +35,7 @@ pub enum WeatherEvent {
 
     #[serde(skip)]
     #[facet(skip)]
-    SetWeather(#[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>),
+    SetWeather(#[facet(opaque)] Box<Result<CurrentWeatherResponse, WeatherError>>),
 
     #[serde(skip)]
     #[facet(skip)]
@@ -44,7 +44,7 @@ pub enum WeatherEvent {
     #[serde(skip)]
     #[facet(skip)]
     SetFavoriteWeather(
-        #[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>,
+        #[facet(opaque)] Box<Result<CurrentWeatherResponse, WeatherError>>,
         Location,
     ),
 }
@@ -116,12 +116,12 @@ mod tests {
     use crate::{
         app::{Effect, Model},
         favorites::model::Favorite,
-        location::{Location, model::GeocodingResponse},
+        location::{model::GeocodingResponse, Location},
         weather::{
             client::WeatherApi,
-            events::{WeatherEvent, update},
+            events::{update, WeatherEvent},
             model::{
-                current_response::{CurrentResponse, CurrentResponseBuilder, Main, Sys},
+                current_response::{CurrentResponse, CurrentWeatherResponseBuilder, Main, Sys},
                 response_elements::{Clouds, Coord, WeatherData, Wind},
             },
         },
@@ -141,8 +141,8 @@ mod tests {
         }
     }
 
-    fn test_response() -> CurrentResponse {
-        CurrentResponseBuilder::default()
+    fn test_response() -> CurrentWeatherResponse {
+        CurrentWeatherResponseBuilder::default()
             .main(Main {
                 temp: 20.0,
                 feels_like: 18.0,

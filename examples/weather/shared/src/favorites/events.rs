@@ -1,11 +1,11 @@
-use crux_core::{Command, render::render};
+use crux_core::{render::render, Command};
 use crux_kv::{command::KeyValue, error::KeyValueError};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::app::{Effect, Model, Workflow};
-use crate::favorites::model::{FAVORITES_KEY, Favorite, Favorites, FavoritesState};
+use crate::favorites::model::{Favorite, Favorites, FavoritesState, FAVORITES_KEY};
 use crate::location::client::{LocationApi, LocationError};
 use crate::location::model::geocoding_response::GeocodingResponse;
 
@@ -148,7 +148,7 @@ pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, Favor
 
 #[cfg(test)]
 mod tests {
-    use crux_core::{App as _, assert_effect};
+    use crux_core::{assert_effect, App as _};
     use crux_http::protocol::{HttpResponse, HttpResult};
 
     use super::*;
@@ -301,7 +301,7 @@ mod tests {
                 country: "US".to_string(),
                 state: None,
             },
-            current: Some(CurrentResponse {
+            current: Some(CurrentWeatherResponse {
                 coord: Coord {
                     lat: 33.456_789,
                     lon: -112.037_222,

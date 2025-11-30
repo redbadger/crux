@@ -1,4 +1,6 @@
-# A guide to testing Crux apps
+# Testing Crux apps
+
+FIXME: some of the advanced stuff needs to go to Part II
 
 ## Introduction
 
@@ -151,9 +153,11 @@ assert_eq!(view.cursor, TextCursor::Position(14));
 ## Writing a more complicated test
 
 Now let's take a more complicated test and walk through that.
+
 ```rust,ignore,no_run
 {{#include ../../../examples/notes/shared/src/app.rs:starts_a_timer_after_an_edit}}
 ```
+
 This test checks that a "save" timer is restarted each
 time the user edits the document (after a second of no activity the document is
 stored). We will use the [`Time`](https://crates.io/crates/crux_time)
