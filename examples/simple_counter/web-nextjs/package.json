@@ -3,11 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "pnpm run wasm:build && next build",
-    "dev": "pnpm run wasm:build && next dev",
-    "wasm:build": "cd ../shared && wasm-pack build --target web",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start"
   },
   "dependencies": {
     "bulma": "^1.0.4",
@@ -16,8 +14,8 @@
     "next": "15.3.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "shared": "file:../shared/pkg",
-    "shared_types": "file:../shared_types/generated/typescript",
+    "shared": "file:generated/pkg",
+    "shared_types": "file:generated/types",
     "typescript": "5.8.3"
   },
   "devDependencies": {

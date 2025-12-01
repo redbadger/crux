@@ -1,45 +1,96 @@
-import type { Dispatch, SetStateAction } from "react";
-
-import { process_event, view } from "shared/shared";
-import type { Effect, Event } from "shared_types/types/shared_types";
+import { Dispatch, RefObject, SetStateAction } from "react";
+import { CoreFFI } from "shared";
+import type { Effect, Event } from "shared_types/app";
 import {
   EffectVariantRender,
-  ViewModel,
+  RenderOperation,
   Request,
-} from "shared_types/types/shared_types";
-import {
-  BincodeSerializer,
-  BincodeDeserializer,
-} from "shared_types/bincode/mod";
+  ViewModel,
+} from "shared_types/app";
+import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
+import init_core from "shared/shared";
 
-export function update(
-  event: Event,
-  callback: Dispatch<SetStateAction<ViewModel>>,
-) {
-  console.log("event", event);
+type Response = RenderOperation;
 
-  const serializer = new BincodeSerializer();
-  event.serialize(serializer);
+export type Timers = {
+  [key: number]: number;
+};
 
-  const effects = process_event(serializer.getBytes());
+export type SyncMessage = {
+  kind: "change" | "reset";
+  data?: number[];
+};
 
-  const requests = deserializeRequests(effects);
-  for (const { id, effect } of requests) {
-    processEffect(id, effect, callback);
+export class Core {
+  core: CoreFFI | null = null;
+  setState: Dispatch<SetStateAction<ViewModel>>;
+
+  constructor(setState: Dispatch<SetStateAction<ViewModel>>) {
+    // Don't initialize CoreFFI here - wait for WASM to be loaded
+    this.setState = setState;
   }
-}
 
-function processEffect(
-  _id: number,
-  effect: Effect,
-  callback: Dispatch<SetStateAction<ViewModel>>,
-) {
-  console.log("effect", effect);
+  initialize(should_load: boolean) {
+    if (!this.core) {
+      const load = should_load ? init_core() : Promise.resolve();
+      load
+        .then(() => {
+          this.core = new CoreFFI();
+          this.setState(this.view());
+        })
+        .catch((error) => {
+          console.error("Failed to initialize wasm core:", error);
+        });
+    }
+  }
 
-  switch (effect.constructor) {
-    case EffectVariantRender: {
-      callback(deserializeView(view()));
-      break;
+  view(): ViewModel {
+    if (!this.core) {
+      throw new Error("Core not initialized. Call initialize() first.");
+    }
+    return deserializeView(this.core.view());
+  }
+
+  update(event: Event) {
+    if (!this.core) {
+      throw new Error("Core not initialized. Call initialize() first.");
+    }
+    console.log("event", event);
+
+    const serializer = new BincodeSerializer();
+    event.serialize(serializer);
+
+    const effects = this.core.update(serializer.getBytes());
+
+    const requests = deserializeRequests(effects);
+    for (const { id, effect } of requests) {
+      this.processEffect(id, effect);
+    }
+  }
+
+  private processEffect(id: number, effect: Effect) {
+    console.log("effect", effect);
+
+    switch (effect.constructor) {
+      case EffectVariantRender: {
+        this.setState(this.view());
+        break;
+      }
+    }
+  }
+
+  respond(id: number, response: Response) {
+    if (!this.core) {
+      throw new Error("Core not initialized. Call initialize() first.");
+    }
+    const serializer = new BincodeSerializer();
+    response.serialize(serializer);
+
+    const effects = this.core.resolve(id, serializer.getBytes());
+    const requests = deserializeRequests(effects);
+
+    for (const { id, effect } of requests) {
+      this.processEffect(id, effect);
     }
   }
 }
