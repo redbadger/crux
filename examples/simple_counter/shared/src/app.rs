@@ -1,19 +1,21 @@
 // ANCHOR: app
 use crux_core::{
-    App, Command,
+    Command,
     macros::effect,
     render::{RenderOperation, render},
 };
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[repr(C)]
 pub enum Event {
     Increment,
     Decrement,
     Reset,
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
@@ -24,16 +26,16 @@ pub struct Model {
     count: isize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Facet, Serialize, Deserialize, Clone, Default)]
 pub struct ViewModel {
     pub count: String,
 }
 
 #[derive(Default)]
-pub struct Counter;
+pub struct App;
 
 // ANCHOR: impl_app
-impl App for Counter {
+impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -62,11 +64,11 @@ impl App for Counter {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crux_core::assert_effect;
+    use crux_core::{App as _, assert_effect};
 
     #[test]
     fn renders() {
-        let app = Counter;
+        let app = App;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Reset, &mut model);
@@ -77,7 +79,7 @@ mod test {
 
     #[test]
     fn shows_initial_count() {
-        let app = Counter;
+        let app = App;
         let model = Model::default();
 
         let actual_view = app.view(&model).count;
@@ -87,7 +89,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = Counter;
+        let app = App;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Increment, &mut model);
@@ -102,7 +104,7 @@ mod test {
 
     #[test]
     fn decrements_count() {
-        let app = Counter;
+        let app = App;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Decrement, &mut model);
@@ -117,7 +119,7 @@ mod test {
 
     #[test]
     fn resets_count() {
-        let app = Counter;
+        let app = App;
         let mut model = Model::default();
 
         let _ = app.update(Event::Increment, &mut model);
@@ -130,7 +132,7 @@ mod test {
 
     #[test]
     fn counts_up_and_down() {
-        let app = Counter;
+        let app = App;
         let mut model = Model::default();
 
         let _ = app.update(Event::Increment, &mut model);

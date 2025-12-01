@@ -5,8 +5,8 @@ import {
   EventVariantReset,
   EventVariantIncrement,
   EventVariantDecrement,
-} from "shared_types/types/shared_types";
-import { update } from "../core";
+} from "shared_types/app";
+import { Core } from "../core";
 
 export const meta = () => {
   return [
@@ -16,21 +16,15 @@ export const meta = () => {
 };
 
 export default function Index() {
-  const [view, setView] = useState(new ViewModel("0"));
+  const [view, setView] = useState(new ViewModel(""));
+  const core: React.RefObject<Core> = useRef(new Core(setView));
 
-  const initialized = useRef(false);
-
+  // Initialize
   useEffect(
-    () => {
-      if (!initialized.current) {
-        initialized.current = true;
-
-        // Initial event
-        update(new EventVariantReset(), setView);
-      }
-    },
+    () =>
+      core.current.initialize(/* loading is done in entry.client.tsx */ false),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    /*once*/ []
+    /*once*/ [],
   );
 
   return (
@@ -40,19 +34,19 @@ export default function Index() {
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantReset(), setView)}
+            onClick={() => core.current.update(new EventVariantReset())}
           >
             {"Reset"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() => update(new EventVariantIncrement(), setView)}
+            onClick={() => core.current.update(new EventVariantIncrement())}
           >
             {"Increment"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() => update(new EventVariantDecrement(), setView)}
+            onClick={() => core.current.update(new EventVariantDecrement())}
           >
             {"Decrement"}
           </button>
