@@ -10,6 +10,8 @@ use uniffi::deps::anyhow::Result;
 
 use shared::App;
 
+const PACKAGE_NAME: &str = "com.crux.example.simple_counter";
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Language {
     Swift,
@@ -45,7 +47,7 @@ fn main() -> Result<()> {
         Language::Kotlin => {
             info!("Typegen for Kotlin");
             typegen_app.kotlin(
-                &Config::builder("com.crux.example.cat_facts", &args.output_dir)
+                &Config::builder(PACKAGE_NAME, &args.output_dir)
                     .add_extensions()
                     .add_runtimes()
                     .build(),
