@@ -1,8 +1,8 @@
-use shared::{App, Effect, Event};
+use shared::{Counter, Effect, Event};
 use std::rc::Rc;
 use yew::Callback;
 
-pub type Core = Rc<shared::Core<App>>;
+pub type Core = Rc<shared::Core<Counter>>;
 
 pub enum Message {
     Event(Event),

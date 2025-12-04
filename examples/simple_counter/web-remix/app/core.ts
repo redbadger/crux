@@ -12,15 +12,6 @@ import init_core from "shared/shared";
 
 type Response = RenderOperation;
 
-export type Timers = {
-  [key: number]: number;
-};
-
-export type SyncMessage = {
-  kind: "change" | "reset";
-  data?: number[];
-};
-
 export class Core {
   core: CoreFFI | null = null;
   setState: Dispatch<SetStateAction<ViewModel>>;

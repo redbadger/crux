@@ -1,6 +1,6 @@
 // ANCHOR: app
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
@@ -32,10 +32,10 @@ pub struct ViewModel {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct Counter;
 
 // ANCHOR: impl_app
-impl crux_core::App for App {
+impl App for Counter {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -64,11 +64,11 @@ impl crux_core::App for App {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crux_core::{App as _, assert_effect};
+    use crux_core::assert_effect;
 
     #[test]
     fn renders() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Reset, &mut model);
@@ -79,7 +79,7 @@ mod test {
 
     #[test]
     fn shows_initial_count() {
-        let app = App;
+        let app = Counter;
         let model = Model::default();
 
         let actual_view = app.view(&model).count;
@@ -89,7 +89,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Increment, &mut model);
@@ -104,7 +104,7 @@ mod test {
 
     #[test]
     fn decrements_count() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Decrement, &mut model);
@@ -119,7 +119,7 @@ mod test {
 
     #[test]
     fn resets_count() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         let _ = app.update(Event::Increment, &mut model);
@@ -132,7 +132,7 @@ mod test {
 
     #[test]
     fn counts_up_and_down() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         let _ = app.update(Event::Increment, &mut model);
