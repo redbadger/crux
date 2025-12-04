@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SimpleCounter"
-include ':app'
-include ':shared'
+rootProject.name = "Simple Counter"
+include(":app")
+include(":shared")

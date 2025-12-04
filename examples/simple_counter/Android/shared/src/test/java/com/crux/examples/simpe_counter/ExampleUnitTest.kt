@@ -1,4 +1,4 @@
-package com.example.simple_counter
+package com.crux.examples.simpe_counter
 
 import org.junit.Test
 

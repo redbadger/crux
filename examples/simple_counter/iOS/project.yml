@@ -5,7 +5,7 @@ packages:
   App:
     path: ./generated/App
 options:
-  bundleIdPrefix: com.crux.example.simple_counter
+  bundleIdPrefix: com.crux.examples.simple_counter
 attributes:
   BuildIndependentTargetsInParallel: true
 targets:
