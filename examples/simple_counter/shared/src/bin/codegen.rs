@@ -8,7 +8,7 @@ use crux_core::{
 use log::info;
 use uniffi::deps::anyhow::Result;
 
-use shared::App;
+use shared::Counter;
 
 const PACKAGE_NAME: &str = "com.crux.example.simple_counter";
 
@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
+    let typegen_app = TypeRegistry::new().register_app::<Counter>()?.build()?;
 
     match args.language {
         Language::Swift => {

@@ -5,10 +5,10 @@ use dioxus::{
     signals::WritableExt as _,
 };
 use futures_util::StreamExt;
-use shared::{App, Effect, Event, ViewModel};
+use shared::{Counter, Effect, Event, ViewModel};
 use tracing::debug;
 
-type Core = Rc<shared::Core<App>>;
+type Core = Rc<shared::Core<Counter>>;
 
 pub struct CoreService {
     core: Core,
