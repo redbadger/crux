@@ -26,8 +26,8 @@ anyhow = "1.0.100"
 facet = "=0.30"
 serde = "1.0.228"
 thiserror = "2.0.17"
-uniffi = "=0.29.4"
-uniffi_bindgen = "=0.29.4"
+uniffi = "=0.30.0"
+uniffi_bindgen = "=0.30.0"
 
 [workspace.lints.clippy]
 pedantic = "warn"

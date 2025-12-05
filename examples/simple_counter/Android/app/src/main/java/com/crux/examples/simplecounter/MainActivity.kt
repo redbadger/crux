@@ -1,4 +1,4 @@
-package com.crux.examples.simple_counter
+package com.crux.examples.simplecounter
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.crux.examples.simple_counter.ui.theme.SimpleCounterTheme
+import com.crux.examples.simplecounter.ui.theme.SimpleCounterTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {

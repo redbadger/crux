@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.crux.examples.simple_counter"
+    namespace = "com.crux.examples.simplecounter"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.crux.examples.simple_counter"
+        applicationId = "com.crux.examples.simplecounter"
         minSdk = 34
         targetSdk = 36
         versionCode = 1
