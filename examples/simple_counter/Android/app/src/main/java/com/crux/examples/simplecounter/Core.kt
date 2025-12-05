@@ -1,4 +1,4 @@
-package com.crux.examples.simple_counter
+package com.crux.examples.simplecounter
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

@@ -10,7 +10,7 @@ use uniffi::deps::anyhow::Result;
 
 use shared::Counter;
 
-const PACKAGE_NAME: &str = "com.crux.examples.simple_counter";
+const PACKAGE_NAME: &str = "com.crux.examples.simplecounter";
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Language {

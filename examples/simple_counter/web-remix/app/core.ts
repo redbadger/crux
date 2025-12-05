@@ -69,21 +69,6 @@ export class Core {
       }
     }
   }
-
-  respond(id: number, response: Response) {
-    if (!this.core) {
-      throw new Error("Core not initialized. Call initialize() first.");
-    }
-    const serializer = new BincodeSerializer();
-    response.serialize(serializer);
-
-    const effects = this.core.resolve(id, serializer.getBytes());
-    const requests = deserializeRequests(effects);
-
-    for (const { id, effect } of requests) {
-      this.processEffect(id, effect);
-    }
-  }
 }
 
 function deserializeRequests(bytes: Uint8Array): Request[] {

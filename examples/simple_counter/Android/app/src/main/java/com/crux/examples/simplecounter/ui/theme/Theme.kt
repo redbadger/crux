@@ -1,4 +1,4 @@
-package com.crux.examples.simple_counter.ui.theme
+package com.crux.examples.simplecounter.ui.theme
 
 import android.app.Activity
 import android.os.Build
