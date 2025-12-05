@@ -1,0 +1,8 @@
+build:
+    just iOS/build
+
+clean:
+    just iOS/clean
+
+test:
+    cargo nextest run

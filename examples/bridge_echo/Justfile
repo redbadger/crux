@@ -1,0 +1,16 @@
+build:
+    just Android/build
+    just cli/build
+    just iOS/build
+    just web-leptos/build
+    just web-remix/build
+
+clean:
+    just Android/clean
+    just cli/clean
+    just iOS/clean
+    just web-leptos/clean
+    just web-remix/clean
+
+test:
+    cargo nextest run

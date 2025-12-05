@@ -18,7 +18,7 @@ fn App() -> Element {
     rsx! {
         document::Link {
             rel: "stylesheet",
-            href: asset!("./public/css/bulma.min.css")
+            href: asset!("../public/css/bulma.min.css")
         }
         main {
             section { class: "section has-text-centered",

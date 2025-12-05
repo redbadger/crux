@@ -10,7 +10,7 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import init_core from "shared/shared";
+import init_core from "shared";
 import { SyncMessage, Timers, Core } from "./core";
 import {
   TextCursor,
@@ -22,7 +22,7 @@ import {
   EventVariantReplace,
   EventVariantMoveCursor,
   EventVariantSelect,
-} from "shared_types/types/shared_types";
+} from "shared_types/app";
 
 const LOG_EDITS = false;
 
@@ -68,10 +68,7 @@ const Home: NextPage = () => {
 
   const subscriptionId = useRef<number | null>(null);
   const channel = useRef(new BroadcastChannel("crux-note"));
-
-  const core = useRef<Core>(
-    new Core(setView, setTimers, channel, subscriptionId),
-  );
+  const core = useRef(new Core(setView, setTimers, channel, subscriptionId));
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
     let message = event.data;
@@ -90,28 +87,39 @@ const Home: NextPage = () => {
   };
 
   const initialized = useRef(false);
+
+  // Initialize core and WASM
   useEffect(
     () => {
       if (!initialized.current) {
         initialized.current = true;
 
-        init_core().then(() => {
-          // Subscribe to the BroadcastChannel
-          channel.current.onmessage = onMessage;
+        (async () => {
+          try {
+            await init_core();
 
-          // Open the document
-          core.current.update(new EventVariantOpen());
+            // Initialize the Core with WASM after module is loaded
+            core.current.initialize();
 
-          // Ask all peers to reset
-          let message: SyncMessage = {
-            kind: "reset",
-          };
-          channel.current.postMessage(message);
-        });
+            // Subscribe to the BroadcastChannel
+            channel.current.onmessage = onMessage;
 
-        const currentChannel = channel.current;
+            // Open the document
+            core.current.update(new EventVariantOpen());
+
+            // Ask all peers to reset
+            let message: SyncMessage = {
+              kind: "reset",
+            };
+
+            channel.current.postMessage(message);
+          } catch (error) {
+            console.error("Error during WASM initialization:", error);
+          }
+        })();
+
         return () => {
-          currentChannel.onmessage = null;
+          channel.current.onmessage = null;
         };
       }
     },
@@ -155,10 +163,10 @@ const Home: NextPage = () => {
 
       <div className="min-h-screen flex flex-col bg-slate-200">
         <Navbar title="A note" />
-        <main className="flex-grow flex flex-col">
-          <div className="flex-grow basis-1 flex flex-col">
+        <main className="grow flex flex-col">
+          <div className="grow basis-1 flex flex-col">
             <Textarea
-              className="p-3 flex-grow resize-none w-full focus:outline-none"
+              className="p-3 grow resize-none w-full focus:outline-none"
               selectionStart={selection.start}
               selectionEnd={selection.end}
               onSelect={onSelect}
@@ -167,7 +175,7 @@ const Home: NextPage = () => {
             />
           </div>
           {LOG_EDITS ? (
-            <div className="flex-grow basis-1 overflow-scroll">
+            <div className="grow basis-1 overflow-scroll">
               <div className=" p-3 text-sm font-mono bg-slate-100 ">
                 {inputLog.map((line, i) => (
                   <p className="font-mono" key={i}>

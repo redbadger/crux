@@ -1,15 +1,11 @@
-import {
-  process_event,
-  handle_response,
-  view as coreView,
-} from "shared/shared";
+import { CoreFFI } from "shared";
 import type {
   Effect,
   Event,
   KeyValueResult,
   Message,
   TimeResponse,
-} from "shared_types/types/shared_types";
+} from "shared_types/app";
 import {
   EffectVariantRender,
   ViewModel,
@@ -26,14 +22,11 @@ import {
   KeyValueResponseVariantSet,
   ValueVariantNone,
   ValueVariantBytes,
-  TimeRequestVariantnotifyAfter,
-  TimeResponseVariantdurationElapsed,
-  TimeRequestVariantclear,
-} from "shared_types/types/shared_types";
-import {
-  BincodeSerializer,
-  BincodeDeserializer,
-} from "shared_types/bincode/mod";
+  TimeRequestVariantNotifyAfter,
+  TimeResponseVariantDurationElapsed,
+  TimeRequestVariantClear,
+} from "shared_types/app";
+import { BincodeSerializer, BincodeDeserializer } from "shared_types/bincode";
 import { Dispatch, RefObject, SetStateAction } from "react";
 
 type Response = Message | TimeResponse | KeyValueResult;
@@ -48,6 +41,7 @@ export type SyncMessage = {
 };
 
 export class Core {
+  core: CoreFFI | null = null;
   setState: Dispatch<SetStateAction<ViewModel>>;
   setTimers: Dispatch<SetStateAction<Timers>>;
   channel: RefObject<BroadcastChannel>;
@@ -59,23 +53,36 @@ export class Core {
     channel: RefObject<BroadcastChannel>,
     subscriptionId: RefObject<number | null>,
   ) {
+    // Don't initialize CoreFFI here - wait for WASM to be loaded
     this.setState = setState;
     this.setTimers = setTimers;
     this.channel = channel;
     this.subscriptionId = subscriptionId;
   }
 
+  initialize() {
+    if (!this.core) {
+      this.core = new CoreFFI();
+    }
+  }
+
   view(): ViewModel {
-    return deserializeView(coreView());
+    if (!this.core) {
+      throw new Error("Core not initialized. Call initialize() first.");
+    }
+    return deserializeView(this.core.view());
   }
 
   update(event: Event) {
+    if (!this.core) {
+      throw new Error("Core not initialized. Call initialize() first.");
+    }
     console.log("event", event);
 
     const serializer = new BincodeSerializer();
     event.serialize(serializer);
 
-    const effects = process_event(serializer.getBytes());
+    const effects = this.core.update(serializer.getBytes());
 
     const requests = deserializeRequests(effects);
     for (const { id, effect } of requests) {
@@ -88,7 +95,7 @@ export class Core {
 
     switch (effect.constructor) {
       case EffectVariantRender: {
-        this.setState(deserializeView(coreView()));
+        this.setState(this.view());
         break;
       }
 
@@ -118,10 +125,10 @@ export class Core {
         const timerOp = (effect as EffectVariantTime).value;
 
         switch (timerOp.constructor) {
-          case TimeRequestVariantnotifyAfter: {
+          case TimeRequestVariantNotifyAfter: {
             let { id: startId, duration } =
-              timerOp as TimeRequestVariantnotifyAfter;
-            let millis = Number(duration.nanos) / 1e6;
+              timerOp as TimeRequestVariantNotifyAfter;
+            let milliseconds = Number(duration.nanos) / 1e6;
 
             let handle = window.setTimeout(() => {
               // Drop the timer
@@ -131,15 +138,15 @@ export class Core {
                 return rest;
               });
 
-              this.respond(id, new TimeResponseVariantdurationElapsed(startId));
-            }, millis);
+              this.respond(id, new TimeResponseVariantDurationElapsed(startId));
+            }, milliseconds);
             this.setTimers((ts) => ({ [Number(startId)]: handle, ...ts }));
 
             break;
           }
 
-          case TimeRequestVariantclear: {
-            let { id: cancelId } = timerOp as TimeRequestVariantclear;
+          case TimeRequestVariantClear: {
+            let { id: cancelId } = timerOp as TimeRequestVariantClear;
 
             this.setTimers((ts) => {
               let { [Number(cancelId.value)]: handle, ...rest } = ts;
@@ -159,10 +166,7 @@ export class Core {
             const { key: readKey } = request as KeyValueOperationVariantGet;
 
             const data = window.localStorage.getItem(readKey);
-            const bytes =
-              data == null
-                ? new Uint8Array()
-                : new Uint8Array(JSON.parse(data));
+            const bytes: number[] = data == null ? [] : JSON.parse(data);
             const value =
               bytes.length === 0
                 ? new ValueVariantNone()
@@ -205,10 +209,13 @@ export class Core {
   }
 
   respond(id: number, response: Response) {
+    if (!this.core) {
+      throw new Error("Core not initialized. Call initialize() first.");
+    }
     const serializer = new BincodeSerializer();
     response.serialize(serializer);
 
-    const effects = handle_response(id, serializer.getBytes());
+    const effects = this.core.resolve(id, serializer.getBytes());
     const requests = deserializeRequests(effects);
 
     for (const { id, effect } of requests) {
