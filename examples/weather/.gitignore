@@ -2,3 +2,4 @@ target
 .vscode
 .bacon-locations
 .env
+*.xcodeproj
