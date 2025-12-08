@@ -9,12 +9,13 @@ import {
   EventVariantStartWatch,
   EventVariantDecrement,
   EventVariantIncrement,
-} from "shared_types/types/shared_types";
+} from "shared_types/app";
 
-import { update } from "./core";
+import { Core } from "./core";
 
 const Home: NextPage = () => {
-  const [view, setView] = useState(new ViewModel("", false));
+  const [view, setView] = useState(new ViewModel("", true));
+  const core: React.RefObject<Core | null> = useRef(null);
 
   const initialized = useRef(false);
   useEffect(
@@ -23,12 +24,16 @@ const Home: NextPage = () => {
         initialized.current = true;
 
         init_core().then(() => {
-          update(new EventVariantStartWatch(), setView);
+          if (core.current === null) {
+            core.current = new Core(setView);
+          }
+          // Initial events
+          core.current?.update(new EventVariantStartWatch());
         });
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    /*once*/ []
+    /*once*/ [],
   );
 
   return (
@@ -42,13 +47,13 @@ const Home: NextPage = () => {
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-warning"
-            onClick={() => update(new EventVariantDecrement(), setView)}
+            onClick={() => core.current?.update(new EventVariantDecrement())}
           >
             {"Decrement"}
           </button>
           <button
             className="button is-primary is-danger"
-            onClick={() => update(new EventVariantIncrement(), setView)}
+            onClick={() => core.current?.update(new EventVariantIncrement())}
           >
             {"Increment"}
           </button>

@@ -29,6 +29,6 @@ custom-protocol = ["tauri/custom-protocol"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
-  'cfg(mobile)',
-  'cfg(desktop)',
+    'cfg(mobile)',
+    'cfg(desktop)',
 ] }

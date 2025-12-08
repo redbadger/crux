@@ -5,6 +5,7 @@ use crux_core::{
     App, Command,
 };
 use crux_http::{command::Http, protocol::HttpRequest};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -26,13 +27,14 @@ pub struct Count {
 }
 // ANCHOR_END: model
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Facet, Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum Event {
     // events from the shell
     Get,
@@ -42,12 +44,14 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
-    Set(crux_http::Result<crux_http::Response<Count>>),
+    #[facet(skip)]
+    Set(#[facet(opaque)] crux_http::Result<crux_http::Response<Count>>),
     #[serde(skip)]
-    Update(Count),
+    #[facet(skip)]
+    Update(#[facet(opaque)] Count),
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
@@ -136,13 +140,16 @@ impl App for Counter {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use super::{Counter, Event, Model};
-    use crate::{capabilities::sse::SseRequest, sse::SseResponse, Count, Effect};
-
     use crux_core::{assert_effect, App as _};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
+    };
+
+    use super::{Counter, Event, Model};
+    use crate::{
+        sse::{SseRequest, SseResponse},
+        Count, Effect,
     };
 
     // ANCHOR: simple_tests
