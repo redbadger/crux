@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use leptos::prelude::{Update as _, WriteSignal};
-use shared::{App, Effect, Event, ViewModel};
+use shared::{BridgeEcho, Effect, Event, ViewModel};
 
-pub type Core = Rc<shared::Core<App>>;
+pub type Core = Rc<shared::Core<BridgeEcho>>;
 
 pub fn new() -> Core {
     Rc::new(shared::Core::new())

@@ -5,11 +5,11 @@ use std::sync::Arc;
 use tokio::spawn;
 use tracing::debug;
 
-use shared::{App, Effect, Event};
+use shared::{Counter, Effect, Event};
 
 use crate::{http, sse};
 
-pub type Core = Arc<shared::Core<App>>;
+pub type Core = Arc<shared::Core<Counter>>;
 
 pub fn new() -> Core {
     Arc::new(shared::Core::new())

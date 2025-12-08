@@ -1,6 +1,6 @@
 // ANCHOR: app
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
@@ -62,10 +62,10 @@ pub enum Effect {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct BridgeEcho;
 
 // ANCHOR: impl_app
-impl crux_core::App for App {
+impl App for BridgeEcho {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -119,13 +119,11 @@ impl crux_core::App for App {
 // ANCHOR: test
 #[cfg(test)]
 mod test {
-    use crux_core::App as _;
-
     use super::*;
 
     #[test]
     fn shows_initial_count() {
-        let app = App;
+        let app = BridgeEcho;
         let model = Model::default();
 
         let actual_view = app.view(&model);
@@ -136,7 +134,7 @@ mod test {
 
     #[test]
     fn increments_count() {
-        let app = App;
+        let app = BridgeEcho;
         let mut model = Model::default();
 
         let _ = app.update(
@@ -161,7 +159,7 @@ mod test {
 
     #[test]
     fn logs_previous_counts() {
-        let app = App;
+        let app = BridgeEcho;
         let mut model = Model::default();
 
         let _ = app.update(Event::Tick(vec![DataPoint::default()]), &mut model);
@@ -195,7 +193,7 @@ mod test {
 
     #[test]
     fn renders_on_tick() {
-        let app = App;
+        let app = BridgeEcho;
         let mut model = Model::default();
 
         app.update(Event::Tick(vec![DataPoint::default()]), &mut model)
@@ -205,7 +203,7 @@ mod test {
 
     #[test]
     fn renders_on_new_period() {
-        let app = App;
+        let app = BridgeEcho;
         let mut model = Model::default();
 
         app.update(Event::NewPeriod, &mut model)

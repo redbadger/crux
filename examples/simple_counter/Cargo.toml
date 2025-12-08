@@ -15,9 +15,6 @@ anyhow = "1.0.100"
 crux_core = { path = "../../crux_core" }
 serde = "1.0.228"
 
-[workspace.metadata.bin]
-cargo-xcode = { version = "=1.7.0" }
-
 [profile]
 
 [profile.wasm-dev]

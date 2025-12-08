@@ -1,12 +1,12 @@
 use futures_util::TryStreamExt;
 use gloo_console::log;
-use shared::{App, Effect, Event};
+use shared::{Counter, Effect, Event};
 use std::rc::Rc;
 use yew::{platform::spawn_local, Callback};
 
 use crate::{http, sse};
 
-pub type Core = Rc<shared::Core<App>>;
+pub type Core = Rc<shared::Core<Counter>>;
 
 pub enum Message {
     Event(Event),

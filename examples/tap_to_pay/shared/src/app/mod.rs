@@ -1,7 +1,7 @@
 mod payment;
 
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
@@ -51,9 +51,9 @@ pub enum Effect {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct TapToPay;
 
-impl crux_core::App for App {
+impl App for TapToPay {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -171,7 +171,7 @@ mod tests {
     use crux_core::App as _;
 
     use crate::app::{
-        App, Effect, Event, Model, Payment, PaymentStatus, Receipt, Screen, ViewModel,
+        Effect, Event, Model, Payment, PaymentStatus, Receipt, Screen, TapToPay, ViewModel,
     };
 
     fn payment(amount: u32, status: PaymentStatus) -> Payment {
@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn starts_with_new_payment() {
-        let app = App;
+        let app = TapToPay;
         let model = Model::default();
 
         let expected = ViewModel {
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn basic_happy_path_payment_journey() {
-        let app = App;
+        let app = TapToPay;
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(1000), &mut model);
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn does_not_start_payment_of_zero() {
-        let app = App;
+        let app = TapToPay;
         let mut model = Model::default();
 
         let _ = app.update(Event::SetAmount(0), &mut model);

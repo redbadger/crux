@@ -153,7 +153,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{App, Event},
+        app::{Event, Weather},
         location::client::LocationApi,
         weather::model::{
             current_response::{CurrentResponse, Main, Sys},
@@ -290,7 +290,7 @@ mod tests {
 
     #[test]
     fn test_delete_confirmed() {
-        let app = App;
+        let app = Weather;
         let mut model = Model::default();
         let favorite = Favorite {
             geo: GeocodingResponse {
@@ -513,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_search_triggers_api_call() {
-        let app = App;
+        let app = Weather;
         let mut model = Model::default();
 
         let query = "Phoenix";

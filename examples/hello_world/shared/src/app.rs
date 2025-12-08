@@ -1,6 +1,6 @@
 // ANCHOR: app
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
@@ -27,9 +27,9 @@ pub struct ViewModel {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct HelloWorld;
 
-impl crux_core::App for App {
+impl App for HelloWorld {
     type Effect = Effect;
     type Event = Event;
     type Model = Model;
@@ -50,13 +50,11 @@ impl crux_core::App for App {
 // ANCHOR: test
 #[cfg(test)]
 mod tests {
-    use crux_core::App as _;
-
     use super::*;
 
     #[test]
     fn app_says_hello_world() {
-        let app = App;
+        let app = HelloWorld;
         let mut model = Model;
 
         // Call 'update' and request effects

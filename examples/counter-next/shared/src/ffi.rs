@@ -11,7 +11,7 @@ pub mod uniffi {
     };
     use crux_http::protocol::HttpRequest;
 
-    use crate::{App, middleware::RngMiddleware, sse::SseRequest};
+    use crate::{Counter, middleware::RngMiddleware, sse::SseRequest};
 
     #[effect(facet_typegen)]
     pub enum Effect {
@@ -45,7 +45,7 @@ pub mod uniffi {
     #[derive(uniffi::Object)]
     pub struct CoreFFI {
         core: Bridge<
-            MapEffectLayer<HandleEffectLayer<Core<App>, RngMiddleware>, Effect>,
+            MapEffectLayer<HandleEffectLayer<Core<Counter>, RngMiddleware>, Effect>,
             BincodeFfiFormat,
         >,
     }
@@ -55,7 +55,7 @@ pub mod uniffi {
     impl CoreFFI {
         #[uniffi::constructor]
         pub fn new(shell: Arc<dyn CruxShell>) -> Self {
-            let core = Core::<App>::new()
+            let core = Core::<Counter>::new()
                 .handle_effects_using(RngMiddleware::new())
                 .map_effect::<Effect>()
                 .bridge::<BincodeFfiFormat>(move |effect_bytes| match effect_bytes {
@@ -100,12 +100,12 @@ pub mod wasm_bindgen {
     use crux_core::middleware::{BincodeFfiFormat, Layer as _};
     use crux_core::{Core, bridge::EffectId};
 
-    use crate::App;
+    use crate::Counter;
 
     /// The main interface used by the shell
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub struct CoreFFI {
-        core: crux_core::middleware::Bridge<Core<App>, BincodeFfiFormat>,
+        core: crux_core::middleware::Bridge<Core<Counter>, BincodeFfiFormat>,
     }
 
     struct JsCallback(js_sys::Function);
@@ -133,7 +133,7 @@ pub mod wasm_bindgen {
 
             let callback = JsCallback(callback);
             let core =
-                Core::<App>::new().bridge::<BincodeFfiFormat>(
+                Core::<Counter>::new().bridge::<BincodeFfiFormat>(
                     move |effect_bytes| match effect_bytes {
                         Ok(bytes) => {
                             callback
@@ -194,7 +194,7 @@ pub mod wit_bindgen {
         type_generation::facet::TypeRegistry,
     };
 
-    use crate::App;
+    use crate::Counter;
     use exports::crux::shared_lib::core::{Guest, GuestInstance};
 
     wit_bindgen::generate!();

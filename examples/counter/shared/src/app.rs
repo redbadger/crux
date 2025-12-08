@@ -2,7 +2,7 @@ use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_optio
 use crux_core::{
     macros::effect,
     render::{render, RenderOperation},
-    Command,
+    App, Command,
 };
 use crux_http::{command::Http, protocol::HttpRequest};
 use serde::{Deserialize, Serialize};
@@ -56,9 +56,9 @@ pub enum Effect {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct Counter;
 
-impl crux_core::App for App {
+impl App for Counter {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
@@ -136,7 +136,7 @@ impl crux_core::App for App {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use super::{App, Event, Model};
+    use super::{Counter, Event, Model};
     use crate::{capabilities::sse::SseRequest, sse::SseResponse, Count, Effect};
 
     use crux_core::{assert_effect, App as _};
@@ -150,7 +150,7 @@ mod tests {
     /// counter value from the web API
     #[test]
     fn get_counter() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         // send a `Get` event to the app
@@ -226,7 +226,7 @@ mod tests {
     // Test that an `Increment` event causes the app to increment the counter
     #[test]
     fn increment_counter() {
-        let app = App;
+        let app = Counter;
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -303,7 +303,7 @@ mod tests {
     /// Test that a `Decrement` event causes the app to decrement the counter
     #[test]
     fn decrement_counter() {
-        let app = App;
+        let app = Counter;
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn server_sent_events() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         // start a SSE subscription to watch for updates from the server

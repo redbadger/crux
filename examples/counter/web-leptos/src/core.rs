@@ -3,11 +3,11 @@ use std::rc::Rc;
 use futures_util::TryStreamExt;
 use leptos::{prelude::*, task};
 
-use shared::{App, Effect, Event, ViewModel};
+use shared::{Counter, Effect, Event, ViewModel};
 
 use crate::{http, sse};
 
-pub type Core = Rc<shared::Core<App>>;
+pub type Core = Rc<shared::Core<Counter>>;
 
 pub fn new() -> Core {
     Rc::new(shared::Core::new())

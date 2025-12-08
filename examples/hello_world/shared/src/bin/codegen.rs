@@ -8,7 +8,7 @@ use crux_core::{
 use log::info;
 use uniffi::deps::anyhow::Result;
 
-use shared::App;
+use shared::HelloWorld;
 
 const PACKAGE: &str = "com.crux.example.hello_world";
 
@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
+    let typegen_app = TypeRegistry::new().register_app::<HelloWorld>()?.build()?;
 
     match args.language {
         Language::Swift => {

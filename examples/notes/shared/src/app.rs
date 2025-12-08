@@ -4,7 +4,7 @@ use std::{ops::Range, time::Duration};
 
 use automerge::Change;
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{self, RenderOperation},
 };
@@ -22,7 +22,7 @@ use note::Note;
 use self::note::EditObserver;
 
 #[derive(Default)]
-pub struct App;
+pub struct Notes;
 
 #[derive(Facet, Serialize, Deserialize, Debug)]
 #[repr(C)]
@@ -96,7 +96,7 @@ pub enum Effect {
 
 const EDIT_TIMER: u64 = 1000;
 
-impl crux_core::App for App {
+impl App for Notes {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -317,7 +317,7 @@ mod editing_tests {
 
     #[test]
     fn renders_text_and_cursor() {
-        let app = App;
+        let app = Notes;
 
         let model = Model {
             note: Note::with_text("hello"),
@@ -336,7 +336,7 @@ mod editing_tests {
 
     #[test]
     fn moves_cursor() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -355,7 +355,7 @@ mod editing_tests {
 
     #[test]
     fn changes_selection() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -374,7 +374,7 @@ mod editing_tests {
 
     #[test]
     fn inserts_text_at_cursor_and_renders() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -394,7 +394,7 @@ mod editing_tests {
     // ANCHOR: replaces_selection_and_renders
     #[test]
     fn replaces_selection_and_renders() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -415,7 +415,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_range_and_renders() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -434,7 +434,7 @@ mod editing_tests {
 
     #[test]
     fn replaces_empty_range_and_renders() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -456,7 +456,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_before_cursor() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -475,7 +475,7 @@ mod editing_tests {
 
     #[test]
     fn removes_character_after_cursor() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -494,7 +494,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_delete() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -513,7 +513,7 @@ mod editing_tests {
 
     #[test]
     fn removes_selection_on_backspace() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -532,7 +532,7 @@ mod editing_tests {
 
     #[test]
     fn handles_emoji() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             // the emoji has a skintone modifier, which is a separate unicode character
@@ -562,7 +562,7 @@ mod save_load_tests {
 
     #[test]
     fn opens_a_document() {
-        let app = App;
+        let app = Notes;
         let mut note = Note::with_text("LOADED");
 
         let mut model = Model {
@@ -606,7 +606,7 @@ mod save_load_tests {
 
     #[test]
     fn creates_a_document_if_it_cant_open_one() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -653,7 +653,7 @@ mod save_load_tests {
     // ANCHOR: starts_a_timer_after_an_edit
     #[test]
     fn starts_a_timer_after_an_edit() {
-        let app = App;
+        let app = Notes;
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -749,7 +749,7 @@ mod sync_tests {
     use super::*;
 
     struct Peer {
-        app: App,
+        app: Notes,
         model: Model,
         subscription: Option<Request<PubSubOperation>>,
         command: Option<Command<Effect, Event>>,
@@ -759,7 +759,7 @@ mod sync_tests {
     // A jig to make testing sync a bit easier
     impl Peer {
         fn new() -> Self {
-            let app = App;
+            let app = Notes;
             let model = Model::default();
 
             Self {

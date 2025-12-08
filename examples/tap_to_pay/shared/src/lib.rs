@@ -2,7 +2,7 @@ mod app;
 mod capabilities;
 mod ffi;
 
-pub use app::App;
+pub use app::TapToPay;
 
 #[cfg(feature = "uniffi")]
 const _: () = assert!(

@@ -4,12 +4,12 @@ use crux_core::{
     bridge::{Bridge, EffectId},
 };
 
-use crate::app::App;
+use crate::app::TapToPay;
 
 /// The main interface used by the shell
 #[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 struct CoreFFI {
-    core: Bridge<App>,
+    core: Bridge<TapToPay>,
 }
 
 impl Default for CoreFFI {
