@@ -1,5 +1,5 @@
 use crux_core::typegen::TypeGen;
-use shared::App;
+use shared::Counter;
 use std::path::PathBuf;
 
 fn main() -> anyhow::Result<()> {
@@ -7,7 +7,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut gen = TypeGen::new();
 
-    gen.register_app::<App>()?;
+    gen.register_app::<Counter>()?;
 
     let output_root = PathBuf::from("./generated");
 

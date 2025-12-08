@@ -5,7 +5,7 @@ use crux_core::type_generation::facet::{Config, TypeRegistry};
 use log::info;
 use uniffi::deps::anyhow::Result;
 
-use shared::App;
+use shared::TapToPay;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Language {
@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
+    let typegen_app = TypeRegistry::new().register_app::<TapToPay>()?.build()?;
 
     match args.language {
         Language::Swift => {

@@ -17,9 +17,6 @@ crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }
 serde = "1.0.228"
 
-[workspace.metadata.bin]
-cargo-xcode = { version = "=1.7.0" }
-
 [profile.dev.package]
 insta.opt-level = 3
 similar.opt-level = 3
