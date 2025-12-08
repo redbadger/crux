@@ -3,7 +3,7 @@ mod sse;
 
 use anyhow::anyhow;
 use futures::TryStreamExt;
-use shared::{Counter, Core, Effect, Event};
+use shared::{Core, Counter, Effect, Event};
 use std::sync::{Arc, LazyLock};
 use tauri::Emitter;
 
@@ -53,9 +53,10 @@ fn process_effect(
         Effect::ServerSentEvents(mut request) => {
             tauri::async_runtime::spawn({
                 let core = core.clone();
+                let operation = request.operation.clone();
 
                 async move {
-                    let mut stream = sse::request(&request.operation).await?;
+                    let mut stream = sse::request(&operation).await?;
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core

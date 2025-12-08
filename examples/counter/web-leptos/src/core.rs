@@ -49,9 +49,10 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
         Effect::ServerSentEvents(mut request) => {
             task::spawn_local({
                 let core = core.clone();
+                let operation = request.operation.clone();
 
                 async move {
-                    let mut stream = sse::request(&request.operation).await.unwrap();
+                    let mut stream = sse::request(&operation).await.unwrap();
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core

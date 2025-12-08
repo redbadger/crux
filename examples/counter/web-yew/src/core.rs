@@ -2,7 +2,7 @@ use futures_util::TryStreamExt;
 use gloo_console::log;
 use shared::{Counter, Effect, Event};
 use std::rc::Rc;
-use yew::{platform::spawn_local, Callback};
+use yew::{Callback, platform::spawn_local};
 
 use crate::{http, sse};
 
@@ -53,9 +53,10 @@ pub fn process_effect(core: &Core, effect: Effect, callback: &Callback<Message>)
             spawn_local({
                 let core = core.clone();
                 let callback = callback.clone();
+                let operation = request.operation.clone();
 
                 async move {
-                    let mut stream = sse::request(&request.operation).await.unwrap();
+                    let mut stream = sse::request(&operation).await.unwrap();
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core
