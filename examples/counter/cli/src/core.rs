@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use crossbeam_channel::Sender;
 use futures::TryStreamExt;
 use std::sync::Arc;
@@ -52,9 +52,10 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
             spawn({
                 let core = core.clone();
                 let tx = tx.clone();
+                let operation = request.operation.clone();
 
                 async move {
-                    let mut stream = sse::request(&request.operation).await?;
+                    let mut stream = sse::request(&operation).await?;
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core.resolve(&mut request, response)? {

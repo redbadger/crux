@@ -2,13 +2,15 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use crux_core::{
-    cli::{bindgen, BindgenArgsBuilder},
+    cli::{BindgenArgsBuilder, bindgen},
     type_generation::facet::{Config, TypeRegistry},
 };
 use log::info;
 use uniffi::deps::anyhow::Result;
 
 use shared::Counter;
+
+const PACKAGE_NAME: &str = "com.crux.examples.counter";
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Language {
@@ -45,7 +47,7 @@ fn main() -> Result<()> {
         Language::Kotlin => {
             info!("Typegen for Kotlin");
             typegen_app.kotlin(
-                &Config::builder("com.crux.example.cat_facts", &args.output_dir)
+                &Config::builder(PACKAGE_NAME, &args.output_dir)
                     .add_extensions()
                     .add_runtimes()
                     .build(),

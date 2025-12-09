@@ -1,13 +1,11 @@
-package com.example.counter
+package com.crux.examples.counter
 
-import com.crux.example.counter.SseRequest
-import com.crux.example.counter.SseResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
-import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.readUTF8Line
 
+@OptIn(ExperimentalUnsignedTypes::class)
 suspend fun requestSse(
     client: HttpClient, request: SseRequest, callback: suspend (SseResponse) -> Unit
 ) {
@@ -16,8 +14,8 @@ suspend fun requestSse(
         while (!channel.isClosedForRead) {
             var chunk = channel.readUTF8Line() ?: break
             chunk += "\n\n"
-            callback(SseResponse.Chunk(chunk.toByteArray().toList()))
+            callback(SseResponse.Chunk(chunk.toByteArray().toUByteArray().toList()))
         }
-        callback(SseResponse.Done())
+        callback(SseResponse.Done)
     }
 }

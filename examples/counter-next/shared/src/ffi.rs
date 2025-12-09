@@ -132,19 +132,18 @@ pub mod wasm_bindgen {
             use js_sys::wasm_bindgen::JsValue;
 
             let callback = JsCallback(callback);
-            let core =
-                Core::<Counter>::new().bridge::<BincodeFfiFormat>(
-                    move |effect_bytes| match effect_bytes {
-                        Ok(bytes) => {
-                            callback
-                                .call1(&JsValue::NULL, &JsValue::from(bytes))
-                                .expect("Could not call JS callback");
-                        }
-                        Err(e) => {
-                            panic!("{e}");
-                        }
-                    },
-                );
+            let core = Core::<Counter>::new().bridge::<BincodeFfiFormat>(move |effect_bytes| {
+                match effect_bytes {
+                    Ok(bytes) => {
+                        callback
+                            .call1(&JsValue::NULL, &JsValue::from(bytes))
+                            .expect("Could not call JS callback");
+                    }
+                    Err(e) => {
+                        panic!("{e}");
+                    }
+                }
+            });
 
             Self { core }
         }

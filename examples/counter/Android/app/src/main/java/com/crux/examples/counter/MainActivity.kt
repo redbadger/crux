@@ -1,4 +1,4 @@
-package com.example.counter
+package com.crux.examples.counter
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -23,7 +23,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.crux.example.counter.Event
 import com.example.counter.ui.theme.CounterTheme
 import kotlinx.coroutines.launch
 
@@ -55,7 +54,7 @@ fun View(core: Core = viewModel()) {
         Text(text = "Crux Counter Example", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
         Text(text = "Rust Core, Kotlin Shell (Jetpack Compose)", modifier = Modifier.padding(10.dp))
         Text(
-            text = core.view?.text ?: "", color = if (core.view?.confirmed == true) {
+            text = core.view.text, color = if (core.view.confirmed) {
                 Color.Black
             } else {
                 Color.Gray
@@ -64,14 +63,14 @@ fun View(core: Core = viewModel()) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = {
-                    coroutineScope.launch { core.update(Event.Decrement()) }
+                    coroutineScope.launch { core.update(Event.DECREMENT) }
                 }, colors = ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(44F, 1F, 0.77F)
                 )
             ) { Text(text = "Decrement", color = Color.DarkGray) }
             Button(
                 onClick = {
-                    coroutineScope.launch { core.update(Event.Increment()) }
+                    coroutineScope.launch { core.update(Event.INCREMENT) }
                 }, colors = ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(348F, 0.86F, 0.61F)
                 )
