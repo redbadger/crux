@@ -1,8 +1,8 @@
-use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
+use chrono::{DateTime, Utc, serde::ts_milliseconds_option::deserialize as ts_milliseconds_option};
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     App, Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
 use crux_http::{command::Http, protocol::HttpRequest};
 use facet::Facet;
@@ -140,7 +140,7 @@ impl App for Counter {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use crux_core::{assert_effect, App as _};
+    use crux_core::{App as _, assert_effect};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
@@ -148,8 +148,8 @@ mod tests {
 
     use super::{Counter, Event, Model};
     use crate::{
-        sse::{SseRequest, SseResponse},
         Count, Effect,
+        sse::{SseRequest, SseResponse},
     };
 
     // ANCHOR: simple_tests

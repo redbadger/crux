@@ -1,6 +1,6 @@
 use crux_core::{
-    bridge::{Bridge, EffectId},
     Core,
+    bridge::{Bridge, EffectId},
 };
 
 use crate::Counter;

@@ -1,28 +1,16 @@
-@file:Suppress("NAME_SHADOWING")
-
-package com.example.counter
+package com.crux.examples.counter
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.crux.example.counter.Effect
-import com.crux.example.counter.Event
-import com.crux.example.counter.HttpResult
-import com.crux.example.counter.Request
-import com.crux.example.counter.Requests
-import com.crux.example.counter.ViewModel
-import com.example.counter.shared.handleResponse
-import com.example.counter.shared.processEvent
-import com.example.counter.shared.view
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.engine.cio.endpoint
 import kotlinx.coroutines.launch
 
-class Core : androidx.lifecycle.ViewModel() {
-    var view: ViewModel? by mutableStateOf(null)
-        private set
+open class Core : androidx.lifecycle.ViewModel() {
+    private var core: CoreFfi = CoreFfi()
 
     private val httpClient = HttpClient(CIO)
     private val sseClient = HttpClient(CIO) {
@@ -38,12 +26,17 @@ class Core : androidx.lifecycle.ViewModel() {
 
     init {
         viewModelScope.launch {
-            update(Event.StartWatch())
+            update(Event.STARTWATCH)
         }
     }
 
+    var view: ViewModel by mutableStateOf(
+        ViewModel.bincodeDeserialize(core.view())
+    )
+        private set
+
     suspend fun update(event: Event) {
-        val effects = processEvent(event.bincodeSerialize())
+        val effects = core.update(event.bincodeSerialize())
 
         val requests = Requests.bincodeDeserialize(effects)
         for (request in requests) {
@@ -54,15 +47,14 @@ class Core : androidx.lifecycle.ViewModel() {
     private suspend fun processEffect(request: Request) {
         when (val effect = request.effect) {
             is Effect.Render -> {
-                this.view = ViewModel.bincodeDeserialize(view())
+                this.view = ViewModel.bincodeDeserialize(core.view())
             }
-
             is Effect.Http -> {
                 val response = requestHttp(httpClient, effect.value)
 
                 val effects =
-                    handleResponse(
-                        request.id.toUInt(),
+                    core.resolve(
+                        request.id,
                         HttpResult.Ok(response).bincodeSerialize()
                     )
 
@@ -75,7 +67,7 @@ class Core : androidx.lifecycle.ViewModel() {
             is Effect.ServerSentEvents -> {
                 requestSse(sseClient, effect.value) { response ->
                     val effects =
-                        handleResponse(request.id.toUInt(), response.bincodeSerialize())
+                        core.resolve(request.id, response.bincodeSerialize())
 
                     val requests = Requests.bincodeDeserialize(effects)
                     for (request in requests) {
@@ -86,3 +78,5 @@ class Core : androidx.lifecycle.ViewModel() {
         }
     }
 }
+
+
