@@ -1,5 +1,5 @@
 use automerge::{
-    transaction::Transactable, Automerge, Change, ObjId, ObjType, OpObserver, ReadDoc, ROOT,
+    Automerge, Change, ObjId, ObjType, OpObserver, ROOT, ReadDoc, transaction::Transactable,
 };
 
 pub struct Note {
@@ -27,6 +27,7 @@ impl Note {
     }
 
     #[must_use]
+    #[cfg(test)]
     pub fn with_text(text: &str) -> Self {
         let mut note = Self::new();
         let body = note.body();
@@ -58,11 +59,6 @@ impl Note {
             .expect("document to have body")
     }
 
-    #[must_use]
-    pub fn length(&self) -> usize {
-        self.document.length(self.body())
-    }
-
     pub fn splice_text(&mut self, pos: usize, del: usize, text: &str) -> Change {
         let body = self.body();
 
@@ -76,12 +72,6 @@ impl Note {
             .get_last_local_change()
             .expect("to find a change")
             .clone()
-    }
-
-    pub fn apply_changes(&mut self, changes: impl IntoIterator<Item = Change>) {
-        self.document
-            .apply_changes(changes)
-            .expect("to apply changes");
     }
 
     pub fn apply_changes_with(

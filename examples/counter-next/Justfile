@@ -1,13 +1,19 @@
 build: build-local build-wasip2
 
 build-local:
-    cargo build
+    just Android/build
+    just iOS/build
+    just web-leptos/build
+    just web-remix/build
 
 build-wasip2:
     cargo build --package shared --features wit_bindgen --target wasm32-wasip2
 
 clean:
-    cargo clean
+    just Android/clean
+    just iOS/clean
+    just web-leptos/clean
+    just web-remix/clean
 
 test:
     cargo insta test --review --test-runner nextest --all-features --lib

@@ -1,0 +1,9 @@
+build:
+    cargo build
+
+clean:
+    cargo clean
+    rm -rf */generated */node_modules */build
+
+test:
+    cargo nextest run

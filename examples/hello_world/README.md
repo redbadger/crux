@@ -10,3 +10,9 @@ There is a single `None` event (enums with no variants cannot be instantiated).
 
 There is a test to check that the `Render` capability asks the UI to re-render,
 and that the view returns the "Hello World!" string.
+
+## Build the shared library and generate the bindings and foreign types
+
+```bash
+just dev
+```

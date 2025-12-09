@@ -1,0 +1,29 @@
+# Generate types for Kotlin, uniffi bindgen in Java
+build: typegen
+    # ./gradlew cargoBuild
+
+# clean and build
+rebuild: clean build
+
+# build and run Android Studio (MacOS only)
+dev: build
+    open -b com.google.android.studio .
+
+# remove all the generated artifacts
+clean:
+    cargo clean
+    rm -rf build */build generated
+
+# build the shared library so that it can be inspected by uniffi
+lib:
+    cargo build --features uniffi
+
+# generate types for Kotlin, and uniffi bindgen as Java
+typegen: lib
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language kotlin \
+            --output-dir generated

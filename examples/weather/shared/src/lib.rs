@@ -9,7 +9,7 @@ mod location;
 mod navigation;
 mod weather;
 
-pub use app::App;
+pub use app::Weather;
 
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 pub use ffi::CoreFFI;

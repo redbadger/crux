@@ -1,5 +1,5 @@
-import SharedTypes
 import SwiftUI
+import App
 
 extension TextCursor {
     func range() -> NSRange {

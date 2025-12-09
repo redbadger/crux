@@ -10,8 +10,8 @@ rust-version.workspace = true
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
-dioxus = { version = "0.6.3", features = ["web"] }
-dioxus-logger = "0.6.2"
+dioxus = { version = "0.7.1", features = ["web"] }
+dioxus-logger = "0.7.1"
 futures-util = "0.3.31"
 shared = { path = "../shared" }
-tracing = "0.1.41"
+tracing = "0.1.43"

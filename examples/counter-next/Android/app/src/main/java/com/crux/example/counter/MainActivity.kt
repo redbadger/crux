@@ -64,11 +64,11 @@ fun View(core: Core = viewModel()) {
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                    onClick = { coroutineScope.launch { core.update(Event.Decrement) } },
+                    onClick = { coroutineScope.launch { core.update(Event.DECREMENT) } },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.hsl(44F, 1F, 0.77F))
             ) { Text(text = "Decrement", color = Color.DarkGray) }
             Button(
-                    onClick = { coroutineScope.launch { core.update(Event.Increment) } },
+                    onClick = { coroutineScope.launch { core.update(Event.INCREMENT) } },
                     colors =
                             ButtonDefaults.buttonColors(
                                     containerColor = Color.hsl(348F, 0.86F, 0.61F)
@@ -76,7 +76,7 @@ fun View(core: Core = viewModel()) {
             ) { Text(text = "Increment", color = Color.White) }
         }
         Button(
-            onClick = { coroutineScope.launch { core.update(Event.Random) } },
+            onClick = { coroutineScope.launch { core.update(Event.RANDOM) } },
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = Color.hsl(276F, 0.60F, 0.42F)

@@ -1,5 +1,5 @@
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
@@ -96,9 +96,9 @@ impl From<&Favorite> for FavoriteView {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct Weather;
 
-impl crux_core::App for App {
+impl App for Weather {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
@@ -162,13 +162,11 @@ impl crux_core::App for App {
 
 #[cfg(test)]
 mod tests {
-    use crux_core::App as _;
-
     use super::*;
 
     #[test]
     fn test_navigation() {
-        let app = App;
+        let app = Weather;
         let mut model = Model::default();
 
         // Navigate to Favorites

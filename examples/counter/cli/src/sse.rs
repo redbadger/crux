@@ -1,4 +1,4 @@
-use futures::{stream, StreamExt};
+use futures::{StreamExt, stream};
 
 use reqwest::{Client, Method};
 use shared::{
