@@ -10,4 +10,4 @@ rust-version.workspace = true
 
 [dependencies]
 shared = { path = "../shared" }
-yew = { version = "0.21.0", features = ["csr"] }
+yew = { version = "0.22.0", features = ["csr"] }

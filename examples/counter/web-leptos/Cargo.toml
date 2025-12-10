@@ -14,10 +14,10 @@ console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
 futures-util = "0.3.31"
 gloo-net = { version = "0.6.0", features = ["http"] }
-js-sys = "0.3.82"
-log = "0.4.28"
+js-sys = "0.3.83"
+log = "0.4.29"
 shared = { path = "../shared" }
-wasm-bindgen = "0.2.105"
+wasm-bindgen = "0.2.106"
 wasm-streams = "0.4.2"
 
 # 0.8.* needs resolver>=2 which is not good for shared/uniffi-bindgen

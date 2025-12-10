@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use dioxus::{
     prelude::{Signal, UnboundedReceiver},
-    signals::Writable,
+    signals::WritableExt as _,
 };
 use futures_util::StreamExt;
 use shared::{Counter, Effect, Event, ViewModel};
