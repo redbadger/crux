@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.17.0-rc1](https://github.com/redbadger/crux/compare/crux_core-v0.16.1...crux_core-v0.17.0-rc1) - 2025-12-10
+
+### 🚀 Features
+
+This is a breaking change.
+
+TODO: update changelog
 
 ## [0.16.2](https://github.com/redbadger/crux/compare/crux_core-v0.16.1...crux_core-v0.16.2) - 2025-12-15
 

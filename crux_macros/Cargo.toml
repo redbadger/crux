@@ -1,6 +1,6 @@
 [package]
 name = "crux_macros"
-version = "0.7.0"
+version = "0.8.0-rc1"
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
