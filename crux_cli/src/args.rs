@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
-use convert_case::{Boundary, Case, Casing, pattern};
+use convert_case::{Case, Casing, Pattern, delim_boundary};
 use derive_builder::Builder;
 
 #[derive(Parser)]
@@ -58,7 +58,7 @@ pub struct Generate {
         long,
         short,
         value_name = "dotted.case",
-        value_parser = dotted_case
+        value_parser = dot_case
     )]
     pub java: Option<String>,
 
@@ -130,10 +130,10 @@ impl BindgenArgsBuilder {
     }
 }
 
-fn dotted_case(s: &str) -> Result<String, String> {
+fn dot_case(s: &str) -> Result<String, String> {
     const DOT_CASE: Case = Case::Custom {
-        boundaries: &[Boundary::from_delim(".")],
-        pattern: pattern::lowercase,
+        boundaries: &[delim_boundary!(".")],
+        pattern: Pattern::Lowercase,
         delim: ".",
     };
     if s.is_case(DOT_CASE) {
@@ -172,11 +172,11 @@ mod cli_tests {
     #[test]
     fn dotted() {
         assert_eq!(
-            dotted_case("com.example.crux.shared.types").unwrap(),
+            dot_case("com.example.crux.shared.types").unwrap(),
             "com.example.crux.shared.types"
         );
         assert_eq!(
-            dotted_case("comExampleCruxSharedTypes").unwrap_err(),
+            dot_case("comExampleCruxSharedTypes").unwrap_err(),
             "Invalid dotted case: comExampleCruxSharedTypes"
         );
     }

@@ -54,7 +54,7 @@ edition = "2021"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.80"
+rust-version = "1.88"
 
 [workspace.dependencies]
 anyhow = "1.0.95"

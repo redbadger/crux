@@ -22,10 +22,10 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.145"
 uniffi = "=0.29.4"
 url = "2.5.7"
-wasm-bindgen = "0.2.105"
+wasm-bindgen = "0.2.106"
 
 [dev-dependencies]
-insta = { version = "1.43.2", features = ["yaml"] }
+insta = { version = "1.44.3", features = ["yaml"] }
 
 [build-dependencies]
 uniffi = { version = "=0.29.4", features = ["build"] }
