@@ -33,7 +33,7 @@ impl<T: FfiFormat> ResolveSerialized<T> {
                 // The resolve has been used, turn it into a Never
                 let ResolveSerialized::Once(f) = std::mem::replace(self, ResolveSerialized::Never)
                 else {
-                    unreachable!();
+                    unreachable!("already resolved");
                 };
 
                 f(response)
