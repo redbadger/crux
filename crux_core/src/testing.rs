@@ -254,6 +254,21 @@ where
     Effect: Send + 'static,
     Event: Send + 'static,
 {
+    /// Assert that the Command contains _at least_ one effect,
+    /// and return the effect
+    ///
+    /// # Panics
+    /// Panics if the command does not have an effect ready.
+    #[track_caller]
+    pub fn expect_effect(&mut self) -> Effect {
+        let mut effects = self.effects();
+        if let Some(effect) = effects.next() {
+            return effect;
+        }
+
+        panic!("expected an effect but got none")
+    }
+
     /// Assert that the Command contains _exactly_ one effect,
     /// and return the effect
     ///
@@ -263,9 +278,9 @@ where
     pub fn expect_one_effect(&mut self) -> Effect {
         let mut effects = self.effects();
         match (effects.next(), effects.next()) {
-            (None, _) => panic!("expected one effect but got none"),
+            (None, _) => panic!("expected exactly one effect but got none"),
             (Some(effect), None) => effect,
-            _ => panic!("expected one effect but got more than one"),
+            _ => panic!("expected exactly one effect but got more than one"),
         }
     }
 
@@ -289,6 +304,21 @@ where
         assert!(self.events().next().is_none(), "expected no events");
     }
 
+    /// Assert that the Command contains _at least_ one effect,
+    /// and return the effect
+    ///
+    /// # Panics
+    /// Panics if the command does not have an effect ready.
+    #[track_caller]
+    pub fn expect_event(&mut self) -> Event {
+        let mut event = self.events();
+        if let Some(event) = event.next() {
+            return event;
+        }
+
+        panic!("expected an event but got none")
+    }
+
     /// Assert that the Command contains _exactly_ one event,
     /// and return the event
     ///
@@ -298,9 +328,9 @@ where
     pub fn expect_one_event(&mut self) -> Event {
         let mut events = self.events();
         match (events.next(), events.next()) {
-            (None, _) => panic!("expected one event but got none"),
+            (None, _) => panic!("expected exactly one event but got none"),
             (Some(event), None) => event,
-            _ => panic!("expected one effect but got more than one"),
+            _ => panic!("expected exactly one effect but got more than one"),
         }
     }
 
