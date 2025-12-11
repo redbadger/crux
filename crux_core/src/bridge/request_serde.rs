@@ -3,13 +3,17 @@ use crate::{
     capability::Operation,
     core::{RequestHandle, ResolveError},
 };
+use std::any::{Any, TypeId};
 
-use super::{BridgeError, FfiFormat};
+use super::{BridgeError, FfiFormat, MaybeSerialized};
+
+/// The response to an effect request.
+pub type Response<'a> = MaybeSerialized<'a, Box<dyn Any>>;
 
 // used in docs/internals/bridge.md
 // ANCHOR: resolve_serialized
-type ResolveOnceSerialized<T> = Box<dyn FnOnce(&[u8]) -> Result<(), BridgeError<T>> + Send>;
-type ResolveManySerialized<T> = Box<dyn FnMut(&[u8]) -> Result<(), BridgeError<T>> + Send>;
+type ResolveOnceSerialized<T> = Box<dyn FnOnce(Response<'_>) -> Result<(), BridgeError<T>> + Send>;
+type ResolveManySerialized<T> = Box<dyn FnMut(Response<'_>) -> Result<(), BridgeError<T>> + Send>;
 
 /// A deserializing version of Resolve
 ///
@@ -25,7 +29,7 @@ pub enum ResolveSerialized<T: FfiFormat> {
 // ANCHOR_END: resolve_serialized
 
 impl<T: FfiFormat> ResolveSerialized<T> {
-    pub(crate) fn resolve(&mut self, response: &[u8]) -> Result<(), BridgeError<T>> {
+    pub(crate) fn resolve(&mut self, response: Response<'_>) -> Result<(), BridgeError<T>> {
         match self {
             ResolveSerialized::Never => Err(BridgeError::ProcessResponse(ResolveError::Never)),
             ResolveSerialized::Many(f) => f(response),
@@ -59,8 +63,15 @@ where
         T: FfiFormat,
     {
         // FIXME should Eff be bound as `Serializable`?
-        let handle = self.handle.deserializing(move |response| {
-            T::deserialize(response).map_err(BridgeError::DeserializeOutput)
+        let handle = self.handle.deserializing(move |response| match response {
+            Response::Bytes(bytes) => T::deserialize(bytes).map_err(BridgeError::DeserializeOutput),
+            Response::Value(boxed) => boxed
+                .downcast::<Op::Output>()
+                .map(|boxed_out| *boxed_out)
+                .map_err(|boxed| BridgeError::OutputTypeMismatch {
+                    expected: TypeId::of::<Op::Output>(),
+                    found: (*boxed).type_id(),
+                }),
         });
 
         (effect(self.operation), handle)
@@ -72,7 +83,7 @@ impl<Out> RequestHandle<Out> {
     /// The `func` argument is a 'deserializer' converting from bytes into the `Out` type.
     fn deserializing<F, T>(self, mut func: F) -> ResolveSerialized<T>
     where
-        F: (FnMut(&[u8]) -> Result<Out, BridgeError<T>>) + Send + Sync + 'static,
+        F: (FnMut(Response<'_>) -> Result<Out, BridgeError<T>>) + Send + Sync + 'static,
         T: FfiFormat,
         Out: 'static,
     {

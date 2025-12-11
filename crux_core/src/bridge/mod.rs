@@ -4,6 +4,7 @@ mod request_serde;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};
+use std::any::TypeId;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -11,9 +12,9 @@ use crate::{App, Core, core::ResolveError};
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
-// ResolveByte is public to be accessible from crux_macros
+// ResolveByte and Response are public to be accessible from crux_macros
 #[doc(hidden)]
-pub use request_serde::ResolveSerialized;
+pub use request_serde::{ResolveSerialized, Response};
 
 /// A serialization format for the bridge FFI.
 ///
@@ -70,12 +71,32 @@ pub enum BridgeError<F: FfiFormat = BincodeFfiFormat> {
     DeserializeEvent(F::Error),
     #[error("could not deserialize provided effect output: {0}")]
     DeserializeOutput(F::Error),
+    #[error("effect output type mismatch: expected {expected:?}, found {found:?}")]
+    OutputTypeMismatch { expected: TypeId, found: TypeId },
     #[error("could not process response: {0}")]
     ProcessResponse(#[from] ResolveError),
     #[error("could not serialize effect requests: {0}")]
     SerializeRequests(F::Error),
     #[error("could not serialize view model: {0}")]
     SerializeView(F::Error),
+}
+
+/// An event or response that may be either serialized bytes or a direct typed value.
+pub enum MaybeSerialized<'a, T> {
+    Bytes(&'a [u8]),
+    Value(T),
+}
+
+impl<'a, T> From<&'a [u8]> for MaybeSerialized<'a, T> {
+    fn from(val: &'a [u8]) -> Self {
+        MaybeSerialized::Bytes(val)
+    }
+}
+
+impl<'a, T, const N: usize> From<&'a [u8; N]> for MaybeSerialized<'a, T> {
+    fn from(val: &'a [u8; N]) -> Self {
+        MaybeSerialized::Bytes(val)
+    }
 }
 
 impl<A, Format> Bridge<A, Format>
@@ -125,14 +146,23 @@ where
     /// Returns an error if the event could not be deserialized.
     pub fn update<'a>(
         &self,
-        event: &'a [u8],
+        event: impl Into<MaybeSerialized<'a, A::Event>>,
         requests_out: &mut Vec<u8>,
     ) -> Result<(), BridgeError<Format>>
     where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        self.process(None, event, requests_out)
+        let shell_event = match event.into() {
+            MaybeSerialized::Bytes(bytes) => {
+                Format::deserialize(bytes).map_err(BridgeError::DeserializeEvent)?
+            }
+            MaybeSerialized::Value(value) => value,
+        };
+
+        let effects = self.core.process_event(shell_event);
+
+        self.process_effects(effects, requests_out)
     }
 
     /// Receive a response to a capability request from the shell.
@@ -179,39 +209,16 @@ where
     pub fn resolve<'a>(
         &self,
         id: EffectId,
-        response: &'a [u8],
+        response: impl Into<Response<'a>>,
         requests_out: &mut Vec<u8>,
     ) -> Result<(), BridgeError<Format>>
     where
         A::Event: Deserialize<'a>,
         A::Effect: crate::core::EffectFFI,
     {
-        self.process(Some(id), response, requests_out)
-    }
+        self.registry.resume(id, response)?;
 
-    fn process<'a>(
-        &self,
-        id: Option<EffectId>,
-        data: &'a [u8],
-        requests_out: &mut Vec<u8>,
-    ) -> Result<(), BridgeError<Format>>
-    where
-        A::Event: Deserialize<'a>,
-        A::Effect: crate::core::EffectFFI,
-    {
-        let effects = match id {
-            None => {
-                let shell_event =
-                    Format::deserialize(data).map_err(BridgeError::DeserializeEvent)?;
-
-                self.core.process_event(shell_event)
-            }
-            Some(id) => {
-                self.registry.resume(id, data)?;
-
-                self.core.process()
-            }
-        };
+        let effects = self.core.process();
 
         self.process_effects(effects, requests_out)
     }
