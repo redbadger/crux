@@ -190,7 +190,7 @@ impl<T: Unpin + Send> ShellStream<T> {
         let ShellStream::ReadyToSend(send_request, output_receiver) =
             std::mem::replace(self, dummy)
         else {
-            unreachable!();
+            unreachable!("cannot send");
         };
 
         // 2. replace self with with a Sent using the original receiver
