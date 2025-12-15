@@ -264,11 +264,10 @@ fn check_path(
     }: &Path,
     is_remote: bool,
 ) -> bool {
-    if is_remote {
-        if let "Option" | "String" | "Vec" | "std::ops::Range" = path.as_str() {
-            return false;
-        }
+    if is_remote && let "Option" | "String" | "Vec" | "std::ops::Range" = path.as_str() {
+        return false;
     }
+
     id == &parent.id || {
         if let Some(args) = args {
             check_args(parent, args, is_remote)

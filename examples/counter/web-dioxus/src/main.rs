@@ -19,12 +19,12 @@ fn App() -> Element {
     });
 
     // send initial event
-    let _ = use_resource(move || async move { core.send(Event::StartWatch) });
+    use_resource(move || async move { core.send(Event::StartWatch) });
 
     rsx! {
         document::Link {
             rel: "stylesheet",
-            href: asset!("./public/css/bulma.min.css")
+            href: asset!("../public/css/bulma.min.css")
         }
         main {
             section { class: "section has-text-centered",

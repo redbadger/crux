@@ -102,10 +102,10 @@ where
         // in the shell.
         let builder = RequestBuilder::new(move |ctx| {
             async move {
-                if let Ok(Some(cleared_id)) = receiver.try_recv() {
-                    if cleared_id == timer_id {
-                        return TimerOutcome::Cleared;
-                    }
+                if let Ok(Some(cleared_id)) = receiver.try_recv()
+                    && cleared_id == timer_id
+                {
+                    return TimerOutcome::Cleared;
                 }
 
                 select_biased! {
@@ -172,10 +172,10 @@ where
         let completed_handle = CompletedTimerHandle { timer_id };
 
         let builder = RequestBuilder::new(move |ctx| async move {
-            if let Ok(Some(cleared_id)) = receiver.try_recv() {
-                if cleared_id == timer_id {
-                    return TimerOutcome::Cleared;
-                }
+            if let Ok(Some(cleared_id)) = receiver.try_recv()
+                && cleared_id == timer_id
+            {
+                return TimerOutcome::Cleared;
             }
 
             select_biased! {

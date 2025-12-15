@@ -136,10 +136,10 @@ impl App for Counter {
                 .then_send(Event::GotCount),
 
             Event::GotCount(response) => {
-                if response.status == 200 {
-                    if let Ok(count) = response.body.parse() {
-                        *model = count;
-                    }
+                if response.status == 200
+                    && let Ok(count) = response.body.parse()
+                {
+                    *model = count;
                 }
 
                 Command::done()
