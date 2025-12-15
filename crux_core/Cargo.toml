@@ -38,7 +38,7 @@ crux_http = { path = "../crux_http" }
 crux_time = { path = "../crux_time" }
 doctest_support = { path = "../doctest_support" }
 rand = "0.9"
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 static_assertions = "1.1"
 tempfile = "3.23.0"
 url = "2.5.7"
