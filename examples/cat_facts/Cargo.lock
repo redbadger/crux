@@ -523,6 +523,8 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 [[package]]
 name = "crux_cli"
 version = "0.2.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fcc52c9da8334779aebbff76c63d9e6439c7e6692090a02e107d80c681936d5"
 dependencies = [
  "anyhow",
  "ascent",
@@ -548,6 +550,8 @@ dependencies = [
 [[package]]
 name = "crux_core"
 version = "0.17.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8f4e0555b0539db0229084980f77e6e63cf2465ae860e5a4fbfaf4e7ac54985"
 dependencies = [
  "anyhow",
  "bincode",
@@ -567,6 +571,8 @@ dependencies = [
 [[package]]
 name = "crux_http"
 version = "0.16.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "680fdb2cca7e1291f392a4bfb0cee0e546e9d3a29d8d0a20f71a0a1baae3ac8c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -589,6 +595,8 @@ dependencies = [
 [[package]]
 name = "crux_kv"
 version = "0.11.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f70d6c8a020e7f2377d03997aaf9b9905705361deea1b401a3f7e3bd91f6e61e"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -601,6 +609,8 @@ dependencies = [
 [[package]]
 name = "crux_macros"
 version = "0.8.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08293c329f1e15e82e37b6da5efe08883b1aa1950485760fa98a06f90bd251ef"
 dependencies = [
  "darling 0.23.0",
  "heck 0.5.0",
@@ -613,6 +623,8 @@ dependencies = [
 [[package]]
 name = "crux_platform"
 version = "0.8.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "000c829085fd8318f5282046b57b5cc0ce99c91d30ba4c2ab1308e4b6db301e8"
 dependencies = [
  "crux_core",
  "facet",
@@ -622,8 +634,9 @@ dependencies = [
 [[package]]
 name = "crux_time"
 version = "0.15.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a38a3b57cb90277182799d5b537b584ccd3a6fb10e428ff2b756480d6fb89a7"
 dependencies = [
- "chrono",
  "crux_core",
  "facet",
  "futures",
