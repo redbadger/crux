@@ -35,13 +35,13 @@ where
     app: A,
 
     // internals
-    root_command: Mutex<Command<A::Effect, A::Event>>,
+    root_command: Mutex<Command<A::Effect, A::Event, A::Model>>,
 }
 // ANCHOR_END: core
 
 impl<A> Core<A>
 where
-    A: App,
+    A: App + Send,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
     ///
@@ -67,12 +67,10 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
-        let command = self.app.update(event, &mut model);
-
-        // drop the model here, we don't want to hold the lock for the process() call
-        drop(model);
+        let command = Command::new_with_model(|ctx| async move {
+            let command = ctx.model(|model| self.app.update(event, model)).await;
+            command.into_future(ctx).await;
+        });
 
         let mut root_command = self
             .root_command
@@ -121,6 +119,10 @@ where
             .root_command
             .lock()
             .expect("Capability runtime lock was poisoned");
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        root_command.run_until_settled(Some(&mut *model));
+        // drop the model here, we don't want to hold the lock for the process() call
+        drop(model);
 
         let mut events: VecDeque<_> = root_command.events().collect();
 
