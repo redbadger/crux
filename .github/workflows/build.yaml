@@ -28,7 +28,9 @@ jobs:
       github.event.pull_request.base.repo.full_name }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Remove rust-toolchain.toml
         shell: bash
