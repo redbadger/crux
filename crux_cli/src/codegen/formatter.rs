@@ -471,7 +471,7 @@ impl From<&Type> for Format {
                 args: _,
                 self_type: _,
                 trait_: _,
-            } => Format::TypeName(name.to_string()),
+            } => Format::TypeName(name.clone()),
         }
     }
 }

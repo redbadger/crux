@@ -1,3 +1,4 @@
+#![allow(clippy::needless_continue)] // needed until https://github.com/TedDriggs/darling/issues/399 is fixed
 use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
 use proc_macro_error::{OptionExt, abort_call_site};
 use proc_macro2::{Literal, TokenStream};

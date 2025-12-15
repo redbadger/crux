@@ -613,7 +613,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "anyhow",
  "assert_fs",
