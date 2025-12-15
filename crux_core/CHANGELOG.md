@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.16.2](https://github.com/redbadger/crux/compare/crux_core-v0.16.1...crux_core-v0.16.2) - 2025-12-15
+
+### 🐛 Bug Fixes
+
+- Fixes [an issue](https://github.com/redbadger/crux/issues/464) where Facet attributes were not being copied onto the Effect FFI enum.
+
 ## [0.16.1](https://github.com/redbadger/crux/compare/crux_core-v0.16.0...crux_core-v0.16.1) - 2025-09-01
 
 ### 🚀 Features
