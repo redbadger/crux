@@ -12,7 +12,7 @@ use crate::{App, Core, core::ResolveError};
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
-// ResolveByte and Response are public to be accessible from crux_macros
+// ResolveSerialized and Response are public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::{ResolveSerialized, Response};
 
