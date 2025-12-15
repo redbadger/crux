@@ -181,9 +181,12 @@ fn single_with_facet_typegen() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "Effect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "Effect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
+    #[cfg_attr(
+        feature = "facet_typegen",
+        derive(::facet::Facet),
+        facet(name = "Effect"),
+        repr(C)
+    )]
     pub enum EffectFfi {
         Render(RenderOperation),
     }
@@ -270,9 +273,12 @@ fn single_facet_typegen_with_new_name() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "MyEffect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "MyEffect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
+    #[cfg_attr(
+        feature = "facet_typegen",
+        derive(::facet::Facet),
+        facet(name = "MyEffect"),
+        repr(C)
+    )]
     pub enum MyEffectFfi {
         Render(RenderOperation),
     }
@@ -513,9 +519,12 @@ fn multiple_with_facet_typegen() {
     }
     #[derive(::serde::Serialize, ::serde::Deserialize)]
     #[serde(rename = "Effect")]
-    #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-    #[cfg_attr(feature = "facet_typegen", facet(name = "Effect"))]
-    #[cfg_attr(feature = "facet_typegen", repr(C))]
+    #[cfg_attr(
+        feature = "facet_typegen",
+        derive(::facet::Facet),
+        facet(name = "Effect"),
+        repr(C)
+    )]
     pub enum EffectFfi {
         Render(RenderOperation),
         Http(HttpRequest),
@@ -734,6 +743,100 @@ fn single_without_typegen_with_attributes() {
             } else {
                 panic!("not a {} effect", "Render")
             }
+        }
+    }
+    "#);
+}
+
+#[test]
+fn facet_typegen_with_namespace_attribute() {
+    let args = Some(format_ident!("facet_typegen"));
+    let input = parse_quote! {
+        #[facet(namespace = "crux")]
+        pub enum Effect {
+            Render(RenderOperation),
+        }
+    };
+
+    let actual = effect_impl(args, input);
+
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    pub enum Effect {
+        Render(::crux_core::Request<RenderOperation>),
+    }
+    #[derive(::serde::Serialize, ::serde::Deserialize)]
+    #[serde(rename = "Effect")]
+    #[cfg_attr(
+        feature = "facet_typegen",
+        derive(::facet::Facet),
+        facet(namespace = "crux"),
+        facet(name = "Effect"),
+        repr(C)
+    )]
+    pub enum EffectFfi {
+        Render(RenderOperation),
+    }
+    impl crux_core::Effect for Effect {}
+    impl crux_core::EffectFFI for Effect {
+        type Ffi = EffectFfi;
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
+            match self {
+                Effect::Render(request) => request.serialize(EffectFfi::Render),
+            }
+        }
+    }
+    impl From<::crux_core::Request<RenderOperation>> for Effect {
+        fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
+            Self::Render(value)
+        }
+    }
+    impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
+        type Error = Effect;
+        fn try_from(value: Effect) -> Result<Self, Self::Error> {
+            if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
+        }
+    }
+    impl Effect {
+        pub fn is_render(&self) -> bool {
+            if let Effect::Render(_) = self { true } else { false }
+        }
+        pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
+            if let Effect::Render(request) = self { Some(request) } else { None }
+        }
+        #[track_caller]
+        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
+            if let Effect::Render(request) = self {
+                request
+            } else {
+                panic!("not a {} effect", "Render")
+            }
+        }
+    }
+    #[cfg(feature = "facet_typegen")]
+    impl ::crux_core::type_generation::facet::Export for Effect {
+        fn register_types(
+            generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
+        ) -> Result<
+            &mut ::crux_core::type_generation::facet::TypeRegistry,
+            ::crux_core::type_generation::facet::TypeGenError,
+        > {
+            use ::crux_core::capability::Operation;
+            let generator = RenderOperation::register_types_facet(generator)
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
+            generator
+                .register_type::<EffectFfi>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?
+                .register_type::<::crux_core::bridge::Request<EffectFfi>>()
+                .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
+                    err.to_string(),
+                ))?;
+            Ok(generator)
         }
     }
     "#);
