@@ -32,6 +32,10 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     let typegen_kind: TypegenKind = args.into();
     let enum_ident_str = enum_ident.to_string();
 
+    // Separate facet attributes from other attributes
+    let (facet_attrs, non_facet_attrs): (Vec<_>, Vec<_>) =
+        attrs.iter().partition(|attr| attr.path().is_ident("facet"));
+
     let mut ffi_enum = input.clone();
     ffi_enum.ident = format_ident!("{}Ffi", enum_ident);
     ffi_enum.attrs = vec![];
@@ -43,14 +47,22 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             #[serde(rename = #enum_ident_str)]
             #ffi_enum
         },
-        TypegenKind::Facet => quote! {
-            #[derive(::serde::Serialize, ::serde::Deserialize)]
-            #[serde(rename = #enum_ident_str)]
-            #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet))]
-            #[cfg_attr(feature = "facet_typegen", facet(name = #enum_ident_str))]
-            #[cfg_attr(feature = "facet_typegen", repr(C))]
-            #ffi_enum
-        },
+        TypegenKind::Facet => {
+            let facet_meta_attrs = facet_attrs.iter().map(|attr| &attr.meta);
+
+            quote! {
+                #[derive(::serde::Serialize, ::serde::Deserialize)]
+                #[serde(rename = #enum_ident_str)]
+                #[cfg_attr(
+                    feature = "facet_typegen",
+                    derive(::facet::Facet),
+                    #(#facet_meta_attrs,)*
+                    facet(name = #enum_ident_str),
+                    repr(C)
+                )]
+                #ffi_enum
+            }
+        }
         TypegenKind::None => quote! {},
     };
 
@@ -206,20 +218,24 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         }
     };
 
-    let attrs = if attrs.is_empty() {
+    let attrs = if non_facet_attrs.is_empty() {
         quote! {}
     } else {
-        let tokens = attrs.iter().map(ToTokens::to_token_stream);
+        let tokens = non_facet_attrs.iter().map(ToTokens::to_token_stream);
         quote! {
             #(#tokens)*
         }
     };
 
-    quote! {
+    let original_enum = quote! {
         #attrs
         pub enum #enum_ident {
             #(#effect_variants ,)*
         }
+    };
+
+    quote! {
+        #original_enum
 
         #ffi_enum
 
