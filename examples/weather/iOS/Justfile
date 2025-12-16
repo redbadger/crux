@@ -31,6 +31,7 @@ typegen:
 # use `cargo swift` to build the shared library as a Swift package
 [working-directory('../shared')]
 package:
+    cargo swift --version | grep -q '0.9.0'
     cargo swift package \
         --name Shared \
         --platforms ios \
