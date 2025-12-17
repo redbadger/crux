@@ -1,14 +1,14 @@
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{self, RenderOperation},
 };
-use crux_platform::{PlatformRequest, PlatformResponse, command::Platform};
+use crux_platform::{PlatformRequest, PlatformResponse};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
-pub struct App {}
+pub struct Platform {}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Model {
@@ -28,7 +28,7 @@ pub enum Effect {
     Render(RenderOperation),
 }
 
-impl crux_core::App for App {
+impl App for Platform {
     type Event = Event;
     type Model = Model;
     type ViewModel = Model;
@@ -36,7 +36,7 @@ impl crux_core::App for App {
 
     fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
         match msg {
-            Event::Get => Platform::get().then_send(Event::Set),
+            Event::Get => crux_platform::Platform::get().then_send(Event::Set),
             Event::Set(PlatformResponse(platform)) => {
                 model.platform = platform;
                 render::render()
@@ -53,14 +53,13 @@ impl crux_core::App for App {
 
 #[cfg(test)]
 mod tests {
-    use crux_core::App as _;
     use crux_platform::PlatformResponse;
 
     use super::*;
 
     #[test]
     fn get_platform() {
-        let app = App::default();
+        let app = Platform::default();
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Get, &mut model);

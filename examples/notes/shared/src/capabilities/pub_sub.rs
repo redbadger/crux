@@ -1,23 +1,25 @@
 use std::{future::Future, marker::PhantomData};
 
+use facet::Facet;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 
 use crux_core::{
+    Command, Request,
     capability::Operation,
     command::{NotificationBuilder, StreamBuilder},
-    Command, Request,
 };
 
 // TODO add topics
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum PubSubOperation {
     Publish(Vec<u8>),
     Subscribe,
 }
 
-#[derive(Deserialize)]
+#[derive(Facet, Deserialize)]
 pub struct Message(pub Vec<u8>);
 
 impl Operation for PubSubOperation {

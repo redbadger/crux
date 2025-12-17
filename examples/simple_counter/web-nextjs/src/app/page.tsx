@@ -4,33 +4,24 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 
-import init_core from "shared/shared";
 import {
   ViewModel,
   EventVariantReset,
   EventVariantIncrement,
   EventVariantDecrement,
-} from "shared_types/types/shared_types";
+} from "shared_types/app";
 
-import { update } from "./core";
+import { Core } from "./core";
 
 const Home: NextPage = () => {
-  const [view, setView] = useState(new ViewModel("0"));
+  const [view, setView] = useState(new ViewModel(""));
+  const core = useRef(new Core(setView));
 
-  const initialized = useRef(false);
+  // Initialize
   useEffect(
-    () => {
-      if (!initialized.current) {
-        initialized.current = true;
-
-        init_core().then(() => {
-          // Initial event
-          update(new EventVariantReset(), setView);
-        });
-      }
-    },
+    () => core.current.initialize(true),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    /*once*/ []
+    /*once*/ [],
   );
 
   return (
@@ -45,19 +36,19 @@ const Home: NextPage = () => {
           <div className="buttons section is-centered">
             <button
               className="button is-primary is-danger"
-              onClick={() => update(new EventVariantReset(), setView)}
+              onClick={() => core.current.update(new EventVariantReset())}
             >
               {"Reset"}
             </button>
             <button
               className="button is-primary is-success"
-              onClick={() => update(new EventVariantIncrement(), setView)}
+              onClick={() => core.current.update(new EventVariantIncrement())}
             >
               {"Increment"}
             </button>
             <button
               className="button is-primary is-warning"
-              onClick={() => update(new EventVariantDecrement(), setView)}
+              onClick={() => core.current.update(new EventVariantDecrement())}
             >
               {"Decrement"}
             </button>

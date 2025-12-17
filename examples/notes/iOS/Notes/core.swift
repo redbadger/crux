@@ -1,17 +1,21 @@
 import Foundation
-import SharedTypes
+import Shared
+import App
 
 @MainActor
 class Core: ObservableObject {
     @Published var view: ViewModel
-    
+
+    private var core: CoreFfi
+
     init() {
-        self.view = try! .bincodeDeserialize(input: [UInt8](Notes.view()))
+        self.core = CoreFfi()
+        self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
     }
 
     func update(_ event: Event) {
-        let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
-
+        let effects = [UInt8](core.update(Data(try! event.bincodeSerialize())))
+        
         let requests: [Request] = try! .bincodeDeserialize(input: effects)
         for request in requests {
             processEffect(request)
@@ -21,13 +25,15 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            view = try! .bincodeDeserialize(input: [UInt8](Notes.view()))
+            DispatchQueue.main.async {
+                self.view = try! .bincodeDeserialize(input: [UInt8](self.core.view()))
+            }
         case let .pubSub(.publish(bytes)):
             print(["Publish", bytes.count, "bytes"] as [Any])
         case .pubSub(.subscribe):
             print("Subscribe")
         case .keyValue(_): ()
-        case .timer(_): ()
+        case .time(_): ()
         }
     }
 }

@@ -14,7 +14,6 @@
             <option value="$PROJECT_DIR$/shared" />
           </set>
         </option>
-        <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
     </option>
   </component>

@@ -8,7 +8,7 @@ use crux_core::{
 use log::info;
 use uniffi::deps::anyhow::Result;
 
-use shared::App;
+use shared::BridgeEcho;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Language {
@@ -30,7 +30,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new().register_app::<App>()?.build()?;
+    let typegen_app = TypeRegistry::new().register_app::<BridgeEcho>()?.build()?;
 
     match args.language {
         Language::Swift => {

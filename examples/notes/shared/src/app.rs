@@ -4,27 +4,28 @@ use std::{ops::Range, time::Duration};
 
 use automerge::Change;
 use crux_core::{
+    App, Command,
     macros::effect,
     render::{self, RenderOperation},
-    App, Command,
 };
-use crux_kv::{command::KeyValue, error::KeyValueError, KeyValueOperation};
+use crux_kv::{KeyValueOperation, command::KeyValue, error::KeyValueError};
 use crux_time::{
-    command::{Time, TimerHandle, TimerOutcome},
     TimeRequest,
+    command::{Time, TimerHandle, TimerOutcome},
 };
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::pub_sub::{PubSub, PubSubOperation};
-
-pub use note::Note;
+use note::Note;
 
 use self::note::EditObserver;
 
 #[derive(Default)]
 pub struct NoteEditor;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Facet, Serialize, Deserialize, Debug)]
+#[repr(C)]
 pub enum Event {
     // events from the shell
     Open,
@@ -38,14 +39,20 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
-    EditTimerElapsed(TimerOutcome),
+    #[facet(skip)]
+    EditTimerElapsed(#[facet(opaque)] TimerOutcome),
+
     #[serde(skip)]
-    Written(Result<Option<Vec<u8>>, KeyValueError>),
+    #[facet(skip)]
+    Written(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
+
     #[serde(skip)]
-    Load(Result<Option<Vec<u8>>, KeyValueError>),
+    #[facet(skip)]
+    Load(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[repr(C)]
 pub enum TextCursor {
     Position(usize),
     Selection(Range<usize>),
@@ -64,7 +71,7 @@ pub struct Model {
     timer: Option<TimerHandle>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct ViewModel {
     pub text: String,
     pub cursor: TextCursor,
@@ -79,7 +86,7 @@ impl From<&Model> for ViewModel {
     }
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 pub enum Effect {
     Time(TimeRequest),
     Render(RenderOperation),
@@ -95,7 +102,8 @@ impl App for NoteEditor {
     type ViewModel = ViewModel;
     type Effect = Effect;
 
-    #[allow(clippy::too_many_lines)] // ANCHOR: update
+    #[allow(clippy::too_many_lines)]
+    // ANCHOR: update
     fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Effect, Event> {
         match event {
             Event::Insert(text) => {
@@ -303,7 +311,7 @@ impl CursorObserver {
 
 #[cfg(test)]
 mod editing_tests {
-    use crux_core::assert_effect;
+    use crux_core::{App as _, assert_effect};
 
     use super::*;
 
@@ -546,8 +554,8 @@ mod editing_tests {
 
 #[cfg(test)]
 mod save_load_tests {
-    use crux_core::assert_effect;
-    use crux_kv::{value::Value, KeyValueOperation, KeyValueResponse, KeyValueResult};
+    use crux_core::{App as _, assert_effect};
+    use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, value::Value};
     use crux_time::{TimeRequest, TimerId};
 
     use super::*;
@@ -734,7 +742,7 @@ mod save_load_tests {
 mod sync_tests {
     use std::collections::VecDeque;
 
-    use crux_core::Request;
+    use crux_core::{App as _, Request};
 
     use crate::capabilities::pub_sub::{Message, PubSubOperation};
 

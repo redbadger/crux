@@ -3,15 +3,15 @@ mod sse;
 
 use anyhow::anyhow;
 use futures::TryStreamExt;
-use shared::{App, Core, Effect, Event};
+use shared::{Core, Counter, Effect, Event};
 use std::sync::{Arc, LazyLock};
 use tauri::Emitter;
 
-static CORE: LazyLock<Arc<Core<App>>> = LazyLock::new(|| Arc::new(Core::new()));
+static CORE: LazyLock<Arc<Core<Counter>>> = LazyLock::new(|| Arc::new(Core::new()));
 
 fn handle_event(
     event: Event,
-    core: &Arc<Core<App>>,
+    core: &Arc<Core<Counter>>,
     tauri_app: &tauri::AppHandle,
 ) -> anyhow::Result<()> {
     for effect in core.process_event(event) {
@@ -23,7 +23,7 @@ fn handle_event(
 
 fn process_effect(
     effect: Effect,
-    core: &Arc<Core<App>>,
+    core: &Arc<Core<Counter>>,
     tauri_app: tauri::AppHandle,
 ) -> anyhow::Result<()> {
     match effect {
@@ -53,9 +53,10 @@ fn process_effect(
         Effect::ServerSentEvents(mut request) => {
             tauri::async_runtime::spawn({
                 let core = core.clone();
+                let operation = request.operation.clone();
 
                 async move {
-                    let mut stream = sse::request(&request.operation).await?;
+                    let mut stream = sse::request(&operation).await?;
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core

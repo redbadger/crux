@@ -1,4 +1,4 @@
-import "bulma/css/bulma.css";
+import "bulma/css/bulma.min.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 

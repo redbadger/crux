@@ -1,6 +1,7 @@
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Facet, Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Payment {
     pub amount: u32, // pence,
     pub status: PaymentStatus,
@@ -42,7 +43,8 @@ impl Payment {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Facet, Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[repr(C)]
 pub enum PaymentStatus {
     #[default]
     New,
@@ -52,7 +54,7 @@ pub enum PaymentStatus {
     Failed(String),
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Facet, Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Receipt {
     pub email: String,
     pub status: ReceiptStatus,
@@ -72,7 +74,8 @@ impl Receipt {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Facet, Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[repr(C)]
 pub enum ReceiptStatus {
     #[default]
     New,

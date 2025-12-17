@@ -20,7 +20,7 @@ crossbeam-channel = "0.5.15"
 crux_cli = { version = "0.2.0-rc1", optional = true, path = "../crux_cli" }
 crux_macros = { version = "0.8.0-rc1", path = "../crux_macros", optional = true }
 facet.workspace = true
-facet_generate = { version = "0.12.1", optional = true }
+facet_generate = { version = "0.13.0", optional = true }
 futures = "0.3.31"
 log = { version = "0.4.29", optional = true }
 serde = { workspace = true, features = ["derive"] }

@@ -96,7 +96,7 @@ pub enum Event {
 
 #[derive(Default)]
 pub struct CatFacts {
-    platform: platform::App,
+    platform: platform::Platform,
 }
 
 // ANCHOR: effect
@@ -109,7 +109,6 @@ pub enum Effect {
     Render(RenderOperation),
     Time(TimeRequest),
 }
-
 // ANCHOR_END: effect
 
 impl App for CatFacts {
@@ -219,7 +218,7 @@ impl App for CatFacts {
         };
 
         let platform =
-            <platform::App as crux_core::App>::view(&self.platform, &model.platform).platform;
+            <platform::Platform as crux_core::App>::view(&self.platform, &model.platform).platform;
 
         ViewModel {
             platform,

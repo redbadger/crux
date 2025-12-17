@@ -16,7 +16,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 ascent = "0.8.0"
-camino = "1.2.1"
+camino = "1.2.2"
 cargo_metadata = "=0.19"
 clap = { version = "4.5.53", features = ["derive", "env"] }
 convert_case = "0.10.0"

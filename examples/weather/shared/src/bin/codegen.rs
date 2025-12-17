@@ -28,7 +28,9 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new().register_app::<shared::App>()?.build()?;
+    let typegen_app = TypeRegistry::new()
+        .register_app::<shared::Weather>()?
+        .build()?;
 
     match args.language {
         Language::Swift => {
