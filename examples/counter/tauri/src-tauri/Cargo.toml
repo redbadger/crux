@@ -13,12 +13,12 @@ name = "tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.1", features = [] }
+tauri-build = { version = "2.5.3", features = [] }
 
 [dependencies]
 anyhow.workspace = true
 futures = "0.3.31"
-reqwest = { version = "0.12.25", features = ["stream"] }
+reqwest = { version = "0.12.26", features = ["stream"] }
 shared = { path = "../../shared" }
 tauri = { version = "2.9.5", features = [] }
 

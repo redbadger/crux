@@ -211,15 +211,9 @@ checksum = "38c99613cb3cd7429889a08dfcf651721ca971c86afa30798461f8eee994de47"
 
 [[package]]
 name = "bumpalo"
-version = "3.19.0"
+version = "3.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
-
-[[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
+checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
 name = "bytes"
@@ -229,9 +223,9 @@ checksum = "b35204fbdc0b3f4446b89fc1ac2cf84a8a68971995d0bf2e925ec7cd960f9cb3"
 
 [[package]]
 name = "camino"
-version = "1.2.1"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276a59bf2b2c967788139340c9f0c5b12d7fd6630315c15c217e559de85d2609"
+checksum = "e629a66d692cb9ff1a1c664e41771b3dcaf961985a9774c0eb0bd1b51cf60a48"
 dependencies = [
  "serde_core",
 ]
@@ -397,8 +391,6 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 [[package]]
 name = "crux_cli"
 version = "0.2.0-rc1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fcc52c9da8334779aebbff76c63d9e6439c7e6692090a02e107d80c681936d5"
 dependencies = [
  "anyhow",
  "ascent",
@@ -424,8 +416,6 @@ dependencies = [
 [[package]]
 name = "crux_core"
 version = "0.17.0-rc1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8f4e0555b0539db0229084980f77e6e63cf2465ae860e5a4fbfaf4e7ac54985"
 dependencies = [
  "anyhow",
  "bincode",
@@ -445,8 +435,6 @@ dependencies = [
 [[package]]
 name = "crux_macros"
 version = "0.8.0-rc1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08293c329f1e15e82e37b6da5efe08883b1aa1950485760fa98a06f90bd251ef"
 dependencies = [
  "darling 0.23.0",
  "heck 0.5.0",
@@ -662,9 +650,9 @@ dependencies = [
 
 [[package]]
 name = "facet"
-version = "0.30.0"
+version = "0.31.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f2eff8d6840932e1fbd7c4fc80a0521ab303323ea31ec341ea185384c3b1383"
+checksum = "4d643309d7c46d073b6c51e29901ed9bc3d858dc09aa21f5b32b424491e1bbef"
 dependencies = [
  "facet-core",
  "facet-macros",
@@ -673,9 +661,9 @@ dependencies = [
 
 [[package]]
 name = "facet-core"
-version = "0.30.0"
+version = "0.31.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c80a6e22351f448828529adf1be52f3037c99ac831bcf3fb9a0df2d5c273df8a"
+checksum = "ac27076d75388bffb6c5e5118078dcbb46f2090b35256c45372ff1c1910b1aaf"
 dependencies = [
  "bitflags",
  "impls",
@@ -683,9 +671,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros"
-version = "0.30.0"
+version = "0.31.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a8c1da45a93b10c5829601e19846c7f13d8cde6e0b65740fee5ea51f96d7d7e"
+checksum = "391fcf43b68a76ba4a494710629a7b6fb430345a5623a6a87f7c263bfadb1643"
 dependencies = [
  "facet-core",
  "facet-macros-emit",
@@ -693,9 +681,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros-emit"
-version = "0.30.0"
+version = "0.31.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "561cd90d2074ce22cb0ea0a4c4395779efd03f9b4d1a2712369b0a63ddd5cfbf"
+checksum = "e81e536ccafa7d5ef71822c9a67a28a0b29fe0170eaf2d134c36854a3d56ee9a"
 dependencies = [
  "facet-macros-parse",
  "quote",
@@ -703,9 +691,9 @@ dependencies = [
 
 [[package]]
 name = "facet-macros-parse"
-version = "0.30.0"
+version = "0.31.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b88ddf668029af6fec4d3e3baaedc82f63667416a0e4b2487226212f70b53af9"
+checksum = "8da5d4ded1874033bdef5000712d80d28feefe2abb48bb6f31b6fe59b7e9792f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -714,9 +702,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0f4288e9501bf17657e8967cfdd43a56543775a48ff4536284d7ff5ea19336b"
+checksum = "d8c393ef685c430de9611c131be6bd55e02c083d3dbccc74f39eca8aef8e12d2"
 dependencies = [
  "derive_builder",
  "facet",
@@ -858,15 +846,6 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
-]
-
-[[package]]
-name = "fxhash"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
-dependencies = [
- "byteorder",
 ]
 
 [[package]]
@@ -1712,12 +1691,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shadow_counted"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65da48d447333cebe1aadbdd3662f3ba56e76e67f53bc46f3dd5f67c74629d6b"
-
-[[package]]
 name = "shared"
 version = "0.1.0"
 dependencies = [
@@ -2087,14 +2060,13 @@ dependencies = [
 
 [[package]]
 name = "unsynn"
-version = "0.1.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7940603a9e25cf11211cc43b81f4fcad2b8ab4df291ca855f32c40e1ac22d5bc"
+checksum = "501a7adf1a4bd9951501e5c66621e972ef8874d787628b7f90e64f936ef7ec0a"
 dependencies = [
- "fxhash",
  "mutants",
  "proc-macro2",
- "shadow_counted",
+ "rustc-hash",
 ]
 
 [[package]]
