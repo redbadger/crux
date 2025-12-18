@@ -9,6 +9,7 @@ pub enum HttpError {
     #[serde(skip)]
     #[facet(skip)]
     Http {
+        #[facet(opaque)]
         code: http_types::StatusCode,
         message: String,
         body: Option<Vec<u8>>,

@@ -9,7 +9,7 @@ use crux_core::{
 };
 use log::info;
 use shared::{
-    App,
+    Counter,
     sse::{SseRequest, SseResponse},
 };
 use uniffi::deps::anyhow::Result;
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
 }
 
 fn app(args: &Args) -> Result<(), TypeGenError> {
-    let typegen = TypeRegistry::new().register_app::<App>()?.build()?;
+    let typegen = TypeRegistry::new().register_app::<Counter>()?.build()?;
     let out_dir = args.output_dir.join("app");
 
     match args.language {
