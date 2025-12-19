@@ -22,11 +22,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    if: |
-      ${{ github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name !=
-      github.event.pull_request.base.repo.full_name }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -71,12 +66,9 @@ jobs:
 
   find-examples:
     runs-on: ubuntu-latest
-    if: |
-      ${{ github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name !=
-      github.event.pull_request.base.repo.full_name }}
     outputs:
       examples: ${{ steps.find.outputs.examples }}
+
     steps:
       - uses: actions/checkout@v4
       - id: find
@@ -87,11 +79,6 @@ jobs:
   examples:
     runs-on: ubuntu-latest
     container: ivangabriele/tauri:debian-bookworm-22
-
-    if: |
-      ${{ github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name !=
-      github.event.pull_request.base.repo.full_name }}
 
     needs: find-examples
 
@@ -119,7 +106,7 @@ jobs:
       - name: Install .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "9.0.x"
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
