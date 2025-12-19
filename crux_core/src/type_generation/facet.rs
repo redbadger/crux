@@ -194,9 +194,13 @@ impl TypeRegistry {
         T: Facet<'a>,
     {
         let builder = std::mem::take(&mut self.0);
-        self.0 = builder
-            .add_type::<T>()
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+        self.0 = builder.add_type::<T>().map_err(|e| {
+            TypeGenError::Generation(format!(
+                "couldn't register type {}: {e} {}",
+                std::any::type_name::<T>(),
+                T::SHAPE.type_identifier
+            ))
+        })?;
 
         Ok(self)
     }
