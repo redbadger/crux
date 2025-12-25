@@ -11,6 +11,7 @@ console_error_panic_hook = "0.1.7"
 dioxus = { version = "0.7.2", features = ["web"] }
 dioxus-logger = "0.7.2"
 futures-util = "0.3.31"
+getrandom = { version = "0.3", features = ["wasm_js"] }
 gloo-net = "0.6.0"
 js-sys = "0.3.83"
 shared = { path = "../shared" }
