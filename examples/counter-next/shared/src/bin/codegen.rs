@@ -82,9 +82,7 @@ fn app(args: &Args) -> Result<(), TypeGenError> {
             &Config::builder("com.crux.example.counter.app", &out_dir)
                 .reference(ExternalPackage {
                     for_namespace: "server_sent_events".to_string(),
-                    location: PackageLocation::Path(
-                        "com.crux.example.counter.sse.server_sent_events".to_string(),
-                    ),
+                    location: PackageLocation::Path("com.crux.example.counter.sse".to_string()),
                     module_name: None,
                     version: None,
                 })
