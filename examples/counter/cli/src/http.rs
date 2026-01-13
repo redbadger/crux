@@ -1,7 +1,7 @@
 use reqwest::{Client, Method};
 use shared::http::{
-    protocol::{HttpHeader, HttpRequest, HttpResponse},
     HttpError, Result,
+    protocol::{HttpHeader, HttpRequest, HttpResponse},
 };
 
 pub async fn request(

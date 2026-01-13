@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 
 struct PaymentFlow: View {
     @Environment(\.update) var update

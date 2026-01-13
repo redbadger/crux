@@ -1,0 +1,5 @@
+dev:
+    trunk serve
+
+clean:
+    cargo clean

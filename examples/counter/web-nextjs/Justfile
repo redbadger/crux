@@ -1,0 +1,36 @@
+# generate types for typescript, build wasm package and install npm dependencies
+build: typegen wasm install
+
+# clean and then build everything
+rebuild: clean build
+
+# generate types for typescript
+typegen:
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language typescript \
+            --output-dir generated/types
+
+# build wasm package
+wasm:
+    wasm-pack build \
+        --target web \
+        --out-dir ../web-nextjs/generated/pkg \
+        ../shared \
+        --features wasm_bindgen
+
+# clean up generated files
+clean:
+    cargo clean
+    rm -rf generated .next node_modules
+
+# install npm dependencies
+install:
+    pnpm install
+
+# build everything and run the dev server
+dev: build
+    pnpm dev

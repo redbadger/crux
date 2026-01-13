@@ -1,0 +1,7 @@
+dev:
+    pnpm install
+    pnpm tauri dev
+
+clean:
+    cargo clean
+    rm -rf node_modules

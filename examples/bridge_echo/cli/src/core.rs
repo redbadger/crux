@@ -3,9 +3,9 @@ use crossbeam_channel::Sender;
 use std::sync::Arc;
 use tracing::debug;
 
-use shared::{App, Effect, Event};
+use shared::{BridgeEcho, Effect, Event};
 
-pub type Core = Arc<shared::Core<App>>;
+pub type Core = Arc<shared::Core<BridgeEcho>>;
 
 pub fn new() -> Core {
     Arc::new(shared::Core::new())

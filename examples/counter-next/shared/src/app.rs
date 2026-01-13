@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc, serde::ts_milliseconds_option::deserialize as ts_milliseconds_option};
 use crux_core::{
-    Command,
+    App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
-use crux_http::{HttpError, command::Http, protocol::HttpRequest};
+use crux_http::{command::Http, protocol::HttpRequest};
 use facet::Facet;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
@@ -16,24 +16,6 @@ use crate::{
 };
 
 const API_URL: &str = "https://crux-counter.fly.dev";
-
-#[derive(Facet, Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[repr(C)]
-pub enum HttpResult<T, E> {
-    Ok(T),
-    Err(E),
-}
-
-impl<T> From<crux_http::Result<crux_http::Response<T>>>
-    for HttpResult<crux_http::Response<T>, HttpError>
-{
-    fn from(value: crux_http::Result<crux_http::Response<T>>) -> Self {
-        match value {
-            Ok(response) => HttpResult::Ok(response),
-            Err(error) => HttpResult::Err(error),
-        }
-    }
-}
 
 #[derive(Default, Serialize)]
 pub struct Model {
@@ -67,11 +49,14 @@ pub enum Event {
     // events local to the core
     #[serde(skip)]
     #[facet(skip)]
-    Set(HttpResult<crux_http::Response<Count>, HttpError>),
+    Set(#[facet(opaque)] crux_http::Result<crux_http::Response<Count>>),
+
     #[serde(skip)]
     #[facet(skip)]
     Update(Count),
+
     #[serde(skip)]
+    #[facet(skip)]
     UpdateBy(isize),
 }
 
@@ -85,9 +70,9 @@ pub enum Effect {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct Counter;
 
-impl crux_core::App for App {
+impl App for Counter {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
@@ -101,11 +86,11 @@ impl crux_core::App for App {
                 .build()
                 .map(Into::into)
                 .then_send(Event::Set),
-            Event::Set(HttpResult::Ok(mut response)) => {
+            Event::Set(Ok(mut response)) => {
                 let count = response.take_body().unwrap();
                 Command::event(Event::Update(count))
             }
-            Event::Set(HttpResult::Err(e)) => {
+            Event::Set(Err(e)) => {
                 panic!("Oh no something went wrong: {e:?}");
             }
             Event::Update(count) => {
@@ -144,7 +129,7 @@ impl crux_core::App for App {
                                 .into_future(ctx.clone())
                         });
 
-                        let result: Result<Vec<crux_http::Response<Count>>, crux_http::HttpError> =
+                        let result: crux_http::Result<Vec<crux_http::Response<Count>>> =
                             join_all(futures).await.into_iter().collect();
 
                         let latest = result.map(|counts| {
@@ -154,7 +139,7 @@ impl crux_core::App for App {
                                 .unwrap()
                         });
 
-                        ctx.send_event(Event::Set(latest.into()));
+                        ctx.send_event(Event::Set(latest));
                     })
                 };
 
@@ -226,7 +211,7 @@ impl crux_core::App for App {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use super::{App, Count, Effect, Event, Model};
+    use super::{Count, Counter, Effect, Event, Model};
     use crate::{
         RandomNumber, RandomNumberRequest,
         sse::{SseRequest, SseResponse},
@@ -243,7 +228,7 @@ mod tests {
     /// counter value from the web API
     #[test]
     fn get_counter() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         // send a `Get` event to the app
@@ -274,7 +259,7 @@ mod tests {
                 updated_at: Some(Utc.with_ymd_and_hms(2023, 1, 1, 0, 0, 0).unwrap()),
             })
             .build();
-        let expected = Event::Set(super::HttpResult::Ok(response));
+        let expected = Event::Set(Ok(response));
         assert_eq!(actual, expected);
 
         // send the `Set` event back to the app
@@ -315,7 +300,7 @@ mod tests {
     // Test that an `Increment` event causes the app to increment the counter
     #[test]
     fn increment_counter() {
-        let app = App;
+        let app = Counter;
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -391,7 +376,7 @@ mod tests {
     /// Test that a `Decrement` event causes the app to decrement the counter
     #[test]
     fn decrement_counter() {
-        let app = App;
+        let app = Counter;
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -466,7 +451,7 @@ mod tests {
 
     #[test]
     fn server_sent_events() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         // start a SSE subscription to watch for updates from the server
@@ -524,7 +509,7 @@ mod tests {
 
     #[test]
     fn random_change() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Random, &mut model);
@@ -589,7 +574,7 @@ mod tests {
 
     #[test]
     fn random_change_with_0() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         model.count.value = 3;

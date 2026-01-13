@@ -1,17 +1,15 @@
 [workspace]
-members = ["shared", "shared_types"]
-resolver = "1"
+members = ["shared"]
+resolver = "3"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
-edition = "2021"
+edition = "2024"
 keywords = ["tap-to-pay"]
 rust-version = "1.88"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
 crux_core = { path = "../../crux_core" }
+# crux_core = "0.17.0-rc1"
 serde = "1.0.228"
-
-[workspace.metadata.bin]
-cargo-xcode = { version = "=1.7.0" }

@@ -1,10 +1,11 @@
-use chrono::{serde::ts_milliseconds_option::deserialize as ts_milliseconds_option, DateTime, Utc};
+use chrono::{DateTime, Utc, serde::ts_milliseconds_option::deserialize as ts_milliseconds_option};
 use crux_core::{
+    App, Command,
     macros::effect,
-    render::{render, RenderOperation},
-    Command,
+    render::{RenderOperation, render},
 };
 use crux_http::{command::Http, protocol::HttpRequest};
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -26,13 +27,14 @@ pub struct Count {
 }
 // ANCHOR_END: model
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Facet, Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub enum Event {
     // events from the shell
     Get,
@@ -42,12 +44,14 @@ pub enum Event {
 
     // events local to the core
     #[serde(skip)]
-    Set(crux_http::Result<crux_http::Response<Count>>),
+    #[facet(skip)]
+    Set(#[facet(opaque)] crux_http::Result<crux_http::Response<Count>>),
     #[serde(skip)]
-    Update(Count),
+    #[facet(skip)]
+    Update(#[facet(opaque)] Count),
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
@@ -56,9 +60,9 @@ pub enum Effect {
 }
 
 #[derive(Default)]
-pub struct App;
+pub struct Counter;
 
-impl crux_core::App for App {
+impl App for Counter {
     type Model = Model;
     type Event = Event;
     type ViewModel = ViewModel;
@@ -136,13 +140,16 @@ impl crux_core::App for App {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use super::{App, Event, Model};
-    use crate::{capabilities::sse::SseRequest, sse::SseResponse, Count, Effect};
-
-    use crux_core::{assert_effect, App as _};
+    use crux_core::{App as _, assert_effect};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
+    };
+
+    use super::{Counter, Event, Model};
+    use crate::{
+        Count, Effect,
+        sse::{SseRequest, SseResponse},
     };
 
     // ANCHOR: simple_tests
@@ -150,7 +157,7 @@ mod tests {
     /// counter value from the web API
     #[test]
     fn get_counter() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         // send a `Get` event to the app
@@ -226,7 +233,7 @@ mod tests {
     // Test that an `Increment` event causes the app to increment the counter
     #[test]
     fn increment_counter() {
-        let app = App;
+        let app = Counter;
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -303,7 +310,7 @@ mod tests {
     /// Test that a `Decrement` event causes the app to decrement the counter
     #[test]
     fn decrement_counter() {
-        let app = App;
+        let app = Counter;
 
         // set up our initial model as though we've previously fetched the counter
         let mut model = Model {
@@ -379,7 +386,7 @@ mod tests {
 
     #[test]
     fn server_sent_events() {
-        let app = App;
+        let app = Counter;
         let mut model = Model::default();
 
         // start a SSE subscription to watch for updates from the server

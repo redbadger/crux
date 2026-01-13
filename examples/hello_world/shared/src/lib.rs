@@ -1,52 +1,17 @@
-pub mod app; // not exposed so you can remove this in your project
-
-use std::sync::LazyLock;
-
-use crux_core::bridge::EffectId;
-pub use crux_core::{bridge::Bridge, Core, Request};
+pub mod app;
+#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
+mod ffi;
 
 pub use app::*;
+pub use crux_core::Core;
 
-#[cfg(not(target_family = "wasm"))]
-uniffi::include_scaffolding!("shared");
+#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
+pub use ffi::CoreFFI;
 
-static CORE: LazyLock<Bridge<Hello>> = LazyLock::new(|| Bridge::new(Core::new()));
-
-/// Ask the core to process an event
-/// # Panics
-/// If the core fails to process the event
-#[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[must_use]
-pub fn process_event(data: &[u8]) -> Vec<u8> {
-    let mut effects = Vec::new();
-    match CORE.update(data, &mut effects) {
-        Ok(()) => effects,
-        Err(e) => panic!("{e}"),
-    }
-}
-
-/// Ask the core to handle a response
-/// # Panics
-/// If the core fails to handle the response
-#[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[must_use]
-pub fn handle_response(id: u32, data: &[u8]) -> Vec<u8> {
-    let mut effects = Vec::new();
-    match CORE.resolve(EffectId(id), data, &mut effects) {
-        Ok(()) => effects,
-        Err(e) => panic!("{e}"),
-    }
-}
-
-/// Ask the core to render the view
-/// # Panics
-/// If the view cannot be serialized
-#[cfg_attr(target_family = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
-#[must_use]
-pub fn view() -> Vec<u8> {
-    let mut view_model = Vec::new();
-    match CORE.view(&mut view_model) {
-        Ok(()) => view_model,
-        Err(e) => panic!("{e}"),
-    }
-}
+#[cfg(feature = "uniffi")]
+const _: () = assert!(
+    uniffi::check_compatible_version("0.29.4"),
+    "please use uniffi v0.29.4"
+);
+#[cfg(feature = "uniffi")]
+uniffi::setup_scaffolding!();
