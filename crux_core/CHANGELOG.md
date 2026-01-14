@@ -31,7 +31,17 @@ and this project adheres to
 #### New Features:
 
 - **Unified Bridge**: Simplified bridge interface with better error handling and serialization support.
-- **Enhanced Command Testing**: New testing helpers for commands including `take_effects` and `take_effects_partitioned_by` methods.
+- **Enhanced Command Testing**: Comprehensive new testing API for commands:
+  - `take_effects<P>(&mut self, predicate: P) -> VecDeque<Effect>` - Extract effects matching a predicate from `Update`, leaving non-matching effects
+  - `take_effects_partitioned_by<P>(&mut self, predicate: P) -> (VecDeque<Effect>, VecDeque<Effect>)` - Split all effects into matching and non-matching groups
+  - `expect_effect(&mut self) -> Effect` - Assert command has at least one effect and return it
+  - `expect_one_effect(&mut self) -> Effect` - Assert command has exactly one effect and return it (improved error messages)
+  - `expect_event(&mut self) -> Event` - Assert command has at least one event and return it  
+  - `expect_one_event(&mut self) -> Event` - Assert command has exactly one event and return it (improved error messages)
+  - `expect_no_effects(&mut self)` - Assert command has no effects
+  - `expect_no_events(&mut self)` - Assert command has no events
+  - `expect_done(&mut self)` - Assert command is complete (no effects or events)
+  - **Deprecated**: `AppTester` is now deprecated in favor of direct Command API testing
 - **Improved Effect Middleware**: Better support for streaming responses and request/response splitting.
 - **CLI Improvements**: Breaking changes to `crux_cli` bindgen arguments - `--kotlin` and `--swift` now accept optional output directories and at least one bindgen language is required.
 

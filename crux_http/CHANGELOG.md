@@ -17,7 +17,7 @@ and this project adheres to
 
 ### 🐛 Bug Fixes
 
-- Revert removal of `http_types` fork dependency, it is needed for `traceid` (replace u128 with u64) in order to be compatible with the emscripten target.
+- Remove (but then revert) `http_types` fork dependency — it _is_ actually still needed for `traceid` (replace u128 with u64) in order to be compatible with the emscripten target. However we no longer require it to have types annotated with the Facet derive, and we'll remove them from the fork in a future release.
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -29,7 +29,7 @@ and this project adheres to
 
 **This is a breaking release.**
 
-- **Command API Support**: Updated to work with the new Command API, removing dependency on the deprecated Capability trait.
+- **Command API Support**: Updated to work with the new Command API, removing dependency on the deprecated Capability trait. (This should be non-breaking from the Command API's perspective - the command modules stay around and re-export the code which moved back into the root).
 - **Enhanced Testing**: Improved testing support with new command-based test helpers.
 
 ### ⚙️ Miscellaneous Tasks
