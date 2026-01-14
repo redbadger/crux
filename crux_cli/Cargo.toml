@@ -1,6 +1,6 @@
 [package]
 name = "crux_cli"
-version = "0.2.0-rc1"
+version = "0.2.0-rc2"
 description = "Command line tool for crux_core"
 authors.workspace = true
 edition.workspace = true

@@ -1279,7 +1279,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "crux_cli"
-version = "0.2.0-rc1"
+version = "0.2.0-rc2"
 dependencies = [
  "anyhow",
  "ascent",
@@ -1304,7 +1304,7 @@ dependencies = [
 
 [[package]]
 name = "crux_core"
-version = "0.17.0-rc1"
+version = "0.17.0-rc2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1323,7 +1323,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.16.0-rc1"
+version = "0.16.0-rc2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1345,7 +1345,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.8.0-rc1"
+version = "0.8.0-rc2"
 dependencies = [
  "darling 0.23.0",
  "heck 0.5.0",
