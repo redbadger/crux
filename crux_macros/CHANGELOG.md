@@ -8,9 +8,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.8.0-rc2](https://github.com/redbadger/crux/compare/crux_macros-v0.8.0-rc1...crux_macros-v0.8.0-rc2) - 2026-01-14
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
+
 ## [0.8.0-rc1](https://github.com/redbadger/crux/compare/crux_macros-v0.7.0...crux_macros-v0.8.0-rc1) - 2025-12-10
 
-TODO: update changelog
+### 🚀 Features
+
+**This is a breaking release.**
+
+- **Removed Capability Support**: Removed all capability-related derive macros and machinery as part of the migration to the Command API.
+- **Enhanced Effect Macros**: Improved `#[effect]` attribute macro with better support for type generation and Command integration.
+- **Bridge Integration**: Updated macros to work with the new unified Bridge API in `crux_core`.
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.12 and `facet` 0.31.
+- Remove deprecated capability derive macros.
+- Align with Command API requirements.
 
 ## [0.7.0](https://github.com/redbadger/crux/compare/crux_macros-v0.6.1...crux_macros-v0.7.0) - 2025-07-31
 

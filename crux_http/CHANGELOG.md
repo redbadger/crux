@@ -8,9 +8,35 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.16.0](https://github.com/redbadger/crux/compare/crux_http-v0.15.0...crux_http-v0.16.0) - 2025-12-10
+## [0.16.0-rc2](https://github.com/redbadger/crux/compare/crux_http-v0.16.0-rc1...crux_http-v0.16.0-rc2) - 2026-01-14
 
-TODO: update changelog
+### 🚀 Features
+
+- **Breaking**: Reorder `HttpError` variants to preserve discriminants across FFI boundary. The external error variants (`Url`, `Io`, `Timeout`) now come first to maintain stable discriminants for shell bindings.
+- **Breaking**: Remove facet annotations from `http_types` references, keeping them only for our own protocol types that cross the FFI boundary.
+
+### 🐛 Bug Fixes
+
+- Revert removal of `http_types` fork dependency, it is needed for `traceid` (replace u128 with u64) in order to be compatible with the emscripten target.
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
+
+## [0.16.0-rc1](https://github.com/redbadger/crux/compare/crux_http-v0.15.0...crux_http-v0.16.0-rc1) - 2025-12-10
+
+### 🚀 Features
+
+**This is a breaking release.**
+
+- **Command API Support**: Updated to work with the new Command API, removing dependency on the deprecated Capability trait.
+- **Enhanced Testing**: Improved testing support with new command-based test helpers.
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.12 and `facet` 0.31.
+- Migrate internal implementation from Capability to Command API.
+- Update documentation and examples for Command-based usage.
 
 ## [0.15.0](https://github.com/redbadger/crux/compare/crux_http-v0.14.0...crux_http-v0.15.0) - 2025-07-31
 

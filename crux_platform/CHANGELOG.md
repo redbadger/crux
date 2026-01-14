@@ -7,9 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0-rc2](https://github.com/redbadger/crux/compare/crux_platform-v0.8.0-rc1...crux_platform-v0.8.0-rc2) - 2026-01-14
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
+
 ## [0.8.0-rc1](https://github.com/redbadger/crux/compare/crux_platform-v0.7.0...crux_platform-v0.8.0-rc1) - 2025-12-10
 
-TODO: update changelog
+### 🚀 Features
+
+**This is a breaking release.**
+
+- **Command API Support**: Updated to work with the new Command API, removing dependency on the deprecated Capability trait.
+- **Enhanced Testing**: Improved testing support with new command-based test helpers.
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.12 and `facet` 0.31.
+- Migrate internal implementation from Capability to Command API.
+- Update documentation and examples for Command-based usage.
 
 ## [0.7.0](https://github.com/redbadger/crux/compare/crux_platform-v0.6.0...crux_platform-v0.7.0) - 2025-07-03
 
