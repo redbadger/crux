@@ -6,13 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0-rc2](https://github.com/redbadger/crux/compare/crux_core-v0.17.0-rc1...crux_core-v0.17.0-rc2) - 2026-01-14
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
+- Relax version requirements for better compatibility.
+
 ## [0.17.0-rc1](https://github.com/redbadger/crux/compare/crux_core-v0.16.1...crux_core-v0.17.0-rc1) - 2025-12-10
 
 ### 🚀 Features
 
-This is a breaking change.
+**This is a breaking release.**
 
-TODO: update changelog
+#### Major Breaking Changes:
+
+- **Removed Capability API**: The legacy Capability trait and all related machinery has been removed. Apps must now use the `Command` API exclusively.
+- **Bridge API Changes**: Merged `Bridge` and `BridgeWithSerializer` into a single `Bridge` type with unified serialization support. Several methods have been deprecated:
+  - `process_event(&self, event: &[u8]) -> Result<Vec<u8>, BridgeError>` → Use `update(&self, event: &[u8], requests_out: &mut Vec<u8>) -> Result<(), BridgeError>`
+  - `handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError>` → Use `resolve(&self, id: u32, output: &[u8], requests_out: &mut Vec<u8>) -> Result<(), BridgeError>`
+  - `view(&self) -> Result<Vec<u8>, BridgeError>` → Use `view(&self, view_out: &mut Vec<u8>) -> Result<(), BridgeError>`
+- **Effect Middleware**: Enhanced effect middleware support with proper handling of stream requests and multiple resolutions.
+
+#### New Features:
+
+- **Unified Bridge**: Simplified bridge interface with better error handling and serialization support.
+- **Enhanced Command Testing**: Comprehensive new testing API for commands:
+  - `take_effects<P>(&mut self, predicate: P) -> VecDeque<Effect>` - Extract effects matching a predicate from `Update`, leaving non-matching effects
+  - `take_effects_partitioned_by<P>(&mut self, predicate: P) -> (VecDeque<Effect>, VecDeque<Effect>)` - Split all effects into matching and non-matching groups
+  - `expect_effect(&mut self) -> Effect` - Assert command has at least one effect and return it
+  - `expect_one_effect(&mut self) -> Effect` - Assert command has exactly one effect and return it (improved error messages)
+  - `expect_event(&mut self) -> Event` - Assert command has at least one event and return it  
+  - `expect_one_event(&mut self) -> Event` - Assert command has exactly one event and return it (improved error messages)
+  - `expect_no_effects(&mut self)` - Assert command has no effects
+  - `expect_no_events(&mut self)` - Assert command has no events
+  - `expect_done(&mut self)` - Assert command is complete (no effects or events)
+  - **Deprecated**: `AppTester` is now deprecated in favor of direct Command API testing
+- **Improved Effect Middleware**: Better support for streaming responses and request/response splitting.
+- **CLI Improvements**: Breaking changes to `crux_cli` bindgen arguments - `--kotlin` and `--swift` now accept optional output directories and at least one bindgen language is required.
+
+#### Developer Experience:
+
+- **Kotlin Support**: Added support for generating idiomatic Kotlin bindings with exhaustive `when` statements for enums.
+- **Facet Integration**: Updated to work with `facet_generate` 0.12 and `facet` 0.31.
+- **Documentation**: Aligned deprecation messages and improved example apps.
 
 ## [0.16.2](https://github.com/redbadger/crux/compare/crux_core-v0.16.1...crux_core-v0.16.2) - 2025-12-15
 

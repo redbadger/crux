@@ -18,7 +18,7 @@ tauri-build = { version = "2.5.3", features = [] }
 [dependencies]
 anyhow.workspace = true
 futures = "0.3.31"
-reqwest = { version = "0.12.26", features = ["stream"] }
+reqwest = { version = "0.13.1", features = ["stream"] }
 shared = { path = "../../shared" }
 tauri = { version = "2.9.5", features = [] }
 

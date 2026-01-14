@@ -20,7 +20,7 @@ shared = { path = "../shared" }
 wasm-bindgen = "0.2.106"
 wasm-streams = "0.4.2"
 
-leptos = { version = "0.8.14", features = ["csr"] }
+leptos = { version = "0.8.15", features = ["csr"] }
 
 [lints.clippy]
 empty_docs = "allow"

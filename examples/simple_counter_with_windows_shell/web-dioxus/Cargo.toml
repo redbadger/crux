@@ -14,4 +14,4 @@ dioxus = { version = "0.7.2", features = ["web"] }
 dioxus-logger = "0.7.2"
 futures-util = "0.3.31"
 shared = { path = "../shared" }
-tracing = "0.1.43"
+tracing = "0.1.44"
