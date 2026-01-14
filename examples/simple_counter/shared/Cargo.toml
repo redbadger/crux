@@ -33,7 +33,7 @@ serde = { workspace = true, features = ["derive"] }
 facet = "=0.31"
 
 # optional dependencies
-clap = { version = "4.5.53", optional = true, features = ["derive"] }
+clap = { version = "4.5.54", optional = true, features = ["derive"] }
 getrandom = { version = "0.3.4", optional = true, default-features = false }
 # js-sys = { version = "0.3.83", optional = true }
 log = { version = "0.4.29", optional = true }

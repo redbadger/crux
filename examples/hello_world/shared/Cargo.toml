@@ -33,7 +33,7 @@ facet = "=0.31"
 serde = { workspace = true, features = ["derive"] }
 
 # optional dependencies
-clap = { version = "4.5.53", optional = true, features = ["derive"] }
+clap = { version = "4.5.54", optional = true, features = ["derive"] }
 getrandom = { version = "0.3.4", optional = true, default-features = false }
 log = { version = "0.4.29", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }

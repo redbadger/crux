@@ -19,7 +19,7 @@ serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
 [dev-dependencies]
-serde_json = "1.0.145"
+serde_json = "1.0.149"
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
