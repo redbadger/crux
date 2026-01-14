@@ -5,10 +5,21 @@ use thiserror::Error as ThisError;
 #[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
 #[repr(C)]
 pub enum HttpError {
+    // potentially external, have representation in shells
+    // Note: must come first to preserve discriminant order on both sides of FFI
+    #[error("URL parse error: {0}")]
+    Url(String),
+    #[error("IO error: {0}")]
+    Io(String),
+    #[error("Timeout")]
+    Timeout,
+
+    // internal only, not generated or serialized
     #[error("HTTP error {code}: {message}")]
     #[serde(skip)]
     #[facet(skip)]
     Http {
+        #[facet(opaque)]
         code: http_types::StatusCode,
         message: String,
         body: Option<Vec<u8>>,
@@ -17,12 +28,6 @@ pub enum HttpError {
     #[serde(skip)]
     #[facet(skip)]
     Json(String),
-    #[error("URL parse error: {0}")]
-    Url(String),
-    #[error("IO error: {0}")]
-    Io(String),
-    #[error("Timeout")]
-    Timeout,
 }
 
 impl From<http_types::Error> for HttpError {
