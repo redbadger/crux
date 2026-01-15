@@ -1,5 +1,4 @@
 use super::{decode::decode_body, new_headers};
-use facet::Facet;
 use http_types::{
     self, Mime, StatusCode, Version,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
@@ -12,7 +11,7 @@ use std::fmt;
 use std::ops::Index;
 
 /// An HTTP Response that will be passed to in a message to an apps update function
-#[derive(Facet, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
     version: Option<http_types::Version>,
     status: http_types::StatusCode,

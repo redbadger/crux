@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 
 struct ReceiptScreen: View {
     @Environment(\.update) var update

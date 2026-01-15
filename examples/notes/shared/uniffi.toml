@@ -1,5 +1,5 @@
 [bindings.kotlin]
-package_name = "com.example.notes.shared"
+package_name = "com.crux.example.notes"
 cdylib_name = "shared"
 
 [bindings.swift]

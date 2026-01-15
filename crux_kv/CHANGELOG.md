@@ -8,9 +8,26 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.0-rc2](https://github.com/redbadger/crux/compare/crux_kv-v0.11.0-rc1...crux_kv-v0.11.0-rc2) - 2026-01-14
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
+
 ## [0.11.0-rc1](https://github.com/redbadger/crux/compare/crux_kv-v0.10.0...crux_kv-v0.11.0-rc1) - 2025-12-10
 
-TODO: update changelog
+### 🚀 Features
+
+**This is a breaking release.**
+
+- **Command API Support**: Updated to work with the new Command API, removing dependency on the deprecated Capability trait.
+- **Enhanced Testing**: Improved testing support with new command-based test helpers.
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.12 and `facet` 0.31.
+- Migrate internal implementation from Capability to Command API.
+- Update documentation and examples for Command-based usage.
 
 ## [0.10.0](https://github.com/redbadger/crux/compare/crux_kv-v0.9.0...crux_kv-v0.10.0) - 2025-07-31
 

@@ -1,15 +1,15 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use crossbeam_channel::Sender;
 use futures::TryStreamExt;
 use std::sync::Arc;
 use tokio::spawn;
 use tracing::debug;
 
-use shared::{App, Effect, Event};
+use shared::{Counter, Effect, Event};
 
 use crate::{http, sse};
 
-pub type Core = Arc<shared::Core<App>>;
+pub type Core = Arc<shared::Core<Counter>>;
 
 pub fn new() -> Core {
     Arc::new(shared::Core::new())
@@ -52,9 +52,10 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
             spawn({
                 let core = core.clone();
                 let tx = tx.clone();
+                let operation = request.operation.clone();
 
                 async move {
-                    let mut stream = sse::request(&request.operation).await?;
+                    let mut stream = sse::request(&operation).await?;
 
                     while let Ok(Some(response)) = stream.try_next().await {
                         for effect in core.resolve(&mut request, response)? {

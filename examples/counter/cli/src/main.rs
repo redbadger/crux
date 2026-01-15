@@ -7,7 +7,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use clap::Parser;
 use crossbeam_channel::unbounded;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use shared::{Effect, Event};
 

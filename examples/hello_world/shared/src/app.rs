@@ -1,17 +1,19 @@
 // ANCHOR: app
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     App, Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Facet, Serialize, Deserialize)]
+#[repr(C)]
 pub enum Event {
     None,
 }
@@ -19,15 +21,15 @@ pub enum Event {
 #[derive(Default)]
 pub struct Model;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Facet, Serialize, Deserialize)]
 pub struct ViewModel {
     pub data: String,
 }
 
 #[derive(Default)]
-pub struct Hello;
+pub struct HelloWorld;
 
-impl App for Hello {
+impl App for HelloWorld {
     type Effect = Effect;
     type Event = Event;
     type Model = Model;
@@ -43,7 +45,6 @@ impl App for Hello {
         }
     }
 }
-
 // ANCHOR_END: app
 
 // ANCHOR: test
@@ -52,21 +53,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn hello_says_hello_world() {
-        let hello = Hello;
+    fn app_says_hello_world() {
+        let app = HelloWorld;
         let mut model = Model;
 
         // Call 'update' and request effects
-        let mut cmd = hello.update(Event::None, &mut model);
+        let mut cmd = app.update(Event::None, &mut model);
 
         // Check update asked us to `Render`
         cmd.expect_one_effect().expect_render();
 
         // Make sure the view matches our expectations
-        let actual_view = &hello.view(&model).data;
-        let expected_view = "Hello World";
-        assert_eq!(actual_view, expected_view);
+        let view = app.view(&model);
+        let actual = &view.data;
+        let expected = "Hello World";
+        assert_eq!(actual, expected);
     }
 }
-
 // ANCHOR_END: test

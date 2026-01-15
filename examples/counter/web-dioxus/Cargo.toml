@@ -15,7 +15,7 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 gloo-net = "0.6.0"
 js-sys = "0.3.83"
 shared = { path = "../shared" }
-tracing = "0.1.43"
+tracing = "0.1.44"
 wasm-bindgen = "0.2.106"
 wasm-bindgen-futures = "0.4.56"
 wasm-streams = "0.4.2"

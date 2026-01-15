@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedTypes
+import App
 
 struct RootView: View {
     @StateObject var core = Core()

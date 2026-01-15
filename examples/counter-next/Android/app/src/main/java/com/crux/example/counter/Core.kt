@@ -36,7 +36,7 @@ class Core : androidx.lifecycle.ViewModel(), CruxShell  {
             }
 
     init {
-        viewModelScope.launch { update(Event.StartWatch) }
+        viewModelScope.launch { update(Event.STARTWATCH) }
     }
 
     suspend fun update(event: Event) {

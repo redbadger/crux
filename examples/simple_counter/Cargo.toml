@@ -1,6 +1,6 @@
 [workspace]
-members = ["shared", "shared_types", "web-dioxus", "web-leptos", "web-yew"]
-resolver = "1"
+members = ["shared", "web-dioxus", "web-leptos", "web-yew"]
+resolver = "3"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
@@ -13,10 +13,8 @@ rust-version = "1.88"
 [workspace.dependencies]
 anyhow = "1.0.100"
 crux_core = { path = "../../crux_core" }
+# crux_core = "0.17.0-rc2"
 serde = "1.0.228"
-
-[workspace.metadata.bin]
-cargo-xcode = { version = "=1.7.0" }
 
 [profile]
 

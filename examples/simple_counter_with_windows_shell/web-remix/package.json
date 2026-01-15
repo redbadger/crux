@@ -1,0 +1,34 @@
+{
+  "private": true,
+  "sideEffects": false,
+  "scripts": {
+    "build": "pnpm run wasm:build && remix build",
+    "dev": "pnpm run wasm:build && remix dev",
+    "wasm:build": "cd ../shared && wasm-pack build --target web",
+    "start": "remix-serve build",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@remix-run/css-bundle": "^2.16.8",
+    "@remix-run/node": "^2.16.8",
+    "@remix-run/react": "^2.16.8",
+    "@remix-run/serve": "^2.16.8",
+    "isbot": "^5.1.28",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "shared": "file:../shared/pkg",
+    "shared_types": "file:../shared_types/generated/typescript"
+  },
+  "devDependencies": {
+    "@remix-run/dev": "^2.16.8",
+    "@remix-run/eslint-config": "^2.16.8",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "eslint": "^9.28.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+}

@@ -10,10 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 shared = { path = "../shared" }
-
-# 0.8.* needs resolver>=2 which is not good for shared/uniffi-bindgen
-# (see counter-next example for example of how to use the latest leptos version)
-leptos = { version = "=0.7.8", features = ["csr"] }
+leptos = { version = "0.8.15", features = ["csr"] }
 
 [lints.clippy]
 empty_docs = "allow"

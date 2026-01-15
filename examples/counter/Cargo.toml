@@ -2,17 +2,16 @@
 members = [
     "cli",
     "shared",
-    "shared_types",
     "tauri/src-tauri",
     "web-dioxus",
     "web-leptos",
     "web-yew",
 ]
-resolver = "1"
+resolver = "3"
 
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
@@ -22,21 +21,6 @@ rust-version = "1.88"
 anyhow = "1.0.100"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
-# crux_core = "0.17.0-rc1"
-# crux_http = "0.16-rc1"
+# crux_core = "0.17.0-rc2"
+# crux_http = "0.16.0-rc2"
 serde = "1.0.228"
-
-[workspace.metadata.bin]
-cargo-xcode = { version = "=1.7.0" }
-
-[profile]
-
-[profile.wasm-dev]
-inherits = "dev"
-opt-level = 1
-
-[profile.server-dev]
-inherits = "dev"
-
-[profile.android-dev]
-inherits = "dev"

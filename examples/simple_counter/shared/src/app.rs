@@ -4,16 +4,18 @@ use crux_core::{
     macros::effect,
     render::{RenderOperation, render},
 };
+use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[repr(C)]
 pub enum Event {
     Increment,
     Decrement,
     Reset,
 }
 
-#[effect(typegen)]
+#[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
@@ -24,7 +26,7 @@ pub struct Model {
     count: isize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Facet, Serialize, Deserialize, Clone, Default)]
 pub struct ViewModel {
     pub count: String,
 }

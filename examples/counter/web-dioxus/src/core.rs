@@ -4,14 +4,14 @@ use dioxus::{
     prelude::{Signal, UnboundedReceiver},
     signals::WritableExt as _,
 };
-use futures_util::{StreamExt, TryStreamExt};
-use shared::{App, Effect, Event, ViewModel};
+use futures_util::{StreamExt, TryStreamExt as _};
 use tracing::debug;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::{http, sse};
+use shared::{Counter, Effect, Event, ViewModel};
 
-type Core = Rc<shared::Core<App>>;
+type Core = Rc<shared::Core<Counter>>;
 
 pub struct CoreService {
     core: Core,
@@ -49,18 +49,8 @@ fn process_effect(core: &Core, effect: Effect, view: &mut Signal<ViewModel>) {
 
     match effect {
         Effect::Render(_) => {
-            // This currently issues a warning:
-            //
-            // "Write on signal happened while a component was running.
-            // Writing to signals during a render can cause infinite rerenders when you read
-            // the same signal in the component. Consider writing to the signal in an
-            // effect, future, or event handler if possible."
-            //
-            // I think this is a bug in Dioxus, as we are in a coroutine, which is a future.
-            // Anyway, it works.
             view.set(core.view());
         }
-
         Effect::Http(mut request) => {
             spawn_local({
                 let mut view = view.to_owned();
