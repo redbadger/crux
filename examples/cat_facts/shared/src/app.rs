@@ -217,8 +217,7 @@ impl App for CatFacts {
             _ => "No fact".to_string(),
         };
 
-        let platform =
-            <platform::Platform as crux_core::App>::view(&self.platform, &model.platform).platform;
+        let platform = self.platform.view(&model.platform).platform;
 
         ViewModel {
             platform,
