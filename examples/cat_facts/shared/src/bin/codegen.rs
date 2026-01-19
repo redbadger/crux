@@ -32,41 +32,35 @@ fn main() -> Result<()> {
 
     let typegen_app = TypeRegistry::new().register_app::<CatFacts>()?.build()?;
 
+    let name = match args.language {
+        Language::Swift => "App",
+        Language::Kotlin => "com.crux.example.cat_facts",
+        Language::Typescript => "app",
+    };
+    let config = Config::builder(name, &args.output_dir)
+        .add_extensions()
+        .add_runtimes()
+        .build();
+
     match args.language {
         Language::Swift => {
             info!("Typegen for Swift");
-            typegen_app.swift(
-                &Config::builder("App", &args.output_dir)
-                    .add_extensions()
-                    .add_runtimes()
-                    .build(),
-            )?;
+            typegen_app.swift(&config)?;
         }
         Language::Kotlin => {
             info!("Typegen for Kotlin");
-            typegen_app.kotlin(
-                &Config::builder("com.crux.example.cat_facts", &args.output_dir)
-                    .add_extensions()
-                    .add_runtimes()
-                    .build(),
-            )?;
+            typegen_app.kotlin(&config)?;
 
             info!("Bindgen for Kotlin");
-            bindgen(
-                &BindgenArgsBuilder::default()
-                    .crate_name(env!("CARGO_PKG_NAME").to_string())
-                    .kotlin(&args.output_dir)
-                    .build()?,
-            )?;
+            let bindgen_args = BindgenArgsBuilder::default()
+                .crate_name(env!("CARGO_PKG_NAME").to_string())
+                .kotlin(&args.output_dir)
+                .build()?;
+            bindgen(&bindgen_args)?;
         }
         Language::Typescript => {
             info!("Typegen for TypeScript");
-            typegen_app.typescript(
-                &Config::builder("app", &args.output_dir)
-                    .add_extensions()
-                    .add_runtimes()
-                    .build(),
-            )?;
+            typegen_app.typescript(&config)?;
         }
     }
 
