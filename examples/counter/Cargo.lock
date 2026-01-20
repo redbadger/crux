@@ -8401,6 +8401,7 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "futures-util",
+ "getrandom 0.3.4",
  "gloo-net 0.6.0",
  "js-sys",
  "shared",
