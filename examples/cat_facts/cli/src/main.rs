@@ -4,7 +4,6 @@ mod http;
 use anyhow::Result;
 use clap::Parser;
 use crossbeam_channel::unbounded;
-use std::sync::Arc;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use shared::{Effect, Event, ViewModel};
@@ -62,9 +61,8 @@ async fn main() -> Result<()> {
 fn run_loop(core: &core::Core, events: Vec<Event>) -> Result<()> {
     let (render_tx, render_rx) = unbounded::<Effect>();
     {
-        let render_tx = Arc::new(render_tx);
         for event in events {
-            update(core, event, &render_tx.clone())?;
+            update(core, event, &render_tx)?;
         }
     }
 
