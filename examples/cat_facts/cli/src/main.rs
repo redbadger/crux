@@ -52,8 +52,8 @@ async fn main() -> Result<()> {
     run_loop(&core, vec![Event::GetPlatform, command.into()])?;
 
     let ViewModel { platform, fact, .. } = core.view();
-    println!("platform: {platform}",);
-    println!("{fact}",);
+    println!("platform: {platform}");
+    println!("{fact}");
 
     Ok(())
 }
