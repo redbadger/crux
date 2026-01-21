@@ -8,6 +8,8 @@ espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.12.2"
 composeBom = "2024.09.00"
+ktor = "2.3.12"
+koin = "3.5.6"
 
 jna = "5.18.1"
 rustAndroid = "0.9.6"
@@ -27,6 +29,10 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
 
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 
