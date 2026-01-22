@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 class Core(
     private val httpClient: HttpClient,
     private val locationManager: LocationManager,
+    private val keyValueStore: KeyValueStore,
 ) {
     private val coreFfi = CoreFfi()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -59,7 +60,7 @@ class Core(
             }
 
             is Effect.KeyValue -> {
-                // TODO
+                handleKeyValueEffect(effect, request.id)
             }
 
             is Effect.Location -> {
@@ -87,6 +88,11 @@ class Core(
                 LocationResult.Location(locationManager.getLastLocation())
             }
         }
+        resolveAndHandleEffects(requestId, result.bincodeSerialize())
+    }
+
+    private suspend fun handleKeyValueEffect(effect: Effect.KeyValue, requestId: UInt) {
+        val result = keyValueStore.handleEffect(effect)
         resolveAndHandleEffects(requestId, result.bincodeSerialize())
     }
 

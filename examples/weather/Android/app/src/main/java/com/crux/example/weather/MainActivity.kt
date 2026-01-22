@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.crux.example.weather.core.Core
 import com.crux.example.weather.core.LocationManager
+import com.crux.example.weather.core.LocationManager.PermissionRequestListener
 import com.crux.example.weather.ui.addfavorite.AddFavoriteScreen
 import com.crux.example.weather.ui.favorites.FavoritesScreen
 import com.crux.example.weather.ui.home.HomeScreen
@@ -30,6 +31,13 @@ class MainActivity : ComponentActivity() {
     private val core by inject<Core>()
     private val locationManager by inject<LocationManager>()
 
+    private var permissionRequestListener: PermissionRequestListener? = null
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        permissionRequestListener?.onPermissionResult(result)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -41,18 +49,7 @@ class MainActivity : ComponentActivity() {
                 val state by core.viewModel.collectAsState()
 
                 BackHandler(enabled = state.workflow !is WorkflowViewModel.Home) {
-                    when (state.workflow) {
-                        is WorkflowViewModel.AddFavorite -> core.update(
-                            Event.Navigate(
-                                Workflow.Favorites(
-                                    FavoritesState.Idle
-                                )
-                            )
-                        )
-
-                        is WorkflowViewModel.Favorites -> core.update(Event.Navigate(Workflow.Home))
-                        is WorkflowViewModel.Home -> {}
-                    }
+                    handleBackClick(state.workflow)
                 }
 
                 AnimatedContent(
@@ -74,6 +71,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleBackClick(currentWorkflow: WorkflowViewModel) {
+        when (currentWorkflow) {
+            is WorkflowViewModel.AddFavorite -> core.update(
+                Event.Navigate(Workflow.Favorites(FavoritesState.Idle))
+            )
+
+            is WorkflowViewModel.Favorites -> core.update(
+                Event.Navigate(Workflow.Home)
+            )
+
+            is WorkflowViewModel.Home -> {}
+        }
+    }
+
     private fun observeLocationPermissionRequests() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -85,12 +96,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestLocationPermission(request: LocationManager.PermissionRequest) {
-        val permissionLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions(),
-        ) { result ->
-            request.listener.onPermissionResult(result)
-        }
-
+        permissionRequestListener = request.listener
         permissionLauncher.launch(request.permissions)
     }
 }
