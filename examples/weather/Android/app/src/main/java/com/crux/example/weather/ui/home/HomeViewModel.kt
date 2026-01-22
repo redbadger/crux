@@ -16,10 +16,6 @@ class HomeViewModel(
     private val uiStateMapper: HomeUiStateMapper,
 ) : androidx.lifecycle.ViewModel() {
 
-    init {
-        core.update(Event.Home(WeatherEvent.SHOW))
-    }
-
     private val initialState = HomeUiState(pages = listOf(HomePageUi.Loading))
     val state: StateFlow<HomeUiState> = core.workflowViewModel<WorkflowViewModel.Home>()
         .map { uiStateMapper.map(it) }
@@ -27,6 +23,10 @@ class HomeViewModel(
             scope = viewModelScope,
             initialValue = initialState,
         )
+
+    fun showHome() {
+        core.update(Event.Home(WeatherEvent.SHOW))
+    }
 
     fun onShowFavorites() {
         core.update(Event.Navigate(Workflow.Favorites(FavoritesState.Idle)))

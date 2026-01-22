@@ -5,13 +5,10 @@ package com.crux.example.weather.ui.favorites
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -105,7 +103,7 @@ private fun FavoritesScreen(
             )
 
             if (favoritesUiState.deleteConfirmation != null) {
-                DeleteConfirmationOverlay(
+                DeleteConfirmationDialog(
                     onDeleteConfirmed = onDeleteConfirmed,
                     onDeleteCancelled = onDeleteCancelled,
                 )
@@ -120,19 +118,17 @@ private fun FavoritesList(
     onSelectFavorite: () -> Unit,
     onDeletePressed: (Location) -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (favorites.isEmpty()) {
-            item {
-                EmptyFavoritesState(modifier = Modifier.fillMaxWidth())
-            }
-        } else {
+    if (favorites.isEmpty()) {
+        EmptyFavoritesState(modifier = Modifier.fillMaxWidth())
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             items(
                 items = favorites,
-                key = { "${it.location.lat}-${it.location.lon}" },
+                key = { Pair(it.location.lat, it.location.lon) },
             ) { favorite ->
                 FavoriteCard(
                     favorite = favorite,
@@ -156,6 +152,9 @@ private fun FavoriteCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
         Row(
@@ -182,9 +181,11 @@ private fun FavoriteCard(
 
 @Composable
 private fun EmptyFavoritesState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(horizontal = 32.dp, vertical = 48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(R.string.favorites_empty),
@@ -196,47 +197,35 @@ private fun EmptyFavoritesState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DeleteConfirmationOverlay(
+private fun DeleteConfirmationDialog(
     onDeleteConfirmed: () -> Unit,
     onDeleteCancelled: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            modifier = Modifier.padding(24.dp),
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+    AlertDialog(
+        text = {
+            Text(
+                text = stringResource(R.string.favorites_delete_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        },
+        onDismissRequest = onDeleteCancelled,
+        dismissButton = {
+            OutlinedButton(onClick = onDeleteCancelled) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDeleteConfirmed,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
             ) {
-                Text(
-                    text = stringResource(R.string.favorites_delete_title),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedButton(onClick = onDeleteCancelled) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                    Button(
-                        onClick = onDeleteConfirmed,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                        ),
-                    ) {
-                        Text(stringResource(R.string.action_delete))
-                    }
-                }
+                Text(stringResource(R.string.action_delete))
             }
         }
-    }
+    )
 }
 
 @Preview(showBackground = true)

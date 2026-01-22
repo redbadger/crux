@@ -21,10 +21,16 @@
     <string name="favorites_title">Favorites</string>
     <string name="favorites_empty">No favorites yet</string>
     <string name="favorites_delete_title">Delete Favorite?</string>
+    <string name="add_favorite_title">Add Favorite</string>
+    <string name="add_favorite_search_hint">Search location...</string>
+    <string name="add_favorite_searching">Searching...</string>
+    <string name="add_favorite_prompt">Enter a location to search</string>
+    <string name="add_favorite_no_results">No results found</string>
     <string name="action_home">Home</string>
     <string name="action_add_favorite">Add favorite</string>
     <string name="action_delete_favorite">Delete favorite</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
+    <string name="action_clear_search">Clear search</string>
 
 </resources>

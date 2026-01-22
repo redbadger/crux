@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import com.crux.example.weather.Event
 import com.crux.example.weather.FavoritesEvent
 import com.crux.example.weather.Location
-import com.crux.example.weather.WeatherEvent
 import com.crux.example.weather.Workflow
 import com.crux.example.weather.WorkflowViewModel
 import com.crux.example.weather.core.Core
@@ -42,7 +41,8 @@ class FavoritesViewModel(
     }
 
     fun onSelectFavorite() {
-        core.update(Event.Home(WeatherEvent.SHOW))
+        // TODO: open selected favorite in home screen
+        core.update(Event.Navigate(Workflow.Home))
     }
 
     fun onDeletePressed(location: Location) {

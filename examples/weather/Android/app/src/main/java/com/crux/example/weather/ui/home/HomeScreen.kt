@@ -46,6 +46,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -69,6 +70,11 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun HomeScreen() {
     val viewModel = koinViewModel<HomeViewModel>()
+
+    LaunchedEffect(Unit) {
+        viewModel.showHome()
+    }
+
     HomeScreen(
         homeUiState = viewModel.state.collectAsState().value,
         onShowFavorites = viewModel::onShowFavorites,
@@ -111,14 +117,15 @@ private fun HomeScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(vertical = 16.dp)
-                .fillMaxSize()
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
         ) {
             val weatherCardModifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier,
             ) { page ->
                 when (val pageUi = homeUiState.pages.getOrNull(page)) {
                     is HomePageUi.Weather -> WeatherCard(pageUi.card, weatherCardModifier)
@@ -127,7 +134,7 @@ private fun HomeScreen(
             }
 
             if (pagerState.pageCount > 1) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 PageIndicator(
                     currentPage = pagerState.currentPage,
                     pageCount = pagerState.pageCount,

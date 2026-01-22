@@ -104,7 +104,9 @@ class Core(
     }
 
     private fun render() {
-        _viewModel.value = getViewModel()
+        _viewModel.value = getViewModel().also {
+            Log.d(TAG, "render: $it")
+        }
     }
 
     private fun getViewModel(): ViewModel {

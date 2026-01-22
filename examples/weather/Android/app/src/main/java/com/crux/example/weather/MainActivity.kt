@@ -56,8 +56,8 @@ class MainActivity : ComponentActivity() {
                     targetState = state.workflow,
                     contentKey = { it::class },
                     transitionSpec = {
-                        fadeIn(animationSpec = tween(120)).togetherWith(
-                            fadeOut(animationSpec = tween(120))
+                        fadeIn(animationSpec = tween(200)).togetherWith(
+                            fadeOut(animationSpec = tween(200))
                         )
                     },
                 ) { workflow ->

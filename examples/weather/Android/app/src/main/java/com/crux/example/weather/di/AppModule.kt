@@ -5,6 +5,8 @@ import com.crux.example.weather.core.HttpClient
 import com.crux.example.weather.core.KeyValueDataStoreDelegate
 import com.crux.example.weather.core.KeyValueStore
 import com.crux.example.weather.core.LocationManager
+import com.crux.example.weather.ui.addfavorite.AddFavoriteUiStateMapper
+import com.crux.example.weather.ui.addfavorite.AddFavoriteViewModel
 import com.crux.example.weather.ui.favorites.FavoritesUiStateMapper
 import com.crux.example.weather.ui.favorites.FavoritesViewModel
 import com.crux.example.weather.ui.home.HomeUiStateMapper
@@ -26,4 +28,7 @@ val appModule = module {
 
     factoryOf(::FavoritesUiStateMapper)
     viewModelOf(::FavoritesViewModel)
+
+    factoryOf(::AddFavoriteUiStateMapper)
+    viewModelOf(::AddFavoriteViewModel)
 }
