@@ -2,9 +2,15 @@ package com.crux.example.weather
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
@@ -34,11 +40,35 @@ class MainActivity : ComponentActivity() {
             WeatherTheme {
                 val state by core.viewModel.collectAsState()
 
-                // TODO: add navigation backstack
-                when (state.workflow) {
-                    is WorkflowViewModel.AddFavorite -> AddFavoriteScreen()
-                    is WorkflowViewModel.Favorites -> FavoritesScreen()
-                    is WorkflowViewModel.Home -> HomeScreen()
+                BackHandler(enabled = state.workflow !is WorkflowViewModel.Home) {
+                    when (state.workflow) {
+                        is WorkflowViewModel.AddFavorite -> core.update(
+                            Event.Navigate(
+                                Workflow.Favorites(
+                                    FavoritesState.Idle
+                                )
+                            )
+                        )
+
+                        is WorkflowViewModel.Favorites -> core.update(Event.Navigate(Workflow.Home))
+                        is WorkflowViewModel.Home -> {}
+                    }
+                }
+
+                AnimatedContent(
+                    targetState = state.workflow,
+                    contentKey = { it::class },
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(120)).togetherWith(
+                            fadeOut(animationSpec = tween(120))
+                        )
+                    },
+                ) { workflow ->
+                    when (workflow) {
+                        is WorkflowViewModel.AddFavorite -> AddFavoriteScreen()
+                        is WorkflowViewModel.Favorites -> FavoritesScreen()
+                        is WorkflowViewModel.Home -> HomeScreen()
+                    }
                 }
             }
         }
@@ -48,15 +78,19 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 locationManager.permissionRequests.collect { request ->
-                    val permissionLauncher = registerForActivityResult(
-                        ActivityResultContracts.RequestMultiplePermissions(),
-                    ) { result ->
-                        request.listener.onPermissionResult(result)
-                    }
-
-                    permissionLauncher.launch(arrayOf(request.permission))
+                    requestLocationPermission(request)
                 }
             }
         }
+    }
+
+    private fun requestLocationPermission(request: LocationManager.PermissionRequest) {
+        val permissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { result ->
+            request.listener.onPermissionResult(result)
+        }
+
+        permissionLauncher.launch(request.permissions)
     }
 }

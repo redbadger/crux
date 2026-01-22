@@ -1,6 +1,7 @@
 package com.crux.example.weather.core
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -29,7 +30,7 @@ class LocationManager(
     val permissionRequests = _permissionRequests.asSharedFlow()
 
     suspend fun isLocationEnabled(): Boolean {
-        if (hasLocationPermission()) {
+        if (hasLocationPermissions()) {
             return true
         }
 
@@ -37,27 +38,32 @@ class LocationManager(
     }
 
     suspend fun getLastLocation(): Location? = withContext(Dispatchers.IO) {
+        if (!hasLocationPermissions()) {
+            return@withContext null
+        }
+
         suspendCoroutine { continuation ->
             continuation.resumeWithLastLocation()
         }
     }
 
-    private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            REQUIRED_PERMISSION,
-        ) == PackageManager.PERMISSION_GRANTED
+    private fun hasLocationPermissions(): Boolean {
+        return REQUIRED_PERMISSIONS.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
     }
 
     private suspend fun awaitLocationPermissionGranted(): Boolean = withContext(Dispatchers.IO) {
         suspendCoroutine { continuation ->
-            val request = PermissionRequest(REQUIRED_PERMISSION) { grants ->
-                continuation.resume(grants[REQUIRED_PERMISSION] == true)
+            val request = PermissionRequest(REQUIRED_PERMISSIONS) { result ->
+                val granted = result.all { it.value }
+                continuation.resume(granted)
             }
             _permissionRequests.tryEmit(request)
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun Continuation<Location?>.resumeWithLastLocation() {
         fusedLocationProviderClient.lastLocation
             .addOnSuccessListener { loc ->
@@ -72,7 +78,7 @@ class LocationManager(
     }
 
     class PermissionRequest(
-        val permission: String,
+        val permissions: Array<String>,
         val listener: PermissionRequestListener,
     )
 
@@ -81,6 +87,9 @@ class LocationManager(
     }
 
     companion object {
-        private const val REQUIRED_PERMISSION = Manifest.permission.ACCESS_COARSE_LOCATION
+        private val REQUIRED_PERMISSIONS = arrayOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        )
     }
 }
