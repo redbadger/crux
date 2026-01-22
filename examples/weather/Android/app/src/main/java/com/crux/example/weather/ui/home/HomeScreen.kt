@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.DeviceThermostat
 import androidx.compose.material.icons.outlined.Grain
@@ -41,6 +40,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -89,8 +90,18 @@ private fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
                 actions = {
-                    IconButton(onClick = onShowFavorites) {
-                        Icon(imageVector = Icons.Outlined.Star, contentDescription = "Favorites")
+                    IconButton(
+                        onClick = onShowFavorites,
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Star,
+                            contentDescription = "Favorites",
+                        )
                     }
                 }
             )
@@ -111,7 +122,7 @@ private fun HomeScreen(
             ) { page ->
                 when (val pageUi = homeUiState.pages.getOrNull(page)) {
                     is HomePageUi.Weather -> WeatherCard(pageUi.card, weatherCardModifier)
-                    else -> LoadingCard(weatherCardModifier)
+                    HomePageUi.Loading, null -> LoadingCard(weatherCardModifier)
                 }
             }
 
@@ -152,7 +163,9 @@ private fun WeatherCard(
             ) {
                 Text(
                     text = card.title,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                    ),
                     textAlign = TextAlign.Center
                 )
 
@@ -160,51 +173,12 @@ private fun WeatherCard(
 
                 val weatherIcon = weatherIconForType(card.weatherType)
                 if (weatherIcon != null) {
-                    WeatherIcon(
-                        icon = weatherIcon,
-                        modifier = Modifier.size(56.dp)
-                    )
+                    WeatherIcon(weatherIcon)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = formatTemp(card.temperature),
-                        style = MaterialTheme.typography.displaySmall
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        if (card.condition != null) {
-                            Text(
-                                text = card.condition,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                        if (card.description != null) {
-                            Text(
-                                text = card.description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
+                TemperatureRow(card)
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconText(
-                        icon = Icons.Outlined.ArrowDownward,
-                        text = formatTemp(card.tempMin)
-                    )
-                    IconText(
-                        icon = Icons.Outlined.ArrowUpward,
-                        text = formatTemp(card.tempMax)
-                    )
-                }
+                MaxMinTempRow(card.tempMin, card.tempMax)
                 Spacer(modifier = Modifier.height(16.dp))
                 FlowRow(
                     maxItemsInEachRow = 2,
@@ -216,22 +190,8 @@ private fun WeatherCard(
                         WeatherDetailItem(item, modifier = Modifier.weight(1f))
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SunriseSunsetItem(
-                        icon = Icons.Outlined.WbSunny,
-                        time = formatTime(card.sunrise),
-                        label = stringResource(R.string.weather_sunrise)
-                    )
-                    SunriseSunsetItem(
-                        icon = Icons.Outlined.NightsStay,
-                        time = formatTime(card.sunset),
-                        label = stringResource(R.string.weather_sunset)
-                    )
-                }
+                Spacer(modifier = Modifier.height(16.dp))
+                SunriseSunsetRow(card.sunrise, card.sunset)
             }
         }
     }
@@ -262,11 +222,59 @@ private fun LoadingCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun TemperatureRow(card: WeatherCardUi) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = formatTemp(card.temperature),
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontWeight = FontWeight.Bold,
+            )
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            if (card.condition != null) {
+                Text(
+                    text = card.condition,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            if (card.description != null) {
+                Text(
+                    text = card.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MaxMinTempRow(tempMin: Double, tempMax: Double) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MaxMinTemp(
+            icon = Icons.Outlined.ArrowDownward,
+            text = formatTemp(tempMin)
+        )
+        MaxMinTemp(
+            icon = Icons.Outlined.ArrowDownward,
+            text = formatTemp(tempMax)
+        )
+    }
+}
+
+@Composable
 private fun WeatherIcon(icon: ImageVector, modifier: Modifier = Modifier) {
     Icon(
         imageVector = icon,
         contentDescription = null,
-        modifier = modifier,
+        modifier = modifier.size(40.dp),
         tint = MaterialTheme.colorScheme.primary
     )
 }
@@ -306,7 +314,7 @@ private data class WeatherDetailPresentation(
 
 @ReadOnlyComposable
 @Composable
-private fun weatherDetailPresentation(type: WeatherDetailType): WeatherDetailPresentation {
+private fun getWeatherDetailPresentation(type: WeatherDetailType): WeatherDetailPresentation {
     return when (type) {
         WeatherDetailType.FeelsLike -> WeatherDetailPresentation(
             icon = Icons.Outlined.DeviceThermostat,
@@ -393,18 +401,57 @@ private fun WeatherDetailItem(
     item: WeatherDetailUi,
     modifier: Modifier = Modifier,
 ) {
-    val detailPresentation = weatherDetailPresentation(item.type)
+    val detailPresentation = getWeatherDetailPresentation(item.type)
     val value = formatDetailValue(item.type, item.value)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
-        Icon(
-            imageVector = detailPresentation.icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Column {
-            Text(text = detailPresentation.title, style = MaterialTheme.typography.labelMedium)
-            Text(text = value, style = MaterialTheme.typography.bodyMedium)
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Icon(
+                imageVector = detailPresentation.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column {
+                Text(
+                    text = detailPresentation.title,
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun SunriseSunsetRow(sunriseTimestamp: Long, sunsetTimestamp: Long) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SunriseSunsetItem(
+            icon = Icons.Outlined.WbSunny,
+            time = formatTime(sunriseTimestamp),
+            label = stringResource(R.string.weather_sunrise)
+        )
+        SunriseSunsetItem(
+            icon = Icons.Outlined.NightsStay,
+            time = formatTime(sunsetTimestamp),
+            label = stringResource(R.string.weather_sunset)
+        )
     }
 }
 
@@ -422,7 +469,7 @@ private fun SunriseSunsetItem(icon: ImageVector, time: String, label: String) {
 }
 
 @Composable
-private fun IconText(icon: ImageVector, text: String) {
+private fun MaxMinTemp(icon: ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = icon,

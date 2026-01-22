@@ -21,6 +21,7 @@ class LocationManager(
     private val fusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(context)
     }
+
     private val _permissionRequests = MutableSharedFlow<PermissionRequest>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -59,8 +60,11 @@ class LocationManager(
 
     private fun Continuation<Location?>.resumeWithLastLocation() {
         fusedLocationProviderClient.lastLocation
-            .addOnSuccessListener {
-                resume(Location(it.latitude, it.longitude))
+            .addOnSuccessListener { loc ->
+                if (loc == null) {
+                    resume(null)
+                }
+                resume(Location(loc.latitude, loc.longitude))
             }
             .addOnFailureListener {
                 resume(null)

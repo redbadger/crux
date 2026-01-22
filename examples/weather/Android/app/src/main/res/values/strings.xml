@@ -6,7 +6,7 @@
     <string name="weather_sunrise">Sunrise</string>
     <string name="weather_sunset">Sunset</string>
     <string name="weather_time_format">HH:mm</string>
-    <string name="weather_temp_format">%.1f deg</string>
+    <string name="weather_temp_format">%.1f°</string>
     <string name="weather_wind_format">%.1f m/s</string>
     <string name="weather_pressure_format">%d hPa</string>
     <string name="weather_humidity_format">%d%%</string>
