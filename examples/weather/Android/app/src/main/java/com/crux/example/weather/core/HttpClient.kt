@@ -8,6 +8,10 @@ import com.crux.example.weather.HttpResult
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.logging.DEFAULT
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.headers
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
@@ -20,7 +24,12 @@ import io.ktor.client.HttpClient as KtorHttpClient
 
 class HttpClient() {
 
-    private val ktorHttpClient = KtorHttpClient(OkHttp)
+    private val ktorHttpClient = KtorHttpClient(OkHttp) {
+        install(Logging) {
+            logger = Logger.DEFAULT
+            level = LogLevel.ALL
+        }
+    }
 
     suspend fun request(request: HttpRequest): HttpResult {
         return try {
@@ -49,7 +58,6 @@ class HttpClient() {
             .map { HttpHeader(it.first, it.second) }
         return HttpResponse(response.status.value.toUShort(), headers, bytes)
     }
-
 
     private fun toHttpError(error: Throwable): HttpError {
         return when (error) {

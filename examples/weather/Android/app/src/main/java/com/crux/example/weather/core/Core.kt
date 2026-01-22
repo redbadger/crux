@@ -4,19 +4,25 @@ import android.util.Log
 import com.crux.example.weather.CoreFfi
 import com.crux.example.weather.Effect
 import com.crux.example.weather.Event
+import com.crux.example.weather.LocationOperation
+import com.crux.example.weather.LocationResult
 import com.crux.example.weather.Request
 import com.crux.example.weather.Requests
 import com.crux.example.weather.ViewModel
+import com.crux.example.weather.WorkflowViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 class Core(
     private val httpClient: HttpClient,
+    private val locationManager: LocationManager,
 ) {
     private val coreFfi = CoreFfi()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -24,7 +30,13 @@ class Core(
     private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
     val viewModel: StateFlow<ViewModel> = _viewModel.asStateFlow()
 
+    inline fun <reified T : WorkflowViewModel> workflowViewModel(): Flow<T> {
+        return viewModel.mapNotNull { it.workflow as? T }
+    }
+
     fun update(event: Event) {
+        Log.d(TAG, "update: $event")
+
         scope.launch {
             val effects = coreFfi.update(event.bincodeSerialize())
             handleEffects(effects)
@@ -39,7 +51,8 @@ class Core(
     }
 
     private suspend fun processRequest(request: Request) {
-        Log.d(TAG, "processRequest: ${request.id}, ${request.effect}")
+        Log.d(TAG, "processRequest: $request")
+
         when (val effect = request.effect) {
             is Effect.Http -> {
                 handleHttpEffect(effect, request.id)
@@ -50,7 +63,7 @@ class Core(
             }
 
             is Effect.Location -> {
-                // TODO
+                handleLocationEffect(effect, request.id)
             }
 
             is Effect.Render -> {
@@ -61,6 +74,19 @@ class Core(
 
     private suspend fun handleHttpEffect(effect: Effect.Http, requestId: UInt) {
         val result = httpClient.request(effect.value)
+        resolveAndHandleEffects(requestId, result.bincodeSerialize())
+    }
+
+    private suspend fun handleLocationEffect(effect: Effect.Location, requestId: UInt) {
+        val result = when (effect.value) {
+            LocationOperation.ISLOCATIONENABLED -> {
+                LocationResult.Enabled(locationManager.isLocationEnabled())
+            }
+
+            LocationOperation.GETLOCATION -> {
+                LocationResult.Location(locationManager.getLastLocation())
+            }
+        }
         resolveAndHandleEffects(requestId, result.bincodeSerialize())
     }
 
@@ -77,7 +103,7 @@ class Core(
         return ViewModel.bincodeDeserialize(coreFfi.view())
     }
 
-    companion object Companion {
+    companion object {
         private const val TAG = "CoreStore"
     }
 }

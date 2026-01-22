@@ -1,6 +1,7 @@
 import com.android.build.gradle.tasks.MergeSourceSetFolders
 import com.nishtahir.CargoBuildTask
 import com.nishtahir.CargoExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
@@ -26,8 +27,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_11
+        }
     }
 
     sourceSets {
