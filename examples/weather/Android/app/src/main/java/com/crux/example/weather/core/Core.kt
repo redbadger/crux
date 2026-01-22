@@ -91,6 +91,8 @@ class Core(
     }
 
     private suspend fun resolveAndHandleEffects(requestId: UInt, data: ByteArray) {
+        Log.d(TAG, "resolveAndHandleEffects for request id: $requestId")
+
         val effects = coreFfi.resolve(requestId, data)
         handleEffects(effects)
     }
@@ -104,6 +106,6 @@ class Core(
     }
 
     companion object {
-        private const val TAG = "CoreStore"
+        private const val TAG = "Core"
     }
 }

@@ -4,18 +4,16 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
 import com.crux.example.weather.Location
 import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.location.LocationManager as AndroidLocationManager
 
 class LocationManager(
     private val context: Context,
@@ -23,36 +21,24 @@ class LocationManager(
     private val fusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(context)
     }
-
-    private val androidLocationManager by lazy {
-        context.getSystemService(Context.LOCATION_SERVICE) as AndroidLocationManager
-    }
-
     private val _permissionRequests = MutableSharedFlow<PermissionRequest>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val permissionRequests = _permissionRequests.asSharedFlow()
 
+    suspend fun isLocationEnabled(): Boolean {
+        if (hasLocationPermission()) {
+            return true
+        }
 
-    fun isLocationEnabled(): Boolean {
-        return LocationManagerCompat.isLocationEnabled(androidLocationManager)
+        return awaitLocationPermissionGranted()
     }
 
     suspend fun getLastLocation(): Location? = withContext(Dispatchers.IO) {
-        val locationDeferred = CompletableDeferred<Location?>()
-
-        if (!hasLocationPermission()) {
-            val granted = awaitLocationPermissionGranted()
-            if (granted) {
-                locationDeferred.completeWithLastLocation()
-            } else {
-                locationDeferred.complete(null)
-            }
+        suspendCoroutine { continuation ->
+            continuation.resumeWithLastLocation()
         }
-
-        locationDeferred.completeWithLastLocation()
-        locationDeferred.await()
     }
 
     private fun hasLocationPermission(): Boolean {
@@ -62,8 +48,8 @@ class LocationManager(
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private suspend fun awaitLocationPermissionGranted(): Boolean {
-        return suspendCoroutine { continuation ->
+    private suspend fun awaitLocationPermissionGranted(): Boolean = withContext(Dispatchers.IO) {
+        suspendCoroutine { continuation ->
             val request = PermissionRequest(REQUIRED_PERMISSION) { grants ->
                 continuation.resume(grants[REQUIRED_PERMISSION] == true)
             }
@@ -71,13 +57,13 @@ class LocationManager(
         }
     }
 
-    private fun CompletableDeferred<Location?>.completeWithLastLocation() {
+    private fun Continuation<Location?>.resumeWithLastLocation() {
         fusedLocationProviderClient.lastLocation
             .addOnSuccessListener {
-                complete(Location(it.latitude, it.longitude))
+                resume(Location(it.latitude, it.longitude))
             }
             .addOnFailureListener {
-                complete(null)
+                resume(null)
             }
     }
 

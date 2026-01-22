@@ -17,6 +17,8 @@ import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpMethod
 import io.ktor.util.flattenEntries
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import kotlin.coroutines.cancellation.CancellationException
@@ -31,8 +33,8 @@ class HttpClient() {
         }
     }
 
-    suspend fun request(request: HttpRequest): HttpResult {
-        return try {
+    suspend fun request(request: HttpRequest): HttpResult = withContext(Dispatchers.Default) {
+        try {
             val response = requestResponse(request)
             HttpResult.Ok(response)
         } catch (ce: CancellationException) {
