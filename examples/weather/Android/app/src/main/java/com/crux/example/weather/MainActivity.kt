@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
     private fun handleBackClick(currentWorkflow: WorkflowViewModel) {
         when (currentWorkflow) {
             is WorkflowViewModel.AddFavorite -> core.update(
-                Event.Navigate(Workflow.Favorites(FavoritesState.Idle))
+                Event.Navigate(Workflow.Home)
             )
 
             is WorkflowViewModel.Favorites -> core.update(

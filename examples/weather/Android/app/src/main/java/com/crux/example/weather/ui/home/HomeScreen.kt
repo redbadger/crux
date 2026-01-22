@@ -88,7 +88,7 @@ private fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.home_title)) },
+                title = { },
                 actions = {
                     IconButton(
                         onClick = onShowFavorites,

@@ -5,6 +5,8 @@ import com.crux.example.weather.core.HttpClient
 import com.crux.example.weather.core.KeyValueDataStoreDelegate
 import com.crux.example.weather.core.KeyValueStore
 import com.crux.example.weather.core.LocationManager
+import com.crux.example.weather.ui.favorites.FavoritesUiStateMapper
+import com.crux.example.weather.ui.favorites.FavoritesViewModel
 import com.crux.example.weather.ui.home.HomeUiStateMapper
 import com.crux.example.weather.ui.home.HomeViewModel
 import org.koin.core.module.dsl.factoryOf
@@ -21,4 +23,7 @@ val appModule = module {
 
     factoryOf(::HomeUiStateMapper)
     viewModelOf(::HomeViewModel)
+
+    factoryOf(::FavoritesUiStateMapper)
+    viewModelOf(::FavoritesViewModel)
 }

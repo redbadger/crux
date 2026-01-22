@@ -47,17 +47,14 @@ class KeyValueDataStoreDelegate(context: Context) {
         val keys = dataStore.data.first()
             .asMap()
             .keys
-        val keyNames = keys.map(Preferences.Key<*>::name)
-        return keyNames
+            .asSequence()
+
+        return keys
+            .map { it.name }
             .filter { it.startsWith(prefix) }
-            .let { sequence ->
-                if (!cursor.isNullOrEmpty()) {
-                    sequence.filter { it > cursor }
-                } else {
-                    sequence
-                }
-            }
+            .filter { cursor.isNullOrEmpty() || it > cursor }
             .sorted()
+            .toList()
     }
 
     companion object {

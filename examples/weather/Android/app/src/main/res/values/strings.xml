@@ -1,8 +1,7 @@
 <resources>
     <string name="app_name">Weather</string>
 
-    <string name="home_title">Weather</string>
-    <string name="weather_loading">Loading weather data...</string>
+    <string name="weather_loading">Loading weather data…</string>
     <string name="weather_sunrise">Sunrise</string>
     <string name="weather_sunset">Sunset</string>
     <string name="weather_time_format">HH:mm</string>
@@ -18,5 +17,14 @@
     <string name="weather_detail_pressure">Pressure</string>
     <string name="weather_detail_clouds">Clouds</string>
     <string name="weather_detail_visibility">Visibility</string>
+
+    <string name="favorites_title">Favorites</string>
+    <string name="favorites_empty">No favorites yet</string>
+    <string name="favorites_delete_title">Delete Favorite?</string>
+    <string name="action_home">Home</string>
+    <string name="action_add_favorite">Add favorite</string>
+    <string name="action_delete_favorite">Delete favorite</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
 
 </resources>
