@@ -38,9 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.crux.example.weather.GeocodingResponse
+import com.crux.example.weather.LocalNames
 import com.crux.example.weather.R
+import com.crux.example.weather.ui.theme.WeatherTheme
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -60,8 +63,9 @@ private fun AddFavoriteScreen(
     onSearch: (String) -> Unit,
     onSubmit: (GeocodingResponse) -> Unit,
     onCancel: () -> Unit,
+    initialSearchText: String = "",
 ) {
-    var searchText by rememberSaveable { mutableStateOf("") }
+    var searchText by rememberSaveable { mutableStateOf(initialSearchText) }
     val isSearching = searchText.isNotBlank()
 
     Scaffold(
@@ -216,6 +220,9 @@ private fun SearchResultsList(
                 onClick = { onSubmit(result) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
                 Column(
@@ -242,4 +249,41 @@ private fun SearchResultsList(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddFavoriteScreenPreview() {
+    WeatherTheme(darkTheme = false, dynamicColor = false) {
+        AddFavoriteScreen(
+            addFavoriteUiState = AddFavoriteUiState(
+                searchResults = sampleGeocodingResults(),
+            ),
+            onSearch = {},
+            onSubmit = {},
+            onCancel = {},
+            initialSearchText = "San",
+        )
+    }
+}
+
+private fun sampleGeocodingResults(): List<GeocodingResponse> {
+    return listOf(
+        GeocodingResponse(
+            name = "San Francisco",
+            localNames = LocalNames(),
+            lat = 37.7749,
+            lon = -122.4194,
+            country = "US",
+            state = "California",
+        ),
+        GeocodingResponse(
+            name = "San Jose",
+            localNames = LocalNames(),
+            lat = 37.3382,
+            lon = -121.8863,
+            country = "US",
+            state = "California",
+        ),
+    )
 }
