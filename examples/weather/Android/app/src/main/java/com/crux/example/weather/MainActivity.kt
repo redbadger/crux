@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
         permissionRequestListener?.onPermissionResult(result)
+        permissionRequestListener = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
