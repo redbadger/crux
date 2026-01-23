@@ -16,10 +16,6 @@ class FavoritesViewModel(
     private val uiStateMapper: FavoritesUiStateMapper,
 ) : androidx.lifecycle.ViewModel() {
 
-    init {
-        core.update(Event.Favorites(FavoritesEvent.Restore))
-    }
-
     private val initialState = FavoritesUiState(
         favorites = emptyList(),
         deleteConfirmation = null,
@@ -31,6 +27,10 @@ class FavoritesViewModel(
             scope = viewModelScope,
             initialValue = initialState,
         )
+
+    fun restore() {
+        core.update(Event.Favorites(FavoritesEvent.Restore))
+    }
 
     fun onNavigateHome() {
         core.update(Event.Navigate(Workflow.Home))
