@@ -1,11 +1,7 @@
 use anyhow::{Result, anyhow};
 use crossbeam_channel::Sender;
 use std::{sync::Arc, time::SystemTime};
-use tokio::{
-    fs::{File, OpenOptions},
-    io::{AsyncReadExt, AsyncWriteExt},
-    spawn,
-};
+use tokio::spawn;
 use tracing::debug;
 
 use shared::{
@@ -142,23 +138,9 @@ pub fn process_effect(core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> 
 }
 
 async fn write_state(_key: &str, bytes: &[u8]) -> Result<()> {
-    let mut f = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(".cat_facts")
-        .await?;
-
-    f.write_all(bytes).await?;
-
-    Ok(())
+    Ok(tokio::fs::write(".cat_facts", bytes).await?)
 }
 
 async fn read_state(_key: &str) -> Result<Vec<u8>> {
-    let mut f = File::open(".cat_facts").await?;
-    let mut buf: Vec<u8> = vec![];
-
-    f.read_to_end(&mut buf).await?;
-
-    Ok(buf)
+    Ok(tokio::fs::read(".cat_facts").await?)
 }
