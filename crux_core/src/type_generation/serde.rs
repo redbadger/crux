@@ -43,7 +43,7 @@
 //! #             todo!();
 //! #         }
 //! #     }
-//! #     #[effect]
+//! #     #[effect(typegen)]
 //! #     pub enum Effect {
 //! #         Render(RenderOperation),
 //! #     }
@@ -52,7 +52,6 @@
 //!use crux_core::{bridge::Request, typegen::TypeGen};
 //!use uuid::Uuid;
 //!
-//!#[test]
 //!fn generate_types() -> anyhow::Result<()> {
 //!    let mut typegen = TypeGen::new();
 //!
@@ -69,6 +68,8 @@
 //!    typegen.java("com.example.counter.shared_types", output_root.join("java"))?;
 //!
 //!    typegen.typescript("shared_types", output_root.join("typescript"))?;
+//!
+//!    Ok(())
 //!}
 //! ```
 //!
