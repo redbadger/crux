@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Weather</string>
+
+    <string name="weather_loading">Loading weather data…</string>
+    <string name="weather_sunrise">Sunrise</string>
+    <string name="weather_sunset">Sunset</string>
+    <string name="weather_time_format">HH:mm</string>
+    <string name="weather_temp_format">%.1f°</string>
+    <string name="weather_wind_format">%.1f m/s</string>
+    <string name="weather_pressure_format">%d hPa</string>
+    <string name="weather_humidity_format">%d%%</string>
+    <string name="weather_clouds_format">%d%%</string>
+    <string name="weather_visibility_format">%d km</string>
+    <string name="weather_detail_feels_like">Feels Like</string>
+    <string name="weather_detail_humidity">Humidity</string>
+    <string name="weather_detail_wind">Wind</string>
+    <string name="weather_detail_pressure">Pressure</string>
+    <string name="weather_detail_clouds">Clouds</string>
+    <string name="weather_detail_visibility">Visibility</string>
+
+    <string name="favorites_title">Favorites</string>
+    <string name="favorites_empty">No favorites yet</string>
+    <string name="favorites_delete_title">Delete Favorite?</string>
+    <string name="add_favorite_title">Add Favorite</string>
+    <string name="add_favorite_search_hint">Search location...</string>
+    <string name="add_favorite_searching">Searching...</string>
+    <string name="add_favorite_prompt">Enter a location to search</string>
+    <string name="add_favorite_no_results">No results found</string>
+    <string name="action_home">Home</string>
+    <string name="action_add_favorite">Add favorite</string>
+    <string name="action_delete_favorite">Delete favorite</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_clear_search">Clear search</string>
+
+</resources>
