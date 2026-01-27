@@ -1,6 +1,6 @@
 mod core;
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use anyhow::Result;
 use crossbeam_channel::unbounded;
@@ -19,7 +19,6 @@ async fn main() -> Result<()> {
 
     let core = core::new();
     let (tx, rx) = unbounded::<Effect>();
-    let arc_tx = Arc::new(tx);
 
     let payload: Vec<_> = (1..10)
         .map(|id| DataPoint {
@@ -35,18 +34,18 @@ async fn main() -> Result<()> {
         .collect();
 
     tokio::spawn({
-        let arc_tx = arc_tx.clone();
+        let tx = tx.clone();
         let core = core.clone();
 
         async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(1000)).await;
-                core::update(&core, Event::NewPeriod, &arc_tx).expect("To send an event");
+                core::update(&core, Event::NewPeriod, &tx).expect("To send an event");
             }
         }
     });
 
-    core::update(&core, Event::Tick(payload.clone()), &arc_tx)?;
+    core::update(&core, Event::Tick(payload.clone()), &tx)?;
 
     while rx.recv().is_ok() {
         let view = core.view();
@@ -57,7 +56,7 @@ async fn main() -> Result<()> {
             print!("\r{text}", text = view.count);
         }
 
-        core::update(&core, Event::Tick(payload.clone()), &arc_tx)?;
+        core::update(&core, Event::Tick(payload.clone()), &tx)?;
     }
 
     Ok(())

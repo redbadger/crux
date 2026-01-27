@@ -11,7 +11,7 @@ pub fn new() -> Core {
     Arc::new(shared::Core::new())
 }
 
-pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()> {
+pub fn update(core: &Core, event: Event, tx: &Sender<Effect>) -> Result<()> {
     debug!("event: {event:?}");
 
     for effect in core.process_event(event) {
@@ -20,7 +20,7 @@ pub fn update(core: &Core, event: Event, tx: &Arc<Sender<Effect>>) -> Result<()>
     Ok(())
 }
 
-pub fn process_effect(_core: &Core, effect: Effect, tx: &Arc<Sender<Effect>>) -> Result<()> {
+pub fn process_effect(_core: &Core, effect: Effect, tx: &Sender<Effect>) -> Result<()> {
     debug!("effect: {effect:?}");
 
     match effect {

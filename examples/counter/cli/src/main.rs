@@ -2,8 +2,6 @@ mod core;
 mod http;
 mod sse;
 
-use std::sync::Arc;
-
 use anyhow::Result;
 use clap::Parser;
 use crossbeam_channel::unbounded;
@@ -52,7 +50,7 @@ async fn main() -> Result<()> {
     let event = command.into();
     let (tx, rx) = unbounded::<Effect>();
 
-    core::update(&core, event, &Arc::new(tx))?;
+    core::update(&core, event, &tx)?;
 
     while let Ok(effect) = rx.recv() {
         if let Effect::Render(_) = effect {
