@@ -160,17 +160,16 @@ fn serde(args: &Args) -> Result<(), TypeGenError> {
     let typegen_serde = TypeRegistry::new().build()?;
     let out_dir = args.output_dir.join("serde");
 
+    let name = match args.language {
+        Language::Swift => "Serde",
+        Language::Kotlin => "com.crux.example.counter.serde",
+        Language::Typescript => "serde",
+    };
+    let config = Config::builder(name, &out_dir).add_runtimes().build();
+
     match args.language {
-        Language::Swift => {
-            typegen_serde.swift(&Config::builder("Serde", &out_dir).add_runtimes().build())
-        }
-        Language::Kotlin => typegen_serde.kotlin(
-            &Config::builder("com.crux.example.counter.serde", &out_dir)
-                .add_runtimes()
-                .build(),
-        ),
-        Language::Typescript => {
-            typegen_serde.typescript(&Config::builder("serde", &out_dir).add_runtimes().build())
-        }
+        Language::Swift => typegen_serde.swift(&config),
+        Language::Kotlin => typegen_serde.kotlin(&config),
+        Language::Typescript => typegen_serde.typescript(&config),
     }
 }
