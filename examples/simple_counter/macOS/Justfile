@@ -1,0 +1,42 @@
+# Generate types for Swift, build the shared library as a Swift package and rebuild the Xcode project
+build: typegen package generate-project
+
+# clean and build
+rebuild: clean build
+
+# build and run Xcode
+dev: build
+    xed .
+
+# remove all the generated artefacts
+clean:
+    cargo clean
+    rm -rf *.xcodeproj generated
+
+# rebuild the Xcode project from the `project.yaml` file
+generate-project:
+    xcodegen
+
+# generate types for Swift
+typegen:
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language swift \
+            --output-dir generated
+
+# use `cargo swift` to build the shared library as a Swift package
+[working-directory('../shared')]
+package:
+    cargo swift --version | grep -q '0.9.0'
+    cargo swift package \
+        --name Shared \
+        --platforms macos \
+        --lib-type static \
+        --features uniffi
+    rm -rf generated
+    mkdir -p ../macOS/generated/Shared
+    cp -r Shared/* ../macOS/generated/Shared/
+    rm -rf Shared
