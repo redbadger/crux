@@ -30,7 +30,7 @@ facet_typegen = ["crux_core/facet_typegen"]
 [dependencies]
 async-sse = "5.1.0"
 async-std = "1.13.2"
-chrono = { version = "0.4.42", features = ["serde"] }
+chrono = { version = "0.4.43", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
 facet = { version = "=0.31", features = ["chrono"] }
@@ -40,15 +40,15 @@ serde_json = "1.0.149"
 url = "2.5.8"
 
 # optional dependencies
-clap = { version = "4.5.54", optional = true, features = ["derive"] }
+clap = { version = "4.5.56", optional = true, features = ["derive"] }
 log = { version = "0.4.29", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
 uniffi = { version = "=0.29.4", optional = true }
-wasm-bindgen = { version = "0.2.106", optional = true }
+wasm-bindgen = { version = "0.2.108", optional = true }
 
 [dev-dependencies]
-insta = { version = "1.46.0", features = ["yaml"] }
+insta = { version = "1.46.3", features = ["yaml"] }
 
 # wasm
 [target.'cfg(target_family = "wasm")'.dependencies]
-getrandom = { version = "0.3.4", features = ["wasm_js"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }

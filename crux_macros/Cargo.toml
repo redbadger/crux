@@ -1,6 +1,6 @@
 [package]
 name = "crux_macros"
-version = "0.8.0-rc2"
+version = "0.8.0-rc3"
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -15,7 +15,7 @@ proc-macro = true
 [dependencies]
 darling = "0.23.0"
 heck = "0.5.0"
-proc-macro2 = "1.0.105"
+proc-macro2 = "1.0.106"
 proc-macro-error = "1.0.4"
 quote = "1.0"
 syn = "2.0"
@@ -24,7 +24,7 @@ syn = "2.0"
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
 facet = { workspace = true }
-insta = "1.46.0"
+insta = "1.46.3"
 prettyplease = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 

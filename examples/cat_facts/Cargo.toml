@@ -12,11 +12,11 @@ rust-version = "1.88"
 
 [workspace.dependencies]
 anyhow = "1.0"
-# crux_core = "0.17.0-rc2"
-# crux_http = "0.16.0-rc2"
-# crux_kv = "0.11.0-rc2"
-# crux_platform = "0.8.0-rc2"
-# crux_time = "0.15.0-rc2"
+# crux_core = "0.17.0-rc3"
+# crux_http = "0.16.0-rc3"
+# crux_kv = "0.11.0-rc3"
+# crux_platform = "0.8.0-rc3"
+# crux_time = "0.15.0-rc3"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }

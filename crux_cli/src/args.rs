@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Args, Parser, Subcommand, ValueHint::DirPath};
-use convert_case::{Case, Casing, Pattern, delim_boundary};
+use convert_case::{Case, Pattern, separator};
+use convert_case_extras::is_case;
 use derive_builder::Builder;
 
 #[derive(Parser)]
@@ -132,11 +133,11 @@ impl BindgenArgsBuilder {
 
 fn dot_case(s: &str) -> Result<String, String> {
     const DOT_CASE: Case = Case::Custom {
-        boundaries: &[delim_boundary!(".")],
+        boundaries: &[separator!(".")],
         pattern: Pattern::Lowercase,
-        delim: ".",
+        delimiter: ".",
     };
-    if s.is_case(DOT_CASE) {
+    if is_case(s, DOT_CASE) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid dotted case: {s}"))
@@ -144,7 +145,7 @@ fn dot_case(s: &str) -> Result<String, String> {
 }
 
 fn pascal_case(s: &str) -> Result<String, String> {
-    if s.is_case(Case::Pascal) {
+    if is_case(s, Case::Pascal) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid pascal case: {s}"))
@@ -152,7 +153,7 @@ fn pascal_case(s: &str) -> Result<String, String> {
 }
 
 fn snake_case(s: &str) -> Result<String, String> {
-    if s.is_case(Case::Snake) {
+    if is_case(s, Case::Snake) {
         Ok(s.to_string())
     } else {
         Err(format!("Invalid snake case: {s}"))

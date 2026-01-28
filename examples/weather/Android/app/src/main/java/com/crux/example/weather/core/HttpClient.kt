@@ -5,9 +5,11 @@ import com.crux.example.weather.HttpHeader
 import com.crux.example.weather.HttpRequest
 import com.crux.example.weather.HttpResponse
 import com.crux.example.weather.HttpResult
+import com.novi.serde.Bytes
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.logging.DEFAULT
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -24,12 +26,24 @@ import java.net.UnknownHostException
 import kotlin.coroutines.cancellation.CancellationException
 import io.ktor.client.HttpClient as KtorHttpClient
 
-class HttpClient() {
+class HttpClient {
 
     private val ktorHttpClient = KtorHttpClient(OkHttp) {
         install(Logging) {
             logger = Logger.DEFAULT
             level = LogLevel.ALL
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30000
+            connectTimeoutMillis = 15000
+            socketTimeoutMillis = 15000
+        }
+        engine {
+            config {
+                connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            }
         }
     }
 
@@ -52,14 +66,18 @@ class HttpClient() {
                     append(header.name, header.value)
                 }
             }
-            setBody(request.body)
+            if (request.body.content.isNotEmpty()) {
+                setBody(request.body.content)
+            }
         }
+
         val bytes: ByteArray = response.body()
         val headers = response.headers
             .flattenEntries()
             .map { HttpHeader(it.first, it.second) }
-        return HttpResponse(response.status.value.toUShort(), headers, bytes)
+        return HttpResponse(response.status.value.toUShort(), headers, Bytes(bytes))
     }
+
 
     private fun toHttpError(error: Throwable): HttpError {
         return when (error) {

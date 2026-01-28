@@ -37,8 +37,6 @@ android {
         getByName("main") {
             // types are now generated in kotlin
             kotlin.srcDirs("${projectDir}/../generated")
-            // except for serde, which is still in java
-            java.srcDirs("${projectDir}/../generated")
         }
     }
 }

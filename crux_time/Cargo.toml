@@ -1,6 +1,6 @@
 [package]
 name = "crux_time"
-version = "0.15.0-rc2"
+version = "0.15.0-rc3"
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,8 +11,8 @@ license.workspace = true
 keywords.workspace = true
 
 [dependencies]
-chrono = { version = "0.4.42", features = ["serde"], optional = true }
-crux_core = { version = "0.17.0-rc2", path = "../crux_core" }
+chrono = { version = "0.4.43", features = ["serde"], optional = true }
+crux_core = { version = "0.17.0-rc3", path = "../crux_core" }
 facet.workspace = true
 futures = "0.3.31"
 serde = { workspace = true, features = ["derive"] }

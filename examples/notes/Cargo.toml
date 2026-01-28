@@ -15,7 +15,7 @@ anyhow = "1.0"
 crux_core = { path = "../../crux_core" }
 crux_kv = { path = "../../crux_kv" }
 crux_time = { path = "../../crux_time" }
-# crux_core = "0.17.0-rc2"
-# crux_kv = "0.11.0-rc2"
-# crux_time = "0.15.0-rc2"
+# crux_core = "0.17.0-rc3"
+# crux_kv = "0.11.0-rc3"
+# crux_time = "0.15.0-rc3"
 serde = "1.0"
