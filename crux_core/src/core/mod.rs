@@ -41,9 +41,12 @@ where
 
 impl<A> Core<A>
 where
-    A: App,
+    A: App + Default,
+    A::Model: Default,
 {
     /// Create an instance of the Crux core to start a Crux application, e.g.
+    ///
+    /// If you want to construct [App] and [`App::Model`] yourself instead of using default, call [`Self::new_with`]
     ///
     /// ```rust,ignore
     /// let core: Core<MyApp> = Core::new();
@@ -54,6 +57,28 @@ where
         Self {
             model: RwLock::default(),
             app: A::default(),
+            root_command: Mutex::new(Command::done()),
+        }
+    }
+}
+
+impl<A> Core<A>
+where
+    A: App,
+{
+    /// Create an instance of the Crux core to start a Crux application with a given [App] and [`App::Model`]
+    ///
+    /// ```rust,ignore
+    /// let app = MyApp::new();
+    /// let model = MyModel::new();
+    /// let core = Core::new_with(app, model);
+    /// ```
+    ///
+    #[must_use]
+    pub fn new_with(app: A, model: A::Model) -> Self {
+        Self {
+            model: RwLock::new(model),
+            app,
             root_command: Mutex::new(Command::done()),
         }
     }
@@ -152,7 +177,8 @@ where
 
 impl<A> Default for Core<A>
 where
-    A: App,
+    A: App + Default,
+    A::Model: Default,
 {
     fn default() -> Self {
         Self::new()

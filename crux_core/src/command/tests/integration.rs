@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use crate::{Command, Request};
 
 // The future version of the app trait
-pub trait App: Default {
+pub trait App {
     type Event: Send + 'static;
-    type Model: Default;
+    type Model;
     type ViewModel: Serialize;
     type Effect;
 
