@@ -269,14 +269,13 @@ mod tests {
     fn test_http_request_get() {
         let req = HttpRequest::get("https://example.com").build();
 
-        assert_eq!(
-            req,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "https://example.com".to_string(),
-                ..Default::default()
-            }
-        );
+        insta::assert_debug_snapshot!(req, @r#"
+        HttpRequest {
+            method: "GET",
+            url: "https://example.com",
+            body: "",
+        }
+        "#);
     }
 
     #[test]
@@ -286,51 +285,57 @@ mod tests {
             .body("123")
             .build();
 
-        assert_eq!(
-            req,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "https://example.com".to_string(),
-                headers: vec![HttpHeader {
-                    name: "foo".to_string(),
-                    value: "bar".to_string(),
-                }],
-                body: "123".as_bytes().to_vec(),
-            }
-        );
+        insta::assert_debug_snapshot!(req, @r#"
+        HttpRequest {
+            method: "GET",
+            url: "https://example.com",
+            headers: [
+                HttpHeader {
+                    name: "foo",
+                    value: "bar",
+                },
+            ],
+            body: "123",
+        }
+        "#);
     }
 
     #[test]
     fn test_http_response_status() {
         let req = HttpResponse::status(302).build();
 
-        assert_eq!(
-            req,
-            HttpResponse {
-                status: 302,
-                ..Default::default()
-            }
-        );
+        insta::assert_debug_snapshot!(req, @"
+        HttpResponse {
+            status: 302,
+            headers: [],
+            body: [],
+        }
+        ");
     }
 
     #[test]
     fn test_http_response_status_with_fields() {
         let req = HttpResponse::status(302)
             .header("foo", "bar")
-            .body("hello world")
+            .body("hey")
             .build();
 
-        assert_eq!(
-            req,
-            HttpResponse {
-                status: 302,
-                headers: vec![HttpHeader {
-                    name: "foo".to_string(),
-                    value: "bar".to_string(),
-                }],
-                body: "hello world".as_bytes().to_vec(),
-            }
-        );
+        insta::assert_debug_snapshot!(req, @r#"
+        HttpResponse {
+            status: 302,
+            headers: [
+                HttpHeader {
+                    name: "foo",
+                    value: "bar",
+                },
+            ],
+            body: [
+                104,
+                101,
+                121,
+            ],
+        }
+        "#);
     }
 
     #[test]
@@ -404,31 +409,41 @@ mod tests {
             .expect("should serialize query params");
         let req = builder.build();
 
-        assert_eq!(
-            req,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "https://example.com?page=2&limit=10&search=test".to_string(),
-                headers: vec![HttpHeader {
-                    name: "foo".to_string(),
-                    value: "bar".to_string(),
-                }],
-                body: vec![],
-            }
-        );
+        insta::assert_debug_snapshot!(req, @r#"
+        HttpRequest {
+            method: "GET",
+            url: "https://example.com?page=2&limit=10&search=test",
+            headers: [
+                HttpHeader {
+                    name: "foo",
+                    value: "bar",
+                },
+            ],
+            body: "",
+        }
+        "#);
     }
 
     #[test]
     fn test_http_request_query_with_special_chars() {
         #[derive(Serialize, Deserialize)]
         struct QueryParams {
-            name: String,
-            email: String,
+            allowed: String,
+            disallowed: String,
+            delimiters: String,
+            alpha_numeric_and_space: String,
         }
 
         let query = QueryParams {
-            name: "John Doe".to_string(),
-            email: "john@example.com".to_string(),
+            // allowed chars (RFC 3986)
+            allowed: ";/?:@$,-.!~*'()".to_string(),
+            // disallowed chars (RFC 3986)
+            disallowed: "#".to_string(),
+            // delimiters in key value pairs, need encoding
+            delimiters: "&=+".to_string(),
+            // not RFC 3986 Compliant (space should be %20 not +)
+            // but "+" is very common so we allow it
+            alpha_numeric_and_space: "ABC abc 123".to_string(),
         };
 
         let mut builder = HttpRequestBuilder {
@@ -443,15 +458,13 @@ mod tests {
             .expect("should serialize query params with special chars");
         let req = builder.build();
 
-        assert_eq!(
-            req,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "https://example.com?name=John+Doe&email=john%40example.com".to_string(),
-                headers: vec![],
-                body: vec![],
-            }
-        );
+        insta::assert_debug_snapshot!(req, @r#"
+        HttpRequest {
+            method: "GET",
+            url: "https://example.com?allowed=;/?:@$,-.!~*'()&disallowed=%23&delimiters=%26%3D%2B&alpha_numeric_and_space=ABC+abc+123",
+            body: "",
+        }
+        "#);
     }
 
     #[test]
@@ -479,15 +492,13 @@ mod tests {
             .expect("should serialize query params with empty values");
         let req = builder.build();
 
-        assert_eq!(
-            req,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "https://example.com?empty=".to_string(),
-                headers: vec![],
-                body: vec![],
-            }
-        );
+        insta::assert_debug_snapshot!(req, @r#"
+        HttpRequest {
+            method: "GET",
+            url: "https://example.com?empty=&none",
+            body: "",
+        }
+        "#);
     }
 
     #[test]
@@ -515,15 +526,12 @@ mod tests {
             .expect("should serialize query params");
         let req = builder.build();
 
-        assert_eq!(
-            req,
-            HttpRequest {
-                method: "GET".to_string(),
-                url: "https://example.com?foo=bar&name=John+Doe&email=john%40example.com"
-                    .to_string(),
-                headers: vec![],
-                body: vec![],
-            }
-        );
+        insta::assert_debug_snapshot!(req, @r#"
+        HttpRequest {
+            method: "GET",
+            url: "https://example.com?foo=bar&name=John+Doe&email=john@example.com",
+            body: "",
+        }
+        "#);
     }
 }
