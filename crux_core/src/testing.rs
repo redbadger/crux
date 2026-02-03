@@ -39,7 +39,8 @@ where
 #[expect(deprecated)]
 impl<App> AppTester<App>
 where
-    App: crate::App,
+    App: crate::App + Default,
+    App::Model: Default,
 {
     /// Create an `AppTester` instance for an existing app instance. This can be used if your App
     /// has a constructor other than `Default`, for example when used as a child app and expecting
@@ -136,7 +137,8 @@ where
 #[expect(deprecated)]
 impl<App> Default for AppTester<App>
 where
-    App: crate::App,
+    App: crate::App + Default,
+    App::Model: Default,
 {
     fn default() -> Self {
         Self {

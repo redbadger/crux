@@ -175,11 +175,11 @@ pub use type_generation::serde as typegen;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](crate::bridge::Bridge).
-pub trait App: Default {
+pub trait App {
     /// `Event`, typically an `enum`, defines the actions that can be taken to update the application state.
     type Event: Unpin + Send + 'static;
     /// `Model`, typically a `struct` defines the internal state of the application
-    type Model: Default;
+    type Model;
     /// `ViewModel`, typically a `struct` describes the user interface that should be
     /// displayed to the user
     type ViewModel;
