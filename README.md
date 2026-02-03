@@ -77,7 +77,7 @@ the application:
 - `ViewModel` — represents information that should be displayed to the user
 
 The first three are tied together by the `update` function, familiar from Elm,
-Redux or other event sourcing architectures, which currently has this type
+Redux or other event sourcing architectures, which has this type
 signature:
 
 ```rust,ignore
@@ -85,7 +85,6 @@ fn update(
     &self,
     msg: Event,
     model: &mut Model,
-    _caps: &Capabilities, // soon to be deprecated
 ) -> Command<Effect, Event> {
     // ...
 }
@@ -96,9 +95,7 @@ accordingly, and potentially request some side-effects.
 
 <!--prettier-ignore-->
 > [!NOTE]
-> The `Capability` API is being deprecated in favour of a more flexible `Command` API.
->
-> To learn more about the new [`Command` API](https://docs.rs/crux_core/latest/crux_core/command/index.html),
+> To learn more about the [`Command` API](https://docs.rs/crux_core/latest/crux_core/command/index.html),
 > see the page in the book that describes [Managed Effects](https://redbadger.github.io/crux/guide/effects.html),
 > or look at [examples/counter](https://github.com/redbadger/crux/tree/master/examples/counter).
 
