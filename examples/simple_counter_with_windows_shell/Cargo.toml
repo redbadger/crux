@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "shared_types", "web-dioxus", "web-leptos", "web-yew"]
+members = ["shared", "shared_types"]
 resolver = "1"
 
 [workspace.package]
