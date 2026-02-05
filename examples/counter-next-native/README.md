@@ -121,7 +121,7 @@ pub enum EffectFfi {
 // Shell sends typed responses
 #[derive(uniffi::Enum)]
 pub enum EffectOutput {
-    Render(UnitOutput),
+    Render,  // Unit variant for notification effects
     Http(HttpResult),
     ServerSentEvents(SseResponse),
 }

@@ -9,9 +9,9 @@ use std::time::Duration;
 
 use crossbeam_channel::{self, Receiver, Sender};
 use crux_core::{
-    Core,
     bridge::{EffectId, NativeBridgeError},
     middleware::Layer as _,
+    Core,
 };
 
 // ---------------------------------------------------------------------------
@@ -20,10 +20,10 @@ use crux_core::{
 mod counter_app {
     use crux_core::bridge::{NativeBridgeError, ResolveNative};
     use crux_core::{
-        App, Command,
         capability::Operation,
         macros::effect,
-        render::{RenderOperation, render},
+        render::{render, RenderOperation},
+        App, Command,
     };
     use serde::{Deserialize, Serialize};
 
@@ -82,7 +82,7 @@ mod counter_app {
 
     #[derive(Debug)]
     pub enum EffectOutput {
-        Render(crux_core::bridge::UnitOutput),
+        Render, // Unit variant for notification effects
         Counter(i32),
     }
 
@@ -93,7 +93,7 @@ mod counter_app {
         fn into_native(self) -> (Self::Ffi, ResolveNative<Self::Output>) {
             match self {
                 Effect::Render(req) => req.into_native(EffectFfi::Render, |o| match o {
-                    EffectOutput::Render(_) => Ok(crux_core::bridge::UnitOutput),
+                    EffectOutput::Render => Ok(()),
                     _ => Err(NativeBridgeError::OutputMismatch {
                         expected: "Render".to_string(),
                     }),
@@ -199,20 +199,14 @@ fn render_is_fire_and_forget() {
     let render_id = effects[0].0;
 
     // Resolve fire-and-forget — should error (consistent with serde bridge)
-    let result = bridge.resolve(
-        render_id,
-        EffectOutput::Render(crux_core::bridge::UnitOutput),
-    );
+    let result = bridge.resolve(render_id, EffectOutput::Render);
     assert!(
         matches!(result, Err(NativeBridgeError::ResolveNever)),
         "expected ResolveNever for fire-and-forget effect, got {result:?}"
     );
 
     // Resolving again should fail — entry was cleaned up
-    let result = bridge.resolve(
-        render_id,
-        EffectOutput::Render(crux_core::bridge::UnitOutput),
-    );
+    let result = bridge.resolve(render_id, EffectOutput::Render);
     assert!(
         matches!(result, Err(NativeBridgeError::EffectNotFound { .. })),
         "expected EffectNotFound, got {result:?}"
@@ -255,10 +249,7 @@ fn output_mismatch_error() {
     let counter_id = effects[0].0;
 
     // Try to resolve Counter request with Render output → mismatch
-    let result = bridge.resolve(
-        counter_id,
-        EffectOutput::Render(crux_core::bridge::UnitOutput),
-    );
+    let result = bridge.resolve(counter_id, EffectOutput::Render);
     assert!(
         matches!(result, Err(NativeBridgeError::OutputMismatch { .. })),
         "expected OutputMismatch, got {result:?}"
@@ -269,10 +260,7 @@ fn output_mismatch_error() {
 fn unknown_effect_id_error() {
     let (bridge, _rx) = create_bridge();
 
-    let result = bridge.resolve(
-        EffectId(999),
-        EffectOutput::Render(crux_core::bridge::UnitOutput),
-    );
+    let result = bridge.resolve(EffectId(999), EffectOutput::Render);
     assert!(
         matches!(result, Err(NativeBridgeError::EffectNotFound { .. })),
         "expected EffectNotFound, got {result:?}"
@@ -299,10 +287,7 @@ fn once_resolver_consumed_after_resolve() {
     assert!(matches!(follow_up[0].1, EffectFfi::Render(_)));
     let render_id = follow_up[0].0;
     // Render is fire-and-forget, so resolve returns ResolveNever error
-    let result = bridge.resolve(
-        render_id,
-        EffectOutput::Render(crux_core::bridge::UnitOutput),
-    );
+    let result = bridge.resolve(render_id, EffectOutput::Render);
     assert!(
         matches!(result, Err(NativeBridgeError::ResolveNever)),
         "expected ResolveNever for fire-and-forget, got {result:?}"
@@ -327,10 +312,7 @@ fn once_resolver_consumed_after_mismatch() {
     let counter_id = drain(&rx)[0].0;
 
     // Mismatch — consumes the resolver
-    let result = bridge.resolve(
-        counter_id,
-        EffectOutput::Render(crux_core::bridge::UnitOutput),
-    );
+    let result = bridge.resolve(counter_id, EffectOutput::Render);
     assert!(matches!(
         result,
         Err(NativeBridgeError::OutputMismatch { .. })
@@ -410,7 +392,7 @@ fn multiple_sequential_updates() {
 // ---------------------------------------------------------------------------
 
 mod counter_middleware {
-    use crux_core::{Request, RequestHandle, middleware::EffectMiddleware};
+    use crux_core::{middleware::EffectMiddleware, Request, RequestHandle};
 
     use crate::counter_app::CounterOp;
 
