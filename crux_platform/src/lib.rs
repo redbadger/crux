@@ -1,11 +1,14 @@
 //! A demo capability to get a name of the current platform
 
+#[cfg(feature = "native_bridge")]
+uniffi::setup_scaffolding!();
+
 pub mod command;
 pub mod protocol;
 
 use std::marker::PhantomData;
 
-use crux_core::{Command, Request, command::RequestBuilder};
+use crux_core::{command::RequestBuilder, Command, Request};
 
 pub use protocol::*;
 
