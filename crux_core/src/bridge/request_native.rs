@@ -19,7 +19,7 @@ pub enum ResolveNative<EffOut: Send + 'static> {
 impl<EffOut: Send + 'static> ResolveNative<EffOut> {
     pub(crate) fn resolve(&mut self, output: EffOut) -> Result<(), NativeBridgeError> {
         match self {
-            ResolveNative::Never => Ok(()),
+            ResolveNative::Never => Err(NativeBridgeError::ResolveNever),
             ResolveNative::Once(_) => {
                 // Take ownership by replacing with Never
                 let ResolveNative::Once(f) = std::mem::replace(self, ResolveNative::Never) else {

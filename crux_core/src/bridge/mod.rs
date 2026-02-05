@@ -14,6 +14,13 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::{core::ResolveError, App, Core};
+
+/// Default initial capacity for the resolve registry slab.
+///
+/// This balances memory usage against allocation overhead. The slab
+/// grows dynamically if more concurrent effects are needed.
+pub(crate) const DEFAULT_REGISTRY_CAPACITY: usize = 1024;
+
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
@@ -35,10 +42,12 @@ pub use request_native::ResolveNative;
 pub enum NativeBridgeError {
     #[error("effect output variant mismatch: expected {expected}")]
     OutputMismatch { expected: String },
-    #[error("could not process response: {message}")]
-    ProcessResponse { message: String },
+    #[error("effect id {effect_id} not found")]
+    EffectNotFound { effect_id: u32 },
     #[error("stream resolve finished")]
     ResolveFinished,
+    #[error("attempted to resolve fire-and-forget effect")]
+    ResolveNever,
 }
 
 /// A serialization format for the bridge FFI.
