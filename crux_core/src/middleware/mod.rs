@@ -16,7 +16,7 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{App, Core, EffectFFI, Request, Resolvable, ResolveError, bridge::BridgeError};
+use crate::{bridge::BridgeError, App, Core, EffectFFI, Request, Resolvable, ResolveError};
 
 mod bridge;
 mod effect_conversion;
@@ -125,6 +125,24 @@ pub trait Layer: Send + Sync + Sized {
         NewEffect: From<Self::Effect> + Send + 'static,
     {
         MapEffectLayer::new(self)
+    }
+
+    /// Wrap this layer with a native typed bridge that delivers effects
+    /// via a callback instead of byte serialization.
+    ///
+    /// The callback receives `(EffectId, Ffi)` for each effect. Both
+    /// immediate effects and async middleware effects flow through this
+    /// callback.
+    #[cfg(feature = "native_bridge")]
+    fn native_bridge<F>(self, effect_callback: F) -> crate::bridge::NativeBridge<Self>
+    where
+        Self::Effect: crate::core::EffectNative,
+        F: Fn(crate::bridge::EffectId, <Self::Effect as crate::core::EffectNative>::Ffi)
+            + Send
+            + Sync
+            + 'static,
+    {
+        crate::bridge::NativeBridge::new(self, effect_callback)
     }
 
     fn bridge<Format: FfiFormat>(

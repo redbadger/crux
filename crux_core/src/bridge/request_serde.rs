@@ -1,7 +1,7 @@
 use crate::{
-    Request,
     capability::Operation,
     core::{RequestHandle, ResolveError},
+    Request,
 };
 
 use super::{BridgeError, FfiFormat};

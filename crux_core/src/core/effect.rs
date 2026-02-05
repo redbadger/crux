@@ -32,3 +32,16 @@ pub trait EffectFFI: Effect {
     fn serialize<T: FfiFormat>(self) -> (Self::Ffi, ResolveSerialized<T>);
 }
 // ANCHOR_END: effect_typegen
+
+/// Implemented automatically with the effect macro from `crux_macros` when the
+/// `native_bridge` feature is enabled. Provides typed (non-serialized) FFI
+/// for mobile shells via UniFFI.
+#[cfg(feature = "native_bridge")]
+pub trait EffectNative: Effect {
+    /// FFI enum — operations without resolve handles (same shape as `EffectFFI::Ffi`)
+    type Ffi: Send + 'static;
+    /// Typed output enum — one variant per effect, carrying `Op::Output`
+    type Output: Send + 'static;
+    /// Split effect into (FFI operation, native resolver)
+    fn into_native(self) -> (Self::Ffi, crate::bridge::ResolveNative<Self::Output>);
+}

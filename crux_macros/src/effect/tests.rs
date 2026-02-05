@@ -49,6 +49,39 @@ fn single_with_typegen() {
             }
         }
     }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: EffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for Effect {
+        type Ffi = EffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                Effect::Render(req) => {
+                    req.into_native(
+                        EffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -119,6 +152,39 @@ fn single_with_new_name() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
+            }
+        }
+    }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: MyEffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for MyEffect {
+        type Ffi = MyEffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                MyEffect::Render(req) => {
+                    req.into_native(
+                        MyEffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -198,6 +264,39 @@ fn single_with_facet_typegen() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
+            }
+        }
+    }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: EffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for Effect {
+        type Ffi = EffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                Effect::Render(req) => {
+                    req.into_native(
+                        EffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -290,6 +389,39 @@ fn single_facet_typegen_with_new_name() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
+            }
+        }
+    }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: MyEffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for MyEffect {
+        type Ffi = MyEffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                MyEffect::Render(req) => {
+                    req.into_native(
+                        MyEffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -429,6 +561,53 @@ fn multiple_with_typegen() {
             }
         }
     }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
+        Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: EffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for Effect {
+        type Ffi = EffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                Effect::Render(req) => {
+                    req.into_native(
+                        EffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
+                Effect::Http(req) => {
+                    req.into_native(
+                        EffectFfi::Http,
+                        |o| match o {
+                            EffectOutput::Http(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Http".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -538,6 +717,53 @@ fn multiple_with_facet_typegen() {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
                 Effect::Http(request) => request.serialize(EffectFfi::Http),
+            }
+        }
+    }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
+        Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: EffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for Effect {
+        type Ffi = EffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                Effect::Render(req) => {
+                    req.into_native(
+                        EffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
+                Effect::Http(req) => {
+                    req.into_native(
+                        EffectFfi::Http,
+                        |o| match o {
+                            EffectOutput::Http(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Http".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -784,6 +1010,39 @@ fn facet_typegen_with_namespace_attribute() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
+            }
+        }
+    }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: EffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for Effect {
+        type Ffi = EffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                Effect::Render(req) => {
+                    req.into_native(
+                        EffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
             }
         }
     }

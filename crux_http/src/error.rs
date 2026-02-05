@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
 #[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[repr(C)]
 pub enum HttpError {
     // potentially external, have representation in shells

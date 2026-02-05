@@ -1,6 +1,6 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Span, TokenStream};
-use quote::{ToTokens, format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{Ident, ItemEnum, Type};
 
 struct Effect {
@@ -60,6 +60,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                     facet(name = #enum_ident_str),
                     repr(C)
                 )]
+                #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
                 #ffi_enum
             }
         }
@@ -151,6 +152,72 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             }
         }
     });
+
+    // Generate native bridge types (EffectOutput, NativeRequest, EffectNative impl)
+    // Only when typegen is enabled, since EffectFfi must exist
+    let native_bridge = if let TypegenKind::None = typegen_kind {
+        quote! {}
+    } else {
+        let effect_output_variants = effects.clone().map(|effect| {
+            let effect_ident = &effect.ident;
+            let operation = &effect.operation;
+            quote! {
+                #effect_ident(<#operation as ::crux_core::capability::Operation>::Output)
+            }
+        });
+
+        let native_match_arms = effects.clone().map(|effect| {
+            let effect_ident = &effect.ident;
+            let effect_ident_str = effect.ident.to_string();
+            quote! {
+                #enum_ident::#effect_ident(req) => req.into_native(
+                    #ffi_enum_ident::#effect_ident,
+                    |o| match o {
+                        EffectOutput::#effect_ident(v) => Ok(v),
+                        _ => Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                            expected: #effect_ident_str.to_string(),
+                        }),
+                    },
+                )
+            }
+        });
+
+        // UniFFI derives on NativeRequest only for facet_typegen (app crates with scaffolding).
+        // Test crates using #[effect(typegen)] don't have uniffi::setup_scaffolding!()
+        // so they lack UniFfiTag. We use cfg_attr to make it conditional.
+        let native_request_derive = match typegen_kind {
+            TypegenKind::Facet => quote! {
+                #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
+            },
+            _ => quote! {},
+        };
+
+        quote! {
+            #[cfg(feature = "native_bridge")]
+            pub enum EffectOutput {
+                #(#effect_output_variants ,)*
+            }
+
+            #[cfg(feature = "native_bridge")]
+            #native_request_derive
+            pub struct NativeRequest {
+                pub id: u32,
+                pub effect: #ffi_enum_ident,
+            }
+
+            #[cfg(feature = "native_bridge")]
+            impl ::crux_core::EffectNative for #enum_ident {
+                type Ffi = #ffi_enum_ident;
+                type Output = EffectOutput;
+
+                fn into_native(self) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+                    match self {
+                        #(#native_match_arms ,)*
+                    }
+                }
+            }
+        }
+    };
 
     let type_gen = match typegen_kind {
         TypegenKind::Serde => {
@@ -247,6 +314,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         impl crux_core::Effect for #enum_ident {}
 
         #effect_ffi_derive
+
+        #native_bridge
 
         #(#from_impls)*
 

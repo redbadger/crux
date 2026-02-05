@@ -1,7 +1,7 @@
 mod app {
     use crux_core::{
+        render::{render, RenderOperation},
         Command,
-        render::{RenderOperation, render},
     };
     use crux_http::{command::Http, protocol::HttpRequest};
     use crux_macros::effect;
@@ -57,7 +57,7 @@ mod tests {
     use crate::app::EffectFfi;
 
     use super::core::Bridge;
-    use crux_core::{Core, bridge::Request};
+    use crux_core::{bridge::Request, Core};
     use serde_json::Value;
 
     #[test]

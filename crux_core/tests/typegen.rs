@@ -1,7 +1,7 @@
 #[cfg(feature = "typegen")]
 mod shared {
-    use crux_core::Command;
     use crux_core::render::RenderOperation;
+    use crux_core::Command;
     use crux_macros::effect;
     use serde::{Deserialize, Serialize};
 

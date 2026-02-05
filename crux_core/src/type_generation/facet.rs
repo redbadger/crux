@@ -16,7 +16,7 @@
 //! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
 //! * Create a `build.rs` in your `shared_types` library, that looks something like this:
 //!
-//! ```rust
+//! ```rust,ignore
 //! # mod shared {
 //! #     use crux_core::Command;
 //! #     use crux_core::render::RenderOperation;
@@ -91,12 +91,13 @@ use std::{
 use facet::Facet;
 pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
-    Registry,
     generation::{
-        Encoding, SourceInstaller, java, kotlin, module, swift,
+        java, kotlin, module, swift,
         typescript::{self, InstallTarget},
+        Encoding, SourceInstaller,
     },
     reflection::RegistryBuilder,
+    Registry,
 };
 use log::info;
 use serde_json::json;
