@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::{App, Command, capability::Operation, macros::effect, render::render};
+    use crux_core::{capability::Operation, macros::effect, render::render, App, Command};
     use crux_http::command::Http;
     use serde::{Deserialize, Serialize};
 
@@ -118,7 +118,11 @@ mod app {
                                 .copied()
                                 .filter_map(
                                     |(size, value)| {
-                                        if value.is_none() { Some(size) } else { None }
+                                        if value.is_none() {
+                                            Some(size)
+                                        } else {
+                                            None
+                                        }
                                     },
                                 )
                                 .take(2)
@@ -287,10 +291,10 @@ mod tests {
     use crossbeam_channel::RecvError;
     use crux_core::bridge::JsonFfiFormat;
     use crux_core::{
-        Core,
         bridge::{self, Request},
         middleware::{BincodeFfiFormat, Layer as _},
         render::RenderOperation,
+        Core,
     };
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use crux_macros::effect;
@@ -611,10 +615,10 @@ mod tests {
     #[should_panic(expected = "must not call resolve() synchronously")]
     fn synchronous_middleware_panics() {
         use crux_core::{
-            Command, Core,
             capability::Operation,
             macros::effect,
             middleware::{EffectMiddleware, EffectResolver},
+            Command, Core,
         };
         use serde::{Deserialize, Serialize};
 

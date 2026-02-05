@@ -1,5 +1,11 @@
 mod formats;
+#[cfg(feature = "native_bridge")]
+mod native;
+#[cfg(feature = "native_bridge")]
+mod native_registry;
 mod registry;
+#[cfg(feature = "native_bridge")]
+mod request_native;
 mod request_serde;
 
 use facet::Facet;
@@ -7,13 +13,33 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::{App, Core, core::ResolveError};
+use crate::{core::ResolveError, App, Core};
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveSerialized;
+
+#[cfg(feature = "native_bridge")]
+pub use native::NativeBridge;
+#[cfg(feature = "native_bridge")]
+pub use request_native::ResolveNative;
+
+/// Error type for the native typed bridge.
+///
+/// Uses `String` fields (not `&'static str` or foreign error types) for
+/// UniFFI compatibility — UniFFI errors need owned types.
+#[cfg(feature = "native_bridge")]
+#[derive(Debug, Error, uniffi::Error)]
+pub enum NativeBridgeError {
+    #[error("effect output variant mismatch: expected {expected}")]
+    OutputMismatch { expected: String },
+    #[error("could not process response: {message}")]
+    ProcessResponse { message: String },
+    #[error("stream resolve finished")]
+    ResolveFinished,
+}
 
 /// A serialization format for the bridge FFI.
 ///

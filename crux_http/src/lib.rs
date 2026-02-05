@@ -6,6 +6,23 @@
 //! This is still work in progress and large parts of HTTP are not yet supported.
 // #![warn(missing_docs)]
 
+#[cfg(feature = "native_bridge")]
+uniffi::setup_scaffolding!();
+
+// Bridge http_types::StatusCode as u16 for UniFFI.
+// StatusCode is used inside HttpError::Http (which is #[serde(skip)] / internal-only),
+// but UniFFI derives process all variants, so we need a conversion.
+#[cfg(feature = "native_bridge")]
+mod uniffi_compat {
+    type StatusCode = http_types::StatusCode;
+    uniffi::custom_type!(StatusCode, u16, {
+        remote,
+        try_lift: |val| Ok(http_types::StatusCode::try_from(val)
+            .unwrap_or(http_types::StatusCode::InternalServerError)),
+        lower: |obj| u16::from(obj),
+    });
+}
+
 mod config;
 mod error;
 mod expect;

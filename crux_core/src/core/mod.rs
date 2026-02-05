@@ -5,6 +5,8 @@ mod resolve;
 use std::collections::VecDeque;
 use std::sync::{Mutex, RwLock};
 
+#[cfg(feature = "native_bridge")]
+pub use effect::EffectNative;
 pub use effect::{Effect, EffectFFI};
 pub use request::Request;
 pub use resolve::{RequestHandle, Resolvable, ResolveError};

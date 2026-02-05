@@ -9,6 +9,7 @@ pub use value::*;
 
 /// Supported operations
 #[derive(Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[repr(C)]
 pub enum KeyValueOperation {
     /// Read bytes stored under a key
@@ -77,6 +78,7 @@ impl std::fmt::Debug for KeyValueOperation {
 /// Note: we can't use [`core::result::Result`] here because it is not currently
 /// supported across the FFI boundary, when using `typegen` or `facet_typegen`.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[repr(C)]
 pub enum KeyValueResult {
     Ok { response: KeyValueResponse },
@@ -84,6 +86,7 @@ pub enum KeyValueResult {
 }
 
 #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[repr(C)]
 pub enum KeyValueResponse {
     /// Response to a `KeyValueOperation::Get`,
