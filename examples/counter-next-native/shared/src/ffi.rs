@@ -2,17 +2,17 @@ pub mod native {
     use std::sync::Arc;
 
     use crux_core::{
-        Core, EffectNative, Request,
-        bridge::{EffectId, NativeBridge, NativeBridgeError, ResolveNative, UnitOutput},
+        bridge::{EffectId, NativeBridge, NativeBridgeError, ResolveNative},
         middleware::{HandleEffectLayer, Layer as _, MapEffectLayer},
         render::RenderOperation,
+        Core, EffectNative, Request,
     };
     use crux_http::protocol::{HttpRequest, HttpResult};
 
     use crate::{
-        Counter, Event, ViewModel,
         middleware::RngMiddleware,
         sse::{SseRequest, SseResponse},
+        Counter, Event, ViewModel,
     };
 
     // --- Effect enum (internal, with Request wrappers) ---
@@ -68,8 +68,8 @@ pub mod native {
     /// The output/response from the shell for each effect type
     #[derive(Debug, uniffi::Enum)]
     pub enum EffectOutput {
-        /// Render has no output (uses UnitOutput for UniFFI compatibility)
-        Render(UnitOutput),
+        /// Render is a notification effect (fire-and-forget, no response data)
+        Render,
         Http(HttpResult),
         ServerSentEvents(SseResponse),
     }
@@ -90,7 +90,7 @@ pub mod native {
         fn into_native(self) -> (Self::Ffi, ResolveNative<Self::Output>) {
             match self {
                 Effect::Render(req) => req.into_native(EffectFfi::Render, |o| match o {
-                    EffectOutput::Render(_) => Ok(UnitOutput),
+                    EffectOutput::Render => Ok(()),
                     _ => Err(NativeBridgeError::OutputMismatch {
                         expected: "Render".to_string(),
                     }),

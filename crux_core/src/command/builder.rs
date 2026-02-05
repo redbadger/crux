@@ -22,7 +22,7 @@ impl<Effect, Event, Task> NotificationBuilder<Effect, Event, Task>
 where
     Effect: Send + 'static,
     Event: Send + 'static,
-    Task: Future<Output = crate::bridge::UnitOutput> + Send + 'static,
+    Task: Future<Output = ()> + Send + 'static,
 {
     pub fn new<F>(make_task: F) -> Self
     where
@@ -52,7 +52,7 @@ impl<Effect, Event, Task> From<NotificationBuilder<Effect, Event, Task>> for Com
 where
     Effect: Send + 'static,
     Event: Send + 'static,
-    Task: Future<Output = crate::bridge::UnitOutput> + Send + 'static,
+    Task: Future<Output = ()> + Send + 'static,
 {
     fn from(value: NotificationBuilder<Effect, Event, Task>) -> Self {
         Command::new(|ctx| async move {
@@ -173,10 +173,10 @@ where
     pub fn then_notify<F, NextTask>(
         self,
         make_next_builder: F,
-    ) -> NotificationBuilder<Effect, Event, impl Future<Output = crate::bridge::UnitOutput>>
+    ) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
     where
         F: FnOnce(T) -> NotificationBuilder<Effect, Event, NextTask> + Send + 'static,
-        NextTask: Future<Output = crate::bridge::UnitOutput> + Send + 'static,
+        NextTask: Future<Output = ()> + Send + 'static,
     {
         NotificationBuilder::new(|ctx| {
             self.into_future(ctx.clone())

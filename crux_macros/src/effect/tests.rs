@@ -1112,3 +1112,157 @@ fn facet_typegen_with_namespace_attribute() {
     }
     "#);
 }
+
+#[allow(clippy::too_many_lines)]
+#[test]
+fn notification_attribute_generates_unit_variant() {
+    let args = Some(format_ident!("typegen"));
+    let input = parse_quote! {
+        pub enum Effect {
+            #[effect(notification)]
+            Render(RenderOperation),
+            Http(HttpRequest),
+        }
+    };
+
+    let actual = effect_impl(args, input);
+
+    insta::assert_snapshot!(pretty_print(&actual), @r#"
+    pub enum Effect {
+        Render(::crux_core::Request<RenderOperation>),
+        Http(::crux_core::Request<HttpRequest>),
+    }
+    #[derive(::serde::Serialize, ::serde::Deserialize)]
+    #[serde(rename = "Effect")]
+    pub enum EffectFfi {
+        Render(RenderOperation),
+        Http(HttpRequest),
+    }
+    impl crux_core::Effect for Effect {}
+    impl crux_core::EffectFFI for Effect {
+        type Ffi = EffectFfi;
+        fn serialize<T: ::crux_core::bridge::FfiFormat>(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
+            match self {
+                Effect::Render(request) => request.serialize(EffectFfi::Render),
+                Effect::Http(request) => request.serialize(EffectFfi::Http),
+            }
+        }
+    }
+    #[cfg(feature = "native_bridge")]
+    pub enum EffectOutput {
+        Render,
+        Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
+    }
+    #[cfg(feature = "native_bridge")]
+    pub struct NativeRequest {
+        pub id: u32,
+        pub effect: EffectFfi,
+    }
+    #[cfg(feature = "native_bridge")]
+    impl ::crux_core::EffectNative for Effect {
+        type Ffi = EffectFfi;
+        type Output = EffectOutput;
+        fn into_native(
+            self,
+        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
+            match self {
+                Effect::Render(req) => {
+                    req.into_native(
+                        EffectFfi::Render,
+                        |o| match o {
+                            EffectOutput::Render => Ok(()),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Render".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
+                Effect::Http(req) => {
+                    req.into_native(
+                        EffectFfi::Http,
+                        |o| match o {
+                            EffectOutput::Http(v) => Ok(v),
+                            _ => {
+                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                    expected: "Http".to_string(),
+                                })
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+    impl From<::crux_core::Request<RenderOperation>> for Effect {
+        fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
+            Self::Render(value)
+        }
+    }
+    impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
+        type Error = Effect;
+        fn try_from(value: Effect) -> Result<Self, Self::Error> {
+            if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
+        }
+    }
+    impl From<::crux_core::Request<HttpRequest>> for Effect {
+        fn from(value: ::crux_core::Request<HttpRequest>) -> Self {
+            Self::Http(value)
+        }
+    }
+    impl TryFrom<Effect> for ::crux_core::Request<HttpRequest> {
+        type Error = Effect;
+        fn try_from(value: Effect) -> Result<Self, Self::Error> {
+            if let Effect::Http(value) = value { Ok(value) } else { Err(value) }
+        }
+    }
+    impl Effect {
+        pub fn is_render(&self) -> bool {
+            if let Effect::Render(_) = self { true } else { false }
+        }
+        pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
+            if let Effect::Render(request) = self { Some(request) } else { None }
+        }
+        #[track_caller]
+        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
+            if let Effect::Render(request) = self {
+                request
+            } else {
+                panic!("not a {} effect", "Render")
+            }
+        }
+    }
+    impl Effect {
+        pub fn is_http(&self) -> bool {
+            if let Effect::Http(_) = self { true } else { false }
+        }
+        pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
+            if let Effect::Http(request) = self { Some(request) } else { None }
+        }
+        #[track_caller]
+        pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
+            if let Effect::Http(request) = self {
+                request
+            } else {
+                panic!("not a {} effect", "Http")
+            }
+        }
+    }
+    #[cfg(feature = "typegen")]
+    impl ::crux_core::type_generation::serde::Export for Effect {
+        fn register_types(
+            generator: &mut ::crux_core::type_generation::serde::TypeGen,
+        ) -> ::crux_core::type_generation::serde::Result {
+            use ::crux_core::capability::Operation;
+            RenderOperation::register_types(generator)?;
+            HttpRequest::register_types(generator)?;
+            generator.register_type::<EffectFfi>()?;
+            generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+            Ok(())
+        }
+    }
+    "#);
+}

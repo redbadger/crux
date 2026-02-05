@@ -1,5 +1,5 @@
 use std::future::Future;
-use std::pin::{Pin, pin};
+use std::pin::{pin, Pin};
 
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -10,8 +10,8 @@ use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
 
-use crate::Request;
 use crate::capability::Operation;
+use crate::Request;
 
 use super::executor::{JoinHandle, Task};
 
@@ -38,11 +38,8 @@ impl<Effect, Event> Clone for CommandContext<Effect, Event> {
 
 impl<Effect, Event> CommandContext<Effect, Event> {
     /// Create a one-off notification to the shell. This method returns immediately.
-    ///
-    /// Returns [`UnitOutput`] for UniFFI compatibility (since `()` doesn't implement
-    /// the required UniFFI traits).
     #[allow(clippy::missing_panics_doc)]
-    pub fn notify_shell<Op>(&self, operation: Op) -> crate::bridge::UnitOutput
+    pub fn notify_shell<Op>(&self, operation: Op)
     where
         Op: Operation,
         Effect: From<Request<Op>>,
@@ -52,8 +49,6 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         self.effects
             .send(request.into())
             .expect("Command could not send notification, effect channel disconnected");
-
-        crate::bridge::UnitOutput
     }
 
     /// Create a one-off request for an operation. Returns a future which eventually resolves

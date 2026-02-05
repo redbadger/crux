@@ -5,9 +5,7 @@ use std::future::Future;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    Command, Request, bridge::UnitOutput, capability::Operation, command::NotificationBuilder,
-};
+use crate::{capability::Operation, command::NotificationBuilder, Command, Request};
 
 /// The single operation `Render` implements.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -15,7 +13,7 @@ use crate::{
 pub struct RenderOperation;
 
 impl Operation for RenderOperation {
-    type Output = UnitOutput;
+    type Output = ();
 }
 
 /// Signal to the shell that the UI should be redrawn.
@@ -40,8 +38,8 @@ impl Operation for RenderOperation {
 ///# });
 /// ```
 #[must_use]
-pub fn render_builder<Effect, Event>()
--> NotificationBuilder<Effect, Event, impl Future<Output = UnitOutput>>
+pub fn render_builder<Effect, Event>(
+) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where
     Effect: From<Request<RenderOperation>> + Send + 'static,
     Event: Send + 'static,

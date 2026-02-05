@@ -1,11 +1,24 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Span, TokenStream};
-use quote::{ToTokens, format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{Ident, ItemEnum, Type};
 
 struct Effect {
     ident: Ident,
     operation: Type,
+    is_notification: bool,
+}
+
+/// Check if a variant has `#[effect(notification)]` attribute
+fn has_notification_attr(attrs: &[syn::Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        if attr.path().is_ident("effect") {
+            if let Ok(nested) = attr.parse_args::<syn::Ident>() {
+                return nested == "notification";
+            }
+        }
+        false
+    })
 }
 
 enum TypegenKind {
@@ -39,6 +52,10 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     let mut ffi_enum = input.clone();
     ffi_enum.ident = format_ident!("{}Ffi", enum_ident);
     ffi_enum.attrs = vec![];
+    // Strip #[effect(notification)] attributes from variants
+    for variant in &mut ffi_enum.variants {
+        variant.attrs.retain(|attr| !attr.path().is_ident("effect"));
+    }
     let ffi_enum_ident = &ffi_enum.ident;
 
     let ffi_enum = match typegen_kind {
@@ -69,13 +86,18 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
 
     let effects = input.variants.into_iter().map(|variant| {
         let ident = variant.ident;
+        let is_notification = has_notification_attr(&variant.attrs);
         let operation = variant
             .fields
             .into_iter()
             .next()
             .expect("each variant is expected to be a tuple with one field")
             .ty;
-        Effect { ident, operation }
+        Effect {
+            ident,
+            operation,
+            is_notification,
+        }
     });
 
     let effect_variants = effects.clone().map(|effect| {
@@ -161,24 +183,46 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         let effect_output_variants = effects.clone().map(|effect| {
             let effect_ident = &effect.ident;
             let operation = &effect.operation;
-            quote! {
-                #effect_ident(<#operation as ::crux_core::capability::Operation>::Output)
+
+            if effect.is_notification {
+                // Unit variant for notification/fire-and-forget effects
+                quote! { #effect_ident }
+            } else {
+                quote! {
+                    #effect_ident(<#operation as ::crux_core::capability::Operation>::Output)
+                }
             }
         });
 
         let native_match_arms = effects.clone().map(|effect| {
             let effect_ident = &effect.ident;
             let effect_ident_str = effect.ident.to_string();
-            quote! {
-                #enum_ident::#effect_ident(req) => req.into_native(
-                    #ffi_enum_ident::#effect_ident,
-                    |o| match o {
-                        EffectOutput::#effect_ident(v) => Ok(v),
-                        _ => Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                            expected: #effect_ident_str.to_string(),
-                        }),
-                    },
-                )
+
+            if effect.is_notification {
+                // Notification effects extract () from unit variant
+                quote! {
+                    #enum_ident::#effect_ident(req) => req.into_native(
+                        #ffi_enum_ident::#effect_ident,
+                        |o| match o {
+                            EffectOutput::#effect_ident => Ok(()),
+                            _ => Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                expected: #effect_ident_str.to_string(),
+                            }),
+                        },
+                    )
+                }
+            } else {
+                quote! {
+                    #enum_ident::#effect_ident(req) => req.into_native(
+                        #ffi_enum_ident::#effect_ident,
+                        |o| match o {
+                            EffectOutput::#effect_ident(v) => Ok(v),
+                            _ => Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
+                                expected: #effect_ident_str.to_string(),
+                            }),
+                        },
+                    )
+                }
             }
         });
 
