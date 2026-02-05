@@ -38,13 +38,6 @@ class HttpClient {
             connectTimeoutMillis = 15000
             socketTimeoutMillis = 15000
         }
-        engine {
-            config {
-                connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-            }
-        }
     }
 
     suspend fun request(request: HttpRequest): HttpResult = withContext(Dispatchers.Default) {
