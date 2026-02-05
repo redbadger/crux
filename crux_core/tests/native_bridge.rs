@@ -198,14 +198,18 @@ fn render_is_fire_and_forget() {
     let effects = drain(&rx);
     let render_id = effects[0].0;
 
-    // Resolve fire-and-forget — should succeed
-    bridge.resolve(render_id, EffectOutput::Render(())).unwrap();
+    // Resolve fire-and-forget — should error (consistent with serde bridge)
+    let result = bridge.resolve(render_id, EffectOutput::Render(()));
+    assert!(
+        matches!(result, Err(NativeBridgeError::ResolveNever)),
+        "expected ResolveNever for fire-and-forget effect, got {result:?}"
+    );
 
     // Resolving again should fail — entry was cleaned up
     let result = bridge.resolve(render_id, EffectOutput::Render(()));
     assert!(
-        matches!(result, Err(NativeBridgeError::ProcessResponse { .. })),
-        "expected ProcessResponse, got {result:?}"
+        matches!(result, Err(NativeBridgeError::EffectNotFound { .. })),
+        "expected EffectNotFound, got {result:?}"
     );
 }
 
@@ -258,8 +262,8 @@ fn unknown_effect_id_error() {
 
     let result = bridge.resolve(EffectId(999), EffectOutput::Render(()));
     assert!(
-        matches!(result, Err(NativeBridgeError::ProcessResponse { .. })),
-        "expected ProcessResponse, got {result:?}"
+        matches!(result, Err(NativeBridgeError::EffectNotFound { .. })),
+        "expected EffectNotFound, got {result:?}"
     );
 }
 
@@ -282,13 +286,18 @@ fn once_resolver_consumed_after_resolve() {
     assert_eq!(follow_up.len(), 1);
     assert!(matches!(follow_up[0].1, EffectFfi::Render(_)));
     let render_id = follow_up[0].0;
-    bridge.resolve(render_id, EffectOutput::Render(())).unwrap();
+    // Render is fire-and-forget, so resolve returns ResolveNever error
+    let result = bridge.resolve(render_id, EffectOutput::Render(()));
+    assert!(
+        matches!(result, Err(NativeBridgeError::ResolveNever)),
+        "expected ResolveNever for fire-and-forget, got {result:?}"
+    );
 
     // Now both entries are gone — resolving either id should fail
     let result = bridge.resolve(counter_id, EffectOutput::Counter(99));
     assert!(
-        matches!(result, Err(NativeBridgeError::ProcessResponse { .. })),
-        "expected ProcessResponse after resolver consumed, got {result:?}"
+        matches!(result, Err(NativeBridgeError::EffectNotFound { .. })),
+        "expected EffectNotFound after resolver consumed, got {result:?}"
     );
 
     // View unchanged
@@ -312,8 +321,8 @@ fn once_resolver_consumed_after_mismatch() {
     // Retry — entry gone
     let result = bridge.resolve(counter_id, EffectOutput::Counter(42));
     assert!(
-        matches!(result, Err(NativeBridgeError::ProcessResponse { .. })),
-        "expected ProcessResponse after mismatch, got {result:?}"
+        matches!(result, Err(NativeBridgeError::EffectNotFound { .. })),
+        "expected EffectNotFound after mismatch, got {result:?}"
     );
 }
 

@@ -14,7 +14,9 @@ pub struct NativeResolveRegistry<EffOut: Send + 'static>(Mutex<Slab<ResolveNativ
 
 impl<EffOut: Send + 'static> Default for NativeResolveRegistry<EffOut> {
     fn default() -> Self {
-        Self(Mutex::new(Slab::with_capacity(1024)))
+        Self(Mutex::new(Slab::with_capacity(
+            super::DEFAULT_REGISTRY_CAPACITY,
+        )))
     }
 }
 
@@ -43,11 +45,9 @@ impl<EffOut: Send + 'static> NativeResolveRegistry<EffOut> {
     pub fn resume(&self, id: EffectId, output: EffOut) -> Result<(), NativeBridgeError> {
         let mut lock = self.0.lock().expect("NativeResolveRegistry Mutex poisoned");
 
-        let entry =
-            lock.get_mut(id.0 as usize)
-                .ok_or_else(|| NativeBridgeError::ProcessResponse {
-                    message: format!("effect id {} not found", id.0),
-                })?;
+        let entry = lock
+            .get_mut(id.0 as usize)
+            .ok_or(NativeBridgeError::EffectNotFound { effect_id: id.0 })?;
 
         let result = entry.resolve(output);
 
