@@ -1,6 +1,6 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{Ident, ItemEnum, Type};
 
 struct Effect {
@@ -182,18 +182,24 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             }
         });
 
-        // UniFFI derives on NativeRequest only for facet_typegen (app crates with scaffolding).
+        // UniFFI derives only for facet_typegen (app crates with scaffolding).
         // Test crates using #[effect(typegen)] don't have uniffi::setup_scaffolding!()
         // so they lack UniFfiTag. We use cfg_attr to make it conditional.
-        let native_request_derive = match typegen_kind {
-            TypegenKind::Facet => quote! {
-                #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
-            },
-            _ => quote! {},
+        let (effect_output_derive, native_request_derive) = match typegen_kind {
+            TypegenKind::Facet => (
+                quote! {
+                    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
+                },
+                quote! {
+                    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
+                },
+            ),
+            _ => (quote! {}, quote! {}),
         };
 
         quote! {
             #[cfg(feature = "native_bridge")]
+            #effect_output_derive
             pub enum EffectOutput {
                 #(#effect_output_variants ,)*
             }

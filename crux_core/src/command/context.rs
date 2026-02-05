@@ -38,8 +38,11 @@ impl<Effect, Event> Clone for CommandContext<Effect, Event> {
 
 impl<Effect, Event> CommandContext<Effect, Event> {
     /// Create a one-off notification to the shell. This method returns immediately.
+    ///
+    /// Returns [`UnitOutput`] for UniFFI compatibility (since `()` doesn't implement
+    /// the required UniFFI traits).
     #[allow(clippy::missing_panics_doc)]
-    pub fn notify_shell<Op>(&self, operation: Op)
+    pub fn notify_shell<Op>(&self, operation: Op) -> crate::bridge::UnitOutput
     where
         Op: Operation,
         Effect: From<Request<Op>>,
@@ -49,6 +52,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         self.effects
             .send(request.into())
             .expect("Command could not send notification, effect channel disconnected");
+
+        crate::bridge::UnitOutput
     }
 
     /// Create a one-off request for an operation. Returns a future which eventually resolves

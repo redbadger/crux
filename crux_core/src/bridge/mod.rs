@@ -13,7 +13,17 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::{core::ResolveError, App, Core};
+/// A zero-sized output type for operations that don't return meaningful data.
+///
+/// This is used instead of `()` for UniFFI compatibility, as `()` doesn't
+/// implement the required UniFFI traits (`Lower`, `Lift`).
+///
+/// Use this as `Operation::Output` for fire-and-forget operations like `Render`.
+#[derive(Facet, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Record))]
+pub struct UnitOutput;
+
+use crate::{App, Core, core::ResolveError};
 
 /// Default initial capacity for the resolve registry slab.
 ///

@@ -8,7 +8,7 @@ pub mod protocol;
 
 use std::marker::PhantomData;
 
-use crux_core::{command::RequestBuilder, Command, Request};
+use crux_core::{Command, Request, command::RequestBuilder};
 
 pub use protocol::*;
 

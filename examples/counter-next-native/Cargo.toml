@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+# Note: web-leptos and web-remix are not in workspace members.
+# They need to be migrated to use uniffi-bindgen-react-native generated bindings.
+# See README.md for details.
+members = ["shared"]
+
+[workspace.package]
+authors = ["Red Badger Consulting Limited"]
+edition = "2024"
+rust-version = "1.88"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+keywords = ["cross-platform-ui", "crux", "crux_core", "uniffi", "react-native"]
+
+[workspace.dependencies]
+anyhow = "1.0.100"
+crux_core = { path = "../../crux_core" }
+crux_http = { path = "../../crux_http" }
+# crux_core = "0.17.0-rc2"
+# crux_http = "0.16.0-rc2"
+serde = "1.0.228"

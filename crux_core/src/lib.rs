@@ -168,9 +168,9 @@ uniffi::setup_scaffolding!();
 
 pub use capabilities::*;
 pub use command::Command;
-pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "native_bridge")]
 pub use core::EffectNative;
+pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "cli")]
 pub use crux_cli as cli;
 #[cfg(feature = "default")]
