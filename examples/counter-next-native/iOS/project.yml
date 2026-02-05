@@ -1,0 +1,31 @@
+name: CounterApp
+packages:
+  Shared:
+    path: ./generated/Shared
+  App:
+    path: ./generated/app/App
+  ServerSentEvents:
+    path: ./generated/sse/ServerSentEvents
+  Serde:
+    path: ./generated/serde/Serde
+options:
+  bundleIdPrefix: com.crux.example.counter
+targets:
+  CounterApp:
+    type: application
+    platform: iOS
+    deploymentTarget: 18.0
+    sources: [CounterApp]
+    dependencies:
+      - package: Shared
+      - package: App
+      - package: ServerSentEvents
+      - package: Serde
+    info:
+      path: CounterApp/Info.plist
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UILaunchScreen: {}

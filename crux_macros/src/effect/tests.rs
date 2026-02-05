@@ -253,6 +253,7 @@ fn single_with_facet_typegen() {
         facet(name = "Effect"),
         repr(C)
     )]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectFfi {
         Render(RenderOperation),
     }
@@ -268,10 +269,12 @@ fn single_with_facet_typegen() {
         }
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectOutput {
         Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
     pub struct NativeRequest {
         pub id: u32,
         pub effect: EffectFfi,
@@ -378,6 +381,7 @@ fn single_facet_typegen_with_new_name() {
         facet(name = "MyEffect"),
         repr(C)
     )]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum MyEffectFfi {
         Render(RenderOperation),
     }
@@ -393,10 +397,12 @@ fn single_facet_typegen_with_new_name() {
         }
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectOutput {
         Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
     pub struct NativeRequest {
         pub id: u32,
         pub effect: MyEffectFfi,
@@ -704,6 +710,7 @@ fn multiple_with_facet_typegen() {
         facet(name = "Effect"),
         repr(C)
     )]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectFfi {
         Render(RenderOperation),
         Http(HttpRequest),
@@ -721,11 +728,13 @@ fn multiple_with_facet_typegen() {
         }
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectOutput {
         Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
         Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
     pub struct NativeRequest {
         pub id: u32,
         pub effect: EffectFfi,
@@ -999,6 +1008,7 @@ fn facet_typegen_with_namespace_attribute() {
         facet(name = "Effect"),
         repr(C)
     )]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectFfi {
         Render(RenderOperation),
     }
@@ -1014,10 +1024,12 @@ fn facet_typegen_with_namespace_attribute() {
         }
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectOutput {
         Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
     }
     #[cfg(feature = "native_bridge")]
+    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
     pub struct NativeRequest {
         pub id: u32,
         pub effect: EffectFfi,

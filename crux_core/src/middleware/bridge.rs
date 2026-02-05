@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use super::Layer;
 use crate::{
-    bridge::{BridgeError, EffectId, FfiFormat, ResolveRegistry},
     EffectFFI,
+    bridge::{BridgeError, EffectId, FfiFormat, ResolveRegistry},
 };
 
 #[doc(hidden)]

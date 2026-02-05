@@ -91,13 +91,12 @@ use std::{
 use facet::Facet;
 pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
+    Registry,
     generation::{
-        java, kotlin, module, swift,
+        Encoding, SourceInstaller, java, kotlin, module, swift,
         typescript::{self, InstallTarget},
-        Encoding, SourceInstaller,
     },
     reflection::RegistryBuilder,
-    Registry,
 };
 use log::info;
 use serde_json::json;

@@ -1,0 +1,58 @@
+[package]
+name = "shared"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib", "staticlib"]
+
+[[bin]]
+name = "codegen"
+required-features = ["codegen"]
+
+[features]
+default = ["native_bridge"]
+native_bridge = [
+    "dep:uniffi",
+    "dep:rand",
+    "crux_core/native_bridge",
+    "crux_http/native_bridge",
+    "facet_typegen",
+]
+codegen = [
+    "crux_core/cli",
+    "dep:clap",
+    "dep:log",
+    "dep:pretty_env_logger",
+    "native_bridge",
+    "facet_typegen",
+]
+facet_typegen = ["crux_core/facet_typegen"]
+
+# Note: wasm_bindgen and wit_bindgen features removed.
+# uniffi-bindgen-react-native generates TypeScript bindings for BOTH
+# React Native (iOS/Android) and Web (WASM) from the same UniFFI annotations.
+
+[dependencies]
+async-sse = "5.1.0"
+chrono = { version = "0.4.42", features = ["serde"] }
+clap = { version = "4.5.54", optional = true, features = ["derive"] }
+crux_core.workspace = true
+crux_http.workspace = true
+facet = { version = "=0.31", features = ["chrono"] }
+futures = "0.3.31"
+log = { version = "0.4.29", optional = true }
+pretty_env_logger = { version = "0.5.0", optional = true }
+rand = { version = "0.9.2", optional = true, features = ["os_rng"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0.149"
+uniffi = { version = "0.31", optional = true }
+url = "2.5.8"
+
+[dev-dependencies]
+insta = { version = "1.46.0", features = ["yaml"] }

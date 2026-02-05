@@ -393,7 +393,7 @@ where
     /// operation output type.
     pub fn notify_shell<Op>(
         operation: Op,
-    ) -> builder::NotificationBuilder<Effect, Event, impl Future<Output = ()>>
+    ) -> builder::NotificationBuilder<Effect, Event, impl Future<Output = crate::bridge::UnitOutput>>
     where
         Op: Operation,
         Effect: From<Request<Op>>,
