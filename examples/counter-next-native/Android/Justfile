@@ -1,5 +1,5 @@
-# Generate types for Kotlin, uniffi bindgen in Java
-build: typegen
+# Generate UniFFI Kotlin bindings
+build: bindgen
 
 # clean and build
 rebuild: clean build
@@ -13,16 +13,16 @@ clean:
     cargo clean
     rm -rf build generated
 
-# build the shared library so that it can be inspected by uniffi
+# build the shared library
 lib:
-    cargo build --features uniffi
+    cargo build --features native_bridge
 
-# generate types for Kotlin, and uniffi bindgen as Java
-typegen: lib
+# generate UniFFI Kotlin bindings
+bindgen: lib
     RUST_LOG=info cargo run \
         --package shared \
         --bin codegen \
-        --features codegen,facet_typegen \
+        --features codegen \
         -- \
             --language kotlin \
             --output-dir generated

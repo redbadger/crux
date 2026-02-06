@@ -1,5 +1,5 @@
-import ServerSentEvents
-import SwiftUI
+import Foundation
+import Shared
 
 enum SseError: Error {
     case generic(Error)
@@ -24,7 +24,7 @@ func requestSse(_ request: SseRequest) async -> AsyncStream<Result<SseResponse, 
 
                 for try await line in asyncBytes.lines {
                     let line = line + "\n\n"
-                    continuation.yield(.success(.chunk([UInt8](line.utf8))))
+                    continuation.yield(.success(.chunk(Data(line.utf8))))
                 }
                 continuation.yield(.success(.done))
                 continuation.finish()

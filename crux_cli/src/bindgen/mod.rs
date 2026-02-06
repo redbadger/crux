@@ -1,11 +1,7 @@
-use anyhow::{Context as _, Result, anyhow};
+use anyhow::{anyhow, Context as _, Result};
 use camino::Utf8PathBuf;
 use cargo_metadata::{Metadata, MetadataCommand};
-use uniffi_bindgen::{
-    bindings::{KotlinBindingGenerator, SwiftBindingGenerator},
-    cargo_metadata::CrateConfigSupplier,
-    library_mode,
-};
+use uniffi_bindgen::bindings::{generate, GenerateOptions, TargetLanguage};
 
 use crate::args::BindgenArgs;
 
@@ -22,33 +18,25 @@ pub(crate) fn bindgen(args: &BindgenArgs) -> Result<()> {
 
     let library_path = find_library_path(&metadata, crate_name).context("finding library path")?;
 
-    let config_supplier = CrateConfigSupplier::from(metadata);
-
     if let Some(out_dir) = &args.languages.kotlin {
-        library_mode::generate_bindings(
-            &library_path,
-            None,
-            &KotlinBindingGenerator,
-            &config_supplier,
-            None,
-            &Utf8PathBuf::from_path_buf(out_dir.clone())
+        generate(GenerateOptions {
+            languages: vec![TargetLanguage::Kotlin],
+            source: library_path.clone(),
+            out_dir: Utf8PathBuf::from_path_buf(out_dir.clone())
                 .map_err(|p| anyhow!("path {} has non-unicode characters", p.display()))?,
-            true,
-        )
+            ..Default::default()
+        })
         .context("generating Kotlin bindings")?;
     }
 
     if let Some(out_dir) = &args.languages.swift {
-        library_mode::generate_bindings(
-            &library_path,
-            None,
-            &SwiftBindingGenerator,
-            &config_supplier,
-            None,
-            &Utf8PathBuf::from_path_buf(out_dir.clone())
+        generate(GenerateOptions {
+            languages: vec![TargetLanguage::Swift],
+            source: library_path,
+            out_dir: Utf8PathBuf::from_path_buf(out_dir.clone())
                 .map_err(|p| anyhow!("path {} has non-unicode characters", p.display()))?,
-            true,
-        )
+            ..Default::default()
+        })
         .context("generating Swift bindings")?;
     }
 
@@ -69,7 +57,9 @@ fn find_library_path(metadata: &Metadata, crate_name: &String) -> Result<Utf8Pat
         .clone();
     let target_dir = &metadata.target_directory;
     let library_path = &target_dir.join(format!("debug/lib{library_name}"));
-    let library_path = ["rlib", "dylib", "a"]
+    // Prefer shared libraries (dylib/so/dll) over static (rlib/a) because UniFFI
+    // library mode needs cross-crate metadata embedded in the linked shared library.
+    let library_path = ["dylib", "so", "dll", "rlib", "a"]
         .iter()
         .map(|&ext| {
             let mut path = library_path.clone();

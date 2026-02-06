@@ -1,5 +1,5 @@
-import App
-import SwiftUI
+import Foundation
+import Shared
 
 enum HttpError: Error {
     case generic(Error)
@@ -18,8 +18,7 @@ func requestHttp(_ request: HttpRequest) async -> Result<HttpResponse, HttpError
         let (data, response) = try await URLSession.shared.data(for: req)
         if let httpResponse = response as? HTTPURLResponse {
             let status = UInt16(httpResponse.statusCode)
-            let body = [UInt8](data)
-            return .success(HttpResponse(status: status, headers: [], body: body))
+            return .success(HttpResponse(status: status, headers: [], body: data))
         } else {
             return .failure(.message("bad response"))
         }
