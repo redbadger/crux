@@ -2,12 +2,6 @@ name: CounterApp
 packages:
   Shared:
     path: ./generated/Shared
-  App:
-    path: ./generated/app/App
-  ServerSentEvents:
-    path: ./generated/sse/ServerSentEvents
-  Serde:
-    path: ./generated/serde/Serde
 options:
   bundleIdPrefix: com.crux.example.counter
 targets:
@@ -18,9 +12,6 @@ targets:
     sources: [CounterApp]
     dependencies:
       - package: Shared
-      - package: App
-      - package: ServerSentEvents
-      - package: Serde
     info:
       path: CounterApp/Info.plist
       properties:

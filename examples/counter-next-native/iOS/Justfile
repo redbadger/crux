@@ -1,5 +1,5 @@
-# Generate types for Swift, build the shared library as a Swift package
-build: typegen package
+# Build the shared library as a Swift package
+build: package
 
 # clean, rebuild the Xcode project and build
 rebuild: clean build generate-project
@@ -17,18 +17,9 @@ clean:
 generate-project: build
     xcodegen
 
-# generate types for Swift
-typegen:
-    cargo build --package shared --features uniffi
-    RUST_LOG=info cargo run \
-        --package shared \
-        --bin codegen \
-        --features codegen,facet_typegen \
-        -- \
-            --language swift \
-            --output-dir generated
-
-# use `cargo swift` to build the shared library as a Swift package
+# use `cargo swift` to build the shared library as a Swift package,
+# then regenerate bindings with our own UniFFI 0.31 bindgen
+# (cargo-swift 0.9.0 ships UniFFI 0.29 which is incompatible)
 [working-directory('../shared')]
 package:
     cargo swift --version | grep -q '0.9.0'
@@ -36,8 +27,26 @@ package:
         --name Shared \
         --platforms ios \
         --lib-type static \
-        --features uniffi
-    rm -rf generated
+        --features native_bridge
+    rm -rf ../iOS/generated
     mkdir -p ../iOS/generated/Shared
     cp -r Shared/* ../iOS/generated/Shared/
     rm -rf Shared
+    just --justfile ../iOS/Justfile regenerate-bindings
+
+# regenerate Swift bindings + headers using our UniFFI 0.31 bindgen,
+# replacing the ones cargo-swift generated with its bundled 0.29
+[working-directory('../shared')]
+regenerate-bindings:
+    cargo build --features native_bridge
+    cargo run --bin codegen --features codegen -- \
+        --language swift --output-dir ../iOS/generated/_uniffi_out
+    # replace Swift source files
+    cp ../iOS/generated/_uniffi_out/app/*.swift \
+       ../iOS/generated/Shared/Sources/Shared/
+    # replace headers and modulemap in each xcframework architecture
+    for arch_dir in ../iOS/generated/Shared/RustFramework.xcframework/*/headers/RustFramework; do \
+        cp ../iOS/generated/_uniffi_out/app/*.h "$arch_dir/"; \
+        for f in ../iOS/generated/_uniffi_out/app/*FFI.modulemap; do cat "$f"; echo; done > "$arch_dir/module.modulemap"; \
+    done
+    rm -rf ../iOS/generated/_uniffi_out

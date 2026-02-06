@@ -1,6 +1,6 @@
 pub mod app;
 mod capabilities;
-mod ffi;
+pub mod ffi;
 mod middleware;
 
 pub use crux_http as http;

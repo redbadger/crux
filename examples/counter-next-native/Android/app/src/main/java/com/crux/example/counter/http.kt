@@ -1,9 +1,5 @@
 package com.crux.example.counter
 
-import com.crux.example.counter.app.HttpHeader
-import com.crux.example.counter.app.HttpRequest
-import com.crux.example.counter.app.HttpResponse
-import com.novi.serde.Bytes
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.headers
@@ -11,6 +7,9 @@ import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpMethod
 import io.ktor.util.flattenEntries
+import uniffi.crux_http.HttpHeader
+import uniffi.crux_http.HttpRequest
+import uniffi.crux_http.HttpResponse
 
 suspend fun requestHttp(
         client: HttpClient,
@@ -26,7 +25,7 @@ suspend fun requestHttp(
                 }
                 setBody(request.body)
             }
-    val bytes = Bytes.valueOf(response.body())
+    val body: ByteArray = response.body()
     val headers = response.headers.flattenEntries().map { HttpHeader(it.first, it.second) }
-    return HttpResponse(response.status.value.toUShort(), headers, bytes.content())
+    return HttpResponse(response.status.value.toUShort(), headers, body)
 }

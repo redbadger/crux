@@ -22,7 +22,6 @@ native_bridge = [
     "dep:rand",
     "crux_core/native_bridge",
     "crux_http/native_bridge",
-    "facet_typegen",
 ]
 codegen = [
     "crux_core/cli",
@@ -30,9 +29,7 @@ codegen = [
     "dep:log",
     "dep:pretty_env_logger",
     "native_bridge",
-    "facet_typegen",
 ]
-facet_typegen = ["crux_core/facet_typegen"]
 
 # Note: wasm_bindgen and wit_bindgen features removed.
 # uniffi-bindgen-react-native generates TypeScript bindings for BOTH
