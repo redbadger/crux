@@ -1,8 +1,10 @@
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, Weak, atomic::AtomicBool, atomic::Ordering};
 
 use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
 
 use super::Layer;
+
+static BLOCKING_MIDDLEWARE_ERROR: &'static str = "Blocking middleware detected. Middlewares must not block the crux runtime. Make sure the middleware runs in a separate task.";
 
 /// An effect processing middleware.
 ///
@@ -200,9 +202,11 @@ where
         effects: Vec<Next::Effect>,
         return_effects: &Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
     ) -> Vec<Next::Effect> {
-        effects
+        let is_running = Arc::new(AtomicBool::new(true));
+        let res = effects
             .into_iter()
             .filter_map(|effect| {
+                let is_running = Arc::clone(&is_running);
                 // This is where the middleware handler will send the result of its work
                 let resolve_callback = {
                     let return_effects = return_effects.clone();
@@ -221,6 +225,9 @@ where
 
                         if let Ok(immediate_effects) =
                             strong_inner.next.resolve(handle, effect_out_value, {
+                                if is_running.load(Ordering::Acquire) {
+                                    panic!("{}", BLOCKING_MIDDLEWARE_ERROR);
+                                }
                                 let return_effects = return_effects.clone();
                                 let future_inner = inner.clone();
 
@@ -235,6 +242,9 @@ where
                                 }
                             })
                         {
+                            if is_running.load(Ordering::Acquire) {
+                                panic!("{}", BLOCKING_MIDDLEWARE_ERROR);
+                            }
                             Self::process_known_effects_with(
                                 &inner,
                                 immediate_effects,
@@ -257,7 +267,9 @@ where
                     .try_process_effect_with(effect, resolve_callback)
                     .err()
             })
-            .collect()
+            .collect();
+        is_running.store(false, Ordering::Release);
+        res
     }
 
     fn process_known_effects_with(
