@@ -109,7 +109,7 @@ pub trait Layer: Send + Sync + Sized {
     fn handle_effects_using<EM>(self, middleware: EM) -> HandleEffectLayer<Self, EM>
     where
         EM: EffectMiddleware<Self::Effect> + Send + Sync + 'static,
-        Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect>,
+        Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect> + Send,
     {
         HandleEffectLayer::new(self, middleware)
     }
