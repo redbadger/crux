@@ -1,6 +1,7 @@
-use std::sync::{Arc, Weak};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, Weak};
 
-use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
+use crate::{capability::Operation, Request, RequestHandle, Resolvable, ResolveError};
 
 use super::Layer;
 
@@ -40,10 +41,10 @@ where
         &self,
         effect: Effect,
         resolve_callback: impl FnMut(
-            &mut RequestHandle<<Self::Op as Operation>::Output>,
-            <Self::Op as Operation>::Output,
-        ) + Send
-        + 'static,
+                &mut RequestHandle<<Self::Op as Operation>::Output>,
+                <Self::Op as Operation>::Output,
+            ) + Send
+            + 'static,
     ) -> Result<(), Effect>;
 }
 
@@ -74,7 +75,7 @@ where
     // Next layer down, core being at the bottom
     Next: Layer,
     // Effect has to try_into the operation which the middleware handles
-    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect> + Send,
     // The actual middleware effect handling implementation
     EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
 {
@@ -114,7 +115,7 @@ where
 impl<Next, EM> HandleEffectLayer<Next, EM>
 where
     Next: Layer,
-    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect> + Send,
     EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
 {
     /// Typically, you would would use [`Layer::handle_effects_using`] to construct a `HandleEffectLayer` instance
@@ -195,10 +196,22 @@ where
         Self::process_known_effects(&Arc::downgrade(&self.inner), effects, &return_effects_copy)
     }
 
-    fn process_known_effects(
+    /// Process a batch of effects through the middleware. Effects the middleware
+    /// can handle are processed (and their resolve_callback called), the rest are
+    /// returned as "unknown".
+    ///
+    /// The `active` flag and `deferred` queue implement the trampoline: when the
+    /// resolve_callback is called synchronously (flag is true), immediate effects
+    /// from `Core::resolve()` are queued instead of recursed into. When called
+    /// later from a background thread (flag is false), they are processed directly.
+    ///
+    /// See <https://github.com/redbadger/crux/issues/492>
+    fn process_effects_batch(
         inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
         effects: Vec<Next::Effect>,
         return_effects: &Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
+        active: &Arc<AtomicBool>,
+        deferred: &Arc<Mutex<Vec<Next::Effect>>>,
     ) -> Vec<Next::Effect> {
         effects
             .into_iter()
@@ -207,6 +220,8 @@ where
                 let resolve_callback = {
                     let return_effects = return_effects.clone();
                     let inner = inner.clone();
+                    let active = active.clone();
+                    let deferred = deferred.clone();
 
                     // Ideally, we'd want the `handle` to be an `impl Resolvable`, alas,
                     // generic closures are not a thing.
@@ -235,11 +250,18 @@ where
                                 }
                             })
                         {
-                            Self::process_known_effects_with(
-                                &inner,
-                                immediate_effects,
-                                &return_effects,
-                            );
+                            if active.load(Ordering::Acquire) {
+                                // Synchronous call from within try_process_effect_with:
+                                // defer effects to avoid unbounded stack growth.
+                                deferred.lock().unwrap().extend(immediate_effects);
+                            } else {
+                                // Called later from a background thread: process directly.
+                                Self::process_known_effects_with(
+                                    &inner,
+                                    immediate_effects,
+                                    &return_effects,
+                                );
+                            }
                         }
                     } // TODO: handle/propagate resolve error?
                 };
@@ -258,6 +280,50 @@ where
                     .err()
             })
             .collect()
+    }
+
+    fn process_known_effects(
+        inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
+        effects: Vec<Next::Effect>,
+        return_effects: &Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
+    ) -> Vec<Next::Effect> {
+        // Trampoline state: when resolve_callback is invoked synchronously
+        // (inside try_process_effect_with), immediate effects are queued here
+        // instead of recursing through process_known_effects_with.
+        let active = Arc::new(AtomicBool::new(true));
+        let deferred: Arc<Mutex<Vec<Next::Effect>>> = Arc::new(Mutex::new(Vec::new()));
+
+        let unknown =
+            Self::process_effects_batch(inner, effects, return_effects, &active, &deferred);
+
+        // Drain deferred effects iteratively (the trampoline loop).
+        // Each batch may cause more synchronous resolves which add to `deferred`.
+        loop {
+            let batch: Vec<_> = deferred.lock().unwrap().drain(..).collect();
+            if batch.is_empty() {
+                break;
+            }
+
+            let batch_unknown =
+                Self::process_effects_batch(inner, batch, return_effects, &active, &deferred);
+
+            if !batch_unknown.is_empty() {
+                return_effects(batch_unknown);
+            }
+        }
+
+        // Switch off deferred mode. Any future calls to resolve_callback
+        // (from background threads) will process effects directly.
+        active.store(false, Ordering::Release);
+
+        // Handle the race: a background thread might have pushed to `deferred`
+        // between our last drain check and setting `active=false`.
+        let leftover: Vec<_> = deferred.lock().unwrap().drain(..).collect();
+        if !leftover.is_empty() {
+            Self::process_known_effects_with(inner, leftover, return_effects);
+        }
+
+        unknown
     }
 
     fn process_known_effects_with(

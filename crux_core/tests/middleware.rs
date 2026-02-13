@@ -640,4 +640,113 @@ mod tests {
 
         Ok(())
     }
+
+    /// Regression test for https://github.com/redbadger/crux/issues/492
+    ///
+    /// When middleware resolves effects synchronously (on the same thread, inside
+    /// `try_process_effect_with`), the resolve chain used to recurse through
+    /// Core::process() → middleware → resolve_callback → Core::process() → ...
+    /// causing a stack overflow for commands with many sequential requests.
+    #[test]
+    fn synchronous_middleware_doesnt_blow_the_stack() {
+        use crux_core::{
+            capability::Operation, macros::effect, middleware::EffectMiddleware, Command, Core,
+            Request, RequestHandle,
+        };
+        use serde::{Deserialize, Serialize};
+
+        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        struct PingOperation;
+
+        #[derive(Debug, PartialEq, Eq, Deserialize)]
+        struct PingOutput;
+
+        impl Operation for PingOperation {
+            type Output = PingOutput;
+        }
+
+        #[effect]
+        #[derive(Debug)]
+        enum PingEffect {
+            Ping(PingOperation),
+            Render(crux_core::render::RenderOperation),
+        }
+
+        #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+        enum PingEvent {
+            Go,
+        }
+
+        #[derive(Default)]
+        struct PingApp;
+
+        impl crux_core::App for PingApp {
+            type Event = PingEvent;
+            type Model = ();
+            type ViewModel = ();
+            type Effect = PingEffect;
+
+            fn update(
+                &self,
+                event: Self::Event,
+                _model: &mut Self::Model,
+            ) -> Command<Self::Effect, Self::Event> {
+                match event {
+                    PingEvent::Go => Command::new(|ctx| async move {
+                        // Many sequential requests — previously caused stack overflow
+                        for _ in 0..10_000 {
+                            ctx.request_from_shell(PingOperation).await;
+                        }
+                    }),
+                }
+            }
+
+            fn view(&self, _model: &Self::Model) -> Self::ViewModel {}
+        }
+
+        /// Middleware that resolves PingOperation **synchronously** on the same thread.
+        struct SyncPingMiddleware;
+
+        impl<Eff> EffectMiddleware<Eff> for SyncPingMiddleware
+        where
+            Eff: TryInto<Request<PingOperation>, Error = Eff>,
+        {
+            type Op = PingOperation;
+
+            fn try_process_effect_with(
+                &self,
+                effect: Eff,
+                mut resolve_callback: impl FnMut(&mut RequestHandle<PingOutput>, PingOutput)
+                    + Send
+                    + 'static,
+            ) -> Result<(), Eff> {
+                let request = effect.try_into()?;
+                let (_operation, mut handle) = request.split();
+
+                // Resolve immediately on the same thread — this is what triggers
+                // the re-entrant call to Core::process()
+                resolve_callback(&mut handle, PingOutput);
+
+                Ok(())
+            }
+        }
+
+        let (effects_tx, _effects_rx) = crossbeam_channel::unbounded();
+        let effect_callback =
+            move |effects: Vec<PingEffect>| effects_tx.send(effects).unwrap();
+
+        let core = Core::<PingApp>::new()
+            .handle_effects_using(SyncPingMiddleware);
+
+        // This previously caused: "thread has overflowed its stack"
+        let effects = core.update(PingEvent::Go, effect_callback);
+
+        // All Ping effects were handled by middleware, so only unhandled
+        // effects (if any) come back here. The important thing is we
+        // didn't crash.
+        assert!(
+            effects.is_empty(),
+            "All Ping effects should be handled by middleware"
+        );
+    }
 }
