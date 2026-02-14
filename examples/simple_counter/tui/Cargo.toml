@@ -1,0 +1,14 @@
+[package]
+name = "tui"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+shared = { path = "../shared" }
+ratatui = "0.30.0"
+crossterm = "0.29.0"
