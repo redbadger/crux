@@ -1,9 +1,16 @@
 # Managed Effects
 
-The approach to side-effects Crux uses is sometimes called **managed**
+It's time to get the Weather app to actually fetch some weather information and let us store some favourites. And for that, we will need to interact with the outside world - we will need to perform side-effects.
+
+As we mentioned before, the approach to side-effects Crux uses is sometimes called **managed**
 side-effects. Your app's core is not allowed to perform side-effects directly.
 Instead, whenever it wants to interact with the outside world, it needs to
 request the interaction from the shell.
+
+It's not quite enough to do one side-effect at a time, however. In our weather app example we may want to
+load the list of favourite locations in parallel with checking the current location. We may also want
+to run a sequence, such as checking whether location services are enabled, then fetching a location if
+they are.
 
 The abstraction Crux uses to capture the potentially complex orchestration of effects
 in response to an event is a type called `Command`.
@@ -15,17 +22,6 @@ with Events.
 
 In this chapter we will explore how commands are created and used, before the next chapter, where we
 dive into capabilities, which provide a convenient way to create common commands.
-
-```admonish warning title="Capability API Migration"
-The side-effect API is undergoing a migration. The migration is happening in stages:
-
-1. ~Enable the Command API~ ✅ done
-2. ~Add Command based APIs to published capabilities~ ✅ done
-3. ~Allow apps to avoid `Capabilities` type~ ✅ done
-3. Later: Deprecate and remove original capability support
-
-If you're looking for migration instructions, you can find them a the [bottom of this page](#migrating-from-previous-versions-of-crux).
-```
 
 ## Note on intent and execution
 
@@ -51,7 +47,7 @@ but would potentially share the key format and eviction strategy across them.
 The hard part of designing effects is working out exactly where to draw the line between what is the intent and what is the implementation detail, what's common across platforms and what may be different on each, and implementing the former in Rust as a set of types, and the latter on the native side in the Shell, however is appropriate.
 
 Because Effects define the "language" used to express intent, your Crux application code can
-be portable onto any platform capable of executing its effect in some way.
+be portable onto any platform capable of executing the intent in some way.
 Clearly, the number of different effects we can think of, and platforms we can
 target is enormous, and Crux doesn't want to force you to implement the entire
 portfolio of them on every platform.
@@ -60,11 +56,13 @@ Instead, your app is expected to define an `Effect` type which covers the kinds 
 effects which your app needs in order to work, and every time it responds to an Event,
 it is expected to return a `Command`.
 
-```admonish question title="Why not return an Effect?"
-Good question - it seems logical at first to return a single Effect, but in practice, we often want to do a lot more than a single effect, it can easily be a complicated orchestration of several effects in parallel, some of which race each other or follow each other in a chain.
+Here is the Weather apps `Effect` type:
 
-This is the reason we introduce one more layer in between: commands
+```rust
+{{#include ../../../examples/weather/shared/src/app.rs:effect}}
 ```
+
+This tells us the app does four kinds of side effects: Rendering the UI, storing something in Key-Value store, using a HTTP client and using Location services. That's all it does, that's also call it can possibly do, until we expand this type further.
 
 ## What is a Command
 
@@ -79,25 +77,34 @@ Crux expects a Command to be returned by the `update` function. A basic Command 
 
 A basic test using the Command API may look like this:
 
-```rust,ignore
-{{#include ../../../crux_core/src/command/tests/basic_effects.rs:basic_test}}
+```rust
+{{#include ../../../examples/weather/shared/src/weather/events.rs:test}}
 ```
+
+You can see it's a test of a whole interaction. Between steps 1 and 2 we chose to skip the effect handling and went straight
+to the event, but in step 4, we expect a HTTP request to be made, we inspect it, then we _resolve_ it in step 5 with a response.
+
+Here's the corresponding code it's testing:
+
+```rust
+{{#include ../../../examples/weather/shared/src/weather/events.rs:code}}
+```
+
+Hopefully this illustrates that the command API lets you test entire transactions involving effects, without ever executing any.
 
 ## Effects and Events
 
-Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
+Lets look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
 
-Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`. `Effect` is typically an enum defined by your app, which has a variant for each type of effect your app emits. This allows multiple Operation types to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
+Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
-The `Effect` type is typically defined with the help of the `#[effect]` macro, like this:
+The `Effect` type is typically defined with the help of the `#[effect]` macro. Here is the Weather app's effect again:
 
-```rust,ignore
-{{#include ../../../examples/cat_facts/shared/src/app.rs:effect}}
+```rust
+{{#include ../../../examples/weather/shared/src/app.rs:effect}}
 ```
 
-The above effect type supports five different kinds of side effects. The five operations involved are actually defined by five different Capabilities, so lets talk about those.
-
-This type can now be assigned to the `Effect` associated type in your `App` implementation.
+The four operations it carries are actually defined by four different _Capabilities_, so lets talk about those.
 
 ## Capabilities
 
@@ -123,31 +130,30 @@ Http::get(API_URL)
 
 This code is using a HTTP capability and its API up to the `.build()` call which returns a CommandBuilder. The `.then_send` part is building the command by binding it to an Event to send the output of the request back to the app.
 
-Another example might be:
+Here's another example from the Weather app:
 
-```rust,ignore
-Time::now().then_send(Event::CurrentTime)
+```rust
+{{#include ../../../examples/weather/shared/src/favorites/events.rs:key_value}}
 ```
 
-the `now()` call again returns a command builder, which is used to create a command with `.then_send()`.
+the `get()` call again returns a command builder, which is used to create a command with `.then_send()`.
 
 One special, but common case of creating a command is creating a Command which does nothing, because there are no more side-effects:
 
-```rust.ignore
+```rust
 Command::done()
 ```
 
 Soon enough, your app will get a little more complicated, you will need to run multiple commands concurrently, but your `update` function
 only returns a single value. You can combine existing commands into one using either the `all` function, or the `.and` method.
 
-For example (from the Cat facts example):
+We've seen an example of this already, but here it is again:
 
-```rust,ignore
-{{#include ../../../examples/cat_facts/shared/src/app.rs:command_all}}
-
+```rust
+{{#include ../../../examples/weather/shared/src/app.rs:command_all}}
 ```
 
-This uses two different capabilities to create three commands, then runs all of them concurrently. The result is another `Command`, which can be returned from `update`.
+The two `update` calls involved each return a command, and we want to run them concurrently. The result is another `Command`, which can be returned from `update`.
 
 ```admonish note
 Commands (or more precisely command builders) can be created without capabilities, and indeed capabilities do this. You shouldn't really need this in your app code, so we will cover that side of Commands in the next chapter, when we look at building Capabilities.
@@ -214,6 +220,11 @@ There is more to the `async` effect API than we can or should cover here. Most o
 
 ## Migrating from previous versions of Crux
 
+```admonish info title="You can probably skip this"
+If you're new to Crux, it's unlikely you need to read this section. The original API for side-effects
+was very different from Commands and this section is kept to help migrate from that API
+```
+
 The migration from the previous API is in two steps - first, make your app compatible with newer versions of Crux, then, when you're done with migrating your effect handling, move away from using `Capabilities`.
 
 The change to `Command` is a breaking one for all Crux apps, but the fix is
@@ -252,24 +263,3 @@ line should just work.
 
 To begin with, you can simply return a `Command::done()` from the `update`
 function. `Command::done()` is a no-op effect.
-
-## Capabilities
-
-In the last chapter, we spoke about Effects. In this one we'll look at the APIs
-your app will actually use to request them – the capabilities.
-
-Capabilities are reusable, platform agnostic APIs for a particular type of
-effect. They have two key jobs:
-
-1. Provide a nice ergonomic API for apps to use to create `Command`s
-2. Manage the communication between the app and the Shell by defining an `Operation` type
-
-From the perspective of the app, you can think of capabilities as an equivalent
-to SDKs. And a lot of them will provide an interface to the actual platform
-specific SDKs.
-
-There is not a lot more to be said about using capabilities, your best source is probably
-the [documentation of the provided Time capability](https://docs.rs/crux_time/latest/crux_time/command/struct.Time.html), you'll find
-that the basic capabilities just define some types and a few functions.
-
-If you're interested in building your own capability, read the [next chapter](./capabilities.md).
