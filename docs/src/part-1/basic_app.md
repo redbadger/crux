@@ -10,7 +10,7 @@ counter app. A simple counter we can increment, decrement and reset.
 You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/app.rs)
 ```
 
-In the last chapter, we start with the main type
+In the last chapter, we started with the main type
 
 ```rust,noplayground
 #[derive(Default)]
@@ -19,7 +19,7 @@ pub struct Counter;
 
 We need to implement `Default` so that Crux can construct the app for us.
 
-To turn it into an app, we need to implement the `App` trait from the
+To turn it into a Crux app, we need to implement the `App` trait from the
 `crux_core` crate.
 
 ```rust,noplayground
@@ -54,7 +54,7 @@ pub enum Event {
 
 Those are the three things we can do with the counter. None of them need any additional
 information, so this simple `enum` will do. It is serializable, because it will
-eventually be crossing the FFI boundary. We will get to that soon
+eventually be crossing the FFI boundary. We will get to that soon.
 
 ## Model
 
@@ -67,13 +67,18 @@ pub struct Model {
 }
 ```
 
-It is a simple counter after all. Model stays in the core, so it doesn't need to serialize
+It is a simple counter after all. Model stays in the core, so it doesn't need to serialize. It
+does need `Default` however, because Crux will hold it for us and needs to be able to create it.
+
+A custom implementation of `Default` would be a good place for creating an initial state for your
+app if it's not the same as what derived `Default` does.
 
 ## ViewModel
 
-ViewModel represents the information on screen at any one time. This is our indirection between
-the internal state and the UI on screen. In the case of the counter, the difference is pretty
-academic, but for the sake of the example, let's add some formating in the mix and make it a string.
+ViewModel represents the user interface at any one point in time. This is our indirection between
+the internal state and the UI on screen. In the case of the counter, this is pretty
+academic, there is no practical reason for making them different, but for the sake of the example,
+let's add some formating in the mix and make it a string.
 
 ```rust,noplayground
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -81,6 +86,9 @@ pub struct ViewModel {
     pub count: String,
 }
 ```
+
+The difference between `Model` and `ViewModel` will get a lot more pronounced once we introduce
+some navigation into the mix in Part II.
 
 ## Effect
 
@@ -124,11 +132,11 @@ the full extent of side effects just yet. If you want to know more now, you can 
 to the chapter on [Managed Effects](../part-2/effects.md), but it's probably a bit much
 at this point. Up to you.
 
-To _ask_ the Shell for side effects, it will need to know what side effects it
-needs to handle, so we will need to declare them (as an enum). _Effects_ are
-simply messages describing what should happen. In our case the only option
-is asking for a UI update (or, more precisely, telling the shell a new
-view model is available).
+All you need to know for now is that for us to _ask_ the Shell for side effects,
+it will need to know what side effects it needs to handle, so we will need to
+list the possible kinds of effects (as an enum). _Effects_ are simply messages
+describing what should happen. In our case the only option is asking for a UI update
+(or, more precisely, telling the shell a new view model is available).
 
 That's enough about effects for now, we will spend a lot more time with them later on.
 

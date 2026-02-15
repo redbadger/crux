@@ -2,13 +2,13 @@
 
 So far, we've built a basic app in relatively basic Rust. If we now
 want to expose it to a Shell written in a different language, we'll
-have to set up the necessary plumbing.
+have to set up the necessary plumbing, starting with the foreign function interface.
 
 ## The core FFI bindings
 
 From the work so far, you may have noticed the app has a pretty limited API,
 basically the `update` and `view` methods. There's one more for resolving
-effects, but that really is it. We need to make those three methods available
+effects (called `resolve`), but that really is it. We need to make those three methods available
 to the Shell, but once that's done, we don't have to touch it again.
 
 Let's briefly talk about what we want from this interface. Ideally, in our language of choice we would:
@@ -42,41 +42,7 @@ First, lets update our `Cargo.toml`:
 
 ```toml,ignore
 # shared/Cargo.toml
-[package]
-name = "shared"
-version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-
-[lib]
-crate-type = ["lib", "staticlib", "cdylib"]
-name = "shared"
-
-[[bin]]
-name = "codegen"
-required-features = ["codegen"]
-
-[features]
-uniffi = ["dep:uniffi"]
-wasm_bindgen = ["dep:wasm-bindgen", "dep:getrandom"]
-codegen = [
-    "crux_core/cli",
-    "dep:clap",
-    "dep:log",
-    "dep:pretty_env_logger",
-    "uniffi",
-]
-facet_typegen = ["crux_core/facet_typegen"]
-
-[dependencies]
-clap = { version = "4.5.53", optional = true, features = ["derive"] }
-crux_core.workspace = true
-facet = { version = "=0.30", features = ["chrono", "time"] }
-log = { version = "0.4.28", optional = true }
-pretty_env_logger = { version = "0.5.0", optional = true }
-serde = { workspace = true, features = ["derive"] }
-uniffi = { version = "=0.29.4", optional = true }
-wasm-bindgen = { version = "0.2.105", optional = true }
+{{#include ../../../examples/simple_counter/shared/Cargo.toml}}
 ```
 
 A lot has changed! The key things we added are:
@@ -93,136 +59,67 @@ And since we've declared the `codegen` target, we need to add the code for it.
 ```
 
 This is essentially boilerplate for a CLI we can use to run the binding generation and type generation.
-But it's also a place where you can do customize how they work if you have some more advanced needs.
+But it's also a place where you can customize how they work if you have some more advanced needs.
+
 It uses the `facet` based type generation from `crux_core` to scan the `App` for types which will cross
 the FFI boundary, collect them and then, depending on what language should be generated builds the code
 for it and places it into a specified `output_dir` directory.
 
 We will call this CLI from the shell projects shortly.
 
+### Codegen, typegen, bindgen, which is it?
+
+You'll here these terms thrown around here and there in the docs, so it's worth clarifying what we mean
+
+**bindgen** – "bindings generation" – provides APIs in the foreign language to call the core's Rust FFI APIs.
+For most platforms we use UniFFI, except for WebAssembly, where we use `wasm_bindgen`
+
+**typegen** – "type generation" – The core's FFI interface operates on bytes, but both Rust and the languages we're targeting are generally strongly typed. To facilitate the serialisation / deserialisation, we generate type definition reflecting the Rust types from the core in the foreign language (Swift, Kotlin, TypeScript, ...), which all serialise consistently.
+
+**codegen** – you guessed it, "code generation" – is the two things above combined.
+
 ## Bindings code
 
 No we need to add the Rust side of the bindings into our code. Update your `lib.rs` to look like this:
 
 ```rust,noplayground
-mod app;
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
-mod ffi;
-
-pub use app::Counter;
-
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
-pub use ffi::CoreFFI;
-
-#[cfg(feature = "uniffi")]
-const _: () = assert!(
-    uniffi::check_compatible_version("0.29.4"),
-    "please use uniffi v0.29.4"
-);
-#[cfg(feature = "uniffi")]
-uniffi::setup_scaffolding!();
+// shared/src/lib.rs
+{{#include ../../../examples/simple_counter/shared/src/lib.rs}}
 ```
 
-This code uses our feature flags to pick which kind of FFI to use.
+This code uses our feature flags to conditionally initialise the UniFFI bindings and check the version
+in use.
 
-Let's look at the FFI module we also introduced there:
+More importantly, it introduced a new `ffi.rs` module. Let's look at it closer:
 
 ```rust
 // shared/src/ffi.rs
-use crux_core::{
-    Core,
-    bridge::{Bridge, EffectId},
-};
-
-use crate::app::Counter;
-
-/// The main interface used by the shell
-#[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
-#[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
-pub struct CoreFFI {
-    core: Bridge<Counter>,
-}
-
-impl Default for CoreFFI {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg_attr(feature = "uniffi", uniffi::export)]
-#[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
-impl CoreFFI {
-    #[cfg_attr(feature = "uniffi", uniffi::constructor)]
-    #[cfg_attr(
-        feature = "wasm_bindgen",
-        wasm_bindgen::prelude::wasm_bindgen(constructor)
-    )]
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            core: Bridge::new(Core::new()),
-        }
-    }
-
-    /// Send an event to the app and return the effects.
-    /// # Panics
-    /// If the event cannot be deserialized.
-    /// In production you should handle the error properly.
-    #[must_use]
-    pub fn update(&self, data: &[u8]) -> Vec<u8> {
-        let mut effects = Vec::new();
-        match self.core.update(data, &mut effects) {
-            Ok(()) => effects,
-            Err(e) => panic!("{e}"),
-        }
-    }
-
-    /// Resolve an effect and return the effects.
-    /// # Panics
-    /// If the `data` cannot be deserialized into an effect or the `effect_id` is invalid.
-    /// In production you should handle the error properly.
-    #[must_use]
-    pub fn resolve(&self, id: u32, data: &[u8]) -> Vec<u8> {
-        let mut effects = Vec::new();
-        match self.core.resolve(EffectId(id), data, &mut effects) {
-            Ok(()) => effects,
-            Err(e) => panic!("{e}"),
-        }
-    }
-
-    /// Get the current `ViewModel`.
-    /// # Panics
-    /// If the view cannot be serialized.
-    /// In production you should handle the error properly.
-    #[must_use]
-    pub fn view(&self) -> Vec<u8> {
-        let mut view_model = Vec::new();
-        match self.core.view(&mut view_model) {
-            Ok(()) => view_model,
-            Err(e) => panic!("{e}"),
-        }
-    }
-}
+{{#include ../../../examples/simple_counter/shared/src/ffi.rs}}
 ```
 
 Broad strokes: we define a type for core with FFI, which holds a `Bridge` wrapping our `Counter`, and
-provide implementations of the key methods taking and returning byte buffers. The translation between
-rust types and the byte buffers is the job of the bridge (it also holds the effect requests inside the
-core under an id, which can be sent out to the Shell and used to resolve the effect, but more on that later).
+provide implementations of the three API methods taking and returning byte buffers.
+
+The translation between rust types and the byte buffers is the job of the bridge (it also holds the
+effect requests inside the core under an id, which can be sent out to the Shell and used to resolve the
+effect, but more on that later).
 
 Notice the Shell is in charge of creating the instance of this type, so in theory your Shell can have
 several instances of the app if it wants to.
 
 There are many attribute macros annotating the FFI type for `uniffi` and `wasm_bindgen`, which generate
-the actual code making them available as FFIs. We recommend the respective documentation if you're interested  
-in the detail of how this works. The notable part is that both libraries have a level of support for
+the actual code making them available as FFIs. We recommend the respective documentation if you're
+interested in the detail of how this works. The notable part is that both libraries have a level of support for
 various basic and structured data types which we don't use, and instead we serialize the data with Serde,
 and generate types with `facet_generate` to make the support consistent.
+
+It's not essential for you to understand the detail of the above code now. You won't need to change it, unless you're
+doing something fairly advanced, by which time you'll understand it.
 
 ## Platform native part
 
 Okay, with that plumbing, the Core part of adding a shell is complete. It's not a one liner, but you will only
-set this up once, and most likely won't touch it again, but having the ability to should you need to is important.
+set this up once, and most likely won't touch it again, but having the ability, should you need to, is important.
 
 Now we can proceed to the actual shell for your platform of choice:
 
