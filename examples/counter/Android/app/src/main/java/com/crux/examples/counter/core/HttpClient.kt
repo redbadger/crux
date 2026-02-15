@@ -1,10 +1,10 @@
-package com.crux.example.weather.core
+package com.crux.examples.counter.core
 
-import com.crux.example.weather.HttpError
-import com.crux.example.weather.HttpHeader
-import com.crux.example.weather.HttpRequest
-import com.crux.example.weather.HttpResponse
-import com.crux.example.weather.HttpResult
+import com.crux.examples.counter.HttpError
+import com.crux.examples.counter.HttpHeader
+import com.crux.examples.counter.HttpRequest
+import com.crux.examples.counter.HttpResponse
+import com.crux.examples.counter.HttpResult
 import com.novi.serde.Bytes
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp

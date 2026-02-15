@@ -12,8 +12,8 @@ rust-version.workspace = true
 anyhow.workspace = true
 gloo-console = "0.3.0"
 gloo-net = { version = "0.6.0", features = ["http"] }
-js-sys = "0.3.83"
+js-sys = "0.3.85"
 shared = { path = "../shared" }
-web-sys = { version = "0.3.83", features = ["Navigator"] }
+web-sys = { version = "0.3.85", features = ["Navigator"] }
 woothee = "0.13.0"
 yew = { version = "0.22.0", features = ["csr"] }

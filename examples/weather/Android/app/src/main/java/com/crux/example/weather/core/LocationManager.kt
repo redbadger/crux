@@ -69,8 +69,9 @@ class LocationManager(
             .addOnSuccessListener { loc ->
                 if (loc == null) {
                     resume(null)
+                } else {
+                    resume(Location(loc.latitude, loc.longitude))
                 }
-                resume(Location(loc.latitude, loc.longitude))
             }
             .addOnFailureListener {
                 resume(null)

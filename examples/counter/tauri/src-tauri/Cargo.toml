@@ -13,14 +13,14 @@ name = "tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.3", features = [] }
+tauri-build = { version = "2.5.4", features = [] }
 
 [dependencies]
 anyhow.workspace = true
 futures = "0.3.31"
 reqwest = { version = "0.13.1", features = ["stream"] }
 shared = { path = "../../shared" }
-tauri = { version = "2.9.5", features = [] }
+tauri = { version = "2.10.0", features = [] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

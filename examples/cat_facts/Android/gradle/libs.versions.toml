@@ -1,19 +1,20 @@
 [versions]
-agp = "8.13.1"
-kotlin = "2.2.21"
+agp = "8.13.2"
+kotlin = "2.3.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.9.4"
-activityCompose = "1.11.0"
-composeBom = "2025.11.00"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.12.3"
+composeBom = "2026.01.01"
 
 # added
 jna = "5.18.1"
-lifecycle = "2.9.4"
+lifecycle = "2.10.0"
 rustAndroid = "0.9.6"
-ktorClient = "3.3.2"
+koin-bom = "4.1.1"
+ktor = "3.4.0"
 appcompat = "1.7.1"
 material = "1.13.0"
 materialIconsExtended = "1.7.8"
@@ -38,7 +39,16 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 # added
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
-ktor-client = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktorClient" }
+
+koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin-bom" }
+koin-core = { module = "io.insert-koin:koin-core" }
+koin-android = { module = "io.insert-koin:koin-android" }
+koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose" }
+
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
+
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }

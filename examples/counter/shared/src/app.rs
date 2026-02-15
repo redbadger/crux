@@ -63,13 +63,13 @@ pub enum Effect {
 pub struct Counter;
 
 impl App for Counter {
-    type Model = Model;
     type Event = Event;
+    type Model = Model;
     type ViewModel = ViewModel;
     type Effect = Effect;
 
-    fn update(&self, msg: Event, model: &mut Model) -> Command<Effect, Event> {
-        match msg {
+    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
+        match event {
             Event::Get => Http::get(API_URL)
                 .expect_json()
                 .build()
@@ -85,6 +85,7 @@ impl App for Counter {
                 model.count = count;
                 render()
             }
+            // ...
             Event::Increment => {
                 // optimistic update
                 model.count = Count {
@@ -140,7 +141,7 @@ impl App for Counter {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use crux_core::{App as _, assert_effect};
+    use crux_core::App as _;
     use crux_http::{
         protocol::{HttpRequest, HttpResponse, HttpResult},
         testing::ResponseBuilder,
@@ -148,7 +149,7 @@ mod tests {
 
     use super::{Counter, Event, Model};
     use crate::{
-        Count, Effect,
+        Count,
         sse::{SseRequest, SseResponse},
     };
 
@@ -164,7 +165,7 @@ mod tests {
         let mut cmd = app.update(Event::Get, &mut model);
 
         // the app should emit an HTTP request to fetch the counter
-        let (operation, mut request) = cmd.effects().next().unwrap().expect_http().split();
+        let (operation, mut request) = cmd.expect_one_effect().expect_http().split();
 
         // and the request should be a GET to the correct URL
         assert_eq!(
@@ -182,7 +183,7 @@ mod tests {
             .unwrap();
 
         // the app should emit a `Set` event with the HTTP response
-        let actual = cmd.events().next().unwrap();
+        let actual = cmd.expect_one_event();
         let expected = Event::Set(Ok(ResponseBuilder::ok()
             .body(Count {
                 value: 1,
@@ -199,7 +200,7 @@ mod tests {
         assert_eq!(view.text, "0 (pending)");
 
         // this should generate an `Update` event
-        let event = cmd.events().next().unwrap();
+        let event = cmd.expect_one_event();
         assert_eq!(
             event,
             Event::Update(Count {
@@ -221,7 +222,7 @@ mod tests {
         );
 
         // the app should ask the shell to render
-        assert_effect!(cmd, Effect::Render(_));
+        cmd.expect_one_effect().expect_render();
 
         // the view should be updated
         let view = app.view(&model);
@@ -247,10 +248,10 @@ mod tests {
         let mut cmd = app.update(Event::Increment, &mut model);
 
         // the app should ask the shell to render the optimistic update
-        assert_effect!(cmd, Effect::Render(_));
+        cmd.expect_effect().expect_render();
 
         // and send an HTTP post
-        let mut request = cmd.effects().next().unwrap().expect_http();
+        let mut request = cmd.expect_one_effect().expect_http();
         assert_eq!(
             &request.operation,
             &HttpRequest::post("https://crux-counter.fly.dev/inc").build()
@@ -277,14 +278,14 @@ mod tests {
             .unwrap();
 
         // this should generate a `Set` event
-        let event = cmd.events().next().unwrap();
+        let event = cmd.expect_one_event();
         assert!(matches!(event, Event::Set(_)));
 
         // send the `Set` event back to the app
         let mut cmd = app.update(event, &mut model);
 
         // this should generate an `Update` event
-        let event = cmd.events().next().unwrap();
+        let event = cmd.expect_one_event();
         assert_eq!(
             event,
             Event::Update(Count {
@@ -297,7 +298,7 @@ mod tests {
         let mut cmd = app.update(event, &mut model);
 
         // the app should ask the shell to render
-        assert_effect!(cmd, Effect::Render(_));
+        cmd.expect_one_effect().expect_render();
 
         // the model should be updated
         insta::assert_yaml_snapshot!(model, @r#"
@@ -324,10 +325,10 @@ mod tests {
         let mut update = app.update(Event::Decrement, &mut model);
 
         // the app should ask the shell to render the optimistic update
-        assert_effect!(update, Effect::Render(_));
+        update.expect_effect().expect_render();
 
         // and send an HTTP post
-        let mut request = update.effects().next().unwrap().expect_http();
+        let mut request = update.expect_one_effect().expect_http();
         assert_eq!(
             &request.operation,
             &HttpRequest::post("https://crux-counter.fly.dev/dec").build()
@@ -354,14 +355,14 @@ mod tests {
             .unwrap();
 
         // this should generate a `Set` event
-        let event = update.events().next().unwrap();
+        let event = update.expect_one_event();
         assert!(matches!(event, Event::Set(_)));
 
         // send the `Set` event back to the app
         let mut update = app.update(event, &mut model);
 
         // this should generate an `Update` event
-        let event = update.events().next().unwrap();
+        let event = update.expect_one_event();
         assert_eq!(
             event,
             Event::Update(Count {
@@ -374,7 +375,7 @@ mod tests {
         let mut update = app.update(event, &mut model);
 
         // the app should ask the shell to render
-        assert_effect!(update, Effect::Render(_));
+        update.expect_one_effect().expect_render();
 
         // the model should be updated
         insta::assert_yaml_snapshot!(model, @r#"
@@ -393,7 +394,7 @@ mod tests {
         let mut cmd = app.update(Event::StartWatch, &mut model);
 
         // the app should request a Server-Sent Events stream
-        let mut request = cmd.effects().next().unwrap().expect_server_sent_events();
+        let mut request = cmd.expect_one_effect().expect_server_sent_events();
         assert_eq!(
             request.operation,
             SseRequest {
@@ -412,7 +413,7 @@ mod tests {
             .unwrap();
 
         // the app should emit an `Update` event with the new `Count`
-        let event = cmd.events().next().unwrap();
+        let event = cmd.expect_one_event();
         assert_eq!(
             event,
             Event::Update(Count {
@@ -432,7 +433,7 @@ mod tests {
             .unwrap();
 
         // the app should emit another `Update` event with the new `Count`
-        let event = cmd.events().next().unwrap();
+        let event = cmd.expect_one_event();
         assert_eq!(
             event,
             Event::Update(Count {

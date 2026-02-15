@@ -29,20 +29,20 @@ codegen = [
 facet_typegen = ["crux_core/facet_typegen"]
 
 [dependencies]
-clap = { version = "4.5.54", optional = true, features = ["derive"] }
+clap = { version = "4.5.56", optional = true, features = ["derive"] }
 crux_core.workspace = true
 crux_http.workspace = true
 crux_kv.workspace = true
 derive_builder = "0.20.2"
 facet = { version = "=0.31", features = ["chrono"] }
-getrandom = { version = "0.3.4", optional = true, features = ["wasm_js"] }
+getrandom = { version = "0.3", optional = true, features = ["wasm_js"] }
 log = { version = "0.4.29", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0"
 uniffi = { version = "=0.29.4", optional = true }
-wasm-bindgen = { version = "0.2.106", optional = true }
+wasm-bindgen = { version = "0.2.108", optional = true }
 
 [dev-dependencies]
-insta = { version = "1.46.0", features = ["yaml"] }
+insta = { version = "1.46.3", features = ["yaml"] }
 serde_json = "1.0"

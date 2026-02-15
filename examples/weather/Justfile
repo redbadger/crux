@@ -1,8 +1,10 @@
 build:
     just iOS/build
+    just Android/build
 
 clean:
     just iOS/clean
+    just Android/clean
 
 test:
     cargo nextest run

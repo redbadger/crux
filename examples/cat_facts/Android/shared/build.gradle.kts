@@ -26,7 +26,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -37,9 +37,7 @@ android {
     sourceSets {
         getByName("main") {
             // types are now generated in kotlin
-            kotlin.srcDirs("${projectDir}/../generated")
-            // except for serde, which is still in java
-            java.srcDirs("${projectDir}/../generated")
+            kotlin.srcDirs("$projectDir/../generated")
         }
     }
 }
@@ -70,10 +68,13 @@ extensions.configure<CargoExtension>("cargo") {
     // make sure you have included the rust toolchain for each of these targets: \
     // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
     targets = listOf("arm", "arm64", "x86", "x86_64")
-    extraCargoBuildArguments = listOf(
-        "--package", "shared",
-        "--features", "uniffi"
-    )
+    extraCargoBuildArguments =
+        listOf(
+            "--package",
+            "shared",
+            "--features",
+            "uniffi",
+        )
     cargoCommand = System.getProperty("user.home") + "/.cargo/bin/cargo"
     rustcCommand = System.getProperty("user.home") + "/.cargo/bin/rustc"
     pythonCommand = "python3"
@@ -98,8 +99,8 @@ afterEvaluate {
                 inputs.dir(
                     File(
                         File(layout.buildDirectory.asFile.get(), "rustJniLibs"),
-                        buildTask.toolchain?.folder!!
-                    )
+                        buildTask.toolchain?.folder!!,
+                    ),
                 )
                 dependsOn(buildTask)
             }
