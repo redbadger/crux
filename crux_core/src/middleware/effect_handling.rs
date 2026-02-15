@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 
-use crate::{capability::Operation, Request, RequestHandle, Resolvable, ResolveError};
+use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
 
 use super::Layer;
 
@@ -41,10 +41,10 @@ where
         &self,
         effect: Effect,
         resolve_callback: impl FnMut(
-                &mut RequestHandle<<Self::Op as Operation>::Output>,
-                <Self::Op as Operation>::Output,
-            ) + Send
-            + 'static,
+            &mut RequestHandle<<Self::Op as Operation>::Output>,
+            <Self::Op as Operation>::Output,
+        ) + Send
+        + 'static,
     ) -> Result<(), Effect>;
 }
 
@@ -197,11 +197,11 @@ where
     }
 
     /// Process a batch of effects through the middleware. Effects the middleware
-    /// can handle are processed (and their resolve_callback called), the rest are
+    /// can handle are processed (and their `resolve_callback` called), the rest are
     /// returned as "unknown".
     ///
     /// The `active` flag and `deferred` queue implement the trampoline: when the
-    /// resolve_callback is called synchronously (flag is true), immediate effects
+    /// `resolve_callback` is called synchronously (flag is true), immediate effects
     /// from `Core::resolve()` are queued instead of recursed into. When called
     /// later from a background thread (flag is false), they are processed directly.
     ///
@@ -230,7 +230,7 @@ where
                         // This allows us to do the recursion without requiring `inner` to outlive 'static
                         let Some(strong_inner) = inner.upgrade() else {
                             // do nothing, inner is gone, we can't process further effects
-                            eprintln!("Inner cant't be upgraded after resolving effect");
+                            eprintln!("Inner can't be upgraded after resolving effect");
                             return;
                         };
 

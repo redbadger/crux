@@ -641,17 +641,17 @@ mod tests {
         Ok(())
     }
 
-    /// Regression test for https://github.com/redbadger/crux/issues/492
+    /// Regression test for `<https://github.com/redbadger/crux/issues/492>`
     ///
     /// When middleware resolves effects synchronously (on the same thread, inside
     /// `try_process_effect_with`), the resolve chain used to recurse through
-    /// Core::process() → middleware → resolve_callback → Core::process() → ...
+    /// `Core::process()` → middleware → `resolve_callback` → `Core::process()` → ...
     /// causing a stack overflow for commands with many sequential requests.
     #[test]
     fn synchronous_middleware_doesnt_blow_the_stack() {
         use crux_core::{
-            capability::Operation, macros::effect, middleware::EffectMiddleware, Command, Core,
-            Request, RequestHandle,
+            Command, Core, Request, RequestHandle, capability::Operation, macros::effect,
+            middleware::EffectMiddleware,
         };
         use serde::{Deserialize, Serialize};
 
@@ -704,7 +704,7 @@ mod tests {
             fn view(&self, _model: &Self::Model) -> Self::ViewModel {}
         }
 
-        /// Middleware that resolves PingOperation **synchronously** on the same thread.
+        /// Middleware that resolves `PingOperation` **synchronously** on the same thread.
         struct SyncPingMiddleware;
 
         impl<Eff> EffectMiddleware<Eff> for SyncPingMiddleware
@@ -717,8 +717,8 @@ mod tests {
                 &self,
                 effect: Eff,
                 mut resolve_callback: impl FnMut(&mut RequestHandle<PingOutput>, PingOutput)
-                    + Send
-                    + 'static,
+                + Send
+                + 'static,
             ) -> Result<(), Eff> {
                 let request = effect.try_into()?;
                 let (_operation, mut handle) = request.split();
@@ -732,11 +732,9 @@ mod tests {
         }
 
         let (effects_tx, _effects_rx) = crossbeam_channel::unbounded();
-        let effect_callback =
-            move |effects: Vec<PingEffect>| effects_tx.send(effects).unwrap();
+        let effect_callback = move |effects: Vec<PingEffect>| effects_tx.send(effects).unwrap();
 
-        let core = Core::<PingApp>::new()
-            .handle_effects_using(SyncPingMiddleware);
+        let core = Core::<PingApp>::new().handle_effects_using(SyncPingMiddleware);
 
         // This previously caused: "thread has overflowed its stack"
         let effects = core.update(PingEvent::Go, effect_callback);
