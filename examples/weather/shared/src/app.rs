@@ -30,6 +30,7 @@ pub enum Event {
 }
 // ANCHOR_END: event
 
+// ANCHOR: effect
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
@@ -37,7 +38,9 @@ pub enum Effect {
     Http(HttpRequest),
     Location(LocationOperation),
 }
+// ANCHOR_END: effect
 
+// ANCHOR: workflow
 #[derive(Facet, Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum Workflow {
@@ -46,6 +49,7 @@ pub enum Workflow {
     Favorites(FavoritesState),
     AddFavorite,
 }
+// ANCHOR_END: workflow
 
 // ANCHOR: model
 #[derive(Default, Debug)]
@@ -59,6 +63,7 @@ pub struct Model {
 }
 // ANCHOR_END: model
 
+// ANCHOR: view_model
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ViewModel {
     pub workflow: WorkflowViewModel,
@@ -86,6 +91,7 @@ pub struct FavoriteView {
     location: Location,
     current: Box<Option<CurrentWeatherResponse>>,
 }
+// ANCHOR_END: view_model
 
 impl From<&Favorite> for FavoriteView {
     fn from(value: &Favorite) -> Self {
@@ -114,6 +120,7 @@ impl App for Weather {
                 render()
             }
             Event::Home(home_event) => {
+                // ANCHOR: command_all
                 let mut commands = Vec::new();
                 if let WeatherEvent::Show = *home_event {
                     commands.push(
@@ -128,6 +135,7 @@ impl App for Weather {
                 );
 
                 Command::all(commands)
+                // ANCHOR_END: command_all
             }
 
             Event::Favorites(fav_event) => favorites::events::update(*fav_event, model)
@@ -136,6 +144,7 @@ impl App for Weather {
     }
     // ANCHOR_END: update
 
+    // ANCHOR: view
     fn view(&self, model: &Model) -> ViewModel {
         let favorites = model.favorites.iter().map(From::from).collect();
 
@@ -161,6 +170,7 @@ impl App for Weather {
 
         ViewModel { workflow }
     }
+    // ANCHOR_END: view
 }
 
 #[cfg(test)]

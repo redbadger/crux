@@ -110,8 +110,11 @@ pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, Favor
         // ======================
         // KV Storage Operations
         // ======================
-        FavoritesEvent::Restore => KeyValue::get(FAVORITES_KEY).then_send(FavoritesEvent::Load),
-
+        FavoritesEvent::Restore => {
+            // ANCHOR: key_value
+            KeyValue::get(FAVORITES_KEY).then_send(FavoritesEvent::Load)
+            // ANCHOR_END: key_value
+        }
         FavoritesEvent::Set => KeyValue::set(
             FAVORITES_KEY,
             serde_json::to_vec(model.favorites.as_slice()).unwrap(),

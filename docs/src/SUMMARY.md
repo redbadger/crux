@@ -19,6 +19,7 @@
 
 1. [The Weather App](./part-2/weather_app.md)
 1. [The Elm Architecture](./part-2/elm_architecture.md)
+1. [Structuring larger apps](./part-2/composing_apps.md)
 1. [Managed Effects](./part-2/effects.md)
 1. [Testing Effects](./part-2/testing-effects.md)
 1. [Building Capabilities](./part-2/capabilities.md)
