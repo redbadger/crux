@@ -10,8 +10,6 @@
 1. [Testing](./part-1/testing.md)
 1. [The shell](./part-1/shell.md)
     1. [iOS](./part-1/shell/ios/index.md)
-        1. [With xcodegen](./part-1/shell/ios/with_xcodegen.md)
-        1. [Manually](./part-1/shell/ios/manual.md)
     1. [Android](./part-1/shell/android/index.md)
         1. [Kotlin and Jetpack Compose](./part-1/shell/android/android.md)
     1. [React](./part-1/shell/web/react.md)
