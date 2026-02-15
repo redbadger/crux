@@ -1,5 +1,13 @@
 # Android
 
+```admonish warning
+This section has not been updated to match the rest of the documentation and some parts
+may not match how Crux works any more.
+
+Bare with us while we update and use the [iOS](../ios/index.md) section as the template
+to follow.
+```
+
 When we use Crux to build Android apps, the Core API bindings are generated in
 Java using Mozilla's [Uniffi](https://mozilla.github.io/uniffi-rs/).
 

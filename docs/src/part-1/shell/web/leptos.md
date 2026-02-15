@@ -1,5 +1,13 @@
 # Web — Rust and Leptos
 
+```admonish warning
+This section has not been updated to match the rest of the documentation and some parts
+may not match how Crux works any more.
+
+Bare with us while we update and use the [iOS](../ios/index.md) section as the template
+to follow.
+```
+
 These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
