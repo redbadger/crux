@@ -1,7 +1,7 @@
 use crux_core::{
-    macros::effect,
-    render::{render, RenderOperation},
     App, Command,
+    macros::effect,
+    render::{RenderOperation, render},
 };
 use crux_http::protocol::HttpRequest;
 use crux_kv::KeyValueOperation;
@@ -15,12 +15,12 @@ use crate::{
         model::{Favorite, Favorites, FavoritesState},
     },
     location::{
-        capability::LocationOperation, model::geocoding_response::GeocodingResponse, Location,
+        Location, capability::LocationOperation, model::geocoding_response::GeocodingResponse,
     },
-    navigation::{navigate, CurrentPage},
     weather::{self, events::WeatherEvent, model::current_response::CurrentWeatherResponse},
 };
 
+// ANCHOR: event
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum Event {
@@ -28,6 +28,7 @@ pub enum Event {
     Home(Box<WeatherEvent>),
     Favorites(Box<FavoritesEvent>),
 }
+// ANCHOR_END: event
 
 #[effect(facet_typegen)]
 pub enum Effect {
@@ -46,16 +47,17 @@ pub enum Workflow {
     AddFavorite,
 }
 
+// ANCHOR: model
 #[derive(Default, Debug)]
 pub struct Model {
     pub weather_data: CurrentWeatherResponse,
-    pub page: CurrentPage,
     pub workflow: Workflow,
     pub favorites: Favorites,
     pub search_results: Option<Vec<GeocodingResponse>>,
     pub location_enabled: bool,
     pub last_location: Option<Location>,
 }
+// ANCHOR_END: model
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ViewModel {
@@ -104,10 +106,10 @@ impl App for Weather {
     type ViewModel = ViewModel;
     type Effect = Effect;
 
+    // ANCHOR: update
     fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Effect, Event> {
         match event {
             Event::Navigate(next) => {
-                navigate(&mut model.page, &next);
                 model.workflow = *next;
                 render()
             }
@@ -132,6 +134,7 @@ impl App for Weather {
                 .map_event(|e| Event::Favorites(Box::new(e))),
         }
     }
+    // ANCHOR_END: update
 
     fn view(&self, model: &Model) -> ViewModel {
         let favorites = model.favorites.iter().map(From::from).collect();
