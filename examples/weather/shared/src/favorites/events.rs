@@ -153,6 +153,7 @@ pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, Favor
 mod tests {
     use crux_core::{App as _, assert_effect};
     use crux_http::protocol::{HttpResponse, HttpResult};
+    use crux_kv::KeyValueOperation;
 
     use super::*;
     use crate::{
@@ -228,11 +229,11 @@ mod tests {
         assert!(model.favorites.is_empty());
     }
 
+    // ANCHOR: test
     #[test]
     fn test_delete_with_persistence() {
         let mut model = Model::default();
         let favorite = test_favorite();
-        let favorite = favorite.clone(); // Clone once at the start
         model.favorites.insert(favorite.clone());
 
         // Set the state to ConfirmDelete with the favorite's coordinates
@@ -243,20 +244,20 @@ mod tests {
 
         // Delete and verify KV is updated
         let mut cmd = update(FavoritesEvent::DeleteConfirmed, &mut model);
-        let effect = cmd.effects().next().unwrap();
-        assert!(matches!(effect, Effect::KeyValue(_)));
+        let kv_request = cmd.expect_effect().expect_key_value();
+        cmd.expect_one_effect().expect_render();
 
-        // Verify the empty state persists
-        let mut cmd = update(
-            FavoritesEvent::Load(Ok(Some(
-                serde_json::to_vec(model.favorites.as_slice()).unwrap(),
-            ))),
-            &mut model,
-        );
+        assert!(matches!(
+            kv_request.operation,
+            KeyValueOperation::Set { .. }
+        ));
 
-        assert!(cmd.effects().next().is_none());
         assert!(model.favorites.is_empty());
+
+        cmd.expect_no_effects();
+        cmd.expect_no_events();
     }
+    // ANCHOR_END: test
 
     #[test]
     fn test_delete_pressed() {
