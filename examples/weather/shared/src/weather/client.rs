@@ -1,5 +1,5 @@
-use crux_core::command::RequestBuilder;
 use crux_core::Request;
+use crux_core::command::RequestBuilder;
 use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
