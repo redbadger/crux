@@ -2,7 +2,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    location::{model::GeocodingResponse, Location},
+    location::{Location, model::GeocodingResponse},
     weather::model::current_response::CurrentWeatherResponse,
 };
 
