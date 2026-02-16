@@ -75,23 +75,6 @@ Crux expects a Command to be returned by the `update` function. A basic Command 
 
 `Command` provides APIs to iterate over the effects and events emitted so far. This API can be used both in tests and in Rust-based shells, and for some advanced use cases when composing applications.
 
-A basic test using the Command API may look like this:
-
-```rust
-{{#include ../../../examples/weather/shared/src/weather/events.rs:test}}
-```
-
-You can see it's a test of a whole interaction. Between steps 1 and 2 we chose to skip the effect handling and went straight
-to the event, but in step 4, we expect a HTTP request to be made, we inspect it, then we _resolve_ it in step 5 with a response.
-
-Here's the corresponding code it's testing:
-
-```rust
-{{#include ../../../examples/weather/shared/src/weather/events.rs:code}}
-```
-
-Hopefully this illustrates that the command API lets you test entire transactions involving effects, without ever executing any.
-
 ## Effects and Events
 
 Lets look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
@@ -128,15 +111,15 @@ Http::get(API_URL)
     .then_send(Event::ReceivedResponse),
 ```
 
-This code is using a HTTP capability and its API up to the `.build()` call which returns a CommandBuilder. The `.then_send` part is building the command by binding it to an Event to send the output of the request back to the app.
+This code is using a HTTP capability and its API up to the `.build()` call which returns a `CommandBuilder`. This is a lot like a `Future` – its type carries the output type, and it represents the eventual result of the effect. The difference is that it can be converted either into a `Command` or into a `Future` to be used in an `async` context. In this case, the `.then_send` part is building the command by binding it to an Event to send the output of the request back to the app.
 
-Here's another example from the Weather app:
+Here's an example of the same from the Weather app:
 
 ```rust
 {{#include ../../../examples/weather/shared/src/favorites/events.rs:key_value}}
 ```
 
-the `get()` call again returns a command builder, which is used to create a command with `.then_send()`.
+the `get()` call again returns a command builder, which is used to create a command with `.then_send()`. The `Command` is now fully baked and bound to the specific callback event, and can no longer be meaningfully chained into an "effect pipeline".
 
 One special, but common case of creating a command is creating a Command which does nothing, because there are no more side-effects:
 
@@ -144,8 +127,7 @@ One special, but common case of creating a command is creating a Command which d
 Command::done()
 ```
 
-Soon enough, your app will get a little more complicated, you will need to run multiple commands concurrently, but your `update` function
-only returns a single value. You can combine existing commands into one using either the `all` function, or the `.and` method.
+Soon enough, your app will get a little more complicated, you will need to run multiple commands concurrently, but your `update` function only returns a single value. To get around this, you can combine existing commands into one using either the `all` function, or the `.and` method.
 
 We've seen an example of this already, but here it is again:
 
@@ -156,10 +138,10 @@ We've seen an example of this already, but here it is again:
 The two `update` calls involved each return a command, and we want to run them concurrently. The result is another `Command`, which can be returned from `update`.
 
 ```admonish note
-Commands (or more precisely command builders) can be created without capabilities, and indeed capabilities do this. You shouldn't really need this in your app code, so we will cover that side of Commands in the next chapter, when we look at building Capabilities.
+Commands (or more precisely command builders) can be created without capabilities. That what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in the next chapter, when we look at building Capabilities.
 ```
 
-You might also want to run effects in a sequence, passing output of one as the input of another. This is another thing the command builders can facilitate.
+You might also want to run effects in a sequence, passing output of one as the input of another. This is another thing the command builders can facilitate. Let's look at that.
 
 ## Command builders
 
@@ -175,9 +157,19 @@ Both also support `.then_request` and `.then_stream` calls, for chaining on a fu
 
 You can also `.map` the output of the request/stream to a new value.
 
-Combining all these tools provides a fair bit of flexibility to create fairly complex orchestrations of effects. Sometimes, you might want to go more complex than that however. In such cases, us attempting to create more APIs trying to achieve every conceivable orchestration with closures would have diminishing returns. In such cases, you probably want to write `async` code instead.
+Here's an example of a more complicated chaining from the Command test suite:
+
+```rust
+{{#include ../../../crux_core/src/command/tests/combinators.rs:complex_concurrency}}
+
+// ... the assertions are omitted for brevity, see crux_core/src/cpommand/tests/combinators.rs
+```
+
+Forgive the abstract nature of the operations involved, these constructions are relatively uncommon in real code, and have not been used anywhere in our example code yet.
 
 For more details of this, we recommend the [Command API docs](https://docs.rs/crux_core/latest/crux_core/command/index.html).
+
+Combining all these tools provides a fair bit of flexibility to create fairly complex orchestrations of effects. Sometimes, you might want to go more complex than that, however. In such cases, Crux attempting to create more APIs trying to achieve every conceivable orchestration with closures would have diminishing returns. In such cases, you probably just want to write `async` code instead.
 
 ```admonish warning
 Notice that nowhere in the above examples have we mentioned working with the model during the execution of the command. This is very much by design: Once started, commands do not have model access, because they execute asynchronously, possibly in parallel, and access to model would introduce data races, which are very difficult to debug.
@@ -188,6 +180,8 @@ In order to update state, you should pass the result of the effect orchestration
 ## Commands with `async`
 
 The real power of commands comes from the fact that they build on `async` Rust. Each Command is a little async executor, which runs a number of tasks. The tasks get access to the crux context (represented by [`CommandContext`](https://docs.rs/crux_core/latest/crux_core/command/struct.CommandContext.html)), which gives them the ability to communicate with the shell and with the app.
+
+TODO: image illustration of the command structure
 
 You can create a raw command like this:
 
@@ -211,7 +205,7 @@ Builders can be converted into a future/stream for use in the `async` blocks wit
 ```admonish warning title="Crux async vs Tokio, async-std et al."
 While commands do execute on an async runtime, the runtime does not run on its own - it's part of the core and needs to be _driven_ by the Shell calling the Core APIs. We use `async` rust as a convenient way to build the cooperative multi-tasking state machines involved in managing side effects.
 
-This is also why combining the Crux async runtime with something like Tokio will appear to somewhat work (because the futures involved are mostly compatible), but it will have odd stop-start behaviours, because the Crux runtime doesn't run all the time, and some futures won't work, because they require Tokio support.
+This is also why combining the Crux async runtime with something like Tokio will appear to somewhat work (because the futures involved are mostly compatible), but it will have odd stop-start behaviours, because the Crux runtime doesn't run all the time, and some futures won't work, because they require specific Tokio support.
 
 That said, a lot of universal async code (like async channels for example), work just fine.
 ```

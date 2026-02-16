@@ -1,13 +1,19 @@
-# Testing Crux apps
+# Testing with managed effects
 
-FIXME: Use Weather tests to demonstrate this
+We have seen how to use effects, and we have seen a little bit about the testing,
+but we should look at that closer.
 
-## Introduction
+Crux was expressly designed to support easy, fast, comprehensive testing od your
+application. Everyone is generally on board with unit tests and TDD when it comes
+to basic pure logic. But as soon as any I/O or UI gets involved, the dread sets in.
+We're going to have to set up some fakes, introduce additional traits _just_ to test
+things, or just bite the bullet and build tests around a fully integrated app and
+wait for them to run. So most people give up.
 
-One of the most compelling consequences of the Crux architecture is that it
-becomes trivial to comprehensively test your application. This is because the
-core is pure and therefore completely deterministic — all the side effects are
-pushed to the shell.
+Managed effects smooth over that big hump. You pay for it a little bit in how the
+code is written, but you reap the reward in testing it. This is because the core
+that uses managed effects is pure and therefore completely deterministic —
+all the side effects are pushed to the shell.
 
 It's straightforward to write an exhaustive set of unit tests that give you
 complete confidence in the correctness of your application code — you can test
@@ -27,7 +33,8 @@ a location gets checked and the weather gets refreshed.
 {{#include ../../../examples/weather/shared/src/weather/events.rs:test}}
 ```
 
-You can see it's a test of a whole interaction with multiple effects, and it runs in 11 ms.
+You can see it's a test of a whole interaction with multiple kinds of effects,
+and it runs in 11 ms and is entirely deterministic.
 
 Here's the corresponding code it's testing:
 
@@ -35,9 +42,11 @@ Here's the corresponding code it's testing:
 {{#include ../../../examples/weather/shared/src/weather/events.rs:code}}
 ```
 
-Hopefully this illustrates that the command API lets you test entire transactions involving effects, without ever executing any.
+Hopefully this illustrates that the managed effects let you test entire transactions
+involving effects, without ever executing any.
 
-The full suite of 18 tests runs in 49 milliseconds.
+The full suite of 18 tests of the Weather app runs in 49 milliseconds. It's rare
+for test of a Crux app to take longer than compiling it (even incrementally).
 
 ```txt
 cargo nextest run
@@ -68,12 +77,64 @@ cargo nextest run
      Summary [   0.049s] 18 tests run: 18 passed, 0 skipped
 ```
 
-## Writing a simple test
+## The test steps
 
-Crux provides a simple test harness that we can use to write unit tests for our
-application code. Strictly speaking it's not needed, but it makes it easier to
-avoid boilerplate and to write tests that are easy to read and understand.
+Crux provides a test APIs to make the tests a bit more readable and nicer to write,
+but it's still up to the test to execute the app loop.
 
-Let's take the test from earlier and walk through it step by step.
+Let's have a look at a simpler test from the Weather app and go through it step by step:
 
-TODO: step through the test
+```Rust
+{{#include ../../../examples/weather/shared/src/favorites/events.rs:test}}
+```
+
+First, we do some setup - create a model, create a favorite and insert it, and
+make sure the app is in the right Workflow state.
+
+Then, we call update with `FavoritesEvent::DeleteConfirmed` and get back a command, which we
+store in `cmd`.
+
+The next line is our assertion on the command - we expect an effect, and we expect it to be
+a key value effect. The expectation either returns the KeyValueRequest or panics.
+
+Then we inspect the request's operation to check it's a `Set` – for the purposes of this test
+that's enough.
+
+We can then check the favourites in the model are gone, and there is nothing else to do.
+
+## More integrated tests and deterministic simulation testing
+
+We could test the key-value storage in a more integrated fashion too - instead of asserting
+on the key value operation, we can provide a very basic implementation of a key value store
+to use in tests, using a `HashMap` as storage for example. Then we could simply forward the
+key-value effects to it and make sure the storage is managed correctly. Similarly, we could
+build a predictable replica of an API service we need to test against, etc.
+
+While that's all starting to sounds a lot like mocking, remember that we're not implementing
+Redis or building an actual HTTP server. It's all very simple code. And if we do that for all
+the different effects our app needs and provide a realistic _enough_ implementations to mimic
+the real things, a very interesting thing happens - we get the entire app stack, with the
+nitty gritty technical details taken out, running in a unit test.
+
+With that, we can create an app instance and send it completely random (but deterministic)
+events, and make sure "nothing bad happens". The definition of what that means is specific
+to each app, but just to illustrate some options:
+
+- Introduce randomised errors to your fake API and see they are handled correctly
+- Randomly lose data in storage and make sure the app recovers
+- Make sure timeouts work correctly by randomly firing them first
+- Check that any other invariants hold, e.g. anything time-related only moves forward
+  (counters count up), storage remains referentially consistent, logically impossible states
+  do not happen (ideally they would be impossible to represent, but sometimes that's too hard)
+
+When we do that, we can then run this pseudo random process, for hours if we like, and let it
+find any bugs for us. To reproduce them, all we need is the random seed used for the specific
+test run.
+
+In practice, Crux apps will mostly be able to run at thousands of events a second, and these
+tests will explore more of the state space than we ever could with manual unit tests.
+
+This type of testing is usually reserved to consensus algorithms and network protocols where
+anything that can happen _will_ happen and they have to be rock solid, because setting up the
+tests is just too much work. But with managed effects it doesn't need to be. For a modestly
+sized app, a testing harness like that will only take a few days to write.
