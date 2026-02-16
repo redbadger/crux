@@ -2,14 +2,13 @@
 
 # Message interface between core and shell
 
-So far in this book, we've been taking the perspective of being inside the core
-looking out. It feels like it's now time to be in the shell, looking in.
+So far in part II, we've been taking the perspective of being inside the core
+looking out. It's time to switch perspective and look from outside in, at the
+core from the perspective of the shell.
 
 ```admonish note
-Interestingly, we think this is also the way to approach building apps with Crux. For any one feature, start in the middle and get your behaviour established first. Write the tests without the UI and the other side-effects in the way. Give yourself maximum confidence that the feature works _exactly_ as you expect before you muddy the water with UI components, and their look and feel.
+For what it's worth, we think this is also the way to approach building apps with Crux. For any one feature, start in the middle and get your behaviour established first. Write the tests without the UI and the other side-effects in the way. Give yourself maximum confidence that the feature works _exactly_ as you expect before you muddy the water with UI components, and their look and feel.
 ```
-
-OK, let's talk about the shell.
 
 The shell only has two responsibilities:
 
@@ -17,6 +16,8 @@ The shell only has two responsibilities:
 2. Supporting the app's capabilities
 
 We'll look at these separately.
+
+TODO: split into platforms
 
 ## The message protocol
 

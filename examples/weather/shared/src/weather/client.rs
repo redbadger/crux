@@ -22,6 +22,7 @@ pub struct CurrentWeatherQuery {
     pub appid: String,
 }
 
+// ANCHOR: client
 pub struct WeatherApi;
 
 impl WeatherApi {
@@ -72,3 +73,4 @@ impl WeatherApi {
             })
     }
 }
+// ANCHOR_END: client
