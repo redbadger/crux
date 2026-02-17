@@ -118,20 +118,35 @@ impl Widget for &App {
         let inner = block.inner(area);
         block.render(area, buf);
 
-        // Center content vertically: count display + gap + buttons = 7 rows
-        let [_, content, _] = Layout::vertical([
+        // Split inner into: space for subtitle | main content (count+buttons) | bottom pad
+        // count(3) + gap(1) + buttons(3) = 7
+        let [top_space, main_content, _] = Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(7),
             Constraint::Fill(1),
         ])
         .areas(inner);
 
+        // -- Subtitle (vertically centered in the space above the counter) --
+        let [_, subtitle_area, _] = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .areas(top_space);
+
+        let sub_title = Line::from("Rust Core, Rust Shell (Ratatui)".bold());
+        Paragraph::new(sub_title)
+            .centered()
+            .render(subtitle_area, buf);
+
+        // -- Main content areas --
         let [count_area, _, buttons_area] = Layout::vertical([
             Constraint::Length(3),
             Constraint::Length(1),
             Constraint::Length(3),
         ])
-        .areas(content);
+        .areas(main_content);
 
         // -- Count display --
         let counter_text = Text::from(vec![Line::from(view.count.clone().yellow().bold())]);
@@ -142,6 +157,22 @@ impl Widget for &App {
             .render(count_area, buf);
 
         // -- Buttons --
+        ButtonBar::new(self.selected).render(buttons_area, buf);
+    }
+}
+
+struct ButtonBar {
+    selected: usize,
+}
+
+impl ButtonBar {
+    fn new(selected: usize) -> Self {
+        Self { selected }
+    }
+}
+
+impl Widget for ButtonBar {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let button_width: u16 = 14;
         let gap_width: u16 = 2;
         let total_width = button_width * NUM_BUTTONS + gap_width * (NUM_BUTTONS - 1);
@@ -151,7 +182,7 @@ impl Widget for &App {
             Constraint::Length(total_width),
             Constraint::Fill(1),
         ])
-        .areas(buttons_area);
+        .areas(area);
 
         let constraints: Vec<Constraint> = BUTTONS
             .iter()
