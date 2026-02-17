@@ -1,83 +1,142 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Weak,
+};
 
-use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
+use crate::{capability::Operation, Request, RequestHandle, Resolvable, ResolveError};
 
 use super::Layer;
 
+/// A resolver for an effect processed by middleware.
+///
+/// This type encapsulates the callback that feeds the operation's output back
+/// into the core. It **must** be called from a background thread — calling
+/// [`resolve`](Self::resolve) while [`process_effect`](EffectMiddleware::process_effect)
+/// is still on the call stack will panic.
+///
+/// For streaming operations ([`RequestHandle::Many`]), call `resolve` multiple
+/// times until the stream is exhausted.
+type ResolveFn<Output> = Box<dyn FnMut(&mut RequestHandle<Output>, Output) + Send>;
+
+pub struct EffectResolver<Output: Send + 'static> {
+    handle: RequestHandle<Output>,
+    resolve_fn: ResolveFn<Output>,
+    /// `true` while `process_effect` is executing on the call stack.
+    active: Arc<AtomicBool>,
+}
+
+impl<Output: Send + 'static> EffectResolver<Output> {
+    /// Resolve the effect with the given output.
+    ///
+    /// For one-shot effects this should be called exactly once. For streaming
+    /// effects it can be called multiple times.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called synchronously from within
+    /// [`EffectMiddleware::process_effect`]. Middleware must dispatch work to a
+    /// background thread and call `resolve` from there.
+    ///
+    /// See <https://github.com/redbadger/crux/issues/492>
+    pub fn resolve(&mut self, output: Output) {
+        assert!(
+            !self.active.load(Ordering::Acquire),
+            "EffectMiddleware::process_effect must not call resolve() synchronously. \
+             Dispatch work to a background thread. \
+             See https://github.com/redbadger/crux/issues/492"
+        );
+        (self.resolve_fn)(&mut self.handle, output);
+    }
+}
+
 /// An effect processing middleware.
 ///
-/// Implement this trait to provide effect processing in Rust on the core side. The two typical uses for this are
-/// 1. Reusing a Rust implementation of a capability compatible with all target platforms
+/// Implement this trait to provide effect processing in Rust on the core side.
+/// The two typical uses for this are:
+///
+/// 1. Reusing a Rust implementation of a capability compatible with all target
+///    platforms.
 /// 2. Using an existing crate which is not built with Sans-IO in mind.
 ///
 /// There are a number of considerations for doing this:
-/// - The effect processing will rely on system APIs or crates which MUST be portable to all platforms
-///   the library using this middleware is going to be deployed to. This is fundamentally trading off
-///   portability for reuse of the Rust implementation.
-/// - The middleware MUST process the effect in a non-blocking fashion on a separate thread. This thread
-///   may be one of a pool from an async runtime or a simple background worker thread - this is left to the
-///   implementation to decide.
-/// - Due to the multi-threaded nature of the processing, the core, and therefore the app are shared between
-///   threads. The app must be `Send` and `Sync`, which also forces the `Model` type to be Send and Sync.
-///   This should not be a problem - `Model` should not normally be `!Send` or `!Sync`.
-pub trait EffectMiddleware<Effect>
-where
-    Effect: TryInto<Request<Self::Op>, Error = Effect>,
-{
-    /// The operation type this middleware can process
+///
+/// - The effect processing will rely on system APIs or crates which MUST be
+///   portable to all platforms the library using this middleware is going to be
+///   deployed to. This is fundamentally trading off portability for reuse of the
+///   Rust implementation.
+/// - The middleware MUST process the effect in a non-blocking fashion on a
+///   separate thread. This thread may be one of a pool from an async runtime or
+///   a simple background worker thread — this is left to the implementation to
+///   decide. Calling [`EffectResolver::resolve`] synchronously inside
+///   `process_effect` will panic.
+/// - Due to the multi-threaded nature of the processing, the core, and therefore
+///   the app are shared between threads. The app must be `Send` and `Sync`,
+///   which also forces the `Model` type to be `Send` and `Sync`. This should
+///   not be a problem — `Model` should not normally be `!Send` or `!Sync`.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// impl EffectMiddleware for MyMiddleware {
+///     type Op = MyOperation;
+///
+///     fn process_effect(
+///         &self,
+///         operation: MyOperation,
+///         mut resolver: EffectResolver<<MyOperation as Operation>::Output>,
+///     ) {
+///         std::thread::spawn(move || {
+///             let output = do_work(operation);
+///             resolver.resolve(output);
+///         });
+///     }
+/// }
+/// ```
+pub trait EffectMiddleware: Send + Sync {
+    /// The operation type this middleware can process.
     type Op: Operation;
 
-    /// Try to process `effect` if is of the right type (can convert in to a `Request<Self::Op>`).
+    /// Process the given operation and resolve via the provided resolver.
     ///
-    /// The implementation should return `Ok(())` if the conversion succeeds, and call the `resolve_callback`
-    /// with the output later on. If the effect fails to convert, it should be returned wrapped in `Err(_)`.
-    ///
-    /// # Errors
-    ///
-    /// The expected error type is the same as the input Effect type, allowing the conversion to be attempted
-    /// non-destructively.
-    fn try_process_effect_with(
+    /// The framework has already extracted the operation from the effect enum.
+    /// Use the [`EffectResolver`] to send the result back. The resolver **must
+    /// not** be called before this method returns — dispatch the work to a
+    /// background thread and call [`EffectResolver::resolve`] from there.
+    fn process_effect(
         &self,
-        effect: Effect,
-        resolve_callback: impl FnMut(
-            &mut RequestHandle<<Self::Op as Operation>::Output>,
-            <Self::Op as Operation>::Output,
-        ) + Send
-        + 'static,
-    ) -> Result<(), Effect>;
+        operation: Self::Op,
+        resolver: EffectResolver<<Self::Op as Operation>::Output>,
+    );
 }
 
 struct EffectMiddlewareLayerInner<Next, EM>
 where
     Next: Layer + Sync + Send + 'static,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+    EM: EffectMiddleware,
 {
     next: Next,
     middleware: EM,
 }
 
-/// Middleware layer able to process some of the effects. This implements the general
-/// behaviour making sure all follow-up effects are processed and routed to the right place
-/// and delegates to the generic parameter `M`, which implements [`EffectMiddleware`].
+/// Middleware layer able to process some of the effects. This implements the
+/// general behaviour making sure all follow-up effects are processed and routed
+/// to the right place and delegates to the generic parameter `EM`, which
+/// implements [`EffectMiddleware`].
 pub struct HandleEffectLayer<Next, EM>
 where
     Next: Layer + Sync + Send + 'static,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+    EM: EffectMiddleware,
 {
     inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
 }
 
 impl<Next, EM> Layer for HandleEffectLayer<Next, EM>
 where
-    // Next layer down, core being at the bottom
     Next: Layer,
-    // Effect has to try_into the operation which the middleware handles
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect> + Send,
-    // The actual middleware effect handling implementation
-    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+    EM: EffectMiddleware + 'static,
 {
     type Event = Next::Event;
     type Effect = Next::Effect;
@@ -116,10 +175,10 @@ impl<Next, EM> HandleEffectLayer<Next, EM>
 where
     Next: Layer,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect> + Send,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+    EM: EffectMiddleware + 'static,
 {
-    /// Typically, you would would use [`Layer::handle_effects_using`] to construct a `HandleEffectLayer` instance
-    /// for a specific [`EffectMiddleware`].
+    /// Typically, you would use [`Layer::handle_effects_using`] to construct a
+    /// `HandleEffectLayer` instance for a specific [`EffectMiddleware`].
     pub fn new(next: Next, middleware: EM) -> Self {
         Self {
             inner: Arc::new(EffectMiddlewareLayerInner { next, middleware }),
@@ -196,52 +255,42 @@ where
         Self::process_known_effects(&Arc::downgrade(&self.inner), effects, &return_effects_copy)
     }
 
-    /// Process a batch of effects through the middleware. Effects the middleware
-    /// can handle are processed (and their `resolve_callback` called), the rest are
-    /// returned as "unknown".
-    ///
-    /// The `active` flag and `deferred` queue implement the trampoline: when the
-    /// `resolve_callback` is called synchronously (flag is true), immediate effects
-    /// from `Core::resolve()` are queued instead of recursed into. When called
-    /// later from a background thread (flag is false), they are processed directly.
-    ///
-    /// See <https://github.com/redbadger/crux/issues/492>
-    fn process_effects_batch(
+    fn process_known_effects(
         inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
         effects: Vec<Next::Effect>,
         return_effects: &Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
-        active: &Arc<AtomicBool>,
-        deferred: &Arc<Mutex<Vec<Next::Effect>>>,
     ) -> Vec<Next::Effect> {
         effects
             .into_iter()
             .filter_map(|effect| {
-                // This is where the middleware handler will send the result of its work
-                let resolve_callback = {
+                // Try to convert the effect into a Request for the middleware's
+                // operation type. If conversion fails, the effect is not for
+                // this middleware — pass it through.
+                let request: Request<EM::Op> = match effect.try_into() {
+                    Ok(req) => req,
+                    Err(effect) => return Some(effect),
+                };
+
+                let (operation, handle) = request.split();
+
+                // Build the resolve function that will be called from the
+                // middleware's background thread.
+                let resolve_fn = {
                     let return_effects = return_effects.clone();
                     let inner = inner.clone();
-                    let active = active.clone();
-                    let deferred = deferred.clone();
 
-                    // Ideally, we'd want the `handle` to be an `impl Resolvable`, alas,
-                    // generic closures are not a thing.
-                    move |handle: &mut RequestHandle<<EM::Op as Operation>::Output>,
-                          effect_out_value| {
-                        // This allows us to do the recursion without requiring `inner` to outlive 'static
+                    move |req_handle: &mut RequestHandle<<EM::Op as Operation>::Output>, output| {
                         let Some(strong_inner) = inner.upgrade() else {
-                            // do nothing, inner is gone, we can't process further effects
                             eprintln!("Inner can't be upgraded after resolving effect");
                             return;
                         };
 
                         if let Ok(immediate_effects) =
-                            strong_inner.next.resolve(handle, effect_out_value, {
+                            strong_inner.next.resolve(req_handle, output, {
                                 let return_effects = return_effects.clone();
                                 let future_inner = inner.clone();
 
-                                // Eventual eventual route
                                 move |eventual_effects| {
-                                    // Process known effects
                                     Self::process_known_effects_with(
                                         &future_inner,
                                         eventual_effects,
@@ -250,80 +299,38 @@ where
                                 }
                             })
                         {
-                            if active.load(Ordering::Acquire) {
-                                // Synchronous call from within try_process_effect_with:
-                                // defer effects to avoid unbounded stack growth.
-                                deferred.lock().unwrap().extend(immediate_effects);
-                            } else {
-                                // Called later from a background thread: process directly.
-                                Self::process_known_effects_with(
-                                    &inner,
-                                    immediate_effects,
-                                    &return_effects,
-                                );
-                            }
+                            Self::process_known_effects_with(
+                                &inner,
+                                immediate_effects,
+                                &return_effects,
+                            );
                         }
-                    } // TODO: handle/propagate resolve error?
+                    }
                 };
 
                 let Some(strong_inner) = inner.upgrade() else {
-                    // do nothing, inner is gone, we can't process further effects
-                    eprintln!("Inner cant't be upgraded to resolve effect");
-                    return Some(effect);
+                    eprintln!("Inner can't be upgraded to process effect");
+                    return None;
                 };
 
-                // Ask middleware impl to process the effect
-                // calling back with the result, potentially on a different thread (!)
-                strong_inner
-                    .middleware
-                    .try_process_effect_with(effect, resolve_callback)
-                    .err()
+                // Create the resolver with the active guard.
+                let active = Arc::new(AtomicBool::new(true));
+                let resolver = EffectResolver {
+                    handle,
+                    resolve_fn: Box::new(resolve_fn),
+                    active: active.clone(),
+                };
+
+                // Call the middleware. resolve() will panic if called during
+                // this scope.
+                strong_inner.middleware.process_effect(operation, resolver);
+
+                // Allow resolve() to be called from background threads.
+                active.store(false, Ordering::Release);
+
+                None
             })
             .collect()
-    }
-
-    fn process_known_effects(
-        inner: &Weak<EffectMiddlewareLayerInner<Next, EM>>,
-        effects: Vec<Next::Effect>,
-        return_effects: &Arc<impl Fn(Vec<Next::Effect>) + Send + Sync + 'static>,
-    ) -> Vec<Next::Effect> {
-        // Trampoline state: when resolve_callback is invoked synchronously
-        // (inside try_process_effect_with), immediate effects are queued here
-        // instead of recursing through process_known_effects_with.
-        let active = Arc::new(AtomicBool::new(true));
-        let deferred: Arc<Mutex<Vec<Next::Effect>>> = Arc::new(Mutex::new(Vec::new()));
-
-        let unknown =
-            Self::process_effects_batch(inner, effects, return_effects, &active, &deferred);
-
-        // Drain deferred effects iteratively (the trampoline loop).
-        // Each batch may cause more synchronous resolves which add to `deferred`.
-        loop {
-            let batch: Vec<_> = deferred.lock().unwrap().drain(..).collect();
-            if batch.is_empty() {
-                break;
-            }
-
-            let batch_unknown =
-                Self::process_effects_batch(inner, batch, return_effects, &active, &deferred);
-
-            if !batch_unknown.is_empty() {
-                return_effects(batch_unknown);
-            }
-        }
-
-        // Switch off deferred mode. Any future calls to resolve_callback
-        // (from background threads) will process effects directly.
-        active.store(false, Ordering::Release);
-
-        // Handle the race: a background thread might have pushed to `deferred`
-        // between our last drain check and setting `active=false`.
-        let leftover: Vec<_> = deferred.lock().unwrap().drain(..).collect();
-        if !leftover.is_empty() {
-            Self::process_known_effects_with(inner, leftover, return_effects);
-        }
-
-        unknown
     }
 
     fn process_known_effects_with(

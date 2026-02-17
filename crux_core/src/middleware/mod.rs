@@ -25,7 +25,7 @@ mod effect_handling;
 pub use crate::bridge::{BincodeFfiFormat, FfiFormat, JsonFfiFormat};
 pub use bridge::Bridge;
 pub use effect_conversion::MapEffectLayer;
-pub use effect_handling::{EffectMiddleware, HandleEffectLayer};
+pub use effect_handling::{EffectMiddleware, EffectResolver, HandleEffectLayer};
 use serde::Deserialize;
 
 /// A layer in the middleware stack.
@@ -108,7 +108,7 @@ pub trait Layer: Send + Sync + Sized {
     /// must implement the [`EffectMiddleware`] trait.
     fn handle_effects_using<EM>(self, middleware: EM) -> HandleEffectLayer<Self, EM>
     where
-        EM: EffectMiddleware<Self::Effect> + Send + Sync + 'static,
+        EM: EffectMiddleware + 'static,
         Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect> + Send,
     {
         HandleEffectLayer::new(self, middleware)

@@ -1,5 +1,5 @@
 mod app {
-    use crux_core::{App, Command, capability::Operation, macros::effect, render::render};
+    use crux_core::{capability::Operation, macros::effect, render::render, App, Command};
     use crux_http::command::Http;
     use serde::{Deserialize, Serialize};
 
@@ -118,7 +118,11 @@ mod app {
                                 .copied()
                                 .filter_map(
                                     |(size, value)| {
-                                        if value.is_none() { Some(size) } else { None }
+                                        if value.is_none() {
+                                            Some(size)
+                                        } else {
+                                            None
+                                        }
                                     },
                                 )
                                 .take(2)
@@ -160,30 +164,28 @@ mod middleware {
     use std::thread::spawn;
 
     use crossbeam_channel::Receiver;
-    use crux_core::{Request, RequestHandle, capability::Operation, middleware::EffectMiddleware};
+    use crux_core::middleware::{EffectMiddleware, EffectResolver};
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
     use crate::app::{RandomNumber, RandomNumberRequest};
 
     // Random number generating middleware
-    #[allow(clippy::type_complexity)]
     pub struct RngMiddleware {
-        jobs_tx:
-            crossbeam_channel::Sender<(RandomNumberRequest, Box<dyn FnMut(RandomNumber) + Send>)>,
+        jobs_tx: crossbeam_channel::Sender<(RandomNumberRequest, EffectResolver<RandomNumber>)>,
     }
 
     impl RngMiddleware {
         pub fn new() -> Self {
             let (jobs_tx, jobs_rx) = crossbeam_channel::unbounded::<(
                 RandomNumberRequest,
-                Box<dyn FnMut(RandomNumber) + Send>,
+                EffectResolver<RandomNumber>,
             )>();
 
             // Persistent background worker
             spawn(move || {
                 eprintln!("Worker thread starting...");
 
-                while let Ok((input, mut callback)) = jobs_rx.recv() {
+                while let Ok((input, mut resolver)) = jobs_rx.recv() {
                     // This is a terrible RNG which always returns the highest number
                     // the die can roll
                     eprintln!("Processing job for a dice: {:?}", input.0);
@@ -192,7 +194,7 @@ mod middleware {
                     let count = input.0.len();
                     for (i, n) in (input.0).iter().enumerate() {
                         eprintln!("- Resolving random number #{i} of {count}",);
-                        callback(RandomNumber(*n));
+                        resolver.resolve(RandomNumber(*n));
                     }
                 }
 
@@ -203,65 +205,40 @@ mod middleware {
         }
     }
 
-    impl<Effect> EffectMiddleware<Effect> for RngMiddleware
-    where
-        Effect: TryInto<Request<RandomNumberRequest>, Error = Effect>,
-    {
+    impl EffectMiddleware for RngMiddleware {
         type Op = RandomNumberRequest;
 
-        fn try_process_effect_with(
+        fn process_effect(
             &self,
-            effect: Effect,
-            mut resolve_callback: impl FnMut(&mut RequestHandle<RandomNumber>, RandomNumber)
-            + Send
-            + 'static,
-        ) -> Result<(), Effect> {
-            let rand_request = effect.try_into()?;
-            let (operation, mut handle): (RandomNumberRequest, RequestHandle<_>) =
-                rand_request.split();
-
-            let callback = move |number| resolve_callback(&mut handle, number);
-
+            operation: RandomNumberRequest,
+            resolver: EffectResolver<RandomNumber>,
+        ) {
             self.jobs_tx
-                .send((operation, Box::new(callback)))
+                .send((operation, resolver))
                 .expect("Job failed to send to worker thread");
-
-            Ok(())
         }
     }
 
     pub struct FakeHttpMiddleware;
 
-    impl<Effect> EffectMiddleware<Effect> for FakeHttpMiddleware
-    where
-        Effect: TryInto<Request<HttpRequest>, Error = Effect>,
-    {
+    impl EffectMiddleware for FakeHttpMiddleware {
         type Op = HttpRequest;
 
-        fn try_process_effect_with(
+        fn process_effect(
             &self,
-            effect: Effect,
-            mut resolve_callback: impl FnMut(
-                &mut RequestHandle<<Self::Op as Operation>::Output>,
-                <Self::Op as Operation>::Output,
-            ) + Send
-            + 'static,
-        ) -> Result<(), Effect> {
-            let http_request = effect.try_into()?;
-            let (_, mut handle): (HttpRequest, _) = http_request.split();
-
+            _operation: HttpRequest,
+            mut resolver: EffectResolver<HttpResult>,
+        ) {
             // One-off worker
             eprintln!("Starting HTTP thread...");
             spawn(move || {
                 let response = HttpResult::Ok(HttpResponse::status(201).build());
 
                 eprintln!("Resolving HTTP request");
-                resolve_callback(&mut handle, response);
+                resolver.resolve(response);
 
                 eprintln!("HTTP thread terminating...");
             });
-
-            Ok(())
         }
     }
 
@@ -275,24 +252,14 @@ mod middleware {
         }
     }
 
-    impl<Effect> EffectMiddleware<Effect> for RemoteTriggerHttp
-    where
-        Effect: TryInto<Request<HttpRequest>, Error = Effect>,
-    {
+    impl EffectMiddleware for RemoteTriggerHttp {
         type Op = HttpRequest;
 
-        fn try_process_effect_with(
+        fn process_effect(
             &self,
-            effect: Effect,
-            mut resolve_callback: impl FnMut(
-                &mut RequestHandle<<Self::Op as Operation>::Output>,
-                <Self::Op as Operation>::Output,
-            ) + Send
-            + 'static,
-        ) -> Result<(), Effect> {
-            let http_request = effect.try_into()?;
-
-            let (_, mut handle): (HttpRequest, _) = http_request.split();
+            _operation: HttpRequest,
+            mut resolver: EffectResolver<HttpResult>,
+        ) {
             let remote = self.remote.clone();
 
             // One-off worker
@@ -305,13 +272,11 @@ mod middleware {
                 if let Ok(()) = remote.recv() {
                     eprintln!("Trigger received, resolving HTTP request");
 
-                    resolve_callback(&mut handle, response);
+                    resolver.resolve(response);
                 }
 
                 eprintln!("HTTP thread terminating...");
             });
-
-            Ok(())
         }
     }
 }
@@ -326,10 +291,10 @@ mod tests {
     use crossbeam_channel::RecvError;
     use crux_core::bridge::JsonFfiFormat;
     use crux_core::{
-        Core,
         bridge::{self, Request},
         middleware::{BincodeFfiFormat, Layer as _},
         render::RenderOperation,
+        Core,
     };
     use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
     use crux_macros::effect;
@@ -643,15 +608,17 @@ mod tests {
 
     /// Regression test for `<https://github.com/redbadger/crux/issues/492>`
     ///
-    /// When middleware resolves effects synchronously (on the same thread, inside
-    /// `try_process_effect_with`), the resolve chain used to recurse through
-    /// `Core::process()` → middleware → `resolve_callback` → `Core::process()` → ...
-    /// causing a stack overflow for commands with many sequential requests.
+    /// Synchronous resolution is now prevented at the API level.
+    /// `EffectResolver` panics if `resolve()` is called before
+    /// `process_effect` returns.
     #[test]
-    fn synchronous_middleware_doesnt_blow_the_stack() {
+    #[should_panic(expected = "must not call resolve() synchronously")]
+    fn synchronous_middleware_panics() {
         use crux_core::{
-            Command, Core, Request, RequestHandle, capability::Operation, macros::effect,
-            middleware::EffectMiddleware,
+            capability::Operation,
+            macros::effect,
+            middleware::{EffectMiddleware, EffectResolver},
+            Command, Core,
         };
         use serde::{Deserialize, Serialize};
 
@@ -692,42 +659,28 @@ mod tests {
                 _model: &mut Self::Model,
             ) -> Command<Self::Effect, Self::Event> {
                 match event {
-                    PingEvent::Go => Command::new(|ctx| async move {
-                        // Many sequential requests — previously caused stack overflow
-                        for _ in 0..10_000 {
-                            ctx.request_from_shell(PingOperation).await;
-                        }
-                    }),
+                    PingEvent::Go => {
+                        Command::request_from_shell(PingOperation).then_send(|_| PingEvent::Go)
+                    }
                 }
             }
 
             fn view(&self, _model: &Self::Model) -> Self::ViewModel {}
         }
 
-        /// Middleware that resolves `PingOperation` **synchronously** on the same thread.
+        /// Middleware that attempts to resolve synchronously — this should panic.
         struct SyncPingMiddleware;
 
-        impl<Eff> EffectMiddleware<Eff> for SyncPingMiddleware
-        where
-            Eff: TryInto<Request<PingOperation>, Error = Eff>,
-        {
+        impl EffectMiddleware for SyncPingMiddleware {
             type Op = PingOperation;
 
-            fn try_process_effect_with(
+            fn process_effect(
                 &self,
-                effect: Eff,
-                mut resolve_callback: impl FnMut(&mut RequestHandle<PingOutput>, PingOutput)
-                + Send
-                + 'static,
-            ) -> Result<(), Eff> {
-                let request = effect.try_into()?;
-                let (_operation, mut handle) = request.split();
-
-                // Resolve immediately on the same thread — this is what triggers
-                // the re-entrant call to Core::process()
-                resolve_callback(&mut handle, PingOutput);
-
-                Ok(())
+                _operation: PingOperation,
+                mut resolver: EffectResolver<PingOutput>,
+            ) {
+                // This synchronous call should panic
+                resolver.resolve(PingOutput);
             }
         }
 
@@ -736,15 +689,7 @@ mod tests {
 
         let core = Core::<PingApp>::new().handle_effects_using(SyncPingMiddleware);
 
-        // This previously caused: "thread has overflowed its stack"
-        let effects = core.update(PingEvent::Go, effect_callback);
-
-        // All Ping effects were handled by middleware, so only unhandled
-        // effects (if any) come back here. The important thing is we
-        // didn't crash.
-        assert!(
-            effects.is_empty(),
-            "All Ping effects should be handled by middleware"
-        );
+        // This will panic inside process_effect -> resolve()
+        let _ = core.update(PingEvent::Go, effect_callback);
     }
 }
