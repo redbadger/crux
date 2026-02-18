@@ -22,8 +22,8 @@ pub enum SseResponse {
 
 impl SseResponse {
     #[must_use]
-    pub fn is_done(&self) -> bool {
-        matches!(self, SseResponse::Done)
+    pub const fn is_done(&self) -> bool {
+        matches!(self, Self::Done)
     }
 }
 

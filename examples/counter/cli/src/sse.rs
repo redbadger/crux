@@ -25,8 +25,9 @@ pub async fn request(
     let body = response.bytes_stream();
 
     Ok(Box::pin(stream::try_unfold(body, |mut body| async {
-        match body.next().await {
-            Some(chunk) => match chunk {
+        body.next().await.map_or_else(
+            || Ok(None),
+            |chunk| match chunk {
                 Ok(bytes) => {
                     let chunk = SseResponse::Chunk(bytes.to_vec());
                     Ok(Some((chunk, body)))
@@ -35,7 +36,6 @@ pub async fn request(
                     "failed to read from http response; err = {e:?}"
                 ))),
             },
-            None => Ok(None),
-        }
+        )
     })))
 }

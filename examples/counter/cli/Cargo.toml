@@ -11,7 +11,7 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 anyhow.workspace = true
-clap = { version = "4.5.58", features = ["derive"] }
+clap = { version = "4.5.60", features = ["derive"] }
 crossbeam-channel = "0.5.15"
 futures = "0.3"
 reqwest = { version = "0.13.2", features = ["stream"] }

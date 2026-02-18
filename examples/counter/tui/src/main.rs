@@ -5,9 +5,9 @@ mod http;
 mod sse;
 
 use std::io;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use crossbeam_channel::{Receiver, Sender, unbounded};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     DefaultTerminal, Frame,
@@ -15,18 +15,18 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     widgets::Widget,
 };
-use shared::{Effect, Event as AppEvent};
+use shared::{Event as AppEvent, ViewModel};
 
-use crate::core::EventLog;
+use crate::core::{EventLog, RenderFlag};
 use crate::counter_widget::CounterWidget;
 use crate::debug_panel::DebugPanel;
 
 /// owns all state and drives the event loop
 struct App {
     core: core::Core,
-    effect_tx: Sender<Effect>,
-    effect_rx: Receiver<Effect>,
+    render_flag: RenderFlag,
     event_log: EventLog,
+    cached_view: ViewModel,
     selected: usize,
     debug_mode: bool,
     exit: bool,
@@ -34,13 +34,11 @@ struct App {
 
 impl App {
     fn new() -> Self {
-        let (effect_tx, effect_rx) = unbounded();
-
         Self {
             core: core::new(),
-            effect_tx,
-            effect_rx,
+            render_flag: core::new_render_flag(),
             event_log: core::new_log(),
+            cached_view: ViewModel::default(),
             selected: 0,
             debug_mode: false,
             exit: false,
@@ -52,6 +50,11 @@ impl App {
         self.dispatch(AppEvent::StartWatch);
 
         while !self.exit {
+            // Only call core.view() when the render flag indicates a change
+            if self.render_flag.swap(false, Ordering::Acquire) {
+                self.cached_view = self.core.view();
+            }
+
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
@@ -63,12 +66,6 @@ impl App {
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        // Drain any pending render effects from async tasks
-        while self.effect_rx.try_recv().is_ok() {
-            // Each Effect::Render signals that the view has changed.
-            // The next loop iteration will redraw automatically.
-        }
-
         // Poll for terminal events with a short timeout so we also
         // pick up async-driven redraws promptly
         if event::poll(Duration::from_millis(50))? {
@@ -96,11 +93,11 @@ impl App {
         }
     }
 
-    fn select_prev(&mut self) {
+    const fn select_prev(&mut self) {
         self.selected = self.selected.saturating_sub(1);
     }
 
-    fn select_next(&mut self) {
+    const fn select_next(&mut self) {
         if self.selected < counter_widget::NUM_BUTTONS - 1 {
             self.selected += 1;
         }
@@ -113,8 +110,7 @@ impl App {
     }
 
     fn dispatch(&self, event: AppEvent) {
-        core::update(&self.core, event, &self.effect_tx, &self.event_log)
-            .expect("failed to process event");
+        core::update(&self.core, event, &self.render_flag, &self.event_log);
     }
 }
 
@@ -122,16 +118,14 @@ impl App {
 /// delegates to the [`CounterWidget`] and [`DebugPanel`] widgets.
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let view = self.core.view();
-
         if self.debug_mode {
             let [main_area, debug_area] =
                 Layout::vertical([Constraint::Fill(1), Constraint::Percentage(40)]).areas(area);
 
-            CounterWidget::new(&view, self.selected).render(main_area, buf);
+            CounterWidget::new(&self.cached_view, self.selected).render(main_area, buf);
             DebugPanel::new(&self.event_log).render(debug_area, buf);
         } else {
-            CounterWidget::new(&view, self.selected).render(area, buf);
+            CounterWidget::new(&self.cached_view, self.selected).render(area, buf);
         }
     }
 }

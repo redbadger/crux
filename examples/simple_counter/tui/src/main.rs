@@ -71,11 +71,11 @@ impl App {
         }
     }
 
-    fn select_prev(&mut self) {
+    const fn select_prev(&mut self) {
         self.selected = self.selected.saturating_sub(1);
     }
 
-    fn select_next(&mut self) {
+    const fn select_next(&mut self) {
         if self.selected < BUTTONS.len() - 1 {
             self.selected += 1;
         }
@@ -149,7 +149,7 @@ impl Widget for &App {
         .areas(main_content);
 
         // -- Count display --
-        let counter_text = Text::from(vec![Line::from(view.count.clone().yellow().bold())]);
+        let counter_text = Text::from(vec![Line::from(view.count.yellow().bold())]);
         let count_block = Block::bordered().border_set(border::PLAIN);
         Paragraph::new(counter_text)
             .centered()
@@ -166,7 +166,7 @@ struct ButtonBar {
 }
 
 impl ButtonBar {
-    fn new(selected: usize) -> Self {
+    const fn new(selected: usize) -> Self {
         Self { selected }
     }
 }

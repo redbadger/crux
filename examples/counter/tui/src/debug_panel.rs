@@ -14,7 +14,7 @@ pub struct DebugPanel<'a> {
 }
 
 impl<'a> DebugPanel<'a> {
-    pub fn new(event_log: &'a EventLog) -> Self {
+    pub const fn new(event_log: &'a EventLog) -> Self {
         Self { event_log }
     }
 }
@@ -29,28 +29,29 @@ impl Widget for DebugPanel<'_> {
         let inner = block.inner(area);
         block.render(area, buf);
 
-        let lines: Vec<Line> = if let Ok(log) = self.event_log.lock() {
-            let visible_height = inner.height as usize;
-            log.iter()
-                .rev()
-                .take(visible_height)
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .map(|entry| {
-                    if entry.starts_with('→') {
-                        Line::from(Span::styled(entry.clone(), Style::new().fg(Color::Cyan)))
-                    } else {
-                        Line::from(Span::styled(
-                            entry.clone(),
-                            Style::new().fg(Color::DarkGray),
-                        ))
-                    }
-                })
-                .collect()
-        } else {
-            vec![]
-        };
+        let lines: Vec<Line> = self.event_log.lock().map_or_else(
+            |_| vec![],
+            |log| {
+                let visible_height = inner.height as usize;
+                log.iter()
+                    .rev()
+                    .take(visible_height)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .rev()
+                    .map(|entry| {
+                        if entry.starts_with('→') {
+                            Line::from(Span::styled(entry.clone(), Style::new().fg(Color::Cyan)))
+                        } else {
+                            Line::from(Span::styled(
+                                entry.clone(),
+                                Style::new().fg(Color::DarkGray),
+                            ))
+                        }
+                    })
+                    .collect()
+            },
+        );
 
         Paragraph::new(lines).render(inner, buf);
     }

@@ -5,6 +5,7 @@ use shared::http::{
     protocol::{HttpRequest, HttpResponse},
 };
 
+#[allow(clippy::future_not_send)] // WASM is single-threaded
 pub async fn request(
     HttpRequest {
         method,

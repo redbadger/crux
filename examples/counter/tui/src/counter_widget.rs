@@ -29,7 +29,7 @@ pub struct CounterWidget<'a> {
 }
 
 impl<'a> CounterWidget<'a> {
-    pub fn new(view: &'a ViewModel, selected: usize) -> Self {
+    pub const fn new(view: &'a ViewModel, selected: usize) -> Self {
         Self { view, selected }
     }
 }
@@ -115,7 +115,7 @@ struct ButtonBar {
 }
 
 impl ButtonBar {
-    fn new(selected: usize) -> Self {
+    const fn new(selected: usize) -> Self {
         Self { selected }
     }
 }

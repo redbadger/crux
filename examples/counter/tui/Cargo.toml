@@ -10,7 +10,6 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-crossbeam-channel = "0.5.15"
 crossterm = "0.29.0"
 futures = "0.3"
 ratatui = "0.30.0"
