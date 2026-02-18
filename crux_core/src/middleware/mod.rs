@@ -10,13 +10,13 @@
 //! use [`Layer::handle_effects_using`] and provide an implementation of [`EffectMiddleware`].
 //!
 //! Note that apps using middleware must be `Send` and `Sync`, because the effect middlewares
-//! are expected to process effects on a separate thread (in order not to block the thread
-//! the core was originally called on), and resolve them on that thread - different from the
-//! original thread where they were requested. See [`EffectMiddleware`] for more discussion.
+//! are expected to process effects asynchronously (in order not to block the caller of
+//! `process_event`). On native targets this typically means a background thread; on WASM it
+//! means an async task (e.g. `spawn_local`). See [`EffectMiddleware`] for more discussion.
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{App, Core, EffectFFI, Request, Resolvable, ResolveError, bridge::BridgeError};
+use crate::{bridge::BridgeError, App, Core, EffectFFI, Request, Resolvable, ResolveError};
 
 mod bridge;
 mod effect_conversion;

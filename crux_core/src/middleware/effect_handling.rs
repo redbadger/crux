@@ -10,9 +10,11 @@ use super::Layer;
 /// A resolver for an effect processed by middleware.
 ///
 /// This type encapsulates the callback that feeds the operation's output back
-/// into the core. It **must** be called from a background thread — calling
-/// [`resolve`](Self::resolve) while [`process_effect`](EffectMiddleware::process_effect)
-/// is still on the call stack will panic.
+/// into the core. It **must** be called from an asynchronous context (e.g. a
+/// spawned thread, an async task via `spawn_local`, or a channel worker) —
+/// calling [`resolve`](Self::resolve) while
+/// [`process_effect`](EffectMiddleware::process_effect) is still on the call
+/// stack will panic.
 ///
 /// For streaming operations ([`RequestHandle::Many`]), call `resolve` multiple
 /// times until the stream is exhausted.
@@ -34,15 +36,16 @@ impl<Output: Send + 'static> EffectResolver<Output> {
     /// # Panics
     ///
     /// Panics if called synchronously from within
-    /// [`EffectMiddleware::process_effect`]. Middleware must dispatch work to a
-    /// background thread and call `resolve` from there.
+    /// [`EffectMiddleware::process_effect`]. Middleware must dispatch work
+    /// asynchronously (e.g. `std::thread::spawn`, `spawn_local`, or a channel)
+    /// and call `resolve` from there.
     ///
     /// See <https://github.com/redbadger/crux/issues/492>
     pub fn resolve(&mut self, output: Output) {
         assert!(
             !self.active.load(Ordering::Acquire),
             "EffectMiddleware::process_effect must not call resolve() synchronously. \
-             Dispatch work to a background thread. \
+             Dispatch work asynchronously (thread, spawn_local, channel, etc.). \
              See https://github.com/redbadger/crux/issues/492"
         );
         (self.resolve_fn)(&mut self.handle, output);
@@ -64,15 +67,17 @@ impl<Output: Send + 'static> EffectResolver<Output> {
 ///   portable to all platforms the library using this middleware is going to be
 ///   deployed to. This is fundamentally trading off portability for reuse of the
 ///   Rust implementation.
-/// - The middleware MUST process the effect in a non-blocking fashion on a
-///   separate thread. This thread may be one of a pool from an async runtime or
-///   a simple background worker thread — this is left to the implementation to
-///   decide. Calling [`EffectResolver::resolve`] synchronously inside
-///   `process_effect` will panic.
-/// - Due to the multi-threaded nature of the processing, the core, and therefore
-///   the app are shared between threads. The app must be `Send` and `Sync`,
-///   which also forces the `Model` type to be `Send` and `Sync`. This should
-///   not be a problem — `Model` should not normally be `!Send` or `!Sync`.
+/// - The middleware MUST process the effect asynchronously — it must not call
+///   [`EffectResolver::resolve`] before `process_effect` returns. On native
+///   targets this typically means spawning a thread or sending work to a
+///   channel-based worker. On WASM (which has no threads) this means using
+///   `spawn_local` or a similar async task primitive. Calling `resolve()`
+///   synchronously inside `process_effect` will panic.
+/// - Because the resolver may be sent to another thread (on native), the core
+///   and therefore the app are shared between threads. The app must be `Send`
+///   and `Sync`, which also forces the `Model` type to be `Send` and `Sync`.
+///   This should not be a problem — `Model` should not normally be `!Send` or
+///   `!Sync`.
 ///
 /// # Example
 ///
@@ -100,8 +105,10 @@ pub trait EffectMiddleware: Send + Sync {
     ///
     /// The framework has already extracted the operation from the effect enum.
     /// Use the [`EffectResolver`] to send the result back. The resolver **must
-    /// not** be called before this method returns — dispatch the work to a
-    /// background thread and call [`EffectResolver::resolve`] from there.
+    /// not** be called before this method returns — dispatch the work
+    /// asynchronously (e.g. `std::thread::spawn` on native, `spawn_local` on
+    /// WASM, or a channel send) and call [`EffectResolver::resolve`] from
+    /// there.
     fn process_effect(
         &self,
         operation: Self::Op,
@@ -274,7 +281,7 @@ where
                 let (operation, handle) = request.split();
 
                 // Build the resolve function that will be called from the
-                // middleware's background thread.
+                // middleware's async context (thread, spawn_local, etc.).
                 let resolve_fn = {
                     let return_effects = return_effects.clone();
                     let inner = inner.clone();
@@ -325,7 +332,7 @@ where
                 // this scope.
                 strong_inner.middleware.process_effect(operation, resolver);
 
-                // Allow resolve() to be called from background threads.
+                // Allow resolve() to be called now that process_effect has returned.
                 active.store(false, Ordering::Release);
 
                 None
