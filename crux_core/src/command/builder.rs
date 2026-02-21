@@ -43,7 +43,7 @@ where
     /// Convert the [`NotificationBuilder`] into a [`Command`] to use in an sync context
     pub fn build(self) -> Command<Effect, Event> {
         Command::new(|ctx| async move {
-            self.into_future(ctx.clone()).await;
+            let () = self.into_future(ctx.clone()).await;
         })
     }
 }
@@ -55,7 +55,9 @@ where
     Task: Future<Output = ()> + Send + 'static,
 {
     fn from(value: NotificationBuilder<Effect, Event, Task>) -> Self {
-        Command::new(|ctx| value.into_future(ctx))
+        Command::new(|ctx| async move {
+            value.into_future(ctx).await;
+        })
     }
 }
 

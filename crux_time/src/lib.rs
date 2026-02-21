@@ -4,6 +4,20 @@
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
 
+#[cfg(feature = "native_bridge")]
+uniffi::setup_scaffolding!();
+
+// Custom type conversion for TimerId (tuple struct -> u64)
+#[cfg(feature = "native_bridge")]
+mod uniffi_compat {
+    type TimerId = super::protocol::TimerId;
+    uniffi::custom_type!(TimerId, u64, {
+        remote,
+        try_lift: |val| Ok(super::protocol::TimerId(val as usize)),
+        lower: |obj| obj.0 as u64,
+    });
+}
+
 pub mod command;
 pub mod protocol;
 

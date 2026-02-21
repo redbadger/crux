@@ -14,3 +14,9 @@ rust-version.workspace = true
 crux_core = { version = "0.17.0-rc3", path = "../crux_core" }
 facet.workspace = true
 serde = { workspace = true, features = ["derive"] }
+uniffi = { version = "0.31", optional = true }
+
+[features]
+facet_typegen = ["crux_core/facet_typegen"]
+native_bridge = ["dep:uniffi", "crux_core/native_bridge"]
+typegen = ["crux_core/typegen"]

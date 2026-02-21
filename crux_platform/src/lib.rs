@@ -1,5 +1,8 @@
 //! A demo capability to get a name of the current platform
 
+#[cfg(feature = "native_bridge")]
+uniffi::setup_scaffolding!();
+
 pub mod command;
 pub mod protocol;
 

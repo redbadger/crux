@@ -1,0 +1,11 @@
+package crux:shared-lib;
+
+interface core {
+    resource instance {
+        constructor();
+        update: func(data: list<u8>) -> result<list<u8>, string>;
+        resolve: func(effect-id: u32, data: list<u8>) -> result<list<u8>, string>;
+        view: func() -> result<list<u8>, string>;
+        schema: func() -> string;
+    }
+}

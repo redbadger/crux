@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 /// Note: we can't use `Option` here because generics are not currently
 /// supported across the FFI boundary, when using the builtin typegen.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[repr(C)]
 pub enum Value {
     None,

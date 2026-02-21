@@ -17,7 +17,9 @@ pub struct ResolveRegistry<T: FfiFormat>(Mutex<Slab<ResolveSerialized<T>>>);
 
 impl<T: FfiFormat> Default for ResolveRegistry<T> {
     fn default() -> Self {
-        Self(Mutex::new(Slab::with_capacity(1024)))
+        Self(Mutex::new(Slab::with_capacity(
+            super::DEFAULT_REGISTRY_CAPACITY,
+        )))
     }
 }
 

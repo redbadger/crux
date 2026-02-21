@@ -8,6 +8,7 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
 
 /// Represents a duration of time, internally stored as nanoseconds
 #[derive(Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Record))]
 #[serde(rename_all = "camelCase")]
 pub struct Duration {
     pub(crate) nanos: u64,

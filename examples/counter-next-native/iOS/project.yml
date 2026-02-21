@@ -1,0 +1,22 @@
+name: CounterApp
+packages:
+  Shared:
+    path: ./generated/Shared
+options:
+  bundleIdPrefix: com.crux.example.counter
+targets:
+  CounterApp:
+    type: application
+    platform: iOS
+    deploymentTarget: 18.0
+    sources: [CounterApp]
+    dependencies:
+      - package: Shared
+    info:
+      path: CounterApp/Info.plist
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UILaunchScreen: {}

@@ -5,10 +5,11 @@ mod effect;
 mod export;
 
 use capability::capability_impl;
+use effect::macro_impl::EffectArgs;
 use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use syn::{Ident, ItemEnum, parse_macro_input};
+use syn::{ItemEnum, parse_macro_input};
 
 /// Generates an effect type matching the enum definition provided,
 /// whilst supplying all the necessary decorations and additional trait implementations.
@@ -47,7 +48,7 @@ use syn::{Ident, ItemEnum, parse_macro_input};
 /// ```
 #[proc_macro_attribute]
 pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(args as Option<Ident>);
+    let args = parse_macro_input!(args as EffectArgs);
     let input = parse_macro_input!(input as ItemEnum);
     effect::macro_impl::effect_impl(args, input).into()
 }
