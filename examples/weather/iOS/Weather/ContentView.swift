@@ -4,27 +4,28 @@ import App
 // View modifier to handle smooth transitions
 private struct SmoothTransitionModifier: ViewModifier {
     let workflow: WorkflowViewModel
-    
+
     func body(content: Content) -> some View {
         content
             .animation(.easeInOut, value: workflow)
     }
 }
 
+// ANCHOR: content_view
 struct ContentView: View {
     @ObservedObject var core: Core
-    
+
     init(core: Core) {
         self.core = core
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 // Base background that's always present
                 Color(.systemGroupedBackground)
                     .ignoresSafeArea()
-                
+
                 // Content views
                 switch core.view.workflow {
                 case .home:
@@ -48,7 +49,8 @@ struct ContentView: View {
         }
     }
 }
+// ANCHOR_END: content_view
 
 #Preview {
     ContentView(core: Core())
-} 
+}

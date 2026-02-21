@@ -12,10 +12,11 @@ Typically, you'll be working with effects using Capabilities.
 ## Included capabilities
 
 The weather app uses two out of the three capabilities provided with Crux: HTTP client (`crux_http`),
-Key-Value store (`crux_kv`) and time capability (`crux_time`).
+Key-Value store (`crux_kv`) (the third is the time capability – `crux_time`).
 
 These are the most common things we think people will want to use in their apps. There are more,
-and we will probably build those over time as well.
+and we will probably build those over time as well, we just haven't worked on a motivating use-case
+ourselves yet. If you have and built a capability which you'd like to donate, definitely get in touch!
 
 Let's look at the use of `crux_http` quickly, as it's the most extensive of the three. The Weather
 app makes a pretty typical move and centralises the weather API use in a client:
@@ -24,16 +25,16 @@ app makes a pretty typical move and centralises the weather API use in a client:
 {{#include ../../../examples/weather/shared/src/weather/client.rs:client}}
 ```
 
-The main method there is `fetch`, which creates a GET request expecting a json response which
-deserialises into a specific type, and provides a URL query to specify the search. At the end
-of that chained call is a `.map` unpicking the response and turning it into a more convenient
-`Result` type for the app code.
+The main method there is `fetch`, which uses `Http::get` from `crux_http` to create a GET request expecting
+a json response which deserialises into a specific type, and provides a URL query to specify
+the search. At the end of that chained call is a `.map` unpicking the response and turning
+it into a more convenient `Result` type for the app code.
 
 The interesting thing here is that the `fetch` method returns a `RequestBuilder`. In a way, this
 makes it a half-way step to a custom capability, but it also just means the `fetch` call is
 convenient to use from both normal and `async` context.
 
-This is one of the things capabilities do - they map the lower-level protocols into a more
+This is one of the things capabilities do - they map the lower-level FFI protocols into a more
 convenient API for the app developer.
 
 Let's look at the other thing they do.
@@ -41,7 +42,9 @@ Let's look at the other thing they do.
 ## Custom capabilities
 
 The Weather app has one specialty - it works with location services. This is an example of a
-capability which we'd probably struggle to find a cross-platform crate for.
+capability which we'd probably struggle to find a cross-platform crate for. It's also not
+so common and complex, that we feel we should develop and maintain an official one. So a custom
+capability in the app is the way to go.
 
 The capability defines two things:
 

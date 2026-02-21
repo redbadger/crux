@@ -3,12 +3,12 @@
 We have seen how to use effects, and we have seen a little bit about the testing,
 but we should look at that closer.
 
-Crux was expressly designed to support easy, fast, comprehensive testing od your
+Crux was expressly designed to support easy, fast, comprehensive testing of your
 application. Everyone is generally on board with unit tests and TDD when it comes
 to basic pure logic. But as soon as any I/O or UI gets involved, the dread sets in.
 We're going to have to set up some fakes, introduce additional traits _just_ to test
 things, or just bite the bullet and build tests around a fully integrated app and
-wait for them to run. So most people give up.
+wait for them to run (and probably fail on a race condition sometimes). So most people give up.
 
 Managed effects smooth over that big hump. You pay for it a little bit in how the
 code is written, but you reap the reward in testing it. This is because the core
@@ -45,8 +45,10 @@ Here's the corresponding code it's testing:
 Hopefully this illustrates that the managed effects let you test entire transactions
 involving effects, without ever executing any.
 
-The full suite of 18 tests of the Weather app runs in 49 milliseconds. It's rare
-for test of a Crux app to take longer than compiling it (even incrementally).
+The full suite of 18 tests of the Weather app runs in 49 milliseconds. In practice,
+it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally).
+Even apps with thousands of tests usually run them in seconds, and sadly they do not yet compile
+in seconds.
 
 ```txt
 cargo nextest run
@@ -116,6 +118,8 @@ the different effects our app needs and provide a realistic _enough_ implementat
 the real things, a very interesting thing happens - we get the entire app stack, with the
 nitty gritty technical details taken out, running in a unit test.
 
+![Mocking with Crux](mocking.png)
+
 With that, we can create an app instance and send it completely random (but deterministic)
 events, and make sure "nothing bad happens". The definition of what that means is specific
 to each app, but just to illustrate some options:
@@ -134,7 +138,8 @@ test run.
 In practice, Crux apps will mostly be able to run at thousands of events a second, and these
 tests will explore more of the state space than we ever could with manual unit tests.
 
-This type of testing is usually reserved to consensus algorithms and network protocols where
-anything that can happen _will_ happen and they have to be rock solid, because setting up the
-tests is just too much work. But with managed effects it doesn't need to be. For a modestly
-sized app, a testing harness like that will only take a few days to write.
+This type of testing is usually reserved to consensus algorithms and network protocols (where
+anything that can happen _will_ happen and they have to be rock solid), because setting up the
+test harness is just too much work. But with managed effects it is a few hundred lines of
+additional code. For a modestly sized app, a testing harness like that will only take a few
+days to write. We may even ship building blocks of such test harness with Crux in the future.

@@ -7,7 +7,7 @@ private struct WeatherDataTransitionModifier: ViewModifier {
     let favorites: [FavoriteView]
     @State private var previousWeatherData: CurrentWeatherResponse?
     @State private var previousFavorites: [FavoriteView] = []
-    
+
     var displayWeatherData: CurrentWeatherResponse? {
         if let weatherData = weatherData, weatherData.main.temp.isFinite {
             previousWeatherData = weatherData
@@ -16,14 +16,14 @@ private struct WeatherDataTransitionModifier: ViewModifier {
         }
         return previousWeatherData
     }
-    
+
     var displayFavorites: [FavoriteView] {
         if let weatherData = weatherData, weatherData.main.temp.isFinite {
             return favorites
         }
         return previousFavorites
     }
-    
+
     func body(content: Content) -> some View {
         content
             .opacity(displayWeatherData != nil ? 1 : 0)
@@ -32,11 +32,12 @@ private struct WeatherDataTransitionModifier: ViewModifier {
 }
 
 // HomeView is the main entry point for the weather UI.
+// ANCHOR: home_view
 struct HomeView: View {
     @ObservedObject var core: Core
     @State private var hasLoadedInitialData = false
     @State private var selectedPage = 0
-    
+
     var body: some View {
         Group {
             if case .home(let weatherData, let favorites) = core.view.workflow {
@@ -53,7 +54,7 @@ struct HomeView: View {
                         }
                         .frame(width: UIScreen.main.bounds.width)
                         .tag(0)
-                        
+
                         // Favorite weather cards
                         ForEach(Array(favorites.enumerated()), id: \.element.name) { idx, favorite in
                             Group {
@@ -86,7 +87,7 @@ struct HomeView: View {
                 Color.clear // Placeholder for transition
             }
         }
-        
+
         .onAppear {
             if !hasLoadedInitialData {
                 core.update(.home(.show))
@@ -95,6 +96,7 @@ struct HomeView: View {
         }
     }
 }
+// ANCHOR_END: home_view
 
 // Loading placeholder card
 struct LoadingCard: View {

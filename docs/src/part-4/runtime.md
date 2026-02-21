@@ -1,5 +1,10 @@
 # Capability Runtime
 
+```admonish warning
+This was written for previous versions of Crux and needs updating. Proceed with caution.
+If you'd like to help update it, you'd be very welcome!
+```
+
 In the previous sections we focused on building applications in Crux and using
 its public APIs to do so. In this and the following chapters, we'll look at how
 the internals of Crux work, starting with the capability runtime.

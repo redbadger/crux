@@ -1,5 +1,10 @@
 # Web — Rust and Yew
 
+```admonish warning
+This was written for previous versions of Crux and needs updating. Proceed with caution.
+If you'd like to help update it, you'd be very welcome!
+```
+
 These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
