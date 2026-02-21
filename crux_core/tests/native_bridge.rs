@@ -392,7 +392,7 @@ fn multiple_sequential_updates() {
 // ---------------------------------------------------------------------------
 
 mod counter_middleware {
-    use crux_core::{Request, RequestHandle, middleware::EffectMiddleware};
+    use crux_core::middleware::{EffectMiddleware, EffectResolver};
 
     use crate::counter_app::CounterOp;
 
@@ -400,26 +400,14 @@ mod counter_middleware {
     /// always resolving with a fixed value.
     pub struct FixedCounter(pub i32);
 
-    impl<Eff> EffectMiddleware<Eff> for FixedCounter
-    where
-        Eff: TryInto<Request<CounterOp>, Error = Eff>,
-    {
+    impl EffectMiddleware for FixedCounter {
         type Op = CounterOp;
 
-        fn try_process_effect_with(
-            &self,
-            effect: Eff,
-            mut resolve_callback: impl FnMut(&mut RequestHandle<i32>, i32) + Send + 'static,
-        ) -> Result<(), Eff> {
-            let req = effect.try_into()?;
-            let (_op, mut handle) = req.split();
+        fn try_process_effect(&self, _operation: CounterOp, mut resolver: EffectResolver<i32>) {
             let value = self.0;
-
             std::thread::spawn(move || {
-                resolve_callback(&mut handle, value);
+                resolver.resolve(value);
             });
-
-            Ok(())
         }
     }
 
@@ -428,28 +416,16 @@ mod counter_middleware {
         pub trigger: crossbeam_channel::Receiver<i32>,
     }
 
-    impl<Eff> EffectMiddleware<Eff> for DelayedCounter
-    where
-        Eff: TryInto<Request<CounterOp>, Error = Eff>,
-    {
+    impl EffectMiddleware for DelayedCounter {
         type Op = CounterOp;
 
-        fn try_process_effect_with(
-            &self,
-            effect: Eff,
-            mut resolve_callback: impl FnMut(&mut RequestHandle<i32>, i32) + Send + 'static,
-        ) -> Result<(), Eff> {
-            let req = effect.try_into()?;
-            let (_op, mut handle) = req.split();
+        fn try_process_effect(&self, _operation: CounterOp, mut resolver: EffectResolver<i32>) {
             let trigger = self.trigger.clone();
-
             std::thread::spawn(move || {
                 if let Ok(value) = trigger.recv() {
-                    resolve_callback(&mut handle, value);
+                    resolver.resolve(value);
                 }
             });
-
-            Ok(())
         }
     }
 }

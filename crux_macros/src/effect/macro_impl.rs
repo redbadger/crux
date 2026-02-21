@@ -1,7 +1,9 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use syn::{Ident, ItemEnum, Type};
+use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
+use syn::{Ident, ItemEnum, Token, Type};
 
 struct Effect {
     ident: Ident,
@@ -27,22 +29,77 @@ enum TypegenKind {
     None,
 }
 
-impl From<Option<Ident>> for TypegenKind {
-    fn from(value: Option<Ident>) -> Self {
-        match value {
-            Some(x) if x == format_ident!("typegen") => TypegenKind::Serde,
-            Some(x) if x == format_ident!("facet_typegen") => TypegenKind::Facet,
-            Some(x) => panic!("Unexpected attribute: {x}, did you mean typegen or facet_typegen?"),
-            None => TypegenKind::None,
+pub struct EffectArgs {
+    typegen_kind: TypegenKind,
+    native_bridge: bool,
+}
+
+#[cfg(test)]
+impl EffectArgs {
+    pub fn none() -> Self {
+        Self {
+            typegen_kind: TypegenKind::None,
+            native_bridge: false,
         }
+    }
+
+    pub fn typegen() -> Self {
+        Self {
+            typegen_kind: TypegenKind::Serde,
+            native_bridge: false,
+        }
+    }
+
+    pub fn facet_typegen() -> Self {
+        Self {
+            typegen_kind: TypegenKind::Facet,
+            native_bridge: false,
+        }
+    }
+
+    pub fn with_native_bridge(mut self) -> Self {
+        self.native_bridge = true;
+        self
+    }
+}
+
+impl Parse for EffectArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut typegen_kind = TypegenKind::None;
+        let mut native_bridge = false;
+
+        if !input.is_empty() {
+            let idents = Punctuated::<Ident, Token![,]>::parse_terminated(input)?;
+            for ident in &idents {
+                if ident == "typegen" {
+                    typegen_kind = TypegenKind::Serde;
+                } else if ident == "facet_typegen" {
+                    typegen_kind = TypegenKind::Facet;
+                } else if ident == "native_bridge" {
+                    native_bridge = true;
+                } else {
+                    panic!(
+                        "Unexpected attribute: {ident}, expected typegen, facet_typegen, or native_bridge"
+                    );
+                }
+            }
+        }
+
+        Ok(EffectArgs {
+            typegen_kind,
+            native_bridge,
+        })
     }
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
+pub fn effect_impl(args: EffectArgs, input: ItemEnum) -> TokenStream {
     let attrs = &input.attrs;
     let enum_ident = &input.ident;
-    let typegen_kind: TypegenKind = args.into();
+    let EffectArgs {
+        typegen_kind,
+        native_bridge,
+    } = args;
     let enum_ident_str = enum_ident.to_string();
 
     // Separate facet attributes from other attributes
@@ -67,6 +124,14 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         TypegenKind::Facet => {
             let facet_meta_attrs = facet_attrs.iter().map(|attr| &attr.meta);
 
+            let native_bridge_derive = if native_bridge {
+                quote! {
+                    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
+                }
+            } else {
+                quote! {}
+            };
+
             quote! {
                 #[derive(::serde::Serialize, ::serde::Deserialize)]
                 #[serde(rename = #enum_ident_str)]
@@ -77,10 +142,16 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                     facet(name = #enum_ident_str),
                     repr(C)
                 )]
-                #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
+                #native_bridge_derive
                 #ffi_enum
             }
         }
+        TypegenKind::None if native_bridge => quote! {
+            #[derive(::serde::Serialize, ::serde::Deserialize)]
+            #[serde(rename = #enum_ident_str)]
+            #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
+            #ffi_enum
+        },
         TypegenKind::None => quote! {},
     };
 
@@ -176,10 +247,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     });
 
     // Generate native bridge types (EffectOutput, NativeRequest, EffectNative impl)
-    // Only when typegen is enabled, since EffectFfi must exist
-    let native_bridge = if let TypegenKind::None = typegen_kind {
-        quote! {}
-    } else {
+    // Only when native_bridge is explicitly requested via macro argument
+    let native_bridge_code = if native_bridge {
         let effect_output_variants = effects.clone().map(|effect| {
             let effect_ident = &effect.ident;
             let operation = &effect.operation;
@@ -226,19 +295,11 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             }
         });
 
-        // UniFFI derives only for facet_typegen (app crates with scaffolding).
-        // Test crates using #[effect(typegen)] don't have uniffi::setup_scaffolding!()
-        // so they lack UniFfiTag. We use cfg_attr to make it conditional.
-        let (effect_output_derive, native_request_derive) = match typegen_kind {
-            TypegenKind::Facet => (
-                quote! {
-                    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
-                },
-                quote! {
-                    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
-                },
-            ),
-            _ => (quote! {}, quote! {}),
+        let effect_output_derive = quote! {
+            #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
+        };
+        let native_request_derive = quote! {
+            #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
         };
 
         quote! {
@@ -267,6 +328,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 }
             }
         }
+    } else {
+        quote! {}
     };
 
     let type_gen = match typegen_kind {
@@ -325,9 +388,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         TypegenKind::None => quote! {},
     };
 
-    let effect_ffi_derive = if let TypegenKind::None = typegen_kind {
-        quote! {}
-    } else {
+    let has_ffi = !matches!(typegen_kind, TypegenKind::None) || native_bridge;
+    let effect_ffi_derive = if has_ffi {
         quote! {
             impl crux_core::EffectFFI for #enum_ident {
                 type Ffi = #ffi_enum_ident;
@@ -338,6 +400,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 }
             }
         }
+    } else {
+        quote! {}
     };
 
     let attrs = if non_facet_attrs.is_empty() {
@@ -365,7 +429,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
 
         #effect_ffi_derive
 
-        #native_bridge
+        #native_bridge_code
 
         #(#from_impls)*
 
