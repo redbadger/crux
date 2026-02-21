@@ -2,17 +2,17 @@ pub mod native {
     use std::sync::Arc;
 
     use crux_core::{
-        Core, EffectNative, Request,
         bridge::{EffectId, NativeBridge, NativeBridgeError, ResolveNative},
         middleware::{HandleEffectLayer, Layer as _, MapEffectLayer},
         render::RenderOperation,
+        Core, EffectNative, Request,
     };
     use crux_http::protocol::{HttpRequest, HttpResult};
 
     use crate::{
-        Counter, Event, ViewModel,
         middleware::RngMiddleware,
         sse::{SseRequest, SseResponse},
+        Counter, Event, ViewModel,
     };
 
     // --- Effect enum (internal, with Request wrappers) ---
@@ -141,7 +141,7 @@ pub mod native {
         fn handle_effect(&self, request: NativeRequest);
     }
 
-    /// Core FFI using NativeBridge for typed effects
+    /// Core FFI using `NativeBridge` for typed effects
     #[derive(uniffi::Object)]
     pub struct CoreFFI {
         bridge:
