@@ -60,7 +60,7 @@ pub enum Event {
     UpdateBy(isize),
 }
 
-#[effect(native_bridge)]
+#[effect]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
