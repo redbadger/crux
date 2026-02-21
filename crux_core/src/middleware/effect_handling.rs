@@ -1,12 +1,12 @@
 use std::{
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc, Weak,
+        atomic::{AtomicBool, Ordering},
     },
     thread::{self, ThreadId},
 };
 
-use crate::{capability::Operation, Request, RequestHandle, Resolvable, ResolveError};
+use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
 
 use super::Layer;
 

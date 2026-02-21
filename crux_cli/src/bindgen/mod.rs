@@ -1,7 +1,7 @@
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result, anyhow};
 use camino::Utf8PathBuf;
 use cargo_metadata::{Metadata, MetadataCommand};
-use uniffi_bindgen::bindings::{generate, GenerateOptions, TargetLanguage};
+use uniffi_bindgen::bindings::{GenerateOptions, TargetLanguage, generate};
 
 use crate::args::BindgenArgs;
 
