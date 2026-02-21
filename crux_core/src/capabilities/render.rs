@@ -5,7 +5,7 @@ use std::future::Future;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::{capability::Operation, command::NotificationBuilder, Command, Request};
+use crate::{Command, Request, capability::Operation, command::NotificationBuilder};
 
 /// The single operation `Render` implements.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -38,8 +38,8 @@ impl Operation for RenderOperation {
 ///# });
 /// ```
 #[must_use]
-pub fn render_builder<Effect, Event>(
-) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
+pub fn render_builder<Effect, Event>()
+-> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
 where
     Effect: From<Request<RenderOperation>> + Send + 'static,
     Event: Send + 'static,

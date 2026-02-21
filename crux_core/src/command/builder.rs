@@ -43,7 +43,7 @@ where
     /// Convert the [`NotificationBuilder`] into a [`Command`] to use in an sync context
     pub fn build(self) -> Command<Effect, Event> {
         Command::new(|ctx| async move {
-            let _ = self.into_future(ctx.clone()).await;
+            let () = self.into_future(ctx.clone()).await;
         })
     }
 }

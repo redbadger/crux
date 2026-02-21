@@ -1,5 +1,5 @@
 use std::future::Future;
-use std::pin::{pin, Pin};
+use std::pin::{Pin, pin};
 
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -10,8 +10,8 @@ use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
 
-use crate::capability::Operation;
 use crate::Request;
+use crate::capability::Operation;
 
 use super::executor::{JoinHandle, Task};
 

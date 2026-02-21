@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::{core::ResolveError, App, Core};
+use crate::{App, Core, core::ResolveError};
 
 /// Default initial capacity for the resolve registry slab.
 ///

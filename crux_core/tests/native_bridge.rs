@@ -9,9 +9,9 @@ use std::time::Duration;
 
 use crossbeam_channel::{self, Receiver, Sender};
 use crux_core::{
+    Core,
     bridge::{EffectId, NativeBridgeError},
     middleware::Layer as _,
-    Core,
 };
 
 // ---------------------------------------------------------------------------
@@ -20,10 +20,10 @@ use crux_core::{
 mod counter_app {
     use crux_core::bridge::{NativeBridgeError, ResolveNative};
     use crux_core::{
+        App, Command,
         capability::Operation,
         macros::effect,
-        render::{render, RenderOperation},
-        App, Command,
+        render::{RenderOperation, render},
     };
     use serde::{Deserialize, Serialize};
 
@@ -392,7 +392,7 @@ fn multiple_sequential_updates() {
 // ---------------------------------------------------------------------------
 
 mod counter_middleware {
-    use crux_core::{middleware::EffectMiddleware, Request, RequestHandle};
+    use crux_core::{Request, RequestHandle, middleware::EffectMiddleware};
 
     use crate::counter_app::CounterOp;
 
