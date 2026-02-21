@@ -1,6 +1,9 @@
-use std::sync::{
-    Arc, Weak,
-    atomic::{AtomicBool, Ordering},
+use std::{
+    sync::{
+        Arc, Weak,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread::{self, ThreadId},
 };
 
 use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
@@ -25,6 +28,8 @@ pub struct EffectResolver<Output: Send + 'static> {
     resolve_fn: ResolveFn<Output>,
     /// `true` while `try_process_effect` is executing on the call stack.
     active: Arc<AtomicBool>,
+    /// The thread that called `try_process_effect`.
+    calling_thread: ThreadId,
 }
 
 impl<Output: Send + 'static> EffectResolver<Output> {
@@ -43,7 +48,7 @@ impl<Output: Send + 'static> EffectResolver<Output> {
     /// See <https://github.com/redbadger/crux/issues/492>
     pub fn resolve(&mut self, output: Output) {
         assert!(
-            !self.active.load(Ordering::Acquire),
+            !(self.active.load(Ordering::Acquire) && thread::current().id() == self.calling_thread),
             "EffectMiddleware::try_process_effect must not call resolve() synchronously. \
              Dispatch work asynchronously (thread, spawn_local, channel, etc.). \
              See https://github.com/redbadger/crux/issues/492"
@@ -326,6 +331,7 @@ where
                     handle,
                     resolve_fn: Box::new(resolve_fn),
                     active: active.clone(),
+                    calling_thread: thread::current().id(),
                 };
 
                 // Call the middleware. resolve() will panic if called during
