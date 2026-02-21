@@ -91,6 +91,4 @@ viable alternative.
 
 Crux is our attempt to provide one.
 
----
-
 [^once]: In reality it's more like 1.4x effort build the same app for two platforms.

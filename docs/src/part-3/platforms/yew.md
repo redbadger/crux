@@ -129,5 +129,5 @@ trunk serve --open
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/simple_counter.webp"  width="300"></p>
 ```

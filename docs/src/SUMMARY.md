@@ -34,7 +34,6 @@
 1. [Middleware](./part-3/middleware.md)
 1. [Other platforms](./part-3/platforms.md)
     1. [TypeScript and React (Remix)](./part-3/platforms/remix.md)
-    1. [TypeScript and Svelte](./part-3/platforms/svelte.md)
     1. [Rust and Yew](./part-3/platforms/yew.md)
     1. [Rust and Dioxus](./part-3/platforms/dioxus.md)
 

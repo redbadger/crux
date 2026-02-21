@@ -1,7 +1,8 @@
 # Capability Runtime
 
 ```admonish warning
-This was written for previous versions of Crux and needs updating. Proceed with caution.
+This was written for previous versions of Crux and needs rewriting.
+Most of the code it references has been removed. Proceed with caution.
 If you'd like to help update it, you'd be very welcome!
 ```
 
