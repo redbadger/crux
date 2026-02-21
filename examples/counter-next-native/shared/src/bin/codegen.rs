@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
-use crux_core::cli::{bindgen, BindgenArgsBuilder};
+use crux_core::cli::{BindgenArgsBuilder, bindgen};
 use log::info;
 use uniffi::deps::anyhow::Result;
 
