@@ -12,10 +12,10 @@ struct Effect {
 /// Check if a variant has `#[effect(notification)]` attribute
 fn has_notification_attr(attrs: &[syn::Attribute]) -> bool {
     attrs.iter().any(|attr| {
-        if attr.path().is_ident("effect") {
-            if let Ok(nested) = attr.parse_args::<syn::Ident>() {
-                return nested == "notification";
-            }
+        if attr.path().is_ident("effect")
+            && let Ok(nested) = attr.parse_args::<syn::Ident>()
+        {
+            return nested == "notification";
         }
         false
     })
