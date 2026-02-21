@@ -1,4 +1,3 @@
-use quote::format_ident;
 use syn::parse_quote;
 
 use crate::pretty_print;
@@ -6,9 +5,11 @@ use crate::pretty_print;
 use super::macro_impl::*;
 
 #[test]
-#[should_panic(expected = "Unexpected attribute: typo, did you mean typegen or facet_typegen?")]
+#[should_panic(
+    expected = "Unexpected attribute: typo, expected typegen, facet_typegen, or native_bridge"
+)]
 fn bad_args() {
-    let args = Some(format_ident!("typo"));
+    let args: EffectArgs = syn::parse_str("typo").unwrap();
     let input = parse_quote! {
         pub enum Effect {
             Render(RenderOperation),
@@ -20,7 +21,7 @@ fn bad_args() {
 
 #[test]
 fn single_with_typegen() {
-    let args = Some(format_ident!("typegen"));
+    let args = EffectArgs::typegen();
     let input = parse_quote! {
         pub enum Effect {
             Render(RenderOperation),
@@ -46,39 +47,6 @@ fn single_with_typegen() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    pub enum EffectOutput {
-        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: EffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for Effect {
-        type Ffi = EffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                Effect::Render(req) => {
-                    req.into_native(
-                        EffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -126,7 +94,7 @@ fn single_with_typegen() {
 
 #[test]
 fn single_with_new_name() {
-    let args = Some(format_ident!("typegen"));
+    let args = EffectArgs::typegen();
     let input = parse_quote! {
         pub enum MyEffect {
             Render(RenderOperation),
@@ -152,39 +120,6 @@ fn single_with_new_name() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    pub enum EffectOutput {
-        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: MyEffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for MyEffect {
-        type Ffi = MyEffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                MyEffect::Render(req) => {
-                    req.into_native(
-                        MyEffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -232,7 +167,7 @@ fn single_with_new_name() {
 
 #[test]
 fn single_with_facet_typegen() {
-    let args = Some(format_ident!("facet_typegen"));
+    let args = EffectArgs::facet_typegen();
     let input = parse_quote! {
         pub enum Effect {
             Render(RenderOperation),
@@ -253,7 +188,6 @@ fn single_with_facet_typegen() {
         facet(name = "Effect"),
         repr(C)
     )]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectFfi {
         Render(RenderOperation),
     }
@@ -265,41 +199,6 @@ fn single_with_facet_typegen() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
-    pub enum EffectOutput {
-        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: EffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for Effect {
-        type Ffi = EffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                Effect::Render(req) => {
-                    req.into_native(
-                        EffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -360,7 +259,7 @@ fn single_with_facet_typegen() {
 
 #[test]
 fn single_facet_typegen_with_new_name() {
-    let args = Some(format_ident!("facet_typegen"));
+    let args = EffectArgs::facet_typegen();
     let input = parse_quote! {
         pub enum MyEffect {
             Render(RenderOperation),
@@ -381,7 +280,6 @@ fn single_facet_typegen_with_new_name() {
         facet(name = "MyEffect"),
         repr(C)
     )]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum MyEffectFfi {
         Render(RenderOperation),
     }
@@ -393,41 +291,6 @@ fn single_facet_typegen_with_new_name() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
-    pub enum EffectOutput {
-        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: MyEffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for MyEffect {
-        type Ffi = MyEffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                MyEffect::Render(req) => {
-                    req.into_native(
-                        MyEffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -494,7 +357,7 @@ fn single_without_typegen() {
         }
     };
 
-    let actual = effect_impl(None, input);
+    let actual = effect_impl(EffectArgs::none(), input);
 
     insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum Effect {
@@ -534,7 +397,7 @@ fn single_without_typegen() {
 #[allow(clippy::too_many_lines)]
 #[test]
 fn multiple_with_typegen() {
-    let args = Some(format_ident!("typegen"));
+    let args = EffectArgs::typegen();
     let input = parse_quote! {
         pub enum Effect {
             Render(RenderOperation),
@@ -564,53 +427,6 @@ fn multiple_with_typegen() {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
                 Effect::Http(request) => request.serialize(EffectFfi::Http),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    pub enum EffectOutput {
-        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-        Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: EffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for Effect {
-        type Ffi = EffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                Effect::Render(req) => {
-                    req.into_native(
-                        EffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
-                Effect::Http(req) => {
-                    req.into_native(
-                        EffectFfi::Http,
-                        |o| match o {
-                            EffectOutput::Http(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Http".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -687,7 +503,7 @@ fn multiple_with_typegen() {
 #[allow(clippy::too_many_lines)]
 #[test]
 fn multiple_with_facet_typegen() {
-    let args = Some(format_ident!("facet_typegen"));
+    let args = EffectArgs::facet_typegen();
     let input = parse_quote! {
         pub enum Effect {
             Render(RenderOperation),
@@ -710,7 +526,6 @@ fn multiple_with_facet_typegen() {
         facet(name = "Effect"),
         repr(C)
     )]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectFfi {
         Render(RenderOperation),
         Http(HttpRequest),
@@ -724,55 +539,6 @@ fn multiple_with_facet_typegen() {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
                 Effect::Http(request) => request.serialize(EffectFfi::Http),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
-    pub enum EffectOutput {
-        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-        Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: EffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for Effect {
-        type Ffi = EffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                Effect::Render(req) => {
-                    req.into_native(
-                        EffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
-                Effect::Http(req) => {
-                    req.into_native(
-                        EffectFfi::Http,
-                        |o| match o {
-                            EffectOutput::Http(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Http".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -871,7 +637,7 @@ fn multiple_without_typegen() {
         }
     };
 
-    let actual = effect_impl(None, input);
+    let actual = effect_impl(EffectArgs::none(), input);
 
     insta::assert_snapshot!(pretty_print(&actual), @r#"
     pub enum Effect {
@@ -945,7 +711,7 @@ fn single_without_typegen_with_attributes() {
         }
     };
 
-    let actual = effect_impl(None, input);
+    let actual = effect_impl(EffectArgs::none(), input);
 
     insta::assert_snapshot!(pretty_print(&actual), @r#"
     #[derive(Debug, PartialEq)]
@@ -985,7 +751,7 @@ fn single_without_typegen_with_attributes() {
 
 #[test]
 fn facet_typegen_with_namespace_attribute() {
-    let args = Some(format_ident!("facet_typegen"));
+    let args = EffectArgs::facet_typegen();
     let input = parse_quote! {
         #[facet(namespace = "crux")]
         pub enum Effect {
@@ -1008,7 +774,6 @@ fn facet_typegen_with_namespace_attribute() {
         facet(name = "Effect"),
         repr(C)
     )]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
     pub enum EffectFfi {
         Render(RenderOperation),
     }
@@ -1020,41 +785,6 @@ fn facet_typegen_with_namespace_attribute() {
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
-    pub enum EffectOutput {
-        Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: EffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for Effect {
-        type Ffi = EffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                Effect::Render(req) => {
-                    req.into_native(
-                        EffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -1116,7 +846,7 @@ fn facet_typegen_with_namespace_attribute() {
 #[allow(clippy::too_many_lines)]
 #[test]
 fn notification_attribute_generates_unit_variant() {
-    let args = Some(format_ident!("typegen"));
+    let args = EffectArgs::typegen();
     let input = parse_quote! {
         pub enum Effect {
             #[effect(notification)]
@@ -1147,53 +877,6 @@ fn notification_attribute_generates_unit_variant() {
             match self {
                 Effect::Render(request) => request.serialize(EffectFfi::Render),
                 Effect::Http(request) => request.serialize(EffectFfi::Http),
-            }
-        }
-    }
-    #[cfg(feature = "native_bridge")]
-    pub enum EffectOutput {
-        Render,
-        Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
-    }
-    #[cfg(feature = "native_bridge")]
-    pub struct NativeRequest {
-        pub id: u32,
-        pub effect: EffectFfi,
-    }
-    #[cfg(feature = "native_bridge")]
-    impl ::crux_core::EffectNative for Effect {
-        type Ffi = EffectFfi;
-        type Output = EffectOutput;
-        fn into_native(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveNative<Self::Output>) {
-            match self {
-                Effect::Render(req) => {
-                    req.into_native(
-                        EffectFfi::Render,
-                        |o| match o {
-                            EffectOutput::Render => Ok(()),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Render".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
-                Effect::Http(req) => {
-                    req.into_native(
-                        EffectFfi::Http,
-                        |o| match o {
-                            EffectOutput::Http(v) => Ok(v),
-                            _ => {
-                                Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
-                                    expected: "Http".to_string(),
-                                })
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -1265,4 +948,36 @@ fn notification_attribute_generates_unit_variant() {
         }
     }
     "#);
+}
+
+#[allow(clippy::too_many_lines)]
+#[test]
+fn facet_typegen_with_native_bridge() {
+    let args = EffectArgs::facet_typegen().with_native_bridge();
+    let input = parse_quote! {
+        pub enum Effect {
+            Render(RenderOperation),
+            Http(HttpRequest),
+        }
+    };
+
+    let actual = effect_impl(args, input);
+
+    insta::assert_snapshot!(pretty_print(&actual));
+}
+
+#[allow(clippy::too_many_lines)]
+#[test]
+fn native_bridge_without_typegen() {
+    let args = EffectArgs::none().with_native_bridge();
+    let input = parse_quote! {
+        pub enum Effect {
+            Render(RenderOperation),
+            Http(HttpRequest),
+        }
+    };
+
+    let actual = effect_impl(args, input);
+
+    insta::assert_snapshot!(pretty_print(&actual));
 }
