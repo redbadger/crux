@@ -1,12 +1,12 @@
 use std::{
-    sync::mpsc::{channel, Sender},
+    sync::mpsc::{Sender, channel},
     thread::spawn,
 };
 
 use crux_core::middleware::{EffectMiddleware, EffectResolver};
 use rand::{
-    rngs::{OsRng, StdRng},
     Rng as _, SeedableRng, TryRngCore as _,
+    rngs::{OsRng, StdRng},
 };
 
 use crate::capabilities::{RandomNumber, RandomNumberRequest};
