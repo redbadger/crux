@@ -1,1 +1,0 @@
-# TypeScript and React (Remix)
