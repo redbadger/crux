@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     location::{Location, model::GeocodingResponse},
-    weather::model::current_response::CurrentResponse,
+    weather::model::current_response::CurrentWeatherResponse,
 };
 
 pub const FAVORITES_KEY: &str = "favorites";
@@ -11,7 +11,7 @@ pub const FAVORITES_KEY: &str = "favorites";
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
 pub struct Favorite {
     pub geo: GeocodingResponse,
-    pub current: Option<CurrentResponse>,
+    pub current: Option<CurrentWeatherResponse>,
 }
 
 impl From<GeocodingResponse> for Favorite {

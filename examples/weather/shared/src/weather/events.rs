@@ -11,7 +11,7 @@ use crate::{
     },
     weather::{
         client::{WeatherApi, WeatherError},
-        model::current_response::CurrentResponse,
+        model::current_response::CurrentWeatherResponse,
     },
 };
 
@@ -35,7 +35,7 @@ pub enum WeatherEvent {
 
     #[serde(skip)]
     #[facet(skip)]
-    SetWeather(#[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>),
+    SetWeather(#[facet(opaque)] Box<Result<CurrentWeatherResponse, WeatherError>>),
 
     #[serde(skip)]
     #[facet(skip)]
@@ -44,11 +44,12 @@ pub enum WeatherEvent {
     #[serde(skip)]
     #[facet(skip)]
     SetFavoriteWeather(
-        #[facet(opaque)] Box<Result<CurrentResponse, WeatherError>>,
+        #[facet(opaque)] Box<Result<CurrentWeatherResponse, WeatherError>>,
         Location,
     ),
 }
 
+// ANCHOR: code
 pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, WeatherEvent> {
     match event {
         WeatherEvent::Show => is_location_enabled().then_send(WeatherEvent::LocationEnabled),
@@ -108,6 +109,7 @@ pub fn update(event: WeatherEvent, model: &mut Model) -> Command<Effect, Weather
         }
     }
 }
+// ANCHOR_END: code
 
 #[cfg(test)]
 mod tests {
@@ -116,12 +118,18 @@ mod tests {
     use crate::{
         app::{Effect, Model},
         favorites::model::Favorite,
-        location::{Location, model::GeocodingResponse},
+        location::{
+            Location,
+            capability::{LocationOperation, LocationResult},
+            model::GeocodingResponse,
+        },
         weather::{
             client::WeatherApi,
             events::{WeatherEvent, update},
             model::{
-                current_response::{CurrentResponse, CurrentResponseBuilder, Main, Sys},
+                current_response::{
+                    CurrentWeatherResponse, CurrentWeatherResponseBuilder, Main, Sys,
+                },
                 response_elements::{Clouds, Coord, WeatherData, Wind},
             },
         },
@@ -141,8 +149,8 @@ mod tests {
         }
     }
 
-    fn test_response() -> CurrentResponse {
-        CurrentResponseBuilder::default()
+    fn test_response() -> CurrentWeatherResponse {
+        CurrentWeatherResponseBuilder::default()
             .main(Main {
                 temp: 20.0,
                 feels_like: 18.0,
@@ -189,28 +197,44 @@ mod tests {
         serde_json::to_string(&test_response()).unwrap()
     }
 
+    // ANCHOR: test
     #[test]
     fn test_show_triggers_set_weather() {
         let mut model = Model::default();
 
         // 1. Trigger the Show event
         let event = WeatherEvent::Show;
-        let _ = update(event, &mut model);
+        let mut cmd = update(event, &mut model);
+
+        let mut location = cmd.expect_one_effect().expect_location();
+
+        assert_eq!(location.operation, LocationOperation::IsLocationEnabled);
 
         // 2. Simulate the Location::is_location_enabled effect (enabled = true)
-        let event = WeatherEvent::LocationEnabled(true);
-        let _ = update(event, &mut model);
+        location
+            .resolve(LocationResult::Enabled(true))
+            .expect("to resolve");
+        let event = cmd.expect_one_event();
+
+        let mut cmd = update(event, &mut model);
+
+        let mut location = cmd.expect_one_effect().expect_location();
+        assert_eq!(location.operation, LocationOperation::GetLocation);
 
         // 3. Simulate the Location::get_location effect (with a test location)
         let test_location = Location {
             lat: 33.456_789,
             lon: -112.037_222,
         };
-        let event = WeatherEvent::LocationFetched(Some(test_location));
+        location
+            .resolve(LocationResult::Location(Some(test_location)))
+            .expect("to resolve");
+
+        let event = cmd.expect_one_event();
         let mut cmd = update(event, &mut model);
 
         // 4. Resolve the weather HTTP effect
-        let mut request = cmd.effects().next().unwrap().expect_http();
+        let mut request = cmd.expect_one_effect().expect_http();
 
         assert_eq!(&request.operation, &WeatherApi::build(test_location));
 
@@ -224,7 +248,7 @@ mod tests {
             .unwrap();
 
         // 6. The next event should be SetWeather
-        let actual = cmd.events().next().unwrap();
+        let actual = cmd.expect_one_event();
         assert!(matches!(actual, WeatherEvent::SetWeather(_)));
 
         // 7. Send the SetWeather event back to the app
@@ -233,6 +257,7 @@ mod tests {
         // Now check the model in detail
         assert_eq!(model.weather_data, test_response());
     }
+    // ANCHOR_END: test
 
     #[test]
     fn test_current_weather_fetch() {

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::API_KEY;
 use crate::location::Location;
-use crate::weather::model::current_response::{CurrentResponse, WEATHER_URL};
+use crate::weather::model::current_response::{CurrentWeatherResponse, WEATHER_URL};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum WeatherError {
@@ -15,13 +15,14 @@ pub enum WeatherError {
 }
 
 #[derive(Serialize)]
-pub struct CurrentQueryString {
+pub struct CurrentWeatherQuery {
     pub lat: String,
     pub lon: String,
     pub units: &'static str,
     pub appid: String,
 }
 
+// ANCHOR: client
 pub struct WeatherApi;
 
 impl WeatherApi {
@@ -31,7 +32,7 @@ impl WeatherApi {
         use crate::weather::model::current_response::WEATHER_URL;
 
         HttpRequest::get(WEATHER_URL)
-            .query(&CurrentQueryString {
+            .query(&CurrentWeatherQuery {
                 lat: location.lat.to_string(),
                 lon: location.lon.to_string(),
                 units: "metric",
@@ -47,15 +48,15 @@ impl WeatherApi {
     ) -> RequestBuilder<
         Effect,
         Event,
-        impl std::future::Future<Output = Result<CurrentResponse, WeatherError>>,
+        impl std::future::Future<Output = Result<CurrentWeatherResponse, WeatherError>>,
     >
     where
         Effect: From<Request<HttpRequest>> + Send + 'static,
         Event: Send + 'static,
     {
         Http::get(WEATHER_URL)
-            .expect_json::<CurrentResponse>()
-            .query(&CurrentQueryString {
+            .expect_json::<CurrentWeatherResponse>()
+            .query(&CurrentWeatherQuery {
                 lat: location.lat.to_string(),
                 lon: location.lon.to_string(),
                 units: "metric",
@@ -72,3 +73,4 @@ impl WeatherApi {
             })
     }
 }
+// ANCHOR_END: client

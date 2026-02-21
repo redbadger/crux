@@ -5,6 +5,7 @@ import Shared
 import UIKit
 import os.log
 
+// ANCHOR: core_base
 @MainActor
 class Core: ObservableObject {
     @Published var view: ViewModel
@@ -38,11 +39,13 @@ class Core: ObservableObject {
     }
 
     func processEffect(_ request: Request) {
+        // ANCHOR_END: core_base
         switch request.effect {
         case .render:
             DispatchQueue.main.async {
                 self.view = try! .bincodeDeserialize(input: [UInt8](self.core.view()))
             }
+        // ANCHOR: http
         case .http(let req):
             logger.info("Making HTTP request to: \(req.url)")
             Task {
@@ -70,7 +73,7 @@ class Core: ObservableObject {
                     logger.error("HTTP request failed: \(error.localizedDescription)")
                 }
             }
-
+        // ANCHOR_END: http
         case .keyValue(let keyValue):
             logger.debug("Processing KeyValue effect: \(String(describing: keyValue))")
             Task {
