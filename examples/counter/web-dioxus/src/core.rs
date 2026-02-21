@@ -27,6 +27,7 @@ impl CoreService {
         }
     }
 
+    #[allow(clippy::future_not_send)] // WASM is single-threaded
     pub async fn run(&self, rx: &mut UnboundedReceiver<Event>) {
         let mut view = self.view;
         view.set(self.core.view());

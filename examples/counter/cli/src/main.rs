@@ -20,10 +20,10 @@ enum Command {
 impl From<Command> for Event {
     fn from(cmd: Command) -> Self {
         match cmd {
-            Command::Get => Event::Get,
-            Command::Inc => Event::Increment,
-            Command::Dec => Event::Decrement,
-            Command::Watch => Event::StartWatch,
+            Command::Get => Self::Get,
+            Command::Inc => Self::Increment,
+            Command::Dec => Self::Decrement,
+            Command::Watch => Self::StartWatch,
         }
     }
 }

@@ -125,10 +125,10 @@ impl App for Counter {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        let suffix = match model.count.updated_at {
-            None => " (pending)".to_string(),
-            Some(d) => format!(" ({d})"),
-        };
+        let suffix = model
+            .count
+            .updated_at
+            .map_or_else(|| " (pending)".to_string(), |d| format!(" ({d})"));
 
         Self::ViewModel {
             text: model.count.value.to_string() + &suffix,

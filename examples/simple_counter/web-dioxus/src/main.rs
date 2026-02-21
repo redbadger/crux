@@ -7,6 +7,7 @@ use shared::{Event, ViewModel};
 
 use core::CoreService;
 
+#[allow(clippy::volatile_composites)] // false positive from Dioxus asset! macro internals
 #[component]
 fn App() -> Element {
     let view = use_signal(ViewModel::default);
