@@ -1,5 +1,11 @@
 # FFI bridge
 
+```admonish warning
+This was written for previous versions of Crux and needs rewriting.
+Most of the code it references has been removed. Proceed with caution.
+If you'd like to help update it, you'd be very welcome!
+```
+
 In the previous chapter, we saw how the capability runtime facilitates the
 orchestration of effect processing by the shell. We looked at the simpler
 scenario where the shell was built in Rust. Now we'll extend this to the more

@@ -52,9 +52,7 @@ You can also join the friendly conversation on our [Zulip channel](https://crux-
 
 ## Design overview
 
-**FIXME**: this image is no longer helpful
-
-![Logical architecture](./architecture.svg)
+![Logical architecture](./command_overview.png)
 
 The architecture is event-driven, with state management based on
 [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), similar to Elm or Redux.

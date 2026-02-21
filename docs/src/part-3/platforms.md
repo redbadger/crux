@@ -9,5 +9,4 @@ You can read about using Crux with:
 
 - [Dioxus](./platforms/dioxus.md)
 - [Remix](./platforms/remix.md)
-- [Svelte](./platforms/svelte.md)
 - [Yew](./platforms/yew.md)
