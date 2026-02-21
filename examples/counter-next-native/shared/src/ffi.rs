@@ -2,17 +2,17 @@ pub mod native {
     use std::sync::Arc;
 
     use crux_core::{
+        Core, EffectNative, Request,
         bridge::{EffectId, NativeBridge, NativeBridgeError, ResolveNative},
         middleware::{HandleEffectLayer, Layer as _, MapEffectLayer},
         render::RenderOperation,
-        Core, EffectNative, Request,
     };
     use crux_http::protocol::{HttpRequest, HttpResult};
 
     use crate::{
+        Counter, Event, ViewModel,
         middleware::RngMiddleware,
         sse::{SseRequest, SseResponse},
-        Counter, Event, ViewModel,
     };
 
     // --- Effect enum (internal, with Request wrappers) ---
