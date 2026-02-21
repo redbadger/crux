@@ -1,82 +1,154 @@
-use std::sync::{Arc, Weak};
+use std::{
+    sync::{
+        Arc, Weak,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread::{self, ThreadId},
+};
 
 use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
 
 use super::Layer;
 
+/// A resolver for an effect processed by middleware.
+///
+/// This type encapsulates the callback that feeds the operation's output back
+/// into the core. It **must** be called from an asynchronous context (e.g. a
+/// spawned thread, an async task via `spawn_local`, or a channel worker) —
+/// calling [`resolve`](Self::resolve) while
+/// [`try_process_effect`](EffectMiddleware::try_process_effect) is still on the call
+/// stack will panic.
+///
+/// For streaming operations ([`RequestHandle::Many`]), call `resolve` multiple
+/// times until the stream is exhausted.
+type ResolveFn<Output> = Box<dyn FnMut(&mut RequestHandle<Output>, Output) + Send>;
+
+pub struct EffectResolver<Output: Send + 'static> {
+    handle: RequestHandle<Output>,
+    resolve_fn: ResolveFn<Output>,
+    /// `true` while `try_process_effect` is executing on the call stack.
+    active: Arc<AtomicBool>,
+    /// The thread that called `try_process_effect`.
+    calling_thread: ThreadId,
+}
+
+impl<Output: Send + 'static> EffectResolver<Output> {
+    /// Resolve the effect with the given output.
+    ///
+    /// For one-shot effects this should be called exactly once. For streaming
+    /// effects it can be called multiple times.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called synchronously from within
+    /// [`EffectMiddleware::try_process_effect`]. Middleware must dispatch work
+    /// asynchronously (e.g. `std::thread::spawn`, `spawn_local`, or a channel)
+    /// and call `resolve` from there.
+    ///
+    /// See <https://github.com/redbadger/crux/issues/492>
+    pub fn resolve(&mut self, output: Output) {
+        assert!(
+            !(self.active.load(Ordering::Acquire) && thread::current().id() == self.calling_thread),
+            "EffectMiddleware::try_process_effect must not call resolve() synchronously. \
+             Dispatch work asynchronously (thread, spawn_local, channel, etc.). \
+             See https://github.com/redbadger/crux/issues/492"
+        );
+        (self.resolve_fn)(&mut self.handle, output);
+    }
+}
+
 /// An effect processing middleware.
 ///
-/// Implement this trait to provide effect processing in Rust on the core side. The two typical uses for this are
-/// 1. Reusing a Rust implementation of a capability compatible with all target platforms
+/// Implement this trait to provide effect processing in Rust on the core side.
+/// The two typical uses for this are:
+///
+/// 1. Reusing a Rust implementation of a capability compatible with all target
+///    platforms.
 /// 2. Using an existing crate which is not built with Sans-IO in mind.
 ///
 /// There are a number of considerations for doing this:
-/// - The effect processing will rely on system APIs or crates which MUST be portable to all platforms
-///   the library using this middleware is going to be deployed to. This is fundamentally trading off
-///   portability for reuse of the Rust implementation.
-/// - The middleware MUST process the effect in a non-blocking fashion on a separate thread. This thread
-///   may be one of a pool from an async runtime or a simple background worker thread - this is left to the
-///   implementation to decide.
-/// - Due to the multi-threaded nature of the processing, the core, and therefore the app are shared between
-///   threads. The app must be `Send` and `Sync`, which also forces the `Model` type to be Send and Sync.
-///   This should not be a problem - `Model` should not normally be `!Send` or `!Sync`.
-pub trait EffectMiddleware<Effect>
-where
-    Effect: TryInto<Request<Self::Op>, Error = Effect>,
-{
-    /// The operation type this middleware can process
+///
+/// - The effect processing will rely on system APIs or crates which MUST be
+///   portable to all platforms the library using this middleware is going to be
+///   deployed to. This is fundamentally trading off portability for reuse of the
+///   Rust implementation.
+/// - The middleware MUST process the effect asynchronously — it must not call
+///   [`EffectResolver::resolve`] before `try_process_effect` returns. On native
+///   targets this typically means spawning a thread or sending work to a
+///   channel-based worker. On WASM (which has no threads) this means using
+///   `spawn_local` or a similar async task primitive. Calling `resolve()`
+///   synchronously inside `try_process_effect` will panic.
+/// - Because the resolver may be sent to another thread (on native), the core
+///   and therefore the app are shared between threads. The app must be `Send`
+///   and `Sync`, which also forces the `Model` type to be `Send` and `Sync`.
+///   This should not be a problem — `Model` should not normally be `!Send` or
+///   `!Sync`.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// impl EffectMiddleware for MyMiddleware {
+///     type Op = MyOperation;
+///
+///     fn try_process_effect(
+///         &self,
+///         operation: MyOperation,
+///         mut resolver: EffectResolver<<MyOperation as Operation>::Output>,
+///     ) {
+///         std::thread::spawn(move || {
+///             let output = do_work(operation);
+///             resolver.resolve(output);
+///         });
+///     }
+/// }
+/// ```
+pub trait EffectMiddleware: Send + Sync {
+    /// The operation type this middleware can process.
     type Op: Operation;
 
-    /// Try to process `effect` if is of the right type (can convert in to a `Request<Self::Op>`).
+    /// Process the given operation and resolve via the provided resolver.
     ///
-    /// The implementation should return `Ok(())` if the conversion succeeds, and call the `resolve_callback`
-    /// with the output later on. If the effect fails to convert, it should be returned wrapped in `Err(_)`.
-    ///
-    /// # Errors
-    ///
-    /// The expected error type is the same as the input Effect type, allowing the conversion to be attempted
-    /// non-destructively.
-    fn try_process_effect_with(
+    /// The framework has already extracted the operation from the effect enum.
+    /// Use the [`EffectResolver`] to send the result back. The resolver **must
+    /// not** be called before this method returns — dispatch the work
+    /// asynchronously (e.g. `std::thread::spawn` on native, `spawn_local` on
+    /// WASM, or a channel send) and call [`EffectResolver::resolve`] from
+    /// there.
+    fn try_process_effect(
         &self,
-        effect: Effect,
-        resolve_callback: impl FnMut(
-            &mut RequestHandle<<Self::Op as Operation>::Output>,
-            <Self::Op as Operation>::Output,
-        ) + Send
-        + 'static,
-    ) -> Result<(), Effect>;
+        operation: Self::Op,
+        resolver: EffectResolver<<Self::Op as Operation>::Output>,
+    );
 }
 
 struct EffectMiddlewareLayerInner<Next, EM>
 where
     Next: Layer + Sync + Send + 'static,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+    EM: EffectMiddleware,
 {
     next: Next,
     middleware: EM,
 }
 
-/// Middleware layer able to process some of the effects. This implements the general
-/// behaviour making sure all follow-up effects are processed and routed to the right place
-/// and delegates to the generic parameter `M`, which implements [`EffectMiddleware`].
+/// Middleware layer able to process some of the effects. This implements the
+/// general behaviour making sure all follow-up effects are processed and routed
+/// to the right place and delegates to the generic parameter `EM`, which
+/// implements [`EffectMiddleware`].
 pub struct HandleEffectLayer<Next, EM>
 where
     Next: Layer + Sync + Send + 'static,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync,
+    EM: EffectMiddleware,
 {
     inner: Arc<EffectMiddlewareLayerInner<Next, EM>>,
 }
 
 impl<Next, EM> Layer for HandleEffectLayer<Next, EM>
 where
-    // Next layer down, core being at the bottom
     Next: Layer,
-    // Effect has to try_into the operation which the middleware handles
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    // The actual middleware effect handling implementation
-    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+    EM: EffectMiddleware + 'static,
 {
     type Event = Next::Event;
     type Effect = Next::Effect;
@@ -115,10 +187,10 @@ impl<Next, EM> HandleEffectLayer<Next, EM>
 where
     Next: Layer,
     Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
-    EM: EffectMiddleware<Next::Effect> + Send + Sync + 'static,
+    EM: EffectMiddleware + 'static,
 {
-    /// Typically, you would would use [`Layer::handle_effects_using`] to construct a `HandleEffectLayer` instance
-    /// for a specific [`EffectMiddleware`].
+    /// Typically, you would use [`Layer::handle_effects_using`] to construct a
+    /// `HandleEffectLayer` instance for a specific [`EffectMiddleware`].
     pub fn new(next: Next, middleware: EM) -> Self {
         Self {
             inner: Arc::new(EffectMiddlewareLayerInner { next, middleware }),
@@ -203,30 +275,34 @@ where
         effects
             .into_iter()
             .filter_map(|effect| {
-                // This is where the middleware handler will send the result of its work
-                let resolve_callback = {
+                // Try to convert the effect into a Request for the middleware's
+                // operation type. If conversion fails, the effect is not for
+                // this middleware — pass it through.
+                let request: Request<EM::Op> = match effect.try_into() {
+                    Ok(req) => req,
+                    Err(effect) => return Some(effect),
+                };
+
+                let (operation, handle) = request.split();
+
+                // Build the resolve function that will be called from the
+                // middleware's async context (thread, spawn_local, etc.).
+                let resolve_fn = {
                     let return_effects = return_effects.clone();
                     let inner = inner.clone();
 
-                    // Ideally, we'd want the `handle` to be an `impl Resolvable`, alas,
-                    // generic closures are not a thing.
-                    move |handle: &mut RequestHandle<<EM::Op as Operation>::Output>,
-                          effect_out_value| {
-                        // This allows us to do the recursion without requiring `inner` to outlive 'static
+                    move |req_handle: &mut RequestHandle<<EM::Op as Operation>::Output>, output| {
                         let Some(strong_inner) = inner.upgrade() else {
-                            // do nothing, inner is gone, we can't process further effects
-                            eprintln!("Inner cant't be upgraded after resolving effect");
+                            eprintln!("Inner can't be upgraded after resolving effect");
                             return;
                         };
 
                         if let Ok(immediate_effects) =
-                            strong_inner.next.resolve(handle, effect_out_value, {
+                            strong_inner.next.resolve(req_handle, output, {
                                 let return_effects = return_effects.clone();
                                 let future_inner = inner.clone();
 
-                                // Eventual eventual route
                                 move |eventual_effects| {
-                                    // Process known effects
                                     Self::process_known_effects_with(
                                         &future_inner,
                                         eventual_effects,
@@ -241,21 +317,33 @@ where
                                 &return_effects,
                             );
                         }
-                    } // TODO: handle/propagate resolve error?
+                    }
                 };
 
                 let Some(strong_inner) = inner.upgrade() else {
-                    // do nothing, inner is gone, we can't process further effects
-                    eprintln!("Inner cant't be upgraded to resolve effect");
-                    return Some(effect);
+                    eprintln!("Inner can't be upgraded to process effect");
+                    return None;
                 };
 
-                // Ask middleware impl to process the effect
-                // calling back with the result, potentially on a different thread (!)
+                // Create the resolver with the active guard.
+                let active = Arc::new(AtomicBool::new(true));
+                let resolver = EffectResolver {
+                    handle,
+                    resolve_fn: Box::new(resolve_fn),
+                    active: active.clone(),
+                    calling_thread: thread::current().id(),
+                };
+
+                // Call the middleware. resolve() will panic if called during
+                // this scope.
                 strong_inner
                     .middleware
-                    .try_process_effect_with(effect, resolve_callback)
-                    .err()
+                    .try_process_effect(operation, resolver);
+
+                // Allow resolve() to be called now that try_process_effect has returned.
+                active.store(false, Ordering::Release);
+
+                None
             })
             .collect()
     }

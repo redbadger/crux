@@ -3,7 +3,7 @@ use std::{
     thread::spawn,
 };
 
-use crux_core::{Request, RequestHandle, middleware::EffectMiddleware};
+use crux_core::middleware::{EffectMiddleware, EffectResolver};
 use rand::{
     Rng as _, SeedableRng, TryRngCore as _,
     rngs::{OsRng, StdRng},
@@ -11,28 +11,26 @@ use rand::{
 
 use crate::capabilities::{RandomNumber, RandomNumberRequest};
 
-#[allow(clippy::type_complexity)]
 pub struct RngMiddleware {
-    jobs_tx: Sender<(RandomNumberRequest, Box<dyn FnOnce(RandomNumber) + Send>)>,
+    jobs_tx: Sender<(RandomNumberRequest, EffectResolver<RandomNumber>)>,
 }
 
 impl RngMiddleware {
     pub fn new() -> Self {
-        let (jobs_tx, jobs_rx) =
-            channel::<(RandomNumberRequest, Box<dyn FnOnce(RandomNumber) + Send>)>();
+        let (jobs_tx, jobs_rx) = channel::<(RandomNumberRequest, EffectResolver<RandomNumber>)>();
 
         // Persistent background worker
         spawn(move || {
             let mut os_rng = OsRng;
             let mut rng = StdRng::seed_from_u64(os_rng.try_next_u64().expect("could not seed RNG"));
 
-            while let Ok((RandomNumberRequest(from, to), callback)) = jobs_rx.recv() {
+            while let Ok((RandomNumberRequest(from, to), mut resolver)) = jobs_rx.recv() {
                 #[allow(clippy::cast_sign_loss)]
                 let top = (to - from) as usize;
                 #[allow(clippy::cast_possible_wrap)]
                 let out = rng.random_range(0..top) as isize + from;
 
-                callback(RandomNumber(out));
+                resolver.resolve(RandomNumber(out));
             }
         });
 
@@ -40,29 +38,16 @@ impl RngMiddleware {
     }
 }
 
-impl<Effect> EffectMiddleware<Effect> for RngMiddleware
-where
-    Effect: TryInto<Request<RandomNumberRequest>, Error = Effect>,
-{
+impl EffectMiddleware for RngMiddleware {
     type Op = RandomNumberRequest;
 
-    fn try_process_effect_with(
+    fn try_process_effect(
         &self,
-        effect: Effect,
-        mut resolve_callback: impl FnMut(&mut RequestHandle<RandomNumber>, RandomNumber)
-        + Send
-        + 'static,
-    ) -> Result<(), Effect> {
-        let rand_request = effect.try_into()?;
-        let (operation, mut handle): (RandomNumberRequest, _) = rand_request.split();
-
+        operation: RandomNumberRequest,
+        resolver: EffectResolver<RandomNumber>,
+    ) {
         self.jobs_tx
-            .send((
-                operation,
-                Box::new(move |number| resolve_callback(&mut handle, number)),
-            ))
+            .send((operation, resolver))
             .expect("Job failed to send to worker thread");
-
-        Ok(())
     }
 }

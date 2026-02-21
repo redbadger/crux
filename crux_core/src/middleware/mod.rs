@@ -10,9 +10,9 @@
 //! use [`Layer::handle_effects_using`] and provide an implementation of [`EffectMiddleware`].
 //!
 //! Note that apps using middleware must be `Send` and `Sync`, because the effect middlewares
-//! are expected to process effects on a separate thread (in order not to block the thread
-//! the core was originally called on), and resolve them on that thread - different from the
-//! original thread where they were requested. See [`EffectMiddleware`] for more discussion.
+//! are expected to process effects asynchronously (in order not to block the caller of
+//! `process_event`). On native targets this typically means a background thread; on WASM it
+//! means an async task (e.g. `spawn_local`). See [`EffectMiddleware`] for more discussion.
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
@@ -25,7 +25,7 @@ mod effect_handling;
 pub use crate::bridge::{BincodeFfiFormat, FfiFormat, JsonFfiFormat};
 pub use bridge::Bridge;
 pub use effect_conversion::MapEffectLayer;
-pub use effect_handling::{EffectMiddleware, HandleEffectLayer};
+pub use effect_handling::{EffectMiddleware, EffectResolver, HandleEffectLayer};
 use serde::Deserialize;
 
 /// A layer in the middleware stack.
@@ -108,7 +108,7 @@ pub trait Layer: Send + Sync + Sized {
     /// must implement the [`EffectMiddleware`] trait.
     fn handle_effects_using<EM>(self, middleware: EM) -> HandleEffectLayer<Self, EM>
     where
-        EM: EffectMiddleware<Self::Effect> + Send + Sync + 'static,
+        EM: EffectMiddleware + 'static,
         Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect>,
     {
         HandleEffectLayer::new(self, middleware)
