@@ -9,6 +9,7 @@ use shared::{Event, ViewModel};
 
 use core::CoreService;
 
+#[allow(clippy::volatile_composites)] // false positive from Dioxus asset! macro internals
 #[component]
 fn App() -> Element {
     let view = use_signal(ViewModel::default);
@@ -53,7 +54,6 @@ fn App() -> Element {
 }
 
 fn main() {
-    // Init debug
     dioxus_logger::init(Level::DEBUG).expect("failed to init logger");
     console_error_panic_hook::set_once();
 

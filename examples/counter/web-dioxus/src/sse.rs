@@ -7,6 +7,7 @@ use wasm_streams::ReadableStream;
 
 use shared::sse::{SseRequest, SseResponse};
 
+#[allow(clippy::future_not_send)] // WASM is single-threaded
 pub async fn request(
     SseRequest { url }: &SseRequest,
 ) -> Result<impl stream::TryStream<Ok = SseResponse, Error = JsValue>> {
