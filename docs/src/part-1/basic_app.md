@@ -31,7 +31,7 @@ impl App for Counter {
 ```
 
 If you're following along, the compiler is now screaming at you that you're
-missing five associated types for the trait — `Event`, `Model`, `ViewModel`,
+missing four associated types for the trait — `Event`, `Model`, `ViewModel`,
 and `Effect`.
 
 Let's add them and talk about them one by one.
@@ -67,18 +67,16 @@ pub struct Model {
 }
 ```
 
-It is a simple counter after all. Model stays in the core, so it doesn't need to serialize. It
-does need `Default` however, because Crux will hold it for us and needs to be able to create it.
+It is a simple counter after all. Model stays in the core, so it doesn't need to serialize. 
 
-A custom implementation of `Default` would be a good place for creating an initial state for your
-app if it's not the same as what derived `Default` does.
+You can derive (or implement) `Default` and have Crux create an instance of your app and your model for you, or you can explicitly create a core with specified App and Model instances (this may be useful if you need to set up some initial state).
 
 ## ViewModel
 
 ViewModel represents the user interface at any one point in time. This is our indirection between
 the internal state and the UI on screen. In the case of the counter, this is pretty
 academic, there is no practical reason for making them different, but for the sake of the example,
-let's add some formating in the mix and make it a string.
+let's add some formatting in the mix and make it a string.
 
 ```rust,noplayground
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -106,7 +104,7 @@ pub enum Effect {
 }
 ```
 
-We're saying "the only side effect of our behaviour is renering the user interface".
+We're saying "the only side effect of our behaviour is rendering the user interface".
 
 The `Effect` type is worth understanding further, but in order to do that we need to
 talk about what makes Crux different from most UI frameworks.
@@ -120,7 +118,7 @@ reading/writing files, not even updating the screen.
 Actually _doing_ all those things is the job of the Shell, the core can only
 _ask_ for them to be done.
 
-This makes the core portable between platforms, and, importantly, really easy to
+This makes the core portable between platforms, and, importantly, very easy to
 test. It also separates the intent – the "functional" requirements – from the
 implementation of the side-effects and the "non-functional" requirements (NFRs).
 
@@ -156,7 +154,7 @@ may have noticed the strange return type: `Command<Effect, Event>`.
 This is the request for some side-effects. We seem to be accumulating terminology,
 so let's do a quick recap:
 
-- **Effect** - a request for a type of side-effects (e.g. a HTTP request)
+- **Effect** - a request for a type of side-effect (e.g. a HTTP request)
 - **Operation** - carried by the Effect, specifies the data for the effect (e.g. the URL, method, headers, body...)
 - **Command** - a bundle of effect requests which execute together, sequentially, in parallel or in
   a more complex coordination
@@ -164,7 +162,7 @@ so let's do a quick recap:
 ```admonish question title="Why so much layering?"
 In real apps, we typically use a few kinds of effects over and over,
 and so it's necessary to allow reuse. That's what the `Effect` enum does, it
-bundles together effects of the same type, defined by the same module or create (We
+bundles together effects of the same type, defined by the same module or crate (We
 call those modules Capabilities, but lets not worry about those yet).
 
 The other thing
@@ -181,4 +179,4 @@ on screen. It's up to the Shell to call it when ready. Our view does a bit of st
 formatting and wraps it in a `ViewModel`.
 
 That's a working counter done. It's obviously really basic, but it's enough for us [to test
-it]().
+it](./testing.md).

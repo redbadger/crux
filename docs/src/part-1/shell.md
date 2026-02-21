@@ -33,10 +33,10 @@ most likely don't need to worry about it, at least not for now.
 
 ## Preparing the core
 
-We will prepare the core for both kinds of supported shells - native ones and webassembly ones.
+We will prepare the core for both kinds of supported shells - native ones and WebAssembly ones.
 
 To help with the native setup, Crux uses Mozilla's [Uniffi](https://mozilla.github.io/uniffi-rs/)
-to generate the bindings. For webassembly, it uses [wasm-bingen](https://wasm-bindgen.github.io/wasm-bindgen/).
+to generate the bindings. For WebAssembly, it uses [wasm-bingen](https://wasm-bindgen.github.io/wasm-bindgen/).
 
 First, lets update our `Cargo.toml`:
 
@@ -55,7 +55,7 @@ And since we've declared the `codegen` target, we need to add the code for it.
 
 ```rust
 // shared/src/bin/codegen.rs
-{{#include ../../../examples/weather/shared/src/bin/codegen.rs}}
+{{#include ../../../examples/simple_counter/shared/src/bin/codegen.rs}}
 ```
 
 This is essentially boilerplate for a CLI we can use to run the binding generation and type generation.
@@ -74,20 +74,20 @@ You'll here these terms thrown around here and there in the docs, so it's worth 
 **bindgen** – "bindings generation" – provides APIs in the foreign language to call the core's Rust FFI APIs.
 For most platforms we use UniFFI, except for WebAssembly, where we use `wasm_bindgen`
 
-**typegen** – "type generation" – The core's FFI interface operates on bytes, but both Rust and the languages we're targeting are generally strongly typed. To facilitate the serialisation / deserialisation, we generate type definition reflecting the Rust types from the core in the foreign language (Swift, Kotlin, TypeScript, ...), which all serialise consistently.
+**typegen** – "type generation" – The core's FFI interface operates on bytes, but both Rust and the languages we're targeting are generally strongly typed. To facilitate the serialization / deserialization, we generate type definition reflecting the Rust types from the core in the foreign language (Swift, Kotlin, TypeScript, ...), which all serialize consistently.
 
 **codegen** – you guessed it, "code generation" – is the two things above combined.
 
 ## Bindings code
 
-No we need to add the Rust side of the bindings into our code. Update your `lib.rs` to look like this:
+Now we need to add the Rust side of the bindings into our code. Update your `lib.rs` to look like this:
 
 ```rust,noplayground
 // shared/src/lib.rs
 {{#include ../../../examples/simple_counter/shared/src/lib.rs}}
 ```
 
-This code uses our feature flags to conditionally initialise the UniFFI bindings and check the version
+This code uses our feature flags to conditionally initialize the UniFFI bindings and check the version
 in use.
 
 More importantly, it introduced a new `ffi.rs` module. Let's look at it closer:

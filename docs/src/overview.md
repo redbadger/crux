@@ -20,7 +20,7 @@ The aim is to separate three kinds of code in a typical app, which have differen
   similar things are handled
 
 The Core handles the behaviour logic, the Shell handles the
-presentation layer and effect execution (but not _orchestration_, that is part to the behaviour
+presentation layer and effect execution (but not _orchestration_, that is part of the behaviour
 and therefore in the Core). This strict separation makes the behaviour logic much easier to test
 without any of the other layers getting involved.
 
@@ -30,7 +30,7 @@ supported by cross-language code generation and type checking.
 
 ```admonish title="Get to know Crux"
 
-To get playing with Crux quickly, follow the Part I of the book, from the [Getting Started](./part-1/getting_started.md) chapter onward. It will take you from zero to a basic working app on your preferred platform quickly. From there, continue on to Part II – building the [Weather App](./guide/weather_app.md), which builds on the basics and covers the more advanced features and patterns needed in a real world app.
+To get playing with Crux quickly, follow Part I of the book, from the [Getting Started](./part-1/getting_started.md) chapter onward. It will take you from zero to a basic working app on your preferred platform quickly. From there, continue on to Part II – building the [Weather App](./guide/weather_app.md), which builds on the basics and covers the more advanced features and patterns needed in a real world app.
 
 If you just want to understand why we set out to build Crux in the first place and what problems it tries to solve, before you  spend any time trying it (no hard feelings, we would too), read our original [Motivation](./motivation.md).
 
