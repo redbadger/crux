@@ -4,7 +4,7 @@
 This section has not been updated to match the rest of the documentation and some parts
 may not match how Crux works any more.
 
-Bare with us while we update and use the [iOS](../ios/index.md) section as the template
+Bear with us while we update and use the [iOS](../ios/index.md) section as the template
 to follow.
 ```
 

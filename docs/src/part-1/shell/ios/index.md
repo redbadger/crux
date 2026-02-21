@@ -10,7 +10,7 @@ add the Swift package dependencies into your project by hand.
 ```
 
 When we use Crux to build iOS apps, the Core API bindings are generated in Swift
-(with C headers) using Mozilla's [Uniffi](https://mozilla.github.io/uniffi-rs/).
+(with C headers) using Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/).
 
 The shared core, which we built in previous chapters, is compiled to a static
 library and linked into the iOS binary.
@@ -27,16 +27,16 @@ When we build our iOS app, we also want to build the Rust core as a static
 library so that it can be linked into the binary that we're going to ship.
 
 Other than Xcode and the Apple developer tools, we will use
-[`cargo-swift`](https://crates.io/crates/cargo-swift) to generate an
-swift package for our shared library, which we can add in Xcode.
+[`cargo-swift`](https://crates.io/crates/cargo-swift) to generate a
+Swift package for our shared library, which we can add in Xcode.
 
-You can install it with
+To match our current version of UniFFI, we need to install version 0.9 of `cargo-swift`. You can install it with
 
 ```bash
-cargo install cargo-swift
+cargo install cargo-swift --version '=0.9'
 ```
 
-To run the variou steps, we'll also use the [Just]() task runner.
+To run the various steps, we'll also use the [Just]() task runner.
 
 ```bash
 cargo install just
@@ -55,11 +55,11 @@ runs the `build` task and opens Xcode in the current directory.
 
 `build` in turn runs `typegen`, `package` and `generate-project`. `typegen`
 will use the codegen CLI we [prepared earlier](../../shell.md), and
-`package` will use `cargo swift` to create a `Shared` package with the
-generated code. That package will be our Swift interface to the core.
+`package` will use `cargo swift` to create a `Shared` package with our app binary and the
+bindgen code. That package will be our Swift interface to the core.
 
 Finally `generate-project` will run `xcodegen` to give us an Xcode
-project file. They are famously fragile files and difficul to version control,
+project file. They are famously fragile files and difficult to version control,
 so generating it from a less arcane source of truth seems like a good idea
 (yes, even if that source of truth is YAML).
 
@@ -84,8 +84,8 @@ Simple - just dev! So what exactly happened?
 The core built, including the FFI and the extra CLI binary, which was then called
 to generate Swift code, and that was then packaged as a Swift package. You can
 look at the `generated` directory, and you'll see two Swift packages - `Shared` and `App`,
-just like we asked in `project.yml`. The `Shared` package has all the generated
-FFI code for our FFI bindings, and the `App` package has the key types we will need.
+just like we asked in `project.yml`. The `Shared` package has our app as a static lib and all the
+generated FFI code for our FFI bindings, and the `App` package has the key types we will need.
 
 No need to spend much time in here, but this is all the low-level glue code sorted out.
 Now we need to actually build some UI and we can run our app.
@@ -106,9 +106,9 @@ interface for it:
 {{#include ../../../../../examples/simple_counter/iOS/SimpleCounter/core.swift}}
 ```
 
-This is mostly just serialisation code. But the `processEffect` method is interesting.
+This is mostly just serialization code. But the `processEffect` method is interesting.
 That is where effect execution goes. At the moment the switch statement has a single
-lonely instance updating the view model whenever the `.render` variant is requested,
+lonely case updating the view model whenever the `.render` variant is requested,
 but you can add more in here later, as you expand your `Effect` type.
 
 ### Build a basic view

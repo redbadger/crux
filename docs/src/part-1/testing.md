@@ -3,12 +3,12 @@
 In this chapter we'll write some basic tests for our counter app. It is tempting
 to skip reading this, but please don't. Testing and testability is one of the
 most important benefits of Crux, and even in this simple case, subtle things are going on,
-which we'll build on later on.
+which we'll build on later.
 
 ## The first test
 
 Technically, we've already broken [the rules](https://tddbuddy.com/references/tdd-cycle.html) and
-wrote code without having a failing test for it. We're going to let that slip in the name of education,
+written code without having a failing test for it. We're going to let that slip in the name of education,
 but let's fix that before someone alerts the TDD authorities.
 
 The first test we're going to write will check that resetting the count renders the UI.
@@ -33,7 +33,7 @@ mod test {
 
 We create an instance of the app, and an instance of the model. Then we call update with the `Event::Reset` event.
 As you may remember we get back a `Command`, which we expect to carry a request for a render operation. Using the
-expectation helper API of the Command type, we check we got one effect, and that the effect is a render. Both methods will panic, if they don't succeed (they are also `#[cfg(test)]` only, don't use them outside of tests).
+expectation helper API of the Command type, we check we got one effect, and that the effect is a render. Both methods will panic if they don't succeed (they are also `#[cfg(test)]` only, don't use them outside of tests).
 
 That test should pass (check with `cargo nextest run`). Next up, we can check that the view model is rendered
 correctly
@@ -88,4 +88,4 @@ for example the response to a HTTP request.
 That will let us test entire user flows calling web APIs, working with local storage and timers, and anything
 else, all at the speed of unit test and without ever touching the external world or writing a single fake (and maintaining it later).
 
-For now though, let's actually give this thing some user interface. Time to build a Shell.
+For now though, let's actually give this thing some user interface. Time to [build a Shell](./shell.md).
