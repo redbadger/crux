@@ -41,7 +41,7 @@ impl RngMiddleware {
 impl EffectMiddleware for RngMiddleware {
     type Op = RandomNumberRequest;
 
-    fn process_effect(
+    fn try_process_effect(
         &self,
         operation: RandomNumberRequest,
         resolver: EffectResolver<RandomNumber>,

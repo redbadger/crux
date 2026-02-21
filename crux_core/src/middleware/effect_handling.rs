@@ -1,9 +1,9 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Weak,
+    atomic::{AtomicBool, Ordering},
 };
 
-use crate::{capability::Operation, Request, RequestHandle, Resolvable, ResolveError};
+use crate::{Request, RequestHandle, Resolvable, ResolveError, capability::Operation};
 
 use super::Layer;
 
@@ -13,7 +13,7 @@ use super::Layer;
 /// into the core. It **must** be called from an asynchronous context (e.g. a
 /// spawned thread, an async task via `spawn_local`, or a channel worker) —
 /// calling [`resolve`](Self::resolve) while
-/// [`process_effect`](EffectMiddleware::process_effect) is still on the call
+/// [`try_process_effect`](EffectMiddleware::try_process_effect) is still on the call
 /// stack will panic.
 ///
 /// For streaming operations ([`RequestHandle::Many`]), call `resolve` multiple
@@ -23,7 +23,7 @@ type ResolveFn<Output> = Box<dyn FnMut(&mut RequestHandle<Output>, Output) + Sen
 pub struct EffectResolver<Output: Send + 'static> {
     handle: RequestHandle<Output>,
     resolve_fn: ResolveFn<Output>,
-    /// `true` while `process_effect` is executing on the call stack.
+    /// `true` while `try_process_effect` is executing on the call stack.
     active: Arc<AtomicBool>,
 }
 
@@ -36,7 +36,7 @@ impl<Output: Send + 'static> EffectResolver<Output> {
     /// # Panics
     ///
     /// Panics if called synchronously from within
-    /// [`EffectMiddleware::process_effect`]. Middleware must dispatch work
+    /// [`EffectMiddleware::try_process_effect`]. Middleware must dispatch work
     /// asynchronously (e.g. `std::thread::spawn`, `spawn_local`, or a channel)
     /// and call `resolve` from there.
     ///
@@ -44,7 +44,7 @@ impl<Output: Send + 'static> EffectResolver<Output> {
     pub fn resolve(&mut self, output: Output) {
         assert!(
             !self.active.load(Ordering::Acquire),
-            "EffectMiddleware::process_effect must not call resolve() synchronously. \
+            "EffectMiddleware::try_process_effect must not call resolve() synchronously. \
              Dispatch work asynchronously (thread, spawn_local, channel, etc.). \
              See https://github.com/redbadger/crux/issues/492"
         );
@@ -68,11 +68,11 @@ impl<Output: Send + 'static> EffectResolver<Output> {
 ///   deployed to. This is fundamentally trading off portability for reuse of the
 ///   Rust implementation.
 /// - The middleware MUST process the effect asynchronously — it must not call
-///   [`EffectResolver::resolve`] before `process_effect` returns. On native
+///   [`EffectResolver::resolve`] before `try_process_effect` returns. On native
 ///   targets this typically means spawning a thread or sending work to a
 ///   channel-based worker. On WASM (which has no threads) this means using
 ///   `spawn_local` or a similar async task primitive. Calling `resolve()`
-///   synchronously inside `process_effect` will panic.
+///   synchronously inside `try_process_effect` will panic.
 /// - Because the resolver may be sent to another thread (on native), the core
 ///   and therefore the app are shared between threads. The app must be `Send`
 ///   and `Sync`, which also forces the `Model` type to be `Send` and `Sync`.
@@ -85,7 +85,7 @@ impl<Output: Send + 'static> EffectResolver<Output> {
 /// impl EffectMiddleware for MyMiddleware {
 ///     type Op = MyOperation;
 ///
-///     fn process_effect(
+///     fn try_process_effect(
 ///         &self,
 ///         operation: MyOperation,
 ///         mut resolver: EffectResolver<<MyOperation as Operation>::Output>,
@@ -109,7 +109,7 @@ pub trait EffectMiddleware: Send + Sync {
     /// asynchronously (e.g. `std::thread::spawn` on native, `spawn_local` on
     /// WASM, or a channel send) and call [`EffectResolver::resolve`] from
     /// there.
-    fn process_effect(
+    fn try_process_effect(
         &self,
         operation: Self::Op,
         resolver: EffectResolver<<Self::Op as Operation>::Output>,
@@ -142,7 +142,7 @@ where
 impl<Next, EM> Layer for HandleEffectLayer<Next, EM>
 where
     Next: Layer,
-    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect> + Send,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
     EM: EffectMiddleware + 'static,
 {
     type Event = Next::Event;
@@ -181,7 +181,7 @@ where
 impl<Next, EM> HandleEffectLayer<Next, EM>
 where
     Next: Layer,
-    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect> + Send,
+    Next::Effect: TryInto<Request<EM::Op>, Error = Next::Effect>,
     EM: EffectMiddleware + 'static,
 {
     /// Typically, you would use [`Layer::handle_effects_using`] to construct a
@@ -330,9 +330,11 @@ where
 
                 // Call the middleware. resolve() will panic if called during
                 // this scope.
-                strong_inner.middleware.process_effect(operation, resolver);
+                strong_inner
+                    .middleware
+                    .try_process_effect(operation, resolver);
 
-                // Allow resolve() to be called now that process_effect has returned.
+                // Allow resolve() to be called now that try_process_effect has returned.
                 active.store(false, Ordering::Release);
 
                 None

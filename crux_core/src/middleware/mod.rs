@@ -16,7 +16,7 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{bridge::BridgeError, App, Core, EffectFFI, Request, Resolvable, ResolveError};
+use crate::{App, Core, EffectFFI, Request, Resolvable, ResolveError, bridge::BridgeError};
 
 mod bridge;
 mod effect_conversion;
@@ -109,7 +109,7 @@ pub trait Layer: Send + Sync + Sized {
     fn handle_effects_using<EM>(self, middleware: EM) -> HandleEffectLayer<Self, EM>
     where
         EM: EffectMiddleware + 'static,
-        Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect> + Send,
+        Self::Effect: TryInto<Request<EM::Op>, Error = Self::Effect>,
     {
         HandleEffectLayer::new(self, middleware)
     }

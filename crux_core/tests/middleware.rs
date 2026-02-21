@@ -208,7 +208,7 @@ mod middleware {
     impl EffectMiddleware for RngMiddleware {
         type Op = RandomNumberRequest;
 
-        fn process_effect(
+        fn try_process_effect(
             &self,
             operation: RandomNumberRequest,
             resolver: EffectResolver<RandomNumber>,
@@ -224,7 +224,7 @@ mod middleware {
     impl EffectMiddleware for FakeHttpMiddleware {
         type Op = HttpRequest;
 
-        fn process_effect(
+        fn try_process_effect(
             &self,
             _operation: HttpRequest,
             mut resolver: EffectResolver<HttpResult>,
@@ -255,7 +255,7 @@ mod middleware {
     impl EffectMiddleware for RemoteTriggerHttp {
         type Op = HttpRequest;
 
-        fn process_effect(
+        fn try_process_effect(
             &self,
             _operation: HttpRequest,
             mut resolver: EffectResolver<HttpResult>,
@@ -610,7 +610,7 @@ mod tests {
     ///
     /// Synchronous resolution is now prevented at the API level.
     /// `EffectResolver` panics if `resolve()` is called before
-    /// `process_effect` returns.
+    /// `try_process_effect` returns.
     #[test]
     #[should_panic(expected = "must not call resolve() synchronously")]
     fn synchronous_middleware_panics() {
@@ -674,7 +674,7 @@ mod tests {
         impl EffectMiddleware for SyncPingMiddleware {
             type Op = PingOperation;
 
-            fn process_effect(
+            fn try_process_effect(
                 &self,
                 _operation: PingOperation,
                 mut resolver: EffectResolver<PingOutput>,
@@ -689,7 +689,7 @@ mod tests {
 
         let core = Core::<PingApp>::new().handle_effects_using(SyncPingMiddleware);
 
-        // This will panic inside process_effect -> resolve()
+        // This will panic inside try_process_effect -> resolve()
         let _ = core.update(PingEvent::Go, effect_callback);
     }
 }
