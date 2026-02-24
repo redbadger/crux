@@ -247,7 +247,7 @@ use std::sync::atomic::AtomicBool;
 
 // TODO: consider switching to flume
 use crossbeam_channel::{Receiver, Sender};
-use executor::{AbortHandle, Task, TaskId};
+use executor::{Task, TaskId};
 use futures::task::AtomicWaker;
 use futures::{FutureExt as _, Stream, StreamExt as _};
 use slab::Slab;
@@ -255,6 +255,7 @@ use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
 pub use context::CommandContext;
+pub use executor::AbortHandle;
 pub use stream::CommandOutput;
 
 use crate::Request;
