@@ -17,10 +17,10 @@ use crate::{
     location::{
         Location, capability::LocationOperation, model::geocoding_response::GeocodingResponse,
     },
-    navigation::{CurrentPage, navigate},
-    weather::{self, events::WeatherEvent, model::current_response::CurrentResponse},
+    weather::{self, events::WeatherEvent, model::current_response::CurrentWeatherResponse},
 };
 
+// ANCHOR: event
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum Event {
@@ -28,7 +28,9 @@ pub enum Event {
     Home(Box<WeatherEvent>),
     Favorites(Box<FavoritesEvent>),
 }
+// ANCHOR_END: event
 
+// ANCHOR: effect
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
@@ -36,7 +38,9 @@ pub enum Effect {
     Http(HttpRequest),
     Location(LocationOperation),
 }
+// ANCHOR_END: effect
 
+// ANCHOR: workflow
 #[derive(Facet, Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum Workflow {
@@ -45,18 +49,21 @@ pub enum Workflow {
     Favorites(FavoritesState),
     AddFavorite,
 }
+// ANCHOR_END: workflow
 
+// ANCHOR: model
 #[derive(Default, Debug)]
 pub struct Model {
-    pub weather_data: CurrentResponse,
-    pub page: CurrentPage,
+    pub weather_data: CurrentWeatherResponse,
     pub workflow: Workflow,
     pub favorites: Favorites,
     pub search_results: Option<Vec<GeocodingResponse>>,
     pub location_enabled: bool,
     pub last_location: Option<Location>,
 }
+// ANCHOR_END: model
 
+// ANCHOR: view_model
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ViewModel {
     pub workflow: WorkflowViewModel,
@@ -66,7 +73,7 @@ pub struct ViewModel {
 #[repr(C)]
 pub enum WorkflowViewModel {
     Home {
-        weather_data: Box<CurrentResponse>,
+        weather_data: Box<CurrentWeatherResponse>,
         favorites: Vec<FavoriteView>,
     },
     Favorites {
@@ -82,8 +89,9 @@ pub enum WorkflowViewModel {
 pub struct FavoriteView {
     name: String,
     location: Location,
-    current: Box<Option<CurrentResponse>>,
+    current: Box<Option<CurrentWeatherResponse>>,
 }
+// ANCHOR_END: view_model
 
 impl From<&Favorite> for FavoriteView {
     fn from(value: &Favorite) -> Self {
@@ -104,14 +112,15 @@ impl App for Weather {
     type ViewModel = ViewModel;
     type Effect = Effect;
 
+    // ANCHOR: update
     fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Effect, Event> {
         match event {
             Event::Navigate(next) => {
-                navigate(&mut model.page, &next);
                 model.workflow = *next;
                 render()
             }
             Event::Home(home_event) => {
+                // ANCHOR: command_all
                 let mut commands = Vec::new();
                 if let WeatherEvent::Show = *home_event {
                     commands.push(
@@ -126,13 +135,16 @@ impl App for Weather {
                 );
 
                 Command::all(commands)
+                // ANCHOR_END: command_all
             }
 
             Event::Favorites(fav_event) => favorites::events::update(*fav_event, model)
                 .map_event(|e| Event::Favorites(Box::new(e))),
         }
     }
+    // ANCHOR_END: update
 
+    // ANCHOR: view
     fn view(&self, model: &Model) -> ViewModel {
         let favorites = model.favorites.iter().map(From::from).collect();
 
@@ -158,6 +170,7 @@ impl App for Weather {
 
         ViewModel { workflow }
     }
+    // ANCHOR_END: view
 }
 
 #[cfg(test)]

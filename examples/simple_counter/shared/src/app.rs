@@ -72,7 +72,7 @@ mod test {
 
         let mut cmd = app.update(Event::Reset, &mut model);
 
-        // Were we asked to re-render?
+        // Check update asked us to `Render`
         cmd.expect_one_effect().expect_render();
     }
 
@@ -93,13 +93,12 @@ mod test {
 
         let mut cmd = app.update(Event::Increment, &mut model);
 
-        // Was the view updated correctly?
-        let actual = app.view(&model).count;
-        let expected = "Count is: 1";
-        assert_eq!(actual, expected);
-
-        // Were we asked to re-render?
+        // Check update asked us to `Render`
         cmd.expect_one_effect().expect_render();
+
+        let actual_view = app.view(&model).count;
+        let expected_view = "Count is: 1";
+        assert_eq!(actual_view, expected_view);
     }
 
     #[test]
@@ -109,13 +108,12 @@ mod test {
 
         let mut cmd = app.update(Event::Decrement, &mut model);
 
-        // Was the view updated correctly?
-        let actual = app.view(&model).count;
-        let expected = "Count is: -1";
-        assert_eq!(actual, expected);
-
-        // Were we asked to re-render?
+        // Check update asked us to `Render`
         cmd.expect_one_effect().expect_render();
+
+        let actual_view = app.view(&model).count;
+        let expected_view = "Count is: -1";
+        assert_eq!(actual_view, expected_view);
     }
 
     #[test]

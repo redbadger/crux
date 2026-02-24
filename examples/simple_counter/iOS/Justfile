@@ -13,7 +13,7 @@ clean:
     cargo clean
     rm -rf *.xcodeproj generated
 
-# rebuild the Xcode project from the `project.yaml` file
+# rebuild the Xcode project from the `project.yml` file
 generate-project:
     xcodegen
 

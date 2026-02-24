@@ -380,6 +380,7 @@ fn iterator_of_commands_collects_as_all() {
     assert!(cmd.is_done());
 }
 
+// ANCHOR: complex_concurrency
 #[test]
 fn complex_concurrency() {
     fn increment(output: AnOperationOutput) -> AnOperation {
@@ -399,6 +400,7 @@ fn complex_concurrency() {
             .then_send(Event::Completed),
     ])
     .then(Command::request_from_shell(AnOperation::More([3, 1])).then_send(Event::Completed));
+    // ANCHOR_END: complex_concurrency
 
     // Phase 1
 
