@@ -1,5 +1,11 @@
 mod formats;
+#[cfg(feature = "native_bridge")]
+mod native;
+#[cfg(feature = "native_bridge")]
+mod native_registry;
 mod registry;
+#[cfg(feature = "native_bridge")]
+mod request_native;
 mod request_serde;
 
 use facet::Facet;
@@ -8,12 +14,41 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::{App, Core, core::ResolveError};
+
+/// Default initial capacity for the resolve registry slab.
+///
+/// This balances memory usage against allocation overhead. The slab
+/// grows dynamically if more concurrent effects are needed.
+pub(crate) const DEFAULT_REGISTRY_CAPACITY: usize = 1024;
+
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveSerialized;
+
+#[cfg(feature = "native_bridge")]
+pub use native::NativeBridge;
+#[cfg(feature = "native_bridge")]
+pub use request_native::ResolveNative;
+
+/// Error type for the native typed bridge.
+///
+/// Uses `String` fields (not `&'static str` or foreign error types) for
+/// UniFFI compatibility — UniFFI errors need owned types.
+#[cfg(feature = "native_bridge")]
+#[derive(Debug, Error, uniffi::Error)]
+pub enum NativeBridgeError {
+    #[error("effect output variant mismatch: expected {expected}")]
+    OutputMismatch { expected: String },
+    #[error("effect id {effect_id} not found")]
+    EffectNotFound { effect_id: u32 },
+    #[error("stream resolve finished")]
+    ResolveFinished,
+    #[error("attempted to resolve fire-and-forget effect")]
+    ResolveNever,
+}
 
 /// A serialization format for the bridge FFI.
 ///

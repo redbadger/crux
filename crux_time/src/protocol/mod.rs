@@ -11,6 +11,7 @@ pub use duration::Duration;
 pub use instant::Instant;
 
 #[derive(Facet, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[serde(rename_all = "camelCase")]
 #[repr(C)]
 pub enum TimeRequest {
@@ -24,6 +25,7 @@ pub enum TimeRequest {
 pub struct TimerId(pub usize);
 
 #[derive(Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[serde(rename_all = "camelCase")]
 #[repr(C)]
 pub enum TimeResponse {

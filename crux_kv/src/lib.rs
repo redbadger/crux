@@ -3,6 +3,9 @@
 //! `crux_kv` allows Crux apps to store and retrieve arbitrary data by asking the Shell to
 //! persist the data using platform native capabilities (e.g. disk or web localStorage)
 
+#[cfg(feature = "native_bridge")]
+uniffi::setup_scaffolding!();
+
 pub mod command;
 pub mod error;
 pub mod protocol;

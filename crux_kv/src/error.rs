@@ -4,6 +4,7 @@ use thiserror::Error;
 
 /// Error type for `KeyValue` operations
 #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Error)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[serde(rename_all = "camelCase")]
 #[repr(C)]
 pub enum KeyValueError {

@@ -1,0 +1,14 @@
+build:
+    just Android/build
+    just iOS/build
+
+# TODO: web-leptos and web-remix need to be migrated to use
+# uniffi-bindgen-react-native generated TypeScript/WASM bindings.
+# See https://github.com/jhugman/uniffi-bindgen-react-native
+
+clean:
+    just Android/clean
+    just iOS/clean
+
+test:
+    cargo insta test --review --test-runner nextest --all-features --lib

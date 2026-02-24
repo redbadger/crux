@@ -11,12 +11,14 @@ use serde::{Deserialize, Serialize};
 use crate::HttpError;
 
 #[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Record))]
 pub struct HttpHeader {
     pub name: String,
     pub value: String,
 }
 
 #[derive(facet::Facet, Serialize, Deserialize, Default, Clone, PartialEq, Eq, Builder)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Record))]
 #[builder(
     custom_constructor,
     build_fn(private, name = "fallible_build"),
@@ -124,6 +126,7 @@ impl HttpRequestBuilder {
 }
 
 #[derive(facet::Facet, Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq, Builder)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Record))]
 #[builder(
     custom_constructor,
     build_fn(private, name = "fallible_build"),
@@ -183,6 +186,7 @@ impl HttpResponseBuilder {
 }
 
 #[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Enum))]
 #[repr(C)]
 pub enum HttpResult {
     Ok(HttpResponse),

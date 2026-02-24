@@ -1,0 +1,28 @@
+# Generate UniFFI Kotlin bindings
+build: bindgen
+
+# clean and build
+rebuild: clean build
+
+# build and run Android Studio (MacOS only)
+dev: build
+    open -b com.google.android.studio .
+
+# remove all the generated artefacts
+clean:
+    cargo clean
+    rm -rf build generated
+
+# build the shared library
+lib:
+    cargo build --features native_bridge
+
+# generate UniFFI Kotlin bindings
+bindgen: lib
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen \
+        -- \
+            --language kotlin \
+            --output-dir generated

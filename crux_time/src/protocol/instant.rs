@@ -11,6 +11,7 @@ const NANOS_PER_SEC: u32 = 1_000_000_000;
 /// - seconds: number of seconds since the Unix epoch (1970-01-01T00:00:00Z)
 /// - nanos: number of nanoseconds since the last second
 #[derive(Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Record))]
 #[serde(rename_all = "camelCase")]
 pub struct Instant {
     pub(crate) seconds: u64,

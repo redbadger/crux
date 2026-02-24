@@ -127,6 +127,24 @@ pub trait Layer: Send + Sync + Sized {
         MapEffectLayer::new(self)
     }
 
+    /// Wrap this layer with a native typed bridge that delivers effects
+    /// via a callback instead of byte serialization.
+    ///
+    /// The callback receives `(EffectId, Ffi)` for each effect. Both
+    /// immediate effects and async middleware effects flow through this
+    /// callback.
+    #[cfg(feature = "native_bridge")]
+    fn native_bridge<F>(self, effect_callback: F) -> crate::bridge::NativeBridge<Self>
+    where
+        Self::Effect: crate::core::EffectNative,
+        F: Fn(crate::bridge::EffectId, <Self::Effect as crate::core::EffectNative>::Ffi)
+            + Send
+            + Sync
+            + 'static,
+    {
+        crate::bridge::NativeBridge::new(self, effect_callback)
+    }
+
     fn bridge<Format: FfiFormat>(
         self,
         effect_callback: impl Fn(Result<Vec<u8>, BridgeError<Format>>) + Send + Sync + 'static,
