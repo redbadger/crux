@@ -115,7 +115,7 @@ class Core: ObservableObject {
                         logger.debug("Checking existence of key: \(key)")
                         let exists = keyValueStore.exists(key: key)
                         logger.debug("Key exists: \(exists)")
-                        result = .ok(response: .exists(is_present: exists))
+                        result = .ok(response: .exists(isPresent: exists))
 
                     case .listKeys(let prefix, let cursor):
                         logger.debug(
@@ -123,8 +123,8 @@ class Core: ObservableObject {
                         )
                         let keys = keyValueStore.listKeys(prefix: prefix, cursor: String(cursor))
                         logger.debug("Found keys: \(keys)")
-                        // For simplicity, we'll use 0 as next_cursor since we don't implement pagination
-                        result = .ok(response: .listKeys(keys: keys, next_cursor: 0))
+                        // For simplicity, we'll use 0 as nextCursor since we don't implement pagination
+                        result = .ok(response: .listKeys(keys: keys, nextCursor: 0))
                     }
 
                     let effects = [UInt8](
@@ -289,9 +289,9 @@ extension Core {
                         }
                     case .authorizedWhenInUse, .authorizedAlways:
                         Task.detached { [weak self, weak manager] in
+                            guard let self = self, let manager = manager else { return }
                             let enabled = CLLocationManager.locationServicesEnabled()
                             await MainActor.run {
-                                guard let manager = manager, let self = self else { return }
                                 if enabled {
                                     manager.startUpdatingLocation()
                                 } else {
