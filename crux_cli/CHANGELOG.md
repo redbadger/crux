@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-rc3](https://github.com/redbadger/crux/compare/crux_cli-v0.2.0-rc2...crux_cli-v0.2.0-rc3) - 2026-03-02
+
+### ⚙️ Miscellaneous Tasks
+
+- Update Rust dependencies.
+
 ## [0.2.0-rc2](https://github.com/redbadger/crux/compare/crux_cli-v0.2.0-rc1...crux_cli-v0.2.0-rc2) - 2026-01-14
 
 ### ⚙️ Miscellaneous Tasks

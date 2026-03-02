@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.0-rc3](https://github.com/redbadger/crux/compare/crux_kv-v0.11.0-rc2...crux_kv-v0.11.0-rc3) - 2026-03-02
+
+### ⚙️ Miscellaneous Tasks
+
+- Update Rust dependencies.
+
 ## [0.11.0-rc2](https://github.com/redbadger/crux/compare/crux_kv-v0.11.0-rc1...crux_kv-v0.11.0-rc2) - 2026-01-14
 
 ### ⚙️ Miscellaneous Tasks
