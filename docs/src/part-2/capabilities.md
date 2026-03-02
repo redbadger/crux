@@ -7,7 +7,13 @@ We looked at effects a fair bit and explored the `Command`s and `CommandBuilder`
 but in practice, it's quite rare that you'd interact with those directly from
 your app.
 
-Typically, you'll be working with effects using Capabilities.
+Typically, you'll be working with effects using Capabilities - more developer-friendly APIs
+which implement a specific kind of side-effect in a generic fashion. They define the core-shell
+message protocol for the side-effect and provide an ergonomic API to create the right `CommandBuilder`s.
+Examples include: HTTP client, Timer operations, Key-Value storage, Secrets provider, Geolocation, etc.
+
+In practice, we find there is a limited number of these effect packages, the should be very reusable,
+and an individual app will typically need around seven of them, almost certainly less than ten.
 
 ## Included capabilities
 
