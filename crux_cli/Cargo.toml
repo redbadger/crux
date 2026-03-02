@@ -15,23 +15,23 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-ascent = "0.8.0"
-camino = "1.2.2"
+ascent = "0.8"
+camino = "1.2"
 cargo_metadata = "=0.19"
-clap = { version = "4.5.56", features = ["derive", "env"] }
-convert_case = "0.11.0"
-convert_case_extras = "0.2.0"
-derive_builder = "0.20.2"
-env_logger = "0.11.8"
-guppy = "0.17.25"
-iter_tools = "0.46.0"
-lazy-regex = "3.5.1"
-log = "0.4.29"
-rustdoc-types = "=0.35.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+convert_case = "0.11"
+convert_case_extras = "0.2"
+derive_builder = "0.20"
+env_logger = "0.11"
+guppy = "0.17"
+iter_tools = "0.46"
+lazy-regex = "3.6"
+log = "0.4"
+rustdoc-types = "=0.35"
 serde = { workspace = true, features = ["derive"] }
-serde-generate = "0.32.0"
-serde-reflection = "0.5.2"
-serde_json = "1.0.149"
+serde-generate = "=0.32"
+serde-reflection = "=0.5"
+serde_json = "1.0"
 thiserror.workspace = true
 uniffi_bindgen.workspace = true
 
