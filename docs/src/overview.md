@@ -12,14 +12,31 @@ platform on which the core runs.
 
 ![Crux](./crux.png)
 
-The interface between the two is a native FFI (Foreign Function Interface) with
-cross-language type checking and message passing semantics, where simple data
-structures are passed across the boundary.
+The aim is to separate three kinds of code in a typical app, which have different goals:
+
+- the **presentation** layer in the user interface,
+- the pure logic driving **behaviour** and state updates in response to the user's actions, and
+- the **effects** (or I/O) layer where network communication, storage, interactions with real-world time, and other
+  similar things are handled
+
+The Core handles the behaviour logic, the Shell handles the
+presentation layer and effect execution (but not _orchestration_, that is part of the behaviour
+and therefore in the Core). This strict separation makes the behaviour logic much easier to test
+without any of the other layers getting involved.
+
+The interface between the Core and the Shell is a native FFI (Foreign Function Interface) with
+message passing semantics, where simple data structures are passed across the boundary,
+supported by cross-language code generation and type checking.
 
 ```admonish title="Get to know Crux"
-To get playing with Crux quickly, follow the [Getting Started](./getting_started/core.md) steps. If you prefer to read more about how apps are built in Crux first, read the [Development Guide](./guide/hello_world.md). And if you'd like to know what possessed us to try this in the first place, read about our [Motivation](./motivation.md).
 
-There are two places to find API documentation: the latest published version on docs.rs, and we also have the very latest master docs if you too like to live dangerously.
+To get playing with Crux quickly, follow Part I of the book, from the [Getting Started](./part-1/getting_started.md) chapter onward. It will take you from zero to a basic working app on your preferred platform quickly. From there, continue on to Part II – building the [Weather App](./guide/weather_app.md), which builds on the basics and covers the more advanced features and patterns needed in a real world app.
+
+If you just want to understand why we set out to build Crux in the first place and what problems it tries to solve, before you  spend any time trying it (no hard feelings, we would too), read our original [Motivation](./motivation.md).
+
+#### API docs
+
+There are two places to find API documentation: the latest published version on docs.rs, or the very latest `master` docs if you too like to live dangerously.
 
 - **crux_core** - the main Crux crate: [latest release](https://docs.rs/crux_core/latest/crux_core/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_core/)
 - **crux_http** - HTTP client capability: [latest release](https://docs.rs/crux_http/latest/crux_http/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_http/)
@@ -35,29 +52,35 @@ You can also join the friendly conversation on our [Zulip channel](https://crux-
 
 ## Design overview
 
-![Logical architecture](./architecture.svg)
+![Logical architecture](./command_overview.png)
 
-The architecture is event-driven, based on
-[event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html). The Core
-holds the majority of state, which is updated in response to events happening in
+The architecture is event-driven, with state management based on
+[event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), similar to Elm or Redux.
+The Core holds the majority of state, which is updated in response to events happening in
 the Shell. The interface between the Core and the Shell is message-based.
 
+### Native UI
+
 The user interface layer is built natively, with modern declarative UI
-frameworks such as Swift UI, Jetpack Compose and React/Vue or a WASM based
-framework on the web. The UI layer is as thin as it can be, and all other
-application logic is performed by the shared Core. The one restriction is that
+frameworks such as Swift UI, Jetpack Compose and React/Svelte or a WASM based
+framework on the web. The UI layer is as thin as it can be, and all behaviour
+logic is implemented by the shared Core. The one restriction is that
 the Core is side–effect free. This is both a technical requirement (to be able
-to target WebAssembly), and an intentional design goal, to separate logic from
+to target WebAssembly), and an intentional design goal, to separate behaviour from
 effects and make them both easier to test in isolation.
 
-Crux uses [managed side-effects](./guide/effects.md) – the app requests side-effects
-from the Shell, which executes them. The basic concept is that instead of
+### Managed effects
+
+Crux uses [managed side-effects](./part-2/effects.md) – the Core requests side-effects
+from the Shell, which executes them. The basic difference is that instead of
 _doing_ the asynchronous work, the core _describes_ the intent for the work with
-data, and passes this to the Shell to be performed. The Shell performs the work,
-and returns the outcomes back to the Core. This approach is inspired by
-[Elm](https://elm-lang.org/), and similar to how other purely functional
-languages deal with effects and I/O (e.g. the IO monad in Haskell). It is also
-similar to how iterators work in Rust.
+data (which also serves as the input for the effect), and passes this to the Shell
+to be performed. The Shell performs the work, and returns the outcomes back to the Core.
+This approach using deferred execution is inspired by [Elm](https://elm-lang.org/),
+and similar to how other purely functional languages deal with effects and I/O
+(e.g. the IO monad in Haskell). It is also similar in its laziness to how iterators work in Rust.
+
+### Type generation
 
 The Core exports types for the messages it can understand. The Shell can call
 the Core and pass one of the messages. In return, it receives a set of
@@ -70,9 +93,8 @@ will result in build failures in the Shell.
 
 ## Goals
 
-We set out to find a better way of building apps
-across platforms. You can read more [about our motivation](./motivation.md). The
-overall goals of Crux are to:
+We set out to find a better way of building apps across platforms. You can read
+more [about our motivation](./motivation.md). The overall goals of Crux are to:
 
 - Build the majority of the application code once, in Rust
 - Encapsulate the _behavior_ of the app in the Core for reuse
@@ -82,21 +104,23 @@ overall goals of Crux are to:
 - Strictly separate the behavior from the look and feel and interaction design
 - Use the native UI tool kits to create user experience that is the best fit for
   a given platform
+- Use the native I/O libraries to be good citizens of the ecosystem and get the
+  benefit of any OS-provided services
 
 ## Path to 1.0
 
-Crux is used in production apps today, and we consider it production ready. However, we still have a number of things to work on to call it 1.0, with a stable API, and other things one would expect from a mature framework.
+Crux is used in production apps today, and we consider it production ready. However,
+we still have a number of things to work on to call it 1.0, with a stable API and
+excellent DX expected from a mature framework.
 
 Below is a list of some of the things we know we want to do before 1.0:
 
-* ✅ ~~Revised capabilities and effects to allow for better, more natural
-  [app composition](./guide/composing.md) in larger apps, for composing capabilities,
-  and generally for a more ergonomic effect API overall~~ See [managed effects](./guide/effects.md)
-* Better code generation with additional features, and support for more languages (e.g. C#, Dart, even C++...)
+- Better code generation with additional features, and support for more languages (e.g. C#, Dart, even C++...)
   and in turn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
-* Improved documentation, code examples, and example apps for newcomers
-* Improved onboarding experience, with less boilerplate code that end users have
+- Improved documentation, code examples, and example apps for newcomers
+- Improved onboarding experience, with less boilerplate code that end users have
   to write or copy from an example
 
 Until then, we hope you will work with us on the rough edges, and adapt to the necessary
-API updates as we evolve. We strive to minimise the impact of changes as much as we can, but before 1.0, some breaking changes will be unavoidable.
+API updates as we evolve. We strive to minimise the impact of changes as much as we can,
+but before 1.0, some breaking changes will be unavoidable.
