@@ -35,7 +35,6 @@ fn main() -> Result<()> {
             typegen_app.swift(
                 &Config::builder("App", &args.output_dir)
                     .add_extensions()
-                    .add_runtimes()
                     .build(),
             )?;
         }

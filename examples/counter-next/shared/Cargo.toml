@@ -34,7 +34,8 @@ async-sse = "5.1.0"
 chrono = { version = "0.4.44", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
-facet = { version = "=0.31", features = ["chrono"] }
+facet = { version = "0.44", features = ["chrono"] }
+facet-generate-attrs = { version = "0.16", path = "../../../../facet-generate/crates/facet-generate-attrs" }
 futures = "0.3.32"
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.149"
