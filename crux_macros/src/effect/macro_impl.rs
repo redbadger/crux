@@ -57,7 +57,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                     feature = "facet_typegen",
                     derive(::facet::Facet),
                     #(#facet_meta_attrs,)*
-                    facet(name = #enum_ident_str),
+                    facet(rename = #enum_ident_str),
                     repr(C)
                 )]
                 #ffi_enum

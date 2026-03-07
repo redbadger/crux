@@ -4,16 +4,14 @@ fn get_local_storage() -> Option<web_sys::Storage> {
     web_sys::window()?.local_storage().ok()?
 }
 
-#[allow(clippy::future_not_send)] // WASM is single-threaded
-pub async fn handle(operation: &KeyValueOperation) -> KeyValueResult {
+pub fn handle(operation: &KeyValueOperation) -> KeyValueResult {
     match operation {
         KeyValueOperation::Get { key } => {
             let storage = get_local_storage();
             let value = storage
                 .and_then(|s| s.get_item(key).ok())
                 .flatten()
-                .map(|v| Value::Bytes(v.into_bytes()))
-                .unwrap_or(Value::Bytes(vec![]));
+                .map_or(Value::Bytes(vec![]), |v| Value::Bytes(v.into_bytes()));
             KeyValueResult::Ok {
                 response: KeyValueResponse::Get { value },
             }
@@ -24,8 +22,7 @@ pub async fn handle(operation: &KeyValueOperation) -> KeyValueResult {
                 .as_ref()
                 .and_then(|s| s.get_item(key).ok())
                 .flatten()
-                .map(|v| Value::Bytes(v.into_bytes()))
-                .unwrap_or(Value::Bytes(vec![]));
+                .map_or(Value::Bytes(vec![]), |v| Value::Bytes(v.into_bytes()));
             let value_str = std::str::from_utf8(value).unwrap_or("");
             if let Some(s) = &storage {
                 let _ = s.set_item(key, value_str);
@@ -40,8 +37,7 @@ pub async fn handle(operation: &KeyValueOperation) -> KeyValueResult {
                 .as_ref()
                 .and_then(|s| s.get_item(key).ok())
                 .flatten()
-                .map(|v| Value::Bytes(v.into_bytes()))
-                .unwrap_or(Value::Bytes(vec![]));
+                .map_or(Value::Bytes(vec![]), |v| Value::Bytes(v.into_bytes()));
             if let Some(s) = &storage {
                 let _ = s.remove_item(key);
             }

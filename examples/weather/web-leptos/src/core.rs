@@ -51,7 +51,7 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
                 let core = core.clone();
 
                 async move {
-                    let response = kv::handle(&request.operation).await;
+                    let response = kv::handle(&request.operation);
 
                     for effect in core
                         .resolve(&mut request, response)

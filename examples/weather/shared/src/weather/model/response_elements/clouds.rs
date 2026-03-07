@@ -11,6 +11,6 @@ pub struct Clouds {
 
 impl fmt::Display for Clouds {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Clouds: (all: {})", self.all,)
+        write!(f, "Clouds: (all: {})", self.all)
     }
 }

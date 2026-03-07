@@ -88,7 +88,7 @@ mod test {
     #[test]
     fn duration_into_std() {
         let actual: StdDuration = Duration { nanos: 100_000_000 }.into();
-        let expected = StdDuration::from_nanos(100_000_000);
+        let expected = StdDuration::from_millis(100);
         assert_eq!(actual, expected);
     }
 }

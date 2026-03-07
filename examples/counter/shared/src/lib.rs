@@ -1,3 +1,5 @@
+#![allow(clippy::unsafe_derive_deserialize)]
+
 mod app;
 pub mod ffi;
 

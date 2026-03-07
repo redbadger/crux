@@ -359,7 +359,7 @@ where
     /// Panics if the command contains any effects or events
     #[track_caller]
     pub fn expect_done(&mut self) {
-        assert!(self.is_done(), "expected command to be done",);
+        assert!(self.is_done(), "expected command to be done");
     }
 }
 

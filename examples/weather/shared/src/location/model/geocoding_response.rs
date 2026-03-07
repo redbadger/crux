@@ -169,6 +169,7 @@ impl fmt::Display for ZipCodeResponse {
     }
 }
 
+#[must_use]
 pub fn display_option<T: fmt::Display>(option_string: Option<&T>) -> String {
     match option_string {
         Some(string) => string.to_string(),
