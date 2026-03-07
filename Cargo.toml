@@ -16,14 +16,18 @@ members = [
 [workspace.package]
 authors = ["Red Badger Consulting Limited"]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.dependencies]
 anyhow = "1.0"
-facet = "=0.31"
+facet = "0.44"
+# facet-generate = "0.16"
+# facet-generate-attrs = "0.16"
+facet-generate = { path = "../facet-generate" }
+facet-generate-attrs = { path = "../facet-generate/facet-generate-attrs" }
 serde = "1.0"
 thiserror = "2.0"
 uniffi = "=0.29.4"

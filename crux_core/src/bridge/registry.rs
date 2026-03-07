@@ -8,6 +8,7 @@ use super::{BridgeError, FfiFormat, Request};
 use crate::bridge::request_serde::ResolveSerialized;
 use crate::{EffectFFI, ResolveError};
 
+#[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 #[facet(transparent)]
