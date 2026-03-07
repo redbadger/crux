@@ -2,15 +2,15 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use crux_core::{
-    cli::{BindgenArgsBuilder, bindgen},
+    cli::{bindgen, BindgenArgsBuilder},
     type_generation::facet::{
         Config, ExternalPackage, PackageLocation, TypeGenError, TypeRegistry,
     },
 };
 use log::info;
 use shared::{
-    Counter,
     sse::{SseRequest, SseResponse},
+    Counter,
 };
 use uniffi::deps::anyhow::Result;
 
@@ -165,7 +165,7 @@ fn serde(args: &Args) -> Result<(), TypeGenError> {
         Language::Kotlin => "com.crux.example.counter.serde",
         Language::Typescript => "serde",
     };
-    let config = Config::builder(name, &out_dir).add_runtimes().build();
+    let config = Config::builder(name, &out_dir).build();
 
     match args.language {
         Language::Swift => typegen_serde.swift(&config),

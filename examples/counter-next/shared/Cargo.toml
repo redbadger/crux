@@ -35,7 +35,7 @@ chrono = { version = "0.4.44", features = ["serde"] }
 clap = { version = "4.5.60", optional = true, features = ["derive"] }
 crux_core.workspace = true
 crux_http.workspace = true
-facet = { version = "=0.31", features = ["chrono"] }
+facet = { version = "0.44", features = ["chrono"] }
 futures = "0.3.32"
 getrandom = { version = "0.4", optional = true, default-features = false }
 js-sys = { version = "0.3.91", optional = true }

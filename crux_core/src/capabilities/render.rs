@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Command, Request, capability::Operation, command::NotificationBuilder};
 
 /// The single operation `Render` implements.
+#[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct RenderOperation;
 
