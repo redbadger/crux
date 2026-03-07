@@ -25,6 +25,7 @@ crux_core = { version = "0.17.0-rc3", path = "../crux_core" }
 derive_builder = "0.20"
 encoding_rs = { version = "0.8", optional = true }
 facet.workspace = true
+facet-generate-attrs.workspace = true
 futures-util = "0.3"
 http = { version = "1.4", optional = true }
 http-types = { package = "http-types-red-badger-temporary-fork", version = "6.0", default-features = false }

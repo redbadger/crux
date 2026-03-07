@@ -29,7 +29,7 @@ facet_typegen = ["crux_core/facet_typegen"]
 
 [dependencies]
 crux_core.workspace = true
-facet = "=0.31"
+facet = "0.44"
 serde = { workspace = true, features = ["derive"] }
 
 # optional dependencies
