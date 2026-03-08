@@ -34,8 +34,8 @@ impl crux_core::EffectFFI for Effect {
 #[cfg(feature = "native_bridge")]
 #[cfg_attr(feature = "native_bridge", derive(::uniffi::Enum))]
 pub enum EffectOutput {
-    Render(<RenderOperation as ::crux_core::capability::Operation>::Output),
-    Http(<HttpRequest as ::crux_core::capability::Operation>::Output),
+    Render { output: <RenderOperation as ::crux_core::capability::Operation>::Output },
+    Http { output: <HttpRequest as ::crux_core::capability::Operation>::Output },
 }
 #[cfg(feature = "native_bridge")]
 #[cfg_attr(feature = "native_bridge", derive(::uniffi::Record))]
@@ -55,7 +55,7 @@ impl ::crux_core::EffectNative for Effect {
                 req.into_native(
                     EffectFfi::Render,
                     |o| match o {
-                        EffectOutput::Render(v) => Ok(v),
+                        EffectOutput::Render { output: v } => Ok(v),
                         _ => {
                             Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
                                 expected: "Render".to_string(),
@@ -68,7 +68,7 @@ impl ::crux_core::EffectNative for Effect {
                 req.into_native(
                     EffectFfi::Http,
                     |o| match o {
-                        EffectOutput::Http(v) => Ok(v),
+                        EffectOutput::Http { output: v } => Ok(v),
                         _ => {
                             Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
                                 expected: "Http".to_string(),

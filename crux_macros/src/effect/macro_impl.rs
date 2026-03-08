@@ -258,7 +258,7 @@ pub fn effect_impl(args: EffectArgs, input: ItemEnum) -> TokenStream {
                 quote! { #effect_ident }
             } else {
                 quote! {
-                    #effect_ident(<#operation as ::crux_core::capability::Operation>::Output)
+                    #effect_ident { output: <#operation as ::crux_core::capability::Operation>::Output }
                 }
             }
         });
@@ -285,7 +285,7 @@ pub fn effect_impl(args: EffectArgs, input: ItemEnum) -> TokenStream {
                     #enum_ident::#effect_ident(req) => req.into_native(
                         #ffi_enum_ident::#effect_ident,
                         |o| match o {
-                            EffectOutput::#effect_ident(v) => Ok(v),
+                            EffectOutput::#effect_ident { output: v } => Ok(v),
                             _ => Err(::crux_core::bridge::NativeBridgeError::OutputMismatch {
                                 expected: #effect_ident_str.to_string(),
                             }),
