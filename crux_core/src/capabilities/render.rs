@@ -9,6 +9,7 @@ use crate::{Command, Request, capability::Operation, command::NotificationBuilde
 
 /// The single operation `Render` implements.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "native_bridge", derive(uniffi::Record))]
 pub struct RenderOperation;
 
 impl Operation for RenderOperation {

@@ -163,8 +163,13 @@ pub mod type_generation;
 mod capabilities;
 mod core;
 
+#[cfg(feature = "native_bridge")]
+uniffi::setup_scaffolding!();
+
 pub use capabilities::*;
 pub use command::Command;
+#[cfg(feature = "native_bridge")]
+pub use core::EffectNative;
 pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
 #[cfg(feature = "cli")]
 pub use crux_cli as cli;
