@@ -20,8 +20,7 @@ crossbeam-channel = "0.5"
 crux_cli = { version = "0.2.0-rc3", optional = true, path = "../crux_cli" }
 crux_macros = { version = "0.8.0-rc3", path = "../crux_macros", optional = true }
 facet.workspace = true
-facet_generate = { version = "0.15", optional = true }
-# facet_generate = { path = "../../facet-generate", optional = true }
+facet-generate = { workspace = true, optional = true }
 futures = "0.3"
 log = { version = "0.4", optional = true }
 serde = { workspace = true, features = ["derive"] }
@@ -48,5 +47,5 @@ uuid = { version = "1.21.0", features = ["serde", "v4"] }
 [features]
 default = ["crux_macros"]
 cli = ["dep:crux_cli"]
-facet_typegen = ["crux_macros/facet_typegen", "dep:facet_generate", "dep:log"]
+facet_typegen = ["crux_macros/facet_typegen", "dep:facet-generate", "dep:log"]
 typegen = ["crux_macros/typegen", "dep:serde-generate", "dep:serde-reflection"]

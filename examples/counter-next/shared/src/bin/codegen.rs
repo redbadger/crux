@@ -165,7 +165,7 @@ fn serde(args: &Args) -> Result<(), TypeGenError> {
         Language::Kotlin => "com.crux.example.counter.serde",
         Language::Typescript => "serde",
     };
-    let config = Config::builder(name, &out_dir).add_runtimes().build();
+    let config = Config::builder(name, &out_dir).build();
 
     match args.language {
         Language::Swift => typegen_serde.swift(&config),

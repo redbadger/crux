@@ -1,25 +1,24 @@
-# Generate types for Swift, build the shared library as a Swift package
-build: typegen package
+# Generate types for Swift, build the shared library as a Swift package and rebuild the Xcode project
+build: typegen package generate-project
 
-# clean, rebuild the Xcode project and build
-rebuild: clean build generate-project
+# clean and build
+rebuild: clean build
 
 # build and run Xcode
-dev: build generate-project
+dev: build
     xed .
 
-# remove all the generated artifacts
+# remove all the generated artefacts
 clean:
     cargo clean
     rm -rf *.xcodeproj generated
 
 # rebuild the Xcode project from the `project.yaml` file
-generate-project: build
+generate-project:
     xcodegen
 
 # generate types for Swift
 typegen:
-    cargo build --package shared --features uniffi
     RUST_LOG=info cargo run \
         --package shared \
         --bin codegen \

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use crux_core::{
-    cli::{BindgenArgsBuilder, bindgen},
+    cli::{bindgen, BindgenArgsBuilder},
     type_generation::facet::{Config, TypeRegistry},
 };
 use log::info;
@@ -39,7 +39,6 @@ fn main() -> Result<()> {
     };
     let config = Config::builder(name, &args.output_dir)
         .add_extensions()
-        .add_runtimes()
         .build();
 
     match args.language {

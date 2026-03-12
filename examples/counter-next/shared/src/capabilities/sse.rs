@@ -3,17 +3,18 @@ use std::{convert::From, future};
 use async_sse::{Event as SseEvent, decode};
 use crux_core::{Request, capability::Operation, command::StreamBuilder};
 use facet::Facet;
+use facet_generate_attrs as fg;
 use futures::{Stream, StreamExt, io::Cursor};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[facet(namespace = "server_sent_events")]
+#[facet(fg::namespace = "server_sent_events")]
 pub struct SseRequest {
     pub url: String,
 }
 
 #[derive(Facet, Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[facet(namespace = "server_sent_events")]
+#[facet(fg::namespace = "server_sent_events")]
 #[repr(C)]
 pub enum SseResponse {
     Chunk(Vec<u8>),
