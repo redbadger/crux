@@ -1,4 +1,3 @@
-#![deny(clippy::pedantic)]
 #![allow(clippy::unsafe_derive_deserialize)]
 //! This is support code for doc tests
 

@@ -831,6 +831,7 @@ dependencies = [
  "crux_http",
  "darling 0.23.0",
  "facet 0.44.1",
+ "facet-generate-attrs",
  "heck 0.5.0",
  "insta",
  "prettyplease",

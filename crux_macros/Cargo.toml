@@ -24,6 +24,7 @@ syn = "2.0"
 crux_core = { path = "../crux_core" }
 crux_http = { path = "../crux_http" }
 facet = { workspace = true }
+facet-generate-attrs = { workspace = true }
 insta = "1.46.3"
 prettyplease = "0.2"
 serde = { version = "1.0", features = ["derive"] }

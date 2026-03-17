@@ -6,7 +6,7 @@
 
 use async_trait::async_trait;
 use derive_builder::Builder;
-use facet_generate_attrs as fg;
+use facet_generate_attrs as typegen;
 use serde::{Deserialize, Serialize};
 
 use crate::HttpError;
@@ -29,7 +29,7 @@ pub struct HttpRequest {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
-    #[facet(fg::bytes)]
+    #[facet(typegen::bytes)]
     pub body: Vec<u8>,
 }
 
@@ -135,7 +135,7 @@ pub struct HttpResponse {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
-    #[facet(fg::bytes)]
+    #[facet(typegen::bytes)]
     pub body: Vec<u8>,
 }
 
