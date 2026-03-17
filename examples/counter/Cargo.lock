@@ -1477,7 +1477,7 @@ dependencies = [
  "crux_cli",
  "crux_macros",
  "facet 0.44.1",
- "facet-generate",
+ "facet_generate",
  "futures",
  "log",
  "serde",
@@ -2643,27 +2643,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "facet-generate"
-version = "0.16.0"
-dependencies = [
- "derive_builder",
- "facet 0.44.1",
- "facet-generate-attrs",
- "heck 0.5.0",
- "include_dir 0.7.4",
- "indent",
- "indoc",
- "regex",
- "serde",
- "serde_json",
- "textwrap 0.16.2",
- "thiserror 2.0.18",
- "tracing",
-]
-
-[[package]]
 name = "facet-generate-attrs"
 version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b59c82c2c40c64d157e102d4fa437394dc3768780903546129700fe5911884d"
 dependencies = [
  "facet 0.44.1",
 ]
@@ -2742,6 +2725,26 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unsynn",
+]
+
+[[package]]
+name = "facet_generate"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74b7adb3e4cd72f80272b4db2ee6a6c7132e599e4b5982d6b112e41387bea2c1"
+dependencies = [
+ "derive_builder",
+ "facet 0.44.1",
+ "facet-generate-attrs",
+ "heck 0.5.0",
+ "include_dir 0.7.4",
+ "indent",
+ "indoc",
+ "regex",
+ "serde",
+ "serde_json",
+ "textwrap 0.16.2",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

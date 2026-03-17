@@ -752,7 +752,7 @@ fn single_without_typegen_with_attributes() {
 fn facet_typegen_with_namespace_attribute() {
     let args = Some(format_ident!("facet_typegen"));
     let input = parse_quote! {
-        #[facet(namespace = "crux")]
+        #[facet(facet_generate_attrs::namespace = "crux")]
         pub enum Effect {
             Render(RenderOperation),
         }
@@ -769,7 +769,7 @@ fn facet_typegen_with_namespace_attribute() {
     #[cfg_attr(
         feature = "facet_typegen",
         derive(::facet::Facet),
-        facet(namespace = "crux"),
+        facet(facet_generate_attrs::namespace = "crux"),
         facet(rename = "Effect"),
         repr(C)
     )]

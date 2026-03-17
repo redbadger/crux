@@ -1,3 +1,4 @@
+#![allow(clippy::unsafe_derive_deserialize)]
 mod app;
 mod capabilities;
 mod ffi;

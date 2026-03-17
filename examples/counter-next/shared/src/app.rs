@@ -6,7 +6,7 @@ use crux_core::{
 };
 use crux_http::{command::Http, protocol::HttpRequest};
 use facet::Facet;
-use facet_generate_attrs as fg;
+use facet_generate_attrs as typegen;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -31,7 +31,7 @@ pub struct Count {
 }
 
 #[derive(Facet, Serialize, Deserialize, Debug, Clone)]
-#[facet(fg::namespace = "view_model")]
+#[facet(typegen::namespace = "view_model")]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,

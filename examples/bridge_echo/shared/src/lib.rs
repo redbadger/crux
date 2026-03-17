@@ -1,3 +1,4 @@
+#![allow(clippy::unsafe_derive_deserialize)]
 pub mod app;
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 mod ffi;

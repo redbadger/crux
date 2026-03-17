@@ -1,3 +1,4 @@
+#![allow(clippy::unsafe_derive_deserialize)]
 #![allow(clippy::missing_panics_doc)]
 
 mod app;
