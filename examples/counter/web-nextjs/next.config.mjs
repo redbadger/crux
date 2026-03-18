@@ -5,6 +5,7 @@
  */
 const nextConfig = {
   /* config options here */
+  transpilePackages: ["app"],
 };
 
 export default nextConfig;
