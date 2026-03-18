@@ -4,7 +4,7 @@ use std::{
 };
 
 use crux_core::middleware::{EffectMiddleware, EffectResolver};
-use getrandom::SysRng;
+use rand::rngs::SysRng;
 use rand::{RngExt, SeedableRng, TryRng as _, rngs::StdRng};
 
 use crate::capabilities::{RandomNumber, RandomNumberRequest};

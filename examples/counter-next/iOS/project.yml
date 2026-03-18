@@ -9,7 +9,7 @@ packages:
   Serde:
     path: ./generated/serde/Serde
 options:
-  bundleIdPrefix: com.crux.example.counter
+  bundleIdPrefix: com.crux.examples.counter
 targets:
   CounterApp:
     type: application

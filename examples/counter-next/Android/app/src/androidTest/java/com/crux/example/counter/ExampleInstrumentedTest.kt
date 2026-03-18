@@ -1,4 +1,4 @@
-package com.crux.example.counter
+package com.crux.examples.counter
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -17,6 +17,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.crux.example.counter", appContext.packageName)
+        assertEquals("com.crux.examples.counter", appContext.packageName)
     }
 }

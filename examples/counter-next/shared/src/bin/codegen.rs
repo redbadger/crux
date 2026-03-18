@@ -79,10 +79,10 @@ fn app(args: &Args) -> Result<(), TypeGenError> {
                 .build(),
         ),
         Language::Kotlin => typegen.kotlin(
-            &Config::builder("com.crux.example.counter.app", &out_dir)
+            &Config::builder("com.crux.examples.counter.app", &out_dir)
                 .reference(ExternalPackage {
                     for_namespace: "server_sent_events".to_string(),
-                    location: PackageLocation::Path("com.crux.example.counter.sse".to_string()),
+                    location: PackageLocation::Path("com.crux.examples.counter.sse".to_string()),
                     module_name: None,
                     version: None,
                 })
@@ -134,7 +134,7 @@ fn sse(args: &Args) -> Result<(), TypeGenError> {
                 .build(),
         ),
         Language::Kotlin => typegen_sse.kotlin(
-            &Config::builder("com.crux.example.counter.sse", &out_dir)
+            &Config::builder("com.crux.examples.counter.sse", &out_dir)
                 .reference(ExternalPackage {
                     for_namespace: "serde".to_string(),
                     location: PackageLocation::Path("com.novi.serde".to_string()),
@@ -162,7 +162,7 @@ fn serde(args: &Args) -> Result<(), TypeGenError> {
 
     let name = match args.language {
         Language::Swift => "Serde",
-        Language::Kotlin => "com.crux.example.counter.serde",
+        Language::Kotlin => "com.crux.examples.counter.serde",
         Language::Typescript => "serde",
     };
     let config = Config::builder(name, &out_dir).add_runtimes().build();
