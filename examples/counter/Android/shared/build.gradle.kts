@@ -1,7 +1,7 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import com.android.build.gradle.tasks.MergeSourceSetFolders
 import com.nishtahir.CargoBuildTask
 import com.nishtahir.CargoExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
@@ -11,6 +11,7 @@ plugins {
 
 android {
     namespace = "com.crux.examples.simplecounter"
+
     compileSdk {
         version = release(36)
     }
@@ -19,33 +20,23 @@ android {
 
     defaultConfig {
         minSdk = 34
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlin {
         compilerOptions {
             jvmTarget = JvmTarget.JVM_11
         }
     }
+
     sourceSets {
         getByName("main") {
             // types are now generated in kotlin
-            kotlin.srcDirs("../generated")
+            kotlin.srcDirs("${projectDir}/../generated")
         }
     }
 }
@@ -56,31 +47,18 @@ dependencies {
             type = "aar"
         }
     }
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 }
-
-apply(plugin = "org.mozilla.rust-android-gradle.rust-android")
 
 extensions.configure<CargoExtension>("cargo") {
     // workspace, so build at root, with `--package shared`
     module = "../.."
-    extraCargoBuildArguments = listOf("--package", "shared")
-
     libname = "shared"
     profile = "debug"
     // these are the four recommended targets for Android that will ensure your library works on all mainline android devices
     // make sure you have included the rust toolchain for each of these targets: \
     // `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
     targets = listOf("arm", "arm64", "x86", "x86_64")
-    features {
-        defaultAnd(arrayOf("uniffi"))
-    }
+    extraCargoBuildArguments = listOf("--package", "shared", "--features", "uniffi")
     cargoCommand = System.getProperty("user.home") + "/.cargo/bin/cargo"
     rustcCommand = System.getProperty("user.home") + "/.cargo/bin/rustc"
     pythonCommand = "python3"
@@ -112,4 +90,10 @@ afterEvaluate {
             }
         }
     }
+}
+
+// The below dependsOn is needed till https://github.com/mozilla/rust-android-gradle/issues/85 is resolved this fix was got from #118
+tasks.matching { it.name.matches(Regex("merge.*JniLibFolders")) }.configureEach {
+    inputs.dir(File(layout.buildDirectory.asFile.get(), "rustJniLibs/android"))
+    dependsOn("cargoBuild")
 }

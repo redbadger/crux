@@ -260,7 +260,7 @@ That `when` statement, above, is where you would handle any other effects that
 your core might ask for. For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example of this, take a look at
 the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/iOS/CounterApp/core.swift)
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/apple/SimpleCounter/core.swift)
 in the Crux repository.
 ```
 
