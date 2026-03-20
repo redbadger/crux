@@ -8,6 +8,9 @@ license.workspace = true
 keywords.workspace = true
 rust-version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 console_error_panic_hook = "0.1.7"
 dioxus = { version = "0.7.3", features = ["web"] }

@@ -10,8 +10,8 @@ import { Core } from "../core";
 
 export const meta = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "Crux Counter — React Router" },
+    { name: "description", content: "Crux Counter with React Router" },
   ];
 };
 

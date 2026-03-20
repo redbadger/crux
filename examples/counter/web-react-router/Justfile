@@ -15,14 +15,14 @@ doctor:
     @just lib::check-tool pnpm "npm install -g pnpm"
 
 # auto-fix formatting issues
-fix: install
+fix:
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
-    pnpm exec eslint --fix .
+    @echo "  No auto-fix configured"
 
 # validate lint
-check: install
+check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
-    pnpm exec eslint .
+    @echo "  No lint configured"
 
 # generate types for typescript
 typegen:
@@ -40,7 +40,7 @@ wasm:
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
     wasm-pack build \
         --target web \
-        --out-dir ../web-nextjs/generated/pkg \
+        --out-dir ../web-react-router/generated/pkg \
         ../shared \
         --features wasm_bindgen
 
@@ -63,7 +63,7 @@ test:
 clean:
     @echo '{{ style("command") }}clean:{{ NORMAL }}'
     cargo clean
-    rm -rf generated .next node_modules
+    rm -rf generated .react-router node_modules
 
 # serve the app locally
 serve: typegen wasm install

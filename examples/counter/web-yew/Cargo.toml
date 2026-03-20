@@ -8,6 +8,9 @@ license.workspace = true
 keywords.workspace = true
 rust-version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 shared = { path = "../shared" }
 yew = { version = "0.23.0", features = ["csr"] }

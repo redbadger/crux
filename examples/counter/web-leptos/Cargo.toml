@@ -12,5 +12,5 @@ rust-version.workspace = true
 shared = { path = "../shared" }
 leptos = { version = "0.8.17", features = ["csr"] }
 
-[lints.clippy]
-empty_docs = "allow"
+[lints]
+workspace = true

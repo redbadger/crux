@@ -18,17 +18,17 @@ fn RootComponent() -> impl IntoView {
             <p class="is-size-5">{move || view.get().count}</p>
             <div class="buttons section is-centered">
                 <button class="button is-primary is-danger"
-                    on:click=move |_| set_event.update(|value| *value = Event::Reset)
+                    on:click=move |_| set_event.set(Event::Reset)
                 >
                     {"Reset"}
                 </button>
                 <button class="button is-primary is-success"
-                    on:click=move |_| set_event.update(|value| *value = Event::Increment)
+                    on:click=move |_| set_event.set(Event::Increment)
                 >
                     {"Increment"}
                 </button>
                 <button class="button is-primary is-warning"
-                    on:click=move |_| set_event.update(|value| *value = Event::Decrement)
+                    on:click=move |_| set_event.set(Event::Decrement)
                 >
                     {"Decrement"}
                 </button>
