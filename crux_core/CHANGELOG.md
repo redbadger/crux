@@ -43,7 +43,7 @@ and this project adheres to
 #### Developer Experience:
 
 - **Kotlin Support**: Added support for generating idiomatic Kotlin bindings with exhaustive `when` statements for enums.
-- **C# Typegen Support**: Added experimental C# code generation support to the type generation backend.
+- **C# Typegen Support**: Added C# code generation support to the older `serde_generate` typegen backend. C# support for the newer `facet_generate` backend is planned for 0.18.
 - **Facet Integration**: Updated to work with `facet_generate` 0.15 and `facet` 0.31.
 - **Documentation**: Aligned deprecation messages and improved example apps.
 
