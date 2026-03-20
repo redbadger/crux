@@ -1,11 +1,11 @@
-name: SimpleCounter
+name: CounterApp
 packages:
   Shared:
     path: ./generated/Shared
   App:
     path: ./generated/App
 options:
-  bundleIdPrefix: com.crux.examples.simplecounter
+  bundleIdPrefix: com.crux.examples.counter
 attributes:
   BuildIndependentTargetsInParallel: true
 
@@ -13,7 +13,7 @@ targetTemplates:
   app:
     type: application
     sources:
-      - path: SimpleCounter
+      - path: CounterApp
         excludes:
           - "Info-*.plist"
     dependencies:
@@ -21,11 +21,12 @@ targetTemplates:
       - package: App
 
 targets:
-  SimpleCounter-iOS:
+  CounterApp-iOS:
     templates: [app]
     platform: iOS
     deploymentTarget: 18.0
     info:
+      path: CounterApp/Info-iOS.plist
       properties:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -33,11 +34,12 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UILaunchScreen: {}
 
-  SimpleCounter-macOS:
+  CounterApp-macOS:
     templates: [app]
     platform: macOS
     deploymentTarget: "15.0"
     info:
+      path: CounterApp/Info-macOS.plist
       properties:
         NSSupportsAutomaticGraphicsSwitching: true
     settings:

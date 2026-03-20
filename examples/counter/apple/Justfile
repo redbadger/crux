@@ -1,24 +1,44 @@
-# Generate types for Swift, build the shared library as a Swift package and rebuild the Xcode project
-build: typegen package generate-project
+mod lib '../../lib.just'
 
-# clean and build
-rebuild: clean build
+default: dev
 
-# build and run Xcode
-dev: build
-    xed .
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
 
-# remove all the generated artefacts
-clean:
-    cargo clean
-    rm -rf *.xcodeproj generated
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-tool cargo-swift "cargo install cargo-swift --version '=0.9'"
+    @just lib::check-tool xcodegen "brew install xcodegen"
+    @just lib::check-tool xcodebuild "install Xcode from the App Store"
+    @just lib::check-tool swiftlint "brew install swiftlint"
 
-# rebuild the Xcode project from the `project.yml` file
-generate-project:
-    xcodegen
+# installs Rust targets required for Apple packaging with cargo-swift
+install-targets:
+    @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
+    TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \
+    echo "  Toolchain: $TOOLCHAIN" ; \
+    rustup target add --toolchain "$TOOLCHAIN" \
+        aarch64-apple-ios \
+        aarch64-apple-ios-sim \
+        x86_64-apple-darwin \
+        x86_64-apple-ios
 
-# generate types for Swift
+# auto-fix formatting and lint issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    swiftlint --fix CounterApp/
+
+# validate formatting and lint
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    swiftlint lint CounterApp/
+
+# generates Swift types via codegen binary
 typegen:
+    @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
         --package shared \
         --bin codegen \
@@ -27,16 +47,58 @@ typegen:
             --language swift \
             --output-dir generated
 
-# use `cargo swift` to build the shared library as a Swift package
+# builds the shared library as a Swift package using cargo-swift
 [working-directory('../shared')]
-package:
+package: install-targets
+    @echo '{{ style("command") }}package:{{ NORMAL }}'
     cargo swift --version | grep -q '0.9.0'
     cargo swift package \
         --name Shared \
-        --platforms ios,macos \
+        --platforms ios macos \
         --lib-type static \
         --features uniffi
     rm -rf generated
     mkdir -p ../apple/generated/Shared
     cp -r Shared/* ../apple/generated/Shared/
     rm -rf Shared
+
+# rebuilds the Xcode project from project.yml
+generate-project:
+    @echo '{{ style("command") }}generate-project:{{ NORMAL }}'
+    xcodegen
+
+# generates types, builds shared package, and regenerates Xcode project
+generate: typegen package generate-project
+
+# builds the project (generates first)
+build: generate
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    xcodebuild \
+        -project CounterApp.xcodeproj \
+        -scheme CounterApp-macOS \
+        -configuration Debug \
+        ONLY_ACTIVE_ARCH=YES \
+        -skipPackagePluginValidation \
+        build
+
+# runs tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  Tests require generated packages — run 'just build' first"
+
+# cleans build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    rm -rf generated *.xcodeproj *.xcworkspace DerivedData build
+    cargo clean
+
+# open in Xcode
+open:
+    @echo '{{ style("command") }}open:{{ NORMAL }}'
+    xed .
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test

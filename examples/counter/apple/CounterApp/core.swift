@@ -10,12 +10,15 @@ class Core: ObservableObject {
 
     init() {
         self.core = CoreFfi()
+        // swiftlint:disable:next force_try
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
     }
 
     func update(_ event: Event) {
+        // swiftlint:disable:next force_try
         let effects = [UInt8](core.update(data: Data(try! event.bincodeSerialize())))
 
+        // swiftlint:disable:next force_try
         let requests: [Request] = try! .bincodeDeserialize(input: effects)
         for request in requests {
             processEffect(request)
@@ -26,6 +29,7 @@ class Core: ObservableObject {
         switch request.effect {
         case .render:
             DispatchQueue.main.async {
+                // swiftlint:disable:next force_try
                 self.view = try! .bincodeDeserialize(input: [UInt8](self.core.view()))
             }
         }

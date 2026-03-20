@@ -102,8 +102,8 @@ The generated code still works with byte buffers, so lets give ourselves a nicer
 interface for it:
 
 ```swift
-// apple/SimpleCounter/core.swift
-{{#include ../../../../../examples/counter/apple/SimpleCounter/core.swift}}
+// apple/CounterApp/core.swift
+{{#include ../../../../../examples/counter/apple/CounterApp/core.swift}}
 ```
 
 This is mostly just serialization code. But the `processEffect` method is interesting.
@@ -113,18 +113,18 @@ but you can add more in here later, as you expand your `Effect` type.
 
 ### Build a basic view
 
-Xcode should've generated a ContentView file for you in `apple/SimpleCounter/ContentView.swift`.
+Xcode should've generated a ContentView file for you in `apple/CounterApp/ContentView.swift`.
 Change it to look like this:
 
 ```swift
-{{#include ../../../../../examples/counter/apple/SimpleCounter/ContentView.swift}}
+{{#include ../../../../../examples/counter/apple/CounterApp/ContentView.swift}}
 ```
 
-And finally, make sure `apple/SimpleCounter/SimpleCounterApp.swift` looks like this to use
+And finally, make sure `apple/CounterApp/CounterAppApp.swift` looks like this to use
 the `ContentView`:
 
 ```swift
-{{#include ../../../../../examples/counter/apple/SimpleCounter/SimpleCounterApp.swift}}
+{{#include ../../../../../examples/counter/apple/CounterApp/CounterAppApp.swift}}
 ```
 
 The one interesting part of this is the `@ObservedObject var core: Core`. Since the `Core` is

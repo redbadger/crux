@@ -33,7 +33,7 @@ Open Android Studio and create a new project, for "Phone and Tablet", of type
 - "Package name": `com.example.counter`
 - "Save Location": a directory called `Android` at the root of our monorepo
 - "Minimum SDK" `API 34`
-- "Build configuration language": `Groovy DSL (build.gradle)`
+- "Build configuration language": `Kotlin DSL (build.gradle.kts)`
 
 Your repo's directory structure might now look something like this (some files
 elided):
@@ -42,7 +42,7 @@ elided):
 .
 ├── Android
 │  ├── app
-│  │  ├── build.gradle
+│  │  ├── build.gradle.kts
 │  │  ├── libs
 │  │  └── src
 │  │     └── main
@@ -52,10 +52,10 @@ elided):
 │  │              └── example
 │  │                 └── counter
 │  │                    └── MainActivity.kt
-│  ├── build.gradle
+│  ├── build.gradle.kts
 │  ├── gradle.properties
 │  ├── local.properties
-│  └── settings.gradle
+│  └── settings.gradle.kts
 ├── Cargo.lock
 ├── Cargo.toml
 ├── shared
@@ -82,22 +82,22 @@ Under `File -> New -> New Module`, choose "Android Library" and give it the "Mod
 `shared`. Set the "Package name" to match the one from your
 `/shared/uniffi.toml`, which in this example is `com.example.counter.shared`.
 
-Again, set the "Build configuration language" to `Groovy DSL (build.gradle)`.
+Again, set the "Build configuration language" to `Kotlin DSL (build.gradle.kts)`.
 
 For more information on how to add an Android library see
 <https://developer.android.com/studio/projects/android-library>.
 
 We can now add this library as a _dependency_ of our app.
 
-Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like
+Edit the **app**'s `build.gradle.kts` (`/Android/app/build.gradle.kts`) to look like
 this:
 
-```gradle
-{{#include ../../../../examples/counter/Android/app/build.gradle}}
+```kotlin
+{{#include ../../../../examples/counter/Android/app/build.gradle.kts}}
 ```
 
 ````admonish
-In our gradle files, we are referencing a "Version Catalog" to manage our dependency versions, so you
+In our Gradle files, we are referencing a "Version Catalog" to manage our dependency versions, so you
 will need to ensure this is kept up to date.
 
 Our catalog (`Android/gradle/libs.versions.toml`) will end up looking like this:
@@ -130,27 +130,27 @@ Add the four rust android toolchains to your system:
 $ rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 ```
 
-Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like
+Edit the **project**'s `build.gradle.kts` (`/Android/build.gradle.kts`) to look like
 this:
 
-```gradle
-{{#include ../../../../examples/counter/Android/build.gradle}}
+```kotlin
+{{#include ../../../../examples/counter/Android/build.gradle.kts}}
 ```
 
-Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
+Edit the **library**'s `build.gradle.kts` (`/Android/shared/build.gradle.kts`) to look
 like this:
 
-```gradle
-{{#include ../../../../examples/counter/Android/shared/build.gradle}}
+```kotlin
+{{#include ../../../../examples/counter/Android/shared/build.gradle.kts}}
 
 ```
 
 ```admonish warning title="Sharp edge"
-You will need to set the `ndkVersion` to one you have installed, go to "**Tools, SDK Manager, SDK Tools**" and check "**Show Package Details**" to get your installed version, or to install the version matching `build.gradle` above.
+You will need to set the `ndkVersion` to one you have installed, go to "**Tools, SDK Manager, SDK Tools**" and check "**Show Package Details**" to get your installed version, or to install the version matching `build.gradle.kts` above.
 ```
 
 ```admonish tip
-When you have edited the gradle files, don't forget to click "sync now".
+When you have edited the Gradle files, don't forget to click "sync now".
 ```
 
 If you now build your project you should see the newly built shared library
@@ -260,7 +260,7 @@ That `when` statement, above, is where you would handle any other effects that
 your core might ask for. For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example of this, take a look at
 the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/apple/SimpleCounter/core.swift)
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/apple/CounterApp/core.swift)
 in the Crux repository.
 ```
 
