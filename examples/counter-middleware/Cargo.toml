@@ -10,6 +10,13 @@ repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+empty_docs = "allow"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
 [workspace.dependencies]
 anyhow = "1.0.102"
 crux_core = { path = "../../crux_core" }
@@ -18,3 +25,15 @@ crux_http = { path = "../../crux_http" }
 # crux_http = "0.16.0"
 serde = "1.0.228"
 js-sys = "0.3.91" # FIXME: bring into crux_core, make conditional
+
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

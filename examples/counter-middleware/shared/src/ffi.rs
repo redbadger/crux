@@ -110,7 +110,9 @@ pub mod wasm_bindgen {
 
     struct JsCallback(js_sys::Function);
 
+    #[allow(unsafe_code)]
     unsafe impl Send for JsCallback {}
+    #[allow(unsafe_code)]
     unsafe impl Sync for JsCallback {}
 
     impl std::ops::Deref for JsCallback {
