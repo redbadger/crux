@@ -6,36 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.17.0-rc3](https://github.com/redbadger/crux/compare/crux_core-v0.17.0-rc2...crux_core-v0.17.0-rc3) - 2026-03-02
-
-### 🚀 Features
-
-- **`Core::new_with`**: Support passing `App` and `Model` objects to construct the `Core`, instead of requiring `Default` implementations. The `App` trait no longer requires `Default`, and `App::Model` no longer requires `Default`. `Core::new()` and `Core::default()` still require both bounds. ([#488](https://github.com/redbadger/crux/pull/488))
-- **Expose `AbortHandle`**: `AbortHandle` is now re-exported from `crux_core::command` for use in cancelling spawned command tasks. ([#498](https://github.com/redbadger/crux/pull/498))
-
-### 🐛 Bug Fixes
-
-- **Middleware: prevent stack overflow on synchronous resolve**: Replaced the trampoline-based approach with a new `EffectResolver` API. Middleware must now dispatch work asynchronously — calling `EffectResolver::resolve()` synchronously inside `try_process_effect` will panic. This prevents stack overflows when middleware resolves effects on the same call stack. ([#493](https://github.com/redbadger/crux/issues/492))
-- **Middleware: thread ID guard for WASM compatibility**: Use thread ID check instead of thread-local storage to prevent false panics from fast async resolvers on the same thread (e.g. `spawn_local` on WASM). ([#497](https://github.com/redbadger/crux/pull/497))
-
-### ⚠️ Breaking Changes
-
-- **`EffectMiddleware` trait redesigned**: The trait is now `EffectMiddleware: Send + Sync` (no longer generic over `Effect`). The method `try_process_effect_with` has been replaced by `try_process_effect(&self, operation: Self::Op, resolver: EffectResolver<...>)`. The framework now extracts the operation from the effect before calling the middleware.
-- **`App` trait**: `App` no longer requires `Default`, and `App::Model` no longer requires `Default`. If you relied on these bounds, use `Core::new()` (which still requires them) or switch to `Core::new_with(app, model)`.
-
-### ⚙️ Miscellaneous Tasks
-
-- Fix for new lint introduced in Rust 1.93.
-- Update Rust dependencies.
-
-## [0.17.0-rc2](https://github.com/redbadger/crux/compare/crux_core-v0.17.0-rc1...crux_core-v0.17.0-rc2) - 2026-01-14
-
-### ⚙️ Miscellaneous Tasks
-
-- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
-- Relax version requirements for better compatibility.
-
-## [0.17.0-rc1](https://github.com/redbadger/crux/compare/crux_core-v0.16.1...crux_core-v0.17.0-rc1) - 2025-12-10
+## [0.17.0](https://github.com/redbadger/crux/compare/crux_core-v0.16.2...crux_core-v0.17.0) - 2026-03-20
 
 ### 🚀 Features
 
@@ -49,6 +20,8 @@ and this project adheres to
   - `handle_response(&self, id: u32, output: &[u8]) -> Result<Vec<u8>, BridgeError>` → Use `resolve(&self, id: u32, output: &[u8], requests_out: &mut Vec<u8>) -> Result<(), BridgeError>`
   - `view(&self) -> Result<Vec<u8>, BridgeError>` → Use `view(&self, view_out: &mut Vec<u8>) -> Result<(), BridgeError>`
 - **Effect Middleware**: Enhanced effect middleware support with proper handling of stream requests and multiple resolutions.
+- **`Core::new_with`**: Support passing `App` and `Model` objects to construct the `Core`, instead of requiring `Default` implementations. The `App` trait no longer requires `Default`, and `App::Model` no longer requires `Default`. `Core::new()` and `Core::default()` still require both bounds. ([#488](https://github.com/redbadger/crux/pull/488))
+- **Expose `AbortHandle`**: `AbortHandle` is now re-exported from `crux_core::command` for use in cancelling spawned command tasks. ([#498](https://github.com/redbadger/crux/pull/498))
 
 #### New Features:
 
@@ -70,8 +43,27 @@ and this project adheres to
 #### Developer Experience:
 
 - **Kotlin Support**: Added support for generating idiomatic Kotlin bindings with exhaustive `when` statements for enums.
-- **Facet Integration**: Updated to work with `facet_generate` 0.12 and `facet` 0.31.
+- **C# Typegen Support**: Added experimental C# code generation support to the type generation backend.
+- **Facet Integration**: Updated to work with `facet_generate` 0.15 and `facet` 0.31.
 - **Documentation**: Aligned deprecation messages and improved example apps.
+
+### 🐛 Bug Fixes
+
+- **Middleware: prevent stack overflow on synchronous resolve**: Replaced the trampoline-based approach with a new `EffectResolver` API. Middleware must now dispatch work asynchronously — calling `EffectResolver::resolve()` synchronously inside `try_process_effect` will panic. This prevents stack overflows when middleware resolves effects on the same call stack. ([#493](https://github.com/redbadger/crux/issues/492))
+- **Middleware: thread ID guard for WASM compatibility**: Use thread ID check instead of thread-local storage to prevent false panics from fast async resolvers on the same thread (e.g. `spawn_local` on WASM). ([#497](https://github.com/redbadger/crux/pull/497))
+
+### ⚠️ Breaking Changes
+
+- **`EffectMiddleware` trait redesigned**: The trait is now `EffectMiddleware: Send + Sync` (no longer generic over `Effect`). The method `try_process_effect_with` has been replaced by `try_process_effect(&self, operation: Self::Op, resolver: EffectResolver<...>)`. The framework now extracts the operation from the effect before calling the middleware.
+- **`App` trait**: `App` no longer requires `Default`, and `App::Model` no longer requires `Default`. If you relied on these bounds, use `Core::new()` (which still requires them) or switch to `Core::new_with(app, model)`.
+- **Removed `erased_serde` dependency**: The bridge no longer uses `erased_serde`. The `FfiFormat` concept has been unified and `ResolveSerialized` is now generic over it, allowing generic deserialization without type erasure. Custom `Deserializer` support (e.g. `serde_json::Value`) has been removed in favor of bytes only.
+
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.15, `facet` 0.31, and other Rust dependencies.
+- Relax version requirements for better compatibility.
+- Fix for new lint introduced in Rust 1.93.
+- Update Rust dependencies.
 
 ## [0.16.2](https://github.com/redbadger/crux/compare/crux_core-v0.16.1...crux_core-v0.16.2) - 2025-12-15
 

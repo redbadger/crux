@@ -8,19 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.15.0-rc3](https://github.com/redbadger/crux/compare/crux_time-v0.15.0-rc2...crux_time-v0.15.0-rc3) - 2026-03-02
-
-### ⚙️ Miscellaneous Tasks
-
-- Update Rust dependencies and align with `crux_core` 0.17.0-rc3.
-
-## [0.15.0-rc2](https://github.com/redbadger/crux/compare/crux_time-v0.15.0-rc1...crux_time-v0.15.0-rc2) - 2026-01-14
-
-### ⚙️ Miscellaneous Tasks
-
-- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
-
-## [0.15.0-rc1](https://github.com/redbadger/crux/compare/crux_time-v0.14.0...crux_time-v0.15.0-rc1) - 2025-12-10
+## [0.15.0](https://github.com/redbadger/crux/compare/crux_time-v0.14.0...crux_time-v0.15.0) - 2026-03-20
 
 ### 🚀 Features
 
@@ -31,9 +19,10 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- Update to `facet_generate` 0.12 and `facet` 0.31.
+- Update to `facet_generate` 0.15, `facet` 0.31, and other Rust dependencies.
 - Migrate internal implementation from Capability to Command API.
 - Update documentation and examples for Command-based usage.
+- Update Rust dependencies and align with `crux_core` 0.17.0.
 
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_time-v0.13.0...crux_time-v0.14.0) - 2025-07-31
 

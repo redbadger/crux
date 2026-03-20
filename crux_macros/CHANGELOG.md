@@ -8,19 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.8.0-rc3](https://github.com/redbadger/crux/compare/crux_macros-v0.8.0-rc2...crux_macros-v0.8.0-rc3) - 2026-03-02
-
-### ⚙️ Miscellaneous Tasks
-
-- Update Rust dependencies and align with `crux_core` 0.17.0-rc3.
-
-## [0.8.0-rc2](https://github.com/redbadger/crux/compare/crux_macros-v0.8.0-rc1...crux_macros-v0.8.0-rc2) - 2026-01-14
-
-### ⚙️ Miscellaneous Tasks
-
-- Update to `facet_generate` 0.13, `facet` 0.31, and other Rust dependencies.
-
-## [0.8.0-rc1](https://github.com/redbadger/crux/compare/crux_macros-v0.7.0...crux_macros-v0.8.0-rc1) - 2025-12-10
+## [0.8.0](https://github.com/redbadger/crux/compare/crux_macros-v0.7.0...crux_macros-v0.8.0) - 2026-03-20
 
 ### 🚀 Features
 
@@ -30,11 +18,16 @@ and this project adheres to
 - **Enhanced Effect Macros**: Improved `#[effect]` attribute macro with better support for type generation and Command integration.
 - **Bridge Integration**: Updated macros to work with the new unified Bridge API in `crux_core`.
 
+### 🐛 Bug Fixes
+
+- Transfer facet attributes to effect FFI enum, fixing an issue where attributes were not being copied.
+
 ### ⚙️ Miscellaneous Tasks
 
-- Update to `facet_generate` 0.12 and `facet` 0.31.
+- Update to `facet_generate` 0.15, `facet` 0.31, and other Rust dependencies.
 - Remove deprecated capability derive macros.
 - Align with Command API requirements.
+- Update Rust dependencies and align with `crux_core` 0.17.0.
 
 ## [0.7.0](https://github.com/redbadger/crux/compare/crux_macros-v0.6.1...crux_macros-v0.7.0) - 2025-07-31
 
