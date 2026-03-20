@@ -138,7 +138,7 @@ pnpm add ../shared_types/generated/typescript
 ```admonish example
 There are other, more advanced, [examples](https://github.com/redbadger/crux/tree/master/examples) of Next.js apps in the Crux repository.
 
-However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 ### Simple counter example
@@ -167,7 +167,7 @@ the core and the shell. This is because the core is running in a separate
 WebAssembly instance, and so we can't just pass the data directly.
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-nextjs/src/app/core.ts}}
+{{#include ../../../../examples/counter/web-nextjs/src/app/core.ts}}
 ```
 
 ```admonish tip
@@ -187,7 +187,7 @@ WebAssembly core and sends it an initial event. Notice that we pass the
 response to a render effect from the core.
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-nextjs/src/app/page.tsx}}
+{{#include ../../../../examples/counter/web-nextjs/src/app/page.tsx}}
 ```
 
 Now all we need is some CSS. First add the `Bulma` package, and then import it
@@ -198,7 +198,7 @@ pnpm add bulma
 ```
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-nextjs/src/app/layout.tsx}}
+{{#include ../../../../examples/counter/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app
@@ -212,5 +212,5 @@ pnpm dev
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./counter.webp"  width="300"></p>
 ```

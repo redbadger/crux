@@ -7,7 +7,7 @@ counter app. A simple counter we can increment, decrement and reset.
 ## Code of the app
 
 ```admonish example
-You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/app.rs)
+You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)
 ```
 
 In the last chapter, we started with the main type
@@ -141,10 +141,10 @@ That's enough about effects for now, we will spend a lot more time with them lat
 ## Implementing the `App` trait
 
 We now have all the building blocks to implement the `App` trait. Here is
-where we end up (straight from the actual [example code](https://github.com/redbadger/crux/blob/master/examples/simple_counter/shared/src/app.rs)):
+where we end up (straight from the actual [example code](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)):
 
 ```rust,noplayground
-{{#include ../../../examples/simple_counter/shared/src/app.rs:impl_app}}
+{{#include ../../../examples/counter/shared/src/app.rs:impl_app}}
 ```
 
 The `update` function is the heart of the app, it manages the state transitions

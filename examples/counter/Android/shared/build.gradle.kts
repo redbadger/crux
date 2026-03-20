@@ -10,7 +10,7 @@ plugins {
 }
 
 android {
-    namespace = "com.crux.examples.counter"
+    namespace = "com.crux.examples.simplecounter"
     compileSdk {
         version = release(36)
     }

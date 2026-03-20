@@ -78,7 +78,7 @@ you prefer your tests to know about how your state works and to what extent.
 By now you get the gist, so here's all the tests to satisfy ourselves that the app does in fact work:
 
 ```rust,noplayground
-{{#include ../../../examples/simple_counter/shared/src/app.rs:test}}
+{{#include ../../../examples/counter/shared/src/app.rs:test}}
 ```
 
 You can see that occasionally, we test for the render to be requested. This will be important later, because

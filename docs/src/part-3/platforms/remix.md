@@ -80,7 +80,7 @@ to add a `serverDependenciesToBundle` key to the object exported in
 `remix.config.js`:
 
 ```js
-{{#include ../../../../examples/simple_counter/web-remix/remix.config.js}}
+{{#include ../../../../examples/counter/web-remix/remix.config.js}}
 ```
 
 ## Add the Shared Types
@@ -151,13 +151,13 @@ it for us, giving it a cache-friendly hash-based name.
 ```
 
 ```ts
-{{#include ../../../../examples/simple_counter/web-remix/app/entry.client.tsx}}
+{{#include ../../../../examples/counter/web-remix/app/entry.client.tsx}}
 ```
 
 ## Create some UI
 
 ```admonish example
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 ### Simple counter example
@@ -186,7 +186,7 @@ the core and the shell. This is because the core is running in a separate
 WebAssembly instance, and so we can't just pass the data directly.
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-remix/app/core.ts}}
+{{#include ../../../../examples/counter/web-remix/app/core.ts}}
 ```
 
 ```admonish tip
@@ -205,7 +205,7 @@ Edit `app/routes/_index.tsx` to look like the following. Notice that we pass the
 response to a render effect from the core (as seen above).
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-remix/app/routes/_index.tsx}}
+{{#include ../../../../examples/counter/web-remix/app/routes/_index.tsx}}
 ```
 
 Now all we need is some CSS.
@@ -214,7 +214,7 @@ To add a CSS stylesheet, we can add it to the `Links` export in the
 `app/root.tsx` file.
 
 ```tsx
-{{#include ../../../../examples/simple_counter/web-remix/app/root.tsx:links}}
+{{#include ../../../../examples/counter/web-remix/app/root.tsx:links}}
 ```
 
 ## Build and serve our app
@@ -228,5 +228,5 @@ pnpm dev
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/counter.webp"  width="300"></p>
 ```

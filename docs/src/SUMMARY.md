@@ -40,7 +40,6 @@
 # Part IV - Understanding Internals
 
 1. [Effects runtime](./part-4/runtime.md)
-1. [FFI bridge](./part-4/bridge.md)
 1. [The Effect type](./part-4/effect.md)
 1. [Type generation](./part-4/typegen.md)
 

@@ -30,7 +30,7 @@ Open Android Studio and create a new project, for "Phone and Tablet", of type
 "Empty Activity". In this walk-through, we'll call it "SimpleCounter"
 
 - "Name": `SimpleCounter`
-- "Package name": `com.example.simple_counter`
+- "Package name": `com.example.counter`
 - "Save Location": a directory called `Android` at the root of our monorepo
 - "Minimum SDK" `API 34`
 - "Build configuration language": `Groovy DSL (build.gradle)`
@@ -50,7 +50,7 @@ elided):
 │  │        └── java
 │  │           └── com
 │  │              └── example
-│  │                 └── simple_counter
+│  │                 └── counter
 │  │                    └── MainActivity.kt
 │  ├── build.gradle
 │  ├── gradle.properties
@@ -80,7 +80,7 @@ This shared Android library (`aar`) is going to wrap our shared Rust library.
 
 Under `File -> New -> New Module`, choose "Android Library" and give it the "Module name"
 `shared`. Set the "Package name" to match the one from your
-`/shared/uniffi.toml`, which in this example is `com.example.simple_counter.shared`.
+`/shared/uniffi.toml`, which in this example is `com.example.counter.shared`.
 
 Again, set the "Build configuration language" to `Groovy DSL (build.gradle)`.
 
@@ -93,7 +93,7 @@ Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like
 this:
 
 ```gradle
-{{#include ../../../../examples/simple_counter/Android/app/build.gradle}}
+{{#include ../../../../examples/counter/Android/app/build.gradle}}
 ```
 
 ````admonish
@@ -103,7 +103,7 @@ will need to ensure this is kept up to date.
 Our catalog (`Android/gradle/libs.versions.toml`) will end up looking like this:
 
 ```toml
-{{#include ../../../../examples/simple_counter/Android/gradle/libs.versions.toml}}
+{{#include ../../../../examples/counter/Android/gradle/libs.versions.toml}}
 ```
 ````
 
@@ -134,14 +134,14 @@ Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like
 this:
 
 ```gradle
-{{#include ../../../../examples/simple_counter/Android/build.gradle}}
+{{#include ../../../../examples/counter/Android/build.gradle}}
 ```
 
 Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
 like this:
 
 ```gradle
-{{#include ../../../../examples/simple_counter/Android/shared/build.gradle}}
+{{#include ../../../../examples/counter/Android/shared/build.gradle}}
 
 ```
 
@@ -179,7 +179,7 @@ $ ls --tree shared_types/generated/java
 shared_types/generated/java
 └── com
    ├── example
-   │  └── simple_counter
+   │  └── counter
    │     ├── shared
    │     │  └── shared.kt
    │     └── shared_types
@@ -222,7 +222,7 @@ There is a slightly more advanced
 Android app in the Crux repository.
 
 However, we will use the
-[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter),
 which has `shared` and `shared_types` libraries that will work with the
 following example code.
 ```
@@ -244,7 +244,7 @@ This code that wraps the core only needs to be written once — it only grows wh
 we need to support additional capabilities.
 ```
 
-Edit `Android/app/src/main/java/com/example/simple_counter/Core.kt` to look like
+Edit `Android/app/src/main/java/com/example/counter/Core.kt` to look like
 the following. This code sends our (UI-generated) events to the core, and
 handles any effects that the core asks for. In this simple example, we aren't
 calling any HTTP APIs or handling any side effects other than rendering the UI,
@@ -252,7 +252,7 @@ so we just handle this render effect by updating the published view model from
 the core.
 
 ```swift
-{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/simple_counter/Core.kt}}
+{{#include ../../../../examples/counter/Android/app/src/main/java/com/example/counter/Core.kt}}
 ```
 
 ```admonish tip
@@ -264,15 +264,15 @@ the
 in the Crux repository.
 ```
 
-Edit `/Android/app/src/main/java/com/example/simple_counter/MainActivity.kt` to
+Edit `/Android/app/src/main/java/com/example/counter/MainActivity.kt` to
 look like the following:
 
 ```kotlin
-{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/simple_counter/MainActivity.kt}}
+{{#include ../../../../examples/counter/Android/app/src/main/java/com/example/counter/MainActivity.kt}}
 ```
 
 ```admonish success
 You should then be able to run the app in the simulator, and it should look like this:
 
-<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./counter.webp"  width="300"></p>
 ```

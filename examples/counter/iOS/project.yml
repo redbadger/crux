@@ -1,24 +1,24 @@
-name: CounterApp
+name: SimpleCounter
 packages:
   Shared:
     path: ./generated/Shared
   App:
     path: ./generated/App
 options:
-  bundleIdPrefix: com.crux.examples.counter
+  bundleIdPrefix: com.crux.examples.simplecounter
 attributes:
   BuildIndependentTargetsInParallel: true
 targets:
-  CounterApp:
+  SimpleCounter:
     type: application
     platform: iOS
     deploymentTarget: 18.0
-    sources: [CounterApp]
+    sources: [SimpleCounter]
     dependencies:
       - package: Shared
       - package: App
     info:
-      path: CounterApp/Info.plist
+      path: SimpleCounter/Info.plist
       properties:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

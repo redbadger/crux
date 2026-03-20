@@ -55,7 +55,7 @@ Now we can start fleshing out our project. Let's add some dependencies to the
 project's `Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/simple_counter/web-dioxus/Cargo.toml}}
+{{#include ../../../../examples/counter/web-dioxus/Cargo.toml}}
 ```
 
 ## Create some UI
@@ -63,7 +63,7 @@ project's `Cargo.toml`.
 ```admonish example
 There is slightly more advanced [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Dioxus app in the Crux repository.
 
-However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 ### Simple counter example
@@ -92,7 +92,7 @@ in the same memory space), we do not need to serialize and deserialize the data
 that we pass between them. We can just pass the data directly.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-dioxus/src/core.rs}}
+{{#include ../../../../examples/counter/web-dioxus/src/core.rs}}
 ```
 
 ```admonish tip
@@ -110,14 +110,14 @@ but we also create a coroutine that plugs in the Dioxus "service" we defined
 above to constantly send any events from the UI to the core.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-dioxus/src/main.rs}}
+{{#include ../../../../examples/counter/web-dioxus/src/main.rs}}
 ```
 
 We can add a title and a stylesheet by editing
-`examples/simple_counter/web-dioxus/Dioxus.toml`.
+`examples/counter/web-dioxus/Dioxus.toml`.
 
 ```toml
-{{#include ../../../../examples/simple_counter/web-dioxus/Dioxus.toml}}
+{{#include ../../../../examples/counter/web-dioxus/Dioxus.toml}}
 ```
 
 ## Build and serve our app
@@ -131,5 +131,5 @@ dx serve
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/counter.webp"  width="300"></p>
 ```

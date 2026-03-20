@@ -1,14 +1,8 @@
-pub mod app;
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
-mod ffi;
-pub mod sse;
+mod app;
+pub mod ffi;
 
 pub use app::*;
 pub use crux_core::Core;
-pub use crux_http as http;
-
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
-pub use ffi::CoreFFI;
 
 #[cfg(feature = "uniffi")]
 const _: () = assert!(

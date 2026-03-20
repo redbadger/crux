@@ -40,7 +40,7 @@ Now we can `cd` into the `web-leptos` directory and start fleshing out our
 project. Let's add some dependencies to `shared/Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/simple_counter/web-leptos/Cargo.toml}}
+{{#include ../../../../examples/counter/web-leptos/Cargo.toml}}
 ```
 
 ```admonish tip
@@ -54,7 +54,7 @@ the `get()` and `update()` functions explicitly.
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-{{#include ../../../../examples/simple_counter/web-leptos/index.html}}
+{{#include ../../../../examples/counter/web-leptos/index.html}}
 ```
 
 ## Create some UI
@@ -65,7 +65,7 @@ There is slightly more advanced
 Leptos app in the Crux repository.
 
 However, we will use the
-[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter),
 which has `shared` and `shared_types` libraries that will work with the
 following example code.
 ```
@@ -96,7 +96,7 @@ in the same memory space), we do not need to serialize and deserialize the data
 that we pass between them. We can just pass the data directly.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-leptos/src/core.rs}}
+{{#include ../../../../examples/counter/web-leptos/src/core.rs}}
 ```
 
 ```admonish tip
@@ -115,7 +115,7 @@ event). We also create an effect that sends these events into the core whenever
 they are raised.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-leptos/src/main.rs}}
+{{#include ../../../../examples/counter/web-leptos/src/main.rs}}
 ```
 
 ## Build and serve our app
@@ -134,5 +134,5 @@ trunk serve --open
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./counter.webp"  width="300"></p>
 ```

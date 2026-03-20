@@ -7,13 +7,13 @@ plugins {
 }
 
 android {
-    namespace = "com.crux.examples.counter"
+    namespace = "com.crux.examples.simplecounter"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.crux.examples.counter"
+        applicationId = "com.crux.examples.simplecounter"
         minSdk = 34
         targetSdk = 36
         versionCode = 1
@@ -51,15 +51,6 @@ dependencies {
 
     // added dependencies
     implementation(libs.lifecycle.viewmodel.compose)
-
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
-
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
-    implementation(libs.ktor.client.logging)
 
     // original dependencies
     implementation(libs.androidx.core.ktx)

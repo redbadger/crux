@@ -5,7 +5,7 @@
  */
 
 import { RemixBrowser } from "@remix-run/react";
-import { StrictMode, startTransition } from "react";
+import { startTransition, StrictMode } from "react";
 import { hydrateRoot } from "react-dom/client";
 import init from "shared/shared";
 import wasm from "shared/shared_bg.wasm";

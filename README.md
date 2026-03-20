@@ -147,7 +147,7 @@ you want to:
 ### Example custom capabilities
 
 1. `SSE` (basic Server-Sent Events) —
-   [source](https://github.com/redbadger/crux/tree/master/examples/counter/shared/src/capabilities/sse.rs),
+   [source](https://github.com/redbadger/crux/tree/master/examples/counter-http/shared/src/capabilities/sse.rs),
    request/streaming
 1. `PubSub` (pub sub with streaming) —
    [source](https://github.com/redbadger/crux/tree/master/examples/notes/shared/src/capabilities/pub_sub.rs),

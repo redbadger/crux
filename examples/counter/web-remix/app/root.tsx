@@ -9,14 +9,15 @@ import {
   ScrollRestoration,
 } from "@remix-run/react";
 
+// ANCHOR: links
 export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
   {
     rel: "stylesheet",
     href: "https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css",
   },
-  { rel: "favicon", href: "" },
 ];
+// ANCHOR_END: links
 
 export default function App() {
   return (

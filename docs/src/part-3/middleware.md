@@ -33,5 +33,5 @@ All that said, the feature is used in production with success today and should w
 This chapter is not finished, we're working on it. For examples of middleware use you can
 read the [API docs](https://docs.rs/crux_core/latest/crux_core/middleware/index.html),
 the [tests of the module](https://github.com/redbadger/crux/blob/master/crux_core/tests/middleware.rs)
-and one example in the [Counter next example code](https://github.com/redbadger/crux/blob/master/examples/counter-next/shared/src/ffi.rs)
+and one example in the [Counter next example code](https://github.com/redbadger/crux/blob/master/examples/counter-middleware/shared/src/ffi.rs)
 ```

@@ -47,7 +47,7 @@ Let's write the Justfile and we can look at what happens:
 ```makefile
 # /iOS/Justfile
 
-{{#include ../../../../../examples/simple_counter/iOS/Justfile}}
+{{#include ../../../../../examples/counter/iOS/Justfile}}
 ```
 
 We have quite a few tasks. The main one is `dev` which we'll use shortly. It
@@ -67,7 +67,7 @@ Here's the project file:
 
 ```yaml
 # /iOS/project.yml
-{{#include ../../../../../examples/simple_counter/iOS/project.yml}}
+{{#include ../../../../../examples/counter/iOS/project.yml}}
 ```
 
 Nothing too special, other than linking a couple packages and using them
@@ -103,7 +103,7 @@ interface for it:
 
 ```swift
 // iOS/SimpleCounter/core.swift
-{{#include ../../../../../examples/simple_counter/iOS/SimpleCounter/core.swift}}
+{{#include ../../../../../examples/counter/iOS/SimpleCounter/core.swift}}
 ```
 
 This is mostly just serialization code. But the `processEffect` method is interesting.
@@ -117,14 +117,14 @@ Xcode should've generated a ContentView file for you in `iOS/SimpleCounter/Conte
 Change it to look like this:
 
 ```swift
-{{#include ../../../../../examples/simple_counter/iOS/SimpleCounter/ContentView.swift}}
+{{#include ../../../../../examples/counter/iOS/SimpleCounter/ContentView.swift}}
 ```
 
 And finally, make sure `iOS/SimpleCounter/SimpleCounterApp.swift` looks like this to use
 the `ContentView`:
 
 ```swift
-{{#include ../../../../../examples/simple_counter/iOS/SimpleCounter/SimpleCounterApp.swift}}
+{{#include ../../../../../examples/counter/iOS/SimpleCounter/SimpleCounterApp.swift}}
 ```
 
 The one interesting part of this is the `@ObservedObject var core: Core`. Since the `Core` is
@@ -137,5 +137,5 @@ call `core.update()` with the appropriate action.
 ```admonish success
 You should then be able to run the app in the simulator or on an iPhone, and it should look like this:
 
-<p align="center"><img alt="simple counter app" src="./simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="./counter.webp"  width="300"></p>
 ```
