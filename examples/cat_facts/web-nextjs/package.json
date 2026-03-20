@@ -8,21 +8,21 @@
     "start": "next start"
   },
   "dependencies": {
-    "bulma": "^1.0.3",
-    "eslint": "9.21.0",
-    "eslint-config-next": "15.2.1",
-    "next": "15.2.1",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "shared": "file:./generated/pkg",
-    "shared_types": "file:./generated/types",
-    "typescript": "5.8.2",
-    "ua-parser-js": "^2.0.2"
+    "bulma": "^1.0.4",
+    "eslint": "10.0.3",
+    "eslint-config-next": "16.1.7",
+    "next": "16.1.7",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "shared": "file:generated/pkg",
+    "shared_types": "file:generated/types",
+    "typescript": "5.9.3",
+    "ua-parser-js": "^2.0.9"
   },
   "devDependencies": {
-    "@types/node": "22.13.9",
-    "@types/react": "19.0.10",
-    "@types/react-dom": "19.0.4",
+    "@types/node": "25.5.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "@types/ua-parser-js": "^0.7.39"
   },
   "packageManager": "pnpm@10.26.0"

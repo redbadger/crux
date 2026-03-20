@@ -1,4 +1,4 @@
-package com.crux.example.counter
+package com.crux.examples.counter
 
 import org.junit.Assert.*
 import org.junit.Test

@@ -1,6 +1,6 @@
 [package]
 name = "crux_cli"
-version = "0.2.0-rc3"
+version = "0.2.0"
 description = "Command line tool for crux_core"
 authors.workspace = true
 edition.workspace = true
@@ -18,7 +18,7 @@ anyhow.workspace = true
 ascent = "0.8"
 camino = "1.2"
 cargo_metadata = "=0.19"
-clap = { version = "4.5", features = ["derive", "env"] }
+clap = { version = "4.6", features = ["derive", "env"] }
 convert_case = "0.11"
 convert_case_extras = "0.2"
 derive_builder = "0.20"
