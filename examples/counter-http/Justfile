@@ -1,15 +1,30 @@
-build:
-    cargo build
+mod lib '../lib.just'
 
-clean:
-    just Android/clean
-    just cli/clean
-    just iOS/clean
-    just web-dioxus/clean
-    just web-leptos/clean
-    just web-nextjs/clean
-    just web-remix/clean
-    just web-yew/clean
+default: dev
 
-test:
-    cargo nextest run
+shells := "shared web-leptos web-nextjs apple Android"
+
+# checks required tools across all shells
+doctor:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
+        just "$shell/doctor"
+        echo ''
+    done
+
+# local development workflow
+dev:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
+        just "$shell/dev"
+    done
+
+# CI workflow
+ci:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
+        just "$shell/ci"
+    done

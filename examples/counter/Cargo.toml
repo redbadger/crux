@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "tui", "web-dioxus", "web-leptos", "web-yew"]
+members = ["shared", "tauri/src-tauri", "tui", "web-dioxus", "web-leptos", "web-yew"]
 resolver = "3"
 
 [workspace.package]

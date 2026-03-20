@@ -10,7 +10,7 @@ default: dev
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool trunk "cargo install trunk"
+    @just lib::check-tool cargo-nextest "cargo install cargo-nextest"
 
 # auto-fix formatting issues
 fix:
@@ -21,28 +21,23 @@ fix:
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt -- --check
-    cargo clippy --target wasm32-unknown-unknown -- -D warnings
+    cargo clippy -p shared -- -D warnings
+    cargo clippy -p shared --target wasm32-unknown-unknown --features wasm_bindgen -- -D warnings
 
-# build the project
+# build the shared library
 build:
     @echo '{{ style("command") }}build:{{ NORMAL }}'
-    trunk build
+    cargo build -p shared
 
 # run tests
 test:
     @echo '{{ style("command") }}test:{{ NORMAL }}'
-    @echo "  No tests configured"
+    cargo nextest run -p shared
 
 # clean build artifacts
 clean:
     @echo '{{ style("command") }}clean:{{ NORMAL }}'
-    trunk clean
     cargo clean
-
-# serve the app locally
-serve:
-    @echo '{{ style("command") }}serve:{{ NORMAL }}'
-    trunk serve
 
 # local development workflow
 dev: fix check build test

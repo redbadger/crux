@@ -1,5 +1,0 @@
-dev:
-    cargo run -- get
-
-clean:
-    cargo clean

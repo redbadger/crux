@@ -2,151 +2,29 @@ mod lib '../lib.just'
 
 default: dev
 
-# --------------------------------------------------------------------------
-# Development
-# --------------------------------------------------------------------------
+shells := "shared tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri apple Android"
 
 # checks required tools across all shells
 doctor:
-    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
-    @echo ''
-    @echo '{{ style("command") }}shared:{{ NORMAL }}'
-    @just shared/doctor
-    @echo ''
-    @echo '{{ style("command") }}tui:{{ NORMAL }}'
-    @just tui/doctor
-    @echo ''
-    @echo '{{ style("command") }}web-leptos:{{ NORMAL }}'
-    @just web-leptos/doctor
-    @echo ''
-    @echo '{{ style("command") }}web-yew:{{ NORMAL }}'
-    @just web-yew/doctor
-    @echo ''
-    @echo '{{ style("command") }}web-dioxus:{{ NORMAL }}'
-    @just web-dioxus/doctor
-    @echo ''
-    @echo '{{ style("command") }}web-nextjs:{{ NORMAL }}'
-    @just web-nextjs/doctor
-    @echo ''
-    @echo '{{ style("command") }}web-react-router:{{ NORMAL }}'
-    @just web-react-router/doctor
-    @echo ''
-    @echo '{{ style("command") }}apple:{{ NORMAL }}'
-    @just apple/doctor
-    @echo ''
-    @echo '{{ style("command") }}Android:{{ NORMAL }}'
-    @just Android/doctor
-
-# auto-fix formatting across all shells
-fix: (core "fix")
-    @echo '{{ style("command") }}fix (shells):{{ NORMAL }}'
-    @echo '{{ style("command") }}tui:{{ NORMAL }}'
-    @just tui/fix
-    @echo '{{ style("command") }}web-leptos:{{ NORMAL }}'
-    @just web-leptos/fix
-    @echo '{{ style("command") }}web-yew:{{ NORMAL }}'
-    @just web-yew/fix
-    @echo '{{ style("command") }}web-dioxus:{{ NORMAL }}'
-    @just web-dioxus/fix
-    @echo '{{ style("command") }}web-nextjs:{{ NORMAL }}'
-    @just web-nextjs/fix
-    @echo '{{ style("command") }}web-react-router:{{ NORMAL }}'
-    @just web-react-router/fix
-    @echo '{{ style("command") }}apple:{{ NORMAL }}'
-    @just apple/fix
-    @echo '{{ style("command") }}Android:{{ NORMAL }}'
-    @just Android/fix
-
-# validate formatting and lint across all shells
-check: (core "check")
-    @echo '{{ style("command") }}check (shells):{{ NORMAL }}'
-    @echo '{{ style("command") }}tui:{{ NORMAL }}'
-    @just tui/check
-    @echo '{{ style("command") }}web-leptos:{{ NORMAL }}'
-    @just web-leptos/check
-    @echo '{{ style("command") }}web-yew:{{ NORMAL }}'
-    @just web-yew/check
-    @echo '{{ style("command") }}web-dioxus:{{ NORMAL }}'
-    @just web-dioxus/check
-    @echo '{{ style("command") }}web-nextjs:{{ NORMAL }}'
-    @just web-nextjs/check
-    @echo '{{ style("command") }}web-react-router:{{ NORMAL }}'
-    @just web-react-router/check
-    @echo '{{ style("command") }}apple:{{ NORMAL }}'
-    @just apple/check
-    @echo '{{ style("command") }}Android:{{ NORMAL }}'
-    @just Android/check
-
-# build all shells (core first)
-build: (core "build")
-    @echo '{{ style("command") }}build (shells):{{ NORMAL }}'
-    @echo '{{ style("command") }}tui:{{ NORMAL }}'
-    @just tui/build
-    @echo '{{ style("command") }}web-leptos:{{ NORMAL }}'
-    @just web-leptos/build
-    @echo '{{ style("command") }}web-yew:{{ NORMAL }}'
-    @just web-yew/build
-    @echo '{{ style("command") }}web-dioxus:{{ NORMAL }}'
-    @just web-dioxus/build
-    @echo '{{ style("command") }}web-nextjs:{{ NORMAL }}'
-    @just web-nextjs/build
-    @echo '{{ style("command") }}web-react-router:{{ NORMAL }}'
-    @just web-react-router/build
-    @echo '{{ style("command") }}apple:{{ NORMAL }}'
-    @just apple/build
-    @echo '{{ style("command") }}Android:{{ NORMAL }}'
-    @just Android/build
-
-# run tests across all shells
-test: (core "test")
-    @echo '{{ style("command") }}test (shells):{{ NORMAL }}'
-    @echo '{{ style("command") }}tui:{{ NORMAL }}'
-    @just tui/test
-    @echo '{{ style("command") }}web-leptos:{{ NORMAL }}'
-    @just web-leptos/test
-    @echo '{{ style("command") }}web-yew:{{ NORMAL }}'
-    @just web-yew/test
-    @echo '{{ style("command") }}web-dioxus:{{ NORMAL }}'
-    @just web-dioxus/test
-    @echo '{{ style("command") }}web-nextjs:{{ NORMAL }}'
-    @just web-nextjs/test
-    @echo '{{ style("command") }}web-react-router:{{ NORMAL }}'
-    @just web-react-router/test
-    @echo '{{ style("command") }}apple:{{ NORMAL }}'
-    @just apple/test
-    @echo '{{ style("command") }}Android:{{ NORMAL }}'
-    @just Android/test
-
-# clean all build artifacts
-clean:
-    @echo '{{ style("command") }}clean:{{ NORMAL }}'
-    @echo '{{ style("command") }}shared:{{ NORMAL }}'
-    @just shared/clean
-    @echo '{{ style("command") }}tui:{{ NORMAL }}'
-    @just tui/clean
-    @echo '{{ style("command") }}web-leptos:{{ NORMAL }}'
-    @just web-leptos/clean
-    @echo '{{ style("command") }}web-yew:{{ NORMAL }}'
-    @just web-yew/clean
-    @echo '{{ style("command") }}web-dioxus:{{ NORMAL }}'
-    @just web-dioxus/clean
-    @echo '{{ style("command") }}web-nextjs:{{ NORMAL }}'
-    @just web-nextjs/clean
-    @echo '{{ style("command") }}web-react-router:{{ NORMAL }}'
-    @just web-react-router/clean
-    @echo '{{ style("command") }}apple:{{ NORMAL }}'
-    @just apple/clean
-    @echo '{{ style("command") }}Android:{{ NORMAL }}'
-    @just Android/clean
-    rm -rf */generated */node_modules
-
-# run a target on the shared core
-core target:
-    @echo '{{ style("command") }}core ({{ target }}):{{ NORMAL }}'
-    @just shared/{{ target }}
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
+        just "$shell/doctor"
+        echo ''
+    done
 
 # local development workflow
-dev: fix check build test
+dev:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
+        just "$shell/dev"
+    done
 
 # CI workflow
-ci: check build test
+ci:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
+        just "$shell/ci"
+    done

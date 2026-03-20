@@ -10,23 +10,29 @@ default: dev
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool trunk "cargo install trunk"
+    @just lib::check-tool node "https://nodejs.org"
+    @just lib::check-tool pnpm "npm install -g pnpm"
+    @just lib::check-tool tauri "pnpm add -g @tauri-apps/cli"
 
 # auto-fix formatting issues
 fix:
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
-    cargo fmt
+    @echo "  No auto-fix configured"
 
 # validate formatting and lint
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
-    cargo fmt -- --check
-    cargo clippy --target wasm32-unknown-unknown -- -D warnings
+    @echo "  No lint configured"
+
+# install npm dependencies
+install:
+    @echo '{{ style("command") }}install:{{ NORMAL }}'
+    pnpm install
 
 # build the project
-build:
+build: install
     @echo '{{ style("command") }}build:{{ NORMAL }}'
-    trunk build
+    pnpm tauri build
 
 # run tests
 test:
@@ -36,13 +42,13 @@ test:
 # clean build artifacts
 clean:
     @echo '{{ style("command") }}clean:{{ NORMAL }}'
-    trunk clean
     cargo clean
+    rm -rf node_modules dist
 
 # serve the app locally
-serve:
+serve: install
     @echo '{{ style("command") }}serve:{{ NORMAL }}'
-    trunk serve
+    pnpm tauri dev
 
 # local development workflow
 dev: fix check build test
