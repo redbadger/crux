@@ -18,6 +18,7 @@ use std::sync::Arc;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct TaskId(pub(crate) usize);
 
+// ANCHOR: task
 pub(crate) struct Task {
     // Used to wake the join handle when the task concludes
     pub(crate) join_handle_wakers: Receiver<Waker>,
@@ -30,6 +31,7 @@ pub(crate) struct Task {
     // The future polled by this task
     pub(crate) future: BoxFuture<'static, ()>,
 }
+// ANCHOR_END: task
 
 impl Task {
     pub(crate) fn is_aborted(&self) -> bool {
@@ -49,6 +51,7 @@ impl Task {
 // when their future is ready to proceed.
 // Waking a task also wakes the command itself, if it is being used as a Stream
 // inside another Command (or hosted with a CommandSink)
+// ANCHOR: command_waker
 pub(crate) struct CommandWaker {
     pub(crate) task_id: TaskId,
     pub(crate) ready_queue: Sender<TaskId>,
@@ -76,6 +79,7 @@ impl Wake for CommandWaker {
         self.parent_waker.wake();
     }
 }
+// ANCHOR_END: command_waker
 
 /// A handle used to abort a Command remotely before it is complete
 #[derive(Clone)]
@@ -146,6 +150,7 @@ pub(crate) enum TaskState {
 // Command is actually an async executor of sorts, similar to futures::FuturesUnordered
 impl<Effect, Event> Command<Effect, Event> {
     // Run all tasks until all of them are pending
+    // ANCHOR: run_until_settled
     pub(crate) fn run_until_settled(&mut self) {
         if self.was_aborted() {
             // Spawn new tasks to clear the spawn_queue as well
@@ -186,6 +191,7 @@ impl<Effect, Event> Command<Effect, Event> {
             }
         }
     }
+    // ANCHOR_END: run_until_settled
 
     pub(crate) fn run_task(&mut self, task_id: TaskId) -> TaskState {
         let Some(task) = self.tasks.get_mut(task_id.0) else {
