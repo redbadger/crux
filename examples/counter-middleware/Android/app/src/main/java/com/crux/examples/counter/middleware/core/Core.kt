@@ -2,9 +2,9 @@ package com.crux.examples.counter.middleware.core
 
 import android.util.Log
 import com.crux.examples.counter.middleware.CoreFfi
+import com.crux.examples.counter.middleware.CruxShell
 import com.crux.examples.counter.middleware.Effect
 import com.crux.examples.counter.middleware.Event
-import com.crux.examples.counter.middleware.RandomNumber
 import com.crux.examples.counter.middleware.Request
 import com.crux.examples.counter.middleware.Requests
 import com.crux.examples.counter.middleware.ViewModel
@@ -20,8 +20,15 @@ class Core(
     private val httpClient: HttpClient,
     private val sseClient: SseClient,
 ) {
-    private val coreFfi = CoreFfi()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private val coreFfi = CoreFfi(object : CruxShell {
+        override fun processEffects(bytes: ByteArray) {
+            scope.launch {
+                handleEffects(bytes)
+            }
+        }
+    })
 
     private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
     val viewModel: StateFlow<ViewModel> = _viewModel.asStateFlow()
@@ -59,7 +66,8 @@ class Core(
             }
 
             is Effect.Random -> {
-                handleRandomEffect(effect, request.id)
+                // Handled internally by middleware, should not reach the shell
+                error("Unexpected Random effect in shell")
             }
         }
     }
@@ -74,14 +82,6 @@ class Core(
             Log.d("crux", response.toString())
             resolveAndHandleEffects(requestId, response.bincodeSerialize())
         }
-    }
-
-    private suspend fun handleRandomEffect(effect: Effect.Random, requestId: UInt) {
-        val from = effect.value.field0.toInt()
-        val to = effect.value.field1.toInt()
-        val random = (from..to).random()
-        val response = RandomNumber(random.toLong())
-        resolveAndHandleEffects(requestId, response.bincodeSerialize())
     }
 
     private suspend fun resolveAndHandleEffects(requestId: UInt, data: ByteArray) {

@@ -3,7 +3,7 @@ packages:
   Shared:
     path: ./generated/Shared
   App:
-    path: ./generated/app/App
+    path: ./generated/App
 options:
   bundleIdPrefix: com.crux.examples.counter-middleware
 attributes:

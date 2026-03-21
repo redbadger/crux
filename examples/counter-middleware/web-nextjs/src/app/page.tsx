@@ -5,11 +5,11 @@ import { useEffect, useRef, useState } from "react";
 
 import init_core from "shared/shared";
 import {
+  ViewModel,
   EventVariantStartWatch,
   EventVariantDecrement,
   EventVariantIncrement,
 } from "shared_types/app";
-import { ViewModel } from "shared_types/app/view_model";
 
 import { Core } from "./core";
 

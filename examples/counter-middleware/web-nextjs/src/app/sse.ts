@@ -1,5 +1,5 @@
-import type { SseRequest } from "shared_types/app";
 import {
+  SseRequest,
   SseResponseVariantDone,
   SseResponseVariantChunk,
 } from "shared_types/app";

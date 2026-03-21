@@ -30,7 +30,6 @@ pub struct Count {
 }
 
 #[derive(Facet, Serialize, Deserialize, Debug, Clone)]
-#[facet(namespace = "view_model")]
 pub struct ViewModel {
     pub text: String,
     pub confirmed: bool,

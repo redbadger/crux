@@ -7,9 +7,9 @@ import {
   EffectVariantRender,
   EffectVariantServerSentEvents,
   Request,
+  ViewModel,
 } from "shared_types/app";
-import { ViewModel } from "shared_types/app/view_model";
-import { BincodeDeserializer, BincodeSerializer } from "shared_types_serde/bincode";
+import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
 import * as http from "./http";
 import * as sse from "./sse";
 
@@ -22,7 +22,16 @@ export class Core {
 
   constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
     this.callback = callback;
-    this.core = new CoreFFI();
+    this.core = new CoreFFI((bytes: Uint8Array) => {
+      this.processEffects(bytes);
+    });
+  }
+
+  processEffects(bytes: Uint8Array) {
+    const requests = deserializeRequests(bytes);
+    for (const { id, effect } of requests) {
+      this.resolve(id, effect);
+    }
   }
 
   update(event: Event) {

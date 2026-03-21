@@ -1,6 +1,5 @@
 import App
 import SwiftUI
-import ViewModel
 
 struct ContentView: View {
     @ObservedObject var core: Core

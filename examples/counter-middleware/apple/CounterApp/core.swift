@@ -1,7 +1,13 @@
 import App
 import Foundation
 import Shared
-import ViewModel
+
+class ShellCallback: CruxShell {
+    func processEffects(_ bytes: Data) {
+        // Async effects from middleware are processed here
+        // For now, we don't handle async middleware effects
+    }
+}
 
 @MainActor
 class Core: ObservableObject {
@@ -10,7 +16,7 @@ class Core: ObservableObject {
     private var core: CoreFfi
 
     init() {
-        self.core = CoreFfi()
+        self.core = CoreFfi(ShellCallback())
         // swiftlint:disable:next force_try
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
     }
@@ -51,21 +57,9 @@ class Core: ObservableObject {
             Task {
                 await performSseRequest(sseRequest, requestId: request.id)
             }
-        case let .random(randomRequest):
-            let rangeStart = Int(randomRequest.field0)
-            let rangeEnd = Int(randomRequest.field1)
-            let random = Int.random(in: rangeStart...rangeEnd)
-            let response = RandomNumber(field0: Int64(random))
-            // swiftlint:disable force_try
-            let effects = [UInt8](core.resolve(
-                request.id,
-                Data(try! response.bincodeSerialize())
-            ))
-            let requests: [Request] = try! .bincodeDeserialize(input: effects)
-            // swiftlint:enable force_try
-            for request in requests {
-                processEffect(request)
-            }
+        case .random:
+            // Handled internally by middleware, should not reach the shell
+            fatalError("Unexpected Random effect in shell")
         }
     }
 
@@ -99,7 +93,7 @@ class Core: ObservableObject {
         }
     }
 
-    func performSseRequest(_ request: ServerSentEvents.SseRequest, requestId: UInt32) async {
+    func performSseRequest(_ request: SseRequest, requestId: UInt32) async {
         guard let url = URL(string: request.url) else { return }
 
         do {
@@ -109,7 +103,7 @@ class Core: ObservableObject {
             for try await byte in bytes {
                 buffer.append(byte)
                 if buffer.suffix(2) == Data([0x0A, 0x0A]) {
-                    let response = ServerSentEvents.SseResponse.chunk([UInt8](buffer))
+                    let response = SseResponse.chunk([UInt8](buffer))
                     buffer = Data()
                     // swiftlint:disable force_try
                     let effects = [UInt8](self.core.resolve(
@@ -124,7 +118,7 @@ class Core: ObservableObject {
                 }
             }
 
-            let done = ServerSentEvents.SseResponse.done
+            let done = SseResponse.done
             // swiftlint:disable force_try
             let effects = [UInt8](self.core.resolve(
                 requestId,
