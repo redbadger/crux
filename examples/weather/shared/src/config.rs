@@ -7,6 +7,7 @@ pub static API_KEY: LazyLock<String> = LazyLock::new(|| {
     }
     #[cfg(target_arch = "wasm32")]
     {
+        #[allow(clippy::option_env_unwrap)]
         option_env!("OPENWEATHER_API_KEY")
             .expect("OPENWEATHER_API_KEY must be set at compile time for WASM builds")
             .to_string()
