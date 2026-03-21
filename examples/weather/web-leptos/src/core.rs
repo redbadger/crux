@@ -46,7 +46,6 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
             });
         }
         // ANCHOR_END: http
-
         Effect::KeyValue(mut request) => {
             task::spawn_local({
                 let core = core.clone();
