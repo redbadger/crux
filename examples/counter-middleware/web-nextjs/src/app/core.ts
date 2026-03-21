@@ -4,8 +4,10 @@ import { CoreFFI } from "shared";
 import type { Effect, Event, RenderOperation } from "shared_types/app";
 import {
   EffectVariantHttp,
+  EffectVariantRandom,
   EffectVariantRender,
   EffectVariantServerSentEvents,
+  RandomNumber,
   Request,
   ViewModel,
 } from "shared_types/app";
@@ -65,6 +67,14 @@ export class Core {
             this.respond(id, response);
           }
         })();
+        break;
+      }
+      case EffectVariantRandom: {
+        const request = (effect as EffectVariantRandom).value;
+        const min = Number(request.field0);
+        const max = Number(request.field1);
+        const result = Math.floor(Math.random() * (max - min)) + min;
+        this.respond(id, new RandomNumber(result));
         break;
       }
     }

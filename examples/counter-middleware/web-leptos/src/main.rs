@@ -35,6 +35,11 @@ fn root_component() -> impl IntoView {
                     >
                         {"Increment"}
                     </button>
+                    <button class="button is-primary is-link"
+                        on:click=move |_| set_event.update(|value| *value = Event::Random)
+                    >
+                        {"I'm feeling lucky"}
+                    </button>
                 </div>
             </section>
         </>

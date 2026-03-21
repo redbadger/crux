@@ -9,6 +9,7 @@ import {
   EventVariantStartWatch,
   EventVariantDecrement,
   EventVariantIncrement,
+  EventVariantRandom,
 } from "shared_types/app";
 
 import { Core } from "./core";
@@ -56,6 +57,12 @@ const Home: NextPage = () => {
             onClick={() => core.current?.update(new EventVariantIncrement())}
           >
             {"Increment"}
+          </button>
+          <button
+            className="button is-primary is-link"
+            onClick={() => core.current?.update(new EventVariantRandom())}
+          >
+            {"I'm feeling lucky"}
           </button>
         </div>
       </section>

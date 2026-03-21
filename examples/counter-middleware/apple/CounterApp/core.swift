@@ -2,10 +2,11 @@ import App
 import Foundation
 import Shared
 
-class ShellCallback: CruxShell {
+private class EffectHandler: CruxShell, @unchecked Sendable {
+    public var handler: ((Data) -> Void)?
+
     func processEffects(_ bytes: Data) {
-        // Async effects from middleware are processed here
-        // For now, we don't handle async middleware effects
+        handler?(bytes)
     }
 }
 
@@ -13,12 +14,22 @@ class ShellCallback: CruxShell {
 class Core: ObservableObject {
     @Published var view: ViewModel
 
+    private var handler: EffectHandler
     private var core: CoreFfi
 
     init() {
-        self.core = CoreFfi(ShellCallback())
+        self.handler = EffectHandler()
+        self.core = CoreFfi(handler)
         // swiftlint:disable:next force_try
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
+
+        handler.handler = { bytes in
+            // swiftlint:disable:next force_try
+            let requests: [Request] = try! .bincodeDeserialize(input: [UInt8](bytes))
+            for request in requests {
+                self.processEffect(request)
+            }
+        }
     }
 
     func update(_ event: Event) {

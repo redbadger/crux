@@ -71,6 +71,12 @@ class MainActivity : ComponentActivity() {
                                 )
                             ) { Text(text = "Increment", color = Color.White) }
                         }
+                        Button(
+                            onClick = { core.update(Event.RANDOM) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.hsl(276F, 0.60F, 0.42F)
+                            )
+                        ) { Text(text = "I'm feeling lucky", color = Color.White) }
                     }
                 }
             }

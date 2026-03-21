@@ -15,12 +15,15 @@ struct ContentView: View {
                 .foregroundColor(core.view.confirmed ? .primary : .secondary)
                 .padding()
             HStack {
-                ActionButton(label: "Dec", color: .yellow) {
+                ActionButton(label: "Decrement", color: .yellow) {
                     core.update(.decrement)
                 }
-                ActionButton(label: "Inc", color: .red) {
+                ActionButton(label: "Increment", color: .red) {
                     core.update(.increment)
                 }
+            }
+            ActionButton(label: "I'm feeling lucky", color: .purple) {
+                core.update(.random)
             }
         }
         .onAppear {

@@ -2,7 +2,7 @@ mod lib '../../lib.just'
 
 default: dev
 
-shells := "shared apple Android web-leptos web-nextjs"
+shells := "shared web-nextjs"
 
 # checks required tools across all shells
 doctor:
