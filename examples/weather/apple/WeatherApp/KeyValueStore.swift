@@ -7,18 +7,18 @@ class KeyValueStore {
     private let container: NSPersistentContainer
     private let context: NSManagedObjectContext
     private var isInitialized = false
-    
+
     init() throws {
         logger.info("Initializing KeyValueStore")
         container = NSPersistentContainer(name: "KeyValueModel")
-        
+
         let localLogger = logger
         var loadError: Error?
-        
+
         // Use a semaphore to wait for Core Data initialization
         let semaphore = DispatchSemaphore(value: 0)
-        
-        container.loadPersistentStores { description, error in
+
+        container.loadPersistentStores { _, error in
             if let error = error {
                 localLogger.error("Failed to load Core Data stack: \(error.localizedDescription)")
                 loadError = error
@@ -27,23 +27,23 @@ class KeyValueStore {
             }
             semaphore.signal()
         }
-        
+
         semaphore.wait()
-        
+
         if let error = loadError {
             throw error
         }
-        
+
         context = container.viewContext
         context.automaticallyMergesChangesFromParent = true
-        
+
         // Configure for better performance and safety
         context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        
+
         isInitialized = true
         logger.info("KeyValueStore initialized successfully")
     }
-    
+
     private func ensureInitialized() -> Bool {
         guard isInitialized else {
             logger.error("KeyValueStore not properly initialized")
@@ -51,13 +51,13 @@ class KeyValueStore {
         }
         return true
     }
-    
+
     func get(key: String) -> String {
         guard ensureInitialized() else { return "" }
-        
+
         let fetchRequest: NSFetchRequest<KeyValueEntity> = KeyValueEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "key == %@", key)
-        
+
         do {
             let results = try context.fetch(fetchRequest)
             let value = results.first?.value ?? ""
@@ -68,13 +68,13 @@ class KeyValueStore {
             return ""
         }
     }
-    
+
     func set(key: String, value: String) {
         guard ensureInitialized() else { return }
-        
+
         let fetchRequest: NSFetchRequest<KeyValueEntity> = KeyValueEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "key == %@", key)
-        
+
         do {
             let results = try context.fetch(fetchRequest)
             if let existingEntity = results.first {
@@ -86,7 +86,7 @@ class KeyValueStore {
                 newEntity.value = value
                 logger.debug("Created new value for key '\(key)'")
             }
-            
+
             if context.hasChanges {
                 try context.save()
                 logger.debug("Saved changes to Core Data")
@@ -97,13 +97,13 @@ class KeyValueStore {
             context.rollback()
         }
     }
-    
+
     func delete(key: String) {
         guard ensureInitialized() else { return }
-        
+
         let fetchRequest: NSFetchRequest<KeyValueEntity> = KeyValueEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "key == %@", key)
-        
+
         do {
             let results = try context.fetch(fetchRequest)
             if let entity = results.first {
@@ -121,13 +121,13 @@ class KeyValueStore {
             context.rollback()
         }
     }
-    
+
     func exists(key: String) -> Bool {
         guard ensureInitialized() else { return false }
-        
+
         let fetchRequest: NSFetchRequest<KeyValueEntity> = KeyValueEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "key == %@", key)
-        
+
         do {
             let count = try context.count(for: fetchRequest)
             let exists = count > 0
@@ -138,20 +138,20 @@ class KeyValueStore {
             return false
         }
     }
-    
+
     func listKeys(prefix: String, cursor: String?) -> [String] {
         guard ensureInitialized() else { return [] }
-        
+
         let fetchRequest: NSFetchRequest<KeyValueEntity> = KeyValueEntity.fetchRequest()
         var predicates: [NSPredicate] = [NSPredicate(format: "key BEGINSWITH %@", prefix)]
-        
+
         if let cursor = cursor, !cursor.isEmpty {
             predicates.append(NSPredicate(format: "key > %@", cursor))
         }
-        
+
         fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "key", ascending: true)]
-        
+
         do {
             let results = try context.fetch(fetchRequest)
             let keys = results.compactMap { $0.key }
@@ -162,4 +162,4 @@ class KeyValueStore {
             return []
         }
     }
-} 
+}

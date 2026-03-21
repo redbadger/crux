@@ -107,7 +107,7 @@ struct LoadingCard: View {
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(platformSecondaryBackground))
         .cornerRadius(12)
         .padding()
     }

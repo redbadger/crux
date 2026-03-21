@@ -3,7 +3,7 @@ import SwiftUI
 /// A view that displays a formatted time from a timestamp.
 struct TimeDisplay: View {
     let timestamp: Int
-    
+
     var body: some View {
         Text(timestamp.formattedTime)
             .font(.caption)
@@ -18,4 +18,4 @@ private extension Int {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
-} 
+}

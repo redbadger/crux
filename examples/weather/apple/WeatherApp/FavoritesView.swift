@@ -10,7 +10,7 @@ struct FavoritesView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground)
+            Color(platformGroupedBackground)
                 .ignoresSafeArea()
 
             VStack {
@@ -107,7 +107,7 @@ struct FavoriteCard: View {
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            .background(Color(platformBackground))
             .cornerRadius(12)
             .shadow(radius: 2)
         }
@@ -140,7 +140,7 @@ struct DeleteConfirmationView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color(platformBackground))
         .cornerRadius(12)
         .shadow(radius: 2)
         .padding()

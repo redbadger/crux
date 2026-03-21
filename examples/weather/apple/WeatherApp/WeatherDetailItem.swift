@@ -5,14 +5,14 @@ struct WeatherDetailItem: View {
     let icon: String
     let title: String
     let value: String
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20))
                 .foregroundColor(.blue)
                 .frame(width: 24)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.caption)
@@ -25,7 +25,7 @@ struct WeatherDetailItem: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(platformSecondaryBackground))
         .cornerRadius(12)
     }
-} 
+}

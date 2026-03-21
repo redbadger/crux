@@ -8,7 +8,7 @@ struct AddFavoriteView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground)
+            Color(platformGroupedBackground)
                 .ignoresSafeArea()
             VStack {
                 // Search Bar
@@ -17,7 +17,7 @@ struct AddFavoriteView: View {
                         .foregroundColor(.secondary)
                     TextField("Search location...", text: $searchText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onChange(of: searchText) { oldValue, newValue in
+                        .onChange(of: searchText) { _, newValue in
                             if !newValue.isEmpty {
                                 isSearching = true
                                 core.update(.favorites(.search(newValue)))

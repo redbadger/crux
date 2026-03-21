@@ -2,17 +2,16 @@ import SwiftUI
 import App
 import os.log
 
-
 /// A card view that displays the current weather information in a visually appealing way.
 struct WeatherCard: View {
     let weatherData: CurrentWeatherResponse
     @Environment(\.colorScheme) var colorScheme
-    
+
     private var isDay: Bool {
         let now = Date().timeIntervalSince1970
         return now >= Double(weatherData.sys.sunrise) && now <= Double(weatherData.sys.sunset)
     }
-    
+
     private var gradientColors: [Color] {
         if let weather = weatherData.weather.first {
             switch weather.id {
@@ -28,7 +27,7 @@ struct WeatherCard: View {
         }
         return [.blue, .gray]
     }
-    
+
     var body: some View {
         VStack(spacing: 16) {
             // Location
@@ -36,17 +35,17 @@ struct WeatherCard: View {
                 Text(weatherData.name)
                     .font(.system(size: 28, weight: .bold))
             }
-            
+
             // Temperature and Weather Icon
             VStack(spacing: 20) {
                 if let weather = weatherData.weather.first {
                     WeatherIcon(weatherCode: weather.id, isDay: isDay)
                 }
-                
-                HStack() {
+
+                HStack {
                     Text(String(format: "%.1f°", weatherData.main.temp))
                         .font(.system(size: 64, weight: .medium))
-                    
+
                     if let weather = weatherData.weather.first {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(weather.main)
@@ -59,7 +58,7 @@ struct WeatherCard: View {
                     }
                 }
             }
-            
+
             // Temperature Range
             HStack(spacing: 16) {
                 HStack(spacing: 4) {
@@ -75,7 +74,7 @@ struct WeatherCard: View {
             }
             .font(.subheadline)
             .foregroundColor(.secondary)
-            
+
             // Weather Details Grid
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -113,7 +112,7 @@ struct WeatherCard: View {
                 )
             }
             .padding(.top, 8)
-            
+
             // Sunrise and Sunset
             HStack(spacing: 20) {
                 VStack(spacing: 4) {
@@ -122,7 +121,7 @@ struct WeatherCard: View {
                         .foregroundColor(.orange)
                     TimeDisplay(timestamp: Int(weatherData.sys.sunrise))
                 }
-                
+
                 VStack(spacing: 4) {
                     Image(systemName: "sunset.fill")
                         .font(.title2)
@@ -145,11 +144,11 @@ struct WeatherCard: View {
                 .opacity(colorScheme == .dark ? 0.3 : 0.1)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(.systemBackground))
+                        .fill(Color(platformBackground))
                         .opacity(0.9)
                 )
         )
         .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
         .padding(.horizontal)
     }
-} 
+}

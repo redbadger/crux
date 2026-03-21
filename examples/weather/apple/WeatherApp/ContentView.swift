@@ -23,7 +23,7 @@ struct ContentView: View {
         NavigationStack {
             ZStack {
                 // Base background that's always present
-                Color(.systemGroupedBackground)
+                Color(platformGroupedBackground)
                     .ignoresSafeArea()
 
                 // Content views
