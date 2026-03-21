@@ -42,26 +42,60 @@ To run the various steps, we'll also use the [Just]() task runner.
 cargo install just
 ```
 
-Let's write the Justfile and we can look at what happens:
+Let's write the Justfile and we can look at what happens. Here are
+the key tasks (the
+[full Justfile](https://github.com/redbadger/crux/blob/master/examples/counter/apple/Justfile)
+also includes linting, CI and cleanup targets):
 
 ```makefile
 # /apple/Justfile
 
-{{#include ../../../../../examples/counter/apple/Justfile}}
+# generates Swift types via codegen binary
+typegen:
+    cargo run --package shared --bin codegen \
+        --features codegen,facet_typegen \
+        -- --language swift --output-dir generated
+
+# builds the shared library as a Swift package using cargo-swift
+package:
+    cargo swift package \
+        --name Shared \
+        --platforms ios macos \
+        --lib-type static \
+        --features uniffi
+
+# rebuilds the Xcode project from project.yml
+generate-project:
+    xcodegen
+
+# generates types, builds shared package, and regenerates Xcode project
+generate: typegen package generate-project
+
+# builds the project (generates first)
+build: generate
+    xcodebuild \
+        -project CounterApp.xcodeproj \
+        -scheme CounterApp-macOS \
+        -configuration Debug \
+        build
+
+# local development workflow
+dev: build
 ```
 
-We have quite a few tasks. The main one is `dev` which we'll use shortly. It
-runs the `build` task and opens Xcode in the current directory.
+The main task is `dev` which we'll use shortly. It runs `build`,
+which in turn runs `typegen`, `package` and `generate-project`.
 
-`build` in turn runs `typegen`, `package` and `generate-project`. `typegen`
-will use the codegen CLI we [prepared earlier](../../shell.md), and
-`package` will use `cargo swift` to create a `Shared` package with our app binary and the
-bindgen code. That package will be our Swift interface to the core.
+`typegen` will use the codegen CLI we
+[prepared earlier](../../shell.md), and `package` will use
+`cargo swift` to create a `Shared` package with our app binary and
+the bindgen code. That package will be our Swift interface to the
+core.
 
 Finally `generate-project` will run `xcodegen` to give us an Xcode
-project file. They are famously fragile files and difficult to version control,
-so generating it from a less arcane source of truth seems like a good idea
-(yes, even if that source of truth is YAML).
+project file. They are famously fragile files and difficult to
+version control, so generating it from a less arcane source of truth
+seems like a good idea (yes, even if that source of truth is YAML).
 
 Here's the project file:
 

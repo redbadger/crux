@@ -124,6 +124,6 @@ set this up once, and most likely won't touch it again, but having the ability, 
 Now we can proceed to the actual shell for your platform of choice:
 
 - [iOS with Swift and SwiftUI](./shell/apple/index.md)
-- [Android with Kotlin and Jetpack Compose](./shell/android/index.md)
+- [Android with Kotlin and Jetpack Compose](./shell/android/android.md)
 - [Web with TypeScript, React and Next.js](./shell/web/react.md)
 - [Rust in WebAssembly with Leptos](./shell/web/leptos.md)
