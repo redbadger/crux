@@ -40,16 +40,22 @@ function App() {
         <p className="is-size-5">{view.count}</p>
         <div className="buttons section is-centered">
           <button
+            className="button is-primary is-danger"
+            onClick={() => invoke("reset")}
+          >
+            {"Reset"}
+          </button>
+          <button
+            className="button is-primary is-success"
+            onClick={() => invoke("increment")}
+          >
+            {"Increment"}
+          </button>
+          <button
             className="button is-primary is-warning"
             onClick={() => invoke("decrement")}
           >
             {"Decrement"}
-          </button>
-          <button
-            className="button is-primary is-danger"
-            onClick={() => invoke("increment")}
-          >
-            {"Increment"}
           </button>
         </div>
       </section>
