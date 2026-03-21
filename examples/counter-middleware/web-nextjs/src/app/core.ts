@@ -74,7 +74,7 @@ export class Core {
         const min = Number(request.field0);
         const max = Number(request.field1);
         const result = Math.floor(Math.random() * (max - min)) + min;
-        this.respond(id, new RandomNumber(result));
+        this.respond(id, new RandomNumber(BigInt(result)));
         break;
       }
     }
