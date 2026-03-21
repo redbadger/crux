@@ -1,5 +1,5 @@
-# Shared justfile helpers for Crux examples
-# Import with: mod lib '../../lib.just' (adjust path as needed)
+# Shared justfile helpers for Crux.
+# Import with: mod lib '../lib.just' (adjust path as needed)
 
 # Check if a tool is installed, report status (does not fail build)
 [no-cd]
@@ -9,6 +9,17 @@ check-tool tool install_cmd:
         echo '  ✓ {{ tool }}'
     else
         echo '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}'
+    fi
+
+# Check if a tool is installed, report status, and fail if missing
+[no-cd]
+require-tool tool install_cmd:
+    #!/usr/bin/env bash
+    if command -v {{ tool }} &> /dev/null; then
+        echo '  ✓ {{ tool }}'
+    else
+        echo '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}'
+        exit 1
     fi
 
 # Check if a file exists, report status (does not fail build)

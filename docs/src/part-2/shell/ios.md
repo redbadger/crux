@@ -8,7 +8,7 @@ implementing the capabilities.
 This is what Weather's `core.swift` look like
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/Core.swift:core_base}}
+{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:core_base}}
         // ...
     }
 }
@@ -47,7 +47,7 @@ we have tagged unions, so we can also destructure the operation requested.
 We can have a look at what the HTTP branch does:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/Core.swift:http}}
+{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:http}}
 ```
 
 We start a new `Task` to run this job off the main thread, then we use the `async requestHttp()`
@@ -91,7 +91,7 @@ at once), go through them and recurse - call `processEffect` again to handle it.
 Just for completeness, this is what `requestHttp` looks like:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/http.swift}}
+{{#include ../../../../examples/weather/apple/WeatherApp/http.swift}}
 ```
 
 Not that interesting, it's a wrapper around `URLRequest` and friends which takes and
@@ -110,7 +110,7 @@ which we can use in the Views.
 Here's the root content view:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/ContentView.swift:content_view}}
+{{#include ../../../../examples/weather/apple/WeatherApp/ContentView.swift:content_view}}
 ```
 
 Thanks to the declarative nature of SwiftUI, we can show the view we need to,
@@ -123,7 +123,7 @@ view model to each view, it's up to you how you want to go about it.
 Let's look at the HomeView as well, just to complete the picture:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/HomeView.swift:home_view}}
+{{#include ../../../../examples/weather/apple/WeatherApp/HomeView.swift:home_view}}
 ```
 
 It simply caters for the possible situations in the view model, draws the

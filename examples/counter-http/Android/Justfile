@@ -1,4 +1,4 @@
-mod lib '../../lib.just'
+mod lib '../../../lib.just'
 
 default: dev
 
@@ -64,13 +64,13 @@ clean:
     ./gradlew --no-daemon clean
     rm -rf generated
 
-# open in Android Studio (macOS)
-open:
-    @echo '{{ style("command") }}open:{{ NORMAL }}'
-    open -b com.google.android.studio .
-
 # local development workflow
 dev: fix check build test
 
 # CI workflow
 ci: check build test
+
+# open in Android Studio (macOS)
+open:
+    @echo '{{ style("command") }}open:{{ NORMAL }}'
+    open -b com.google.android.studio .

@@ -78,7 +78,7 @@ arrived from the shell, for a particular effect requested earlier.
 
 ```admonish warning
 Always use the capability APIs provided by Crux for async work (see the
-[capabilities](../guide/capability_apis.md) chapter). Using other async APIs can
+[capabilities](../part-2/capabilities.md) chapter). Using other async APIs can
 lead to unexpected behaviour, because the resulting futures are not tied to crux
 effects. Such futures will resolve, but only after the next shell request causes
 the crux executor to execute.

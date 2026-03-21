@@ -1,4 +1,4 @@
-mod lib '../../lib.just'
+mod lib '../../../lib.just'
 
 default: dev
 
@@ -45,13 +45,13 @@ clean:
     cargo clean
     rm -rf node_modules dist
 
-# serve the app locally
-serve: install
-    @echo '{{ style("command") }}serve:{{ NORMAL }}'
-    pnpm tauri dev
-
 # local development workflow
 dev: fix check build test
 
 # CI workflow
 ci: check build test
+
+# serve the app locally
+serve: install
+    @echo '{{ style("command") }}serve:{{ NORMAL }}'
+    pnpm tauri dev

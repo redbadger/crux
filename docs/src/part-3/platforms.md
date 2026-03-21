@@ -8,5 +8,5 @@ we've shown in detail.
 You can read about using Crux with:
 
 - [Dioxus](./platforms/dioxus.md)
-- [Remix](./platforms/remix.md)
+- [React Router](./platforms/remix.md)
 - [Yew](./platforms/yew.md)

@@ -93,7 +93,7 @@ Edit the **app**'s `build.gradle.kts` (`/Android/app/build.gradle.kts`) to look 
 this:
 
 ```kotlin
-{{#include ../../../../examples/counter/Android/app/build.gradle.kts}}
+{{#include ../../../../../examples/counter/Android/app/build.gradle.kts}}
 ```
 
 ````admonish
@@ -103,7 +103,7 @@ will need to ensure this is kept up to date.
 Our catalog (`Android/gradle/libs.versions.toml`) will end up looking like this:
 
 ```toml
-{{#include ../../../../examples/counter/Android/gradle/libs.versions.toml}}
+{{#include ../../../../../examples/counter/Android/gradle/libs.versions.toml}}
 ```
 ````
 
@@ -134,14 +134,14 @@ Edit the **project**'s `build.gradle.kts` (`/Android/build.gradle.kts`) to look 
 this:
 
 ```kotlin
-{{#include ../../../../examples/counter/Android/build.gradle.kts}}
+{{#include ../../../../../examples/counter/Android/build.gradle.kts}}
 ```
 
 Edit the **library**'s `build.gradle.kts` (`/Android/shared/build.gradle.kts`) to look
 like this:
 
 ```kotlin
-{{#include ../../../../examples/counter/Android/shared/build.gradle.kts}}
+{{#include ../../../../../examples/counter/Android/shared/build.gradle.kts}}
 
 ```
 
@@ -244,15 +244,15 @@ This code that wraps the core only needs to be written once — it only grows wh
 we need to support additional capabilities.
 ```
 
-Edit `Android/app/src/main/java/com/example/counter/Core.kt` to look like
+Edit `Android/app/src/main/java/com/crux/examples/counter/Core.kt` to look like
 the following. This code sends our (UI-generated) events to the core, and
 handles any effects that the core asks for. In this simple example, we aren't
 calling any HTTP APIs or handling any side effects other than rendering the UI,
 so we just handle this render effect by updating the published view model from
 the core.
 
-```swift
-{{#include ../../../../examples/counter/Android/app/src/main/java/com/example/counter/Core.kt}}
+```kotlin
+{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/Core.kt}}
 ```
 
 ```admonish tip
@@ -264,11 +264,11 @@ the
 in the Crux repository.
 ```
 
-Edit `/Android/app/src/main/java/com/example/counter/MainActivity.kt` to
+Edit `/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt` to
 look like the following:
 
 ```kotlin
-{{#include ../../../../examples/counter/Android/app/src/main/java/com/example/counter/MainActivity.kt}}
+{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt}}
 ```
 
 ```admonish success

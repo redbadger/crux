@@ -10,7 +10,7 @@ are visible to all connected clients.
 The `shared` directory adds two capabilities on top of the basic counter:
 
 - `crux_http` for GET/POST requests to the shared counter API
-- A custom [SSE capability](./shared/src/capabilities/sse.rs) that streams
+- A custom [SSE capability](./shared/src/sse.rs) that streams
   updates from the server
 - Optimistic updates — the UI updates immediately, then reconciles when the
   server responds

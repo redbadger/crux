@@ -1,0 +1,31 @@
+mod lib '../lib.just'
+
+default: dev
+
+# check required docs tooling
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::require-tool mdbook "cargo install mdbook"
+    @just lib::require-tool mdbook-admonish "cargo install mdbook-admonish"
+    @just lib::require-tool mdbook-linkcheck "cargo install mdbook-linkcheck"
+
+# build the book with configured preprocessors/checkers
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    mdbook build
+
+# remove generated output
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    rm -rf book
+
+# local development workflow
+dev: build
+
+# CI workflow
+ci: build
+
+# serve the book locally
+serve:
+    @echo '{{ style("command") }}serve:{{ NORMAL }}'
+    mdbook serve

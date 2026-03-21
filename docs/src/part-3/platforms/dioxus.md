@@ -9,7 +9,7 @@ These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../part-1/shell.md).
 ```
 
 ```admonish info

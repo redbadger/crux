@@ -34,7 +34,7 @@ fn main() -> Result<()> {
 
     let name = match args.language {
         Language::Swift => "App",
-        Language::Kotlin => "com.crux.examples.simplecounter",
+        Language::Kotlin => "com.crux.examples.counter",
         Language::Typescript => "app",
     };
     let config = Config::builder(name, &args.output_dir)

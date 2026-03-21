@@ -16,11 +16,9 @@ const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel(""));
   const core = useRef(new Core(setView));
 
-  // Initialize
-  useEffect(
-    () => core.current.initialize(true),
-    /*once*/ [],
-  );
+  useEffect(() => {
+    void core.current.initialize(true);
+  }, []);
 
   return (
     <main>

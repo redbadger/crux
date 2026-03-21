@@ -1,4 +1,4 @@
-# Web — TypeScript and React (Remix)
+# Web — TypeScript and React Router
 
 ```admonish warning
 This was written for previous versions of Crux and needs updating. Proceed with caution.
@@ -9,24 +9,24 @@ These are the steps to set up and run a simple TypeScript Web app that calls
 into a shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../part-1/shell.md).
 ```
 
 ```admonish info
-There are many frameworks available for writing Web applications with JavaScript/TypeScript. We've chosen [React](https://reactjs.org/) with [Remix](https://remix.run/) for this walk-through. However, a similar setup would work for other frameworks.
+There are many frameworks available for writing Web applications with JavaScript/TypeScript. We've chosen [React](https://reactjs.org/) with [React Router](https://reactrouter.com/) for this walk-through. However, a similar setup would work for other frameworks.
 ```
 
-## Create a Remix App
+## Create a React Router App
 
 For this walk-through, we'll use the [`pnpm`](https://pnpm.io/) package manager
 for no reason other than we like it the most! You can use `npm` exactly the same
 way, though.
 
-Let's create a simple Remix app for TypeScript, using `pnpx` (from `pnpm`). You
-can give it a name and then probably accept the defaults.
+Let's create a simple React Router app for TypeScript with `pnpm`. You can give
+it a name and then probably accept the defaults.
 
 ```sh
-pnpx create-remix@latest
+pnpm create react-router@latest
 ```
 
 ## Compile our Rust shared library
@@ -55,32 +55,31 @@ WebAssembly for the browser.
 
 ````admonish tip
   You might want to add a `wasm:build` script to your `package.json`
-  file, and call it when you build your Remix project.
+  file, and call it when you build your React Router project.
 
   ```json
   {
     "scripts": {
-      "build": "pnpm run wasm:build && remix build",
-      "dev": "pnpm run wasm:build && remix dev",
+      "build": "pnpm run wasm:build && react-router build",
+      "dev": "pnpm run wasm:build && react-router dev",
       "wasm:build": "cd ../shared && wasm-pack build --target web"
     }
   }
   ```
 ````
 
-Add the `shared` library as a Wasm package to your `web-remix` project
+Add the `shared` library as a Wasm package to your `web-react-router` project
 
 ```sh
-cd web-remix
+cd web-react-router
 pnpm add ../shared/pkg
 ```
 
-We want to tell the Remix server to bundle our `shared` Wasm package, so we need
-to add a `serverDependenciesToBundle` key to the object exported in
-`remix.config.js`:
+We want Vite to bundle our `shared` Wasm package, so we register the wasm and
+React Router plugins in `vite.config.ts`:
 
-```js
-{{#include ../../../../examples/counter/web-remix/remix.config.js}}
+```ts
+{{#include ../../../../examples/counter/web-react-router/vite.config.ts}}
 ```
 
 ## Add the Shared Types
@@ -139,19 +138,19 @@ our project.
 pnpm add ../shared_types/generated/typescript
 ```
 
-## Load the Wasm binary when our Remix app starts
+## Load the Wasm binary when our React Router app starts
 
 The `app/entry.client.tsx` file is where we can load our Wasm binary. We can
 import the `shared` package and then call the `init` function to load the Wasm
 binary.
 
 ```admonish
-Note that we `import` the wasm binary as well — Remix will automatically bundle
+Note that we `import` the wasm binary as well — Vite will automatically bundle
 it for us, giving it a cache-friendly hash-based name.
 ```
 
 ```ts
-{{#include ../../../../examples/counter/web-remix/app/entry.client.tsx}}
+{{#include ../../../../examples/counter/web-react-router/app/entry.client.tsx}}
 ```
 
 ## Create some UI
@@ -186,7 +185,7 @@ the core and the shell. This is because the core is running in a separate
 WebAssembly instance, and so we can't just pass the data directly.
 
 ```typescript
-{{#include ../../../../examples/counter/web-remix/app/core.ts}}
+{{#include ../../../../examples/counter/web-react-router/app/core.ts}}
 ```
 
 ```admonish tip
@@ -194,7 +193,7 @@ That `switch` statement, above, is where you would handle any other effects that
 your core might ask for. For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example of this, take a look at
 the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-remix/src/core.rs)
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-react-router/app/core.ts)
 in the Crux repository.
 ```
 
@@ -205,7 +204,7 @@ Edit `app/routes/_index.tsx` to look like the following. Notice that we pass the
 response to a render effect from the core (as seen above).
 
 ```typescript
-{{#include ../../../../examples/counter/web-remix/app/routes/_index.tsx}}
+{{#include ../../../../examples/counter/web-react-router/app/routes/_index.tsx}}
 ```
 
 Now all we need is some CSS.
@@ -214,7 +213,7 @@ To add a CSS stylesheet, we can add it to the `Links` export in the
 `app/root.tsx` file.
 
 ```tsx
-{{#include ../../../../examples/counter/web-remix/app/root.tsx:links}}
+{{#include ../../../../examples/counter/web-react-router/app/root.tsx:links}}
 ```
 
 ## Build and serve our app

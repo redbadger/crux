@@ -4,7 +4,7 @@
 This section has not been updated to match the rest of the documentation and some parts
 may not match how Crux works any more.
 
-Bear with us while we update and use the [iOS](../ios/index.md) section as the template
+Bear with us while we update and use the [Apple](../apple/index.md) section as the template
 to follow.
 ```
 
@@ -12,7 +12,7 @@ These are the steps to set up and run a simple TypeScript Web app that calls
 into a shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../shell.md).
 ```
 
 ```admonish info
@@ -167,7 +167,7 @@ the core and the shell. This is because the core is running in a separate
 WebAssembly instance, and so we can't just pass the data directly.
 
 ```typescript
-{{#include ../../../../examples/counter/web-nextjs/src/app/core.ts}}
+{{#include ../../../../../examples/counter/web-nextjs/src/app/core.ts}}
 ```
 
 ```admonish tip
@@ -175,7 +175,7 @@ That `switch` statement, above, is where you would handle any other effects that
 your core might ask for. For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example of this, take a look at
 the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-nextjs/src/core.rs)
+[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-nextjs/src/app/core.ts)
 in the Crux repository.
 ```
 
@@ -187,7 +187,7 @@ WebAssembly core and sends it an initial event. Notice that we pass the
 response to a render effect from the core.
 
 ```typescript
-{{#include ../../../../examples/counter/web-nextjs/src/app/page.tsx}}
+{{#include ../../../../../examples/counter/web-nextjs/src/app/page.tsx}}
 ```
 
 Now all we need is some CSS. First add the `Bulma` package, and then import it
@@ -198,7 +198,7 @@ pnpm add bulma
 ```
 
 ```typescript
-{{#include ../../../../examples/counter/web-nextjs/src/app/layout.tsx}}
+{{#include ../../../../../examples/counter/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app

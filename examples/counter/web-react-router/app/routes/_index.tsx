@@ -19,13 +19,9 @@ export default function Index() {
   const [view, setView] = useState(new ViewModel(""));
   const core = useRef(new Core(setView));
 
-  // Initialize
-  useEffect(
-    () =>
-      core.current.initialize(/* loading is done in entry.client.tsx */ false),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    /*once*/ [],
-  );
+  useEffect(() => {
+    void core.current.initialize(false);
+  }, []);
 
   return (
     <main>

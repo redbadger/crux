@@ -1,19 +1,13 @@
-import { Dispatch, RefObject, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { CoreFFI } from "shared";
 import type { Effect, Event } from "shared_types/app";
-import {
-  EffectVariantRender,
-  RenderOperation,
-  Request,
-  ViewModel,
-} from "shared_types/app";
+import { EffectVariantRender, Request, ViewModel } from "shared_types/app";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
 import init_core from "shared/shared";
 
-type Response = RenderOperation;
-
 export class Core {
   core: CoreFFI | null = null;
+  initializing: Promise<void> | null = null;
   setState: Dispatch<SetStateAction<ViewModel>>;
 
   constructor(setState: Dispatch<SetStateAction<ViewModel>>) {
@@ -21,18 +15,26 @@ export class Core {
     this.setState = setState;
   }
 
-  initialize(should_load: boolean) {
-    if (!this.core) {
-      const load = should_load ? init_core() : Promise.resolve();
-      load
+  initialize(shouldLoad: boolean): Promise<void> {
+    if (this.core) {
+      return Promise.resolve();
+    }
+
+    if (!this.initializing) {
+      const load = shouldLoad ? init_core() : Promise.resolve();
+
+      this.initializing = load
         .then(() => {
           this.core = new CoreFFI();
           this.setState(this.view());
         })
         .catch((error) => {
+          this.initializing = null;
           console.error("Failed to initialize wasm core:", error);
         });
     }
+
+    return this.initializing;
   }
 
   view(): ViewModel {
@@ -46,22 +48,18 @@ export class Core {
     if (!this.core) {
       throw new Error("Core not initialized. Call initialize() first.");
     }
-    console.log("event", event);
-
     const serializer = new BincodeSerializer();
     event.serialize(serializer);
 
     const effects = this.core.update(serializer.getBytes());
 
     const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.processEffect(id, effect);
+    for (const { effect } of requests) {
+      this.processEffect(effect);
     }
   }
 
-  private processEffect(id: number, effect: Effect) {
-    console.log("effect", effect);
-
+  private processEffect(effect: Effect) {
     switch (effect.constructor) {
       case EffectVariantRender: {
         this.setState(this.view());

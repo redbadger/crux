@@ -1,4 +1,4 @@
-mod lib '../../lib.just'
+mod lib '../../../lib.just'
 
 default: dev
 
@@ -88,13 +88,13 @@ clean:
     rm -rf generated *.xcodeproj *.xcworkspace DerivedData build
     cargo clean
 
-# open in Xcode
-open:
-    @echo '{{ style("command") }}open:{{ NORMAL }}'
-    xed .
-
 # local development workflow
 dev: fix check build test
 
 # CI workflow
 ci: check build test
+
+# open in Xcode
+open:
+    @echo '{{ style("command") }}open:{{ NORMAL }}'
+    xed .

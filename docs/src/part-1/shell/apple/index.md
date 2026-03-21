@@ -120,11 +120,11 @@ Change it to look like this:
 {{#include ../../../../../examples/counter/apple/CounterApp/ContentView.swift}}
 ```
 
-And finally, make sure `apple/CounterApp/CounterAppApp.swift` looks like this to use
+And finally, make sure `apple/CounterApp/CounterApp.swift` looks like this to use
 the `ContentView`:
 
 ```swift
-{{#include ../../../../../examples/counter/apple/CounterApp/CounterAppApp.swift}}
+{{#include ../../../../../examples/counter/apple/CounterApp/CounterApp.swift}}
 ```
 
 The one interesting part of this is the `@ObservedObject var core: Core`. Since the `Core` is

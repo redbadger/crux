@@ -4,7 +4,7 @@
 This section has not been updated to match the rest of the documentation and some parts
 may not match how Crux works any more.
 
-Bear with us while we update and use the [iOS](../ios/index.md) section as the template
+Bear with us while we update and use the [Apple](../apple/index.md) section as the template
 to follow.
 ```
 
@@ -12,7 +12,7 @@ These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../shell.md).
 ```
 
 ```admonish info
@@ -40,7 +40,7 @@ Now we can `cd` into the `web-leptos` directory and start fleshing out our
 project. Let's add some dependencies to `shared/Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/counter/web-leptos/Cargo.toml}}
+{{#include ../../../../../examples/counter/web-leptos/Cargo.toml}}
 ```
 
 ```admonish tip
@@ -54,7 +54,7 @@ the `get()` and `update()` functions explicitly.
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-{{#include ../../../../examples/counter/web-leptos/index.html}}
+{{#include ../../../../../examples/counter/web-leptos/index.html}}
 ```
 
 ## Create some UI
@@ -96,7 +96,7 @@ in the same memory space), we do not need to serialize and deserialize the data
 that we pass between them. We can just pass the data directly.
 
 ```rust,noplayground
-{{#include ../../../../examples/counter/web-leptos/src/core.rs}}
+{{#include ../../../../../examples/counter/web-leptos/src/core.rs}}
 ```
 
 ```admonish tip
@@ -115,7 +115,7 @@ event). We also create an effect that sends these events into the core whenever
 they are raised.
 
 ```rust,noplayground
-{{#include ../../../../examples/counter/web-leptos/src/main.rs}}
+{{#include ../../../../../examples/counter/web-leptos/src/main.rs}}
 ```
 
 ## Build and serve our app
