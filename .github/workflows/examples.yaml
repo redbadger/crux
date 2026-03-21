@@ -1,0 +1,304 @@
+# CI for all example shells (shared, web-leptos, apple, Android, etc.).
+#
+# Jobs are grouped by platform tooling — not by example — so each job only
+# installs the tools its shells need. Within each job a matrix fans out to
+# cover every example x shell combination for that platform.
+#
+# Matrix shape:
+#   shared     — 6 entries (all 5 examples x shared + counter/tui)
+#   web-trunk  — 6 entries (all 5 examples x web-leptos + counter/web-yew)
+#   web-dioxus — 1 entry   (counter only)
+#   web-js     — 6 entries (all 5 examples x web-nextjs + counter/web-react-router)
+#   tauri      — 1 entry   (counter only)
+#   apple      — 5 entries (all 5 examples, shell is always "apple")
+#   android    — 5 entries (all 5 examples, shell is always "Android")
+#
+# Each matrix entry runs: just <shell>/ci  (working dir: examples/<example>)
+name: examples
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: short
+  CI: 1
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+  # Rust-only shells (shared + tui). Needs: Rust, wasm32 target, clippy, nextest.
+  # All examples have a "shared" shell; only counter has "tui".
+  shared:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { example: counter, shell: shared }
+          - { example: counter, shell: tui }
+          - { example: counter-http, shell: shared }
+          - { example: counter-middleware, shell: shared }
+          - { example: notes, shell: shared }
+          - { example: weather, shell: shared }
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+      - uses: taiki-e/install-action@nextest
+
+      - name: CI
+        run: just ${{ matrix.shell }}/ci
+
+  # WASM shells built with trunk (Leptos, Yew). Needs: Rust, wasm32 target, trunk.
+  # All examples have web-leptos; only counter has web-yew.
+  web-trunk:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { example: counter, shell: web-leptos }
+          - { example: counter, shell: web-yew }
+          - { example: counter-http, shell: web-leptos }
+          - { example: counter-middleware, shell: web-leptos }
+          - { example: notes, shell: web-leptos }
+          - { example: weather, shell: web-leptos }
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+      - uses: taiki-e/install-action@trunk
+
+      - name: CI
+        run: just ${{ matrix.shell }}/ci
+
+  # Dioxus WASM shell. Needs: Rust, wasm32 target, dioxus-cli.
+  # Only counter has this shell, so no matrix needed.
+  web-dioxus:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+      - uses: taiki-e/install-action@dioxus-cli
+
+      - name: CI
+        run: just web-dioxus/ci
+
+  # JS/TS web shells. Needs: Rust, wasm32 target, wasm-pack, Node.js, pnpm.
+  # All examples have web-nextjs; only counter has web-react-router.
+  web-js:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { example: counter, shell: web-nextjs }
+          - { example: counter, shell: web-react-router }
+          - { example: counter-http, shell: web-nextjs }
+          - { example: counter-middleware, shell: web-nextjs }
+          - { example: notes, shell: web-nextjs }
+          - { example: weather, shell: web-nextjs }
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+      - uses: taiki-e/install-action@wasm-pack
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: CI
+        run: just ${{ matrix.shell }}/ci
+
+  # Tauri desktop shell. Needs: Rust, Node.js, pnpm, GTK/WebKit system libs.
+  # Only counter has this shell, so no matrix needed.
+  tauri:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: CI
+        run: just tauri/ci
+
+  # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
+  # cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
+  # so the matrix is just the example name — the shell is always "apple".
+  apple:
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - counter
+          - counter-http
+          - counter-middleware
+          - notes
+          - weather
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-darwin,x86_64-apple-ios
+          components: clippy, rustfmt
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install tools
+        run: brew install just xcodegen swiftlint
+
+      - name: Install cargo-swift
+        run: cargo install cargo-swift --version '=0.9'
+
+      - name: CI
+        run: just apple/ci
+
+  # Android shells. Needs: Rust with Android NDK targets, JDK 17, Android SDK.
+  # All examples have an "Android" shell (capital A matches the directory name),
+  # so the matrix is just the example name — the shell is always "Android".
+  android:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - counter
+          - counter-http
+          - counter-middleware
+          - notes
+          - weather
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: CI
+        run: just Android/ci

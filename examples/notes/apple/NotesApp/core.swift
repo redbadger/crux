@@ -93,7 +93,7 @@ class Core: ObservableObject {
         case .listKeys(let prefix, let cursor):
             let allKeys = defaults.dictionaryRepresentation().keys
             let keys = allKeys.filter { $0.hasPrefix(prefix) }
-            let _ = cursor
+            _ = cursor
             return .ok(response: .listKeys(keys: Array(keys), nextCursor: 0))
         }
     }
