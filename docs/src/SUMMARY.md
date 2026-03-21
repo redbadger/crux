@@ -23,7 +23,7 @@
 1. [Testing with Effects](./part-2/testing-effects.md)
 1. [Building Capabilities](./part-2/capabilities.md)
 1. [The shell](./part-2/shell.md)
-    1. [iOS](./part-2/shell/ios.md)
+    1. [iOS/macOS](./part-2/shell/ios.md)
     1. [Android](./part-2/shell/android.md)
     1. [React](./part-2/shell/react.md)
     1. [Leptos](./part-2/shell/leptos.md)

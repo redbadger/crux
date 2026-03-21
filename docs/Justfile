@@ -8,6 +8,7 @@ doctor:
     @just lib::require-tool mdbook "cargo install mdbook"
     @just lib::require-tool mdbook-admonish "cargo install mdbook-admonish"
     @just lib::require-tool mdbook-linkcheck "cargo install mdbook-linkcheck"
+    @just lib::require-tool mdbook-mermaid "cargo install mdbook-mermaid --version 0.14.0"
 
 # build the book with configured preprocessors/checkers
 build:

@@ -12,8 +12,8 @@ which implement a specific kind of side-effect in a generic fashion. They define
 message protocol for the side-effect and provide an ergonomic API to create the right `CommandBuilder`s.
 Examples include: HTTP client, Timer operations, Key-Value storage, Secrets provider, Geolocation, etc.
 
-In practice, we find there is a limited number of these effect packages, the should be very reusable,
-and an individual app will typically need around seven of them, almost certainly less than ten.
+In practice, we find there is a limited number of these effect packages, they should be very reusable,
+and an individual app will typically need around seven of them, almost certainly fewer than ten.
 
 ## Included capabilities
 
@@ -49,7 +49,7 @@ Let's look at the other thing they do.
 
 The Weather app has one specialty - it works with location services. This is an example of a
 capability which we'd probably struggle to find a cross-platform crate for. It's also not
-so common and complex, that we feel we should develop and maintain an official one. So a custom
+so common or complex that we feel we should develop and maintain an official one. So a custom
 capability in the app is the way to go.
 
 The capability defines two things:
@@ -73,7 +73,7 @@ That's number 1 done - protocol defined. This is what the Shell will need to und
 return back in order to implement the location capability.
 
 The rest of the code are the two APIs used by the Core developer - `is_location_enabled` and `get_location`.
-Their type signatures are fairly complex, so lets pick them apart.
+Their type signatures are fairly complex, so let's pick them apart.
 
 First, they are both generic over Effect and Event. This isn't strictly necessary for local
 capabilities, but it makes the capability reusable for any `Effect` and `Event`, not just the
@@ -84,8 +84,8 @@ which says that the Effect type needs to be able to convert from a location Requ
 in other words - we need to be able to wrap a `Request<LocationOperation>` into the app's
 Effect type. All Effect types generated with the `#[effect]` macro already do this.
 
-Other than that, the APIs just create command builds and return them. Those types are also
-somewhat gnarly, but it's mostly the `impl Future<Output = [value]>`, that's interesting.
+Other than that, the APIs just create command builders and return them. Those types are also
+somewhat gnarly, but it's mostly the `impl Future<Output = [value]>` that's interesting.
 Notice that the Output types are not `LocationResult`, they are the specific convenient
 type the Core developer wants.
 

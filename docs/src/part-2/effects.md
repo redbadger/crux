@@ -37,8 +37,8 @@ platform.
 Different platforms may support different ways, for example a biometric
 authentication may work very differently on various devices and some may not
 even support it at all. Different platforms may also have different practical restrictions: while it may be
-perfectly appropriate to write things to disk on one platform, but internet
-access can't be guaranteed (e.g. on a smart watch), on another, writing to disk
+perfectly appropriate to write things to disk on one platform, internet
+access can't be guaranteed (e.g. on a smart watch); on another, writing to disk
 may not be possible, but internet connection is virtually guaranteed (e.g. in an
 API service, or on an embedded device in a factory). The specific storage solution
 for persistent caching would be implemented differently on different platforms,
@@ -56,13 +56,13 @@ Instead, your app is expected to define an `Effect` type which covers the kinds 
 effects which your app needs in order to work, and every time it responds to an Event,
 it is expected to return a `Command`.
 
-Here is the Weather apps `Effect` type:
+Here is the Weather app's `Effect` type:
 
 ```rust
 {{#include ../../../examples/weather/shared/src/app.rs:effect}}
 ```
 
-This tells us the app does four kinds of side effects: Rendering the UI, storing something in Key-Value store, using a HTTP client and using Location services. That's all it does, that's also call it can possibly do, until we expand this type further.
+This tells us the app does four kinds of side effects: Rendering the UI, storing something in Key-Value store, using a HTTP client and using Location services. That's all it does, that's also all it can possibly do, until we expand this type further.
 
 ## What is a Command
 
@@ -77,7 +77,7 @@ Crux expects a Command to be returned by the `update` function. A basic Command 
 
 ## Effects and Events
 
-Lets look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
+Let's look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
 
 Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
@@ -87,7 +87,7 @@ The `Effect` type is typically defined with the help of the `#[effect]` macro. H
 {{#include ../../../examples/weather/shared/src/app.rs:effect}}
 ```
 
-The four operations it carries are actually defined by four different _Capabilities_, so lets talk about those.
+The four operations it carries are actually defined by four different _Capabilities_, so let's talk about those.
 
 ## Capabilities
 
@@ -96,11 +96,11 @@ very basic ones all the way to complex stateful orchestrations. Capabilities are
 
 We will look at writing capabilities in the next chapter, but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
 
-To help that make more sense, lets look at how Commands are typically used.
+To help that make more sense, let's look at how Commands are typically used.
 
 ## Working with Commands
 
-The intent behind the command API is to cover 80% of effect orchestration without asking developers to use `async` Rust. We will look at the `async` use in a minute, but first lets look at what can be done without it.
+The intent behind the command API is to cover 80% of effect orchestration without asking developers to use `async` Rust. We will look at the `async` use in a minute, but first let's look at what can be done without it.
 
 A typical use of a `Command` in an update function will look something like this:
 
@@ -119,7 +119,7 @@ Here's an example of the same from the Weather app:
 {{#include ../../../examples/weather/shared/src/favorites/events.rs:key_value}}
 ```
 
-the `get()` call again returns a command builder, which is used to create a command with `.then_send()`. The `Command` is now fully baked and bound to the specific callback event, and can no longer be meaningfully chained into an "effect pipeline".
+The `get()` call again returns a command builder, which is used to create a command with `.then_send()`. The `Command` is now fully baked and bound to the specific callback event, and can no longer be meaningfully chained into an "effect pipeline".
 
 One special, but common case of creating a command is creating a Command which does nothing, because there are no more side-effects:
 
@@ -138,7 +138,7 @@ We've seen an example of this already, but here it is again:
 The two `update` calls involved each return a command, and we want to run them concurrently. The result is another `Command`, which can be returned from `update`.
 
 ```admonish note
-Commands (or more precisely command builders) can be created without capabilities. That what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in the next chapter, when we look at building Capabilities.
+Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in the next chapter, when we look at building Capabilities.
 ```
 
 You might also want to run effects in a sequence, passing output of one as the input of another. This is another thing the command builders can facilitate. Let's look at that.
@@ -162,7 +162,7 @@ Here's an example of a more complicated chaining from the Command test suite:
 ```rust
 {{#include ../../../crux_core/src/command/tests/combinators.rs:complex_concurrency}}
 
-// ... the assertions are omitted for brevity, see crux_core/src/cpommand/tests/combinators.rs
+// ... the assertions are omitted for brevity, see crux_core/src/command/tests/combinators.rs
 ```
 
 Forgive the abstract nature of the operations involved, these constructions are relatively uncommon in real code, and have not been used anywhere in our example code yet.
@@ -181,8 +181,6 @@ In order to update state, you should pass the result of the effect orchestration
 
 The real power of commands comes from the fact that they build on `async` Rust. Each Command is a little async executor, which runs a number of tasks. The tasks get access to the crux context (represented by [`CommandContext`](https://docs.rs/crux_core/latest/crux_core/command/struct.CommandContext.html)), which gives them the ability to communicate with the shell and with the app.
 
-TODO: image illustration of the command structure
-
 You can create a raw command like this:
 
 ```rust,ignore
@@ -194,7 +192,7 @@ Command::new(|ctx| async move {
 });
 ```
 
-`Command::new` takes a closure, which receives the CommandContext and returns a future, which will become the Command's main task (it is not expected to return anything, it's `Output` is `()`. The provided context can be used to start shell requests, streams, and send events back to the app.
+`Command::new` takes a closure, which receives the CommandContext and returns a future, which will become the Command's main task (it is not expected to return anything, its `Output` is `()`. The provided context can be used to start shell requests, streams, and send events back to the app.
 
 The Context can also be used to `spawn` more tasks in the command.
 
@@ -210,7 +208,7 @@ This is also why combining the Crux async runtime with something like Tokio will
 That said, a lot of universal async code (like async channels for example), work just fine.
 ```
 
-There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the API docs for the full coverage
+There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the API docs for the full coverage.
 
 ## Migrating from previous versions of Crux
 
@@ -219,41 +217,33 @@ If you're new to Crux, it's unlikely you need to read this section. The original
 was very different from Commands and this section is kept to help migrate from that API
 ```
 
-The migration from the previous API is in two steps - first, make your app compatible with newer versions of Crux, then, when you're done with migrating your effect handling, move away from using `Capabilities`.
+The change to `Command` is a breaking one for all Crux apps. The previous API used `Capabilities` to perform side-effects via callbacks. The new API removes `Capabilities` and `caps` from the `App` trait entirely, replacing them with a `Command` return value from `update`.
 
-The change to `Command` is a breaking one for all Crux apps, but the fix is
-quite minimal.
+There are three parts to the migration:
 
-There are two parts to it:
+1. Remove the `Capabilities` associated type and the `caps` parameter from `update`
+2. Declare the `Effect` associated type on your App
+3. Return `Command` from `update`
 
-1. declare the `Effect` type on your App
-2. return `Command` from `update`
-
-Here's an example:
+Here's what the end state looks like:
 
 ```rust
 impl crux_core::App for App {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-
-    type Capabilities = Capabilities;
-    type Effect = Effect; // 1. add the associated type
+    type Effect = Effect;
 
     fn update(
         &self,
         event: Event,
         model: &mut Model,
-        caps: &Capabilities,
     ) -> crux_core::Command<Effect, Event> {
-        crux_core::Command::done() // 2. return a Command
+        crux_core::Command::done() // return a Command
     }
 }
-
 ```
 
-In a typical app the `Effect` will be derived from `Capabilities`, so the added
-line should just work.
-
-To begin with, you can simply return a `Command::done()` from the `update`
-function. `Command::done()` is a no-op effect.
+To begin with, you can return `Command::done()` (a no-op) from `update` and
+incrementally migrate your effect handling to use Commands and capability APIs
+that return command builders.

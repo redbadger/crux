@@ -27,6 +27,7 @@ import {
 
 import { Core } from "./core";
 
+// ANCHOR: content_view
 const Home: NextPage = () => {
   const [view, setView] = useState(
     new ViewModel(new WorkflowViewModelVariantHome(null!, [])),
@@ -83,7 +84,9 @@ const Home: NextPage = () => {
     </main>
   );
 };
+// ANCHOR_END: content_view
 
+// ANCHOR: home_view
 function HomeView({
   weatherData,
   favorites,
@@ -169,6 +172,7 @@ function HomeView({
     </>
   );
 }
+// ANCHOR_END: home_view
 
 function FavoritesView({
   favorites,

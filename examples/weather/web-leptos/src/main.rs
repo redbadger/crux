@@ -12,6 +12,7 @@ use shared::{
     weather::events::WeatherEvent,
 };
 
+// ANCHOR: content_view
 #[component]
 fn root_component() -> impl IntoView {
     let core = core::new();
@@ -67,7 +68,9 @@ fn root_component() -> impl IntoView {
         </>
     }
 }
+// ANCHOR_END: content_view
 
+// ANCHOR: home_view
 #[component]
 fn home_view(
     weather_data: shared::weather::model::current_response::CurrentWeatherResponse,
@@ -153,6 +156,7 @@ fn home_view(
         </div>
     }
 }
+// ANCHOR_END: home_view
 
 #[component]
 fn favorites_view(

@@ -1,11 +1,11 @@
-# iOS
+# iOS/macOS
 
-Lets start with the new part, and also typically the shorter part –
+Let's start with the new part, and also typically the shorter part –
 implementing the capabilities.
 
 ## Capability implementation
 
-This is what Weather's `core.swift` look like
+This is what Weather's `core.swift` looks like
 
 ```swift
 {{#include ../../../../examples/weather/apple/WeatherApp/core.swift:core_base}}
@@ -15,7 +15,7 @@ This is what Weather's `core.swift` look like
 ```
 
 It's slightly more complicated, but broadly the same as the Counter's core.
-We've have an extra logger which is not really important for us, and we
+We have an extra logger which is not really important for us, and we
 also hold on to a `KeyValueStore`, which is the storage for the key-value
 implementation.
 
@@ -41,7 +41,7 @@ structure is this:
     }
 ```
 
-We get a Request, and do an exhaustive match on what the requested effect is. In swift
+We get a Request, and do an exhaustive match on what the requested effect is. In Swift
 we have tagged unions, so we can also destructure the operation requested.
 
 We can have a look at what the HTTP branch does:
@@ -50,10 +50,16 @@ We can have a look at what the HTTP branch does:
 {{#include ../../../../examples/weather/apple/WeatherApp/core.swift:http}}
 ```
 
-We start a new `Task` to run this job off the main thread, then we use the `async requestHttp()`
-call to run the request.
+This delegates to `handleHttp`, which does the actual work:
 
-Then it takes the response, serializes it and passes it to `core.resolve`, which
+```swift
+{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:handle_http}}
+```
+
+We start a new `Task` to run this job off the main thread, then use the
+`async requestHttp()` call to run the request.
+
+Then it takes the response, serializes it and passes it to `core.resolve` via `resolveEffects`, which
 **returns more effect requests**. This is perhaps unexpected, but it's the direct
 consequence of the `Command`s async nature. There can easily be a command which
 does something along the lines of:
@@ -95,14 +101,14 @@ Just for completeness, this is what `requestHttp` looks like:
 ```
 
 Not that interesting, it's a wrapper around `URLRequest` and friends which takes and
-returns the generated `HttpRequest` and `HttpResponse`, originall defined in Rust by
+returns the generated `HttpRequest` and `HttpResponse`, originally defined in Rust by
 `crux_http`.
 
 The pattern repeats similarly for key-value store and the location capability.
 
 ## User interface and navigation
 
-It's worth looking at how Weather handles the Workflow navigation in Swift UI.
+It's worth looking at how Weather handles the Workflow navigation in SwiftUI.
 
 As in the Counter example, the Weather's core has a `@Published var view: ViewModel`
 which we can use in the Views.

@@ -18,6 +18,7 @@ import * as location from "./location";
 // union of all Operation types, only render is needed here
 type Response = RenderOperation;
 
+// ANCHOR: core_base
 export class Core {
   core: CoreFFI;
   callback: Dispatch<SetStateAction<ViewModel>>;
@@ -38,6 +39,7 @@ export class Core {
       this.resolve(id, effect);
     }
   }
+  // ANCHOR_END: core_base
 
   async resolve(id: number, effect: Effect) {
     switch (effect.constructor) {
@@ -45,12 +47,14 @@ export class Core {
         this.callback(deserializeView(this.core.view()));
         break;
       }
+      // ANCHOR: http
       case EffectVariantHttp: {
         const request = (effect as EffectVariantHttp).value;
         const response = await http.request(request);
         this.respond(id, response);
         break;
       }
+      // ANCHOR_END: http
       case EffectVariantKeyValue: {
         const request = (effect as EffectVariantKeyValue).value;
         const response = await kv.handle(request);
@@ -66,6 +70,7 @@ export class Core {
     }
   }
 
+  // ANCHOR: respond
   respond(id: number, response: Response) {
     const serializer = new BincodeSerializer();
     response.serialize(serializer);
@@ -77,6 +82,7 @@ export class Core {
       this.resolve(id, effect);
     }
   }
+  // ANCHOR_END: respond
 }
 
 function deserializeRequests(bytes: Uint8Array) {

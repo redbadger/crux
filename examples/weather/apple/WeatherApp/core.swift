@@ -77,6 +77,7 @@ class Core: ObservableObject {
         }
     }
 
+    // ANCHOR: handle_http
     private func handleHttp(_ request: Request, _ req: HttpRequest) {
         logger.info("Making HTTP request to: \(req.url)")
         Task {
@@ -92,6 +93,7 @@ class Core: ObservableObject {
             }
         }
     }
+    // ANCHOR_END: handle_http
 
     private func handleKeyValue(_ request: Request, _ keyValue: KeyValueOperation) {
         logger.debug("Processing KeyValue effect: \(String(describing: keyValue))")

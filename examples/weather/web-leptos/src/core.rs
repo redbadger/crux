@@ -6,6 +6,7 @@ use shared::{Effect, Event, ViewModel, Weather};
 
 use crate::{http, kv, location};
 
+// ANCHOR: core_base
 pub type Core = Rc<shared::Core<Weather>>;
 
 pub fn new() -> Core {
@@ -19,6 +20,7 @@ pub fn update(core: &Core, event: Event, render: WriteSignal<ViewModel>) {
         process_effect(core, effect, render);
     }
 }
+// ANCHOR_END: core_base
 
 pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
     match effect {
@@ -26,6 +28,7 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
             render.update(|view| *view = core.view());
         }
 
+        // ANCHOR: http
         Effect::Http(mut request) => {
             task::spawn_local({
                 let core = core.clone();
@@ -42,6 +45,7 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
                 }
             });
         }
+        // ANCHOR_END: http
 
         Effect::KeyValue(mut request) => {
             task::spawn_local({

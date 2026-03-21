@@ -67,6 +67,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+// ANCHOR: home_screen
 @Composable
 fun HomeScreen() {
     val viewModel = koinViewModel<HomeViewModel>()
@@ -80,6 +81,7 @@ fun HomeScreen() {
         onShowFavorites = viewModel::onShowFavorites,
     )
 }
+// ANCHOR_END: home_screen
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable

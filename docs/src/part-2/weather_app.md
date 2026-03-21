@@ -5,7 +5,7 @@ it barely demonstrated any of the key features of Crux.
 
 Time to ditch the training wheels and dive into something real. We'll need to demonstrate
 a few key concepts. How the Elm architecture works at a larger scale, how we manage
-navigation in a multi-screen apps, and the main focus will be on managed effects and capabilities.
+navigation in a multi-screen app, and the main focus will be on managed effects and capabilities.
 To that end, we'll need an app that does enough interesting things, while staying reasonably small.
 
 So we're going to build a Weather app. It is certainly interesting enough - it needs to call an API,
