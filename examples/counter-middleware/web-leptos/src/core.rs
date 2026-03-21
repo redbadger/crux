@@ -1,7 +1,11 @@
 use std::rc::Rc;
 
-use leptos::prelude::{Update as _, WriteSignal};
-use shared::{Counter, Effect, Event, ViewModel};
+use futures_util::TryStreamExt;
+use leptos::{prelude::*, task};
+
+use shared::{Counter, Effect, Event, RandomNumber, ViewModel};
+
+use crate::{http, sse};
 
 pub type Core = Rc<shared::Core<Counter>>;
 
@@ -10,15 +14,69 @@ pub fn new() -> Core {
 }
 
 pub fn update(core: &Core, event: Event, render: WriteSignal<ViewModel>) {
-    for effect in &core.process_event(event) {
+    log::debug!("event: {event:?}");
+
+    for effect in core.process_event(event) {
         process_effect(core, effect, render);
     }
 }
 
-pub fn process_effect(core: &Core, effect: &Effect, render: WriteSignal<ViewModel>) {
+pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
+    log::debug!("effect: {effect:?}");
+
     match effect {
         Effect::Render(_) => {
             render.update(|view| *view = core.view());
+        }
+
+        Effect::Http(mut request) => {
+            task::spawn_local({
+                let core = core.clone();
+
+                async move {
+                    let response = http::request(&request.operation).await;
+
+                    for effect in core
+                        .resolve(&mut request, response.into())
+                        .expect("should resolve")
+                    {
+                        process_effect(&core, effect, render);
+                    }
+                }
+            });
+        }
+
+        Effect::ServerSentEvents(mut request) => {
+            task::spawn_local({
+                let core = core.clone();
+                let operation = request.operation.clone();
+
+                async move {
+                    let mut stream = sse::request(&operation).await.unwrap();
+
+                    while let Ok(Some(response)) = stream.try_next().await {
+                        for effect in core
+                            .resolve(&mut request, response)
+                            .expect("should resolve")
+                        {
+                            process_effect(&core, effect, render);
+                        }
+                    }
+                }
+            });
+        }
+
+        Effect::Random(mut request) => {
+            let from = request.operation.0;
+            let to = request.operation.1;
+            let random = from + (js_sys::Math::random() * (to - from + 1) as f64) as isize;
+
+            for effect in core
+                .resolve(&mut request, RandomNumber(random))
+                .expect("should resolve")
+            {
+                process_effect(core, effect, render);
+            }
         }
     }
 }

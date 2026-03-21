@@ -1,26 +1,31 @@
 import App
 import SwiftUI
+import ViewModel
 
 struct ContentView: View {
     @ObservedObject var core: Core
 
     var body: some View {
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Text(core.view.count)
+            Text("Crux Counter Middleware Example")
+                .font(.title)
+                .padding()
+            Text("Rust Core, Swift Shell (SwiftUI)")
+                .padding(.bottom)
+            Text(core.view.text)
+                .foregroundColor(core.view.confirmed ? .primary : .secondary)
+                .padding()
             HStack {
-                ActionButton(label: "Reset", color: .red) {
-                    core.update(.reset)
-                }
-                ActionButton(label: "Inc", color: .green) {
-                    core.update(.increment)
-                }
                 ActionButton(label: "Dec", color: .yellow) {
                     core.update(.decrement)
                 }
+                ActionButton(label: "Inc", color: .red) {
+                    core.update(.increment)
+                }
             }
+        }
+        .onAppear {
+            core.update(.startWatch)
         }
     }
 }

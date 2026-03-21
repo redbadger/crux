@@ -35,7 +35,7 @@ check: typegen
 # build the shared library so uniffi-bindgen can inspect it
 build-shared:
     @echo '{{ style("command") }}build-shared:{{ NORMAL }}'
-    cargo build --features uniffi
+    cargo build -p shared --features uniffi
 
 # generate Kotlin types and uniffi bindings
 typegen: build-shared

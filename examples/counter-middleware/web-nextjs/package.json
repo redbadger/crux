@@ -15,7 +15,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shared": "file:generated/pkg",
-    "shared_types": "file:generated/types",
+    "shared_types": "file:generated/types/app",
+    "shared_types_serde": "file:generated/types/serde",
     "typescript": "5.9.3"
   },
   "devDependencies": {

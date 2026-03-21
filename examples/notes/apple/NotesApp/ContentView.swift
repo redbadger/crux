@@ -55,7 +55,7 @@ extension NoteTextEditor {
 
     func onEdit(task: @escaping (TextChange) -> Void) -> NoteTextEditor {
         var modified = self
-        modified._onEdit = task
+        modified.onEditHandler = task
         return modified
     }
 }
@@ -67,7 +67,7 @@ extension NoteTextEditor {
 struct NoteTextEditor: UIViewRepresentable {
     var text: String
     var selection: NSRange
-    var _onEdit: ((TextChange) -> Void)?
+    var onEditHandler: ((TextChange) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -80,7 +80,7 @@ struct NoteTextEditor: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: Context) {
         textView.text = text
         textView.selectedRange = selection
-        context.coordinator.onEdit = _onEdit
+        context.coordinator.onEdit = onEditHandler
     }
 
     class Coordinator: NSObject, UITextViewDelegate {
@@ -121,7 +121,7 @@ struct NoteTextEditor: UIViewRepresentable {
 struct NoteTextEditor: NSViewRepresentable {
     var text: String
     var selection: NSRange
-    var _onEdit: ((TextChange) -> Void)?
+    var onEditHandler: ((TextChange) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -144,7 +144,7 @@ struct NoteTextEditor: NSViewRepresentable {
             textView.string = text
         }
         textView.setSelectedRange(selection)
-        context.coordinator.onEdit = _onEdit
+        context.coordinator.onEdit = onEditHandler
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {

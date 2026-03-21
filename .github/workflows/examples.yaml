@@ -132,7 +132,9 @@ jobs:
 
       - uses: mozilla-actions/sccache-action@v0.0.9
       - uses: taiki-e/install-action@just
-      - uses: taiki-e/install-action@dioxus-cli
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: dioxus-cli
 
       - name: CI
         run: just web-dioxus/ci
@@ -217,6 +219,8 @@ jobs:
 
       - name: CI
         run: just tauri/ci
+        env:
+          CI: true
 
   # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
   # cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,

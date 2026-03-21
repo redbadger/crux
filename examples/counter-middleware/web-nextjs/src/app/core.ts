@@ -9,7 +9,7 @@ import {
   Request,
   ViewModel,
 } from "shared_types/app";
-import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
+import { BincodeDeserializer, BincodeSerializer } from "shared_types_serde/bincode";
 import * as http from "./http";
 import * as sse from "./sse";
 

@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Simple Counter"
+rootProject.name = "Counter Middleware"
 include(":app")
 include(":shared")
