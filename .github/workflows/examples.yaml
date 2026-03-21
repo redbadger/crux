@@ -106,10 +106,14 @@ jobs:
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@trunk
 
-      - name: CI
-        run: just ${{ matrix.shell }}/ci
+      - name: Create .env for weather
+        if: matrix.example == 'weather'
+        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
         env:
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+
+      - name: CI
+        run: just ${{ matrix.shell }}/ci
 
   # Dioxus WASM shell. Needs: Rust, wasm32 target, dioxus-cli.
   # Only counter has this shell, so no matrix needed.
