@@ -71,7 +71,7 @@ serve: typegen wasm install
     pnpm dev
 
 # local development workflow
-dev: fix check build test
+dev: typegen wasm fix check build test
 
 # CI workflow
-ci: check build test
+ci: typegen wasm check build test

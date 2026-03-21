@@ -19,22 +19,21 @@ export async function handle(
 ): Promise<KeyValueResult> {
   switch (operation.constructor) {
     case KeyValueOperationVariantGet: {
-      const key = (operation as KeyValueOperationVariantGet).value;
+      const key = (operation as KeyValueOperationVariantGet).key;
       const stored = localStorage.getItem(key);
       const bytes = stored
-        ? new TextEncoder().encode(stored)
-        : new Uint8Array();
+        ? Array.from(new TextEncoder().encode(stored))
+        : [];
       return new KeyValueResultVariantOk(
         new KeyValueResponseVariantGet(new ValueVariantBytes(bytes)),
       );
     }
     case KeyValueOperationVariantSet: {
-      const { field0: key, field1: value } =
-        operation as KeyValueOperationVariantSet;
+      const { key, value } = operation as KeyValueOperationVariantSet;
       const previous = localStorage.getItem(key);
       const prevBytes = previous
-        ? new TextEncoder().encode(previous)
-        : new Uint8Array();
+        ? Array.from(new TextEncoder().encode(previous))
+        : [];
       const valueStr = new TextDecoder().decode(new Uint8Array(value));
       localStorage.setItem(key, valueStr);
       return new KeyValueResultVariantOk(
@@ -42,26 +41,25 @@ export async function handle(
       );
     }
     case KeyValueOperationVariantDelete: {
-      const key = (operation as KeyValueOperationVariantDelete).value;
+      const key = (operation as KeyValueOperationVariantDelete).key;
       const previous = localStorage.getItem(key);
       const prevBytes = previous
-        ? new TextEncoder().encode(previous)
-        : new Uint8Array();
+        ? Array.from(new TextEncoder().encode(previous))
+        : [];
       localStorage.removeItem(key);
       return new KeyValueResultVariantOk(
         new KeyValueResponseVariantDelete(new ValueVariantBytes(prevBytes)),
       );
     }
     case KeyValueOperationVariantExists: {
-      const key = (operation as KeyValueOperationVariantExists).value;
+      const key = (operation as KeyValueOperationVariantExists).key;
       const exists = localStorage.getItem(key) !== null;
       return new KeyValueResultVariantOk(
         new KeyValueResponseVariantExists(exists),
       );
     }
     case KeyValueOperationVariantListKeys: {
-      const { field0: prefix } =
-        operation as KeyValueOperationVariantListKeys;
+      const { prefix } = operation as KeyValueOperationVariantListKeys;
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);

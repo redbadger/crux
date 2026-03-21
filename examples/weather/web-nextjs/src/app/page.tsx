@@ -49,7 +49,7 @@ const Home: NextPage = () => {
         });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     /*once*/ [],
   );
 
@@ -64,20 +64,20 @@ const Home: NextPage = () => {
       <section className="container">
         {workflow instanceof WorkflowViewModelVariantHome && (
           <HomeView
-            weatherData={workflow.field0}
-            favorites={workflow.field1}
+            weatherData={workflow.weather_data}
+            favorites={workflow.favorites}
             core={core}
           />
         )}
         {workflow instanceof WorkflowViewModelVariantFavorites && (
           <FavoritesView
-            favorites={workflow.field0}
-            deleteConfirmation={workflow.field1}
+            favorites={workflow.favorites}
+            deleteConfirmation={workflow.delete_confirmation}
             core={core}
           />
         )}
         {workflow instanceof WorkflowViewModelVariantAddFavorite && (
-          <AddFavoriteView searchResults={workflow.field0} core={core} />
+          <AddFavoriteView searchResults={workflow.search_results} core={core} />
         )}
       </section>
     </main>
@@ -93,10 +93,10 @@ function HomeView({
   favorites: unknown[];
   core: React.RefObject<Core | null>;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const wd = weatherData as any;
   const hasData = wd && wd.cod === 200;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const favs = favorites as any[];
 
   return (
@@ -179,7 +179,7 @@ function FavoritesView({
   deleteConfirmation: unknown;
   core: React.RefObject<Core | null>;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const favs = favorites as any[];
 
   useEffect(() => {
@@ -288,7 +288,7 @@ function AddFavoriteView({
   core: React.RefObject<Core | null>;
 }) {
   const [searchText, setSearchText] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const results = searchResults as any[] | null;
 
   return (
