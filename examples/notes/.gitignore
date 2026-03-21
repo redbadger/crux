@@ -1,2 +1,6 @@
 /target
 generated
+*.xcodeproj
+.vscode
+.bacon-locations
+.env

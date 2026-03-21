@@ -1,0 +1,92 @@
+mod lib '../../lib.just'
+
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-tool rustup "https://rustup.rs"
+    @just lib::check-tool java "install JDK 17+"
+    @just _check-java-version
+    @just lib::check-tool sdkmanager "install Android SDK command-line tools"
+
+# install Android Rust cross-compilation targets
+install-targets:
+    @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
+    TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \
+    echo "  Toolchain: $TOOLCHAIN" ; \
+    rustup target add --toolchain "$TOOLCHAIN" \
+        aarch64-linux-android \
+        armv7-linux-androideabi \
+        i686-linux-android \
+        x86_64-linux-android
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    @echo "  No auto-fix configured for Android Gradle sources"
+
+# validate Android lint checks (requires generated types)
+check: typegen
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    ./gradlew --no-daemon :app:lintDebug
+
+# build the shared library so uniffi-bindgen can inspect it
+build-shared:
+    @echo '{{ style("command") }}build-shared:{{ NORMAL }}'
+    cargo build --features uniffi
+
+# generate Kotlin types and uniffi bindings
+typegen: build-shared
+    @echo '{{ style("command") }}typegen:{{ NORMAL }}'
+    RUST_LOG=info cargo run \
+        --package shared \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language kotlin \
+            --output-dir generated
+
+# build the Android debug APK (generates types first)
+build: typegen
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    ./gradlew --no-daemon :app:assembleDebug
+
+# run Android JVM unit tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    ./gradlew --no-daemon :app:testDebugUnitTest
+
+# remove build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    ./gradlew --no-daemon clean
+    rm -rf generated
+
+# open in Android Studio (macOS)
+open:
+    @echo '{{ style("command") }}open:{{ NORMAL }}'
+    open -b com.google.android.studio .
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test
+
+# (internal) check that the java major version is between 17 and 24
+[no-cd]
+_check-java-version:
+    #!/usr/bin/env bash
+    if ! command -v java &> /dev/null; then exit 0; fi
+    ver=$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')
+    if [ "$ver" -ge 17 ] && [ "$ver" -le 24 ] 2>/dev/null; then
+        echo "  ✓ java version $ver (17–24)"
+    else
+        echo "  {{ style("error") }}✗ java version $ver — need 17–24 (Gradle does not support 25+){{ NORMAL }}"
+    fi

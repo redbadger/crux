@@ -1,0 +1,30 @@
+mod lib 'lib.just'
+
+default: dev
+
+examples := "counter counter-http counter-middleware notes weather"
+
+# checks required tools across all examples
+doctor:
+    #!/usr/bin/env bash
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"':{{ NORMAL }}'
+        just "$example/doctor"
+        echo ''
+    done
+
+# local development workflow
+dev:
+    #!/usr/bin/env bash
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"'/dev:{{ NORMAL }}'
+        just "$example/dev"
+    done
+
+# CI workflow
+ci:
+    #!/usr/bin/env bash
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"'/ci:{{ NORMAL }}'
+        just "$example/ci"
+    done

@@ -1,0 +1,47 @@
+name: NotesApp
+packages:
+  Shared:
+    path: ./generated/Shared
+  App:
+    path: ./generated/App
+options:
+  bundleIdPrefix: com.crux.examples.notes
+attributes:
+  BuildIndependentTargetsInParallel: true
+
+targetTemplates:
+  app:
+    type: application
+    sources:
+      - path: NotesApp
+        excludes:
+          - "Info-*.plist"
+    dependencies:
+      - package: Shared
+      - package: App
+
+targets:
+  NotesApp-iOS:
+    templates: [app]
+    platform: iOS
+    deploymentTarget: 18.0
+    info:
+      path: NotesApp/Info-iOS.plist
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UILaunchScreen: {}
+
+  NotesApp-macOS:
+    templates: [app]
+    platform: macOS
+    deploymentTarget: "15.0"
+    info:
+      path: NotesApp/Info-macOS.plist
+      properties:
+        NSSupportsAutomaticGraphicsSwitching: true
+    settings:
+      OTHER_LDFLAGS: [-w]
+      ENABLE_USER_SCRIPT_SANDBOXING: NO
