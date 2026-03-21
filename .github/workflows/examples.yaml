@@ -184,6 +184,8 @@ jobs:
 
       - name: CI
         run: just ${{ matrix.shell }}/ci
+        env:
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
 
   # Tauri desktop shell. Needs: Rust, Node.js, pnpm, GTK/WebKit system libs.
   # Only counter has this shell, so no matrix needed.
