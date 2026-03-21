@@ -9,8 +9,7 @@ default: dev
 # checks required tools are installed
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
-    @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool cargo-nextest "cargo install cargo-nextest"
+    @just lib::check-shared
 
 # auto-fix formatting issues
 fix:

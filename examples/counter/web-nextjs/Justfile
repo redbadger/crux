@@ -9,10 +9,7 @@ default: dev
 # checks required tools are installed
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
-    @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool wasm-pack "cargo install wasm-pack"
-    @just lib::check-tool node "https://nodejs.org"
-    @just lib::check-tool pnpm "npm install -g pnpm"
+    @just lib::check-web-wasm
 
 # auto-fix formatting issues
 fix: install

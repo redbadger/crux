@@ -9,11 +9,7 @@ default: dev
 # checks required tools are installed
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
-    @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool rustup "https://rustup.rs"
-    @just lib::check-tool java "install JDK 17+"
-    @just _check-java-version
-    @just lib::check-tool sdkmanager "install Android SDK command-line tools"
+    @just lib::check-android
 
 # install Android Rust cross-compilation targets
 install-targets:
@@ -78,15 +74,3 @@ dev: fix check build test
 
 # CI workflow
 ci: check build test
-
-# (internal) check that the java major version is between 17 and 24
-[no-cd]
-_check-java-version:
-    #!/usr/bin/env bash
-    if ! command -v java &> /dev/null; then exit 0; fi
-    ver=$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')
-    if [ "$ver" -ge 17 ] && [ "$ver" -le 24 ] 2>/dev/null; then
-        echo "  ✓ java version $ver (17–24)"
-    else
-        echo "  {{ style("error") }}✗ java version $ver — need 17–24 (Gradle does not support 25+){{ NORMAL }}"
-    fi

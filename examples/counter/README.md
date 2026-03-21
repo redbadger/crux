@@ -1,19 +1,34 @@
-# Simple Counter example
+# Counter example
 
-Simple counter example, with tests.
+Simple counter example, with tests. This is the starting point for understanding
+Crux.
 
-### Notes:
+## Architecture
 
-1. This example currently depends on the `pnpm` package manager when generating
-   types for TypeScript. We are currently revisiting the type generation for
-   foreign types and so this requirement will probably go, but for now, please
-   [install `pnpm`](https://pnpm.io/installation).
+The `shared` directory is a crate that implements the shared crux core. It contains:
 
-## Simple Counter
+- An `Event` with three variants: `Increment`, `Decrement` and `Reset`
+- A `Model` with a `count` field
+- Tests that ensure events update the `Model` correctly and produce the desired
+  effects.
 
-There are 3 events — `Increment`, `Decrement` and `Reset` that operate on a
-simple model struct with a `count` field.
+## Shells
 
-There are tests to demonstrate how sending these events to the core, performs
-the selected operation on the model and then uses the `Render` capability to ask
-the UI to re-render.
+- SwiftUI (iOS/macOS) — `apple/`
+- Android/Kotlin — `Android/`
+- Leptos — `web-leptos/`
+- NextJS — `web-nextjs/`
+- Yew — `web-yew/`
+- Dioxus — `web-dioxus/`
+- React Router — `web-react-router/`
+- Tauri — `tauri/`
+- TUI (ratatui) — `tui/`
+
+## Running
+
+1. Choose a shell you're interested in, i.e. `apple` or `Android`.
+2. In the shell's directory, run `just doctor` to make sure you have the right
+  tools installed
+3. Run `just dev` to generate code and build that shell
+4. For `apple` and `Android` shells, open the IDE. For others, run `just serve`
+  in the shell directory.

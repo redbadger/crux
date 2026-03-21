@@ -9,11 +9,7 @@ default: dev
 # checks required tools are installed
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
-    @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool cargo-swift "cargo install cargo-swift --version '=0.9'"
-    @just lib::check-tool xcodegen "brew install xcodegen"
-    @just lib::check-tool xcodebuild "install Xcode from the App Store"
-    @just lib::check-tool swiftlint "brew install swiftlint"
+    @just lib::check-apple
 
 # installs Rust targets required for Apple packaging with cargo-swift
 install-targets:
