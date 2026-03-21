@@ -1,0 +1,49 @@
+name: WeatherApp
+packages:
+  Shared:
+    path: ./generated/Shared
+  App:
+    path: ./generated/App
+options:
+  bundleIdPrefix: com.crux.examples.weather
+attributes:
+  BuildIndependentTargetsInParallel: true
+
+targetTemplates:
+  app:
+    type: application
+    sources:
+      - path: WeatherApp
+        excludes:
+          - "Info-*.plist"
+    dependencies:
+      - package: Shared
+      - package: App
+
+targets:
+  WeatherApp-iOS:
+    templates: [app]
+    platform: iOS
+    deploymentTarget: 18.0
+    info:
+      path: WeatherApp/Info-iOS.plist
+      properties:
+        NSLocationWhenInUseUsageDescription: "This app needs access to your location to provide weather information."
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UILaunchScreen: {}
+
+  WeatherApp-macOS:
+    templates: [app]
+    platform: macOS
+    deploymentTarget: "15.0"
+    info:
+      path: WeatherApp/Info-macOS.plist
+      properties:
+        NSLocationWhenInUseUsageDescription: "This app needs access to your location to provide weather information."
+        NSSupportsAutomaticGraphicsSwitching: true
+    settings:
+      OTHER_LDFLAGS: [-w]
+      ENABLE_USER_SCRIPT_SANDBOXING: NO

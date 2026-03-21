@@ -35,15 +35,17 @@ struct FavoritesView: View {
             }
         }
         .navigationTitle("Favorites")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
+            ToolbarItem(placement: .automatic) {
                 Button(action: { core.update(.navigate(.home)) }) {
                     Image(systemName: "chevron.left")
                     Text("Home")
                 }
             }
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .automatic) {
                 Button(action: { core.update(.navigate(.addFavorite)) }) {
                     Image(systemName: "plus")
                 }

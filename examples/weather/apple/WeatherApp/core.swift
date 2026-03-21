@@ -2,7 +2,11 @@ import App
 import CoreLocation
 import Foundation
 import Shared
+#if canImport(UIKit)
 import UIKit
+#else
+import AppKit
+#endif
 import os.log
 
 // ANCHOR: core_base

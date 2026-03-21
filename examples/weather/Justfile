@@ -1,10 +1,30 @@
-build:
-    just iOS/build
-    just Android/build
+mod lib '../lib.just'
 
-clean:
-    just iOS/clean
-    just Android/clean
+default: dev
 
-test:
-    cargo nextest run
+shells := "shared apple Android web-leptos web-nextjs"
+
+# checks required tools across all shells
+doctor:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
+        just "$shell/doctor"
+        echo ''
+    done
+
+# local development workflow
+dev:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
+        just "$shell/dev"
+    done
+
+# CI workflow
+ci:
+    #!/usr/bin/env bash
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
+        just "$shell/ci"
+    done

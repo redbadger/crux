@@ -82,7 +82,7 @@ struct AddFavoriteView: View {
         }
         .navigationTitle("Add Favorite")
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
+            ToolbarItem(placement: .automatic) {
                 Button("Cancel") {
                     //                        core.update(.addFavorite(.cancel))
                     core.update(.navigate(.home))

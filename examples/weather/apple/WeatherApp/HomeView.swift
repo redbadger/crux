@@ -52,7 +52,6 @@ struct HomeView: View {
                                 LoadingCard()
                             }
                         }
-                        .frame(width: UIScreen.main.bounds.width)
                         .tag(0)
 
                         // Favorite weather cards
@@ -65,15 +64,16 @@ struct HomeView: View {
                                     LoadingCard()
                                 }
                             }
-                            .frame(width: UIScreen.main.bounds.width)
                             .tag(idx + 1)
                         }
                     }
+                    #if os(iOS)
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+                    #endif
                 }
                 .padding(.vertical)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItem(placement: .automatic) {
                         Button {
                             withAnimation(.easeOut(duration: 0.2)) {
                                 core.update(.navigate(.favorites(FavoritesState.idle)))

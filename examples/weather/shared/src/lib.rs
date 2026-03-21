@@ -1,14 +1,15 @@
-#![allow(clippy::missing_panics_doc)]
-
-mod app;
+pub mod app;
 mod config;
-mod favorites;
+pub mod favorites;
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 mod ffi;
-mod location;
-mod weather;
+pub mod location;
+pub mod weather;
 
-pub use app::Weather;
+pub use app::*;
+pub use crux_core::Core;
+pub use crux_http as http;
+pub use crux_kv as kv;
 
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 pub use ffi::CoreFFI;
