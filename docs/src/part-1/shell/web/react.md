@@ -93,17 +93,6 @@ pnpm install
 
 ## Create some UI
 
-```admonish example
-There are other, more advanced,
-[examples](https://github.com/redbadger/crux/tree/master/examples)
-of Next.js apps in the Crux repository.
-
-However, we will use the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter),
-which has a `shared` library that will work with the
-following example code.
-```
-
 ### Counter example
 
 A simple app that increments, decrements and resets a

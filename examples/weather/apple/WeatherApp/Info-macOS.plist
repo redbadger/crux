@@ -22,5 +22,7 @@
 	<string>This app needs access to your location to provide weather information.</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+	<key>OPENWEATHER_API_KEY</key>
+	<string>$(OPENWEATHER_API_KEY)</string>
 </dict>
 </plist>

@@ -16,6 +16,13 @@ targetTemplates:
       - path: WeatherApp
         excludes:
           - "Info-*.plist"
+    scheme:
+      management:
+        shared: true
+      environmentVariables:
+        - variable: OPENWEATHER_API_KEY
+          value: your_api_key_here
+          isEnabled: true
     dependencies:
       - package: Shared
       - package: App
@@ -28,6 +35,7 @@ targets:
     info:
       path: WeatherApp/Info-iOS.plist
       properties:
+        OPENWEATHER_API_KEY: $(OPENWEATHER_API_KEY)
         NSLocationWhenInUseUsageDescription: "This app needs access to your location to provide weather information."
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -42,6 +50,7 @@ targets:
     info:
       path: WeatherApp/Info-macOS.plist
       properties:
+        OPENWEATHER_API_KEY: $(OPENWEATHER_API_KEY)
         NSLocationWhenInUseUsageDescription: "This app needs access to your location to provide weather information."
         NSSupportsAutomaticGraphicsSwitching: true
     settings:

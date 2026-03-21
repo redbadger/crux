@@ -16,6 +16,9 @@ targetTemplates:
       - path: NotesApp
         excludes:
           - "Info-*.plist"
+    scheme:
+      management:
+        shared: true
     dependencies:
       - package: Shared
       - package: App
