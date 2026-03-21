@@ -25,6 +25,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModelProvider
+import com.crux.example.notes.Event
+import com.crux.example.notes.ViewModel
 import com.crux.examples.notes.ui.theme.NotesTheme
 import kotlinx.coroutines.launch
 

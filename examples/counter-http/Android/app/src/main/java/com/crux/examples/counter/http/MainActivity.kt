@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.crux.examples.counter.Event
 import com.crux.examples.counter.http.core.Core
 import com.example.counter.ui.theme.CounterTheme
 import org.koin.android.ext.android.inject

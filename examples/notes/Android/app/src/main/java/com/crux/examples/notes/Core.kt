@@ -10,6 +10,18 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.viewModelScope
+import com.crux.example.notes.Effect
+import com.crux.example.notes.Event
+import com.crux.example.notes.KeyValueOperation
+import com.crux.example.notes.KeyValueResponse
+import com.crux.example.notes.KeyValueResult
+import com.crux.example.notes.PubSubOperation
+import com.crux.example.notes.Request
+import com.crux.example.notes.Requests
+import com.crux.example.notes.TimeRequest
+import com.crux.example.notes.TimeResponse
+import com.crux.example.notes.Value
+import com.crux.example.notes.ViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
@@ -83,7 +95,7 @@ open class Core(private val dataStore: DataStore<Preferences>) : androidx.lifecy
                 } else {
                     ByteArray(0)
                 }
-                KeyValueResult.Ok(KeyValueResponse.Get(Value.Bytes(bytes.toList())))
+                KeyValueResult.Ok(KeyValueResponse.Get(Value.Bytes(bytes.toUByteArray().toList())))
             }
             is KeyValueOperation.Set -> {
                 val key = stringPreferencesKey(operation.key)
@@ -94,10 +106,10 @@ open class Core(private val dataStore: DataStore<Preferences>) : androidx.lifecy
                     ByteArray(0)
                 }
                 val encoded = Base64.encodeToString(
-                    operation.value.toByteArray(), Base64.DEFAULT
+                    operation.value.map { it.toByte() }.toByteArray(), Base64.DEFAULT
                 )
                 dataStore.edit { it[key] = encoded }
-                KeyValueResult.Ok(KeyValueResponse.Set(Value.Bytes(previousBytes.toList())))
+                KeyValueResult.Ok(KeyValueResponse.Set(Value.Bytes(previousBytes.toUByteArray().toList())))
             }
             is KeyValueOperation.Delete -> {
                 val key = stringPreferencesKey(operation.key)
@@ -108,7 +120,7 @@ open class Core(private val dataStore: DataStore<Preferences>) : androidx.lifecy
                     ByteArray(0)
                 }
                 dataStore.edit { it.remove(key) }
-                KeyValueResult.Ok(KeyValueResponse.Delete(Value.Bytes(previousBytes.toList())))
+                KeyValueResult.Ok(KeyValueResponse.Delete(Value.Bytes(previousBytes.toUByteArray().toList())))
             }
             is KeyValueOperation.Exists -> {
                 val key = stringPreferencesKey(operation.key)
@@ -137,11 +149,11 @@ open class Core(private val dataStore: DataStore<Preferences>) : androidx.lifecy
                     val response = TimeResponse.DurationElapsed(timerId)
                     resolveEffects(requestId, response.bincodeSerialize())
                 }
-                timerJobs[timerId] = job
+                timerJobs[timerId.value] = job
             }
             is TimeRequest.Clear -> {
-                timerJobs[operation.id]?.cancel()
-                timerJobs.remove(operation.id)
+                timerJobs[operation.id.value]?.cancel()
+                timerJobs.remove(operation.id.value)
             }
             else -> {
                 Log.w("Notes", "Unhandled time request: $operation")

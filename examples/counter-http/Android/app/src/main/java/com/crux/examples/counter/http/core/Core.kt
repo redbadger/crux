@@ -1,12 +1,12 @@
 package com.crux.examples.counter.http.core
 
 import android.util.Log
+import com.crux.examples.counter.Effect
+import com.crux.examples.counter.Event
+import com.crux.examples.counter.Request
+import com.crux.examples.counter.Requests
+import com.crux.examples.counter.ViewModel
 import com.crux.examples.counter.http.CoreFfi
-import com.crux.examples.counter.http.Effect
-import com.crux.examples.counter.http.Event
-import com.crux.examples.counter.http.Request
-import com.crux.examples.counter.http.Requests
-import com.crux.examples.counter.http.ViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

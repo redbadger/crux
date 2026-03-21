@@ -8,7 +8,7 @@ class Core: ObservableObject {
     @Published var view: ViewModel
     private let logger = Logger(subsystem: "com.crux.examples.notes", category: "Core")
     private var core: CoreFfi
-    private var timerTasks: [UInt64: Task<Void, Never>] = [:]
+    private var timerTasks: [TimerId: Task<Void, Never>] = [:]
 
     init() {
         logger.info("Initializing Core")
@@ -100,8 +100,35 @@ class Core: ObservableObject {
 
     private func handleTime(_ request: Request, _ timeReq: TimeRequest) {
         switch timeReq {
+        case .now:
+            let now = Date()
+            let interval = now.timeIntervalSince1970
+            let seconds = UInt64(interval)
+            let nanos = UInt32((interval - Double(seconds)) * 1_000_000_000)
+            let response = TimeResponse.now(instant: Instant(seconds: seconds, nanos: nanos))
+            // swiftlint:disable:next force_try
+            let data = Data(try! response.bincodeSerialize())
+            resolveEffects(request.id, data)
+
+        case .notifyAt(let id, let instant):
+            let targetDate = Date(
+                timeIntervalSince1970: Double(instant.seconds) + Double(instant.nanos) / 1_000_000_000
+            )
+            let delay = max(0, targetDate.timeIntervalSinceNow)
+            logger.debug("Timer \(id.value) set for instant")
+
+            let task = Task {
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                let response = TimeResponse.instantArrived(id: id)
+                // swiftlint:disable:next force_try
+                let data = Data(try! response.bincodeSerialize())
+                self.resolveEffects(request.id, data)
+            }
+            timerTasks[id] = task
+
         case .notifyAfter(let id, let duration):
-            logger.debug("Timer \(id) set for \(duration.nanos)ns")
+            logger.debug("Timer \(id.value) set for \(duration.nanos)ns")
 
             let task = Task {
                 try? await Task.sleep(nanoseconds: duration.nanos)
@@ -114,7 +141,7 @@ class Core: ObservableObject {
             timerTasks[id] = task
 
         case .clear(let id):
-            logger.debug("Timer \(id) cleared")
+            logger.debug("Timer \(id.value) cleared")
             timerTasks[id]?.cancel()
             timerTasks.removeValue(forKey: id)
         }

@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.crux.examples.counter.ui.theme.CounterTheme
+import com.crux.examples.simplecounter.Event
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
