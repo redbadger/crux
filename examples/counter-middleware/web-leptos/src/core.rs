@@ -67,9 +67,12 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
         }
 
         Effect::Random(mut request) => {
-            let from = request.operation.0;
-            let to = request.operation.1;
-            let random = from + (js_sys::Math::random() * (to - from + 1) as f64) as isize;
+            #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+            let random = {
+                let from = request.operation.0;
+                let to = request.operation.1;
+                from + (js_sys::Math::random() * (to - from + 1) as f64) as isize
+            };
 
             for effect in core
                 .resolve(&mut request, RandomNumber(random))

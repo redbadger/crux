@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "bulma": "^1.0.4",
-    "eslint": "10.0.3",
+    "eslint": "^9.28.0",
     "eslint-config-next": "16.1.7",
     "next": "16.1.7",
     "react": "19.2.4",

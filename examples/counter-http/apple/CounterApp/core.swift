@@ -35,13 +35,13 @@ class Core: ObservableObject {
         case let .http(httpRequest):
             Task {
                 let result = await performHttpRequest(httpRequest)
-                // swiftlint:disable:next force_try
+                // swiftlint:disable force_try
                 let effects = [UInt8](self.core.resolve(
                     request.id,
                     Data(try! result.bincodeSerialize())
                 ))
-                // swiftlint:disable:next force_try
                 let requests: [Request] = try! .bincodeDeserialize(input: effects)
+                // swiftlint:enable force_try
                 for request in requests {
                     self.processEffect(request)
                 }
@@ -95,13 +95,13 @@ class Core: ObservableObject {
                 if buffer.suffix(2) == Data([0x0A, 0x0A]) {
                     let response = SseResponse.chunk([UInt8](buffer))
                     buffer = Data()
-                    // swiftlint:disable:next force_try
+                    // swiftlint:disable force_try
                     let effects = [UInt8](self.core.resolve(
                         requestId,
                         Data(try! response.bincodeSerialize())
                     ))
-                    // swiftlint:disable:next force_try
                     let requests: [Request] = try! .bincodeDeserialize(input: effects)
+                    // swiftlint:enable force_try
                     for request in requests {
                         self.processEffect(request)
                     }
@@ -109,13 +109,13 @@ class Core: ObservableObject {
             }
 
             let done = SseResponse.done
-            // swiftlint:disable:next force_try
+            // swiftlint:disable force_try
             let effects = [UInt8](self.core.resolve(
                 requestId,
                 Data(try! done.bincodeSerialize())
             ))
-            // swiftlint:disable:next force_try
             let requests: [Request] = try! .bincodeDeserialize(input: effects)
+            // swiftlint:enable force_try
             for request in requests {
                 self.processEffect(request)
             }
