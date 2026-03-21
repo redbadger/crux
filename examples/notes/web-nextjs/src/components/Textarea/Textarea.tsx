@@ -47,23 +47,6 @@ const Textarea: FC<TextareaProps> = ({
   className,
 }) => {
   const taRef = useRef(null);
-  useEffect(() => {
-    if (taRef.current == null) return;
-    let ta: HTMLInputElement = taRef.current;
-
-    // Convert selection start and end to byte offsets
-
-    ta.selectionStart = ucToBytes(value, selectionStart);
-    ta.selectionEnd = ucToBytes(value, selectionEnd);
-
-    ta.addEventListener("beforeinput", onBeforeInput);
-    ta.addEventListener("input", onInput);
-
-    return () => {
-      ta.removeEventListener("beforeinput", onBeforeInput);
-      ta.removeEventListener("input", onInput);
-    };
-  });
 
   const beforeEdit = useRef<EditState>({
     selectionEnd: 0,
@@ -100,6 +83,24 @@ const Textarea: FC<TextareaProps> = ({
       text,
     });
   };
+
+  useEffect(() => {
+    if (taRef.current == null) return;
+    let ta: HTMLInputElement = taRef.current;
+
+    // Convert selection start and end to byte offsets
+
+    ta.selectionStart = ucToBytes(value, selectionStart);
+    ta.selectionEnd = ucToBytes(value, selectionEnd);
+
+    ta.addEventListener("beforeinput", onBeforeInput);
+    ta.addEventListener("input", onInput);
+
+    return () => {
+      ta.removeEventListener("beforeinput", onBeforeInput);
+      ta.removeEventListener("input", onInput);
+    };
+  });
 
   const localOnSelect = (event: SyntheticEvent) => {
     if (event.target == null) return;

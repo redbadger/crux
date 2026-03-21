@@ -118,12 +118,12 @@ const Home: NextPage = () => {
           }
         })();
 
+        const ch = channel.current;
         return () => {
-          channel.current.onmessage = null;
+          ch.onmessage = null;
         };
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ [],
   );
 

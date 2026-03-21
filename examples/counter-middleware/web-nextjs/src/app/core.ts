@@ -7,8 +7,8 @@ import {
   EffectVariantRender,
   EffectVariantServerSentEvents,
   Request,
-  ViewModel,
 } from "shared_types/app";
+import { ViewModel } from "shared_types/app/view_model";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types_serde/bincode";
 import * as http from "./http";
 import * as sse from "./sse";
