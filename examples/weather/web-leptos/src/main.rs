@@ -36,7 +36,7 @@ fn root_component() -> impl IntoView {
                             let set_event = set_event;
                             view! {
                                 <HomeView
-                                    weather_data=weather_data
+                                    weather_data=*weather_data
                                     favorites=favorites
                                     set_event=set_event
                                 />
@@ -70,11 +70,11 @@ fn root_component() -> impl IntoView {
 
 #[component]
 fn home_view(
-    weather_data: Box<shared::weather::model::current_response::CurrentWeatherResponse>,
+    weather_data: shared::weather::model::current_response::CurrentWeatherResponse,
     favorites: Vec<shared::FavoriteView>,
     set_event: WriteSignal<Event>,
 ) -> impl IntoView {
-    let wd = *weather_data;
+    let wd = weather_data;
     let has_data = wd.cod == 200;
 
     view! {

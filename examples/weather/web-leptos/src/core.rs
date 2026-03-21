@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use leptos::{prelude::*, task};
 
-use shared::{Weather, Effect, Event, ViewModel};
+use shared::{Effect, Event, ViewModel, Weather};
 
 use crate::{http, kv, location};
 
@@ -21,7 +21,6 @@ pub fn update(core: &Core, event: Event, render: WriteSignal<ViewModel>) {
 }
 
 pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
-
     match effect {
         Effect::Render(_) => {
             render.update(|view| *view = core.view());

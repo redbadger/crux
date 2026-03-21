@@ -1,6 +1,9 @@
 use wasm_bindgen::prelude::*;
 
-use shared::location::{Location, capability::{LocationOperation, LocationResult}};
+use shared::location::{
+    Location,
+    capability::{LocationOperation, LocationResult},
+};
 
 #[allow(clippy::future_not_send)] // WASM is single-threaded
 pub async fn handle(operation: &LocationOperation) -> LocationResult {
@@ -11,12 +14,10 @@ pub async fn handle(operation: &LocationOperation) -> LocationResult {
                 .is_some();
             LocationResult::Enabled(enabled)
         }
-        LocationOperation::GetLocation => {
-            match get_current_position().await {
-                Ok((lat, lon)) => LocationResult::Location(Some(Location { lat, lon })),
-                Err(_) => LocationResult::Location(None),
-            }
-        }
+        LocationOperation::GetLocation => match get_current_position().await {
+            Ok((lat, lon)) => LocationResult::Location(Some(Location { lat, lon })),
+            Err(_) => LocationResult::Location(None),
+        },
     }
 }
 
@@ -66,7 +67,9 @@ fn oneshot<T>() -> (Sender<T>, Receiver<T>) {
         waker: None,
     }));
     (
-        Sender { shared: shared.clone() },
+        Sender {
+            shared: shared.clone(),
+        },
         Receiver { shared },
     )
 }

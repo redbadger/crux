@@ -1,7 +1,4 @@
-use shared::kv::{
-    KeyValueOperation, KeyValueResponse, KeyValueResult,
-    value::Value,
-};
+use shared::kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, value::Value};
 
 fn get_local_storage() -> Option<web_sys::Storage> {
     web_sys::window()?.local_storage().ok()?
@@ -68,10 +65,10 @@ pub async fn handle(operation: &KeyValueOperation) -> KeyValueResult {
             if let Some(s) = storage {
                 let len = s.length().unwrap_or(0);
                 for i in 0..len {
-                    if let Ok(Some(key)) = s.key(i) {
-                        if key.starts_with(prefix) {
-                            keys.push(key);
-                        }
+                    if let Ok(Some(key)) = s.key(i)
+                        && key.starts_with(prefix)
+                    {
+                        keys.push(key);
                     }
                 }
             }
