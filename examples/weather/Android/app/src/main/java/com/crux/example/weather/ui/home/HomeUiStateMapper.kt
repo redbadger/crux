@@ -1,6 +1,6 @@
 package com.crux.example.weather.ui.home
 
-import com.crux.example.weather.CurrentResponse
+import com.crux.example.weather.CurrentWeatherResponse
 import com.crux.example.weather.WorkflowViewModel
 import java.time.Instant
 import java.util.Locale
@@ -29,18 +29,18 @@ class HomeUiStateMapper() {
         return pages
     }
 
-    private fun toPage(weatherData: CurrentResponse): HomePageUi {
+    private fun toPage(weatherData: CurrentWeatherResponse): HomePageUi {
         if (!isValidWeather(weatherData)) {
             return HomePageUi.Loading
         }
         return HomePageUi.Weather(toCardUi(weatherData))
     }
 
-    private fun isValidWeather(weatherData: CurrentResponse): Boolean {
+    private fun isValidWeather(weatherData: CurrentWeatherResponse): Boolean {
         return weatherData.cod == 200UL && weatherData.main.temp.isFinite()
     }
 
-    private fun toCardUi(weatherData: CurrentResponse): WeatherCardUi {
+    private fun toCardUi(weatherData: CurrentWeatherResponse): WeatherCardUi {
         val isDay = isDaytime(weatherData)
         val weather = weatherData.weather.firstOrNull()
         val condition = weather?.main
@@ -62,7 +62,7 @@ class HomeUiStateMapper() {
         )
     }
 
-    private fun isDaytime(weatherData: CurrentResponse): Boolean {
+    private fun isDaytime(weatherData: CurrentWeatherResponse): Boolean {
         val now = Instant.now().epochSecond
         return now >= weatherData.sys.sunrise.toLong() && now <= weatherData.sys.sunset.toLong()
     }
@@ -83,7 +83,7 @@ class HomeUiStateMapper() {
         }
     }
 
-    private fun weatherDetails(weatherData: CurrentResponse): List<WeatherDetailUi> {
+    private fun weatherDetails(weatherData: CurrentWeatherResponse): List<WeatherDetailUi> {
         return listOf(
             WeatherDetailUi(
                 type = WeatherDetailType.FeelsLike,
