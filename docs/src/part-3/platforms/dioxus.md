@@ -1,10 +1,5 @@
 # Web — Rust and Dioxus
 
-```admonish warning
-This was written for previous versions of Crux and needs updating. Proceed with caution.
-If you'd like to help update it, you'd be very welcome!
-```
-
 These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
@@ -87,7 +82,7 @@ for. In this simple example, we aren't calling any HTTP APIs or handling any
 side effects other than rendering the UI, so we just handle this render effect
 by updating the component's `view` hook with the core's ViewModel.
 
-Also note that because both our core and our shell are written in Rust (and run
+Because both our core and our shell are written in Rust (and run
 in the same memory space), we do not need to serialize and deserialize the data
 that we pass between them. We can just pass the data directly.
 
@@ -104,17 +99,16 @@ the
 in the Crux repository.
 ```
 
-Edit `src/main.rs` to look like the following. This code sets up the Dioxus app,
-and connects the core to the UI. Not only do we create a hook for the view state
-but we also create a coroutine that plugs in the Dioxus "service" we defined
-above to constantly send any events from the UI to the core.
+Edit `src/main.rs` to look like the following. This code sets up the Dioxus app
+and connects the core to the UI. We create a signal for the view state
+and a coroutine that receives events from the UI and forwards them to the core.
 
 ```rust,noplayground
 {{#include ../../../../examples/counter/web-dioxus/src/main.rs}}
 ```
 
-We can add a title and a stylesheet by editing
-`examples/counter/web-dioxus/Dioxus.toml`.
+We also need a `Dioxus.toml` configuration file to set up the app title and
+asset directory.
 
 ```toml
 {{#include ../../../../examples/counter/web-dioxus/Dioxus.toml}}

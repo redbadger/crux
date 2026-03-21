@@ -32,13 +32,15 @@
 
 1. [Middleware](./part-3/middleware.md)
 1. [Other platforms](./part-3/platforms.md)
-    1. [TypeScript and React Router](./part-3/platforms/remix.md)
+    1. [TypeScript and React Router](./part-3/platforms/react-router.md)
     1. [Rust and Yew](./part-3/platforms/yew.md)
     1. [Rust and Dioxus](./part-3/platforms/dioxus.md)
+    1. [Tauri](./part-3/platforms/tauri.md)
+    1. [Ratatui](./part-3/platforms/ratatui.md)
 
 # Part IV - Understanding Internals
 
-1. [Effects runtime](./part-4/runtime.md)
+1. [Command runtime](./part-4/runtime.md)
 1. [The Effect type](./part-4/effect.md)
 1. [Type generation](./part-4/typegen.md)
 
