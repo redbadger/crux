@@ -14,11 +14,16 @@ workspace = true
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 
+# ANCHOR: typegen_bin
 [[bin]]
 name = "codegen"
 required-features = ["codegen"]
+# ANCHOR_END: typegen_bin
 
+# ANCHOR: typegen
 [features]
+facet_typegen = ["crux_core/facet_typegen"]
+# ANCHOR_END: typegen
 uniffi = ["dep:uniffi"]
 wasm_bindgen = ["dep:wasm-bindgen", "getrandom/wasm_js"]
 codegen = [
@@ -28,12 +33,13 @@ codegen = [
     "dep:pretty_env_logger",
     "uniffi",
 ]
-facet_typegen = ["crux_core/facet_typegen"]
 
+# ANCHOR: typegen_deps
 [dependencies]
+facet = "=0.31"
+# ANCHOR_END: typegen_deps
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
-facet = "=0.31"
 
 # optional dependencies
 clap = { version = "4.6.0", optional = true, features = ["derive"] }

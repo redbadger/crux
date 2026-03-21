@@ -208,7 +208,26 @@ This is also why combining the Crux async runtime with something like Tokio will
 That said, a lot of universal async code (like async channels for example), work just fine.
 ```
 
-There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the API docs for the full coverage.
+### Cancelling commands
+
+Commands can be cancelled using an `AbortHandle`. Call `cmd.abort_handle()` to get
+a handle, store it in your model, and call `handle.abort()` later to cancel all
+tasks in the command. This is useful for things like cancelling an in-flight search
+when the user types a new query.
+
+```rust,ignore
+// In one event handler, start a command and store its abort handle
+let mut cmd = Http::get(url).expect_json().build().then_send(Event::Response);
+model.search_handle = Some(cmd.abort_handle());
+return cmd;
+
+// In a later event handler, cancel the previous command
+if let Some(handle) = model.search_handle.take() {
+    handle.abort();
+}
+```
+
+There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the [Command API docs](https://docs.rs/crux_core/latest/crux_core/command/index.html) for the full coverage.
 
 ## Migrating from previous versions of Crux
 

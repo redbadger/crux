@@ -41,10 +41,4 @@
 # Part IV - Understanding Internals
 
 1. [Command runtime](./part-4/runtime.md)
-1. [The Effect type](./part-4/effect.md)
 1. [Type generation](./part-4/typegen.md)
-
-# RFCs
-
-1. [Command API](./rfcs/command.md)
-1. [Typegen](./rfcs/typegen.md)
