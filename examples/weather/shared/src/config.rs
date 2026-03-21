@@ -5,7 +5,11 @@ pub static API_KEY: LazyLock<String> = LazyLock::new(|| {
     {
         "test_api_key".to_string()
     }
-    #[cfg(not(test))]
+    #[cfg(target_arch = "wasm32")]
+    {
+        env!("OPENWEATHER_API_KEY").to_string()
+    }
+    #[cfg(all(not(test), not(target_arch = "wasm32")))]
     {
         use std::env;
 

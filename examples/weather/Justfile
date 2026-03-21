@@ -1,4 +1,5 @@
 mod lib '../../lib.just'
+mod wlib 'weather-lib.just'
 
 default: dev
 
@@ -7,11 +8,19 @@ shells := "shared apple Android web-leptos web-nextjs"
 # checks required tools across all shells
 doctor:
     #!/usr/bin/env bash
+    echo '{{ style("command") }}.env:{{ NORMAL }}'
+    just wlib::check-env
+    echo ''
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
         just "$shell/doctor"
         echo ''
     done
+
+# sets up API key for Android (copies from .env to local.properties)
+setup:
+    @echo '{{ style("command") }}setup:{{ NORMAL }}'
+    just Android/setup
 
 # local development workflow
 dev:

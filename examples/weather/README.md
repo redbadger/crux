@@ -23,20 +23,52 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed breakdown.
 - Leptos — `web-leptos/`
 - NextJS — `web-nextjs/`
 
-## Running
+## Getting started
 
-1. Choose a shell you're interested in, i.e. `apple` or `Android`.
-2. In the shell's directory, run `just doctor` to make sure you have the right
-   tools installed
-3. Run `just dev` to generate code and build that shell
-4. For `apple` and `Android` shells, open the IDE. For others, run `just serve`
-   in the shell directory.
+### 1. Get an API key
 
-### API key
+Sign up for a free [OpenWeatherMap](https://openweathermap.org/appid) API key.
 
-The app requires an [OpenWeatherMap](https://openweathermap.org) API key. Set it as an environment variable
-before building:
+### 2. Create `.env`
+
+In the `examples/weather/` directory, create a `.env` file:
 
 ```sh
-export OPENWEATHER_API_KEY=your_api_key_here
+export OPENWEATHER_API_KEY=your_key_here
 ```
+
+### 3. Check prerequisites
+
+```sh
+just doctor
+```
+
+This checks that the required tools are installed and that `.env` is configured.
+
+### 4. Run a shell
+
+**Web shells** (Leptos or Next.js) — the `.env` is sourced automatically:
+
+```sh
+cd web-leptos  # or web-nextjs
+just serve
+```
+
+**Android** — run setup first to copy the key to `local.properties`:
+
+```sh
+just Android/setup   # or just run: just Android/dev
+```
+
+Then open in Android Studio (`just Android/open`) and run.
+
+**Apple** — the key is injected into the Xcode scheme when the project is
+generated:
+
+```sh
+cd apple
+just generate   # sources .env and runs xcodegen
+just open       # opens in Xcode
+```
+
+Then build and run from Xcode.

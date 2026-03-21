@@ -21,7 +21,7 @@ targetTemplates:
         shared: true
       environmentVariables:
         - variable: OPENWEATHER_API_KEY
-          value: your_api_key_here
+          value: ${OPENWEATHER_API_KEY}
           isEnabled: true
     dependencies:
       - package: Shared

@@ -98,7 +98,7 @@ function HomeView({
 }) {
    
   const wd = weatherData as any;
-  const hasData = wd && wd.cod === 200;
+  const hasData = wd && wd.cod == 200;
    
   const favs = favorites as any[];
 
@@ -121,7 +121,7 @@ function HomeView({
               </div>
               <div className="column is-one-third">
                 <p className="heading">Humidity</p>
-                <p>{wd.main.humidity}%</p>
+                <p>{Number(wd.main.humidity)}%</p>
               </div>
               <div className="column is-one-third">
                 <p className="heading">Wind</p>
@@ -129,15 +129,15 @@ function HomeView({
               </div>
               <div className="column is-one-third">
                 <p className="heading">Pressure</p>
-                <p>{wd.main.pressure} hPa</p>
+                <p>{Number(wd.main.pressure)} hPa</p>
               </div>
               <div className="column is-one-third">
                 <p className="heading">Clouds</p>
-                <p>{wd.clouds.all}%</p>
+                <p>{Number(wd.clouds.all)}%</p>
               </div>
               <div className="column is-one-third">
                 <p className="heading">Visibility</p>
-                <p>{Math.floor(wd.visibility / 1000)} km</p>
+                <p>{Math.floor(Number(wd.visibility) / 1000)} km</p>
               </div>
             </div>
           </div>
@@ -148,11 +148,31 @@ function HomeView({
       {favs.length > 0 && (
         <div className="box">
           <h3 className="title is-5">Favorites</h3>
-          {favs.map((fav, i) => (
-            <div key={i} className="box">
-              <strong>{fav.name}</strong>
-            </div>
-          ))}
+          {favs.map((fav, i) => {
+            const w = fav.current;
+            return (
+              <div key={i} className="box">
+                <strong>{fav.name}</strong>
+                {w ? (
+                  <div className="columns is-multiline mt-2">
+                    <div className="column is-one-third">
+                      <p className="is-size-3 has-text-weight-bold">
+                        {w.main.temp.toFixed(1)}&deg;
+                      </p>
+                    </div>
+                    <div className="column is-one-third">
+                      {w.weather?.[0] && <p>{w.weather[0].description}</p>}
+                    </div>
+                    <div className="column is-one-third">
+                      <p>Humidity: {Number(w.main.humidity)}%</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="has-text-grey">Loading...</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
       <div className="buttons is-centered mt-4">

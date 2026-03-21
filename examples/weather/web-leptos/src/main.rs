@@ -18,6 +18,7 @@ fn root_component() -> impl IntoView {
     let core = core::new();
     let (view, render) = signal(core.view());
     let (event, set_event) = signal(Event::Home(Box::new(WeatherEvent::Show)));
+    let (search_text, set_search_text) = signal(String::new());
 
     Effect::new(move |_| {
         core::update(&core, event.get(), render);
@@ -59,6 +60,8 @@ fn root_component() -> impl IntoView {
                                 <AddFavoriteView
                                     search_results=search_results
                                     set_event=set_event
+                                    search_text=search_text
+                                    set_search_text=set_search_text
                                 />
                             }.into_any()
                         }
@@ -136,7 +139,26 @@ fn home_view(
                         let name = fav.name.clone();
                         view! {
                             <div class="box">
-                                <strong>{name}</strong>
+                                <strong>{name.clone()}</strong>
+                                {if let Some(w) = *fav.current {
+                                    view! {
+                                        <div class="columns is-multiline mt-2">
+                                            <div class="column is-one-third">
+                                                <p class="is-size-3 has-text-weight-bold">{format!("{:.1}°", w.main.temp)}</p>
+                                            </div>
+                                            <div class="column is-one-third">
+                                                {w.weather.first().map(|wd| view! {
+                                                    <p>{wd.description.clone()}</p>
+                                                })}
+                                            </div>
+                                            <div class="column is-one-third">
+                                                <p>{format!("Humidity: {}%", w.main.humidity)}</p>
+                                            </div>
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! { <p class="has-text-grey">{"Loading..."}</p> }.into_any()
+                                }}
                             </div>
                         }
                     }).collect::<Vec<_>>()}
@@ -245,9 +267,9 @@ fn favorites_view(
 fn add_favorite_view(
     search_results: Option<Vec<GeocodingResponse>>,
     set_event: WriteSignal<Event>,
+    search_text: ReadSignal<String>,
+    set_search_text: WriteSignal<String>,
 ) -> impl IntoView {
-    let (search_text, set_search_text) = signal(String::new());
-
     view! {
         <div class="box">
             <h2 class="title is-4">{"Add Favorite"}</h2>

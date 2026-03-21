@@ -53,6 +53,7 @@ struct HomeView: View {
                             }
                         }
                         .tag(0)
+                        .tabItem { Label(weatherData.name.isEmpty ? "Current" : weatherData.name, systemImage: "location") }
 
                         // Favorite weather cards
                         ForEach(Array(favorites.enumerated()), id: \.element.name) { idx, favorite in
@@ -65,6 +66,7 @@ struct HomeView: View {
                                 }
                             }
                             .tag(idx + 1)
+                            .tabItem { Label(favorite.name, systemImage: "star") }
                         }
                     }
                     #if os(iOS)

@@ -108,6 +108,8 @@ jobs:
 
       - name: CI
         run: just ${{ matrix.shell }}/ci
+        env:
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
 
   # Dioxus WASM shell. Needs: Rust, wasm32 target, dioxus-cli.
   # Only counter has this shell, so no matrix needed.
