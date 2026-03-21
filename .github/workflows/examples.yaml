@@ -182,10 +182,14 @@ jobs:
         with:
           version: latest
 
-      - name: CI
-        run: just ${{ matrix.shell }}/ci
+      - name: Create .env for weather
+        if: matrix.example == 'weather'
+        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
         env:
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+
+      - name: CI
+        run: just ${{ matrix.shell }}/ci
 
   # Tauri desktop shell. Needs: Rust, Node.js, pnpm, GTK/WebKit system libs.
   # Only counter has this shell, so no matrix needed.
