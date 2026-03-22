@@ -271,6 +271,12 @@ jobs:
       - name: Install cargo-swift
         run: cargo install cargo-swift --version '=0.9'
 
+      - name: Create .env for weather
+        if: matrix.example == 'weather'
+        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
+        env:
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+
       - name: CI
         run: just apple/ci
 
