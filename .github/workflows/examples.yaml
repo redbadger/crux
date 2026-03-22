@@ -55,7 +55,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Remove rust-toolchain.toml
         run: rm ../../rust-toolchain.toml
@@ -92,7 +92,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Remove rust-toolchain.toml
         run: rm ../../rust-toolchain.toml
@@ -125,7 +125,7 @@ jobs:
         working-directory: examples/counter
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Remove rust-toolchain.toml
         run: rm ../../rust-toolchain.toml
@@ -165,7 +165,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Remove rust-toolchain.toml
         run: rm ../../rust-toolchain.toml
@@ -178,7 +178,7 @@ jobs:
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@wasm-pack
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
 
@@ -205,7 +205,7 @@ jobs:
         working-directory: examples/counter
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: |
@@ -220,7 +220,7 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - uses: taiki-e/install-action@just
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
 
@@ -253,7 +253,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Remove rust-toolchain.toml
         run: rm ../../rust-toolchain.toml
@@ -300,7 +300,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Remove rust-toolchain.toml
         run: rm ../../rust-toolchain.toml
