@@ -20,12 +20,12 @@ uniffi = ["dep:uniffi", "dep:rand", "dep:getrandom"]
 wasm_bindgen = ["dep:wasm-bindgen", "getrandom/wasm_js", "dep:js-sys"]
 wit_bindgen = ["dep:wit-bindgen", "facet_typegen"]
 codegen = [
-    "crux_core/cli",
-    "dep:clap",
-    "dep:log",
-    "dep:pretty_env_logger",
-    "uniffi",
-    "facet_typegen",
+  "crux_core/cli",
+  "dep:clap",
+  "dep:log",
+  "dep:pretty_env_logger",
+  "uniffi",
+  "facet_typegen",
 ]
 facet_typegen = ["crux_core/facet_typegen"]
 
@@ -42,7 +42,7 @@ url = "2.5.8"
 
 # optional dependencies
 clap = { version = "4.6.0", optional = true, features = ["derive"] }
-getrandom = { version = "=0.3.4", optional = true, default-features = false }
+getrandom = { version = "=0.3", optional = true, default-features = false }
 js-sys = { version = "0.3.91", optional = true }
 log = { version = "0.4.29", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
