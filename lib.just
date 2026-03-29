@@ -91,24 +91,15 @@ check-web-trunk:
     @just lib::check-rust-target wasm32-unknown-unknown
 
 # Open the current directory in Android Studio
-[script('sh'), unix, no-cd]
+[unix, no-cd]
 open-android-studio:
     echo '{{ style("command") }}open:{{ NORMAL }}'
-    case "$(uname -s)" in
-        Darwin*) open -b com.google.android.studio . ;;
-        *)       studio . ;;
-    esac
+    open -b com.google.android.studio .
 
-[script('powershell'), windows, no-cd]
+[windows, no-cd]
 open-android-studio:
-    Write-Host '{{ style("command") }}open:{{ NORMAL }}'
-    $studio = "${env:PROGRAMFILES}\Android\Android Studio\bin\studio64.exe"
-    if (Test-Path $studio) {
-        Start-Process $studio -ArgumentList "."
-    } else {
-        Write-Error "Cannot find Android Studio at: $studio"
-        exit 1
-    }
+    @echo '{{ style("command") }}open:{{ NORMAL }}'
+    studio64 .
 
 # Check tools for shared crate
 [no-cd]
