@@ -32,15 +32,15 @@ This example has two FFI bridges that wire up the core differently:
 ## Shells
 
 - SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `Android/`
+- Android/Kotlin — `android/`
 - Leptos — `web-leptos/`
 - NextJS — `web-nextjs/`
 
 ## Running
 
-1. Choose a shell you're interested in, i.e. `apple` or `Android`.
+1. Choose a shell you're interested in, i.e. `apple` or `android`.
 2. In the shell's directory, run `just doctor` to make sure you have the right
    tools installed
 3. Run `just dev` to generate code and build that shell
-4. For `apple` and `Android` shells, open the IDE. For others, run `just serve`
+4. For `apple` and `android` shells, open the IDE. For others, run `just serve`
    in the shell directory.

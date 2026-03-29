@@ -35,7 +35,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed breakdown.
 ## Shells
 
 - SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `Android/`
+- Android/Kotlin — `android/`
 - Leptos — `web-leptos/`
 - Next.js — `web-nextjs/`
 
@@ -79,12 +79,12 @@ just serve
 Run setup to copy the API key to `local.properties`, then open Android Studio:
 
 ```sh
-just Android/setup
-just Android/open
+just android/setup
+just android/open
 ```
 
 Build and run from Android Studio. (The `setup` step is also included in
-`just Android/dev`.)
+`just android/dev`.)
 
 ### Apple (iOS/macOS)
 

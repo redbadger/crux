@@ -10,7 +10,7 @@ The Weather App is built using the **Crux framework**, demonstrating clean separ
 graph TB
     subgraph "Shells"
         Apple[apple/<br/>SwiftUI]
-        Android[Android/<br/>Jetpack Compose]
+        Android[android/<br/>Jetpack Compose]
         Leptos[web-leptos/<br/>Leptos]
         NextJS[web-nextjs/<br/>Next.js]
     end
