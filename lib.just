@@ -2,20 +2,18 @@
 # Import with: mod lib '../lib.just' (adjust path as needed)
 
 # Check if a tool is installed, report status (does not fail build)
-[no-cd]
+[script('sh'), no-cd]
 check-tool tool install_cmd:
-    #!/usr/bin/env bash
-    if command -v {{ tool }} &> /dev/null; then
+    if command -v {{ tool }} >/dev/null 2>&1; then
         echo '  ✓ {{ tool }}'
     else
         echo '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}'
     fi
 
 # Check if a tool is installed, report status, and fail if missing
-[no-cd]
+[script('sh'), no-cd]
 require-tool tool install_cmd:
-    #!/usr/bin/env bash
-    if command -v {{ tool }} &> /dev/null; then
+    if command -v {{ tool }} >/dev/null 2>&1; then
         echo '  ✓ {{ tool }}'
     else
         echo '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}'
@@ -23,9 +21,8 @@ require-tool tool install_cmd:
     fi
 
 # Check if a file exists, report status (does not fail build)
-[no-cd]
+[script('sh'), no-cd]
 check-file file setup_cmd:
-    #!/usr/bin/env bash
     if [ -f {{ file }} ]; then
         echo '  ✓ {{ file }}'
     else
@@ -33,9 +30,8 @@ check-file file setup_cmd:
     fi
 
 # Check if a Rust target is installed
-[no-cd]
+[script('sh'), no-cd]
 check-rust-target target:
-    #!/usr/bin/env bash
     if rustup target list --installed 2>/dev/null | grep -q '{{ target }}'; then
         echo '  ✓ {{ target }}'
     else
@@ -43,10 +39,9 @@ check-rust-target target:
     fi
 
 # (internal) check java version is between 17 and 24
-[no-cd]
+[script('sh'), no-cd]
 _check-java-version:
-    #!/usr/bin/env bash
-    if ! command -v java &> /dev/null; then exit 0; fi
+    if ! command -v java >/dev/null 2>&1; then exit 0; fi
     ver=$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')
     if [ "$ver" -ge 17 ] && [ "$ver" -le 24 ] 2>/dev/null; then
         echo "  ✓ java version $ver (17–24)"
@@ -94,6 +89,26 @@ check-web-trunk:
     @just lib::check-tool cargo "https://rustup.rs"
     @just lib::check-tool trunk "cargo install trunk"
     @just lib::check-rust-target wasm32-unknown-unknown
+
+# Open the current directory in Android Studio
+[script('sh'), unix, no-cd]
+open-android-studio:
+    echo '{{ style("command") }}open:{{ NORMAL }}'
+    case "$(uname -s)" in
+        Darwin*) open -b com.google.android.studio . ;;
+        *)       studio . ;;
+    esac
+
+[script('powershell'), windows, no-cd]
+open-android-studio:
+    Write-Host '{{ style("command") }}open:{{ NORMAL }}'
+    $studio = "${env:PROGRAMFILES}\Android\Android Studio\bin\studio64.exe"
+    if (Test-Path $studio) {
+        Start-Process $studio -ArgumentList "."
+    } else {
+        Write-Error "Cannot find Android Studio at: $studio"
+        exit 1
+    }
 
 # Check tools for shared crate
 [no-cd]

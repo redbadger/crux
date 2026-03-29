@@ -70,7 +70,6 @@ dev: fix check build test
 # CI workflow
 ci: check build test
 
-# open in Android Studio (macOS)
+# open in Android Studio
 open:
-    @echo '{{ style("command") }}open:{{ NORMAL }}'
-    open -b com.google.android.studio .
+    @just lib::open-android-studio

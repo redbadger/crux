@@ -5,8 +5,8 @@ default: dev
 shells := "shared web-nextjs"
 
 # checks required tools across all shells
+[script('sh')]
 doctor:
-    #!/usr/bin/env bash
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
         just "$shell/doctor"
@@ -14,16 +14,16 @@ doctor:
     done
 
 # local development workflow
+[script('sh')]
 dev:
-    #!/usr/bin/env bash
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
         just "$shell/dev"
     done
 
 # CI workflow
+[script('sh')]
 ci:
-    #!/usr/bin/env bash
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
         just "$shell/ci"

@@ -14,8 +14,8 @@ doctor:
     @just wlib::check-env
 
 # copies API key from .env to local.properties
+[script('sh'), unix]
 setup:
-    #!/usr/bin/env bash
     set -euo pipefail
     echo '{{ style("command") }}setup:{{ NORMAL }}'
     . ../.env
@@ -25,11 +25,40 @@ setup:
     fi
     touch local.properties
     if grep -q '^OPENWEATHER_API_KEY=' local.properties 2>/dev/null; then
-        sed -i '' "s/^OPENWEATHER_API_KEY=.*/OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}/" local.properties
+        tmp=$(mktemp)
+        sed "s/^OPENWEATHER_API_KEY=.*/OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}/" local.properties > "$tmp"
+        mv "$tmp" local.properties
     else
         echo "OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}" >> local.properties
     fi
     echo "  API key written to local.properties"
+
+[script('powershell'), windows]
+setup:
+    Write-Host '{{ style("command") }}setup:{{ NORMAL }}'
+    $envFile = Join-Path ".." ".env"
+    if (-not (Test-Path $envFile)) {
+        Write-Error "  ERROR: ../.env not found"
+        exit 1
+    }
+    $key = Get-Content $envFile |
+        Where-Object { $_ -match '^\s*(export\s+)?OPENWEATHER_API_KEY=(.+)$' } |
+        ForEach-Object { $Matches[2] }
+    if (-not $key) {
+        Write-Error "  ERROR: OPENWEATHER_API_KEY not set in ../.env"
+        exit 1
+    }
+    if (-not (Test-Path "local.properties")) {
+        New-Item -ItemType File -Path "local.properties" | Out-Null
+    }
+    $content = Get-Content "local.properties"
+    if ($content -match 'OPENWEATHER_API_KEY=') {
+        $content = $content -replace '^OPENWEATHER_API_KEY=.*', "OPENWEATHER_API_KEY=$key"
+        Set-Content "local.properties" $content
+    } else {
+        Add-Content "local.properties" "OPENWEATHER_API_KEY=$key"
+    }
+    Write-Host "  API key written to local.properties"
 
 # install Android Rust cross-compilation targets
 install-targets:
@@ -90,7 +119,6 @@ dev: setup fix check build test
 # CI workflow
 ci: check build test
 
-# open in Android Studio (macOS)
+# open in Android Studio
 open:
-    @echo '{{ style("command") }}open:{{ NORMAL }}'
-    open -b com.google.android.studio .
+    @just lib::open-android-studio

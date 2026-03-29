@@ -3,11 +3,12 @@ mod wlib 'weather-lib.just'
 
 default: dev
 
-shells := "shared apple Android web-leptos web-nextjs"
+common := "shared Android web-leptos web-nextjs"
+shells := if os() == "macos" { common + " apple" } else { common }
 
 # checks required tools across all shells
+[script('sh')]
 doctor:
-    #!/usr/bin/env bash
     echo '{{ style("command") }}.env:{{ NORMAL }}'
     just wlib::check-env
     echo ''
@@ -23,16 +24,16 @@ setup:
     just Android/setup
 
 # local development workflow
+[script('sh')]
 dev:
-    #!/usr/bin/env bash
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
         just "$shell/dev"
     done
 
 # CI workflow
+[script('sh')]
 ci:
-    #!/usr/bin/env bash
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
         just "$shell/ci"
