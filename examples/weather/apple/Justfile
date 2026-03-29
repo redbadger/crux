@@ -49,7 +49,6 @@ typegen:
 [working-directory('../shared')]
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
-    cargo swift --version | grep -q '0.9.0'
     cargo swift package \
         --name Shared \
         --platforms ios macos \
